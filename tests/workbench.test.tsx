@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { StrictMode } from "react";
 import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { EditorView } from "@codemirror/view";
 import { PROTOCOL_VERSION, type CoreEvent, type CoreRequest, type CoreResponse, type FileEvent, type WorkspaceSnapshot } from "../protocol/schema";
 import {
@@ -17,6 +17,11 @@ vi.mock("../app/renderer/GraphPane", () => ({
 }));
 
 import { App } from "../app/renderer/App";
+
+beforeAll(() => {
+  Object.defineProperty(Range.prototype, "getClientRects", { configurable: true, value: () => [] });
+  Object.defineProperty(Range.prototype, "getBoundingClientRect", { configurable: true, value: () => new DOMRect() });
+});
 
 afterEach(() => {
   cleanup();
