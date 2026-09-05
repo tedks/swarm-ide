@@ -11,11 +11,11 @@ After this change, opening Swarm IDE shows the real checked-out repository rathe
 - [x] (2026-09-05 14:20Z) Verified clean `origin/master` at PR #3 and created `feature/real-service-topology` in `/home/tedks/Projects/swarm-ide/real-service-topology`.
 - [x] (2026-09-05 14:23Z) Started ditz issues `real-service-topology-provider` and `initial-snapshot-event-race`; filed `first-real-agent-run-surface` behind the provider.
 - [x] (2026-09-05 14:27Z) Audited the protocol, fixture worker, Electron bridge, renderer event reducer, graph pane, build targets, and desktop harness.
-- [ ] Add the deterministic Bazel service declaration, source target, extractor, artifact contract, and hostile-input tests.
-- [ ] Replace the production fixture worker with the real workspace provider and exact Git/Bazel reconciliation state machine.
-- [ ] Add the typed file bridge, CodeMirror workspace tabs, focus-linked source navigation, and file-security/concurrency tests.
-- [ ] Fix bootstrap ordering, remove fabricated normal-world runtime/agent claims, and update contract/UI tests.
-- [ ] Prove Bazel quality gates, deterministic artifacts, warm timings, X11 behavior on 55174, and HMR.
+- [x] (2026-09-05 19:05Z) Added deterministic Bazel service declaration/source targets, a validated artifact extractor, and public Protocol Buffers contracts for `FraudCheck.Assess` and `Payments.Authorize`.
+- [x] (2026-09-05 19:05Z) Replaced the production fixture worker with the real workspace provider and exact Git/Bazel reconciliation state machine.
+- [x] (2026-09-05 19:05Z) Added the typed file bridge, CodeMirror workspace tabs, focus-linked source navigation, live external-change flashes, and file-security/concurrency tests.
+- [x] (2026-09-05 19:20Z) Fixed bootstrap ordering, removed fabricated normal-world runtime/agent claims, and expanded contract/UI failure coverage.
+- [x] (2026-09-05 19:29Z) Proved Bazel quality gates, deterministic artifacts, warm timings, X11 behavior on 55174, and HMR.
 - [ ] Push a draft PR, run the provider-diverse council to fixpoint, obtain green CI, merge normally, close/sync issues, and leave clean synchronized master running on 55173.
 
 ## Surprises & Discoveries
@@ -24,10 +24,16 @@ After this change, opening Swarm IDE shows the real checked-out repository rathe
   Evidence: `core/worker.ts` imports `initialSnapshot`, `dirtySnapshot`, `progressSnapshot`, and `successfulSnapshot`; the initial fixture claims active agents and `deploy:local-084`.
 - Observation: the snapshot request is subscribed after the request is initiated, then loaded unconditionally, allowing a delayed bootstrap response to overwrite a newer event.
   Evidence: `App.tsx` calls `invoke(workspace.snapshot).then(setWorkspace(loadSnapshot(...)))` while `onEvent` independently advances the reducer.
+- Observation: gRPC is the closest public counterpart to Google's internal Stubby system, and Protocol Buffers service declarations give this prototype a real, buildable RPC boundary without importing a service framework.
+  Evidence: the demo's `proto_library` targets build under Bazel; the extractor rejects a missing RPC or request/response drift before producing an artifact.
+- Observation: X11 automation can address the real Electron window reliably, but GNOME's active screensaver swallows synthetic keys even when the window manager still reports that window as active.
+  Evidence: failed zoom/command acknowledgements coincided with `org.gnome.ScreenSaver.GetActive = true`; normal `SetActive false` restored the same unchanged smoke command.
+- Observation: changing a React effect dependency-array shape during HMR produces the expected React development warning because preserved hook state came from the older module shape.
+  Evidence: a clean renderer reload removed the warning; typecheck, production build, tests, and subsequent HMR all passed.
 
 ## Decision Log
 
-- Decision: use one checked-in `service.swarm.json` plus an adjacent Bazel source target and explicit `genrule` that invokes a narrow TypeScript extractor.
+- Decision: use one checked-in `service.swarm.json` plus an adjacent Bazel source target and explicit `genrule` that invokes a narrow JavaScript extractor.
   Rationale: the declaration owns semantic identity, Bazel owns implementation inputs, and the artifact stays deterministic without teaching the extractor renderer contracts.
   Date/Author: 2026-09-05 / Integration Architect.
 - Decision: represent an unconfigured deployment with empty revision strings and a visible status widget, not a fabricated runtime provenance record.
@@ -42,10 +48,21 @@ After this change, opening Swarm IDE shows the real checked-out repository rathe
 - Decision: make the CodeMirror surface browse-and-observe first, with live filesystem changes visualized inline; manual editing is secondary.
   Rationale: the IDE's central cognitive job is making swarm activity legible. A typed file watcher can represent changes from future wrapped agents today without coupling source observation to the later agent harness.
   Date/Author: 2026-09-05 / User steering and Integration Architect.
+- Decision: use public protobuf/gRPC-style contracts as the demo analogue of Stubby, but keep topology identity in the small `service.swarm.json` declaration and implementation ownership in Bazel.
+  Rationale: each truth has one owner: protobuf proves RPC method/type shape, the manifest supplies stable Swarm IDs, and Bazel supplies the exact build inputs. The extractor refuses disagreement among them.
+  Date/Author: 2026-09-05 / User steering and Integration Architect.
 
 ## Outcomes & Retrospective
 
-Implementation is in progress. This section will compare shipped behavior and measured evidence with the purpose above.
+The implementation gate is satisfied pending council/CI/merge. Production now opens the actual `swarm-ide` working tree with an empty gray service graph, no fixture claims, and an explicit `not configured` deployment. The exact target `//examples/checkout-world/services/fraudcheck:service_topology` produces one semantic artifact at `bazel-bin/examples/checkout-world/services/fraudcheck/service-topology.json`; two identical builds produced byte-identical SHA-256 `4e03424ea3b0cb47aa05d32974b796f6a01d9c79a02f0c1fefb73954befbed8b`.
+
+The real provider captures Git HEAD plus changed/deleted/non-ignored untracked paths, modes, and bytes. It publishes yellow for that working fingerprint, invokes Bazel with fixed arguments and no shell, accepts a bounded strictly validated artifact, recomputes the fingerprint, and uses the artifact SHA-256 as build ID. An exact mismatch, failed build, malformed artifact, duplicate request, or older attempt cannot publish green; red retains the previous graph.
+
+The source observatory opens canonical bounded UTF-8 files through the typed bridge. It rejects traversal, symlink escape, non-files, binary/control bytes, invalid Unicode, oversize content, and stale expected revisions. Saves use a unique sibling, preserve mode, fsync, atomically rename, and return the new working fingerprint. External clean-buffer changes render additions green and removals as a temporary red ghost; dirty buffers become conflicts without replacement.
+
+Validation evidence: `bazel test //...` and `bazel build //...` pass; the Bazel-owned quality target reports 15 files and 81 tests passing. Five clean warm runs measured click-to-yellow 128/117/91/84/90 ms (median 91 ms) and click-to-green 990/198/176/166/172 ms (median 176 ms, observed p95 990 ms), within the targets; a later automated end-to-end run measured 68 ms and 963 ms. X11 screenshots under `artifacts/real-topology/` and `artifacts/desktop-final/` show gray→yellow→green, the real graphs/contracts, graph↔file tabs, live green insertion/red deletion, and preserved conflict content. Real-window Ctrl-S wrote the expected probe and changed the working world; a subsequent external restore left the unsaved buffer visible under `CONFLICT`. Final HMR measured 70 ms edit-to-pixel, 99 ms edit-to-title, and 11 ms Vite-event-to-paint on port 55174.
+
+Remaining risk is intentionally narrow: file observation is local single-host coordination rather than a hardened multi-user filesystem transaction, and source flashes use one bounded line-level replacement region rather than a full semantic diff. Agent attribution, durable change history, generalized provider discovery, LSP, terminals, and merge UI remain follow-up scope.
 
 ## Context and Orientation
 
@@ -82,7 +99,7 @@ Run the feature window without touching ports 5173 or 55173:
 
 Run desktop verification against that same environment:
 
-    DISPLAY=:0 SWARM_DEV_PORT=55174 nix develop --command bazel run //tools:desktop-topology-smoke
+    DISPLAY=:0 SWARM_DEV_PORT=55174 nix develop --command bazel run //tools:desktop-smoke
 
 ## Validation and Acceptance
 
@@ -98,7 +115,7 @@ The extractor and build are deterministic and may be rerun safely. A failed buil
 
 ## Artifacts and Notes
 
-Evidence, measured timings, screenshots, exact test counts, review rounds, PR number, and commits will be appended as they are produced.
+Local visual evidence is under ignored `artifacts/real-topology/`, `artifacts/desktop-final/`, and `artifacts/hmr-final/`. The draft landing unit is PR #4. Review rounds, final CI, normal merge commit, closed issues, and master verification will be appended during landing.
 
 ## Interfaces and Dependencies
 
