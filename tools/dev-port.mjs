@@ -29,15 +29,16 @@ export function resolveDevEndpoint(environment = process.env) {
     host: DEV_HOST,
     port,
     rendererUrl,
+    rendererProcessArgument: `--swarm-renderer-url=${rendererUrl}`,
     webSocketOrigin: `ws://${DEV_HOST}:${port}`,
   };
 }
 
 function runCli() {
-  if (process.argv.length !== 3 || process.argv[2] !== "renderer-url") {
-    throw new Error("usage: dev-port.mjs renderer-url");
+  if (process.argv.length !== 3 || process.argv[2] !== "renderer-process-argument") {
+    throw new Error("usage: dev-port.mjs renderer-process-argument");
   }
-  process.stdout.write(`${resolveDevEndpoint().rendererUrl}\n`);
+  process.stdout.write(`${resolveDevEndpoint().rendererProcessArgument}\n`);
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {

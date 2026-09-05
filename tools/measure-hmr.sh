@@ -8,7 +8,8 @@ if [[ -z "$workspace" ]]; then
 fi
 artifact_dir="${SWARM_ARTIFACT_DIR:-$workspace/artifacts/hmr}"
 probe="$workspace/app/renderer/hmr-probe.css"
-renderer_url=$(node "$workspace/tools/dev-port.mjs" renderer-url)
+renderer_argument=$(node "$workspace/tools/dev-port.mjs" renderer-process-argument)
+renderer_url=${renderer_argument#*=}
 
 if [[ -z "${DISPLAY:-}" ]]; then
   echo "HMR measurement requires an X11 DISPLAY" >&2
@@ -23,8 +24,8 @@ window_id=""
 for candidate in $(xdotool search --name '^swarm-ide —' 2>/dev/null || true); do
   candidate_pid=$(xdotool getwindowpid "$candidate" 2>/dev/null || true)
   if [[ -n "$candidate_pid" ]] &&
-     tr '\0' '\n' <"/proc/$candidate_pid/environ" 2>/dev/null |
-       grep -Fqx -- "SWARM_RENDERER_URL=$renderer_url"; then
+     tr '\0' '\n' <"/proc/$candidate_pid/cmdline" 2>/dev/null |
+       grep -Fqx -- "$renderer_argument"; then
     window_id="$candidate"
     break
   fi

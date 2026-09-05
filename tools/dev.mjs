@@ -36,14 +36,18 @@ let watchersReady = false;
 
 function launchDesktop() {
   if (shuttingDown) return;
-  desktop = spawn(electronBinary, [resolve(outputRoot, "app/electron/main.js")], {
-    cwd: workspace,
-    env: {
-      ...process.env,
-      SWARM_RENDERER_URL: devEndpoint.rendererUrl,
+  desktop = spawn(
+    electronBinary,
+    [resolve(outputRoot, "app/electron/main.js"), devEndpoint.rendererProcessArgument],
+    {
+      cwd: workspace,
+      env: {
+        ...process.env,
+        SWARM_RENDERER_URL: devEndpoint.rendererUrl,
+      },
+      stdio: "inherit",
     },
-    stdio: "inherit",
-  });
+  );
   desktop.on("exit", (code, signal) => {
     desktop = null;
     if (restartingDesktop) {

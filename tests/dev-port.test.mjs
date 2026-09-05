@@ -34,6 +34,7 @@ describe("development port", () => {
       host: "127.0.0.1",
       port: 55173,
       rendererUrl: "http://127.0.0.1:55173",
+      rendererProcessArgument: "--swarm-renderer-url=http://127.0.0.1:55173",
       webSocketOrigin: "ws://127.0.0.1:55173",
     });
   });
