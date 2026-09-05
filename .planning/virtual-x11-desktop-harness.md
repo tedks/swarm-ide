@@ -21,7 +21,8 @@ The visible proof is a reported artifact directory containing the virtual deskto
 - [x] (2026-09-05 22:03Z) Ran the full Bazel build and uncached `//...` test gates, inspected exact topology/source and zoom screenshots, and captured per-process RSS/PSS, timing, PID/session, and cleanup evidence without targeting `DISPLAY=:0`.
 - [x] (2026-09-05 22:32Z) Remediated the first council and hosted-CI findings: cleanup status now propagates, child-registration signals are race-safe, PID/session identity is revalidated, HMR replacement is expected-first and atomic, reload proof requires a fresh renderer title, CI's Electron sandbox exception is explicit and narrow, and uploaded evidence is unpacked.
 - [x] (2026-09-05 22:32Z) Re-ran topology/source, zoom, HMR, the CI-shaped Bazel smoke, and focused hostile tests under inherited `DISPLAY=:0`; all used owned `:90`, produced exact-window screenshots, restored source, and cleaned port/display/process state.
-- [ ] Push the PR through council review to fixpoint and green hosted CI, merge normally, synchronize master and Ditz, and clean only feature-owned resources.
+- [x] (2026-09-05 22:44Z) Reached council fixpoint after four scoped rounds: the native Codex and foreign Antigravity seats both returned CLEAN on the final delta; Claude's foreign seat remained explicitly unfilled after its initial 900-second timeout. The final local gate built 19 targets and passed all five uncached Bazel test targets.
+- [ ] Receive green hosted CI, merge normally, synchronize master and Ditz, and clean only feature-owned resources.
 
 ## Surprises & Discoveries
 
@@ -82,7 +83,7 @@ The visible proof is a reported artifact directory containing the virtual deskto
 
 ## Outcomes & Retrospective
 
-Implementation and local verification are complete; review convergence, hosted CI, and merge remain. The latest topology/source run reached its exact window in 2.026 seconds and completed in 26.277 seconds, including a 19.725-second fixture build. The zoom run reached its window in 2.088 seconds and completed in 9.705 seconds. The HMR run completed in 2.519 seconds and observed its pixel change in 125 milliseconds; the source SHA-256 was identical before and after.
+Implementation, local verification, and council convergence are complete; hosted CI and merge remain. The latest topology/source run reached its exact window in 2.026 seconds and completed in 26.277 seconds, including a 19.725-second fixture build. The zoom run reached its window in 2.088 seconds and completed in 9.705 seconds. The HMR run completed in 2.519 seconds and observed its pixel change in 125 milliseconds; the source SHA-256 was identical before and after.
 
 The topology run's combined proportional set size was 836 MiB at readiness and 957 MiB after the scenario; zoom measured 873 MiB and 969 MiB. Aggregate RSS was 1.34–1.62 GiB because Electron processes count shared pages repeatedly. This is acceptable for the correctness gate but expensive enough to track as a separate optimization rather than widening this infrastructure slice.
 
@@ -169,3 +170,5 @@ Revision note (2026-09-05 22:00Z): Recorded the completed supervisor, scenario m
 Revision note (2026-09-05 22:03Z): Marked local repository validation complete after all 17 Bazel build targets and all four Bazel test targets passed uncached; the test suite includes 105 application tests plus the driver, supervisor, and real virtual-desktop gates. Resource output now records proportional set size as well as aggregate resident size so Electron shared-memory accounting is not overstated.
 
 Revision note (2026-09-05 22:32Z): Recorded first-round council and CI remediation, post-exec session registration, explicit CI-only Chromium sandbox handling, atomic HMR mutation, fresh-renderer reload proof, unpacked CI artifacts, and updated real-run timings/resources. The remaining gate is review/CI convergence and normal merge.
+
+Revision note (2026-09-05 22:44Z): Recorded council fixpoint and the final five-target uncached Bazel gate. Review closed display-lock registration, HMR temporary-file cleanup, signal-output capture, and stale-member identity gaps; hosted CI and normal merge remain.
