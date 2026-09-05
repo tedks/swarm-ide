@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { CoreRequestSchema, FocusRefSchema, WorkspaceSnapshotSchema } from "../protocol/schema";
+import { CoreRequestSchema, CoreResponseSchema, FileEventSchema, FocusRefSchema, MAX_EDITABLE_FILE_BYTES, PROTOCOL_VERSION, WorkspaceSnapshotSchema } from "../protocol/schema";
 import {
   dirtySnapshot,
   failedSnapshot,
@@ -63,5 +63,18 @@ describe("runtime contracts", () => {
   it("rejects malformed focus ranges and unsupported requests", () => {
     expect(() => FocusRefSchema.parse({ ...paymentsFileFocus, range: { startLine: 8, endLine: 2 } })).toThrow();
     expect(() => CoreRequestSchema.parse({ requestId: "x", protocolVersion: 1, type: "shell.exec", command: "rm" })).toThrow();
+  });
+
+  it("bounds the typed file bridge and carries content revisions without filesystem authority", () => {
+    const snapshot = initialSnapshot();
+    const revision = "a".repeat(64);
+    expect(CoreRequestSchema.parse({ requestId: "read", protocolVersion: PROTOCOL_VERSION, type: "file.read", path: "src/file.ts" }).type).toBe("file.read");
+    expect(CoreRequestSchema.parse({ requestId: "write", protocolVersion: PROTOCOL_VERSION, type: "file.write", path: "src/file.ts", expectedRevision: revision, content: "next\n" }).type).toBe("file.write");
+    expect(() => CoreRequestSchema.parse({ requestId: "large", protocolVersion: PROTOCOL_VERSION, type: "file.write", path: "src/file.ts", expectedRevision: revision, content: "x".repeat(MAX_EDITABLE_FILE_BYTES + 1) })).toThrow();
+    const response = CoreResponseSchema.parse({ protocolVersion: PROTOCOL_VERSION, requestId: "read", ok: true, sequence: 0, snapshot, file: { kind: "read", path: "src/file.ts", content: "next\n", revision, size: 5 } });
+    expect(response.ok && response.file?.kind).toBe("read");
+    expect(CoreResponseSchema.parse({ protocolVersion: PROTOCOL_VERSION, requestId: "write-warning", ok: true, sequence: 0, snapshot, file: { kind: "write", path: "src/file.ts", revision, workingFingerprint: null, fingerprintError: "saved; refresh failed" } }).ok).toBe(true);
+    expect(() => CoreResponseSchema.parse({ protocolVersion: PROTOCOL_VERSION, requestId: "dishonest-write", ok: true, sequence: 0, snapshot, file: { kind: "write", path: "src/file.ts", revision, workingFingerprint: null } })).toThrow();
+    expect(FileEventSchema.parse({ protocolVersion: PROTOCOL_VERSION, type: "file.changed", sequence: 1, emittedAt: "2026-09-05T12:00:00.000Z", path: "src/file.ts", revision, change: "modified" }).change).toBe("modified");
   });
 });

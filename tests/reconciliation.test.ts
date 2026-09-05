@@ -1,11 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { dirtySnapshot, initialSnapshot, successfulSnapshot } from "../fixtures/world";
 import { applyCoreEvent, loadSnapshot } from "../app/renderer/state";
-import type { CoreEvent, WorkspaceSnapshot } from "../protocol/schema";
+import { PROTOCOL_VERSION, type CoreEvent, type WorkspaceSnapshot } from "../protocol/schema";
 
 function event(snapshot: WorkspaceSnapshot, sequence: number, epoch = snapshot.reconciliation.epoch): CoreEvent {
   return {
-    protocolVersion: 1,
+    protocolVersion: PROTOCOL_VERSION,
     type: "graph.published",
     sequence,
     epoch,

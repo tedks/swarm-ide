@@ -15,6 +15,11 @@ sh_binary(
     srcs = ["build-app.sh"],
 )
 
+sh_binary(
+    name = "extract-service-topology",
+    srcs = ["extract-service-topology.mjs"],
+)
+
 sh_test(
     name = "quality",
     srcs = ["quality.sh"],

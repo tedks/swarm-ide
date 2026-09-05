@@ -13,6 +13,35 @@ export interface TopologyNodeData extends Record<string, unknown> {
   focus: FocusRef;
 }
 
+export interface GraphConnectionFocus {
+  id: string;
+  kind: string;
+  label: string;
+  source: { label: string; focus: FocusRef };
+  target: { label: string; focus: FocusRef };
+  interfaceFocus: FocusRef;
+  contract?: string;
+  provenance: GraphSlice["provenance"];
+}
+
+export function describeGraphConnection(graph: GraphSlice, edgeId: string): GraphConnectionFocus | null {
+  const edge = graph.edges.find((candidate) => candidate.id === edgeId);
+  const source = edge && graph.nodes.find((candidate) => candidate.id === edge.source);
+  const target = edge && graph.nodes.find((candidate) => candidate.id === edge.target);
+  if (!edge || !source || !target) return null;
+  const interfaceNode = source.focus.domain === "interface" ? source : target.focus.domain === "interface" ? target : target;
+  return {
+    id: edge.id,
+    kind: edge.kind,
+    label: edge.label ?? edge.kind,
+    source: { label: source.label, focus: source.focus },
+    target: { label: target.label, focus: target.focus },
+    interfaceFocus: interfaceNode.focus,
+    ...(interfaceNode.detail ? { contract: interfaceNode.detail } : {}),
+    provenance: graph.provenance,
+  };
+}
+
 function sameFocus(left: FocusRef, right: FocusRef): boolean {
   return (
     left.worldId === right.worldId &&
@@ -78,10 +107,13 @@ export function adaptGraph(
       target: edge.target,
       label: edge.label,
       animated: edge.status === "yellow",
+      focusable: true,
+      interactionWidth: 28,
       markerEnd: { type: MarkerType.ArrowClosed, color: edge.status === "red" ? "#d76161" : edge.status === "yellow" ? "#e8b55b" : "#477d77" },
       style: {
         stroke: edge.status === "red" ? "#d76161" : edge.status === "yellow" ? "#e8b55b" : "#477d77",
-        strokeWidth: 1.5,
+        strokeWidth: 1.7,
+        cursor: "pointer",
       },
       labelStyle: { fill: "#8da4a1", fontSize: 10, fontWeight: 600 },
       labelBgStyle: { fill: "#0d1718", fillOpacity: 0.92 },

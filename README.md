@@ -44,16 +44,19 @@ nix develop --command bazel run //tools:desktop-smoke
 nix develop --command bazel run //tools:measure-hmr
 ```
 
-The service topology shown by the foundation is deterministic fixture data. It
-crosses the production protocol boundary, but it is not yet extracted from real
-services. See [the product foundation](docs/product-foundation.md),
+The normal cockpit opens the real working tree and leaves service topology
+unobserved until the user runs its fixed Bazel topology build. The checked-in
+demo grounds `FraudCheck.Assess` and its `Payments.Authorize` dependency in
+public Protocol Buffers/gRPC-style service contracts, while Bazel declares the
+owned implementation inputs and produces the deterministic semantic artifact.
+Fixtures remain test-only. See [the product foundation](docs/product-foundation.md),
 [architecture](docs/architecture.md), and
 [development loop](docs/development-loop.md) for the precise boundary.
 
 ## Structure
 
 - `app/` — Electron shell and React workbench
-- `core/` — privileged local process and mock providers
+- `core/` — privileged local process and typed providers
 - `protocol/` — runtime-validated shared contracts
 - `fixtures/` — deterministic world states
 - `tests/` — contract and interaction tests

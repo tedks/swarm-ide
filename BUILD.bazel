@@ -8,6 +8,7 @@ filegroup(
         "fixtures/**",
         "protocol/**",
         "tests/**",
+        "examples/**",
     ]) + [
         "index.html",
         "package.json",
@@ -17,7 +18,10 @@ filegroup(
         "tsconfig.node.json",
         "vite.config.mts",
         "vitest.config.mts",
-    ] + ["//tools:dev-port-source"],
+    ] + [
+        "//tools:dev-port-source",
+        "//tools:extract-service-topology",
+    ],
 )
 
 genrule(

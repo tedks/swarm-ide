@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "service": {
+    "id": "service:fraud-check",
+    "displayName": "FraudCheck"
+  },
+  "providedInterfaces": [
+    {
+      "id": "interface:fraud-check.assess",
+      "name": "Assess",
+      "requestType": "checkout.fraud.v1.FraudAssessmentRequest",
+      "responseType": "checkout.fraud.v1.FraudAssessmentDecision"
+    }
+  ],
+  "requiredInterfaces": [
+    {
+      "id": "interface:payments.authorize",
+      "name": "Payments.Authorize",
+      "serviceId": "service:payments",
+      "requestType": "checkout.payments.v1.PaymentAuthorizationRequest",
+      "responseType": "checkout.payments.v1.PaymentAuthorizationDecision"
+    }
+  ]
+}

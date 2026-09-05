@@ -3,6 +3,7 @@ import { join } from "node:path";
 import {
   PROTOCOL_VERSION,
   parseCoreEvent,
+  parseFileEvent,
   parseCoreRequest,
   parseCoreResponse,
   type CoreResponse,
@@ -42,12 +43,12 @@ let mainWindow: BrowserWindow | null = null;
 let core: UtilityProcess | null = null;
 const pending = new Map<
   string,
-  { resolve: (response: CoreResponse) => void; timeout: NodeJS.Timeout }
+  { resolve: (response: CoreResponse) => void; timeout: NodeJS.Timeout | null }
 >();
 
 function rejectPending(message: string): void {
   for (const [requestId, item] of pending) {
-    clearTimeout(item.timeout);
+    if (item.timeout) clearTimeout(item.timeout);
     item.resolve({
       protocolVersion: PROTOCOL_VERSION,
       requestId,
@@ -63,6 +64,7 @@ function startCore(): void {
   core = utilityProcess.fork(entry, [], {
     serviceName: "swarm-ide-local-core",
     stdio: "pipe",
+    env: { ...process.env, SWARM_WORKSPACE_ROOT: process.cwd() },
   });
 
   core.stdout?.on("data", (chunk) => process.stdout.write(`[core] ${chunk}`));
@@ -72,7 +74,7 @@ function startCore(): void {
       typeof message === "object" &&
       message !== null &&
       "type" in message &&
-      message.type === "core.ready"
+      (message.type === "core.ready" || message.type === "core.failed")
     ) {
       return;
     }
@@ -81,7 +83,7 @@ function startCore(): void {
     if (responseResult) {
       const item = pending.get(responseResult.requestId);
       if (item) {
-        clearTimeout(item.timeout);
+        if (item.timeout) clearTimeout(item.timeout);
         pending.delete(responseResult.requestId);
         item.resolve(responseResult);
       }
@@ -92,6 +94,13 @@ function startCore(): void {
       const event = parseCoreEvent(message);
       mainWindow?.webContents.send(EVENT_CHANNEL, event);
     } catch (error) {
+      try {
+        const fileEvent = parseFileEvent(message);
+        mainWindow?.webContents.send(EVENT_CHANNEL, fileEvent);
+        return;
+      } catch {
+        // The common invalid-message handler below reports a bounded error.
+      }
       console.error("Dropped invalid local-core message", error);
       const requestId =
         typeof message === "object" && message !== null && "requestId" in message &&
@@ -100,7 +109,7 @@ function startCore(): void {
           : null;
       const item = requestId ? pending.get(requestId) : undefined;
       if (requestId && item) {
-        clearTimeout(item.timeout);
+        if (item.timeout) clearTimeout(item.timeout);
         pending.delete(requestId);
         item.resolve({
           protocolVersion: PROTOCOL_VERSION,
@@ -145,7 +154,10 @@ function requestCore(input: unknown): Promise<CoreResponse> {
   }
 
   return new Promise((resolve) => {
-    const timeout = setTimeout(() => {
+    // Writes are commit-bearing operations and cannot safely be reported as
+    // timed out while the core may still rename the file. Core exit remains a
+    // terminal failure signal; read-only requests retain a bounded deadline.
+    const timeout = request.type === "file.write" ? null : setTimeout(() => {
       pending.delete(request.requestId);
       resolve({
         protocolVersion: PROTOCOL_VERSION,

@@ -114,53 +114,65 @@ capture_window() {
   import -window "$window_id" "$destination"
 }
 
-# Reset through the keyboard command surface so every run begins at work:a1.
-xdotool key --clearmodifiers Escape
-wait_for_title "Palette open" absent
-xdotool key --clearmodifiers ctrl+k
-wait_for_title "Palette open"
-# The palette begins at 11vh; 26px is the midpoint of its fixed 52px header.
-palette_input_y=$((HEIGHT * 11 / 100 + 26))
-xdotool mousemove --window "$window_id" "$((WIDTH / 2))" "$palette_input_y" click 1
-xdotool key --clearmodifiers ctrl+a
-xdotool type --clearmodifiers --delay 3 'Reset fixture world'
-xdotool key --clearmodifiers Return
-wait_for_title "Palette open" absent
-sleep 0.2
-reset_title=$(xdotool getwindowname "$window_id")
-if [[ "$reset_title" != *"work:a1"* || "$reset_title" == *"FraudCheck visible"* ]]; then
-  echo "fixture reset did not restore the exact work:a1 world: $reset_title" >&2
-  exit 4
+run_command() {
+  local command="$1"
+  xdotool key --clearmodifiers Escape
+  wait_for_title "Palette open" absent
+  xdotool key --clearmodifiers ctrl+k
+  wait_for_title "Palette open"
+  # The palette begins at 11vh; 26px is the midpoint of its fixed 52px header.
+  local palette_input_y=$((HEIGHT * 11 / 100 + 26))
+  xdotool mousemove --window "$window_id" "$((WIDTH / 2))" "$palette_input_y" click 1
+  xdotool key --clearmodifiers ctrl+a
+  xdotool type --clearmodifiers --delay 2 "$command"
+  last_command_submitted_ms=$(date +%s%3N)
+  xdotool key --clearmodifiers Return
+  wait_for_title "Palette open" absent
+}
+
+current_title=$(xdotool getwindowname "$window_id")
+if [[ "$current_title" != *" — Graphs — "* ]]; then
+  run_command "Show system graphs"
+  wait_for_title "Graphs"
 fi
 capture_window "$artifact_dir/before.png"
 
-# Open with a hotkey, then dispatch by clicking the top command.
-xdotool key --clearmodifiers ctrl+k
-wait_for_title "Palette open"
-palette_command_y=$((HEIGHT * 11 / 100 + 80))
-activate_window
-xdotool mousemove --window "$window_id" "$((WIDTH / 2))" "$palette_command_y" click 1
-
-wait_for_title "Palette open" absent
+run_command "Build repository service topology"
+build_started_ms=$last_command_submitted_ms
 wait_for_title "Reconciling"
+yellow_ms=$(( $(date +%s%3N) - build_started_ms ))
 yellow_title=$(xdotool getwindowname "$window_id")
-if [[ "$yellow_title" != *"work:b2"* || "$yellow_title" == *"FraudCheck visible"* ]]; then
-  echo "yellow state did not retain the expected work:a1 topology over work:b2: $yellow_title" >&2
+if [[ "$yellow_title" != *"Graphs"* ]]; then
+  echo "yellow state left the graph surface unexpectedly: $yellow_title" >&2
   exit 4
 fi
+wait_for_title "Consistent"
 wait_for_title "FraudCheck visible"
+green_ms=$(( $(date +%s%3N) - build_started_ms ))
 green_title=$(xdotool getwindowname "$window_id")
-if [[ "$green_title" != *"work:b2"* ]]; then
-  echo "green publication does not identify work:b2: $green_title" >&2
+if [[ "$green_title" != *"Consistent"* ]]; then
+  echo "topology did not reach a consistent real publication: $green_title" >&2
   exit 4
 fi
-sleep 0.25
 capture_window "$artifact_dir/reconciled.png"
 
-changed_pixels=$(magick "$artifact_dir/before.png" "$artifact_dir/reconciled.png" \
+run_command "Open FraudCheck implementation"
+wait_for_title "Source fraudcheck.ts"
+capture_window "$artifact_dir/fraudcheck-source.png"
+
+run_command "Open FraudCheck protobuf contract"
+wait_for_title "Source fraudcheck.proto"
+capture_window "$artifact_dir/fraudcheck-contract.png"
+
+run_command "Show system graphs"
+wait_for_title "Graphs"
+wait_for_title "FraudCheck visible"
+capture_window "$artifact_dir/returned-to-graphs.png"
+
+changed_pixels=$(magick "$artifact_dir/reconciled.png" "$artifact_dir/fraudcheck-source.png" \
   -compose difference -composite -threshold 0 -format '%[fx:round(mean*w*h)]' info:)
-if [[ ! "$changed_pixels" =~ ^[0-9]+$ ]] || (( changed_pixels < 1000 )); then
-  echo "desktop state assertion failed: only '$changed_pixels' pixels changed" >&2
+if ! awk -v changed="$changed_pixels" 'BEGIN { exit !(changed + 0 >= 1000) }'; then
+  echo "desktop source assertion failed: only '$changed_pixels' pixels changed" >&2
   exit 5
 fi
 
@@ -168,6 +180,8 @@ echo "desktop smoke passed"
 echo "window_id=$window_id"
 echo "renderer_url=$renderer_url"
 echo "window_title=$(xdotool getwindowname "$window_id")"
+echo "click_to_yellow_ms=$yellow_ms"
+echo "click_to_green_ms=$green_ms"
 echo "changed_pixels=$changed_pixels"
 echo "artifacts=$artifact_dir"
-identify "$artifact_dir/before.png" "$artifact_dir/reconciled.png"
+identify "$artifact_dir/before.png" "$artifact_dir/reconciled.png" "$artifact_dir/fraudcheck-source.png" "$artifact_dir/fraudcheck-contract.png" "$artifact_dir/returned-to-graphs.png"
