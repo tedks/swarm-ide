@@ -41,8 +41,10 @@ well-formed but late data cannot replace a newer world.
 The core takes the output location from the successful target-completion event
 of the exact Bazel build invocation, never from the workspace's convenience
 symlink or a second configuration lookup. It accepts exactly one bounded local
-artifact and independently recomputes its versioned input digest from the exact
-canonical manifest, sources, and protobuf declarations. A globally ordered Git
+artifact. The consumer preserves the exact event-reported path through the
+no-follow regular-file open, so resolving a final symlink cannot erase the fact
+that the declared output was linked. It independently recomputes its versioned
+input digest from the exact canonical manifest, sources, and protobuf declarations. A globally ordered Git
 observer combines file hints with a non-starving polling fallback, so changes
 outside open source tabs also revoke green truth. Explicit hints supersede older
 computations; periodic ticks wait for an active computation to finish.
@@ -60,6 +62,15 @@ beside CodeMirror, preserving their camera state. Edges are selectable
 presentation-level relationships; their interface focus, endpoints, contract,
 and graph provenance populate contextual instruments without adding a universal
 "edge artifact" to the shared protocol.
+
+Each source-tab lifecycle has one generation and one initial-read owner. File
+events received while that first read is pending advance its observation
+watermark instead of launching a competing read; the opener retries a bounded
+number of times until its bytes match the newest observed revision or surfaces a
+visible error. Close operations synchronously advance lifecycle authority and
+compose their state updates, so batched closes and late reads cannot resurrect a
+tab. Save completion accepts delayed events for either its expected base revision
+or its newly written revision while treating any third revision as a conflict.
 
 `tools/dev.mjs` creates watched main, preload, and core bundles with esbuild,
 starts one Vite server, and launches the Nix-provided Electron binary. Renderer
