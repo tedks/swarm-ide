@@ -20,5 +20,11 @@ log_events:
   who: Ted Smith
   what: blocked by desktop-x11-driver
   comment: ""
+- time: 2026-09-05T19:54:19-00:00
+  who: Ted Smith
+  what: blocks first-real-agent-run-surface
+  comment: ""
+blocks:
+- first-real-agent-run-surface
 blocked_by:
 - desktop-x11-driver
