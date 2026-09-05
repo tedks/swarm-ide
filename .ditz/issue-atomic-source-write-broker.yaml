@@ -1,0 +1,22 @@
+id: atomic-source-write-broker
+title: Provide cooperative or native compare-and-swap source writes
+desc: The typed core currently performs bounded optimistic revision checks immediately
+  before crash-safe atomic rename, and the renderer preserves observed concurrent
+  conflicts. POSIX/Node exposes no conditional pathname replace, so an uncooperative
+  external writer can still race inside the final check-to-rename syscall boundary.
+  Design either a cooperative agent/editor write broker or a small audited native
+  transaction helper that preserves crash safety and never loses the external version;
+  add adversarial process-level tests.
+type: task
+component: default
+release:
+reporter: Ted Smith <tedks@riseup.net>
+status: unstarted
+disposition:
+creation_time: 2026-09-05T20:31:53-00:00
+references: []
+log_events:
+- time: 2026-09-05T20:31:53-00:00
+  who: Ted Smith
+  what: created
+  comment: ""
