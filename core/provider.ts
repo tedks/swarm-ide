@@ -1,6 +1,6 @@
 import { execFile } from "node:child_process";
 import { createHash } from "node:crypto";
-import { mkdtemp, realpath, rm } from "node:fs/promises";
+import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { isAbsolute, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -110,7 +110,9 @@ export function topologyArtifactPathFromBuildEvents(bytes: Buffer): string {
   const completed = matchingEvents[0]!.completed;
   if (completed?.success !== true || !Array.isArray(completed.importantOutput)) throw new Error("the fixed topology target did not report a successful bounded output");
   const relativeArtifact = SERVICE_TOPOLOGY_ARTIFACT.slice("bazel-bin/".length);
-  const outputs = (completed.importantOutput as BuildEventFile[]).filter((output) => output.name === relativeArtifact);
+  const outputs = completed.importantOutput.filter((output): output is BuildEventFile => (
+    typeof output === "object" && output !== null && "name" in output && output.name === relativeArtifact
+  ));
   if (outputs.length !== 1 || typeof outputs[0]!.uri !== "string") throw new Error("Bazel did not report exactly one fixed topology artifact");
   let artifactPath: string;
   try {
@@ -138,7 +140,10 @@ async function runBazel(workspaceRoot: string): Promise<BazelBuildResult> {
       `--build_event_json_file=${eventPath}`,
     ]);
     const events = await readBoundedRegularFile(eventPath, MAX_BUILD_EVENT_BYTES, "the Bazel build-event stream");
-    return { artifactPath: await realpath(topologyArtifactPathFromBuildEvents(events)) };
+    // Preserve the exact reported pathname so readBoundedRegularFile can apply
+    // O_NOFOLLOW to the declared output itself. Resolving it first would make
+    // a symlink output indistinguishable from its target.
+    return { artifactPath: topologyArtifactPathFromBuildEvents(events) };
   } finally {
     await rm(eventDirectory, { recursive: true, force: true });
   }

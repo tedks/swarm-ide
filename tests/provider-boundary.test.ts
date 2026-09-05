@@ -1,5 +1,5 @@
 // @vitest-environment node
-import { mkdtemp, mkdir, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, mkdir, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
@@ -31,6 +31,7 @@ describe("real topology artifact boundary", () => {
     };
     expect(topologyArtifactPathFromBuildEvents(Buffer.from(`${JSON.stringify({ id: { started: {} } })}\n${JSON.stringify(event)}\n`))).toBe(artifactPath);
     expect(() => topologyArtifactPathFromBuildEvents(Buffer.from(`${JSON.stringify(event)}\n${JSON.stringify(event)}\n`))).toThrow("exactly one completion");
+    expect(() => topologyArtifactPathFromBuildEvents(Buffer.from(JSON.stringify({ ...event, completed: { ...event.completed, importantOutput: [null] } })))).toThrow("exactly one fixed topology artifact");
     expect(() => topologyArtifactPathFromBuildEvents(Buffer.from(JSON.stringify({ ...event, completed: { ...event.completed, importantOutput: [{ name: event.completed.importantOutput[0]!.name, uri: "file:///tmp/stale.json" }] } })))).toThrow("escaped");
     expect(() => topologyArtifactPathFromBuildEvents(Buffer.from("{not-json}\n"))).toThrow("malformed JSON");
   });
@@ -64,6 +65,10 @@ describe("real topology artifact boundary", () => {
     };
     await writeFile(artifactPath, JSON.stringify(artifact));
     await expect(readBuiltTopologyArtifact(root, { artifactPath })).resolves.toMatchObject({ artifact: { inputDigest: artifact.inputDigest } });
+
+    const linkedArtifactPath = join(output, "linked-service-topology.json");
+    await symlink(artifactPath, linkedArtifactPath);
+    await expect(readBuiltTopologyArtifact(root, { artifactPath: linkedArtifactPath })).rejects.toThrow("must not be a symbolic link");
 
     await writeFile(artifactPath, JSON.stringify({ ...artifact, inputDigest: "0".repeat(64) }));
     await expect(readBuiltTopologyArtifact(root, { artifactPath })).rejects.toThrow("does not match");
