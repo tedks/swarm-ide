@@ -10,7 +10,7 @@ dotfiles repo) and apply to every project: landing the plane (session
 completion and mandatory push), branch + draft-PR discipline, granular
 commits, stacked PRs, the bare-repo/worktree layout, and Nix/Bazel
 environment detection. **Do not restate them here.** This file covers only
-what is specific to {{PROJECT_NAME}}; if a rule belongs to every repo, it
+what is specific to swarm-ide; if a rule belongs to every repo, it
 belongs in the global instructions instead.
 
 `AGENTS.md` is the canonical instruction file. Keep `CLAUDE.md` (and
@@ -46,6 +46,7 @@ unsupported compositors.
 Use Bazel exclusively for builds and tests:
 
 ```bash
+nix develop --command pnpm install --frozen-lockfile
 nix develop --command bazel build //...
 nix develop --command bazel test //...
 nix develop --command bazel run //:dev
@@ -54,6 +55,9 @@ nix develop --command bazel run //tools:desktop-smoke
 
 Do not invoke Vite, TypeScript, Vitest, Playwright, Electron, or package-manager
 scripts directly; Bazel targets are the supported entry points.
+The frozen `pnpm install` is the required dependency-materialization step for a
+fresh clone; CI runs it before Bazel. `bazel build //...` produces
+`bazel-bin/swarm-ide-foundation.tar.gz`.
 
 ## Issue tracking (ditz)
 

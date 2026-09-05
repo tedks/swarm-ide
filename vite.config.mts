@@ -19,8 +19,13 @@ export default defineConfig({
   plugins: [react(), hmrTimingProbe()],
   server: {
     host: "127.0.0.1",
+    allowedHosts: ["127.0.0.1"],
+    cors: false,
     port: 5173,
     strictPort: true,
+    watch: {
+      ignored: ["**/bazel-*/**", "**/dist/**", "**/dist-node/**", "**/artifacts/**"],
+    },
   },
   build: {
     outDir: "dist/renderer",

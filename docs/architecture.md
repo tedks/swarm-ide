@@ -26,12 +26,15 @@ providers. Validation occurs in the renderer boundary, main process, and core.
 - `WorkspaceSnapshot` is the coherent read model consumed by the workbench.
 - `CoreRequest`, `CoreResponse`, and `CoreEvent` are the narrow bridge protocol.
 
-The snapshot validator rejects dangling graph edges, duplicate topology IDs,
-working focus from the wrong revision, and a green publication whose build or
-graph fingerprints do not match working source. The renderer reducer also
-rejects duplicate sequences, out-of-order sequences, old epochs, and mismatched
-green events. These checks are complementary: malformed data cannot cross the
-protocol, and well-formed but late data cannot replace a newer world.
+The snapshot validator rejects dangling graph edges, duplicate topology/node/
+edge IDs, dangling navigation mappings, inconsistent ambiguity, working focus
+from the wrong revision, and green publications whose provenance or fingerprints
+do not match working source. The renderer reducer rejects duplicate sequences,
+out-of-order sequences, and old epochs. Mutating responses never overwrite the
+event stream; initial responses carry a sequence watermark, while an explicit
+`workspace.reset` event is the only authoritative transition to an older epoch.
+These checks are complementary: malformed data cannot cross the protocol, and
+well-formed but late data cannot replace a newer world.
 
 ## UI and graph seams
 
@@ -46,6 +49,10 @@ reconciliation contracts.
 starts one Vite server, and launches the Nix-provided Electron binary. Renderer
 edits use Vite HMR without re-entering Bazel. Main/core/preload edits restart only
 Electron. Bazel remains the supported owner of the long-running command.
+`bazel build //...` also builds `bazel-bin/swarm-ide-foundation.tar.gz`, containing
+the bundled Electron main/preload/core and Vite renderer outputs. This initial
+local genrule intentionally stops short of a generalized hermetic JavaScript
+toolchain.
 
 ## Next vertical slice
 

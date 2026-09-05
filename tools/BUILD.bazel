@@ -5,6 +5,11 @@ sh_binary(
     srcs = ["dev.sh"],
 )
 
+sh_binary(
+    name = "build-app",
+    srcs = ["build-app.sh"],
+)
+
 sh_test(
     name = "quality",
     srcs = ["quality.sh"],

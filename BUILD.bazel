@@ -20,6 +20,15 @@ filegroup(
     ],
 )
 
+genrule(
+    name = "desktop-bundle",
+    srcs = [":quality_sources", "package.json"],
+    outs = ["swarm-ide-foundation.tar.gz"],
+    cmd = "$(location //tools:build-app) $@ $(location package.json)",
+    local = True,
+    tools = ["//tools:build-app"],
+)
+
 alias(
     name = "dev",
     actual = "//tools:dev",

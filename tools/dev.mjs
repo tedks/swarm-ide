@@ -1,6 +1,6 @@
 import { context } from "esbuild";
-import { spawn } from "node:child_process";
-import { mkdir } from "node:fs/promises";
+import { execFileSync, spawn } from "node:child_process";
+import { mkdir, readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { createServer } from "vite";
 
@@ -10,6 +10,18 @@ const electronBinary = process.env.SWARM_ELECTRON_BIN;
 
 if (!electronBinary) {
   throw new Error("SWARM_ELECTRON_BIN is unset; enter through `nix develop`");
+}
+
+const electronPackage = JSON.parse(
+  await readFile(resolve(workspace, "node_modules/electron/package.json"), "utf8"),
+);
+const runtimeElectronVersion = execFileSync(electronBinary, ["--version"], { encoding: "utf8" })
+  .trim()
+  .replace(/^v/, "");
+if (runtimeElectronVersion !== electronPackage.version) {
+  throw new Error(
+    `Electron version mismatch: Nix runtime ${runtimeElectronVersion}, package types ${electronPackage.version}`,
+  );
 }
 
 await mkdir(outputRoot, { recursive: true });
@@ -44,10 +56,11 @@ function launchDesktop() {
 }
 
 function requestDesktopRestart() {
-  if (!watchersReady || shuttingDown) return;
+  if (!watchersReady || shuttingDown || restartingDesktop) return;
   if (restartTimer !== null) clearTimeout(restartTimer);
   restartTimer = setTimeout(() => {
     restartTimer = null;
+    if (restartingDesktop) return;
     if (!desktop) {
       launchDesktop();
       return;

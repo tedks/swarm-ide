@@ -15,6 +15,7 @@ The project is private while prototyping and licensed under GNU AGPLv3.
 ## Get started
 
 ```bash
+nix develop --command pnpm install --frozen-lockfile
 nix develop --command bazel build //...
 nix develop --command bazel test //...
 nix develop --command bazel run //:dev
@@ -47,4 +48,3 @@ services. See [the product foundation](docs/product-foundation.md),
 - `docs/` — product and architecture decisions
 
 See [AGENTS.md](AGENTS.md) for contributor and agent instructions.
-A local-first graph-centric IDE for steering agent swarms across the software lifecycle

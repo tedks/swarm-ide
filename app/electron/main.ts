@@ -1,6 +1,7 @@
 import { app, BrowserWindow, ipcMain, utilityProcess, type UtilityProcess } from "electron";
 import { join } from "node:path";
 import {
+  PROTOCOL_VERSION,
   parseCoreEvent,
   parseCoreRequest,
   parseCoreResponse,
@@ -10,6 +11,26 @@ import {
 const REQUEST_CHANNEL = "swarm:request";
 const EVENT_CHANNEL = "swarm:event";
 const REQUEST_TIMEOUT_MS = 5_000;
+
+// The prototype runs on development workstations where Chromium's GPU process may
+// be unavailable (for example, remote X11 sessions). Keep the desktop loop stable;
+// hardware acceleration can become an explicit capability once rendering needs it.
+app.disableHardwareAcceleration();
+
+function productionPagePath(): string {
+  return join(__dirname, "../../renderer/index.html");
+}
+
+function isAllowedRendererUrl(candidate: string): boolean {
+  try {
+    const candidateUrl = new URL(candidate);
+    const rendererUrl = process.env.SWARM_RENDERER_URL;
+    if (rendererUrl) return candidateUrl.origin === new URL(rendererUrl).origin;
+    return candidateUrl.protocol === "file:" && decodeURIComponent(candidateUrl.pathname) === productionPagePath();
+  } catch {
+    return false;
+  }
+}
 
 let mainWindow: BrowserWindow | null = null;
 let core: UtilityProcess | null = null;
@@ -22,7 +43,7 @@ function rejectPending(message: string): void {
   for (const [requestId, item] of pending) {
     clearTimeout(item.timeout);
     item.resolve({
-      protocolVersion: 1,
+      protocolVersion: PROTOCOL_VERSION,
       requestId,
       ok: false,
       error: { code: "CORE_UNAVAILABLE", message },
@@ -66,6 +87,22 @@ function startCore(): void {
       mainWindow?.webContents.send(EVENT_CHANNEL, event);
     } catch (error) {
       console.error("Dropped invalid local-core message", error);
+      const requestId =
+        typeof message === "object" && message !== null && "requestId" in message &&
+        typeof message.requestId === "string"
+          ? message.requestId
+          : null;
+      const item = requestId ? pending.get(requestId) : undefined;
+      if (requestId && item) {
+        clearTimeout(item.timeout);
+        pending.delete(requestId);
+        item.resolve({
+          protocolVersion: PROTOCOL_VERSION,
+          requestId,
+          ok: false,
+          error: { code: "INVALID_CORE_MESSAGE", message: "Local core returned an invalid response" },
+        });
+      }
     }
   });
   core.on("exit", (code) => {
@@ -86,10 +123,18 @@ function requestCore(input: unknown): Promise<CoreResponse> {
   const request = parseCoreRequest(input);
   if (!core) {
     return Promise.resolve({
-      protocolVersion: 1,
+      protocolVersion: PROTOCOL_VERSION,
       requestId: request.requestId,
       ok: false,
       error: { code: "CORE_UNAVAILABLE", message: "Local core is not running" },
+    });
+  }
+  if (pending.has(request.requestId)) {
+    return Promise.resolve({
+      protocolVersion: PROTOCOL_VERSION,
+      requestId: request.requestId,
+      ok: false,
+      error: { code: "DUPLICATE_REQUEST", message: "A request with this id is already pending" },
     });
   }
 
@@ -97,7 +142,7 @@ function requestCore(input: unknown): Promise<CoreResponse> {
     const timeout = setTimeout(() => {
       pending.delete(request.requestId);
       resolve({
-        protocolVersion: 1,
+        protocolVersion: PROTOCOL_VERSION,
         requestId: request.requestId,
         ok: false,
         error: { code: "CORE_TIMEOUT", message: "Local core did not respond in time" },
@@ -126,17 +171,38 @@ function createWindow(): void {
   });
 
   const rendererUrl = process.env.SWARM_RENDERER_URL;
+  const productionPage = productionPagePath();
+  mainWindow.webContents.setWindowOpenHandler(() => ({ action: "deny" }));
+  mainWindow.webContents.on("will-navigate", (event, url) => {
+    if (!isAllowedRendererUrl(url)) event.preventDefault();
+  });
   if (rendererUrl) {
     void mainWindow.loadURL(rendererUrl);
   } else {
-    void mainWindow.loadFile(join(__dirname, "../../renderer/index.html"));
+    void mainWindow.loadFile(productionPage);
   }
   mainWindow.on("closed", () => {
     mainWindow = null;
   });
 }
 
-ipcMain.handle(REQUEST_CHANNEL, (_event, input: unknown) => requestCore(input));
+ipcMain.handle(REQUEST_CHANNEL, (event, input: unknown) => {
+  const senderFrame = event.senderFrame;
+  if (!senderFrame || !isAllowedRendererUrl(senderFrame.url) || senderFrame !== mainWindow?.webContents.mainFrame) {
+    const requestId =
+      typeof input === "object" && input !== null && "requestId" in input &&
+      typeof input.requestId === "string"
+        ? input.requestId
+        : "rejected-request";
+    return {
+      protocolVersion: PROTOCOL_VERSION,
+      requestId,
+      ok: false,
+      error: { code: "UNTRUSTED_RENDERER", message: "IPC sender is not the swarm-ide main frame" },
+    } satisfies CoreResponse;
+  }
+  return requestCore(input);
+});
 
 void app.whenReady().then(() => {
   startCore();
