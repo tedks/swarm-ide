@@ -1,5 +1,10 @@
 package(default_visibility = ["//visibility:public"])
 
+filegroup(
+    name = "dev-port-source",
+    srcs = ["dev-port.mjs"],
+)
+
 sh_binary(
     name = "dev",
     srcs = ["dev.sh"],

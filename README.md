@@ -24,6 +24,19 @@ nix develop --command bazel run //:dev
 The development target starts one long-running Electron/Vite session. Renderer
 changes use Vite HMR and do not restart Bazel.
 
+If the default loopback port `5173` is occupied, select one explicit port for
+the development process and its verification commands:
+
+```bash
+SWARM_DEV_PORT=55173 nix develop --command bazel run //:dev
+SWARM_DEV_PORT=55173 nix develop --command bazel run //tools:desktop-smoke
+SWARM_DEV_PORT=55173 nix develop --command bazel run //tools:measure-hmr
+```
+
+`SWARM_DEV_PORT` must be a decimal integer from `1` through `65535`. When it is
+unset, the default remains `5173`; an invalid or unavailable requested port
+fails rather than selecting another port.
+
 Run the real-window verification loop with:
 
 ```bash

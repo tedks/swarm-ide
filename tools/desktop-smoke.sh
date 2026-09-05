@@ -7,6 +7,12 @@ if [[ -z "$workspace" ]]; then
   workspace=$(cd "$(dirname "$script_path")/.." && pwd)
 fi
 artifact_dir="${SWARM_ARTIFACT_DIR:-$workspace/artifacts/desktop}"
+renderer_argument=$(node "$workspace/tools/dev-port.mjs" renderer-process-argument)
+if [[ -z "$renderer_argument" ]]; then
+  echo "development port resolver returned an empty window marker" >&2
+  exit 2
+fi
+renderer_url=${renderer_argument#*=}
 
 if [[ -z "${DISPLAY:-}" ]]; then
   echo "desktop smoke requires an X11 DISPLAY; no display is configured" >&2
@@ -21,12 +27,20 @@ mkdir -p "$artifact_dir"
 
 window_id=""
 for _ in $(seq 1 50); do
-  window_id=$(xdotool search --name '^swarm-ide —' 2>/dev/null | head -n1 || true)
+  for candidate in $(xdotool search --name '^swarm-ide —' 2>/dev/null || true); do
+    candidate_pid=$(xdotool getwindowpid "$candidate" 2>/dev/null || true)
+    if [[ -n "$candidate_pid" ]] &&
+       tr '\0' '\n' <"/proc/$candidate_pid/cmdline" 2>/dev/null |
+         grep -Fq -- "$renderer_argument"; then
+      window_id="$candidate"
+      break
+    fi
+  done
   [[ -n "$window_id" ]] && break
   sleep 0.1
 done
 if [[ -z "$window_id" ]]; then
-  echo "no swarm-ide desktop window found; first run: nix develop --command bazel run //:dev" >&2
+  echo "no swarm-ide desktop window found for $renderer_url; first run with the same SWARM_DEV_PORT: nix develop --command bazel run //:dev" >&2
   exit 3
 fi
 
@@ -79,7 +93,9 @@ xdotool key --clearmodifiers Escape
 wait_for_title "Palette open" absent
 xdotool key --clearmodifiers ctrl+k
 wait_for_title "Palette open"
-xdotool mousemove --window "$window_id" "$((WIDTH / 2))" "$((HEIGHT * 14 / 100))" click 1
+# The palette begins at 11vh; 26px is the midpoint of its fixed 52px header.
+palette_input_y=$((HEIGHT * 11 / 100 + 26))
+xdotool mousemove --window "$window_id" "$((WIDTH / 2))" "$palette_input_y" click 1
 xdotool key --clearmodifiers ctrl+a
 xdotool type --clearmodifiers --delay 3 'Reset fixture world'
 xdotool key --clearmodifiers Return
@@ -124,6 +140,7 @@ fi
 
 echo "desktop smoke passed"
 echo "window_id=$window_id"
+echo "renderer_url=$renderer_url"
 echo "window_title=$(xdotool getwindowname "$window_id")"
 echo "changed_pixels=$changed_pixels"
 echo "artifacts=$artifact_dir"

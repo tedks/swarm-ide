@@ -8,6 +8,12 @@ if [[ -z "$workspace" ]]; then
 fi
 artifact_dir="${SWARM_ARTIFACT_DIR:-$workspace/artifacts/hmr}"
 probe="$workspace/app/renderer/hmr-probe.css"
+renderer_argument=$(node "$workspace/tools/dev-port.mjs" renderer-process-argument)
+if [[ -z "$renderer_argument" ]]; then
+  echo "development port resolver returned an empty window marker" >&2
+  exit 2
+fi
+renderer_url=${renderer_argument#*=}
 
 if [[ -z "${DISPLAY:-}" ]]; then
   echo "HMR measurement requires an X11 DISPLAY" >&2
@@ -18,9 +24,18 @@ if [[ "${XDG_SESSION_TYPE:-x11}" == "wayland" && "${SWARM_ALLOW_XWAYLAND:-0}" !=
   exit 2
 fi
 
-window_id=$(xdotool search --name '^swarm-ide —' 2>/dev/null | head -n1 || true)
+window_id=""
+for candidate in $(xdotool search --name '^swarm-ide —' 2>/dev/null || true); do
+  candidate_pid=$(xdotool getwindowpid "$candidate" 2>/dev/null || true)
+  if [[ -n "$candidate_pid" ]] &&
+     tr '\0' '\n' <"/proc/$candidate_pid/cmdline" 2>/dev/null |
+       grep -Fq -- "$renderer_argument"; then
+    window_id="$candidate"
+    break
+  fi
+done
 if [[ -z "$window_id" ]]; then
-  echo "no swarm-ide desktop window found; first run: nix develop --command bazel run //:dev" >&2
+  echo "no swarm-ide desktop window found for $renderer_url; first run with the same SWARM_DEV_PORT: nix develop --command bazel run //:dev" >&2
   exit 3
 fi
 
@@ -81,6 +96,7 @@ echo "edit_to_observed_pixel_ms=$pixel_ms"
 echo "edit_to_visible_title_ms=$title_ms"
 echo "vite_event_to_next_paint_ms=${paint_ms:-unknown}"
 echo "changed_pixels=$changed_pixels"
+echo "renderer_url=$renderer_url"
 echo "before_title=$before_title"
 echo "after_title=$after_title"
 echo "artifacts=$artifact_dir"

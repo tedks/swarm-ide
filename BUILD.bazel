@@ -17,7 +17,7 @@ filegroup(
         "tsconfig.node.json",
         "vite.config.mts",
         "vitest.config.mts",
-    ],
+    ] + ["//tools:dev-port-source"],
 )
 
 genrule(

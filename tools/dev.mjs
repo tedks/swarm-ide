@@ -3,10 +3,12 @@ import { execFileSync, spawn } from "node:child_process";
 import { mkdir, readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { createServer } from "vite";
+import { resolveDevEndpoint } from "./dev-port.mjs";
 
 const workspace = process.cwd();
 const outputRoot = resolve(workspace, ".swarm-dev");
 const electronBinary = process.env.SWARM_ELECTRON_BIN;
+const devEndpoint = resolveDevEndpoint();
 
 if (!electronBinary) {
   throw new Error("SWARM_ELECTRON_BIN is unset; enter through `nix develop`");
@@ -34,14 +36,21 @@ let watchersReady = false;
 
 function launchDesktop() {
   if (shuttingDown) return;
-  desktop = spawn(electronBinary, [resolve(outputRoot, "app/electron/main.js")], {
-    cwd: workspace,
-    env: {
-      ...process.env,
-      SWARM_RENDERER_URL: "http://127.0.0.1:5173",
+  desktop = spawn(
+    electronBinary,
+    // Electron clears its procfs environment and flattens cmdline into one
+    // process-title string. This inert, slash-terminated marker lets the X11
+    // verification tools identify the exact window without configuring it.
+    [resolve(outputRoot, "app/electron/main.js"), devEndpoint.rendererProcessArgument],
+    {
+      cwd: workspace,
+      env: {
+        ...process.env,
+        SWARM_RENDERER_URL: devEndpoint.rendererUrl,
+      },
+      stdio: "inherit",
     },
-    stdio: "inherit",
-  });
+  );
   desktop.on("exit", (code, signal) => {
     desktop = null;
     if (restartingDesktop) {
@@ -119,6 +128,10 @@ for (const build of builds) await build.watch();
 const vite = await createServer({
   configFile: resolve(workspace, "vite.config.mts"),
   clearScreen: false,
+  server: {
+    host: devEndpoint.host,
+    port: devEndpoint.port,
+  },
 });
 await vite.listen();
 vite.printUrls();
