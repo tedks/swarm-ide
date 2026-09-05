@@ -27,7 +27,7 @@ for _ in $(seq 1 50); do
     candidate_pid=$(xdotool getwindowpid "$candidate" 2>/dev/null || true)
     if [[ -n "$candidate_pid" ]] &&
        tr '\0' '\n' <"/proc/$candidate_pid/cmdline" 2>/dev/null |
-         grep -Fqx -- "$renderer_argument"; then
+         grep -Fq -- "$renderer_argument"; then
       window_id="$candidate"
       break
     fi
@@ -89,7 +89,8 @@ xdotool key --clearmodifiers Escape
 wait_for_title "Palette open" absent
 xdotool key --clearmodifiers ctrl+k
 wait_for_title "Palette open"
-xdotool mousemove --window "$window_id" "$((WIDTH / 2))" "$((HEIGHT * 14 / 100))" click 1
+palette_input_y=$((HEIGHT * 11 / 100 + 26))
+xdotool mousemove --window "$window_id" "$((WIDTH / 2))" "$palette_input_y" click 1
 xdotool key --clearmodifiers ctrl+a
 xdotool type --clearmodifiers --delay 3 'Reset fixture world'
 xdotool key --clearmodifiers Return

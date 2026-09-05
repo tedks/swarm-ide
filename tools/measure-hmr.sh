@@ -25,7 +25,7 @@ for candidate in $(xdotool search --name '^swarm-ide —' 2>/dev/null || true); 
   candidate_pid=$(xdotool getwindowpid "$candidate" 2>/dev/null || true)
   if [[ -n "$candidate_pid" ]] &&
      tr '\0' '\n' <"/proc/$candidate_pid/cmdline" 2>/dev/null |
-       grep -Fqx -- "$renderer_argument"; then
+       grep -Fq -- "$renderer_argument"; then
     window_id="$candidate"
     break
   fi
