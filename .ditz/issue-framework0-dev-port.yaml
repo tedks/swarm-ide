@@ -5,8 +5,8 @@ type: bugfix
 component: development
 release:
 reporter: Ted Smith <tedks@riseup.net>
-status: in_progress
-disposition:
+status: closed
+disposition: fixed
 creation_time: 2026-09-05T08:45:35-00:00
 references: []
 log_events:
@@ -18,3 +18,9 @@ log_events:
   who: Ted Smith
   what: started
   comment: ""
+- time: 2026-09-05T09:21:08-00:00
+  who: Ted Smith
+  what: 'closed: fixed'
+  comment: 'Merged-ready remediation: one validated SWARM_DEV_PORT drives Vite/Electron
+    and exact desktop verification; final Bazel, real Xorg smoke, HMR, production-artifact,
+    council, and listener-isolation checks pass.'
