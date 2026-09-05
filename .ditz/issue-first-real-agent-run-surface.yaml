@@ -1,0 +1,18 @@
+id: first-real-agent-run-surface
+title: Implement the first real agent-run surface
+desc: After the real repository topology truth path is established, replace fabricated
+  agent activity with one honest wrapped-agent run lifecycle through typed contracts
+  and the cockpit.
+type: feature
+component: default
+release:
+reporter: Ted Smith <tedks@riseup.net>
+status: unstarted
+disposition:
+creation_time: 2026-09-05T18:33:14-00:00
+references: []
+log_events:
+- time: 2026-09-05T18:33:14-00:00
+  who: Ted Smith
+  what: created
+  comment: ""
