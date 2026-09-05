@@ -1,4 +1,4 @@
-import { pathToFileURL } from "node:url";
+import { realpathSync } from "node:fs";
 
 export const DEFAULT_DEV_PORT = 5173;
 export const DEV_HOST = "127.0.0.1";
@@ -24,12 +24,12 @@ export function parseDevPort(rawPort) {
 
 export function resolveDevEndpoint(environment = process.env) {
   const port = parseDevPort(environment.SWARM_DEV_PORT);
-  const rendererUrl = `http://${DEV_HOST}:${port}`;
+  const rendererUrl = `http://${DEV_HOST}:${port}/`;
   return {
     host: DEV_HOST,
     port,
     rendererUrl,
-    rendererProcessArgument: `--swarm-renderer-url=${rendererUrl}`,
+    rendererProcessArgument: `--swarm-window-marker=${rendererUrl}`,
     webSocketOrigin: `ws://${DEV_HOST}:${port}`,
   };
 }
@@ -41,7 +41,10 @@ function runCli() {
   process.stdout.write(`${resolveDevEndpoint().rendererProcessArgument}\n`);
 }
 
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+if (
+  process.argv[1] &&
+  realpathSync(new URL(import.meta.url)) === realpathSync(process.argv[1])
+) {
   try {
     runCli();
   } catch (error) {

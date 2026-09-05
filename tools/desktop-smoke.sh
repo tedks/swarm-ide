@@ -8,6 +8,10 @@ if [[ -z "$workspace" ]]; then
 fi
 artifact_dir="${SWARM_ARTIFACT_DIR:-$workspace/artifacts/desktop}"
 renderer_argument=$(node "$workspace/tools/dev-port.mjs" renderer-process-argument)
+if [[ -z "$renderer_argument" ]]; then
+  echo "development port resolver returned an empty window marker" >&2
+  exit 2
+fi
 renderer_url=${renderer_argument#*=}
 
 if [[ -z "${DISPLAY:-}" ]]; then
@@ -89,6 +93,7 @@ xdotool key --clearmodifiers Escape
 wait_for_title "Palette open" absent
 xdotool key --clearmodifiers ctrl+k
 wait_for_title "Palette open"
+# The palette begins at 11vh; 26px is the midpoint of its fixed 52px header.
 palette_input_y=$((HEIGHT * 11 / 100 + 26))
 xdotool mousemove --window "$window_id" "$((WIDTH / 2))" "$palette_input_y" click 1
 xdotool key --clearmodifiers ctrl+a

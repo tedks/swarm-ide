@@ -9,6 +9,10 @@ fi
 artifact_dir="${SWARM_ARTIFACT_DIR:-$workspace/artifacts/hmr}"
 probe="$workspace/app/renderer/hmr-probe.css"
 renderer_argument=$(node "$workspace/tools/dev-port.mjs" renderer-process-argument)
+if [[ -z "$renderer_argument" ]]; then
+  echo "development port resolver returned an empty window marker" >&2
+  exit 2
+fi
 renderer_url=${renderer_argument#*=}
 
 if [[ -z "${DISPLAY:-}" ]]; then

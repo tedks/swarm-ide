@@ -38,6 +38,8 @@ function launchDesktop() {
   if (shuttingDown) return;
   desktop = spawn(
     electronBinary,
+    // Electron rewrites its procfs environment. This inert marker lets the
+    // X11 verification tools identify the exact window without configuring it.
     [resolve(outputRoot, "app/electron/main.js"), devEndpoint.rendererProcessArgument],
     {
       cwd: workspace,

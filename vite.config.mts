@@ -3,6 +3,21 @@ import { defineConfig, type Plugin, type ResolvedConfig } from "vite";
 
 const DEV_WEBSOCKET_ORIGIN = "__SWARM_DEV_WEBSOCKET_ORIGIN__";
 
+export function transformContentSecurityPolicy(
+  html: string,
+  command: "build" | "serve",
+  server: { host?: string | boolean; port?: number },
+): string {
+  if (!html.includes(DEV_WEBSOCKET_ORIGIN)) {
+    throw new Error("index.html is missing the development WebSocket CSP placeholder");
+  }
+  if (command === "build") return html.replace(DEV_WEBSOCKET_ORIGIN, "");
+  if (typeof server.host !== "string" || typeof server.port !== "number") {
+    throw new Error("development CSP requires a concrete Vite server host and port");
+  }
+  return html.replace(DEV_WEBSOCKET_ORIGIN, `ws://${server.host}:${server.port}`);
+}
+
 function hmrTimingProbe(): Plugin {
   return {
     name: "swarm-hmr-timing-probe",
@@ -18,21 +33,15 @@ function hmrTimingProbe(): Plugin {
 }
 
 function contentSecurityPolicy(): Plugin {
-  let config: ResolvedConfig;
+  let config: ResolvedConfig | undefined;
   return {
     name: "swarm-content-security-policy",
     configResolved(resolvedConfig) {
       config = resolvedConfig;
     },
     transformIndexHtml(html) {
-      const webSocketOrigin =
-        config.command === "serve"
-          ? ` ws://${String(config.server.host)}:${config.server.port}`
-          : "";
-      if (!html.includes(DEV_WEBSOCKET_ORIGIN)) {
-        throw new Error("index.html is missing the development WebSocket CSP placeholder");
-      }
-      return html.replace(DEV_WEBSOCKET_ORIGIN, webSocketOrigin);
+      if (!config) throw new Error("Vite configuration was not resolved before HTML transform");
+      return transformContentSecurityPolicy(html, config.command, config.server);
     },
   };
 }
