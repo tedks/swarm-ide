@@ -73,6 +73,10 @@ activate_window() {
 }
 
 activate_window
+# User-local zoom may survive an earlier development run. Normalize it before
+# coordinate-based assertions so this general smoke test retains its baseline.
+xdotool key --clearmodifiers ctrl+0
+wait_for_title "Zoom 100%"
 geometry=$(xdotool getwindowgeometry --shell "$window_id")
 WIDTH=$(sed -n 's/^WIDTH=//p' <<<"$geometry")
 HEIGHT=$(sed -n 's/^HEIGHT=//p' <<<"$geometry")

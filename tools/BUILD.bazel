@@ -29,6 +29,12 @@ sh_binary(
 )
 
 sh_binary(
+    name = "desktop-zoom-smoke",
+    srcs = ["desktop-zoom-smoke.sh"],
+    tags = ["manual"],
+)
+
+sh_binary(
     name = "measure-hmr",
     srcs = ["measure-hmr.sh"],
     tags = ["manual"],
