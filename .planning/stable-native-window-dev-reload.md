@@ -15,11 +15,12 @@ The privileged main process owns a single BrowserWindow; only its trusted top-le
 ## Progress
 
 
-- [x] (2026-09-05 22:59Z) Created designated feature worktree from synchronized b513ac0; started both Ditz issues; installed frozen dependencies; traced development, IPC, editor and virtual-display lifecycles.
+- [x] (2026-09-05 23:05Z) Created designated feature worktree from synchronized b513ac0; started both Ditz issues; installed frozen dependencies; traced development, IPC, editor and virtual-display lifecycles.
 - [x] (2026-09-05 23:23Z) Implemented executable-byte build dispatch, cumulative update revisions, utility supervision and 8 lifecycle tests.
 - [x] (2026-09-05 23:23Z) Implemented guarded document refresh, stale-view retention, file re-observation, navigation persistence and unknown-save disk reconciliation; 131 focused tests pass.
 - [x] (2026-09-05 23:32Z) Fixed native council findings: Fast Refresh remount checkpoints including uncertain saves, working-reference retagging, and stale topology persistence across combined core/preload updates. Extended virtual proof passed and 134 focused tests passed.
-- [ ] Add virtual reload proof and targeted tests; run final Bazel gates and relevant desktop scenarios.
+- [x] (2026-09-05 23:41Z) Final code a378a41: 136 focused tests, all five Bazel test targets uncached, and all 19 build targets pass. Final extended virtual reload scenario, zoom and dedicated HMR proof pass.
+- [x] (2026-09-05 23:39Z) Council converged CLEAN after three native rounds; foreign seats unavailable after actual attempts. PR #7 pushed; hosted CI/merge and deliberate master adoption remain landing gates.
 - [ ] Push draft PR, council to fixpoint, normal merge after gates, synchronize issues/master, preserve evidence and clean owned resources.
 
 ## Surprises & Discoveries
@@ -40,10 +41,12 @@ User steering refined the intent: preserve everything an edit did not invalidate
 
 The first council was not clean: native Codex found that hook-changing Fast Refresh remounts bypass beforeunload, old graph navigation identities were stale after core source changes, and combined core/preload replacement lost the retained graph. A small Vite-only module checkpoint now preserves component state and marks outstanding saves unknown after remount; validated session storage preserves the stale snapshot over a permitted document refresh. Working navigation is retagged without changing derivation provenance. Claude timed out after 300 seconds without a review; agy hit its headless command-permission failure and then timed out after the helper's one retry. These are missing foreign seats, not clean opinions.
 
+Round two found two fix-introduced races. Actual pending-write ownership now survives component remount and notifies the new component when the old operation settles; disk reconciliation stays blocked until then. Navigation restoration also waits for an observed snapshot for the current generation. Round three, scoped only to that fix delta, was CLEAN. Session-storage preflight avoids repeated automatic reload vetoes when storage is unavailable. No new privilege capability or process-wide hot swapping was added.
+
 ## Outcomes & Retrospective
 
 
-Implementation and validation are pending. Adoption of the new main process will require one deliberate restart of the existing physical-desktop instance; the step will not perform that restart automatically.
+Implementation is complete and verified locally. Three council rounds resolved the less obvious failure modes: a remount is not an unload; a warning is not ownership of a running write; a ready process is not yet a fresh snapshot. Native convergence on a378a41 was CLEAN. The marker-qualified handoff records final hosted CI/merge state. Adoption requires a deliberate action on the physical-desktop instance; the step will not silently restart it or fast-forward its watched checkout without that choice. Ditz `adopt-stable-window-on-framework0` records the adoption gate, and `document-refresh-editor-viewstate` records remaining cursor/undo/viewport checkpointing.
 
 ## Context and Orientation
 
@@ -92,3 +95,5 @@ PR #7 contains the implementation and virtual proof. The extended passing scenar
 Use existing Electron utilityProcess/BrowserWindow, React, Zod, esbuild, Vite and Nix/Bazel dependencies. Add a shell lifecycle contract with monotonically increasing status revision, core generation/readiness, document reload state and bounded messages. The supervisor accepts injected process launch and event/status callbacks so lifecycle behavior is testable without a display. Renderer privileges remain bounded: observe lifecycle and acknowledge a safe reload, never launch arbitrary processes or evaluate code.
 
 Revision note: initial plan records the bounded design and failure assumptions before implementation.
+
+Revision note (2026-09-05 23:43Z): the final passing proof under `artifacts/stable-window-reload-final/reload` recorded window 4194307, main PID 1643606, app workspace 0, active workspace 1 and focus owner 14680091 throughout all update classes. Renderer update was 219ms, core update 584ms, crash recovery 417ms and save-to-preload refresh 348ms. Scenario time was 29.225s including building its populated topology; it preserved that topology through structural HMR and combined core/preload updates. Dedicated HMR observed changed pixels at 113ms; zoom restored exactly (zero changed pixels). These are samples, not guarantees. Final evidence is archived to master/artifacts/stable-window-reload-final, with immutable merge/CI/council/cleanup facts in the recap. No PR #5 CI waiver is generalized.
