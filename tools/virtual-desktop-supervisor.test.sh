@@ -91,6 +91,9 @@ printf 'started\n' >"$SWARM_ARTIFACT_DIR/scenario-started"
 if [[ "${SWARM_FAKE_SCENARIO_SLEEP:-0}" == 1 ]]; then sleep 30; fi
 swarm_window_key ctrl+k
 swarm_window_capture "$SWARM_ARTIFACT_DIR/synthetic.png"
+if [[ "${SWARM_FAKE_TAMPER_LOCK:-0}" == 1 ]]; then
+  printf 'foreign-owner\n' >"$SWARM_X11_DISPLAY_LOCK/token"
+fi
 [[ "${SWARM_FAKE_SCENARIO_FAIL:-0}" != 1 ]]
 SH
 chmod +x "$bin_dir"/*
@@ -108,6 +111,7 @@ base_env=(
   SWARM_WMCTRL_BIN="$bin_dir/wmctrl"
   SWARM_XDOTOOL_BIN="$bin_dir/xdotool"
   SWARM_IMPORT_BIN="$bin_dir/import"
+  SWARM_SUPERVISOR_TEST_MODE=1
   SWARM_X_START_TIMEOUT_MS=300
   SWARM_WM_START_TIMEOUT_MS=300
   SWARM_APP_START_TIMEOUT_MS=1000
@@ -174,14 +178,32 @@ run_success teardown-idempotent
 
 run_failure missing-wm 'SWARM_WM_BIN must name an executable absolute path' SWARM_WM_BIN="$test_root/missing-wm"
 run_failure missing-automation 'SWARM_XDOTOOL_BIN must name an executable absolute path' SWARM_XDOTOOL_BIN="$test_root/missing-xdotool"
-run_failure xserver-exit 'X-server process session' SWARM_FAKE_XVFB_EXIT=1
+run_failure xserver-exit 'X server exited' SWARM_FAKE_XVFB_EXIT=1
 run_failure xserver-timeout 'X server readiness timed out' SWARM_FAKE_XDPYINFO_FAIL=1
-run_failure wm-exit 'window-manager process session' SWARM_FAKE_WM_EXIT=1
-run_failure app-exit 'app process session' SWARM_FAKE_APP_EXIT=1
+run_failure wm-exit 'window manager exited' SWARM_FAKE_WM_EXIT=1
+run_failure app-exit 'app exited' SWARM_FAKE_APP_EXIT=1
 run_failure input-failure 'key input failed' SWARM_FAKE_INPUT_FAIL=1
 run_failure capture-failure 'screenshot capture failed' SWARM_FAKE_CAPTURE_FAIL=1
 run_failure scenario-failure 'scenario exited with status' SWARM_FAKE_SCENARIO_FAIL=1
 run_failure scenario-timeout 'scenario timed out' SWARM_FAKE_SCENARIO_SLEEP=1 SWARM_SCENARIO_TIMEOUT_SECONDS=1
+
+run_failure cleanup-failure 'cleanup_complete=0' SWARM_FAKE_TAMPER_LOCK=1
+cleanup_failure_lock="$lock_root/.swarm-ide-x11-${case_display#:}.lock"
+[[ -f "$cleanup_failure_lock/token" && "$(<"$cleanup_failure_lock/token")" == foreign-owner ]] ||
+  fail "cleanup failure did not preserve the foreign lock token"
+rm -f -- "$cleanup_failure_lock/token"
+rmdir -- "$cleanup_failure_lock"
+
+run_failure reused-session-leader 'REFUSED: session leader PID' SWARM_TEST_TAMPER_APP_START=1
+reused_session=$(sed -n 's/^app_session=//p' "$case_dir/ownership.txt")
+[[ "$reused_session" =~ ^[1-9][0-9]*$ ]] || fail "reused-session test did not record the app session"
+kill -TERM -- "-$reused_session" 2>/dev/null || true
+for _ in $(seq 1 50); do
+  [[ -z "$(ps -e -o sid= | awk -v wanted="$reused_session" '$1 == wanted { print; exit }')" ]] && break
+  sleep 0.02
+done
+[[ -z "$(ps -e -o sid= | awk -v wanted="$reused_session" '$1 == wanted { print; exit }')" ]] ||
+  fail "reused-session test cleanup could not stop its intentionally retained app"
 
 prepare_case occupied-display
 mkdir -p "$case_dir"
@@ -247,5 +269,41 @@ runner_pid=""
 grep -q 'received TERM' "$case_dir/output" || fail "runner did not record TERM"
 grep -q 'cleanup_complete=1' "$case_dir/supervisor.log" || fail "interrupt cleanup was incomplete"
 [[ ! -e "$lock_root/.swarm-ide-x11-${case_display#:}.lock" ]] || fail "interrupt left a display lock"
+
+for registration_phase in xvfb wm app scenario; do
+  prepare_case "interrupt-registration-$registration_phase"
+  env "${base_env[@]}" SWARM_ARTIFACT_DIR="$case_dir" SWARM_FAKE_GUI_LOG="$case_dir/gui.log" \
+    SWARM_VIRTUAL_DISPLAY="$case_display" SWARM_VIRTUAL_DESKTOP_PORT="$case_port" \
+    SWARM_FAKE_SCENARIO_SLEEP=1 SWARM_SCENARIO_TIMEOUT_SECONDS=30 \
+    SWARM_TEST_REGISTRATION_PAUSE_PHASE="$registration_phase" \
+    "$runner" "$bin_dir/scenario" "$bin_dir/dev" "interrupt-registration-$registration_phase" \
+    >"$case_dir/output" 2>&1 &
+  runner_pid=$!
+  for _ in $(seq 1 150); do
+    [[ -s "$case_dir/registration-phase" ]] && break
+    kill -0 "$runner_pid" 2>/dev/null || break
+    sleep 0.02
+  done
+  observed_phase=""
+  if [[ -f "$case_dir/registration-phase" ]]; then
+    IFS= read -r observed_phase <"$case_dir/registration-phase" || true
+  fi
+  if [[ "$observed_phase" != "$registration_phase" ]]; then
+    cat "$case_dir/output" >&2
+    fail "$registration_phase registration pause was not reached"
+  fi
+  kill -TERM "$runner_pid"
+  kill -TERM "$runner_pid" 2>/dev/null || true
+  set +e
+  wait "$runner_pid"
+  registration_status=$?
+  set -e
+  runner_pid=""
+  (( registration_status != 0 )) || fail "$registration_phase registration interrupt exited successfully"
+  grep -q 'cleanup_complete=1' "$case_dir/supervisor.log" ||
+    fail "$registration_phase registration interrupt cleanup was incomplete"
+  [[ ! -e "$lock_root/.swarm-ide-x11-${case_display#:}.lock" ]] ||
+    fail "$registration_phase registration interrupt left a display lock"
+done
 
 echo "virtual desktop supervisor adversarial tests passed"

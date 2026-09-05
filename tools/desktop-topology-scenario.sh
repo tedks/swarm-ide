@@ -49,7 +49,6 @@ fi
 
 capture_window() {
   local destination="$1"
-  swarm_window_activate
   sleep 0.05
   swarm_window_capture "$destination"
 }

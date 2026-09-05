@@ -84,30 +84,62 @@ now_ms() {
   date +%s%3N
 }
 
-proc_start_ticks() {
+proc_identity() {
   local pid="$1"
-  local stat_line rest
+  local stat_line rest session start
   [[ "$pid" =~ ^[1-9][0-9]*$ ]] || return 1
   IFS= read -r stat_line <"/proc/$pid/stat" || return 1
   rest=${stat_line##*) }
-  awk '{print $20}' <<<"$rest"
+  session=$(awk '{print $4}' <<<"$rest")
+  start=$(awk '{print $20}' <<<"$rest")
+  [[ "$session" =~ ^[1-9][0-9]*$ && "$start" =~ ^[0-9]+$ ]] || return 1
+  printf '%s %s\n' "$session" "$start"
 }
 
-pid_session() {
-  local pid="$1" result
-  result=$("$ps_bin" -o sid= -p "$pid" 2>/dev/null) || return 1
-  result=${result//[[:space:]]/}
-  [[ "$result" =~ ^[1-9][0-9]*$ ]] || return 1
-  printf '%s\n' "$result"
-}
-
-token=$(tr -d '-' </proc/sys/kernel/random/uuid)
-[[ "$token" =~ ^[0-9a-f]{32}$ ]] || { fail "could not create an ownership token"; exit 2; }
 runtime_root="${SWARM_X11_RUNTIME_ROOT:-${XDG_RUNTIME_DIR:-/tmp}}"
 [[ "$runtime_root" == /* && -d "$runtime_root" && ! -L "$runtime_root" ]] || {
   fail "runtime root must be an existing absolute directory"
   exit 2
 }
+runtime_dir="" ownership_dir="" authority="" token=""
+xvfb_pid="" xvfb_start="" xvfb_session=""
+wm_pid="" wm_start="" wm_session=""
+app_pid="" app_start="" app_session=""
+scenario_pid="" scenario_start="" scenario_session=""
+display_lock="" display=""
+cleanup_started=0
+cleanup_failed=0
+registration_signal=0
+restore_path="" restore_backup="" restore_expected=""
+
+bootstrap_cleanup() {
+  local status="$1" lock_token=""
+  trap - EXIT
+  trap '' INT TERM HUP
+  set +e
+  if [[ -n "$display_lock" && -d "$display_lock" && ! -L "$display_lock" &&
+        -f "$display_lock/token" && ! -L "$display_lock/token" ]]; then
+    IFS= read -r lock_token <"$display_lock/token" || true
+    if [[ -n "$token" && "$lock_token" == "$token" ]]; then
+      rm -f -- "$display_lock/token"
+      rmdir -- "$display_lock" 2>/dev/null || true
+    fi
+  fi
+  [[ -z "$authority" ]] || rm -f -- "$authority"
+  if [[ -n "$runtime_dir" && -d "$runtime_dir" && ! -L "$runtime_dir" &&
+        "$runtime_dir" == "$runtime_root"/swarm-ide-x11.* ]]; then
+    find "$runtime_dir" -depth -mindepth 1 -delete 2>/dev/null || true
+    rmdir -- "$runtime_dir" 2>/dev/null || true
+  fi
+  exit "$status"
+}
+trap 'bootstrap_cleanup "$?"' EXIT
+trap 'exit 130' INT
+trap 'exit 143' TERM
+trap 'exit 129' HUP
+
+token=$(tr -d '-' </proc/sys/kernel/random/uuid)
+[[ "$token" =~ ^[0-9a-f]{32}$ ]] || { fail "could not create an ownership token"; exit 2; }
 runtime_dir=$(mktemp -d "$runtime_root/swarm-ide-x11.XXXXXX")
 chmod 700 "$runtime_dir"
 ownership_dir="$runtime_dir/ownership"
@@ -117,33 +149,49 @@ authority="$runtime_dir/Xauthority"
 touch "$authority"
 chmod 600 "$authority"
 
-xvfb_pid="" xvfb_start="" xvfb_session=""
-wm_pid="" wm_start="" wm_session=""
-app_pid="" app_start="" app_session=""
-scenario_pid="" scenario_start="" scenario_session=""
-display_lock="" display=""
-cleanup_started=0
-cleanup_failed=0
-restore_path="" restore_backup="" restore_expected=""
-
 session_members() {
   local wanted_session="$1"
   "$ps_bin" -e -o pid=,sid= | awk -v wanted="$wanted_session" '$2 == wanted { print $1 }'
 }
 
 process_belongs_to_session() {
-  local pid="$1" start_floor="$2" start
-  start=$(proc_start_ticks "$pid" 2>/dev/null) || return 2
-  [[ "$start" =~ ^[0-9]+$ && "$start" -ge "$start_floor" ]] || return 1
+  local pid="$1" wanted_session="$2" start_floor="$3" identity session start
+  identity=$(proc_identity "$pid" 2>/dev/null) || return 2
+  read -r session start <<<"$identity"
+  [[ "$session" == "$wanted_session" && "$start" -ge "$start_floor" ]] || return 1
+}
+
+owned_leader_is_live() {
+  local pid="$1" wanted_session="$2" wanted_start="$3" identity session start
+  identity=$(proc_identity "$pid" 2>/dev/null) || return 1
+  read -r session start <<<"$identity"
+  [[ "$session" == "$wanted_session" && "$start" == "$wanted_start" ]]
+}
+
+wait_for_isolated_identity() {
+  local pid="$1" deadline identity="" session="" start=""
+  deadline=$(( $(now_ms) + ${SWARM_CHILD_REGISTRATION_TIMEOUT_MS:-1000} ))
+  while (( $(now_ms) < deadline )); do
+    identity=$(proc_identity "$pid" 2>/dev/null || true)
+    read -r session start <<<"$identity"
+    if [[ "$session" == "$pid" && -n "$start" ]]; then
+      printf '%s %s\n' "$session" "$start"
+      return 0
+    fi
+    [[ -e "/proc/$pid/stat" ]] || return 1
+    sleep 0.005 || true
+  done
+  return 1
 }
 
 signal_owned_session() {
   local wanted_session="$1" start_floor="$2" signal="$3"
-  local pid found=0 unsafe=0 leader_start="" membership_status=0
+  local pid found=0 unsafe=0 leader_identity="" leader_session="" leader_start="" membership_status=0
   [[ "$wanted_session" =~ ^[1-9][0-9]*$ && "$start_floor" =~ ^[0-9]+$ ]] || return 0
   if [[ -e "/proc/$wanted_session/stat" ]]; then
-    leader_start=$(proc_start_ticks "$wanted_session" 2>/dev/null || true)
-    if [[ "$leader_start" != "$start_floor" ]]; then
+    leader_identity=$(proc_identity "$wanted_session" 2>/dev/null || true)
+    read -r leader_session leader_start <<<"$leader_identity"
+    if [[ "$leader_session" == "$wanted_session" && "$leader_start" != "$start_floor" ]]; then
       log "REFUSED: session leader PID $wanted_session was reused"
       return 1
     fi
@@ -154,17 +202,17 @@ signal_owned_session() {
     # A process cannot join an existing POSIX session from outside it. If the
     # leader is still alive its saved start time proves identity; if it has
     # exited, the kernel retains the session identity while members remain.
-    set +e
-    process_belongs_to_session "$pid" "$start_floor"
-    membership_status=$?
-    set -e
-    if (( membership_status == 0 )); then
+    if process_belongs_to_session "$pid" "$wanted_session" "$start_floor"; then
+      membership_status=0
       kill "-$signal" "$pid" 2>/dev/null || true
-    elif (( membership_status == 2 )) && [[ ! -e "/proc/$pid/stat" ]]; then
+    else
+      membership_status=$?
+    fi
+    if (( membership_status == 2 )) && [[ ! -e "/proc/$pid/stat" ]]; then
       # The process exited between ps(1)'s session snapshot and /proc
       # validation. It is already clean, not an ownership violation.
       continue
-    else
+    elif (( membership_status != 0 )); then
       log "REFUSED: PID $pid in session $wanted_session predates the owned session"
       unsafe=1
     fi
@@ -216,15 +264,17 @@ write_ownership_artifact() {
 }
 
 cleanup() {
-  local original_status=$?
-  (( cleanup_started == 0 )) || return "$original_status"
+  local original_status="$1" final_status lock_token=""
+  (( cleanup_started == 0 )) || exit "$original_status"
   cleanup_started=1
+  trap - EXIT
+  trap '' INT TERM HUP
   set +e
   write_ownership_artifact
-  stop_owned_session scenario "$scenario_session" "$scenario_start"
-  stop_owned_session app "$app_session" "$app_start"
-  stop_owned_session window-manager "$wm_session" "$wm_start"
-  stop_owned_session X-server "$xvfb_session" "$xvfb_start"
+  stop_owned_session scenario "$scenario_session" "$scenario_start" || cleanup_failed=1
+  stop_owned_session app "$app_session" "$app_start" || cleanup_failed=1
+  stop_owned_session window-manager "$wm_session" "$wm_start" || cleanup_failed=1
+  stop_owned_session X-server "$xvfb_session" "$xvfb_start" || cleanup_failed=1
   if [[ -n "$restore_path" ]]; then
     if [[ -f "$restore_backup" && ! -L "$restore_path" ]] && cmp -s -- "$restore_backup" "$restore_path"; then
       :
@@ -262,9 +312,9 @@ cleanup() {
     cleanup_failed=1
   fi
   log "cleanup_complete=$(( cleanup_failed == 0 ? 1 : 0 )) artifacts=$artifact_dir"
-  set -e
-  if (( cleanup_failed != 0 && original_status == 0 )); then return 1; fi
-  return "$original_status"
+  final_status=$original_status
+  if (( cleanup_failed != 0 && final_status == 0 )); then final_status=1; fi
+  exit "$final_status"
 }
 
 on_signal() {
@@ -273,7 +323,38 @@ on_signal() {
   exit "$exit_code"
 }
 
-trap cleanup EXIT
+defer_registration_signal() {
+  local signal_name="$1" exit_code="$2"
+  registration_signal=$exit_code
+  log "received $signal_name while recording child identity; teardown deferred until ownership is registered"
+}
+
+begin_child_registration() {
+  registration_signal=0
+  trap 'defer_registration_signal INT 130' INT
+  trap 'defer_registration_signal TERM 143' TERM
+  trap 'defer_registration_signal HUP 129' HUP
+}
+
+finish_child_registration() {
+  trap 'on_signal INT 130' INT
+  trap 'on_signal TERM 143' TERM
+  trap 'on_signal HUP 129' HUP
+  if (( registration_signal != 0 )); then
+    exit "$registration_signal"
+  fi
+}
+
+registration_test_pause() {
+  local phase="$1"
+  if [[ "${SWARM_SUPERVISOR_TEST_MODE:-0}" == 1 &&
+        "${SWARM_TEST_REGISTRATION_PAUSE_PHASE:-}" == "$phase" ]]; then
+    printf '%s\n' "$phase" >"$artifact_dir/registration-phase"
+    sleep 1 || true
+  fi
+}
+
+trap 'cleanup "$?"' EXIT
 trap 'on_signal INT 130' INT
 trap 'on_signal TERM 143' TERM
 trap 'on_signal HUP 129' HUP
@@ -293,7 +374,7 @@ if [[ -n "${SWARM_SCENARIO_RESTORE_PATH:-}" ]]; then
   cp --preserve=mode,timestamps -- "$restore_path" "$restore_backup"
 fi
 
-for timeout_name in SWARM_X_START_TIMEOUT_MS SWARM_WM_START_TIMEOUT_MS SWARM_APP_START_TIMEOUT_MS SWARM_WINDOW_START_TIMEOUT_MS; do
+for timeout_name in SWARM_CHILD_REGISTRATION_TIMEOUT_MS SWARM_X_START_TIMEOUT_MS SWARM_WM_START_TIMEOUT_MS SWARM_APP_START_TIMEOUT_MS SWARM_WINDOW_START_TIMEOUT_MS; do
   timeout_value="${!timeout_name:-}"
   [[ -z "$timeout_value" || "$timeout_value" =~ ^[1-9][0-9]*$ ]] || {
     fail "$timeout_name must be a positive integer"
@@ -353,13 +434,16 @@ printf '%s\n' "$authority" >"$ownership_dir/xauthority"
 printf '%s\n' "$token" >"$ownership_dir/token"
 
 start_ms=$(now_ms)
+begin_child_registration
 env DISPLAY="$display" XAUTHORITY="$authority" SWARM_X11_TOKEN="$token" \
   "$setsid_bin" "$xvfb_bin" "$display" -screen 0 1440x900x24 -nolisten tcp -noreset -auth "$authority" \
   >"$artifact_dir/xvfb.log" 2>&1 &
 xvfb_pid=$!
-xvfb_start=$(proc_start_ticks "$xvfb_pid") || { fail "X server exited before its identity could be recorded"; exit 4; }
-xvfb_session=$(pid_session "$xvfb_pid") || { fail "cannot determine X-server process session"; exit 4; }
-[[ "$xvfb_session" == "$xvfb_pid" ]] || { fail "X server did not start as an isolated process session"; exit 4; }
+registration_test_pause xvfb
+xvfb_identity=$(wait_for_isolated_identity "$xvfb_pid" 2>/dev/null || true)
+read -r xvfb_session xvfb_start <<<"$xvfb_identity"
+finish_child_registration
+[[ -n "$xvfb_session" && -n "$xvfb_start" ]] || { fail "X server exited before its identity could be recorded"; exit 4; }
 printf '%s\n' "$xvfb_pid" >"$ownership_dir/xvfb.pid"
 printf '%s\n' "$xvfb_start" >"$ownership_dir/xvfb.start"
 
@@ -369,6 +453,8 @@ while ! env DISPLAY="$display" XAUTHORITY="$authority" "$xdpyinfo_bin" -display 
   (( $(now_ms) < deadline )) || { fail "X server readiness timed out"; exit 4; }
   sleep 0.05
 done
+sleep 0.1
+owned_leader_is_live "$xvfb_pid" "$xvfb_session" "$xvfb_start" || { fail "X server exited during readiness stabilization"; exit 4; }
 x_ready_ms=$(( $(now_ms) - start_ms ))
 
 cat >"$runtime_dir/openbox-rc.xml" <<'OPENBOX'
@@ -379,13 +465,16 @@ cat >"$runtime_dir/openbox-rc.xml" <<'OPENBOX'
   <desktops><number>1</number></desktops>
 </openbox_config>
 OPENBOX
+begin_child_registration
 env DISPLAY="$display" XAUTHORITY="$authority" SWARM_X11_TOKEN="$token" \
   "$setsid_bin" "$wm_bin" --config-file "$runtime_dir/openbox-rc.xml" \
   >"$artifact_dir/wm.log" 2>&1 &
 wm_pid=$!
-wm_start=$(proc_start_ticks "$wm_pid") || { fail "window manager exited before its identity could be recorded"; exit 4; }
-wm_session=$(pid_session "$wm_pid") || { fail "cannot determine window-manager process session"; exit 4; }
-[[ "$wm_session" == "$wm_pid" ]] || { fail "window manager did not start as an isolated process session"; exit 4; }
+registration_test_pause wm
+wm_identity=$(wait_for_isolated_identity "$wm_pid" 2>/dev/null || true)
+read -r wm_session wm_start <<<"$wm_identity"
+finish_child_registration
+[[ -n "$wm_session" && -n "$wm_start" ]] || { fail "window manager exited before its identity could be recorded"; exit 4; }
 
 deadline=$(( $(now_ms) + ${SWARM_WM_START_TIMEOUT_MS:-5000} ))
 while ! env DISPLAY="$display" XAUTHORITY="$authority" "$wmctrl_bin" -m >/dev/null 2>&1; do
@@ -393,6 +482,8 @@ while ! env DISPLAY="$display" XAUTHORITY="$authority" "$wmctrl_bin" -m >/dev/nu
   (( $(now_ms) < deadline )) || { fail "window-manager readiness timed out"; exit 4; }
   sleep 0.05
 done
+sleep 0.1
+owned_leader_is_live "$wm_pid" "$wm_session" "$wm_start" || { fail "window manager exited during readiness stabilization"; exit 4; }
 wm_ready_ms=$(( $(now_ms) - start_ms ))
 
 renderer_marker=$(SWARM_DEV_PORT="$port" "$node_bin" "$workspace/tools/dev-port.mjs" renderer-process-argument) || {
@@ -401,6 +492,7 @@ renderer_marker=$(SWARM_DEV_PORT="$port" "$node_bin" "$workspace/tools/dev-port.
 }
 [[ -n "$renderer_marker" ]] || { fail "development marker resolution returned empty output"; exit 4; }
 
+begin_child_registration
 env DISPLAY="$display" XAUTHORITY="$authority" SWARM_X11_TOKEN="$token" \
   SWARM_X11_DISPLAY="$display" SWARM_X11_XAUTHORITY="$authority" \
   SWARM_X11_OWNERSHIP_DIR="$ownership_dir" SWARM_RENDERER_PROCESS_ARGUMENT="$renderer_marker" \
@@ -408,16 +500,18 @@ env DISPLAY="$display" XAUTHORITY="$authority" SWARM_X11_TOKEN="$token" \
   XDG_CONFIG_HOME="$runtime_dir/config" XDG_CACHE_HOME="$runtime_dir/cache" \
   "$setsid_bin" "$dev_launcher" >"$artifact_dir/app.log" 2>&1 &
 app_pid=$!
-app_start=$(proc_start_ticks "$app_pid") || { fail "app exited before its identity could be recorded"; exit 5; }
-app_session=$(pid_session "$app_pid") || { fail "cannot determine app process session"; exit 5; }
-[[ "$app_session" == "$app_pid" ]] || { fail "app did not start as an isolated process session"; exit 5; }
+registration_test_pause app
+app_identity=$(wait_for_isolated_identity "$app_pid" 2>/dev/null || true)
+read -r app_session app_start <<<"$app_identity"
+finish_child_registration
+[[ -n "$app_session" && -n "$app_start" ]] || { fail "app exited before its identity could be recorded"; exit 5; }
 printf '%s\n' "$app_pid" >"$ownership_dir/app.pid"
 printf '%s\n' "$app_start" >"$ownership_dir/app.start"
 printf '%s\n' "$app_session" >"$ownership_dir/app.session"
 
 deadline=$(( $(now_ms) + ${SWARM_APP_START_TIMEOUT_MS:-30000} ))
 while ! (exec 9<>"/dev/tcp/127.0.0.1/$port") 2>/dev/null; do
-  kill -0 "$app_pid" 2>/dev/null || { fail "app exited before port $port became ready"; exit 5; }
+  owned_leader_is_live "$app_pid" "$app_session" "$app_start" || { fail "app exited before port $port became ready"; exit 5; }
   (( $(now_ms) < deadline )) || { fail "app port readiness timed out"; exit 5; }
   sleep 0.1
 done
@@ -438,6 +532,7 @@ export SWARM_APP_SESSION="$app_session"
 export SWARM_RENDERER_PROCESS_ARGUMENT="$renderer_marker"
 export SWARM_ARTIFACT_DIR="$artifact_dir"
 export SWARM_X11_DRIVER_PATH="$script_dir/x11-driver.sh"
+export SWARM_X11_DISPLAY_LOCK="$display_lock"
 
 # shellcheck source=tools/x11-driver.sh
 source "$script_dir/x11-driver.sh"
@@ -465,6 +560,7 @@ write_ownership_artifact
 scenario_timeout_seconds="${SWARM_SCENARIO_TIMEOUT_SECONDS:-120}"
 [[ "$scenario_timeout_seconds" =~ ^[1-9][0-9]*$ ]] || { fail "scenario timeout must be positive seconds"; exit 2; }
 scenario_started_ms=$(now_ms)
+begin_child_registration
 env DISPLAY="$display" XAUTHORITY="$authority" SWARM_X11_TOKEN="$token" \
   SWARM_X11_DISPLAY="$display" SWARM_X11_XAUTHORITY="$authority" \
   SWARM_X11_OWNERSHIP_DIR="$ownership_dir" SWARM_XDOTOOL_BIN="$xdotool_bin" \
@@ -472,14 +568,17 @@ env DISPLAY="$display" XAUTHORITY="$authority" SWARM_X11_TOKEN="$token" \
   SWARM_APP_SESSION="$app_session" SWARM_RENDERER_PROCESS_ARGUMENT="$renderer_marker" \
   SWARM_WINDOW_ID="$SWARM_WINDOW_ID" SWARM_WINDOW_PID="$SWARM_WINDOW_PID" SWARM_WINDOW_MARKER="$renderer_marker" \
   SWARM_ARTIFACT_DIR="$artifact_dir" SWARM_X11_DRIVER_PATH="$script_dir/x11-driver.sh" \
+  SWARM_X11_DISPLAY_LOCK="$display_lock" \
   SWARM_SOURCE_WORKSPACE="$workspace" BUILD_WORKSPACE_DIRECTORY="$workspace" \
   SWARM_SCENARIO_RESTORE_PATH="$restore_path" SWARM_SCENARIO_RESTORE_EXPECTED="$restore_expected" \
   "$setsid_bin" "$timeout_bin" --signal=TERM --kill-after=5 "$scenario_timeout_seconds" "$scenario" \
   >"$artifact_dir/scenario.log" 2>&1 &
 scenario_pid=$!
-scenario_start=$(proc_start_ticks "$scenario_pid") || { fail "scenario exited before its identity could be recorded"; exit 6; }
-scenario_session=$(pid_session "$scenario_pid") || { fail "cannot determine scenario process session"; exit 6; }
-[[ "$scenario_session" == "$scenario_pid" ]] || { fail "scenario did not start as an isolated process session"; exit 6; }
+registration_test_pause scenario
+scenario_identity=$(wait_for_isolated_identity "$scenario_pid" 2>/dev/null || true)
+read -r scenario_session scenario_start <<<"$scenario_identity"
+finish_child_registration
+[[ -n "$scenario_session" && -n "$scenario_start" ]] || { fail "scenario exited before its identity could be recorded"; exit 6; }
 set +e
 wait "$scenario_pid"
 scenario_status=$?
@@ -505,6 +604,11 @@ total_elapsed_ms=$(( $(now_ms) - start_ms ))
   printf 'scenario_elapsed_ms=%s\n' "$scenario_elapsed_ms"
   printf 'total_elapsed_ms=%s\n' "$total_elapsed_ms"
 } >"$artifact_dir/timings.txt"
+
+if [[ "${SWARM_SUPERVISOR_TEST_MODE:-0}" == 1 &&
+      "${SWARM_TEST_TAMPER_APP_START:-0}" == 1 ]]; then
+  app_start=$((app_start + 1))
+fi
 
 log "virtual desktop smoke passed scenario=$scenario_name display=$display port=$port window_id=$SWARM_WINDOW_ID window_pid=$SWARM_WINDOW_PID app_session=$app_session"
 log "timings x_ready_ms=$x_ready_ms wm_ready_ms=$wm_ready_ms port_ready_ms=$port_ready_ms window_ready_ms=$window_ready_ms scenario_ms=$scenario_elapsed_ms total_ms=$total_elapsed_ms"

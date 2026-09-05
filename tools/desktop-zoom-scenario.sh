@@ -42,7 +42,9 @@ apply_zoom_shortcut() {
   for _ in $(seq 1 100); do
     title=$(swarm_window_title)
     after=$(zoom_revision "$title")
-    if [[ "$title" == *"Zoom ${expected}%@"* && -n "$after" ]] && (( after > before )); then return 0; fi
+    if [[ "$title" == *"Zoom ${expected}%@"* && -n "$after" ]]; then
+      if (( after > before )); then return 0; fi
+    fi
     sleep 0.04
   done
   echo "zoom chord '$chord' did not confirm ${expected}% after revision $before: $title" >&2
@@ -51,7 +53,6 @@ apply_zoom_shortcut() {
 
 capture_window() {
   local destination="$1"
-  swarm_window_activate
   sleep 0.1
   swarm_window_capture "$destination"
 }
@@ -71,10 +72,25 @@ capture_window "$artifact_dir/zoom-125-focused.png"
 swarm_window_type ' editable' 20
 capture_window "$artifact_dir/zoom-125-focus-retained.png"
 
+pre_reload_title=$(swarm_window_title)
 swarm_window_key ctrl+r
-swarm_window_wait_title "Palette open" absent
-wait_for_zoom_ready
-swarm_window_wait_title "Zoom 125%@"
+post_reload_title=""
+for _ in $(seq 1 150); do
+  post_reload_title=$(swarm_window_title)
+  if [[ "$post_reload_title" != "$pre_reload_title" &&
+        "$post_reload_title" != *"Palette open"* &&
+        "$post_reload_title" == *"Zoom 125%@"* &&
+        -n "$(zoom_revision "$post_reload_title")" ]]; then
+    break
+  fi
+  sleep 0.04
+done
+[[ "$post_reload_title" != "$pre_reload_title" &&
+   "$post_reload_title" != *"Palette open"* &&
+   "$post_reload_title" == *"Zoom 125%@"* ]] || {
+  echo "renderer reload did not publish a fresh 125% state: $post_reload_title" >&2
+  exit 4
+}
 capture_window "$artifact_dir/zoom-125-reloaded.png"
 
 apply_zoom_shortcut ctrl+shift+equal 150

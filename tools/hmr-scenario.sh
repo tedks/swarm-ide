@@ -16,10 +16,17 @@ probe="$workspace/app/renderer/hmr-probe.css"
 before_title=$(swarm_window_title)
 swarm_window_capture "$artifact_dir/before-probe.png" '48x48+0+0'
 before_generation=$(sed -n 's/.*HMR \([0-9][0-9]*\):[0-9][0-9]*ms.*/\1/p' <<<"$before_title")
+pending_probe=$(mktemp "$(dirname "$probe")/.hmr-probe.css.XXXXXX")
+cleanup_pending_probe() {
+  [[ -z "$pending_probe" ]] || rm -f -- "$pending_probe"
+}
+trap cleanup_pending_probe EXIT
+sed -E 's/(--hmr-probe-hue: )[0-9]+/\1205/' "$probe" >"${SWARM_SCENARIO_RESTORE_EXPECTED:?}"
+grep -q -- '--hmr-probe-hue: 205' "$SWARM_SCENARIO_RESTORE_EXPECTED"
+cp --preserve=mode -- "$SWARM_SCENARIO_RESTORE_EXPECTED" "$pending_probe"
 start_ms=$(date +%s%3N)
-sed -i -E 's/(--hmr-probe-hue: )[0-9]+/\1205/' "$probe"
-grep -q -- '--hmr-probe-hue: 205' "$probe"
-cp -- "$probe" "${SWARM_SCENARIO_RESTORE_EXPECTED:?}"
+mv -f -- "$pending_probe" "$probe"
+pending_probe=""
 
 after_title="$before_title"
 after_generation=""
