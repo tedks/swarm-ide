@@ -38,6 +38,13 @@ event stream; initial responses carry a sequence watermark, while an explicit
 These checks are complementary: malformed data cannot cross the protocol, and
 well-formed but late data cannot replace a newer world.
 
+The core takes the output location from `bazel info bazel-bin`, never from the
+workspace's convenience symlink, and independently recomputes the artifact's
+versioned input digest from the exact canonical manifest, sources, and protobuf
+declarations. A globally ordered Git observer combines file hints with a polling
+fallback, so changes outside open source tabs also revoke green truth. Only the
+newest requested fingerprint result or failure may publish.
+
 ## UI and graph seams
 
 `app/renderer/App.tsx` owns workbench composition and commands.
@@ -45,7 +52,12 @@ well-formed but late data cannot replace a newer world.
 `app/renderer/graph-adapter.ts` is the replaceable conversion from domain-neutral
 `GraphSlice` data to React Flow nodes and edges. Layout coordinates are provider
 data for now; a later layout worker can replace them without changing focus or
-reconciliation contracts.
+reconciliation contracts. Source observation does not replace navigation: while
+a file tab is active, the same mounted graph instances form a compact sidebar
+beside CodeMirror, preserving their camera state. Edges are selectable
+presentation-level relationships; their interface focus, endpoints, contract,
+and graph provenance populate contextual instruments without adding a universal
+"edge artifact" to the shared protocol.
 
 `tools/dev.mjs` creates watched main, preload, and core bundles with esbuild,
 starts one Vite server, and launches the Nix-provided Electron binary. Renderer
@@ -65,4 +77,6 @@ only for an exact before/after fingerprint, and red on bounded failure while
 retaining the last good topology. The renderer's source observatory reads,
 watches, and conditionally saves canonical workspace files only through the
 typed core bridge; external and future agent edits appear as transient inline
-green additions and red departing text.
+green additions and red departing text. Ctrl-W is renderer-owned and closes only
+a safe source tab; Electron's application menus have no competing window-close
+accelerator.
