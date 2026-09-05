@@ -31,7 +31,12 @@ log_events:
     X11 display, never the ambient developer DISPLAY. The runner must fail closed
     on display setup/ownership errors, target the exact marked application window,
     preserve screenshots/logs as test artifacts, and support local and CI Bazel entrypoints.'
+- time: 2026-09-05T20:09:39-00:00
+  who: Ted Smith
+  what: blocks supervise-local-core
+  comment: ""
 blocks:
 - first-real-agent-run-surface
+- supervise-local-core
 blocked_by:
 - desktop-x11-driver
