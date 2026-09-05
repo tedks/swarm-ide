@@ -86,6 +86,7 @@ capture_window "$artifact_dir/zoom-100.png"
 xdotool key --clearmodifiers ctrl+k
 wait_for_title "Palette open"
 xdotool type --clearmodifiers --delay 4 'focus remains'
+capture_window "$artifact_dir/zoom-100-focused.png"
 xdotool key --clearmodifiers ctrl+equal
 wait_for_title "Zoom 125%"
 wait_for_title "Palette open"
@@ -104,8 +105,9 @@ xdotool key --clearmodifiers ctrl+0
 wait_for_title "Zoom 100%"
 capture_window "$artifact_dir/zoom-reset.png"
 
-changed_pixels=$(magick "$artifact_dir/zoom-100.png" "$artifact_dir/zoom-125-focused.png" \
-  -compose difference -composite -threshold 0 -format '%[fx:round(mean*w*h)]' info:)
+changed_pixels_raw=$(magick "$artifact_dir/zoom-100-focused.png" "$artifact_dir/zoom-125-focused.png" \
+  -compose difference -composite -threshold 0 -format '%[fx:mean*w*h]' info:)
+changed_pixels=$(awk -v value="$changed_pixels_raw" 'BEGIN { printf "%.0f", value }')
 if [[ ! "$changed_pixels" =~ ^[0-9]+$ ]] || (( changed_pixels < 1000 )); then
   echo "zoom assertion failed: only '$changed_pixels' pixels changed" >&2
   exit 4
@@ -117,5 +119,6 @@ echo "renderer_url=$renderer_url"
 echo "window_title=$(xdotool getwindowname "$window_id")"
 echo "changed_pixels=$changed_pixels"
 echo "artifacts=$artifact_dir"
-identify "$artifact_dir/zoom-100.png" "$artifact_dir/zoom-125-focused.png" \
+identify "$artifact_dir/zoom-100.png" "$artifact_dir/zoom-100-focused.png" \
+  "$artifact_dir/zoom-125-focused.png" \
   "$artifact_dir/zoom-125-reloaded.png" "$artifact_dir/zoom-reset.png"
