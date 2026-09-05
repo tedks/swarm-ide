@@ -34,14 +34,7 @@ restore_probe() {
 trap restore_probe EXIT
 
 wmctrl -i -a "$window_id"
-capture_window() {
-  local destination="$1"
-  wmctrl -i -a "$window_id"
-  sleep 0.05
-  import -window "$window_id" "$destination"
-}
 before_title=$(xdotool getwindowname "$window_id")
-capture_window "$artifact_dir/before.png"
 import -window "$window_id" -crop 48x48+0+0 +repage "$artifact_dir/before-probe.png"
 before_generation=$(sed -n 's/.*HMR \([0-9][0-9]*\):[0-9][0-9]*ms.*/\1/p' <<<"$before_title")
 start_ms=$(date +%s%3N)
@@ -80,7 +73,6 @@ if [[ -z "$pixel_ms" ]]; then
   echo "HMR title changed but the dedicated screen probe did not" >&2
   exit 5
 fi
-capture_window "$artifact_dir/after.png"
 
 paint_ms=$(sed -n 's/.*HMR [0-9][0-9]*:\([0-9][0-9]*\)ms.*/\1/p' <<<"$after_title")
 

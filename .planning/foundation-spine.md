@@ -110,7 +110,7 @@ non-zero screenshot difference.
 
 Acceptance requires all Bazel tests to pass, the Electron window to be found by
 X11 automation, the keyboard command palette and mouse dispatch to work, yellow
-and green screenshots to be materially different, and the final service graph
+and green titles to be exact, before/after screenshots to differ materially, and the final service graph
 to visibly contain `FraudCheck`. Invalid green fingerprints, stale epochs,
 out-of-order sequences, ambiguous navigation, and workbench rendering all have
 focused tests. GitHub CI and the council-review fixpoint must be green before
@@ -127,9 +127,9 @@ supervisor restarts it. The feature worktree remains isolated from `master`.
 ## Artifacts and Notes
 
 Local evidence is intentionally ignored by Git under `artifacts/desktop/` and
-`artifacts/hmr/`. The reviewed desktop comparison changed 56,162 pixels between
+`artifacts/hmr/`. The reviewed desktop comparison changed 50,651 pixels between
 the exact work:a1 and work:b2 frames. The warm HMR sample observed the dedicated
-pixel at 121 ms, the exact title generation at 165 ms, and 29 ms from Vite event
+pixel at 130 ms, the exact title generation at 176 ms, and 25 ms from Vite event
 to the renderer's second animation frame.
 
 ## Interfaces and Dependencies

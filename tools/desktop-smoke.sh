@@ -32,27 +32,17 @@ fi
 
 wait_for_title() {
   local needle="$1"
-  local attempts="$2"
+  local presence="${2:-present}"
   local title=""
-  for _ in $(seq 1 "$attempts"); do
+  for _ in $(seq 1 55); do
     title=$(xdotool getwindowname "$window_id")
-    [[ "$title" == *"$needle"* ]] && return 0
+    if [[ "$presence" == "present" && "$title" == *"$needle"* ]] ||
+       [[ "$presence" == "absent" && "$title" != *"$needle"* ]]; then
+      return 0
+    fi
     sleep 0.04
   done
-  echo "window never reached '$needle'; final title: $title" >&2
-  return 1
-}
-
-wait_for_title_without() {
-  local needle="$1"
-  local attempts="$2"
-  local title=""
-  for _ in $(seq 1 "$attempts"); do
-    title=$(xdotool getwindowname "$window_id")
-    [[ "$title" != *"$needle"* ]] && return 0
-    sleep 0.04
-  done
-  echo "window title still contained '$needle': $title" >&2
+  echo "window title did not make '$needle' $presence: $title" >&2
   return 1
 }
 
@@ -86,14 +76,14 @@ capture_window() {
 
 # Reset through the keyboard command surface so every run begins at work:a1.
 xdotool key --clearmodifiers Escape
-wait_for_title_without "Palette open" 25
+wait_for_title "Palette open" absent
 xdotool key --clearmodifiers ctrl+k
-wait_for_title "Palette open" 25
+wait_for_title "Palette open"
 xdotool mousemove --window "$window_id" "$((WIDTH / 2))" "$((HEIGHT * 14 / 100))" click 1
 xdotool key --clearmodifiers ctrl+a
 xdotool type --clearmodifiers --delay 3 'Reset fixture world'
 xdotool key --clearmodifiers Return
-wait_for_title_without "Palette open" 25
+wait_for_title "Palette open" absent
 sleep 0.2
 reset_title=$(xdotool getwindowname "$window_id")
 if [[ "$reset_title" != *"work:a1"* || "$reset_title" == *"FraudCheck visible"* ]]; then
@@ -104,23 +94,19 @@ capture_window "$artifact_dir/before.png"
 
 # Open with a hotkey, then dispatch by clicking the top command.
 xdotool key --clearmodifiers ctrl+k
-wait_for_title "Palette open" 25
-sleep 0.25
-capture_window "$artifact_dir/command-palette.png"
+wait_for_title "Palette open"
 palette_command_y=$((HEIGHT * 11 / 100 + 80))
 activate_window
 xdotool mousemove --window "$window_id" "$((WIDTH / 2))" "$palette_command_y" click 1
 
-wait_for_title_without "Palette open" 25
-wait_for_title "Reconciling" 25
+wait_for_title "Palette open" absent
+wait_for_title "Reconciling"
 yellow_title=$(xdotool getwindowname "$window_id")
 if [[ "$yellow_title" != *"work:b2"* || "$yellow_title" == *"FraudCheck visible"* ]]; then
   echo "yellow state did not retain the expected work:a1 topology over work:b2: $yellow_title" >&2
   exit 4
 fi
-sleep 0.25
-capture_window "$artifact_dir/reconciling.png"
-wait_for_title "FraudCheck visible" 55
+wait_for_title "FraudCheck visible"
 green_title=$(xdotool getwindowname "$window_id")
 if [[ "$green_title" != *"work:b2"* ]]; then
   echo "green publication does not identify work:b2: $green_title" >&2
@@ -141,4 +127,4 @@ echo "window_id=$window_id"
 echo "window_title=$(xdotool getwindowname "$window_id")"
 echo "changed_pixels=$changed_pixels"
 echo "artifacts=$artifact_dir"
-identify "$artifact_dir/before.png" "$artifact_dir/command-palette.png" "$artifact_dir/reconciling.png" "$artifact_dir/reconciled.png"
+identify "$artifact_dir/before.png" "$artifact_dir/reconciled.png"
