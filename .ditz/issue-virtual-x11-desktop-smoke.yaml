@@ -1,0 +1,18 @@
+id: virtual-x11-desktop-smoke
+title: Run desktop verification in an isolated virtual X11 display
+desc: Run the existing exact-window desktop smoke in an isolated virtual X11 server
+  (for example Xvfb with a minimal window manager), wire it into a reproducible Bazel/CI
+  entrypoint, and ensure screenshots cannot observe the developer desktop.
+type: task
+component: default
+release:
+reporter: Ted Smith <tedks@riseup.net>
+status: unstarted
+disposition:
+creation_time: 2026-09-05T08:07:56-00:00
+references: []
+log_events:
+- time: 2026-09-05T08:07:56-00:00
+  who: Ted Smith
+  what: created
+  comment: ""
