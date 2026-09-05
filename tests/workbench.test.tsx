@@ -328,8 +328,8 @@ describe("workbench shell", () => {
     await waitFor(() => expect(screen.getByRole("button", { name: `Close ${paths[0]}` })).toBeTruthy());
     await waitFor(() => expect(screen.getByRole("button", { name: `Close ${paths[1]}` })).toBeTruthy());
     act(() => {
-      fireEvent.click(screen.getByRole("button", { name: `Close ${paths[0]}` }));
       fireEvent.click(screen.getByRole("button", { name: `Close ${paths[1]}` }));
+      fireEvent.click(screen.getByRole("button", { name: `Close ${paths[0]}` }));
     });
     expect(screen.queryByRole("button", { name: `Close ${paths[0]}` })).toBeNull();
     expect(screen.queryByRole("button", { name: `Close ${paths[1]}` })).toBeNull();
@@ -538,6 +538,49 @@ describe("workbench shell", () => {
     act(() => listener?.({ protocolVersion: PROTOCOL_VERSION, type: "file.changed", sequence: 1, emittedAt: "2026-09-05T12:03:00.000Z", path, revision: "b".repeat(64), change: "modified" }));
     releaseInitial(response("initial", "initial\n", "a".repeat(64)));
     await waitFor(() => expect(document.querySelector(".cm-content")?.textContent).toContain("newest"));
+    expect(readCount).toBe(2);
+    expect(document.querySelector(".file-saved")).toBeTruthy();
+  });
+
+  it("hands initial observation off before a post-read event can be dropped", async () => {
+    let listener: ((event: CoreEvent | FileEvent) => void) | undefined;
+    const path = "services/fraudcheck/fraudcheck.ts";
+    const base = initialSnapshot(paymentsFileFocus);
+    const snapshot: WorkspaceSnapshot = {
+      ...base,
+      widgets: [{ id: "source-paths", title: "Implementation sources", kind: "list", priority: 0, value: [path], provenance: base.widgets[0]!.provenance }],
+    };
+    let readCount = 0;
+    let releaseInitial!: (response: CoreResponse) => void;
+    const initialRead = new Promise<CoreResponse>((resolve) => { releaseInitial = resolve; });
+    const response = (requestIdValue: string, content: string, revision: string): CoreResponse => ({
+      protocolVersion: PROTOCOL_VERSION,
+      requestId: requestIdValue,
+      ok: true,
+      sequence: 0,
+      snapshot,
+      file: { kind: "read", path, content, revision, size: content.length },
+    });
+    const request = vi.fn(async (input: CoreRequest): Promise<CoreResponse> => {
+      if (input.type === "file.read") {
+        readCount += 1;
+        if (readCount === 1) return initialRead;
+        return response(input.requestId, "post-handoff\n", "b".repeat(64));
+      }
+      return { protocolVersion: PROTOCOL_VERSION, requestId: input.requestId, ok: true, sequence: 0, snapshot };
+    });
+    Object.defineProperty(window, "swarm", { configurable: true, value: { request, onEvent: (next: (event: CoreEvent | FileEvent) => void) => { listener = next; return () => undefined; } } });
+    installViewBridge();
+    render(<App />);
+    await screen.findByText("Implementation sources");
+    fireEvent.click(screen.getAllByRole("button", { name: path })[0]!);
+    await screen.findByText("Loading the canonical working file…");
+    await act(async () => {
+      releaseInitial(response("initial", "initial\n", "a".repeat(64)));
+      await Promise.resolve();
+      listener?.({ protocolVersion: PROTOCOL_VERSION, type: "file.changed", sequence: 1, emittedAt: "2026-09-05T12:03:00.000Z", path, revision: "b".repeat(64), change: "modified" });
+    });
+    await waitFor(() => expect(document.querySelector(".cm-content")?.textContent).toContain("post-handoff"));
     expect(readCount).toBe(2);
     expect(document.querySelector(".file-saved")).toBeTruthy();
   });

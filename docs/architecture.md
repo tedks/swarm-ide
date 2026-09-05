@@ -63,13 +63,16 @@ presentation-level relationships; their interface focus, endpoints, contract,
 and graph provenance populate contextual instruments without adding a universal
 "edge artifact" to the shared protocol.
 
-Each source-tab lifecycle has one generation and one initial-read owner. File
+Each source-tab lifecycle has one generation and one explicit initial-read
+owner, independent of React render/effect timing. File
 events received while that first read is pending advance its observation
 watermark instead of launching a competing read; the opener retries a bounded
 number of times until its bytes match the newest observed revision or surfaces a
 visible error. Close operations synchronously advance lifecycle authority and
 compose their state updates, so batched closes and late reads cannot resurrect a
-tab. Save completion accepts delayed events for either its expected base revision
+tab. Surface selection has the same synchronous authority, so closing an active
+tab and then its fallback in one event batch reliably returns to the graphs.
+Save completion accepts delayed events for either its expected base revision
 or its newly written revision while treating any third revision as a conflict.
 
 `tools/dev.mjs` creates watched main, preload, and core bundles with esbuild,
