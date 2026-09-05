@@ -13,7 +13,7 @@ import { INTERFACE_ZOOM_STORAGE_KEY } from "../app/renderer/zoom";
 import type { Lifecycle, LifecycleBridge } from "../app/lifecycle";
 import { dirtySnapshot, initialSnapshot, paymentsFileFocus } from "../fixtures/world";
 const testHotMemory = vi.hoisted(() => ({ workbench: undefined as unknown }));
-vi.mock("../app/renderer/hot-memory", () => ({ hotMemory: testHotMemory }));
+vi.mock("../app/renderer/hot-memory", async (importOriginal) => ({ ...await importOriginal<typeof import("../app/renderer/hot-memory")>(), hotMemory: testHotMemory }));
 
 vi.mock("../app/renderer/GraphPane", () => ({
   GraphPane: ({ graph, onConnectionFocus }: { graph: GraphSlice; onConnectionFocus: (connection: unknown) => void }) => {
@@ -26,6 +26,34 @@ vi.mock("../app/renderer/GraphPane", () => ({
 
 import { App } from "../app/renderer/App";
 describe("selective live recovery", () => {
+it("waits for a fresh generation snapshot before restoring pathless service focus", async () => {
+    const lifecycle = shell();
+    const old = initialSnapshot();
+    const selected = { worldId: old.world.id, revisionKind: "working" as const, revisionId: old.revisions.working.id, domain: "service" as const, key: "service:checkout" };
+    window.sessionStorage.setItem("swarm:document-navigation:v1", JSON.stringify({ paths: [], activeSurface: "graphs", lens: "System", focus: selected, snapshot: initialSnapshot(selected) }));
+    const fresh = dirtySnapshot(old);
+    let resolveSnapshot!: (response: CoreResponse) => void;
+    const request = vi.fn(async (input: CoreRequest): Promise<CoreResponse> => {
+      if (input.type === "workspace.snapshot") return new Promise((resolve) => { resolveSnapshot = resolve; });
+      return { protocolVersion: PROTOCOL_VERSION, requestId: input.requestId, ok: true, sequence: 0, snapshot: fresh };
+    });
+    Object.defineProperty(window, "swarm", { configurable: true, value: { request, onEvent: () => () => undefined } });
+    installViewBridge(); render(<App />);
+    await waitFor(() => expect(request.mock.calls.some(([r]) => r.type === "workspace.snapshot")).toBe(true));
+    expect(request.mock.calls.some(([r]) => r.type === "focus.select")).toBe(false);
+    await act(async () => resolveSnapshot({ protocolVersion: PROTOCOL_VERSION, requestId: "fresh", ok: true, sequence: 0, snapshot: fresh }));
+    await waitFor(() => expect(request.mock.calls.some(([r]) => r.type === "focus.select" && r.focus.key === selected.key && r.focus.revisionId === fresh.revisions.working.id)).toBe(true));
+    expect(lifecycle.bridge.reload).not.toHaveBeenCalled();
+  });
+  it("does not enter a reload/veto loop when checkpoint storage is unavailable", async () => {
+    const lifecycle = shell(); const source = files();
+    render(<App />); await open(source.path);
+    vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => { throw new Error("quota"); });
+    lifecycle.update({ reload: "pending" });
+    await screen.findByText(/document checkpoint could not be stored/);
+    lifecycle.update({ notice: "another status update" });
+    expect(lifecycle.bridge.reload).not.toHaveBeenCalled();
+  });
 it("preserves an outstanding save as unknown across a structural component remount", async () => {
     shell();
     let finish!: (response: CoreResponse) => void;
@@ -38,6 +66,10 @@ it("preserves an outstanding save as unknown across a structural component remou
     render(<App />);
     await screen.findByRole("button", { name: "Check disk" });
     expect(document.querySelector(".cm-content")?.textContent).toContain("mine");
+    const readsBeforeCheck = source.request.mock.calls.filter(([r]) => r.type === "file.read").length;
+    expect((screen.getByRole("button", { name: "Check disk" }) as HTMLButtonElement).disabled).toBe(true);
+    fireEvent.click(screen.getByRole("button", { name: "Check disk" }));
+    expect(source.request.mock.calls.filter(([r]) => r.type === "file.read")).toHaveLength(readsBeforeCheck);
     await act(async () => finish({ protocolVersion: PROTOCOL_VERSION, requestId: "old-save", ok: false, error: { code: "WRITE_OUTCOME_UNKNOWN", message: "old component's promise settled" } }));
     expect(source.request.mock.calls.filter(([r]) => r.type === "file.write")).toHaveLength(1);
     expect(screen.getByRole("button", { name: "Check disk" })).toBeTruthy();

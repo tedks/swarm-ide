@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import {
   PROTOCOL_VERSION,
   type CoreRequest,
@@ -20,7 +20,7 @@ import {
 import { discardStoredZoom, persistZoom, readStoredZoom, stepZoom, zoomShortcut } from "./zoom";
 import type { Lifecycle } from "../lifecycle";
 import { NAVIGATION_KEY, readNavigation, protectsBuffer, staleSnapshot, retainDerived } from "./recovery";
-import { hotMemory } from "./hot-memory";
+import { hotMemory, pendingWrites } from "./hot-memory";
 
 const lensTabs = ["System", "Plan", "Performance", "Refactor"] as const;
 const FRAUDCHECK_IMPLEMENTATION = "examples/checkout-world/services/fraudcheck/fraudcheck.ts";
@@ -73,6 +73,7 @@ export function App() {
   const [hotCheckpoint] = useState(() => hotMemory?.workbench as HotWorkbench | undefined);
   const [restoredNavigation] = useState(readNavigation);
   const [lifecycle, setLifecycle] = useState<Lifecycle | null>(null);
+  const [observedCoreGeneration, setObservedCoreGeneration] = useState<number | null>(null);
   const lifecycleRef = useRef<Lifecycle | null>(null);
   const coreGenerationRef = useRef(0);
   const lastRecoveryRef = useRef(-1);
@@ -94,7 +95,8 @@ export function App() {
   const openingFilesRef = useRef(new Map<string, number>());
   const reloadGenerationsRef = useRef(new Map<string, number>());
   const desiredFilesRef = useRef(new Set<string>(fileTabs.map((tab) => tab.path)));
-  const savesInFlightRef = useRef(new Set<string>());
+  const savesInFlightRef = useRef(pendingWrites.paths);
+  const pendingWriteRevision = useSyncExternalStore(pendingWrites.subscribe, pendingWrites.snapshot);
   const flashId = useRef(0);
   const [initialZoom] = useState(() => readStoredZoom(rendererStorage()));
   const [zoomPercent, setZoomPercent] = useState<InterfaceZoomPercent | null>(null);
@@ -336,6 +338,7 @@ export function App() {
         if (current.snapshot && response.sequence <= current.lastSequence) return current;
         return loadSnapshot(retainDerived(current.snapshot, response.snapshot), response.sequence);
       });
+      setObservedCoreGeneration(generation);
       if (recovered) {
         const oldFocus = workspaceRef.current.snapshot?.focus;
         if (oldFocus) void invoke({ type: "focus.select", requestId: requestId(), protocolVersion: PROTOCOL_VERSION, focus: { ...oldFocus, revisionId: response.snapshot.revisions.working.id } });
@@ -440,10 +443,10 @@ export function App() {
     if (!tab || !tab.revision || tab.status !== "dirty" || savesInFlightRef.current.has(path)) return;
     const savedContent = tab.content;
     const eventSequenceBeforeSave = fileEventsRef.current.get(path)?.sequence ?? 0;
-    savesInFlightRef.current.add(path);
+    pendingWrites.start(path);
     setFileTabs((tabs) => tabs.map((candidate) => candidate.path === path ? { ...candidate, status: "saving", message: "Saving with optimistic revision check…" } : candidate));
     const response = await invoke({ type: "file.write", requestId: requestId(), protocolVersion: PROTOCOL_VERSION, path, expectedRevision: tab.revision, content: savedContent });
-    savesInFlightRef.current.delete(path);
+    pendingWrites.finish(path);
     if (!response?.ok || !response.file || response.file.kind !== "write") {
       const conflict = response && !response.ok && response.error.code === "REVISION_CONFLICT";
       const unknown = !response || (!response.ok && response.error.code === "WRITE_OUTCOME_UNKNOWN");
@@ -496,13 +499,14 @@ export function App() {
   const navigationRestoredRef = useRef(false);
   useEffect(() => {
     if (window.swarmLifecycle && lifecycle?.core.phase !== "ready") return;
+    if (window.swarmLifecycle && observedCoreGeneration !== lifecycle?.core.generation) return;
     if (!workspace.snapshot || navigationRestoredRef.current) return;
     navigationRestoredRef.current = true;
     if (!restoredNavigation || hotCheckpoint) return;
     for (const path of restoredNavigation.paths) void openFile(path, false);
     showSurface(restoredNavigation.activeSurface);
     if (restoredNavigation.focus) void invoke({ type: "focus.select", requestId: requestId(), protocolVersion: PROTOCOL_VERSION, focus: { ...restoredNavigation.focus, revisionId: workspace.snapshot.revisions.working.id } });
-  }, [workspace.snapshot, restoredNavigation, openFile, showSurface, invoke, hotCheckpoint, lifecycle?.core.phase]);
+  }, [workspace.snapshot, restoredNavigation, openFile, showSurface, invoke, hotCheckpoint, lifecycle?.core.phase, lifecycle?.core.generation, observedCoreGeneration]);
 
   const checkpointDocument = useCallback(() => {
     if (fileTabsRef.current.some(protectsBuffer) || savesInFlightRef.current.size) throw new Error("Save or reconcile buffers before reloading.");
@@ -531,7 +535,7 @@ export function App() {
     }
     setReloadNotice("");
     void window.swarmLifecycle?.reload(lifecycle.revision).catch(() => setReloadNotice("Preload refresh could not be applied; current document retained."));
-  }, [lifecycle, fileTabs, checkpointDocument]);
+  }, [lifecycle, fileTabs, checkpointDocument, pendingWriteRevision]);
 
   useEffect(() => {
     const listener = (event: KeyboardEvent) => {
