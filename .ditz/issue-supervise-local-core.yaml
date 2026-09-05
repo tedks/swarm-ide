@@ -24,6 +24,12 @@ log_events:
   who: Ted Smith
   what: blocks first-real-agent-run-surface
   comment: ""
+- time: 2026-09-05T20:09:40-00:00
+  who: Ted Smith
+  what: commented
+  comment: 'Schedule in the stable-window dev-loop micro-step after virtual-X11: a
+    core rebuild must restart only the utility process, expose recovery state, settle
+    pending requests, and retain the BrowserWindow/X11 identity.'
 blocks:
 - first-real-agent-run-surface
 blocked_by:
