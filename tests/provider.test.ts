@@ -28,7 +28,7 @@ function dependencies(
 ): ProviderDependencies {
   return {
     fingerprint: async () => fingerprints.shift() ?? (() => { throw new Error("unexpected fingerprint request"); })(),
-    build: async () => build(),
+    build: async () => { await build(); return { artifactPath: "/unused/service-topology.json" }; },
     readArtifact,
     now: () => "2026-09-05T12:00:00.000Z",
   };
@@ -53,6 +53,16 @@ describe("real workspace provider", () => {
     const green = published.at(-1)!;
     expect(green.reconciliation.status).toBe("green");
     expect(green.graphs.find((graph) => graph.topologyId === "service")?.nodes.map((node) => node.label)).toEqual(["FraudCheck", "Assess", "Payments.Authorize"]);
+    const serviceGraph = green.graphs.find((graph) => graph.topologyId === "service")!;
+    expect(serviceGraph.nodes.map((node) => [node.label, node.position.x])).toEqual([
+      ["FraudCheck", 310],
+      ["Assess", 20],
+      ["Payments.Authorize", 600],
+    ]);
+    expect(serviceGraph.edges.map((edge) => [edge.source, edge.target, edge.label])).toEqual([
+      ["interface:fraud-check.assess", "service:fraud-check", "handled by"],
+      ["service:fraud-check", "interface:payments.authorize", "calls"],
+    ]);
     expect(green.widgets.find((widget) => widget.id === "deployment")?.value).toBe("not configured");
     expect(green.revisions.built.sourceFingerprint).toBe(buildFingerprint);
   });

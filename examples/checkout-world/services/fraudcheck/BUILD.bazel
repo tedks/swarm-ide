@@ -21,6 +21,7 @@ genrule(
         "fraudcheck.ts",
         "service.swarm.json",
         "//examples/checkout-world/services/payments:payments_proto",
+        "//examples/checkout-world/services/payments:payments.proto",
     ],
     outs = ["service-topology.json"],
     cmd = " ".join([
@@ -31,6 +32,8 @@ genrule(
         "--source examples/checkout-world/services/fraudcheck/fraudcheck.ts=$(location fraudcheck.ts)",
         "--interface-descriptor interface:fraud-check.assess=examples/checkout-world/services/fraudcheck/fraudcheck.proto=$(location :fraudcheck_proto)",
         "--interface-descriptor interface:payments.authorize=examples/checkout-world/services/payments/payments.proto=$(location //examples/checkout-world/services/payments:payments_proto)",
+        "--interface-source interface:fraud-check.assess=examples/checkout-world/services/fraudcheck/fraudcheck.proto=$(location fraudcheck.proto)",
+        "--interface-source interface:payments.authorize=examples/checkout-world/services/payments/payments.proto=$(location //examples/checkout-world/services/payments:payments.proto)",
         "--out $@",
     ]),
     tools = ["//tools:extract-service-topology"],

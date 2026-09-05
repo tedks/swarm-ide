@@ -16,13 +16,14 @@ function fail(message) {
 }
 
 function parseArgs(argv) {
-  const result = { sources: [], interfaceDescriptors: [] };
+  const result = { sources: [], interfaceDescriptors: [], interfaceSources: [] };
   for (let index = 0; index < argv.length; index += 2) {
     const option = argv[index];
     const value = argv[index + 1];
     if (!option?.startsWith("--") || value === undefined) fail("arguments must be option/value pairs");
     if (option === "--source") result.sources.push(value);
     else if (option === "--interface-descriptor") result.interfaceDescriptors.push(value);
+    else if (option === "--interface-source") result.interfaceSources.push(value);
     else if (option === "--manifest") result.manifest = value;
     else if (option === "--owning-target") result.owningTarget = value;
     else if (option === "--out") result.out = value;
@@ -31,6 +32,7 @@ function parseArgs(argv) {
   if (!result.manifest || !result.owningTarget || !result.out) fail("manifest, owning target, and output are required");
   if (result.sources.length === 0 || result.sources.length > MAX_SOURCES) fail("source count is outside the allowed range");
   if (result.interfaceDescriptors.length === 0 || result.interfaceDescriptors.length > 64) fail("interface descriptor count is outside the allowed range");
+  if (result.interfaceSources.length === 0 || result.interfaceSources.length > 64) fail("interface source count is outside the allowed range");
   return result;
 }
 
@@ -174,7 +176,11 @@ function protobufFields(bytes) {
     const field = Math.floor(tag.value / 8);
     const wire = tag.value & 7;
     if (field === 0) fail("protobuf descriptor contains field zero");
-    if (wire === 0) cursor = readVarint(bytes, cursor).cursor;
+    if (wire === 0) {
+      const decoded = readVarint(bytes, cursor);
+      cursor = decoded.cursor;
+      fields.push({ field, value: decoded.value });
+    }
     else if (wire === 1) cursor += 8;
     else if (wire === 2) {
       const length = readVarint(bytes, cursor);
@@ -200,6 +206,13 @@ function descriptorText(fields, field, label) {
   }
 }
 
+function descriptorBoolean(fields, field, label) {
+  const values = fields.filter((item) => item.field === field);
+  if (values.length === 0) return false;
+  if (values.length !== 1 || (values[0].value !== 0 && values[0].value !== 1)) fail(`protobuf descriptor has an invalid ${label}`);
+  return values[0].value === 1;
+}
+
 function parseDescriptorSet(bytes, logicalPath) {
   const files = protobufFields(bytes).filter((item) => item.field === 1);
   if (files.length !== 1) fail(`descriptor for ${logicalPath} must contain exactly one source file`);
@@ -221,6 +234,8 @@ function parseDescriptorSet(bytes, logicalPath) {
       methods.set(methodName, {
         requestType: descriptorText(method, 2, "method input type").replace(/^\./, ""),
         responseType: descriptorText(method, 3, "method output type").replace(/^\./, ""),
+        clientStreaming: descriptorBoolean(method, 5, "client_streaming value"),
+        serverStreaming: descriptorBoolean(method, 6, "server_streaming value"),
       });
     }
     services.set(serviceName, methods);
@@ -232,6 +247,7 @@ function assertDescriptorContract(descriptor, source, contract, serviceName, met
   const method = descriptor.services.get(serviceName)?.get(methodName);
   if (!method) fail(`compiled protobuf RPC ${serviceName}.${methodName} is missing from ${source.logicalPath}`);
   if (method.requestType !== contract.requestType || method.responseType !== contract.responseType) fail(`compiled protobuf RPC ${serviceName}.${methodName} types disagree with the manifest`);
+  if (method.clientStreaming || method.serverStreaming) fail(`compiled protobuf RPC ${serviceName}.${methodName} must be unary`);
   if (!descriptor.messages.has(contract.requestType) || !descriptor.messages.has(contract.responseType)) fail(`compiled protobuf messages for ${serviceName}.${methodName} are missing`);
 }
 
@@ -255,15 +271,19 @@ const manifest = parseManifest(manifestInput);
 const sources = args.sources.map(parseSource).sort((left, right) => left.logicalPath.localeCompare(right.logicalPath));
 if (new Set(sources.map((source) => source.logicalPath)).size !== sources.length) fail("source paths must be unique");
 const interfaceSources = args.interfaceDescriptors.map(parseInterfaceDescriptor).sort((left, right) => left.interfaceId.localeCompare(right.interfaceId));
+const interfaceInputs = args.interfaceSources.map(parseInterfaceDescriptor).sort((left, right) => left.interfaceId.localeCompare(right.interfaceId));
 const declaredInterfaceIds = [...manifest.providedInterfaces, ...manifest.requiredInterfaces].map((item) => item.id).sort();
-if (interfaceSources.length !== declaredInterfaceIds.length || interfaceSources.some((source, index) => source.interfaceId !== declaredInterfaceIds[index])) {
+if (interfaceSources.length !== declaredInterfaceIds.length || interfaceSources.some((source, index) => source.interfaceId !== declaredInterfaceIds[index]) ||
+    interfaceInputs.length !== declaredInterfaceIds.length || interfaceInputs.some((source, index) => source.interfaceId !== declaredInterfaceIds[index])) {
   fail("every declared interface must have exactly one Bazel-declared source");
 }
 if (new Set(interfaceSources.map((source) => source.interfaceId)).size !== interfaceSources.length) fail("interface source ids must be unique");
+if (new Set(interfaceInputs.map((source) => source.interfaceId)).size !== interfaceInputs.length) fail("interface input ids must be unique");
+if (interfaceSources.some((source, index) => source.logicalPath !== interfaceInputs[index].logicalPath)) fail("interface descriptor and source paths disagree");
 
 const digest = createHash("sha256");
-digest.update("swarm-service-topology-input-v2\0");
-framed(digest, JSON.stringify(manifest));
+digest.update("swarm-service-topology-input-v3\0");
+framed(digest, manifestBytes);
 let totalBytes = 0;
 for (const source of sources) {
   const bytes = await readBounded(source.execPath, MAX_SOURCE_BYTES, `source ${source.logicalPath}`);
@@ -283,6 +303,11 @@ for (const source of interfaceSources) {
   const serviceName = provided ? manifest.service.displayName : required.name.slice(0, required.name.indexOf("."));
   const methodName = provided ? provided.name : required.name.slice(required.name.indexOf(".") + 1);
   assertDescriptorContract(parseDescriptorSet(bytes, source.logicalPath), source, contract, serviceName, methodName);
+}
+for (const source of interfaceInputs) {
+  const bytes = await readBounded(source.execPath, MAX_SOURCE_BYTES, `interface source ${source.logicalPath}`);
+  totalBytes += bytes.byteLength;
+  if (bytes.byteLength > MAX_SOURCE_BYTES || totalBytes > MAX_TOTAL_SOURCE_BYTES) fail("interface source inputs are oversized");
   framed(digest, "interface");
   framed(digest, source.interfaceId);
   framed(digest, source.logicalPath);

@@ -16,12 +16,14 @@ import { computeWorkingWorldFingerprint } from "./fingerprint";
 import { RealWorkspaceProvider } from "./provider";
 import { BoundedRequestIds } from "./request-ids";
 import { WorkspaceFileWatchers } from "./watchers";
+import { WorkingWorldObserver } from "./working-world-observer";
 
 const workspaceRoot = process.env.SWARM_WORKSPACE_ROOT ?? process.cwd();
 let sequence = 0;
 const requestIds = new BoundedRequestIds(512);
 const fileReadGenerations = new Map<string, number>();
 const providerPromise = RealWorkspaceProvider.create(workspaceRoot);
+let workingWorldObserver: WorkingWorldObserver | null = null;
 
 function post(message: CoreResponse | CoreEvent | FileEvent): void {
   process.parentPort?.postMessage(message);
@@ -70,23 +72,7 @@ async function emitFileChange(path: string): Promise<void> {
   }
   if (fileReadGenerations.get(path) !== generation) return;
   post(FileEventSchema.parse({ protocolVersion: PROTOCOL_VERSION, type: "file.changed", sequence: ++sequence, emittedAt: new Date().toISOString(), ...event }));
-  try {
-    const fingerprint = await computeWorkingWorldFingerprint(workspaceRoot);
-    if (fileReadGenerations.get(path) !== generation) return;
-    (await providerPromise).markWorkingWorldChanged(fingerprint, publish);
-  } catch (error) {
-    (await providerPromise).markWorkingWorldUnknown(error instanceof Error ? error.message : "unknown fingerprint error", publish);
-    post(FileEventSchema.parse({
-      protocolVersion: PROTOCOL_VERSION,
-      type: "file.changed",
-      sequence: ++sequence,
-      emittedAt: new Date().toISOString(),
-      path,
-      revision: null,
-      change: "error",
-      message: `Working-world refresh failed: ${error instanceof Error ? error.message.slice(0, 440) : "unknown error"}`,
-    }));
-  }
+  workingWorldObserver?.request();
 }
 
 const fileWatchers = new WorkspaceFileWatchers(
@@ -141,7 +127,10 @@ process.parentPort?.on("message", async (event) => {
       }
       case "file.write": {
         const file = await writeWorkspaceFile(workspaceRoot, request.path, request.expectedRevision, request.content);
-        if (file.workingFingerprint) provider.markWorkingWorldChanged(file.workingFingerprint, publish);
+        if (file.workingFingerprint) {
+          workingWorldObserver?.observeKnown(file.workingFingerprint);
+          provider.markWorkingWorldChanged(file.workingFingerprint, publish);
+        }
         else provider.markWorkingWorldUnknown(file.fingerprintError ?? "unknown post-save fingerprint error", publish);
         post(ok(requestId, provider.snapshot(), file));
         return;
@@ -163,11 +152,21 @@ process.parentPort?.on("message", async (event) => {
   }
 });
 
-void providerPromise.then(() => process.parentPort?.postMessage({ type: "core.ready" })).catch((error) => {
+void providerPromise.then((provider) => {
+  workingWorldObserver = new WorkingWorldObserver(
+    provider.snapshot().revisions.working.fingerprint,
+    () => computeWorkingWorldFingerprint(workspaceRoot),
+    (fingerprint) => provider.markWorkingWorldChanged(fingerprint, publish),
+    (error) => provider.markWorkingWorldUnknown(error.message, publish),
+  );
+  workingWorldObserver.start();
+  process.parentPort?.postMessage({ type: "core.ready" });
+}).catch((error) => {
   console.error("Local core failed to open the workspace", error);
   process.parentPort?.postMessage({ type: "core.failed" });
 });
 
 process.on("exit", () => {
+  workingWorldObserver?.close();
   fileWatchers.closeAll();
 });

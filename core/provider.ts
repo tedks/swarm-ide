@@ -1,6 +1,7 @@
 import { execFile } from "node:child_process";
+import { createHash } from "node:crypto";
 import { realpath } from "node:fs/promises";
-import { join } from "node:path";
+import { isAbsolute, join, relative } from "node:path";
 import {
   PROTOCOL_VERSION,
   WorkspaceSnapshotSchema,
@@ -12,7 +13,7 @@ import {
   type WorkspaceSnapshot,
 } from "../protocol/schema";
 import { computeWorkingWorldFingerprint } from "./fingerprint";
-import { readBoundedRegularFile, resolveWorkspaceFile } from "./files";
+import { readBoundedRegularFile, readCanonicalWorkspaceBytes, resolveWorkspaceFile } from "./files";
 import {
   ServiceTopologyArtifactSchema,
   adaptServiceTopology,
@@ -36,11 +37,17 @@ const INTERFACE_DECLARATIONS = new Map([
   ["interface:payments.authorize", "examples/checkout-world/services/payments/payments.proto"],
 ]);
 const MAX_ARTIFACT_BYTES = 512 * 1024;
+const MAX_MANIFEST_BYTES = 64 * 1024;
+const MAX_SOURCE_BYTES = 1024 * 1024;
+
+export interface BazelBuildResult {
+  artifactPath: string;
+}
 
 export interface ProviderDependencies {
   fingerprint(workspaceRoot: string): Promise<string>;
-  build(workspaceRoot: string): Promise<void>;
-  readArtifact(workspaceRoot: string): Promise<{ bytes: Buffer; artifact: ServiceTopologyArtifact }>;
+  build(workspaceRoot: string): Promise<BazelBuildResult>;
+  readArtifact(workspaceRoot: string, build: BazelBuildResult): Promise<{ bytes: Buffer; artifact: ServiceTopologyArtifact }>;
   now(): string;
 }
 
@@ -49,30 +56,61 @@ export type ProviderPublish = (
   snapshot: WorkspaceSnapshot,
 ) => void;
 
-function runBazel(workspaceRoot: string): Promise<void> {
+function bazel(workspaceRoot: string, args: string[]): Promise<string> {
   return new Promise((resolve, reject) => {
     execFile(
       "bazel",
-      ["build", SERVICE_TOPOLOGY_TARGET, "--color=no", "--curses=no"],
+      args,
       { cwd: workspaceRoot, encoding: "utf8", maxBuffer: 8 * 1024 * 1024 },
       (error, _stdout, stderr) => {
         if (error) {
           reject(new Error((stderr || error.message).trim().slice(-2_000)));
           return;
         }
-        resolve();
+        resolve(String(_stdout));
       },
     );
   });
 }
 
-async function readArtifact(workspaceRoot: string): Promise<{ bytes: Buffer; artifact: ServiceTopologyArtifact }> {
-  // `bazel-bin` is a Bazel-managed symlink to its output tree, which normally
-  // lives outside the checkout. Resolve that one fixed build-system boundary,
-  // then open the fixed artifact itself without following another symlink.
-  const outputRoot = await realpath(join(workspaceRoot, "bazel-bin"));
+async function runBazel(workspaceRoot: string): Promise<BazelBuildResult> {
+  await bazel(workspaceRoot, ["build", SERVICE_TOPOLOGY_TARGET, "--color=no", "--curses=no"]);
+  const reported = (await bazel(workspaceRoot, ["info", "bazel-bin", "--color=no", "--curses=no"])).trim();
+  if (!reported || reported.includes("\n") || !isAbsolute(reported)) throw new Error("Bazel did not report one absolute output directory");
+  const outputRoot = await realpath(reported);
   const relativeArtifact = SERVICE_TOPOLOGY_ARTIFACT.slice("bazel-bin/".length);
-  const bytes = await readBoundedRegularFile(join(outputRoot, relativeArtifact), MAX_ARTIFACT_BYTES, "the Bazel topology output");
+  const artifactPath = join(outputRoot, relativeArtifact);
+  if (relative(outputRoot, artifactPath).startsWith("..")) throw new Error("the fixed topology output escaped Bazel's reported output directory");
+  return { artifactPath };
+}
+
+function framed(hash: ReturnType<typeof createHash>, value: string | Buffer): void {
+  const bytes = typeof value === "string" ? Buffer.from(value, "utf8") : value;
+  const length = Buffer.allocUnsafe(8);
+  length.writeBigUInt64BE(BigInt(bytes.byteLength));
+  hash.update(length);
+  hash.update(bytes);
+}
+
+export async function computeTopologyInputDigest(workspaceRoot: string): Promise<string> {
+  const hash = createHash("sha256");
+  hash.update("swarm-service-topology-input-v3\0");
+  framed(hash, await readCanonicalWorkspaceBytes(workspaceRoot, MANIFEST_PATH, MAX_MANIFEST_BYTES));
+  for (const path of SOURCE_PATHS) {
+    framed(hash, path);
+    framed(hash, await readCanonicalWorkspaceBytes(workspaceRoot, path, MAX_SOURCE_BYTES));
+  }
+  for (const [interfaceId, path] of [...INTERFACE_DECLARATIONS.entries()].sort(([left], [right]) => left.localeCompare(right))) {
+    framed(hash, "interface");
+    framed(hash, interfaceId);
+    framed(hash, path);
+    framed(hash, await readCanonicalWorkspaceBytes(workspaceRoot, path, MAX_SOURCE_BYTES));
+  }
+  return hash.digest("hex");
+}
+
+export async function readBuiltTopologyArtifact(workspaceRoot: string, build: BazelBuildResult): Promise<{ bytes: Buffer; artifact: ServiceTopologyArtifact }> {
+  const bytes = await readBoundedRegularFile(build.artifactPath, MAX_ARTIFACT_BYTES, "the Bazel topology output");
   let input: unknown;
   try {
     input = JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(bytes));
@@ -80,6 +118,8 @@ async function readArtifact(workspaceRoot: string): Promise<{ bytes: Buffer; art
     throw new Error("the Bazel topology output is not valid UTF-8 JSON");
   }
   const artifact = ServiceTopologyArtifactSchema.parse(input);
+  const expectedInputDigest = await computeTopologyInputDigest(workspaceRoot);
+  if (artifact.inputDigest !== expectedInputDigest) throw new Error("the topology artifact input digest does not match the canonical current inputs");
   if (artifact.owningTarget !== "//examples/checkout-world/services/fraudcheck:fraudcheck_sources") {
     throw new Error("the topology artifact names an unexpected owning target");
   }
@@ -97,7 +137,7 @@ async function readArtifact(workspaceRoot: string): Promise<{ bytes: Buffer; art
 const defaultDependencies: ProviderDependencies = {
   fingerprint: computeWorkingWorldFingerprint,
   build: runBazel,
-  readArtifact,
+  readArtifact: readBuiltTopologyArtifact,
   now: () => new Date().toISOString(),
 };
 
@@ -353,9 +393,9 @@ export class RealWorkspaceProvider {
       started = true;
       publish("reconciliation.changed", this.snapshotValue);
 
-      await this.dependencies.build(this.workspaceRoot);
+      const build = await this.dependencies.build(this.workspaceRoot);
       if (attempt !== this.currentAttempt) return;
-      const { bytes, artifact } = await this.dependencies.readArtifact(this.workspaceRoot);
+      const { bytes, artifact } = await this.dependencies.readArtifact(this.workspaceRoot, build);
       if (attempt !== this.currentAttempt) return;
       const afterFingerprint = await this.dependencies.fingerprint(this.workspaceRoot);
       if (attempt !== this.currentAttempt) return;

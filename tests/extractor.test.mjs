@@ -25,8 +25,12 @@ function field(number, value) {
   return Buffer.concat([varint(number * 8 + 2), varint(bytes.length), bytes]);
 }
 
-function descriptorSet({ file, packageName, service, method, request, response }) {
-  const methodDescriptor = Buffer.concat([field(1, method), field(2, `.${packageName}.${request}`), field(3, `.${packageName}.${response}`)]);
+function scalarField(number, value) {
+  return Buffer.concat([varint(number * 8), varint(value)]);
+}
+
+function descriptorSet({ file, packageName, service, method, request, response, clientStreaming = false, serverStreaming = false }) {
+  const methodDescriptor = Buffer.concat([field(1, method), field(2, `.${packageName}.${request}`), field(3, `.${packageName}.${response}`), ...(clientStreaming ? [scalarField(5, 1)] : []), ...(serverStreaming ? [scalarField(6, 1)] : [])]);
   const serviceDescriptor = Buffer.concat([field(1, service), field(2, methodDescriptor)]);
   const fileDescriptor = Buffer.concat([
     field(1, file),
@@ -80,6 +84,8 @@ function args(input, out) {
     "--source", `examples/checkout-world/services/fraudcheck/fraudcheck.ts=${input.implementation}`,
     "--interface-descriptor", `interface:fraud-check.assess=examples/checkout-world/services/fraudcheck/fraudcheck.proto=${input.fraudDescriptor}`,
     "--interface-descriptor", `interface:payments.authorize=examples/checkout-world/services/payments/payments.proto=${input.paymentsDescriptor}`,
+    "--interface-source", `interface:fraud-check.assess=examples/checkout-world/services/fraudcheck/fraudcheck.proto=${input.fraudProto}`,
+    "--interface-source", `interface:payments.authorize=examples/checkout-world/services/payments/payments.proto=${input.paymentsProto}`,
     "--out", out,
   ];
 }
@@ -122,5 +128,11 @@ describe("service topology extractor", () => {
     const input = await inputs();
     await writeFile(input.fraudDescriptor, descriptorSet({ file: "examples/checkout-world/services/fraudcheck/fraudcheck.proto", packageName: "checkout.fraud.v1", service: "FraudCheck", method: "Score", request: "FraudAssessmentRequest", response: "FraudAssessmentDecision" }));
     expect(() => execFileSync(process.execPath, args(input, join(input.root, "drift.json")), { stdio: "pipe" })).toThrow();
+  });
+
+  it("rejects streaming RPCs rather than presenting them as unary contracts", async () => {
+    const input = await inputs();
+    await writeFile(input.fraudDescriptor, descriptorSet({ file: "examples/checkout-world/services/fraudcheck/fraudcheck.proto", packageName: "checkout.fraud.v1", service: "FraudCheck", method: "Assess", request: "FraudAssessmentRequest", response: "FraudAssessmentDecision", serverStreaming: true }));
+    expect(() => execFileSync(process.execPath, args(input, join(input.root, "streaming.json")), { stdio: "pipe" })).toThrow();
   });
 });
