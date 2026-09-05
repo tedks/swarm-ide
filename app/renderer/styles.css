@@ -15,7 +15,8 @@
 }
 
 * { box-sizing: border-box; }
-html, body, #root { width: 100%; height: 100%; margin: 0; overflow: auto; }
+html { width: 100%; height: 100%; margin: 0; overflow: auto; }
+body, #root { width: 100%; height: 100%; margin: 0; overflow: visible; }
 button, input { font: inherit; }
 button { color: inherit; }
 
@@ -58,9 +59,9 @@ kbd { border: 1px solid #314344; border-radius: 4px; padding: 2px 5px; backgroun
 .command-trigger { margin: 0 12px; height: 30px; min-width: 0; display: flex; align-items: center; justify-content: space-between; gap: 16px; border: 1px solid #263738; border-radius: 6px; background: #0c1718; color: #667d7a; padding: 0 8px 0 12px; text-align: left; font-size: 11px; }
 .zoom-control { height: 28px; display: grid; grid-template-columns: 24px 45px 24px; align-items: stretch; border: 1px solid #263738; border-radius: 5px; background: #0c1718; overflow: hidden; -webkit-app-region: no-drag; }
 .zoom-control button { min-width: 0; padding: 0; border: 0; background: transparent; color: #819793; font: 11px "DM Mono", monospace; }
-.zoom-control button:hover:not(:disabled), .zoom-control button:focus-visible { background: #142425; color: #d8e5e1; outline: none; }
+.zoom-control button:hover:not([aria-disabled="true"]), .zoom-control button:focus-visible { background: #142425; color: #d8e5e1; outline: none; }
 .zoom-control button:focus-visible { box-shadow: inset 0 0 0 1px var(--green); }
-.zoom-control button:disabled { color: #3f5350; }
+.zoom-control button[aria-disabled="true"] { color: #3f5350; }
 .zoom-control .zoom-value { border-right: 1px solid #263738; border-left: 1px solid #263738; color: #a8bbb7; font-size: 9px; }
 .global-truth { height: 100%; display: grid; grid-template-columns: auto auto; grid-template-rows: 1fr 1fr; align-content: center; column-gap: 7px; padding: 8px 18px; border-left: 1px solid #213031; font: 500 10px "DM Mono", monospace; text-transform: uppercase; }
 .global-truth i { grid-row: 1 / 3; align-self: center; width: 7px; height: 7px; border-radius: 50%; background: currentColor; box-shadow: 0 0 12px currentColor; }

@@ -81,6 +81,8 @@ describe("interface zoom model", () => {
     expect(zoomShortcut(event({ code: "Minus", key: "_", shiftKey: true }))).toBe("out");
     expect(zoomShortcut(event({ code: "NumpadAdd", key: "+" }))).toBe("in");
     expect(zoomShortcut(event({ code: "Numpad0", key: "Insert" }))).toBeNull();
+    expect(zoomShortcut(event({ code: "BracketRight", key: "+" }))).toBe("in");
+    expect(zoomShortcut(event({ code: "Slash", key: "-" }))).toBe("out");
     expect(zoomShortcut(event({ code: "Digit0", key: ")", shiftKey: true }))).toBeNull();
     expect(zoomShortcut(event({ ctrlKey: false, code: "Equal", key: "=" }))).toBeNull();
     expect(zoomShortcut(event({ altKey: true, code: "Equal", key: "=" }))).toBeNull();
@@ -90,8 +92,9 @@ describe("interface zoom model", () => {
 
 describe("view-shell zoom boundary", () => {
   it("converts an allowed percentage to an Electron zoom factor", () => {
-    const setZoomFactor = vi.fn();
-    expect(applyInterfaceZoom(125, setZoomFactor, () => 1.25)).toEqual({ ok: true, percent: 125 });
+    let factor = 1;
+    const setZoomFactor = vi.fn((next: number) => { factor = next; });
+    expect(applyInterfaceZoom(125, setZoomFactor, () => factor)).toEqual({ ok: true, percent: 125 });
     expect(setZoomFactor).toHaveBeenCalledWith(1.25);
   });
 
@@ -100,23 +103,31 @@ describe("view-shell zoom boundary", () => {
     expect(applyInterfaceZoom(123, setZoomFactor, () => 1.23)).toEqual({
       ok: false,
       message: "The requested interface zoom level is not allowed.",
+      zoomState: "unchanged",
     });
     expect(setZoomFactor).not.toHaveBeenCalled();
 
     expect(applyInterfaceZoom(125, () => { throw new Error("renderer gone"); }, () => 1)).toEqual({
       ok: false,
-      message: "Electron could not apply the interface zoom level.",
+      message: "Electron could not verify or restore the interface zoom level.",
+      zoomState: "unknown",
     });
-    expect(applyInterfaceZoom(125, vi.fn(), () => 1.1)).toEqual({
+    const factors = [1, 1.1, 1];
+    const rollback = vi.fn();
+    expect(applyInterfaceZoom(125, rollback, () => factors.shift() ?? 1)).toEqual({
       ok: false,
-      message: "Electron did not confirm the requested interface zoom level.",
+      message: "Electron rejected the requested interface zoom level; the previous level was restored.",
+      zoomState: "unchanged",
     });
+    expect(rollback).toHaveBeenNthCalledWith(1, 1.25);
+    expect(rollback).toHaveBeenNthCalledWith(2, 1);
   });
 
   it("runtime-validates responses crossing the preload bridge", () => {
     expect(parseViewShellResult({ ok: true, percent: 125 })).toEqual({ ok: true, percent: 125 });
-    expect(parseViewShellResult({ ok: false, message: "no window" })).toEqual({ ok: false, message: "no window" });
+    expect(parseViewShellResult({ ok: false, message: "no window", zoomState: "unknown" })).toEqual({ ok: false, message: "no window", zoomState: "unknown" });
     expect(() => parseViewShellResult({ ok: true, percent: 123 })).toThrow(/invalid response/);
-    expect(() => parseViewShellResult({ ok: false, message: 9 })).toThrow(/invalid response/);
+    expect(() => parseViewShellResult({ ok: false, message: 9, zoomState: "unchanged" })).toThrow(/invalid response/);
+    expect(() => parseViewShellResult({ ok: false, message: "no", zoomState: "maybe" })).toThrow(/invalid response/);
   });
 });

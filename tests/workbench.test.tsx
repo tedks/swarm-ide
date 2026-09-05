@@ -39,9 +39,9 @@ function installViewBridge(result?: (percent: number) => ViewShellResult): ViewS
   const implementation: (percent: number) => ViewShellResult = result ?? ((percent): ViewShellResult =>
     isInterfaceZoomPercent(percent)
       ? { ok: true, percent }
-      : { ok: false, message: "not allowed" });
+      : { ok: false, message: "not allowed", zoomState: "unchanged" });
   const bridge: ViewShellBridge = {
-    setZoomPercent: vi.fn(async (percent) => implementation(percent)),
+    setZoomPercent: vi.fn(async (percent: number) => implementation(percent)),
   };
   Object.defineProperty(window, "swarmView", { configurable: true, value: bridge });
   return bridge;
@@ -112,12 +112,13 @@ describe("workbench shell", () => {
     window.localStorage.setItem(INTERFACE_ZOOM_STORAGE_KEY, "125%");
     installCoreBridge();
     installViewBridge((percent) => percent === 125
-      ? { ok: false, message: "Zoom renderer is unavailable." }
+      ? { ok: false, message: "Zoom renderer is unavailable.", zoomState: "unchanged" }
       : { ok: true, percent: 100 });
-    render(<App />);
+    render(<StrictMode><App /></StrictMode>);
 
     expect(await screen.findByText("Saved zoom was invalid and was reset to 100%.")).toBeTruthy();
     expect(window.localStorage.getItem(INTERFACE_ZOOM_STORAGE_KEY)).toBeNull();
+    await screen.findByRole("button", { name: /Current zoom 100%/ });
     fireEvent.click(screen.getByRole("button", { name: "Zoom in" }));
     expect(await screen.findByText("Zoom renderer is unavailable.")).toBeTruthy();
     expect(screen.getByRole("button", { name: /Current zoom 100%/ })).toBeTruthy();
@@ -129,7 +130,7 @@ describe("workbench shell", () => {
     render(<App />);
     expect(await screen.findByText("Checkout hardening")).toBeTruthy();
     expect(screen.getByText("Interface zoom is unavailable outside the swarm-ide Electron shell.")).toBeTruthy();
-    expect(screen.getByRole("button", { name: /Current zoom pending/ })).toBeTruthy();
+    expect(screen.getByRole("button", { name: /Current zoom unknown/ })).toBeTruthy();
   });
 
   it("handles Ctrl zoom while preserving editable focus and ignores plain text keys", async () => {
@@ -154,5 +155,43 @@ describe("workbench shell", () => {
     expect(fireEvent.keyDown(input, { key: "0", code: "Digit0", ctrlKey: true })).toBe(false);
     expect(await screen.findByRole("button", { name: /Current zoom 100%/ })).toBeTruthy();
     expect(document.activeElement).toBe(input);
+  });
+
+  it("coalesces rapid repeated shortcuts to the latest requested level", async () => {
+    installCoreBridge();
+    const resolvers: Array<(result: ViewShellResult) => void> = [];
+    const setZoomPercent = vi.fn((_percent: number) => new Promise<ViewShellResult>((resolve) => resolvers.push(resolve)));
+    Object.defineProperty(window, "swarmView", {
+      configurable: true,
+      value: { setZoomPercent } satisfies ViewShellBridge,
+    });
+    render(<App />);
+    await waitFor(() => expect(setZoomPercent).toHaveBeenCalledWith(100));
+
+    fireEvent.keyDown(window, { key: "+", code: "Equal", ctrlKey: true, shiftKey: true });
+    fireEvent.keyDown(window, { key: "+", code: "Equal", ctrlKey: true, shiftKey: true, repeat: true });
+    resolvers.shift()?.({ ok: true, percent: 100 });
+    await waitFor(() => expect(setZoomPercent).toHaveBeenLastCalledWith(150));
+    expect(setZoomPercent).toHaveBeenCalledTimes(2);
+    resolvers.shift()?.({ ok: true, percent: 150 });
+    expect(await screen.findByRole("button", { name: /Current zoom 150%/ })).toBeTruthy();
+  });
+
+  it("keeps zoom controls focusable while applying and recovers from an unknown initial state", async () => {
+    installCoreBridge();
+    const bridge = installViewBridge(() => ({
+      ok: false,
+      message: "Applied zoom could not be verified.",
+      zoomState: "unknown",
+    }));
+    render(<App />);
+    expect(await screen.findByRole("button", { name: /Current zoom unknown/ })).toBeTruthy();
+
+    const zoomInButton = screen.getByRole("button", { name: "Zoom in" });
+    zoomInButton.focus();
+    fireEvent.click(zoomInButton);
+    await waitFor(() => expect(bridge.setZoomPercent).toHaveBeenLastCalledWith(125));
+    expect(document.activeElement).toBe(zoomInButton);
+    expect(zoomInButton.hasAttribute("disabled")).toBe(false);
   });
 });

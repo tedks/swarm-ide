@@ -73,7 +73,7 @@ export function stepZoom(
   direction: "in" | "out",
 ): InterfaceZoomPercent {
   if (direction === "in") {
-    return INTERFACE_ZOOM_LEVELS.find((level) => level > current) ?? INTERFACE_ZOOM_LEVELS.at(-1)!;
+    return INTERFACE_ZOOM_LEVELS.find((level) => level > current) ?? INTERFACE_ZOOM_LEVELS[INTERFACE_ZOOM_LEVELS.length - 1];
   }
   return [...INTERFACE_ZOOM_LEVELS].reverse().find((level) => level < current) ?? INTERFACE_ZOOM_LEVELS[0];
 }
@@ -81,8 +81,10 @@ export function stepZoom(
 export function zoomShortcut(event: Pick<KeyboardEvent, "altKey" | "code" | "ctrlKey" | "key" | "metaKey" | "shiftKey">): ZoomShortcut | null {
   if (!event.ctrlKey || event.altKey || event.metaKey) return null;
 
-  if (!event.shiftKey && (event.code === "Digit0" || (event.code === "Numpad0" && event.key === "0"))) return "reset";
-  if ((event.code === "Equal" && (event.key === "=" || event.key === "+")) || (event.code === "NumpadAdd" && event.key === "+")) return "in";
-  if ((event.code === "Minus" && (event.key === "-" || event.key === "_")) || (event.code === "NumpadSubtract" && event.key === "-")) return "out";
+  if (!event.shiftKey && (event.key === "0" || event.code === "Digit0" || (event.code === "Numpad0" && event.key === "0"))) return "reset";
+  if (event.code === "NumpadAdd") return event.key === "+" ? "in" : null;
+  if (event.code === "NumpadSubtract") return event.key === "-" ? "out" : null;
+  if (event.key === "=" || event.key === "+") return "in";
+  if (event.key === "-" || event.key === "_") return "out";
   return null;
 }

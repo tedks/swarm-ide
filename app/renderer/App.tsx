@@ -7,6 +7,7 @@ import {
   INTERFACE_ZOOM_LEVELS,
   isInterfaceZoomPercent,
   type InterfaceZoomPercent,
+  type ViewShellResult,
 } from "../view-shell";
 import {
   discardStoredZoom,
@@ -38,6 +39,12 @@ function rendererStorage(): Storage | null {
   }
 }
 
+interface ZoomRequest {
+  percent: InterfaceZoomPercent;
+  persist: boolean;
+  notice: string | null;
+}
+
 export function App() {
   const [workspace, setWorkspace] = useState<WorkspaceState>(emptyWorkspaceState);
   const [error, setError] = useState<string | null>(null);
@@ -48,48 +55,76 @@ export function App() {
   const [initialZoom] = useState(() => readStoredZoom(rendererStorage()));
   const [zoomPercent, setZoomPercent] = useState<InterfaceZoomPercent | null>(null);
   const [zoomPending, setZoomPending] = useState(true);
+  const [zoomOperation, setZoomOperation] = useState(0);
   const [zoomNotice, setZoomNotice] = useState<string | null>(initialZoom.notice);
   const zoomPercentRef = useRef<InterfaceZoomPercent | null>(null);
+  const desiredZoomRef = useRef<InterfaceZoomPercent | null>(null);
   const zoomPendingRef = useRef(false);
+  const queuedZoomRef = useRef<ZoomRequest | null>(null);
   const zoomInitializedRef = useRef(false);
   const commandInput = useRef<HTMLInputElement>(null);
 
   const applyZoom = useCallback(async (percent: InterfaceZoomPercent, persist: boolean, notice: string | null = null) => {
+    const request: ZoomRequest = { percent, persist, notice };
+    desiredZoomRef.current = percent;
     const bridge = window.swarmView;
     if (!bridge) {
+      zoomPercentRef.current = null;
+      setZoomPercent(null);
       setZoomPending(false);
       setZoomNotice("Interface zoom is unavailable outside the swarm-ide Electron shell.");
       return false;
     }
-    if (zoomPendingRef.current) return false;
+    if (zoomPendingRef.current) {
+      queuedZoomRef.current = request;
+      return true;
+    }
 
     zoomPendingRef.current = true;
     setZoomPending(true);
-    try {
-      const result = await bridge.setZoomPercent(percent);
+    let activeRequest: ZoomRequest | null = request;
+    let firstRequestSucceeded = false;
+    while (activeRequest) {
+      let result: ViewShellResult;
+      try {
+        result = await bridge.setZoomPercent(activeRequest.percent);
+      } catch {
+        result = {
+          ok: false,
+          message: "The interface zoom bridge failed; the applied zoom level is unknown.",
+          zoomState: "unknown",
+        };
+      }
+
       if (!result.ok) {
+        if (result.zoomState === "unknown") {
+          zoomPercentRef.current = null;
+          setZoomPercent(null);
+        }
         setZoomNotice(result.message);
-        return false;
-      }
-      if (!isInterfaceZoomPercent(result.percent)) {
+      } else if (!isInterfaceZoomPercent(result.percent)) {
+        zoomPercentRef.current = null;
+        setZoomPercent(null);
         setZoomNotice("The interface zoom bridge returned an invalid zoom level.");
-        return false;
+      } else {
+        zoomPercentRef.current = result.percent;
+        setZoomPercent(result.percent);
+        setZoomOperation((operation) => operation + 1);
+        setZoomNotice(activeRequest.persist ? persistZoom(rendererStorage(), result.percent) : activeRequest.notice);
+        if (activeRequest === request) firstRequestSucceeded = true;
       }
-      zoomPercentRef.current = result.percent;
-      setZoomPercent(result.percent);
-      setZoomNotice(persist ? persistZoom(rendererStorage(), result.percent) : notice);
-      return true;
-    } catch {
-      setZoomNotice("The interface zoom bridge failed; the previous zoom level is still active.");
-      return false;
-    } finally {
-      zoomPendingRef.current = false;
-      setZoomPending(false);
+
+      activeRequest = queuedZoomRef.current;
+      queuedZoomRef.current = null;
     }
+    desiredZoomRef.current = zoomPercentRef.current;
+    zoomPendingRef.current = false;
+    setZoomPending(false);
+    return firstRequestSucceeded;
   }, []);
 
-  const zoomIn = useCallback(() => applyZoom(stepZoom(zoomPercentRef.current ?? DEFAULT_INTERFACE_ZOOM, "in"), true), [applyZoom]);
-  const zoomOut = useCallback(() => applyZoom(stepZoom(zoomPercentRef.current ?? DEFAULT_INTERFACE_ZOOM, "out"), true), [applyZoom]);
+  const zoomIn = useCallback(() => applyZoom(stepZoom(desiredZoomRef.current ?? zoomPercentRef.current ?? DEFAULT_INTERFACE_ZOOM, "in"), true), [applyZoom]);
+  const zoomOut = useCallback(() => applyZoom(stepZoom(desiredZoomRef.current ?? zoomPercentRef.current ?? DEFAULT_INTERFACE_ZOOM, "out"), true), [applyZoom]);
   const resetZoom = useCallback(() => applyZoom(DEFAULT_INTERFACE_ZOOM, true), [applyZoom]);
 
   useEffect(() => {
@@ -128,7 +163,6 @@ export function App() {
     const listener = (event: KeyboardEvent) => {
       const zoomAction = zoomShortcut(event);
       if (zoomAction && window.swarmView) {
-        if (event.repeat) return;
         event.preventDefault();
         if (zoomAction === "in") void zoomIn();
         if (zoomAction === "out") void zoomOut();
@@ -168,7 +202,11 @@ export function App() {
 
   const snapshot = workspace.snapshot;
   const title = snapshot ? statusLabel(snapshot.reconciliation.status) : "Loading";
-  const zoomTitle = zoomPercent === null ? "Zoom pending" : `Zoom ${zoomPercent}%`;
+  const zoomTitle = zoomPending
+    ? "Zoom applying"
+    : zoomPercent === null
+      ? "Zoom unknown"
+      : `Zoom ${zoomPercent}%@${zoomOperation}`;
   useEffect(() => {
     const focus = snapshot ? ` — ${focusLabel(snapshot.focus)}` : "";
     const revision = snapshot ? ` — ${snapshot.revisions.working.id}` : "";
@@ -206,10 +244,10 @@ export function App() {
           {lensTabs.map((lens) => <button key={lens} className={activeLens === lens ? "active" : ""} onClick={() => setActiveLens(lens)}>{lens}</button>)}
         </nav>
         <button className="command-trigger" onClick={() => setPaletteOpen(true)}><span>Search, navigate, direct…</span><kbd>Ctrl K</kbd></button>
-        <div className="zoom-control" role="group" aria-label="Interface zoom">
-          <button aria-label="Zoom out" title="Zoom out (Ctrl+-)" disabled={zoomPending || zoomPercent === null || zoomPercent === INTERFACE_ZOOM_LEVELS[0]} onClick={() => void zoomOut()}>−</button>
-          <button className="zoom-value" aria-label={zoomPercent === null ? "Reset zoom to 100%. Current zoom pending" : `Reset zoom to 100%. Current zoom ${zoomPercent}%`} title="Reset zoom (Ctrl+0)" disabled={zoomPending} onClick={() => void resetZoom()}>{zoomPercent === null ? "—" : `${zoomPercent}%`}</button>
-          <button aria-label="Zoom in" title="Zoom in (Ctrl+=)" disabled={zoomPending || zoomPercent === null || zoomPercent === INTERFACE_ZOOM_LEVELS.at(-1)} onClick={() => void zoomIn()}>+</button>
+        <div className="zoom-control" role="group" aria-label="Interface zoom" aria-busy={zoomPending}>
+          <button aria-label="Zoom out" title="Zoom out (Ctrl+-)" aria-disabled={zoomPercent === INTERFACE_ZOOM_LEVELS[0]} onClick={() => { if (zoomPercent !== INTERFACE_ZOOM_LEVELS[0]) void zoomOut(); }}>−</button>
+          <button className="zoom-value" aria-label={zoomPercent === null ? "Reset zoom to 100%. Current zoom unknown" : `Reset zoom to 100%. Current zoom ${zoomPercent}%`} title="Reset zoom (Ctrl+0)" onClick={() => void resetZoom()}>{zoomPercent === null ? "—" : `${zoomPercent}%`}</button>
+          <button aria-label="Zoom in" title="Zoom in (Ctrl+=)" aria-disabled={zoomPercent === INTERFACE_ZOOM_LEVELS[INTERFACE_ZOOM_LEVELS.length - 1]} onClick={() => { if (zoomPercent !== INTERFACE_ZOOM_LEVELS[INTERFACE_ZOOM_LEVELS.length - 1]) void zoomIn(); }}>+</button>
         </div>
         <div className={`global-truth status-${snapshot.reconciliation.status}`}><i />{title}<small>epoch {snapshot.reconciliation.epoch}</small></div>
       </header>

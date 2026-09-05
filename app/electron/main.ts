@@ -213,20 +213,23 @@ ipcMain.handle(REQUEST_CHANNEL, (event, input: unknown) => {
 ipcMain.handle(VIEW_SHELL_ZOOM_CHANNEL, (event, percent: unknown): ViewShellResult => {
   const senderFrame = event.senderFrame;
   if (!senderFrame || !isAllowedRendererUrl(senderFrame.url) || senderFrame !== mainWindow?.webContents.mainFrame) {
-    return { ok: false, message: "Interface zoom was requested by an untrusted renderer." };
+    return { ok: false, message: "Interface zoom was interrupted by a renderer navigation.", zoomState: "unchanged" };
   }
   if (typeof percent !== "number") {
-    return { ok: false, message: "The requested interface zoom level is not allowed." };
+    return { ok: false, message: "The requested interface zoom level is not allowed.", zoomState: "unchanged" };
   }
   return applyInterfaceZoom(
     percent,
+    // Electron stores host zoom independently of the renderer-local preference
+    // (and localhost ports share that host state). Each window therefore
+    // reasserts its own confirmed preference after load.
     (factor) => event.sender.setZoomFactor(factor),
     () => event.sender.getZoomFactor(),
   );
 });
 
 void app.whenReady().then(() => {
-  Menu.setApplicationMenu(Menu.buildFromTemplate(applicationMenuTemplate));
+  Menu.setApplicationMenu(Menu.buildFromTemplate(applicationMenuTemplate()));
   startCore();
   createWindow();
   app.on("activate", () => {

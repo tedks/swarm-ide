@@ -68,26 +68,78 @@ activate_window() {
   return 1
 }
 
+zoom_revision() {
+  sed -n 's/.*Zoom [0-9][0-9]*%@\([0-9][0-9]*\).*/\1/p' <<<"$1"
+}
+
+zoom_percent() {
+  sed -n 's/.*Zoom \([0-9][0-9]*\)%@[0-9][0-9]*.*/\1/p' <<<"$1"
+}
+
+wait_for_zoom_ready() {
+  local title=""
+  for _ in $(seq 1 100); do
+    title=$(xdotool getwindowname "$window_id")
+    if [[ "$title" != *"Zoom applying"* && -n "$(zoom_revision "$title")" ]]; then return 0; fi
+    sleep 0.04
+  done
+  echo "zoom did not reach a confirmed state: $title" >&2
+  return 1
+}
+
+apply_zoom_shortcut() {
+  local chord="$1"
+  local expected="$2"
+  local before=""
+  local after=""
+  local title=""
+  activate_window
+  wait_for_zoom_ready
+  title=$(xdotool getwindowname "$window_id")
+  before=$(zoom_revision "$title")
+  xdotool key --clearmodifiers "$chord"
+  for _ in $(seq 1 100); do
+    title=$(xdotool getwindowname "$window_id")
+    after=$(zoom_revision "$title")
+    if [[ "$title" == *"Zoom ${expected}%@"* && -n "$after" ]] && (( after > before )); then return 0; fi
+    sleep 0.04
+  done
+  echo "zoom chord '$chord' did not confirm ${expected}% after revision $before: $title" >&2
+  return 1
+}
+
+original_zoom=""
 restore_window() {
-  if [[ -n "${window_id:-}" ]] && xdotool getwindowname "$window_id" >/dev/null 2>&1; then
-    wmctrl -i -a "$window_id" >/dev/null 2>&1 || true
-    xdotool key --clearmodifiers Escape >/dev/null 2>&1 || true
-    xdotool key --clearmodifiers ctrl+0 >/dev/null 2>&1 || true
-  fi
+  [[ -n "${window_id:-}" && -n "${original_zoom:-}" ]] || return 0
+  xdotool getwindowname "$window_id" >/dev/null 2>&1 || return 0
+  set +e
+  activate_window >/dev/null 2>&1 || return 0
+  xdotool key --clearmodifiers Escape >/dev/null 2>&1
+  apply_zoom_shortcut ctrl+0 100 >/dev/null 2>&1
+  case "$original_zoom" in
+    80) apply_zoom_shortcut ctrl+minus 90 >/dev/null 2>&1; apply_zoom_shortcut ctrl+minus 80 >/dev/null 2>&1 ;;
+    90) apply_zoom_shortcut ctrl+minus 90 >/dev/null 2>&1 ;;
+    100) ;;
+    125) apply_zoom_shortcut ctrl+equal 125 >/dev/null 2>&1 ;;
+    150) apply_zoom_shortcut ctrl+equal 125 >/dev/null 2>&1; apply_zoom_shortcut ctrl+equal 150 >/dev/null 2>&1 ;;
+    160) apply_zoom_shortcut ctrl+equal 125 >/dev/null 2>&1; apply_zoom_shortcut ctrl+equal 150 >/dev/null 2>&1; apply_zoom_shortcut ctrl+equal 160 >/dev/null 2>&1 ;;
+  esac
+  return 0
 }
 trap restore_window EXIT
 
 capture_window() {
   local destination="$1"
   activate_window
-  sleep 0.08
+  sleep 0.2
   import -window "$window_id" "$destination"
 }
 
 activate_window
+wait_for_zoom_ready
+original_zoom=$(zoom_percent "$(xdotool getwindowname "$window_id")")
 xdotool key --clearmodifiers Escape
-xdotool key --clearmodifiers ctrl+0
-wait_for_title "Zoom 100%"
+apply_zoom_shortcut ctrl+0 100
 capture_window "$artifact_dir/zoom-100.png"
 
 # An editable command field keeps its focus and content while Ctrl+= performs
@@ -96,8 +148,7 @@ xdotool key --clearmodifiers ctrl+k
 wait_for_title "Palette open"
 xdotool type --clearmodifiers --delay 4 'focus remains'
 capture_window "$artifact_dir/zoom-100-focused.png"
-xdotool key --clearmodifiers ctrl+equal
-wait_for_title "Zoom 125%"
+apply_zoom_shortcut ctrl+equal 125
 wait_for_title "Palette open"
 capture_window "$artifact_dir/zoom-125-focused.png"
 xdotool type --clearmodifiers --delay 20 ' editable'
@@ -108,29 +159,24 @@ capture_window "$artifact_dir/zoom-125-focus-retained.png"
 # satisfying the zoom assertion.
 xdotool key --clearmodifiers ctrl+r
 wait_for_title "Palette open" absent
-wait_for_title "Zoom 125%"
+wait_for_zoom_ready
+wait_for_title "Zoom 125%@"
 capture_window "$artifact_dir/zoom-125-reloaded.png"
 
-# Exercise both shifted plus and minus through every bound. Repeated presses at
-# the endpoints prove no hidden native menu accelerator can escape the ladder.
-xdotool key --clearmodifiers ctrl+shift+equal
-wait_for_title "Zoom 150%"
-xdotool key --clearmodifiers ctrl+shift+equal
-wait_for_title "Zoom 160%"
-for _ in $(seq 1 4); do xdotool key --clearmodifiers ctrl+shift+equal; done
-wait_for_title "Zoom 160%"
+# Exercise shifted plus and minus through every bound. Every chord, including
+# endpoint presses, must advance the main-process read-back acknowledgment.
+apply_zoom_shortcut ctrl+shift+equal 150
+apply_zoom_shortcut ctrl+shift+equal 160
+for _ in $(seq 1 4); do apply_zoom_shortcut ctrl+shift+equal 160; done
 capture_window "$artifact_dir/zoom-160-bound.png"
 
 for expected in 150 125 100 90 80; do
-  xdotool key --clearmodifiers ctrl+minus
-  wait_for_title "Zoom ${expected}%"
+  apply_zoom_shortcut ctrl+minus "$expected"
 done
-for _ in $(seq 1 4); do xdotool key --clearmodifiers ctrl+minus; done
-wait_for_title "Zoom 80%"
+for _ in $(seq 1 4); do apply_zoom_shortcut ctrl+minus 80; done
 capture_window "$artifact_dir/zoom-80-bound.png"
 
-xdotool key --clearmodifiers ctrl+0
-wait_for_title "Zoom 100%"
+apply_zoom_shortcut ctrl+0 100
 capture_window "$artifact_dir/zoom-reset.png"
 
 pixel_difference() {
