@@ -199,7 +199,10 @@ export function App() {
     if (latestEvent && event.sequence <= latestEvent.sequence) return;
     fileEventsRef.current.set(event.path, event);
     const before = fileTabsRef.current.find((tab) => tab.path === event.path);
-    if (!before || event.revision === before.revision) return;
+    // Initial open owns reads while the tab is loading. Recording the newest
+    // event is enough; openFile will observe it and retry without launching a
+    // duplicate read that could race its result.
+    if (!before || before.status === "loading" || event.revision === before.revision) return;
     if (before.status === "dirty" || before.status === "saving" || before.status === "conflict") {
       setFileTabs((tabs) => tabs.map((tab) => tab.path === event.path ? { ...tab, status: "conflict", message: "The working file changed; your local buffer is preserved." } : tab));
       return;
@@ -211,7 +214,14 @@ export function App() {
     const openGeneration = openGenerationsRef.current.get(event.path);
     const response = await invoke({ type: "file.read", requestId: requestId(), protocolVersion: PROTOCOL_VERSION, path: event.path });
     if (openGenerationsRef.current.get(event.path) !== openGeneration || !desiredFilesRef.current.has(event.path)) return;
-    if (!response?.ok || !response.file || response.file.kind !== "read") return;
+    if (!response?.ok || !response.file || response.file.kind !== "read") {
+      if (fileEventsRef.current.get(event.path)?.sequence === event.sequence) {
+        setFileTabs((tabs) => tabs.map((tab) => tab.path === event.path && tab.revision !== event.revision
+          ? { ...tab, status: "error", message: "The newest observed source revision could not be opened." }
+          : tab));
+      }
+      return;
+    }
     if (fileEventsRef.current.get(event.path)?.sequence !== event.sequence || response.file.revision !== event.revision) return;
     const incoming = response.file;
     setFileTabs((tabs) => tabs.map((tab) => {
@@ -269,29 +279,33 @@ export function App() {
       setFileTabs((tabs) => tabs.map((tab) => tab.path === path ? { ...tab, status: "error", message: watchResponse?.ok ? "Source observation was cancelled." : "The source file could not be observed." } : tab));
       return;
     }
-    const eventBeforeRead = fileEventsRef.current.get(path)?.sequence ?? 0;
-    const response = await invoke({ type: "file.read", requestId: requestId(), protocolVersion: PROTOCOL_VERSION, path });
-    if (openGenerationsRef.current.get(path) !== generation || !desiredFilesRef.current.has(path)) return;
-    if (!response?.ok || !response.file || response.file.kind !== "read") {
-      setFileTabs((tabs) => tabs.map((tab) => tab.path === path ? { ...tab, status: "error", message: "The source file could not be opened." } : tab));
-      return;
-    }
-    const file = response.file;
-    const eventAfterRead = fileEventsRef.current.get(path);
-    if (eventAfterRead && eventAfterRead.sequence > eventBeforeRead && eventAfterRead.revision !== file.revision) {
-      const observedResponse = await invoke({ type: "file.read", requestId: requestId(), protocolVersion: PROTOCOL_VERSION, path });
+    let eventSequenceBeforeRead = fileEventsRef.current.get(path)?.sequence ?? 0;
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      const response = await invoke({ type: "file.read", requestId: requestId(), protocolVersion: PROTOCOL_VERSION, path });
       if (openGenerationsRef.current.get(path) !== generation || !desiredFilesRef.current.has(path)) return;
-      const latestEvent = fileEventsRef.current.get(path);
-      if (!observedResponse?.ok || !observedResponse.file || observedResponse.file.kind !== "read") {
-        setFileTabs((tabs) => tabs.map((tab) => tab.path === path ? { ...tab, status: "error", message: "The newest observed source revision could not be opened." } : tab));
+      const eventAfterRead = fileEventsRef.current.get(path);
+      const superseded = eventAfterRead && eventAfterRead.sequence > eventSequenceBeforeRead;
+      if (!response?.ok || !response.file || response.file.kind !== "read") {
+        if (superseded && attempt < 2) {
+          eventSequenceBeforeRead = eventAfterRead.sequence;
+          continue;
+        }
+        setFileTabs((tabs) => tabs.map((tab) => tab.path === path ? { ...tab, status: "error", message: "The source file could not be opened." } : tab));
         return;
       }
-      if (latestEvent?.sequence !== eventAfterRead.sequence || observedResponse.file.revision !== eventAfterRead.revision) return;
-      const observed = observedResponse.file;
-      setFileTabs((tabs) => tabs.map((tab) => tab.path === path ? { ...tab, content: observed.content, savedContent: observed.content, revision: observed.revision, status: "saved", message: "Watching the newest working file revision", flash: null } : tab));
+      const file = response.file;
+      if (superseded && eventAfterRead.revision !== file.revision) {
+        eventSequenceBeforeRead = eventAfterRead.sequence;
+        continue;
+      }
+      setFileTabs((tabs) => tabs.map((tab) => tab.path === path ? { ...tab, content: file.content, savedContent: file.content, revision: file.revision, status: "saved", message: "Watching the working file", flash: null } : tab));
       return;
     }
-    setFileTabs((tabs) => tabs.map((tab) => tab.path === path ? { ...tab, content: file.content, savedContent: file.content, revision: file.revision, status: "saved", message: "Watching the working file", flash: null } : tab));
+    if (openGenerationsRef.current.get(path) === generation && desiredFilesRef.current.has(path)) {
+      setFileTabs((tabs) => tabs.map((tab) => tab.path === path
+        ? { ...tab, status: "error", message: "The working file changed too quickly to open a stable revision." }
+        : tab));
+    }
   }, [activateFile, invoke]);
 
   const closeFile = useCallback((path: string) => {
@@ -304,7 +318,11 @@ export function App() {
     openGenerationsRef.current.set(path, (openGenerationsRef.current.get(path) ?? 0) + 1);
     void invoke({ type: "file.unwatch", requestId: requestId(), protocolVersion: PROTOCOL_VERSION, path });
     const remaining = fileTabsRef.current.filter((candidate) => candidate.path !== path);
-    setFileTabs(remaining);
+    // Keep the lifecycle authority current across multiple close gestures in
+    // one React batch, while the functional update composes with any queued
+    // watcher/editor state transition.
+    fileTabsRef.current = remaining;
+    setFileTabs((tabs) => tabs.filter((candidate) => candidate.path !== path));
     if (activeSurface === path) {
       const nextPath = remaining.at(-1)?.path;
       if (nextPath) activateFile(nextPath);
@@ -329,7 +347,9 @@ export function App() {
     const write = response.file;
     setFileTabs((tabs) => tabs.map((candidate) => candidate.path === path ? {
       ...candidate,
-      ...(((fileEventsRef.current.get(path)?.sequence ?? 0) > eventSequenceBeforeSave && fileEventsRef.current.get(path)?.revision !== write.revision)
+      ...(((fileEventsRef.current.get(path)?.sequence ?? 0) > eventSequenceBeforeSave &&
+        fileEventsRef.current.get(path)?.revision !== write.revision &&
+        fileEventsRef.current.get(path)?.revision !== tab.revision)
         ? { status: "conflict" as const, message: "The working file changed while save completed; your local buffer is preserved." }
         : {
           savedContent,

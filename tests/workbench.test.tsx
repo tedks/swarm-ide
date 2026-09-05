@@ -309,6 +309,33 @@ describe("workbench shell", () => {
     expect(screen.getAllByTestId("graph-pane")).toHaveLength(2);
   });
 
+  it("closes multiple clean tabs in one interaction batch without resurrecting either", async () => {
+    const paths = ["services/payments/payments.ts", "services/payments/contract.ts"];
+    const base = initialSnapshot(paymentsFileFocus);
+    const snapshot: WorkspaceSnapshot = {
+      ...base,
+      widgets: [{ id: "source-paths", title: "Implementation sources", kind: "list", priority: 0, value: paths, provenance: base.widgets[0]!.provenance }],
+    };
+    const request = vi.fn(async (input: CoreRequest): Promise<CoreResponse> => input.type === "file.read"
+      ? { protocolVersion: PROTOCOL_VERSION, requestId: input.requestId, ok: true, sequence: 0, snapshot, file: { kind: "read", path: input.path, content: `${input.path}\n`, revision: "a".repeat(64), size: input.path.length + 1 } }
+      : { protocolVersion: PROTOCOL_VERSION, requestId: input.requestId, ok: true, sequence: 0, snapshot });
+    Object.defineProperty(window, "swarm", { configurable: true, value: { request, onEvent: () => () => undefined } });
+    installViewBridge();
+    render(<App />);
+    await screen.findByText("Implementation sources");
+    fireEvent.click(screen.getAllByRole("button", { name: paths[0] })[0]!);
+    fireEvent.click(screen.getAllByRole("button", { name: paths[1] })[0]!);
+    await waitFor(() => expect(screen.getByRole("button", { name: `Close ${paths[0]}` })).toBeTruthy());
+    await waitFor(() => expect(screen.getByRole("button", { name: `Close ${paths[1]}` })).toBeTruthy());
+    act(() => {
+      fireEvent.click(screen.getByRole("button", { name: `Close ${paths[0]}` }));
+      fireEvent.click(screen.getByRole("button", { name: `Close ${paths[1]}` }));
+    });
+    expect(screen.queryByRole("button", { name: `Close ${paths[0]}` })).toBeNull();
+    expect(screen.queryByRole("button", { name: `Close ${paths[1]}` })).toBeNull();
+    expect(screen.getByRole("button", { name: /System graphs/ }).className).toBe("active");
+  });
+
   it("saves with the expected revision and preserves a dirty buffer on external conflict", async () => {
     let listener: ((event: CoreEvent | FileEvent) => void) | undefined;
     const path = "services/payments/payments.ts";
@@ -318,6 +345,7 @@ describe("workbench shell", () => {
       widgets: [{ id: "source-paths", title: "Implementation sources", kind: "list", priority: 0, value: [path], provenance: base.widgets[0]!.provenance }],
     };
     let disk = { content: "one\n", revision: "a".repeat(64) };
+    let writeNumber = 0;
     const requests: CoreRequest[] = [];
     const request = vi.fn(async (input: CoreRequest): Promise<CoreResponse> => {
       requests.push(input);
@@ -326,8 +354,10 @@ describe("workbench shell", () => {
       }
       if (input.type === "file.write") {
         if (input.expectedRevision !== disk.revision) return { protocolVersion: PROTOCOL_VERSION, requestId: input.requestId, ok: false, error: { code: "REVISION_CONFLICT", message: "disk changed" } };
-        disk = { content: input.content, revision: "b".repeat(64) };
-        listener?.({ protocolVersion: PROTOCOL_VERSION, type: "file.changed", sequence: 1, emittedAt: "2026-09-05T12:01:00.000Z", path, revision: disk.revision, change: "modified" });
+        writeNumber += 1;
+        const priorRevision = disk.revision;
+        disk = { content: input.content, revision: (writeNumber === 1 ? "b" : "c").repeat(64) };
+        listener?.({ protocolVersion: PROTOCOL_VERSION, type: "file.changed", sequence: writeNumber, emittedAt: "2026-09-05T12:01:00.000Z", path, revision: writeNumber === 1 ? disk.revision : priorRevision, change: "modified" });
         await new Promise((resolve) => setTimeout(resolve, 0));
         return { protocolVersion: PROTOCOL_VERSION, requestId: input.requestId, ok: true, sequence: 0, snapshot, file: { kind: "write", path, revision: disk.revision, workingFingerprint: "c".repeat(64) } };
       }
@@ -351,9 +381,16 @@ describe("workbench shell", () => {
     await waitFor(() => expect(document.querySelector(".file-saved")).toBeTruthy());
     expect(disk.content).toContain("saved locally");
 
+    act(() => editor.dispatch({ changes: { from: editor.state.doc.length, insert: "saved twice\n" } }));
+    fireEvent.keyDown(editor.contentDOM, { key: "s", code: "KeyS", ctrlKey: true });
+    await waitFor(() => expect(requests.filter((item) => item.type === "file.write")).toHaveLength(2));
+    await waitFor(() => expect(document.querySelector(".file-saved")).toBeTruthy());
+    act(() => listener?.({ protocolVersion: PROTOCOL_VERSION, type: "file.changed", sequence: 3, emittedAt: "2026-09-05T12:01:01.000Z", path, revision: disk.revision, change: "modified" }));
+    expect(document.querySelector(".file-saved")).toBeTruthy();
+
     act(() => editor.dispatch({ changes: { from: editor.state.doc.length, insert: "my unsaved line\n" } }));
     disk = { content: "external replacement\n", revision: "d".repeat(64) };
-    act(() => listener?.({ protocolVersion: PROTOCOL_VERSION, type: "file.changed", sequence: 2, emittedAt: "2026-09-05T12:02:00.000Z", path, revision: disk.revision, change: "modified" }));
+    act(() => listener?.({ protocolVersion: PROTOCOL_VERSION, type: "file.changed", sequence: 4, emittedAt: "2026-09-05T12:02:00.000Z", path, revision: disk.revision, change: "modified" }));
     await waitFor(() => expect(document.querySelector(".file-conflict")).toBeTruthy());
     expect(editor.state.doc.toString()).toContain("my unsaved line");
     act(() => editor.dispatch({ changes: { from: editor.state.doc.length, insert: "still mine\n" } }));
@@ -463,6 +500,46 @@ describe("workbench shell", () => {
     await act(async () => { await Promise.resolve(); });
     expect(document.querySelector(".cm-content")?.textContent).toContain("newest");
     expect(document.querySelector(".cm-content")?.textContent).not.toContain("older");
+  });
+
+  it("lets initial open consume a newer watcher event without duplicate competing reads", async () => {
+    let listener: ((event: CoreEvent | FileEvent) => void) | undefined;
+    const path = "services/fraudcheck/fraudcheck.ts";
+    const base = initialSnapshot(paymentsFileFocus);
+    const snapshot: WorkspaceSnapshot = {
+      ...base,
+      widgets: [{ id: "source-paths", title: "Implementation sources", kind: "list", priority: 0, value: [path], provenance: base.widgets[0]!.provenance }],
+    };
+    let readCount = 0;
+    let releaseInitial!: (response: CoreResponse) => void;
+    const initialRead = new Promise<CoreResponse>((resolve) => { releaseInitial = resolve; });
+    const response = (requestIdValue: string, content: string, revision: string): CoreResponse => ({
+      protocolVersion: PROTOCOL_VERSION,
+      requestId: requestIdValue,
+      ok: true,
+      sequence: 0,
+      snapshot,
+      file: { kind: "read", path, content, revision, size: content.length },
+    });
+    const request = vi.fn(async (input: CoreRequest): Promise<CoreResponse> => {
+      if (input.type === "file.read") {
+        readCount += 1;
+        if (readCount === 1) return initialRead;
+        return response(input.requestId, "newest\n", "b".repeat(64));
+      }
+      return { protocolVersion: PROTOCOL_VERSION, requestId: input.requestId, ok: true, sequence: 0, snapshot };
+    });
+    Object.defineProperty(window, "swarm", { configurable: true, value: { request, onEvent: (next: (event: CoreEvent | FileEvent) => void) => { listener = next; return () => undefined; } } });
+    installViewBridge();
+    render(<App />);
+    await screen.findByText("Implementation sources");
+    fireEvent.click(screen.getAllByRole("button", { name: path })[0]!);
+    await screen.findByText("Loading the canonical working file…");
+    act(() => listener?.({ protocolVersion: PROTOCOL_VERSION, type: "file.changed", sequence: 1, emittedAt: "2026-09-05T12:03:00.000Z", path, revision: "b".repeat(64), change: "modified" }));
+    releaseInitial(response("initial", "initial\n", "a".repeat(64)));
+    await waitFor(() => expect(document.querySelector(".cm-content")?.textContent).toContain("newest"));
+    expect(readCount).toBe(2);
+    expect(document.querySelector(".file-saved")).toBeTruthy();
   });
 
   it("does not let an observed read from a closed tab overwrite its reopened lifecycle", async () => {
