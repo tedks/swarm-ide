@@ -1,0 +1,18 @@
+id: compositor-smoke
+title: Extend desktop verification beyond the local X11 gate
+desc: Add a compositor-backed CI smoke environment and a native Wayland-capable computer-use
+  adapter when a second supported desktop environment warrants the maintenance cost;
+  retain the current explicit X11 manual gate.
+type: task
+component: default
+release:
+reporter: Ted Smith <tedks@riseup.net>
+status: unstarted
+disposition:
+creation_time: 2026-09-05T08:02:57-00:00
+references: []
+log_events:
+- time: 2026-09-05T08:02:57-00:00
+  who: Ted Smith
+  what: created
+  comment: ""
