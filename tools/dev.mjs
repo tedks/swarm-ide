@@ -3,10 +3,12 @@ import { execFileSync, spawn } from "node:child_process";
 import { mkdir, readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { createServer } from "vite";
+import { resolveDevEndpoint } from "./dev-port.mjs";
 
 const workspace = process.cwd();
 const outputRoot = resolve(workspace, ".swarm-dev");
 const electronBinary = process.env.SWARM_ELECTRON_BIN;
+const devEndpoint = resolveDevEndpoint();
 
 if (!electronBinary) {
   throw new Error("SWARM_ELECTRON_BIN is unset; enter through `nix develop`");
@@ -38,7 +40,7 @@ function launchDesktop() {
     cwd: workspace,
     env: {
       ...process.env,
-      SWARM_RENDERER_URL: "http://127.0.0.1:5173",
+      SWARM_RENDERER_URL: devEndpoint.rendererUrl,
     },
     stdio: "inherit",
   });
@@ -119,6 +121,10 @@ for (const build of builds) await build.watch();
 const vite = await createServer({
   configFile: resolve(workspace, "vite.config.mts"),
   clearScreen: false,
+  server: {
+    host: devEndpoint.host,
+    port: devEndpoint.port,
+  },
 });
 await vite.listen();
 vite.printUrls();

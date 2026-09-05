@@ -7,6 +7,7 @@ if [[ -z "$workspace" ]]; then
   workspace=$(cd "$(dirname "$script_path")/.." && pwd)
 fi
 artifact_dir="${SWARM_ARTIFACT_DIR:-$workspace/artifacts/desktop}"
+renderer_url=$(node "$workspace/tools/dev-port.mjs" renderer-url)
 
 if [[ -z "${DISPLAY:-}" ]]; then
   echo "desktop smoke requires an X11 DISPLAY; no display is configured" >&2
@@ -21,12 +22,20 @@ mkdir -p "$artifact_dir"
 
 window_id=""
 for _ in $(seq 1 50); do
-  window_id=$(xdotool search --name '^swarm-ide —' 2>/dev/null | head -n1 || true)
+  for candidate in $(xdotool search --name '^swarm-ide —' 2>/dev/null || true); do
+    candidate_pid=$(xdotool getwindowpid "$candidate" 2>/dev/null || true)
+    if [[ -n "$candidate_pid" ]] &&
+       tr '\0' '\n' <"/proc/$candidate_pid/environ" 2>/dev/null |
+         grep -Fqx -- "SWARM_RENDERER_URL=$renderer_url"; then
+      window_id="$candidate"
+      break
+    fi
+  done
   [[ -n "$window_id" ]] && break
   sleep 0.1
 done
 if [[ -z "$window_id" ]]; then
-  echo "no swarm-ide desktop window found; first run: nix develop --command bazel run //:dev" >&2
+  echo "no swarm-ide desktop window found for $renderer_url; first run with the same SWARM_DEV_PORT: nix develop --command bazel run //:dev" >&2
   exit 3
 fi
 
@@ -124,6 +133,7 @@ fi
 
 echo "desktop smoke passed"
 echo "window_id=$window_id"
+echo "renderer_url=$renderer_url"
 echo "window_title=$(xdotool getwindowname "$window_id")"
 echo "changed_pixels=$changed_pixels"
 echo "artifacts=$artifact_dir"

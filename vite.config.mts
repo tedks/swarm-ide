@@ -1,5 +1,7 @@
 import react from "@vitejs/plugin-react";
-import { defineConfig, type Plugin } from "vite";
+import { defineConfig, type Plugin, type ResolvedConfig } from "vite";
+
+const DEV_WEBSOCKET_ORIGIN = "__SWARM_DEV_WEBSOCKET_ORIGIN__";
 
 function hmrTimingProbe(): Plugin {
   return {
@@ -15,13 +17,31 @@ function hmrTimingProbe(): Plugin {
   };
 }
 
+function contentSecurityPolicy(): Plugin {
+  let config: ResolvedConfig;
+  return {
+    name: "swarm-content-security-policy",
+    configResolved(resolvedConfig) {
+      config = resolvedConfig;
+    },
+    transformIndexHtml(html) {
+      const webSocketOrigin =
+        config.command === "serve"
+          ? ` ws://${String(config.server.host)}:${config.server.port}`
+          : "";
+      if (!html.includes(DEV_WEBSOCKET_ORIGIN)) {
+        throw new Error("index.html is missing the development WebSocket CSP placeholder");
+      }
+      return html.replace(DEV_WEBSOCKET_ORIGIN, webSocketOrigin);
+    },
+  };
+}
+
 export default defineConfig({
-  plugins: [react(), hmrTimingProbe()],
+  plugins: [react(), hmrTimingProbe(), contentSecurityPolicy()],
   server: {
-    host: "127.0.0.1",
     allowedHosts: ["127.0.0.1"],
     cors: false,
-    port: 5173,
     strictPort: true,
     watch: {
       ignored: ["**/bazel-*/**", "**/dist/**", "**/dist-node/**", "**/artifacts/**"],
