@@ -1,0 +1,20 @@
+id: ci-claude-review-auth
+title: Repair Claude review workflow authentication
+desc: The pull-request Claude Code Review workflow fails at OIDC app-token exchange
+  with HTTP 401 because the Claude Code GitHub App is not installed. Decide whether
+  to install/configure the app or disable the ready_for_review workflow so review
+  infrastructure reports honestly. Build-and-test CI and the local three-provider
+  council are unaffected.
+type: bugfix
+component: default
+release:
+reporter: Ted Smith <tedks@riseup.net>
+status: unstarted
+disposition:
+creation_time: 2026-09-05T18:23:55-00:00
+references: []
+log_events:
+- time: 2026-09-05T18:23:55-00:00
+  who: Ted Smith
+  what: created
+  comment: ""
