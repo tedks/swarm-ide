@@ -7,19 +7,20 @@ Enter every supported path through Nix and Bazel from the feature worktree:
     nix develop --command bazel test //...
     nix develop --command bazel run //:dev
 
-Keep the development command running. In another terminal, exercise the actual
-desktop window:
+The development target is the interactive loop. Visual verification is
+self-contained and does not drive that window:
 
     nix develop --command bazel run //tools:desktop-smoke
+    nix develop --command bazel run //tools:desktop-zoom-smoke
     nix develop --command bazel run //tools:measure-hmr
 
-The loop uses `SWARM_DEV_PORT`, defaulting to `5173`. Set the same explicit value
-on the long-running process and both verification commands when that port is
-occupied, for example:
+The interactive loop uses `SWARM_DEV_PORT`, defaulting to `5173`. Set it on the
+long-running process when that port is occupied. Automated scenarios use the
+separate `SWARM_VIRTUAL_DESKTOP_PORT`, defaulting to `55174`, because each
+scenario launches and owns its own app:
 
     SWARM_DEV_PORT=55173 nix develop --command bazel run //:dev
-    SWARM_DEV_PORT=55173 nix develop --command bazel run //tools:desktop-smoke
-    SWARM_DEV_PORT=55173 nix develop --command bazel run //tools:measure-hmr
+    SWARM_VIRTUAL_DESKTOP_PORT=55174 nix develop --command bazel run //tools:desktop-smoke
 
 The value is accepted only as decimal digits in the TCP-port range `1..65535`.
 An empty, malformed, out-of-range, or already-bound value stops with a clear
@@ -27,16 +28,26 @@ error. The launcher resolves the endpoint once for Vite and Electron; the smoke
 and HMR commands then select the window running that exact renderer URL instead
 of whichever Swarm IDE window happens to appear first.
 
-The desktop smoke driver uses `wmctrl`, `xdotool`, and ImageMagick from the Nix
-shell. It resolves the Electron window by ID even when it is on another
-workspace, activates that exact window before each capture, uses `Ctrl-K`, types
-a fixture reset, clicks the reconciliation command, asserts palette and exact
-yellow/green revision transitions, and compares before/after screenshots.
-Screenshots read only the selected X
-window resource; they never capture the root desktop. Artifacts are written
-under ignored `artifacts/desktop/`.
+The supervisor creates a mode-0700 runtime directory, a private Xauthority
+cookie, an atomic nonzero-display lock, an Xvfb server, and one Openbox desktop.
+It starts Xvfb, the window manager, the app, and the scenario in separate POSIX
+process sessions and records PID start times. Every GUI command receives the
+owned `DISPLAY` and `XAUTHORITY` explicitly. Cleanup signals only members of
+those recorded sessions, checks for PID reuse, removes only its token-matched
+display lock, and is bounded and idempotent.
 
-The HMR probe makes a reversible hue edit to `app/renderer/hmr-probe.css`, polls
+The shared driver accepts one window only when its title shape, exact inert
+renderer marker, X11 PID, and launched app session all agree. It rejects zero,
+missing, mismatched, dead, ambiguous, or recycled identities before every
+activation, input, geometry query, wait, or screenshot. Wrong-title and
+same-title/wrong-process windows cannot win by ordering. Screenshots read only
+that accepted virtual window resource and never the virtual root or the
+developer desktop. Local artifacts are written under ignored
+`artifacts/<scenario>/<run>/`; a Bazel test writes the same evidence through
+`TEST_UNDECLARED_OUTPUTS_DIR`.
+
+The HMR probe makes a supervisor-restored hue edit to
+`app/renderer/hmr-probe.css`, polls
 a dedicated 48×48 screen region inside the selected Electron window, watches for
 an exact HMR generation increment in the title, and restores the file. On
 2026-09-05 on the prototype X11 workstation, a warm sample observed the changed
@@ -45,12 +56,8 @@ event to the renderer's second animation frame; 1,478 pixels changed in the
 anti-aliased probe crop. This is a single observed sample, not a latency
 guarantee.
 
-The current driver is explicitly X11-first. With no `DISPLAY` it exits with a
-diagnostic. On a Wayland session it exits unless `SWARM_ALLOW_XWAYLAND=1` is set,
-because window enumeration and synthetic input then rely on compositor-specific
-XWayland behavior. A later native Wayland driver can replace these scripts
-without changing the application protocol or smoke scenario.
-
-The desktop targets are manual local gates, not CI substitutes. CI exercises the
-contracts and production bundle; a compositor-backed CI job is deferred until a
-real second desktop environment justifies maintaining it.
+The current driver is intentionally virtual-X11-first. It refuses display zero
+or any display not backed by its private ownership record and live Xvfb PID;
+Wayland versus X11 on the host is irrelevant. CI runs the topology/source smoke
+as `//tools:virtual-desktop-smoke-test` without a logged-in desktop and uploads
+its undeclared-output archive even on failure.

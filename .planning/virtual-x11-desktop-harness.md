@@ -15,9 +15,9 @@ The visible proof is a reported artifact directory containing the virtual deskto
 - [x] (2026-09-05 21:36Z) Verified clean synchronized master at merge `8176e758d4e92a724e9d802d835fa28cbc9afd44`, created `feature/virtual-x11-desktop-harness` in `/home/tedks/Projects/swarm-ide/virtual-x11-desktop-harness`, and started Ditz issues `desktop-x11-driver` and `virtual-x11-desktop-smoke`.
 - [x] (2026-09-05 21:38Z) Inspected the current smoke scripts, Bazel targets, Nix shell, CI workflow, dev launcher, renderer marker, and port resolver; recorded the security and lifecycle model in this plan.
 - [x] (2026-09-05 21:49Z) Implemented and unit-tested the shared owned-display and exact-window driver, including hostile ambient-display, decoy, ambiguity, input/capture failure, token mismatch, dead server, and PID-reuse cases.
-- [ ] Implement and adversarially test the bounded virtual desktop supervisor.
-- [ ] Move topology/source and zoom scenarios onto the shared driver and prove both end to end.
-- [ ] Add Nix dependencies, Bazel entrypoints, CI coverage, artifact publication, and documentation.
+- [x] (2026-09-05 22:00Z) Implemented and adversarially tested the bounded virtual desktop supervisor, including display/port conflicts, missing and crashing dependencies, app exit, scenario failure/timeout, signals, unrelated-process survival, and reuse after teardown.
+- [x] (2026-09-05 22:00Z) Moved topology/source, zoom, and the pre-existing HMR probe onto the shared driver; proved all three end to end under hostile inherited `DISPLAY=:0`, with exact screenshots and clean teardown.
+- [x] (2026-09-05 22:00Z) Added Nix dependencies, Bazel run/test entrypoints, undeclared-output routing, CI coverage/upload, and contributor/development documentation.
 - [ ] Run full uncached Bazel gates, measure runtime/resources, and inspect exact screenshots without touching `DISPLAY=:0`.
 - [ ] Push the PR through council review to fixpoint and green hosted CI, merge normally, synchronize master and Ditz, and clean only feature-owned resources.
 
@@ -28,6 +28,15 @@ The visible proof is a reported artifact directory containing the virtual deskto
 
 - Observation: the existing development launcher supplies a strong inert renderer marker but not an explicit supervisor identity.
   Evidence: `tools/dev.mjs` appends `--swarm-window-marker=http://127.0.0.1:<port>/`; the new supervisor can add process-session membership as an independent ownership proof without changing product code.
+
+- Observation: Electron renderer children can exit between a `ps` session snapshot and `/proc/<pid>` validation during teardown.
+  Evidence: the first real topology run completed every UI assertion but cleanup initially reported two just-vanished renderer PIDs as unsafe. Treating a missing `/proc` entry as already-clean while retaining strict start-time checks for live PIDs made the repeated real run clean.
+
+- Observation: Bazel filters custom shell variables from test actions unless the rule explicitly inherits them, and a `manual` tag excludes even an explicitly named test target.
+  Evidence: the first test-shaped smoke retained `app.log` in `outputs.zip`, showing `SWARM_ELECTRON_BIN is unset`; after declaring `env_inherit`, it passed. Removing `manual` changed the explicit target from “0 test targets” to one passing test.
+
+- Observation: HMR measurement is itself GUI automation and therefore had to enter the virtual gate even though stable-window reload behavior is a later slice.
+  Evidence: the old `tools/measure-hmr.sh` directly inherited `DISPLAY` and duplicated title/PID selection. It is now a scenario under the owned supervisor, and its source edit is restored only when the file equals the expected scenario-produced content.
 
 ## Decision Log
 
@@ -53,6 +62,10 @@ The visible proof is a reported artifact directory containing the virtual deskto
 
 - Decision: Use Bazel undeclared outputs for the test form and a timestamped repository artifact directory for `bazel run`; keep the owned runtime directory ephemeral.
   Rationale: CI retains supported test artifacts, local runs remain easy to inspect, and secrets such as the Xauthority cookie are not preserved after teardown.
+  Date/Author: 2026-09-05 / Codex
+
+- Decision: Put the existing HMR probe behind the same supervisor and shared driver, but make no change to Electron reload behavior.
+  Rationale: retaining an ambient-display automation target would leave the security gate incomplete. Moving the probe is infrastructure work; changing native-window restart semantics remains the explicitly separate next step.
   Date/Author: 2026-09-05 / Codex
 
 ## Outcomes & Retrospective
@@ -136,3 +149,5 @@ The master app on 55173 is outside this plan. Port 5173 is known to belong to an
 Revision note (2026-09-05): Initial executable plan created after inspecting the merged PR #4 baseline. It fixes the ownership, selection, lifecycle, artifact, adversarial-test, and landing decisions before implementation so later discoveries can be compared against an explicit security model.
 
 Revision note (2026-09-05 21:49Z): Marked the shared driver milestone complete after `//tools:x11-driver-test` passed uncached. The implementation rechecks title, PID, marker, process session, X-server start time, and ownership before operations rather than trusting discovery output.
+
+Revision note (2026-09-05 22:00Z): Recorded the completed supervisor, scenario migration, Nix/Bazel/CI wiring, real-run evidence, teardown race resolution, and HMR boundary decision. Full repository gates, hosted review, and landing remain.

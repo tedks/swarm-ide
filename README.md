@@ -10,7 +10,7 @@ The project is private while prototyping and licensed under GNU AGPLv3.
 ## Prerequisites
 
 - Nix with flakes enabled
-- An X11 desktop for the current computer-use smoke loop
+- A Linux host; visual verification creates its own virtual X11 desktop
 
 ## Get started
 
@@ -25,24 +25,30 @@ The development target starts one long-running Electron/Vite session. Renderer
 changes use Vite HMR and do not restart Bazel.
 
 If the default loopback port `5173` is occupied, select one explicit port for
-the development process and its verification commands:
+the long-running development process and HMR work you perform manually:
 
 ```bash
 SWARM_DEV_PORT=55173 nix develop --command bazel run //:dev
-SWARM_DEV_PORT=55173 nix develop --command bazel run //tools:desktop-smoke
-SWARM_DEV_PORT=55173 nix develop --command bazel run //tools:measure-hmr
 ```
 
 `SWARM_DEV_PORT` must be a decimal integer from `1` through `65535`. When it is
 unset, the default remains `5173`; an invalid or unavailable requested port
 fails rather than selecting another port.
 
-Run the real-window verification loop with:
+Run self-contained visual verification with:
 
 ```bash
-nix develop --command bazel run //tools:desktop-smoke
-nix develop --command bazel run //tools:measure-hmr
+SWARM_VIRTUAL_DESKTOP_PORT=55174 nix develop --command bazel run //tools:desktop-smoke
+SWARM_VIRTUAL_DESKTOP_PORT=55174 nix develop --command bazel run //tools:desktop-zoom-smoke
+SWARM_VIRTUAL_DESKTOP_PORT=55174 nix develop --command bazel run //tools:measure-hmr
 ```
+
+Each command creates a private Xauthority file, starts its own Xvfb server and
+Openbox window manager, launches the exact development app inside them, and
+tears down only its recorded process sessions. Inherited `DISPLAY` and
+`XAUTHORITY` values are replaced. Screenshots, logs, timings, ownership records,
+and resource samples are reported under `artifacts/<scenario>/<run>/`; the
+representative Bazel test uses `TEST_UNDECLARED_OUTPUTS_DIR` for CI retention.
 
 The normal cockpit opens the real working tree and leaves service topology
 unobserved until the user runs its fixed Bazel topology build. The checked-in

@@ -43,3 +43,19 @@ jobs:
 
       - name: Test
         run: nix develop --command bazel test //... --test_output=errors
+
+      - name: Virtual desktop smoke
+        env:
+          DISPLAY: ":0"
+          XAUTHORITY: /tmp/hostile-ambient-xauthority
+          SWARM_SOURCE_WORKSPACE: ${{ github.workspace }}
+          SWARM_VIRTUAL_DESKTOP_PORT: "55174"
+        run: nix develop --command bazel test //tools:virtual-desktop-smoke-test --test_output=streamed --nocache_test_results
+
+      - name: Upload virtual desktop evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: virtual-desktop-evidence
+          path: bazel-testlogs/tools/virtual-desktop-smoke-test/test.outputs/**
+          if-no-files-found: warn
