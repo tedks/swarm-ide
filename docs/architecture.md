@@ -38,12 +38,14 @@ event stream; initial responses carry a sequence watermark, while an explicit
 These checks are complementary: malformed data cannot cross the protocol, and
 well-formed but late data cannot replace a newer world.
 
-The core takes the output location from `bazel info bazel-bin`, never from the
-workspace's convenience symlink, and independently recomputes the artifact's
-versioned input digest from the exact canonical manifest, sources, and protobuf
-declarations. A globally ordered Git observer combines file hints with a polling
-fallback, so changes outside open source tabs also revoke green truth. Only the
-newest requested fingerprint result or failure may publish.
+The core takes the output location from the successful target-completion event
+of the exact Bazel build invocation, never from the workspace's convenience
+symlink or a second configuration lookup. It accepts exactly one bounded local
+artifact and independently recomputes its versioned input digest from the exact
+canonical manifest, sources, and protobuf declarations. A globally ordered Git
+observer combines file hints with a non-starving polling fallback, so changes
+outside open source tabs also revoke green truth. Explicit hints supersede older
+computations; periodic ticks wait for an active computation to finish.
 
 ## UI and graph seams
 

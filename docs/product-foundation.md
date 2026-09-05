@@ -26,6 +26,13 @@ The stable project workbench has four regions:
 - contextual instruments on the right;
 - builds, resource use, diffs, and activity along the bottom.
 
+On a wide screen, graph navigation, source/change observation, and contextual
+instruments begin near a 30/30/40 split inside that cockpit. Those are tunable
+defaults rather than fixed partitions. Opening source keeps the same graph
+instances visible as its navigation column; selecting an edge makes its
+direction, endpoints, interface contract, and provenance primary in the
+instrument pane.
+
 Lens tabs change which information is foregrounded without moving these
 regions. `Ctrl-K` is the keyboard-first surface for navigation, commands, and
 directing intelligence. Repo-local configuration will eventually add or refine
@@ -35,24 +42,27 @@ default while broader standard layouts remain selectable.
 ## Reconciliation
 
 Green means a derived projection was computed from the exact working-source
-fingerprint shown in the UI. Yellow means source or work changed and derived
-jobs are running. Red means a job failed. Yellow and red retain the last green
+fingerprint shown in the UI. Yellow means source changed and derived work is
+needed or running. A yellow graph marker is an unlabeled action dot: when no
+build is active, clicking it reconciles the topology. Red means a job failed.
+Yellow and red retain the last green
 topology; they annotate uncertainty instead of erasing useful knowledge or
 presenting speculative output as truth. Gray is reserved for information that
 has not yet been observed.
 
-The prototype's golden scenario begins at `work:a1`. Dispatching “Build and
-reconcile current world” creates `work:b2`, marks the affected repo and service
-paths yellow, shows the Bazel job and resource use, and retains the old service
-graph. A successful atomic publication creates `build:b2`, returns every
-derived view to green, and adds `FraudCheck` plus its `Assess` and `Authorize`
-edges. This is deterministic mock data, not a claim that those services exist
-in the repository yet.
+The real prototype opens the `swarm-ide` working tree gray and unobserved.
+Dispatching “Build repository service topology” fingerprints the complete Git
+working world, marks the repo and service projections yellow, and shows the
+exact Bazel target while retaining any last green graph. A successful atomic
+publication returns the views to green and adds `FraudCheck`, provided `Assess`,
+and required `Payments.Authorize` from checked-in protobuf declarations,
+implementation files, and one deterministic validated Bazel artifact.
 
 ## Foundation boundaries
 
-The first implementation intentionally stops before real repository parsing,
-Bazel query extraction, terminals, Git mutation, agent harnesses, layout
-configuration, or deployment control. Those should arrive as narrow vertical
-slices behind the existing protocol. The current UI is evidence for the
-interaction model and for the consumer boundary, not a general plugin framework.
+The first real slice intentionally stops before provider discovery, repository-
+wide inferred call graphs, terminals, Git mutation UI, agent harnesses, layout
+configuration, deployment control, LSP, and merge tooling. Those should arrive
+as narrow vertical slices behind the existing protocol. Fixtures remain test
+material only; the normal application reports no runtime, deployment, metric,
+or agent value unless a real provider supplied it.
