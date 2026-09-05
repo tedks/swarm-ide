@@ -19,6 +19,8 @@ The visible proof is a reported artifact directory containing the virtual deskto
 - [x] (2026-09-05 22:00Z) Moved topology/source, zoom, and the pre-existing HMR probe onto the shared driver; proved all three end to end under hostile inherited `DISPLAY=:0`, with exact screenshots and clean teardown.
 - [x] (2026-09-05 22:00Z) Added Nix dependencies, Bazel run/test entrypoints, undeclared-output routing, CI coverage/upload, and contributor/development documentation.
 - [x] (2026-09-05 22:03Z) Ran the full Bazel build and uncached `//...` test gates, inspected exact topology/source and zoom screenshots, and captured per-process RSS/PSS, timing, PID/session, and cleanup evidence without targeting `DISPLAY=:0`.
+- [x] (2026-09-05 22:32Z) Remediated the first council and hosted-CI findings: cleanup status now propagates, child-registration signals are race-safe, PID/session identity is revalidated, HMR replacement is expected-first and atomic, reload proof requires a fresh renderer title, CI's Electron sandbox exception is explicit and narrow, and uploaded evidence is unpacked.
+- [x] (2026-09-05 22:32Z) Re-ran topology/source, zoom, HMR, the CI-shaped Bazel smoke, and focused hostile tests under inherited `DISPLAY=:0`; all used owned `:90`, produced exact-window screenshots, restored source, and cleaned port/display/process state.
 - [ ] Push the PR through council review to fixpoint and green hosted CI, merge normally, synchronize master and Ditz, and clean only feature-owned resources.
 
 ## Surprises & Discoveries
@@ -37,6 +39,12 @@ The visible proof is a reported artifact directory containing the virtual deskto
 
 - Observation: HMR measurement is itself GUI automation and therefore had to enter the virtual gate even though stable-window reload behavior is a later slice.
   Evidence: the old `tools/measure-hmr.sh` directly inherited `DISPLAY` and duplicated title/PID selection. It is now a scenario under the owned supervisor, and its source edit is restored only when the file equals the expected scenario-produced content.
+
+- Observation: a background `setsid` child can briefly retain its parent's session before `exec`, so reading `/proc/<pid>/stat` immediately is not yet a valid ownership record.
+  Evidence: the first post-review adversarial run observed the pre-exec identity. Registration now waits a bounded one second for the exact `session == pid` transition while deferring signals until that identity is saved.
+
+- Observation: GitHub's immutable Nix store cannot provide Electron's root-owned mode-4755 `chrome-sandbox` helper.
+  Evidence: hosted smoke run `33994799916` stopped in Electron before window creation. CI now opts into Chromium `--no-sandbox` with one exact environment value; local runs keep the operating-system sandbox, and Electron's renderer sandbox remains enabled in both paths.
 
 ## Decision Log
 
@@ -68,9 +76,15 @@ The visible proof is a reported artifact directory containing the virtual deskto
   Rationale: retaining an ambient-display automation target would leave the security gate incomplete. Moving the probe is infrastructure work; changing native-window restart semantics remains the explicitly separate next step.
   Date/Author: 2026-09-05 / Codex
 
+- Decision: Permit Chromium's `--no-sandbox` only when `SWARM_ELECTRON_NO_SANDBOX` is exactly `1`, and set it only in hosted CI.
+  Rationale: CI cannot satisfy the setuid-helper requirement, but an implicit or loosely parsed exception could weaken local execution. A pure validated argument resolver keeps the deviation explicit and testable while renderer sandboxing and context isolation remain enabled.
+  Date/Author: 2026-09-05 / Codex
+
 ## Outcomes & Retrospective
 
-Implementation is in progress. This section will record the merged behavior, measured costs, residual risks, and whether the stable-window reload gate is satisfied.
+Implementation and local verification are complete; review convergence, hosted CI, and merge remain. The latest topology/source run reached its exact window in 2.026 seconds and completed in 26.277 seconds, including a 19.725-second fixture build. The zoom run reached its window in 2.088 seconds and completed in 9.705 seconds. The HMR run completed in 2.519 seconds and observed its pixel change in 125 milliseconds; the source SHA-256 was identical before and after.
+
+The topology run's combined proportional set size was 836 MiB at readiness and 957 MiB after the scenario; zoom measured 873 MiB and 969 MiB. Aggregate RSS was 1.34–1.62 GiB because Electron processes count shared pages repeatedly. This is acceptable for the correctness gate but expensive enough to track as a separate optimization rather than widening this infrastructure slice.
 
 ## Context and Orientation
 
@@ -153,3 +167,5 @@ Revision note (2026-09-05 21:49Z): Marked the shared driver milestone complete a
 Revision note (2026-09-05 22:00Z): Recorded the completed supervisor, scenario migration, Nix/Bazel/CI wiring, real-run evidence, teardown race resolution, and HMR boundary decision. Full repository gates, hosted review, and landing remain.
 
 Revision note (2026-09-05 22:03Z): Marked local repository validation complete after all 17 Bazel build targets and all four Bazel test targets passed uncached; the test suite includes 105 application tests plus the driver, supervisor, and real virtual-desktop gates. Resource output now records proportional set size as well as aggregate resident size so Electron shared-memory accounting is not overstated.
+
+Revision note (2026-09-05 22:32Z): Recorded first-round council and CI remediation, post-exec session registration, explicit CI-only Chromium sandbox handling, atomic HMR mutation, fresh-renderer reload proof, unpacked CI artifacts, and updated real-run timings/resources. The remaining gate is review/CI convergence and normal merge.
