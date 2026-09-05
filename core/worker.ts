@@ -1,4 +1,3 @@
-import { watch, type FSWatcher } from "node:fs";
 import {
   PROTOCOL_VERSION,
   CoreEventSchema,
@@ -12,14 +11,17 @@ import {
   type FileResult,
   type WorkspaceSnapshot,
 } from "../protocol/schema";
-import { readWorkspaceFile, resolveWorkspaceFile, WorkspaceFileError, writeWorkspaceFile } from "./files";
+import { readWorkspaceFile, WorkspaceFileError, writeWorkspaceFile } from "./files";
+import { computeWorkingWorldFingerprint } from "./fingerprint";
 import { RealWorkspaceProvider } from "./provider";
 import { BoundedRequestIds } from "./request-ids";
+import { WorkspaceFileWatchers } from "./watchers";
 
 const workspaceRoot = process.env.SWARM_WORKSPACE_ROOT ?? process.cwd();
 let sequence = 0;
 const requestIds = new BoundedRequestIds(512);
-const watchers = new Map<string, { watcher: FSWatcher; timer: NodeJS.Timeout | null }>();
+const fileReadGenerations = new Map<string, number>();
+const providerPromise = RealWorkspaceProvider.create(workspaceRoot);
 
 function post(message: CoreResponse | CoreEvent | FileEvent): void {
   process.parentPort?.postMessage(message);
@@ -52,15 +54,9 @@ function fail(requestId: string, code: string, message: string): CoreResponse {
   return CoreResponseSchema.parse({ protocolVersion: PROTOCOL_VERSION, requestId, ok: false, error: { code, message } });
 }
 
-function closeWatcher(path: string): void {
-  const watched = watchers.get(path);
-  if (!watched) return;
-  if (watched.timer) clearTimeout(watched.timer);
-  watched.watcher.close();
-  watchers.delete(path);
-}
-
 async function emitFileChange(path: string): Promise<void> {
+  const generation = (fileReadGenerations.get(path) ?? 0) + 1;
+  fileReadGenerations.set(path, generation);
   let event: Omit<FileEvent, "protocolVersion" | "type" | "sequence" | "emittedAt">;
   try {
     const file = await readWorkspaceFile(workspaceRoot, path);
@@ -72,23 +68,14 @@ async function emitFileChange(path: string): Promise<void> {
       event = { path, revision: null, change: "error", message: error instanceof Error ? error.message.slice(0, 512) : "File observation failed" };
     }
   }
+  if (fileReadGenerations.get(path) !== generation) return;
   post(FileEventSchema.parse({ protocolVersion: PROTOCOL_VERSION, type: "file.changed", sequence: ++sequence, emittedAt: new Date().toISOString(), ...event }));
-  if (event.change === "modified") await watchFile(path).catch(() => undefined);
-}
-
-async function watchFile(path: string): Promise<void> {
-  if (watchers.has(path)) return;
-  const resolved = await resolveWorkspaceFile(workspaceRoot, path);
-  const entry = { watcher: null as unknown as FSWatcher, timer: null as NodeJS.Timeout | null };
-  entry.watcher = watch(resolved.absolutePath, { persistent: false }, () => {
-    if (entry.timer) clearTimeout(entry.timer);
-    entry.timer = setTimeout(() => {
-      entry.timer = null;
-      closeWatcher(path);
-      void emitFileChange(path);
-    }, 45);
-  });
-  entry.watcher.on("error", (error) => {
+  try {
+    const fingerprint = await computeWorkingWorldFingerprint(workspaceRoot);
+    if (fileReadGenerations.get(path) !== generation) return;
+    (await providerPromise).markWorkingWorldChanged(fingerprint, publish);
+  } catch (error) {
+    (await providerPromise).markWorkingWorldUnknown(error instanceof Error ? error.message : "unknown fingerprint error", publish);
     post(FileEventSchema.parse({
       protocolVersion: PROTOCOL_VERSION,
       type: "file.changed",
@@ -97,14 +84,25 @@ async function watchFile(path: string): Promise<void> {
       path,
       revision: null,
       change: "error",
-      message: error.message.slice(0, 512),
+      message: `Working-world refresh failed: ${error instanceof Error ? error.message.slice(0, 440) : "unknown error"}`,
     }));
-    closeWatcher(path);
-  });
-  watchers.set(path, entry);
+  }
 }
 
-const providerPromise = RealWorkspaceProvider.create(workspaceRoot);
+const fileWatchers = new WorkspaceFileWatchers(
+  workspaceRoot,
+  (path) => { void emitFileChange(path); },
+  (path, error) => post(FileEventSchema.parse({
+    protocolVersion: PROTOCOL_VERSION,
+    type: "file.changed",
+    sequence: ++sequence,
+    emittedAt: new Date().toISOString(),
+    path,
+    revision: null,
+    change: "error",
+    message: error.message.slice(0, 512),
+  })),
+);
 
 process.parentPort?.on("message", async (event) => {
   let requestId = "invalid-request";
@@ -130,7 +128,7 @@ process.parentPort?.on("message", async (event) => {
         }
         return;
       case "reconciliation.start":
-        void provider.startReconciliation(publish);
+        void provider.startReconciliation(publish).catch((error) => console.error("Topology reconciliation terminated unexpectedly", error));
         post(ok(requestId, provider.snapshot()));
         return;
       case "fixture.reset":
@@ -143,15 +141,18 @@ process.parentPort?.on("message", async (event) => {
       }
       case "file.write": {
         const file = await writeWorkspaceFile(workspaceRoot, request.path, request.expectedRevision, request.content);
+        if (file.workingFingerprint) provider.markWorkingWorldChanged(file.workingFingerprint, publish);
+        else provider.markWorkingWorldUnknown(file.fingerprintError ?? "unknown post-save fingerprint error", publish);
         post(ok(requestId, provider.snapshot(), file));
         return;
       }
       case "file.watch":
-        await watchFile(request.path);
+        await fileWatchers.watch(request.path);
         post(ok(requestId, provider.snapshot()));
         return;
       case "file.unwatch":
-        closeWatcher(request.path);
+        fileReadGenerations.set(request.path, (fileReadGenerations.get(request.path) ?? 0) + 1);
+        fileWatchers.unwatch(request.path);
         post(ok(requestId, provider.snapshot()));
         return;
     }
@@ -168,5 +169,5 @@ void providerPromise.then(() => process.parentPort?.postMessage({ type: "core.re
 });
 
 process.on("exit", () => {
-  for (const path of watchers.keys()) closeWatcher(path);
+  fileWatchers.closeAll();
 });

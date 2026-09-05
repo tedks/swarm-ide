@@ -50,6 +50,19 @@ const sourceFlashField = StateField.define<DecorationSet>({
   provide: (field) => EditorView.decorations.from(field),
 });
 
+function minimalReplacement(previous: string, next: string): { from: number; to: number; insert: string } {
+  let from = 0;
+  const prefixLimit = Math.min(previous.length, next.length);
+  while (from < prefixLimit && previous.charCodeAt(from) === next.charCodeAt(from)) from += 1;
+  let suffix = 0;
+  const suffixLimit = Math.min(previous.length - from, next.length - from);
+  while (
+    suffix < suffixLimit &&
+    previous.charCodeAt(previous.length - suffix - 1) === next.charCodeAt(next.length - suffix - 1)
+  ) suffix += 1;
+  return { from, to: previous.length - suffix, insert: next.slice(from, next.length - suffix) };
+}
+
 export function EditorPane({ content, flash, onChange, onSave }: {
   content: string;
   flash: SourceFlash | null;
@@ -99,8 +112,9 @@ export function EditorPane({ content, flash, onChange, onSave }: {
   useEffect(() => {
     const current = view.current;
     if (!current || current.state.doc.toString() === content) return;
+    const change = minimalReplacement(current.state.doc.toString(), content);
     suppressChange.current = true;
-    current.dispatch({ changes: { from: 0, to: current.state.doc.length, insert: content }, effects: setSourceFlash.of(flash) });
+    current.dispatch({ changes: change, effects: setSourceFlash.of(flash) });
     suppressChange.current = false;
   }, [content, flash]);
 

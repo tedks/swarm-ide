@@ -23,7 +23,7 @@ const lensTabs = ["System", "Plan", "Performance", "Refactor"] as const;
 const FRAUDCHECK_IMPLEMENTATION = "examples/checkout-world/services/fraudcheck/fraudcheck.ts";
 const FRAUDCHECK_CONTRACT = "examples/checkout-world/services/fraudcheck/fraudcheck.proto";
 
-type FileStatus = "loading" | "saved" | "dirty" | "conflict" | "error";
+type FileStatus = "loading" | "saved" | "dirty" | "saving" | "conflict" | "error";
 
 interface FileTab {
   path: string;
@@ -67,6 +67,10 @@ export function App() {
   const [fileTabs, setFileTabs] = useState<FileTab[]>([]);
   const [activeSurface, setActiveSurface] = useState<string>("graphs");
   const fileTabsRef = useRef<FileTab[]>([]);
+  const fileEventsRef = useRef(new Map<string, FileEvent>());
+  const openGenerationsRef = useRef(new Map<string, number>());
+  const desiredFilesRef = useRef(new Set<string>());
+  const savesInFlightRef = useRef(new Set<string>());
   const flashId = useRef(0);
   const [initialZoom] = useState(() => readStoredZoom(rendererStorage()));
   const [zoomPercent, setZoomPercent] = useState<InterfaceZoomPercent | null>(null);
@@ -150,7 +154,10 @@ export function App() {
     try {
       if (!window.swarm) throw new Error("Open this interface through the swarm-ide Electron shell");
       const response = await window.swarm.request(request);
-      if (!response.ok) throw new Error(response.error.message);
+      if (!response.ok) {
+        setError(response.error.message);
+        return response;
+      }
       setError(null);
       return response;
     } catch (cause) {
@@ -160,9 +167,12 @@ export function App() {
   }, []);
 
   const reloadObservedFile = useCallback(async (event: FileEvent) => {
+    const latestEvent = fileEventsRef.current.get(event.path);
+    if (latestEvent && event.sequence <= latestEvent.sequence) return;
+    fileEventsRef.current.set(event.path, event);
     const before = fileTabsRef.current.find((tab) => tab.path === event.path);
     if (!before || event.revision === before.revision) return;
-    if (before.status === "dirty" || before.status === "conflict") {
+    if (before.status === "dirty" || before.status === "saving" || before.status === "conflict") {
       setFileTabs((tabs) => tabs.map((tab) => tab.path === event.path ? { ...tab, status: "conflict", message: "The working file changed; your local buffer is preserved." } : tab));
       return;
     }
@@ -171,11 +181,12 @@ export function App() {
       return;
     }
     const response = await invoke({ type: "file.read", requestId: requestId(), protocolVersion: PROTOCOL_VERSION, path: event.path });
-    if (!response?.file || response.file.kind !== "read") return;
+    if (!response?.ok || !response.file || response.file.kind !== "read") return;
+    if (fileEventsRef.current.get(event.path)?.sequence !== event.sequence || response.file.revision !== event.revision) return;
     const incoming = response.file;
     setFileTabs((tabs) => tabs.map((tab) => {
       if (tab.path !== event.path) return tab;
-      if (tab.status === "dirty" || tab.status === "conflict" || tab.revision === incoming.revision) return tab;
+      if (tab.status === "dirty" || tab.status === "saving" || tab.status === "conflict" || tab.revision === incoming.revision) return tab;
       return {
         ...tab,
         content: incoming.content,
@@ -216,20 +227,40 @@ export function App() {
 
   const openFile = useCallback(async (path: string) => {
     setActiveSurface(path);
-    if (!fileTabsRef.current.some((tab) => tab.path === path)) {
-      setFileTabs((tabs) => tabs.some((tab) => tab.path === path) ? tabs : [...tabs, { path, content: "", savedContent: "", revision: "", status: "loading", message: "Loading source…", flash: null }]);
+    if (fileTabsRef.current.some((tab) => tab.path === path)) return;
+    desiredFilesRef.current.add(path);
+    const generation = (openGenerationsRef.current.get(path) ?? 0) + 1;
+    openGenerationsRef.current.set(path, generation);
+    setFileTabs((tabs) => tabs.some((tab) => tab.path === path) ? tabs : [...tabs, { path, content: "", savedContent: "", revision: "", status: "loading", message: "Registering source observation…", flash: null }]);
+    const watchResponse = await invoke({ type: "file.watch", requestId: requestId(), protocolVersion: PROTOCOL_VERSION, path });
+    if (!watchResponse?.ok || openGenerationsRef.current.get(path) !== generation || !desiredFilesRef.current.has(path)) {
+      setFileTabs((tabs) => tabs.map((tab) => tab.path === path ? { ...tab, status: "error", message: watchResponse?.ok ? "Source observation was cancelled." : "The source file could not be observed." } : tab));
+      return;
     }
+    const eventBeforeRead = fileEventsRef.current.get(path)?.sequence ?? 0;
     const response = await invoke({ type: "file.read", requestId: requestId(), protocolVersion: PROTOCOL_VERSION, path });
-    if (!response?.file || response.file.kind !== "read") {
+    if (!response?.ok || !response.file || response.file.kind !== "read") {
       setFileTabs((tabs) => tabs.map((tab) => tab.path === path ? { ...tab, status: "error", message: "The source file could not be opened." } : tab));
       return;
     }
+    if (openGenerationsRef.current.get(path) !== generation || !desiredFilesRef.current.has(path)) return;
     const file = response.file;
+    const eventAfterRead = fileEventsRef.current.get(path);
+    if (eventAfterRead && eventAfterRead.sequence > eventBeforeRead && eventAfterRead.revision !== file.revision) {
+      void reloadObservedFile(eventAfterRead);
+      return;
+    }
     setFileTabs((tabs) => tabs.map((tab) => tab.path === path ? { ...tab, content: file.content, savedContent: file.content, revision: file.revision, status: "saved", message: "Watching the working file", flash: null } : tab));
-    await invoke({ type: "file.watch", requestId: requestId(), protocolVersion: PROTOCOL_VERSION, path });
-  }, [invoke]);
+  }, [invoke, reloadObservedFile]);
 
   const closeFile = useCallback((path: string) => {
+    const tab = fileTabsRef.current.find((candidate) => candidate.path === path);
+    if (tab && (tab.status === "dirty" || tab.status === "saving" || tab.status === "conflict")) {
+      setFileTabs((tabs) => tabs.map((candidate) => candidate.path === path ? { ...candidate, message: "Save or reload this buffer before closing it." } : candidate));
+      return;
+    }
+    desiredFilesRef.current.delete(path);
+    openGenerationsRef.current.set(path, (openGenerationsRef.current.get(path) ?? 0) + 1);
     void invoke({ type: "file.unwatch", requestId: requestId(), protocolVersion: PROTOCOL_VERSION, path });
     setFileTabs((tabs) => {
       const next = tabs.filter((tab) => tab.path !== path);
@@ -240,11 +271,15 @@ export function App() {
 
   const saveFile = useCallback(async (path: string) => {
     const tab = fileTabsRef.current.find((candidate) => candidate.path === path);
-    if (!tab || !tab.revision || (tab.status !== "dirty" && tab.status !== "conflict")) return;
+    if (!tab || !tab.revision || tab.status !== "dirty" || savesInFlightRef.current.has(path)) return;
     const savedContent = tab.content;
+    savesInFlightRef.current.add(path);
+    setFileTabs((tabs) => tabs.map((candidate) => candidate.path === path ? { ...candidate, status: "saving", message: "Saving with optimistic revision check…" } : candidate));
     const response = await invoke({ type: "file.write", requestId: requestId(), protocolVersion: PROTOCOL_VERSION, path, expectedRevision: tab.revision, content: savedContent });
-    if (!response?.file || response.file.kind !== "write") {
-      setFileTabs((tabs) => tabs.map((candidate) => candidate.path === path ? { ...candidate, status: "conflict", message: "Save failed; your buffer is preserved." } : candidate));
+    savesInFlightRef.current.delete(path);
+    if (!response?.ok || !response.file || response.file.kind !== "write") {
+      const conflict = response && !response.ok && response.error.code === "REVISION_CONFLICT";
+      setFileTabs((tabs) => tabs.map((candidate) => candidate.path === path ? { ...candidate, status: conflict ? "conflict" : "error", message: `${response && !response.ok ? response.error.message : "Save failed"}; your buffer is preserved.` } : candidate));
       return;
     }
     const write = response.file;
@@ -253,8 +288,17 @@ export function App() {
       savedContent,
       revision: write.revision,
       status: candidate.content === savedContent ? "saved" : "dirty",
-      message: `Saved · working ${write.workingFingerprint.slice(0, 12)}`,
+      message: write.workingFingerprint
+        ? `Saved · working ${write.workingFingerprint.slice(0, 12)}`
+        : write.fingerprintError ?? "Saved; working-world fingerprint refresh failed",
     } : candidate));
+  }, [invoke]);
+
+  const reloadFile = useCallback(async (path: string) => {
+    const response = await invoke({ type: "file.read", requestId: requestId(), protocolVersion: PROTOCOL_VERSION, path });
+    if (!response?.ok || !response.file || response.file.kind !== "read") return;
+    const file = response.file;
+    setFileTabs((tabs) => tabs.map((tab) => tab.path === path ? { ...tab, content: file.content, savedContent: file.content, revision: file.revision, status: "saved", message: "Reloaded the canonical working file", flash: null } : tab));
   }, [invoke]);
 
   useEffect(() => {
@@ -347,12 +391,20 @@ export function App() {
         </div>
         <nav className="surface-tabs" aria-label="Central workspace tabs">
           <button className={activeSurface === "graphs" ? "active" : ""} onClick={() => setActiveSurface("graphs")}><span>⌘</span> System graphs</button>
-          {fileTabs.map((tab) => <button key={tab.path} className={activeSurface === tab.path ? "active" : ""} onClick={() => setActiveSurface(tab.path)} title={tab.path}><span className={`tab-state status-${tab.status}`}>{tab.status === "dirty" ? "●" : tab.status === "conflict" || tab.status === "error" ? "!" : "◇"}</span>{tab.path.split("/").at(-1)}<i aria-label={`Close ${tab.path}`} onClick={(event) => { event.stopPropagation(); closeFile(tab.path); }}>×</i></button>)}
+          {fileTabs.map((tab) => <div key={tab.path} className={`surface-tab ${activeSurface === tab.path ? "active" : ""}`}><button className="surface-tab-main" onClick={() => setActiveSurface(tab.path)} title={tab.path}><span className={`tab-state status-${tab.status}`}>{tab.status === "dirty" ? "●" : tab.status === "saving" ? "◌" : tab.status === "conflict" || tab.status === "error" ? "!" : "◇"}</span>{tab.path.split("/").at(-1)}</button><button className="surface-tab-close" aria-label={`Close ${tab.path}`} onClick={() => closeFile(tab.path)}>×</button></div>)}
         </nav>
         <div className={`graphs-grid ${activeSurface === "graphs" ? "is-active" : "is-hidden"}`}>{snapshot.graphs.map((graph) => <GraphPane key={graph.topologyId} graph={graph} focus={snapshot.focus} mappings={snapshot.mappings} interfaceZoom={zoomPercent} onFocus={selectFocus} />)}</div>
-        {activeFile ? <section className="source-surface">
-          <header><div><span className="eyebrow">source observatory</span><strong>{activeFile.path}</strong></div><div className={`file-state file-${activeFile.status}`}><i />{activeFile.status}<button onClick={() => void saveFile(activeFile.path)} disabled={activeFile.status !== "dirty" && activeFile.status !== "conflict"}>Save <kbd>Ctrl S</kbd></button></div></header>
-          {activeFile.status === "loading" ? <div className="source-message">Loading the canonical working file…</div> : activeFile.status === "error" ? <div className="source-message source-error">{activeFile.message}</div> : <EditorPane key={activeFile.path} content={activeFile.content} flash={activeFile.flash} onChange={(content) => setFileTabs((tabs) => tabs.map((tab) => tab.path === activeFile.path ? { ...tab, content, status: content === tab.savedContent ? "saved" : "dirty", message: content === tab.savedContent ? "Watching the working file" : "Local buffer differs from disk", flash: null } : tab))} onSave={() => void saveFile(activeFile.path)} />}
+        {activeFile ? <section className={`source-surface ${activeFile.status === "conflict" || activeFile.status === "error" ? "has-banner" : ""}`}>
+          <header><div><span className="eyebrow">source observatory</span><strong>{activeFile.path}</strong></div><div className={`file-state file-${activeFile.status}`}><i />{activeFile.status}<button onClick={() => void saveFile(activeFile.path)} disabled={activeFile.status !== "dirty"}>Save <kbd>Ctrl S</kbd></button></div></header>
+          {activeFile.status === "loading" ? <div className="source-message">Loading the canonical working file…</div> : <>
+            {activeFile.status === "conflict" || activeFile.status === "error" ? <div className="source-message source-error source-banner"><span>{activeFile.message}</span><button onClick={() => void reloadFile(activeFile.path)}>Reload disk</button></div> : null}
+            {activeFile.revision ? <EditorPane key={activeFile.path} content={activeFile.content} flash={activeFile.flash} onChange={(content) => setFileTabs((tabs) => tabs.map((tab) => {
+              if (tab.path !== activeFile.path) return tab;
+              const unresolved = tab.status === "conflict" || tab.status === "error";
+              const status = unresolved ? tab.status : tab.status === "saving" ? "saving" : content === tab.savedContent ? "saved" : "dirty";
+              return { ...tab, content, status, message: unresolved ? tab.message : content === tab.savedContent ? "Watching the working file" : "Local buffer differs from disk", flash: null };
+            }))} onSave={() => void saveFile(activeFile.path)} /> : <div className="source-message source-error">{activeFile.message}</div>}
+          </>}
         </section> : null}
       </section>
 

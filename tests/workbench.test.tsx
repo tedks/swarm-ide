@@ -271,16 +271,20 @@ describe("workbench shell", () => {
     await waitFor(() => expect(document.querySelector(".cm-content")?.textContent).toContain("old"));
     expect(screen.getAllByTestId("graph-pane")).toHaveLength(2);
     fireEvent.click(screen.getAllByRole("button", { name: paths[1] })[0]!);
-    await waitFor(() => expect(document.querySelectorAll(".surface-tabs button")).toHaveLength(3));
-    const surfaceTabs = [...document.querySelectorAll<HTMLButtonElement>(".surface-tabs button")];
+    await waitFor(() => expect(document.querySelectorAll(".surface-tabs > button, .surface-tab-main")).toHaveLength(3));
+    const surfaceTabs = [...document.querySelectorAll<HTMLButtonElement>(".surface-tabs > button, .surface-tab-main")];
     expect(surfaceTabs.some((tab) => tab.textContent?.includes("payments.ts"))).toBe(true);
     expect(surfaceTabs.some((tab) => tab.textContent?.includes("contract.ts"))).toBe(true);
     fireEvent.click(surfaceTabs.find((tab) => tab.textContent?.includes("payments.ts"))!);
+    const paymentsEditor = EditorView.findFromDOM(document.querySelector(".cm-editor")!);
+    if (!paymentsEditor) throw new Error("CodeMirror editor was not mounted");
+    act(() => paymentsEditor.dispatch({ selection: { anchor: 1 } }));
 
     disk = new Map(disk).set(paths[0]!, { content: "one\nnew\n", revision: "c".repeat(64) });
     act(() => listener?.({ protocolVersion: PROTOCOL_VERSION, type: "file.changed", sequence: 1, emittedAt: "2026-09-05T12:01:00.000Z", path: paths[0]!, revision: "c".repeat(64), change: "modified" }));
     await waitFor(() => expect(document.querySelector(".cm-added-flash")?.textContent).toContain("new"));
     expect(document.querySelector(".cm-removed-ghost")?.textContent).toContain("old");
+    expect(paymentsEditor.state.selection.main.anchor).toBe(1);
   });
 
   it("saves with the expected revision and preserves a dirty buffer on external conflict", async () => {
@@ -328,8 +332,68 @@ describe("workbench shell", () => {
     act(() => listener?.({ protocolVersion: PROTOCOL_VERSION, type: "file.changed", sequence: 1, emittedAt: "2026-09-05T12:02:00.000Z", path, revision: disk.revision, change: "modified" }));
     await waitFor(() => expect(document.querySelector(".file-conflict")).toBeTruthy());
     expect(editor.state.doc.toString()).toContain("my unsaved line");
+    act(() => editor.dispatch({ changes: { from: editor.state.doc.length, insert: "still mine\n" } }));
+    expect(document.querySelector(".file-conflict")).toBeTruthy();
     fireEvent.keyDown(editor.contentDOM, { key: "s", code: "KeyS", ctrlKey: true });
-    expect(await screen.findByText("disk changed")).toBeTruthy();
+    expect(screen.getByText("The working file changed; your local buffer is preserved.")).toBeTruthy();
     expect(editor.state.doc.toString()).toContain("my unsaved line");
+    expect(editor.state.doc.toString()).toContain("still mine");
+    fireEvent.click(screen.getByRole("button", { name: `Close ${path}` }));
+    expect(screen.getByRole("button", { name: `Close ${path}` })).toBeTruthy();
+    expect(editor.state.doc.toString()).toContain("still mine");
+    fireEvent.click(screen.getByRole("button", { name: "Reload disk" }));
+    await waitFor(() => expect(editor.state.doc.toString()).toBe("external replacement\n"));
+    expect(document.querySelector(".file-saved")).toBeTruthy();
+  });
+
+  it("registers observation before reading and rejects an older external read that completes last", async () => {
+    let listener: ((event: CoreEvent | FileEvent) => void) | undefined;
+    const path = "services/fraudcheck/fraudcheck.ts";
+    const base = initialSnapshot(paymentsFileFocus);
+    const snapshot: WorkspaceSnapshot = {
+      ...base,
+      widgets: [{ id: "source-paths", title: "Implementation sources", kind: "list", priority: 0, value: [path], provenance: base.widgets[0]!.provenance }],
+    };
+    const requests: CoreRequest["type"][] = [];
+    let readCount = 0;
+    let releaseOld!: (response: CoreResponse) => void;
+    const oldRead = new Promise<CoreResponse>((resolve) => { releaseOld = resolve; });
+    const response = (requestIdValue: string, content: string, revision: string): CoreResponse => ({
+      protocolVersion: PROTOCOL_VERSION,
+      requestId: requestIdValue,
+      ok: true,
+      sequence: 0,
+      snapshot,
+      file: { kind: "read", path, content, revision, size: content.length },
+    });
+    const request = vi.fn(async (input: CoreRequest): Promise<CoreResponse> => {
+      requests.push(input.type);
+      if (input.type === "file.read") {
+        readCount += 1;
+        if (readCount === 1) return response(input.requestId, "initial\n", "a".repeat(64));
+        if (readCount === 2) return oldRead;
+        return response(input.requestId, "newest\n", "c".repeat(64));
+      }
+      return { protocolVersion: PROTOCOL_VERSION, requestId: input.requestId, ok: true, sequence: 0, snapshot };
+    });
+    Object.defineProperty(window, "swarm", {
+      configurable: true,
+      value: { request, onEvent: (next: (event: CoreEvent | FileEvent) => void) => { listener = next; return () => undefined; } },
+    });
+    installViewBridge();
+    render(<App />);
+    await screen.findByText("Implementation sources");
+    fireEvent.click(screen.getAllByRole("button", { name: path })[0]!);
+    await waitFor(() => expect(document.querySelector(".cm-content")?.textContent).toContain("initial"));
+    expect(requests.filter((type) => type.startsWith("file.")).slice(0, 2)).toEqual(["file.watch", "file.read"]);
+    act(() => {
+      listener?.({ protocolVersion: PROTOCOL_VERSION, type: "file.changed", sequence: 1, emittedAt: "2026-09-05T12:03:00.000Z", path, revision: "b".repeat(64), change: "modified" });
+      listener?.({ protocolVersion: PROTOCOL_VERSION, type: "file.changed", sequence: 2, emittedAt: "2026-09-05T12:03:01.000Z", path, revision: "c".repeat(64), change: "modified" });
+    });
+    await waitFor(() => expect(document.querySelector(".cm-content")?.textContent).toContain("newest"));
+    releaseOld(response("old-event", "older\n", "b".repeat(64)));
+    await act(async () => { await Promise.resolve(); });
+    expect(document.querySelector(".cm-content")?.textContent).toContain("newest");
+    expect(document.querySelector(".cm-content")?.textContent).not.toContain("older");
   });
 });

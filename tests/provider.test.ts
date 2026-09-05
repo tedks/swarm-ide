@@ -96,6 +96,32 @@ describe("real workspace provider", () => {
     expect(provider.snapshot().reconciliation.message).toContain("changed during the build");
   });
 
+  it("revokes green immediately when a saved or observed source fingerprint changes", async () => {
+    const a = "a".repeat(64);
+    const b = "b".repeat(64);
+    const c = "c".repeat(64);
+    const provider = await RealWorkspaceProvider.create("/unused", dependencies([a, b, b]));
+    await provider.startReconciliation(() => undefined);
+    const events: Array<{ type: string; snapshot: WorkspaceSnapshot }> = [];
+    provider.markWorkingWorldChanged(c, (type, snapshot) => events.push({ type, snapshot }));
+    expect(events.map((event) => event.type)).toEqual(["workspace.changed"]);
+    expect(provider.snapshot().reconciliation.status).toBe("yellow");
+    expect(provider.snapshot().revisions.working.fingerprint).toBe(c);
+    expect(provider.snapshot().revisions.built.sourceFingerprint).toBe(b);
+    expect(provider.snapshot().graphs.find((graph) => graph.topologyId === "service")?.nodes.some((node) => node.label === "FraudCheck")).toBe(true);
+    expect(provider.snapshot().graphs.find((graph) => graph.topologyId === "service")?.reconciliation).toBe("yellow");
+    expect(provider.snapshot().mappings.every((mapping) => mapping.from.revisionId === c)).toBe(true);
+  });
+
+  it("publishes a bounded red state when fingerprint preflight fails", async () => {
+    const provider = await RealWorkspaceProvider.create("/unused", dependencies(["a".repeat(64)]));
+    const published: WorkspaceSnapshot[] = [];
+    await expect(provider.startReconciliation((_type, snapshot) => published.push(snapshot))).resolves.toBeUndefined();
+    expect(published.map((snapshot) => snapshot.reconciliation.status)).toEqual(["red"]);
+    expect(provider.snapshot().jobs[0]?.label).toBe(`bazel build ${SERVICE_TOPOLOGY_TARGET}`);
+    expect(provider.snapshot().graphs.find((graph) => graph.topologyId === "service")?.nodes).toEqual([]);
+  });
+
   it("never publishes an older overlapping build after a newer attempt completes", async () => {
     let releaseFirst!: () => void;
     let markFirstStarted!: () => void;

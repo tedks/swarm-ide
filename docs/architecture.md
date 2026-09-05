@@ -7,10 +7,12 @@ separate Electron utility process running `core/worker.ts`. Filesystem, process,
 Bazel, Git, deployment, metrics, and agent authority belong in that local core;
 none is granted to React.
 
-The current core is a deterministic mock provider. Its data lives in
-`fixtures/world.ts`, but it traverses the same `protocol/schema.ts` request,
-response, event, snapshot, and provenance contracts required of future real
-providers. Validation occurs in the renderer boundary, main process, and core.
+The production core is a real local-workspace provider. It fingerprints the
+opened Git working tree and publishes a service topology only from a bounded,
+validated Bazel artifact whose protobuf interfaces have compiled successfully.
+`fixtures/world.ts` remains test-only and exercises the same
+`protocol/schema.ts` contracts and failure states. Validation occurs at the
+renderer boundary, main process, privileged core, and artifact-provider seam.
 
 ## Contract vocabulary
 
@@ -54,10 +56,13 @@ the bundled Electron main/preload/core and Vite renderer outputs. This initial
 local genrule intentionally stops short of a generalized hermetic JavaScript
 toolchain.
 
-## Next vertical slice
+## Current vertical slice
 
-The best next proof is one small real provider: read a checked-in service
-declaration plus Bazel targets, publish a service graph through the existing
-contract, and retain the fixture as a failure-mode test. Do not add a general
-plugin framework first. The provider boundary should be earned by two concrete
-implementations before it is generalized.
+The first real provider reads one checked-in service declaration, compiled
+protobuf descriptor sets, and an adjacent Bazel-owned source target. Its graph
+is gray before observation, yellow while source is dirty or building, green
+only for an exact before/after fingerprint, and red on bounded failure while
+retaining the last good topology. The renderer's source observatory reads,
+watches, and conditionally saves canonical workspace files only through the
+typed core bridge; external and future agent edits appear as transient inline
+green additions and red departing text.

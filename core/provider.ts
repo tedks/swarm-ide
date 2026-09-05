@@ -1,6 +1,4 @@
 import { execFile } from "node:child_process";
-import { readFile, stat } from "node:fs/promises";
-import { join } from "node:path";
 import {
   PROTOCOL_VERSION,
   WorkspaceSnapshotSchema,
@@ -12,7 +10,7 @@ import {
   type WorkspaceSnapshot,
 } from "../protocol/schema";
 import { computeWorkingWorldFingerprint } from "./fingerprint";
-import { resolveWorkspaceFile } from "./files";
+import { readCanonicalWorkspaceBytes, resolveWorkspaceFile } from "./files";
 import {
   ServiceTopologyArtifactSchema,
   adaptServiceTopology,
@@ -44,6 +42,11 @@ export interface ProviderDependencies {
   now(): string;
 }
 
+export type ProviderPublish = (
+  type: "workspace.changed" | "reconciliation.changed" | "graph.published" | "job.changed",
+  snapshot: WorkspaceSnapshot,
+) => void;
+
 function runBazel(workspaceRoot: string): Promise<void> {
   return new Promise((resolve, reject) => {
     execFile(
@@ -62,11 +65,7 @@ function runBazel(workspaceRoot: string): Promise<void> {
 }
 
 async function readArtifact(workspaceRoot: string): Promise<{ bytes: Buffer; artifact: ServiceTopologyArtifact }> {
-  const path = join(workspaceRoot, SERVICE_TOPOLOGY_ARTIFACT);
-  const metadata = await stat(path);
-  if (!metadata.isFile()) throw new Error("the Bazel topology output is not a regular file");
-  if (metadata.size > MAX_ARTIFACT_BYTES) throw new Error("the Bazel topology output exceeds 512 KiB");
-  const bytes = await readFile(path);
+  const bytes = await readCanonicalWorkspaceBytes(workspaceRoot, SERVICE_TOPOLOGY_ARTIFACT, MAX_ARTIFACT_BYTES);
   let input: unknown;
   try {
     input = JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(bytes));
@@ -250,45 +249,103 @@ export class RealWorkspaceProvider {
     return this.snapshotValue;
   }
 
-  async startReconciliation(publish: (type: "reconciliation.changed" | "graph.published" | "job.changed", snapshot: WorkspaceSnapshot) => void): Promise<void> {
-    const attempt = ++this.currentAttempt;
-    const beforeFingerprint = await this.dependencies.fingerprint(this.workspaceRoot);
-    if (attempt !== this.currentAttempt) return;
+  markWorkingWorldChanged(fingerprint: string, publish: ProviderPublish): WorkspaceSnapshot {
+    if (fingerprint === this.snapshotValue.revisions.working.fingerprint) return this.snapshotValue;
+    ++this.currentAttempt;
     const epoch = this.snapshotValue.reconciliation.epoch + 1;
     const observedAt = this.dependencies.now();
     const hadGreen = this.snapshotValue.reconciliation.lastConsistentFingerprint !== "unobserved";
-    const previousGraphs = this.snapshotValue.graphs;
-    const previousServiceGraph = previousGraphs.find((graph) => graph.topologyId === "service")!;
+    const previousServiceGraph = this.snapshotValue.graphs.find((graph) => graph.topologyId === "service")!;
     this.snapshotValue = WorkspaceSnapshotSchema.parse(retagSnapshot({
       ...this.snapshotValue,
-      revisions: { ...this.snapshotValue.revisions, working: { id: beforeFingerprint, fingerprint: beforeFingerprint } },
+      revisions: { ...this.snapshotValue.revisions, working: { id: fingerprint, fingerprint } },
       graphs: [
-        repositoryGraph(beforeFingerprint, epoch, "yellow", observedAt),
+        repositoryGraph(fingerprint, epoch, "yellow", observedAt),
         hadGreen
           ? { ...previousServiceGraph, epoch, reconciliation: "yellow" as const }
-          : emptyServiceGraph(beforeFingerprint, epoch, "yellow", observedAt),
+          : emptyServiceGraph(fingerprint, epoch, "yellow", observedAt),
       ],
-      jobs: [{
-        id: `job:service-topology:${epoch}`,
-        label: `bazel build ${SERVICE_TOPOLOGY_TARGET}`,
-        kind: "build",
-        status: "running",
-        progress: 0,
-        resources: { cpuPercent: 0, memoryMiB: 0 },
-        message: "Resource telemetry unavailable; building exact working fingerprint",
-      }],
-      activity: [{ id: `activity:topology:${epoch}:start`, at: observedAt, kind: "build" as const, summary: `Building ${SERVICE_TOPOLOGY_TARGET}`, status: "yellow" as const }, ...this.snapshotValue.activity].slice(0, 32),
+      mappings: hadGreen ? this.snapshotValue.mappings : [],
+      widgets: hadGreen ? this.serviceWidgets : initialWidgets(fingerprint, observedAt),
+      jobs: [],
+      activity: [{
+        id: `activity:working:${epoch}:changed`,
+        at: observedAt,
+        kind: "diff" as const,
+        summary: hadGreen ? "Working source changed; last consistent topology retained" : "Working source changed before its first topology observation",
+        status: "yellow" as const,
+      }, ...this.snapshotValue.activity].slice(0, 32),
       reconciliation: {
         epoch,
         status: "yellow",
-        inputFingerprint: beforeFingerprint,
+        inputFingerprint: fingerprint,
         lastConsistentFingerprint: this.snapshotValue.reconciliation.lastConsistentFingerprint,
-        message: hadGreen ? "Building current source; retaining the last consistent topology" : "Building the first service topology observation",
+        message: hadGreen ? "Working source changed; rebuild to reconcile the retained topology" : "Working source changed; build to observe its service topology",
       },
-    }, beforeFingerprint));
-    publish("reconciliation.changed", this.snapshotValue);
+    }, fingerprint));
+    publish("workspace.changed", this.snapshotValue);
+    return this.snapshotValue;
+  }
 
+  markWorkingWorldUnknown(message: string, publish: ProviderPublish): WorkspaceSnapshot {
+    ++this.currentAttempt;
+    const epoch = this.snapshotValue.reconciliation.epoch + 1;
+    this.snapshotValue = WorkspaceSnapshotSchema.parse({
+      ...this.snapshotValue,
+      graphs: this.snapshotValue.graphs.map((graph) => ({ ...graph, epoch, reconciliation: "red" as const })),
+      jobs: [],
+      activity: [{ id: `activity:working:${epoch}:unknown`, at: this.dependencies.now(), kind: "diff", summary: "Working source changed but its fingerprint is unavailable", status: "red" }, ...this.snapshotValue.activity].slice(0, 32),
+      reconciliation: {
+        ...this.snapshotValue.reconciliation,
+        epoch,
+        status: "red",
+        message: `Working-world fingerprint failed: ${message.slice(0, 240)}`,
+      },
+    });
+    publish("workspace.changed", this.snapshotValue);
+    return this.snapshotValue;
+  }
+
+  async startReconciliation(publish: ProviderPublish): Promise<void> {
+    const attempt = ++this.currentAttempt;
+    const epoch = this.snapshotValue.reconciliation.epoch + 1;
+    let started = false;
     try {
+      const beforeFingerprint = await this.dependencies.fingerprint(this.workspaceRoot);
+      if (attempt !== this.currentAttempt) return;
+      const observedAt = this.dependencies.now();
+      const hadGreen = this.snapshotValue.reconciliation.lastConsistentFingerprint !== "unobserved";
+      const previousServiceGraph = this.snapshotValue.graphs.find((graph) => graph.topologyId === "service")!;
+      this.snapshotValue = WorkspaceSnapshotSchema.parse(retagSnapshot({
+        ...this.snapshotValue,
+        revisions: { ...this.snapshotValue.revisions, working: { id: beforeFingerprint, fingerprint: beforeFingerprint } },
+        graphs: [
+          repositoryGraph(beforeFingerprint, epoch, "yellow", observedAt),
+          hadGreen
+            ? { ...previousServiceGraph, epoch, reconciliation: "yellow" as const }
+            : emptyServiceGraph(beforeFingerprint, epoch, "yellow", observedAt),
+        ],
+        jobs: [{
+          id: `job:service-topology:${epoch}`,
+          label: `bazel build ${SERVICE_TOPOLOGY_TARGET}`,
+          kind: "build",
+          status: "running",
+          progress: 0,
+          resources: { cpuPercent: 0, memoryMiB: 0 },
+          message: "Resource telemetry unavailable; building exact working fingerprint",
+        }],
+        activity: [{ id: `activity:topology:${epoch}:start`, at: observedAt, kind: "build" as const, summary: `Building ${SERVICE_TOPOLOGY_TARGET}`, status: "yellow" as const }, ...this.snapshotValue.activity].slice(0, 32),
+        reconciliation: {
+          epoch,
+          status: "yellow",
+          inputFingerprint: beforeFingerprint,
+          lastConsistentFingerprint: this.snapshotValue.reconciliation.lastConsistentFingerprint,
+          message: hadGreen ? "Building current source; retaining the last consistent topology" : "Building the first service topology observation",
+        },
+      }, beforeFingerprint));
+      started = true;
+      publish("reconciliation.changed", this.snapshotValue);
+
       await this.dependencies.build(this.workspaceRoot);
       if (attempt !== this.currentAttempt) return;
       const { bytes, artifact } = await this.dependencies.readArtifact(this.workspaceRoot);
@@ -324,12 +381,22 @@ export class RealWorkspaceProvider {
     } catch (error) {
       if (attempt !== this.currentAttempt) return;
       const message = error instanceof Error ? error.message : "unknown topology build failure";
+      const observedAt = this.dependencies.now();
+      const currentFingerprint = this.snapshotValue.revisions.working.fingerprint;
       this.snapshotValue = WorkspaceSnapshotSchema.parse({
         ...this.snapshotValue,
-        graphs: this.snapshotValue.graphs.map((graph) => ({ ...graph, reconciliation: "red" as const })),
-        jobs: this.snapshotValue.jobs.map((job) => ({ ...job, status: "failed" as const, message: message.slice(0, 300) })),
-        activity: [{ id: `activity:topology:${epoch}:red`, at: this.dependencies.now(), kind: "build", summary: "Topology build failed; last consistent graph retained", status: "red" }, ...this.snapshotValue.activity].slice(0, 32),
-        reconciliation: { ...this.snapshotValue.reconciliation, status: "red", message: `Topology build failed: ${message.slice(0, 240)}` },
+        graphs: this.snapshotValue.graphs.map((graph) => ({ ...graph, epoch, reconciliation: "red" as const })),
+        jobs: started
+          ? this.snapshotValue.jobs.map((job) => ({ ...job, status: "failed" as const, message: message.slice(0, 300) }))
+          : [{ id: `job:service-topology:${epoch}`, label: `bazel build ${SERVICE_TOPOLOGY_TARGET}`, kind: "build", status: "failed", progress: 0, resources: { cpuPercent: 0, memoryMiB: 0 }, message: message.slice(0, 300) }],
+        activity: [{ id: `activity:topology:${epoch}:red`, at: observedAt, kind: "build", summary: "Topology build failed; last consistent graph retained", status: "red" }, ...this.snapshotValue.activity].slice(0, 32),
+        reconciliation: {
+          ...this.snapshotValue.reconciliation,
+          epoch,
+          status: "red",
+          inputFingerprint: currentFingerprint,
+          message: `Topology build failed: ${message.slice(0, 240)}`,
+        },
       });
       publish("reconciliation.changed", this.snapshotValue);
     }
