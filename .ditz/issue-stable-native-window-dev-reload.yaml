@@ -10,7 +10,7 @@ type: bugfix
 component: tooling
 release:
 reporter: Ted Smith <tedks@riseup.net>
-status: unstarted
+status: in_progress
 disposition:
 creation_time: 2026-09-05T20:09:39-00:00
 references: []
@@ -34,6 +34,10 @@ log_events:
     utility-process restart, and exceptional Electron-main restart. Tests run only
     on the owned virtual display and assert window identity/workspace stability for
     all ordinary edit paths.
+- time: 2026-09-05T23:05:15-00:00
+  who: Ted Smith
+  what: started
+  comment: ""
 blocks:
 - first-real-agent-run-surface
 blocked_by:
