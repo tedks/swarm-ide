@@ -119,6 +119,8 @@ export function App() {
         queuedZoomRef.current = null;
       }
     } finally {
+      // If future loop work throws, prefer dropping the last coalesced request
+      // and restoring an operable control over leaving zoom permanently busy.
       queuedZoomRef.current = null;
       desiredZoomRef.current = zoomPercentRef.current;
       zoomPendingRef.current = false;

@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# This target exercises a Vite-served Electron development window; its title
+# synchronization channel is intentionally absent from packaged builds.
 set -euo pipefail
 
 workspace="${BUILD_WORKSPACE_DIRECTORY:-}"

@@ -81,7 +81,10 @@ export function stepZoom(
 export function zoomShortcut(event: Pick<KeyboardEvent, "altKey" | "code" | "ctrlKey" | "key" | "metaKey" | "shiftKey">): ZoomShortcut | null {
   if (!event.ctrlKey || event.altKey || event.metaKey) return null;
 
-  if (!event.shiftKey && event.key === "0") return "reset";
+  // Desktop browsers treat the unshifted physical digit position as reset on
+  // layouts such as AZERTY; the logical path also covers layouts that require
+  // Shift to produce "0" and numeric keypads.
+  if ((!event.shiftKey && event.code === "Digit0") || event.key === "0") return "reset";
   if (event.code === "NumpadAdd") return event.key === "+" ? "in" : null;
   if (event.code === "NumpadSubtract") return event.key === "-" ? "out" : null;
   if (event.key === "=" || event.key === "+") return "in";
