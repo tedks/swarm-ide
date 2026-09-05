@@ -1,0 +1,16 @@
+id: dev-loop-hardening-followups
+title: Harden development-loop diagnostics and selector reuse
+desc: ""
+type: task
+component: development
+release:
+reporter: Ted Smith <tedks@riseup.net>
+status: unstarted
+disposition:
+creation_time: 2026-09-05T09:23:35-00:00
+references: []
+log_events:
+- time: 2026-09-05T09:23:35-00:00
+  who: Ted Smith
+  what: created
+  comment: ""
