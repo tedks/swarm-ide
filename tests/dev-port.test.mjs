@@ -65,4 +65,19 @@ describe("development port", () => {
       rmSync(directory, { recursive: true });
     }
   });
+
+  it("can be imported when the host uses a non-filesystem argv entry", () => {
+    const moduleUrl = new URL("../tools/dev-port.mjs", import.meta.url).href;
+    expect(() =>
+      execFileSync(
+        process.execPath,
+        [
+          "--input-type=module",
+          "--eval",
+          `process.argv[1] = "/does/not/exist"; await import(${JSON.stringify(moduleUrl)});`,
+        ],
+        { encoding: "utf8" },
+      ),
+    ).not.toThrow();
+  });
 });

@@ -24,6 +24,8 @@ export function parseDevPort(rawPort) {
 
 export function resolveDevEndpoint(environment = process.env) {
   const port = parseDevPort(environment.SWARM_DEV_PORT);
+  // The slash terminates the normalized port when Electron flattens argv into
+  // one process-title string, so the marker for 5517 cannot match 55173.
   const rendererUrl = `http://${DEV_HOST}:${port}/`;
   return {
     host: DEV_HOST,
@@ -41,10 +43,16 @@ function runCli() {
   process.stdout.write(`${resolveDevEndpoint().rendererProcessArgument}\n`);
 }
 
-if (
-  process.argv[1] &&
-  realpathSync(new URL(import.meta.url)) === realpathSync(process.argv[1])
-) {
+function isMainModule() {
+  if (!process.argv[1]) return false;
+  try {
+    return realpathSync(new URL(import.meta.url)) === realpathSync(process.argv[1]);
+  } catch {
+    return false;
+  }
+}
+
+if (isMainModule()) {
   try {
     runCli();
   } catch (error) {
