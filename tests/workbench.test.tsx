@@ -3,7 +3,7 @@ import { StrictMode } from "react";
 import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { EditorView } from "@codemirror/view";
-import { PROTOCOL_VERSION, type CoreEvent, type CoreRequest, type CoreResponse, type FileEvent, type WorkspaceSnapshot } from "../protocol/schema";
+import { PROTOCOL_VERSION, type CoreEvent, type CoreRequest, type CoreResponse, type FileEvent, type GraphSlice, type WorkspaceSnapshot } from "../protocol/schema";
 import {
   isInterfaceZoomPercent,
   type ViewShellBridge,
@@ -13,7 +13,12 @@ import { INTERFACE_ZOOM_STORAGE_KEY } from "../app/renderer/zoom";
 import { dirtySnapshot, initialSnapshot, paymentsFileFocus } from "../fixtures/world";
 
 vi.mock("../app/renderer/GraphPane", () => ({
-  GraphPane: ({ graph }: { graph: { title: string } }) => <section data-testid="graph-pane">{graph.title}</section>,
+  GraphPane: ({ graph, onConnectionFocus }: { graph: GraphSlice; onConnectionFocus: (connection: unknown) => void }) => {
+    const edge = graph.edges[0];
+    const source = edge && graph.nodes.find((node) => node.id === edge.source);
+    const target = edge && graph.nodes.find((node) => node.id === edge.target);
+    return <section data-testid="graph-pane">{graph.title}{edge && source && target ? <button aria-label={`Inspect connection ${edge.id}`} onClick={() => onConnectionFocus({ id: edge.id, kind: edge.kind, label: edge.label ?? edge.kind, source: { label: source.label, focus: source.focus }, target: { label: target.label, focus: target.focus }, interfaceFocus: target.focus, contract: target.detail, provenance: graph.provenance })}>edge</button> : null}</section>;
+  },
 }));
 
 import { App } from "../app/renderer/App";
@@ -72,6 +77,10 @@ describe("workbench shell", () => {
     expect(screen.getByText("Service calls")).toBeTruthy();
     expect(screen.getByText("Changes entering the world")).toBeTruthy();
     expect(screen.getByText("Relevant bugs")).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: "Inspect connection service-e1" }));
+    await waitFor(() => expect(document.querySelector(".connection-widget")?.textContent).toContain("Gateway→Checkout"));
+    expect(screen.getByRole("heading", { name: "CreateOrder" })).toBeTruthy();
 
     fireEvent.click(screen.getByRole("button", { name: /Build topology/ }));
     await waitFor(() => expect(requests.some((item) => item.type === "reconciliation.start")).toBe(true));
@@ -270,6 +279,8 @@ describe("workbench shell", () => {
     fireEvent.click(screen.getAllByRole("button", { name: paths[0] })[0]!);
     await waitFor(() => expect(document.querySelector(".cm-content")?.textContent).toContain("old"));
     expect(screen.getAllByTestId("graph-pane")).toHaveLength(2);
+    expect(document.querySelector(".navigation-field.source-open")).toBeTruthy();
+    expect(document.querySelector(".graphs-grid.is-sidebar")).toBeTruthy();
     fireEvent.click(screen.getAllByRole("button", { name: paths[1] })[0]!);
     await waitFor(() => expect(document.querySelectorAll(".surface-tabs > button, .surface-tab-main")).toHaveLength(3));
     const surfaceTabs = [...document.querySelectorAll<HTMLButtonElement>(".surface-tabs > button, .surface-tab-main")];
@@ -285,6 +296,12 @@ describe("workbench shell", () => {
     await waitFor(() => expect(document.querySelector(".cm-added-flash")?.textContent).toContain("new"));
     expect(document.querySelector(".cm-removed-ghost")?.textContent).toContain("old");
     expect(paymentsEditor.state.selection.main.anchor).toBe(1);
+    const closeShortcut = new KeyboardEvent("keydown", { key: "w", ctrlKey: true, cancelable: true });
+    window.dispatchEvent(closeShortcut);
+    expect(closeShortcut.defaultPrevented).toBe(true);
+    await waitFor(() => expect(screen.queryByRole("button", { name: `Close ${paths[0]}` })).toBeNull());
+    expect(screen.getByRole("button", { name: `Close ${paths[1]}` })).toBeTruthy();
+    expect(screen.getAllByTestId("graph-pane")).toHaveLength(2);
   });
 
   it("saves with the expected revision and preserves a dirty buffer on external conflict", async () => {
@@ -338,12 +355,56 @@ describe("workbench shell", () => {
     expect(screen.getByText("The working file changed; your local buffer is preserved.")).toBeTruthy();
     expect(editor.state.doc.toString()).toContain("my unsaved line");
     expect(editor.state.doc.toString()).toContain("still mine");
+    fireEvent.keyDown(window, { key: "w", ctrlKey: true });
+    expect(screen.getByRole("button", { name: `Close ${path}` })).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: `Close ${path}` }));
     expect(screen.getByRole("button", { name: `Close ${path}` })).toBeTruthy();
     expect(editor.state.doc.toString()).toContain("still mine");
     fireEvent.click(screen.getByRole("button", { name: "Reload disk" }));
     await waitFor(() => expect(editor.state.doc.toString()).toBe("external replacement\n"));
     expect(document.querySelector(".file-saved")).toBeTruthy();
+  });
+
+  it("keeps a conflict raised during save and leaves transient failures dirty and retryable", async () => {
+    let listener: ((event: CoreEvent | FileEvent) => void) | undefined;
+    const path = "services/payments/payments.ts";
+    const base = initialSnapshot(paymentsFileFocus);
+    const snapshot: WorkspaceSnapshot = { ...base, widgets: [{ id: "source-paths", title: "Implementation sources", kind: "list", priority: 0, value: [path], provenance: base.widgets[0]!.provenance }] };
+    let saveNumber = 0;
+    let finishSave!: (response: CoreResponse) => void;
+    const delayedSave = new Promise<CoreResponse>((resolve) => { finishSave = resolve; });
+    const request = vi.fn(async (input: CoreRequest): Promise<CoreResponse> => {
+      if (input.type === "file.read") return { protocolVersion: PROTOCOL_VERSION, requestId: input.requestId, ok: true, sequence: 0, snapshot, file: { kind: "read", path, content: "base\n", revision: "a".repeat(64), size: 5 } };
+      if (input.type === "file.write") {
+        saveNumber += 1;
+        if (saveNumber === 1) return { protocolVersion: PROTOCOL_VERSION, requestId: input.requestId, ok: false, error: { code: "WRITE_FAILED", message: "disk briefly unavailable" } };
+        return delayedSave;
+      }
+      return { protocolVersion: PROTOCOL_VERSION, requestId: input.requestId, ok: true, sequence: 0, snapshot };
+    });
+    Object.defineProperty(window, "swarm", { configurable: true, value: { request, onEvent: (next: (event: CoreEvent | FileEvent) => void) => { listener = next; return () => undefined; } } });
+    installViewBridge();
+    render(<App />);
+    await screen.findByText("Implementation sources");
+    fireEvent.click(screen.getAllByRole("button", { name: path })[0]!);
+    await waitFor(() => expect(document.querySelector(".cm-content")?.textContent).toContain("base"));
+    const editor = EditorView.findFromDOM(document.querySelector(".cm-editor")!);
+    if (!editor) throw new Error("CodeMirror editor was not mounted");
+    act(() => editor.dispatch({ changes: { from: editor.state.doc.length, insert: "mine\n" } }));
+    fireEvent.keyDown(editor.contentDOM, { key: "s", ctrlKey: true });
+    await waitFor(() => expect(screen.getByText(/can be retried/)).toBeTruthy());
+    expect(document.querySelector(".file-dirty")).toBeTruthy();
+    fireEvent.keyDown(window, { key: "w", ctrlKey: true });
+    expect(screen.getByRole("button", { name: `Close ${path}` })).toBeTruthy();
+
+    fireEvent.keyDown(editor.contentDOM, { key: "s", ctrlKey: true });
+    await waitFor(() => expect(document.querySelector(".file-saving")).toBeTruthy());
+    act(() => listener?.({ protocolVersion: PROTOCOL_VERSION, type: "file.changed", sequence: 4, emittedAt: "2026-09-05T12:03:00.000Z", path, revision: "c".repeat(64), change: "modified" }));
+    await waitFor(() => expect(document.querySelector(".file-conflict")).toBeTruthy());
+    finishSave({ protocolVersion: PROTOCOL_VERSION, requestId: "save", ok: true, sequence: 5, snapshot, file: { kind: "write", path, revision: "b".repeat(64), workingFingerprint: "d".repeat(64) } });
+    await act(async () => { await delayedSave; });
+    expect(document.querySelector(".file-conflict")).toBeTruthy();
+    expect(editor.state.doc.toString()).toContain("mine");
   });
 
   it("registers observation before reading and rejects an older external read that completes last", async () => {

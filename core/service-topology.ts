@@ -97,24 +97,25 @@ export function adaptServiceTopology(
     label: artifact.service.displayName,
     kind: "service",
     status: "green",
-    position: { x: 30, y: 90 },
+    position: { x: 310, y: 30 + (Math.max(artifact.providedInterfaces.length, artifact.requiredInterfaces.length) - 1) * 55 },
     focus: serviceFocus,
     detail: artifact.owningTarget,
   }];
   const edges: GraphSlice["edges"] = [];
   const mappings: NavigationMapping[] = [];
-  let y = 20;
+  let y = 30;
   for (const provided of artifact.providedInterfaces) {
     const interfaceFocus = focus("interface", provided.id, fingerprint, declarationPaths.get(provided.id), provided.name);
-    nodes.push({ id: provided.id, label: provided.name, kind: "provided interface", status: "green", position: { x: 310, y }, focus: interfaceFocus, detail: `${provided.requestType} → ${provided.responseType}` });
-    edges.push({ id: `${artifact.service.id}:provides:${provided.id}`, source: artifact.service.id, target: provided.id, kind: "provides", label: "provides", status: "green" });
-    y += 130;
+    nodes.push({ id: provided.id, label: provided.name, kind: "provided interface", status: "green", position: { x: 20, y }, focus: interfaceFocus, detail: `${provided.requestType} → ${provided.responseType}` });
+    edges.push({ id: `${provided.id}:handled-by:${artifact.service.id}`, source: provided.id, target: artifact.service.id, kind: "provides", label: "handled by", status: "green" });
+    y += 110;
   }
+  y = 30;
   for (const required of artifact.requiredInterfaces) {
     const interfaceFocus = focus("interface", required.id, fingerprint, declarationPaths.get(required.id), required.name);
-    nodes.push({ id: required.id, label: required.name, kind: "required interface", status: "green", position: { x: 310, y }, focus: interfaceFocus, detail: `${required.serviceId} · ${required.requestType} → ${required.responseType}` });
-    edges.push({ id: `${artifact.service.id}:requires:${required.id}`, source: artifact.service.id, target: required.id, kind: "requires", label: "requires", status: "green" });
-    y += 130;
+    nodes.push({ id: required.id, label: required.name, kind: "required interface", status: "green", position: { x: 600, y }, focus: interfaceFocus, detail: `${required.serviceId} · ${required.requestType} → ${required.responseType}` });
+    edges.push({ id: `${artifact.service.id}:calls:${required.id}`, source: artifact.service.id, target: required.id, kind: "requires", label: "calls", status: "green" });
+    y += 110;
   }
   for (const item of [serviceFocus, ...nodes.slice(1).map((node) => node.focus)]) {
     const candidatePath = item.path ?? artifact.implementationPaths[0]!;

@@ -10,9 +10,12 @@ describe("application menu", () => {
         : [])]);
 
     expect(roles).toContain("reload");
-    expect(roles).toContain("fileMenu");
+    expect(roles).toContain("quit");
+    expect(roles).not.toContain("fileMenu");
+    expect(roles).not.toContain("close");
     expect(roles).toContain("editMenu");
-    expect(roles).toContain("windowMenu");
+    expect(roles).toContain("minimize");
+    expect(roles).not.toContain("windowMenu");
     expect(roles).not.toContain("zoomIn");
     expect(roles).not.toContain("zoomOut");
     expect(roles).not.toContain("resetZoom");

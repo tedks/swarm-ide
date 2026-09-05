@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useRef } from "react";
 import { Background, Controls, Handle, Position, ReactFlow, type Edge, type Node, type NodeProps, type ReactFlowInstance } from "@xyflow/react";
 import type { FocusRef, GraphSlice, NavigationMapping } from "../../protocol/schema";
-import { adaptGraph, type TopologyNodeData } from "./graph-adapter";
+import { adaptGraph, describeGraphConnection, type GraphConnectionFocus, type TopologyNodeData } from "./graph-adapter";
+export type { GraphConnectionFocus } from "./graph-adapter";
 
 function TopologyNode({ data }: NodeProps) {
   const node = data as TopologyNodeData;
@@ -19,11 +20,12 @@ function TopologyNode({ data }: NodeProps) {
 
 const nodeTypes = { topology: TopologyNode };
 
-export function GraphPane({ graph, focus, mappings, onFocus, interfaceZoom }: {
+export function GraphPane({ graph, focus, mappings, onFocus, onConnectionFocus, interfaceZoom }: {
   graph: GraphSlice;
   focus: FocusRef;
   mappings: NavigationMapping[];
   onFocus: (focus: FocusRef) => void;
+  onConnectionFocus: (connection: GraphConnectionFocus) => void;
   interfaceZoom: number | null;
 }) {
   const adapted = useMemo(() => adaptGraph(graph, focus, mappings), [graph, focus, mappings]);
@@ -62,6 +64,12 @@ export function GraphPane({ graph, focus, mappings, onFocus, interfaceZoom }: {
           nodesConnectable={false}
           elementsSelectable
           onNodeClick={(_event, node) => onFocus((node.data as TopologyNodeData).focus)}
+          onEdgeClick={(_event, selected) => {
+            const connection = describeGraphConnection(graph, selected.id);
+            if (connection) onConnectionFocus(connection);
+          }}
+          edgesFocusable
+          elevateEdgesOnSelect
         >
           <Background color="#173031" gap={22} size={1} />
           <Controls showInteractive={false} />

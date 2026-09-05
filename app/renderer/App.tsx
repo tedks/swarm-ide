@@ -8,7 +8,7 @@ import {
 } from "../../protocol/schema";
 import { applyCoreEvent, emptyWorkspaceState, loadSnapshot, type WorkspaceState } from "./state";
 import { EditorPane } from "./EditorPane";
-import { GraphPane } from "./GraphPane";
+import { GraphPane, type GraphConnectionFocus } from "./GraphPane";
 import { sourceFlash, type SourceFlash } from "./source-diff";
 import {
   DEFAULT_INTERFACE_ZOOM,
@@ -66,9 +66,11 @@ export function App() {
   const [hmr, setHmr] = useState({ generation: 0, milliseconds: 0 });
   const [fileTabs, setFileTabs] = useState<FileTab[]>([]);
   const [activeSurface, setActiveSurface] = useState<string>("graphs");
+  const [selectedConnection, setSelectedConnection] = useState<GraphConnectionFocus | null>(null);
   const fileTabsRef = useRef<FileTab[]>([]);
   const fileEventsRef = useRef(new Map<string, FileEvent>());
   const openGenerationsRef = useRef(new Map<string, number>());
+  const reloadGenerationsRef = useRef(new Map<string, number>());
   const desiredFilesRef = useRef(new Set<string>());
   const savesInFlightRef = useRef(new Set<string>());
   const flashId = useRef(0);
@@ -233,17 +235,18 @@ export function App() {
     openGenerationsRef.current.set(path, generation);
     setFileTabs((tabs) => tabs.some((tab) => tab.path === path) ? tabs : [...tabs, { path, content: "", savedContent: "", revision: "", status: "loading", message: "Registering source observation…", flash: null }]);
     const watchResponse = await invoke({ type: "file.watch", requestId: requestId(), protocolVersion: PROTOCOL_VERSION, path });
-    if (!watchResponse?.ok || openGenerationsRef.current.get(path) !== generation || !desiredFilesRef.current.has(path)) {
+    if (openGenerationsRef.current.get(path) !== generation || !desiredFilesRef.current.has(path)) return;
+    if (!watchResponse?.ok) {
       setFileTabs((tabs) => tabs.map((tab) => tab.path === path ? { ...tab, status: "error", message: watchResponse?.ok ? "Source observation was cancelled." : "The source file could not be observed." } : tab));
       return;
     }
     const eventBeforeRead = fileEventsRef.current.get(path)?.sequence ?? 0;
     const response = await invoke({ type: "file.read", requestId: requestId(), protocolVersion: PROTOCOL_VERSION, path });
+    if (openGenerationsRef.current.get(path) !== generation || !desiredFilesRef.current.has(path)) return;
     if (!response?.ok || !response.file || response.file.kind !== "read") {
       setFileTabs((tabs) => tabs.map((tab) => tab.path === path ? { ...tab, status: "error", message: "The source file could not be opened." } : tab));
       return;
     }
-    if (openGenerationsRef.current.get(path) !== generation || !desiredFilesRef.current.has(path)) return;
     const file = response.file;
     const eventAfterRead = fileEventsRef.current.get(path);
     if (eventAfterRead && eventAfterRead.sequence > eventBeforeRead && eventAfterRead.revision !== file.revision) {
@@ -255,7 +258,7 @@ export function App() {
 
   const closeFile = useCallback((path: string) => {
     const tab = fileTabsRef.current.find((candidate) => candidate.path === path);
-    if (tab && (tab.status === "dirty" || tab.status === "saving" || tab.status === "conflict")) {
+    if (tab && (tab.content !== tab.savedContent || tab.status === "saving" || tab.status === "conflict")) {
       setFileTabs((tabs) => tabs.map((candidate) => candidate.path === path ? { ...candidate, message: "Save or reload this buffer before closing it." } : candidate));
       return;
     }
@@ -273,32 +276,50 @@ export function App() {
     const tab = fileTabsRef.current.find((candidate) => candidate.path === path);
     if (!tab || !tab.revision || tab.status !== "dirty" || savesInFlightRef.current.has(path)) return;
     const savedContent = tab.content;
+    const eventSequenceBeforeSave = fileEventsRef.current.get(path)?.sequence ?? 0;
     savesInFlightRef.current.add(path);
     setFileTabs((tabs) => tabs.map((candidate) => candidate.path === path ? { ...candidate, status: "saving", message: "Saving with optimistic revision check…" } : candidate));
     const response = await invoke({ type: "file.write", requestId: requestId(), protocolVersion: PROTOCOL_VERSION, path, expectedRevision: tab.revision, content: savedContent });
     savesInFlightRef.current.delete(path);
     if (!response?.ok || !response.file || response.file.kind !== "write") {
       const conflict = response && !response.ok && response.error.code === "REVISION_CONFLICT";
-      setFileTabs((tabs) => tabs.map((candidate) => candidate.path === path ? { ...candidate, status: conflict ? "conflict" : "error", message: `${response && !response.ok ? response.error.message : "Save failed"}; your buffer is preserved.` } : candidate));
+      setFileTabs((tabs) => tabs.map((candidate) => candidate.path === path ? { ...candidate, status: conflict ? "conflict" : candidate.content !== candidate.savedContent ? "dirty" : "error", message: `${response && !response.ok ? response.error.message : "Save failed"}; your buffer is preserved${conflict ? "" : " and can be retried"}.` } : candidate));
       return;
     }
     const write = response.file;
     setFileTabs((tabs) => tabs.map((candidate) => candidate.path === path ? {
       ...candidate,
-      savedContent,
-      revision: write.revision,
-      status: candidate.content === savedContent ? "saved" : "dirty",
-      message: write.workingFingerprint
-        ? `Saved · working ${write.workingFingerprint.slice(0, 12)}`
-        : write.fingerprintError ?? "Saved; working-world fingerprint refresh failed",
+      ...((candidate.status === "conflict" || ((fileEventsRef.current.get(path)?.sequence ?? 0) > eventSequenceBeforeSave && fileEventsRef.current.get(path)?.revision !== write.revision))
+        ? { status: "conflict" as const, message: "The working file changed while save completed; your local buffer is preserved." }
+        : {
+          savedContent,
+          revision: write.revision,
+          status: candidate.content === savedContent ? "saved" as const : "dirty" as const,
+          message: write.workingFingerprint
+            ? `Saved · working ${write.workingFingerprint.slice(0, 12)}`
+            : write.fingerprintError ?? "Saved; working-world fingerprint refresh failed",
+        }),
     } : candidate));
   }, [invoke]);
 
   const reloadFile = useCallback(async (path: string) => {
+    const before = fileTabsRef.current.find((candidate) => candidate.path === path);
+    if (!before) return;
+    const openGeneration = openGenerationsRef.current.get(path);
+    const eventSequence = fileEventsRef.current.get(path)?.sequence ?? 0;
+    const reloadGeneration = (reloadGenerationsRef.current.get(path) ?? 0) + 1;
+    reloadGenerationsRef.current.set(path, reloadGeneration);
     const response = await invoke({ type: "file.read", requestId: requestId(), protocolVersion: PROTOCOL_VERSION, path });
+    if (reloadGenerationsRef.current.get(path) !== reloadGeneration || openGenerationsRef.current.get(path) !== openGeneration || !desiredFilesRef.current.has(path)) return;
     if (!response?.ok || !response.file || response.file.kind !== "read") return;
     const file = response.file;
-    setFileTabs((tabs) => tabs.map((tab) => tab.path === path ? { ...tab, content: file.content, savedContent: file.content, revision: file.revision, status: "saved", message: "Reloaded the canonical working file", flash: null } : tab));
+    const latestEvent = fileEventsRef.current.get(path);
+    setFileTabs((tabs) => tabs.map((tab) => {
+      if (tab.path !== path) return tab;
+      if (tab.content !== before.content || tab.revision !== before.revision) return { ...tab, message: "Reload completed after this buffer changed; the newer buffer was preserved." };
+      if (latestEvent && latestEvent.sequence > eventSequence && latestEvent.revision !== file.revision) return tab;
+      return { ...tab, content: file.content, savedContent: file.content, revision: file.revision, status: "saved", message: "Reloaded the canonical working file", flash: null };
+    }));
   }, [invoke]);
 
   useEffect(() => {
@@ -312,11 +333,16 @@ export function App() {
         return;
       }
       if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "k") { event.preventDefault(); setPaletteOpen((open) => !open); }
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "w") {
+        event.preventDefault();
+        if (activeSurface !== "graphs") closeFile(activeSurface);
+        return;
+      }
       if (event.key === "Escape") setPaletteOpen(false);
     };
     window.addEventListener("keydown", listener);
     return () => window.removeEventListener("keydown", listener);
-  }, [resetZoom, zoomIn, zoomOut]);
+  }, [activeSurface, closeFile, resetZoom, zoomIn, zoomOut]);
 
   useEffect(() => {
     if (paletteOpen) { setCommandQuery(""); requestAnimationFrame(() => commandInput.current?.focus()); }
@@ -346,9 +372,14 @@ export function App() {
   }, [activeFile?.status, activeSurface, fileTabs.length, hmr, paletteOpen, snapshot, title, zoomTitle]);
 
   const selectFocus = useCallback((focus: FocusRef) => {
+    setSelectedConnection(null);
     void invoke({ type: "focus.select", requestId: requestId(), protocolVersion: PROTOCOL_VERSION, focus });
     if (focus.path) void openFile(focus.path);
   }, [invoke, openFile]);
+  const selectConnection = useCallback((connection: GraphConnectionFocus) => {
+    setSelectedConnection(connection);
+    void invoke({ type: "focus.select", requestId: requestId(), protocolVersion: PROTOCOL_VERSION, focus: connection.interfaceFocus });
+  }, [invoke]);
   const reconcile = useCallback(() => {
     setPaletteOpen(false);
     return invoke({ type: "reconciliation.start", requestId: requestId(), protocolVersion: PROTOCOL_VERSION, mode: "success" });
@@ -383,7 +414,7 @@ export function App() {
         <button className="new-run" disabled>＋ agent harness not configured</button>
       </aside>
 
-      <section className="navigation-field">
+      <section className={`navigation-field ${activeFile ? "source-open" : ""}`}>
         <div className="field-toolbar">
           <div><span className="eyebrow">central navigation</span><strong>{activeFile?.path ?? focusLabel(snapshot.focus)}</strong><small>{activeFile ? `${activeFile.status} · ${activeFile.message}` : `${snapshot.focus.domain} · ${snapshot.focus.revisionId.slice(0, 12)}`}</small></div>
           <div className="world-chips"><span>working <b>{snapshot.revisions.working.id.slice(0, 8)}</b></span><span>built <b>{snapshot.revisions.built.id.slice(0, 8) || "—"}</b></span><span>deployed <b>{snapshot.revisions.deployed.environment}</b></span></div>
@@ -393,7 +424,7 @@ export function App() {
           <button className={activeSurface === "graphs" ? "active" : ""} onClick={() => setActiveSurface("graphs")}><span>⌘</span> System graphs</button>
           {fileTabs.map((tab) => <div key={tab.path} className={`surface-tab ${activeSurface === tab.path ? "active" : ""}`}><button className="surface-tab-main" onClick={() => setActiveSurface(tab.path)} title={tab.path}><span className={`tab-state status-${tab.status}`}>{tab.status === "dirty" ? "●" : tab.status === "saving" ? "◌" : tab.status === "conflict" || tab.status === "error" ? "!" : "◇"}</span>{tab.path.split("/").at(-1)}</button><button className="surface-tab-close" aria-label={`Close ${tab.path}`} onClick={() => closeFile(tab.path)}>×</button></div>)}
         </nav>
-        <div className={`graphs-grid ${activeSurface === "graphs" ? "is-active" : "is-hidden"}`}>{snapshot.graphs.map((graph) => <GraphPane key={graph.topologyId} graph={graph} focus={snapshot.focus} mappings={snapshot.mappings} interfaceZoom={zoomPercent} onFocus={selectFocus} />)}</div>
+        <div className={`graphs-grid ${activeFile ? "is-sidebar" : activeSurface === "graphs" ? "is-active" : "is-hidden"}`}>{snapshot.graphs.map((graph) => <GraphPane key={graph.topologyId} graph={graph} focus={snapshot.focus} mappings={snapshot.mappings} interfaceZoom={zoomPercent} onFocus={selectFocus} onConnectionFocus={selectConnection} />)}</div>
         {activeFile ? <section className={`source-surface ${activeFile.status === "conflict" || activeFile.status === "error" ? "has-banner" : ""}`}>
           <header><div><span className="eyebrow">source observatory</span><strong>{activeFile.path}</strong></div><div className={`file-state file-${activeFile.status}`}><i />{activeFile.status}<button onClick={() => void saveFile(activeFile.path)} disabled={activeFile.status !== "dirty"}>Save <kbd>Ctrl S</kbd></button></div></header>
           {activeFile.status === "loading" ? <div className="source-message">Loading the canonical working file…</div> : <>
@@ -409,9 +440,12 @@ export function App() {
       </section>
 
       <aside className="instrument-panel panel">
-        <div className="instrument-heading"><div><span className="eyebrow">contextual instruments</span><h2>{focusLabel(snapshot.focus)}</h2></div><button>•••</button></div>
-        <div className="breadcrumbs">world / {snapshot.focus.domain} / <b>{focusLabel(snapshot.focus)}</b></div>
-        <div className="widget-grid">{[...snapshot.widgets].sort((a, b) => a.priority - b.priority).map((widget) => <article className={`widget widget-${widget.kind}`} key={widget.id}><header><span>{widget.title}</span><i title={`${widget.provenance.sourceKind}: ${widget.provenance.uri}`} /></header>{Array.isArray(widget.value) ? <ul>{widget.value.map((item) => <li key={item}>{widget.id === "source-paths" ? <button className="source-link" onClick={() => void openFile(item)}>{item}</button> : item}</li>)}</ul> : <div className="widget-value">{widget.value}</div>}{widget.unit ? <small>{widget.unit}</small> : null}</article>)}</div>
+        <div className="instrument-heading"><div><span className="eyebrow">contextual instruments</span><h2>{selectedConnection?.label ?? focusLabel(snapshot.focus)}</h2></div><button>•••</button></div>
+        <div className="breadcrumbs">world / {selectedConnection ? "connection" : snapshot.focus.domain} / <b>{selectedConnection?.id ?? focusLabel(snapshot.focus)}</b></div>
+        <div className="widget-grid">
+          {selectedConnection ? <article className="widget widget-list connection-widget"><header><span>{selectedConnection.kind} connection</span><i title={`${selectedConnection.provenance[0]?.sourceKind}: ${selectedConnection.provenance[0]?.uri}`} /></header><div className="connection-flow"><button onClick={() => selectFocus(selectedConnection.source.focus)}>{selectedConnection.source.label}</button><span>→</span><button onClick={() => selectFocus(selectedConnection.target.focus)}>{selectedConnection.target.label}</button></div>{selectedConnection.contract ? <small>{selectedConnection.contract}</small> : null}<code>{selectedConnection.provenance[0]?.uri}</code></article> : null}
+          {[...snapshot.widgets].sort((a, b) => a.priority - b.priority).map((widget) => <article className={`widget widget-${widget.kind}`} key={widget.id}><header><span>{widget.title}</span><i title={`${widget.provenance.sourceKind}: ${widget.provenance.uri}`} /></header>{Array.isArray(widget.value) ? <ul>{widget.value.map((item) => <li key={item}>{widget.id === "source-paths" ? <button className="source-link" onClick={() => void openFile(item)}>{item}</button> : item}</li>)}</ul> : <div className="widget-value">{widget.value}</div>}{widget.unit ? <small>{widget.unit}</small> : null}</article>)}
+        </div>
         <article className="widget source-widget"><header><span>Truth source</span><i /></header>{snapshot.focus.path ? <button className="source-link" onClick={() => void openFile(snapshot.focus.path!)}>{snapshot.focus.path}</button> : <code>{snapshot.focus.key}</code>}<small>{snapshot.reconciliation.message}</small></article>
       </aside>
 
