@@ -20,18 +20,23 @@ prove both the typed state rules and the actual window interaction.
 - [x] (2026-09-05 07:05Z) Implemented the separate local-core process, runtime contracts, deterministic fixtures, event ordering, and sandboxed Electron bridge.
 - [x] (2026-09-05 07:07Z) Implemented and visually inspected the four-region workbench, coordinated repo/service graphs, contextual widgets, jobs, and `Ctrl-K` surface.
 - [x] (2026-09-05 07:10Z) Automated real X11 window selection, keyboard input, click dispatch, screenshots, state assertions, and HMR measurement.
-- [ ] Complete documentation, granular commits, CI, council-review convergence, normal PR merge, cleanup, and final verification.
+- [x] (2026-09-05 07:58Z) Hardened repeated reconciliation, provenance, event ordering, graph mappings, Electron navigation/IPC, the production bundle, and the desktop/HMR assertions after council review.
+- [ ] Complete convergence review, CI, normal PR merge, cleanup, and final verification.
 
 ## Surprises & Discoveries
 
-- Observation: Electron could render the real window despite GLX initialization failures by falling back from the GPU process.
-  Evidence: the X11 screenshot is 1916×1019 and displays both interactive React Flow canvases; the warnings remain noisy but non-fatal.
+- Observation: Chromium's GPU process was not stable on the remote X11 workstation.
+  Evidence: disabling hardware acceleration before app readiness removed the repeated GPU-process crash while preserving the 1916×1019 React Flow render.
 - Observation: the first Bazel quality target cached despite source changes because its shell test did not declare application data.
   Evidence: adding the root `quality_sources` filegroup made source changes invalidate the test action.
 - Observation: visible-only X11 search failed when i3 placed Electron on another workspace.
   Evidence: removing `xdotool --onlyvisible` and activating the resolved ID made the repeatable smoke pass.
 - Observation: visual verification exposed a working-focus label still pinned to `work:a1` while the world was `work:b2`.
   Evidence: fixture retagging and a runtime invariant now require focus and working revision to agree.
+- Observation: window titles can advance before Chromium exposes the matching frame to X11, and screen-region capture can observe an unrelated workspace.
+  Evidence: the driver now waits for paint, reactivates the resolved Electron ID before every capture, and reads only that X window resource; root-desktop capture is forbidden.
+- Observation: the original fixture modeled only the first reconciliation and let successful responses bypass event ordering.
+  Evidence: epochs/revisions are now generated from prior state, successive attempts retain the last green topology, responses carry sequence watermarks, and only events mutate an initialized renderer.
 
 ## Decision Log
 
@@ -49,6 +54,9 @@ prove both the typed state rules and the actual window interaction.
   Date/Author: 2026-09-05 / Foundation Architect.
 - Decision: make the first computer-use driver X11-specific and explicit about Wayland.
   Rationale: the current workstation exposes reliable X11 primitives; pretending they are compositor-neutral would create a false acceptance result.
+  Date/Author: 2026-09-05 / Foundation Architect.
+- Decision: keep the build rule local and the provider deterministic at this layer.
+  Rationale: a hermetic JavaScript toolchain and generalized provider framework should follow concrete product pressure; this foundation proves the real output and protocol seams without prematurely owning those systems.
   Date/Author: 2026-09-05 / Foundation Architect.
 
 ## Outcomes & Retrospective
@@ -119,9 +127,10 @@ supervisor restarts it. The feature worktree remains isolated from `master`.
 ## Artifacts and Notes
 
 Local evidence is intentionally ignored by Git under `artifacts/desktop/` and
-`artifacts/hmr/`. The first passing desktop comparison changed 72,478.8 pixels.
-The first recorded warm HMR sample was 55 ms edit-to-observable-title and 19 ms
-Vite-event-to-next-paint.
+`artifacts/hmr/`. The reviewed desktop comparison changed 56,162 pixels between
+the exact work:a1 and work:b2 frames. The warm HMR sample observed the dedicated
+pixel at 121 ms, the exact title generation at 165 ms, and 29 ms from Vite event
+to the renderer's second animation frame.
 
 ## Interfaces and Dependencies
 
@@ -135,3 +144,7 @@ Library run only through the Bazel quality target. X11 verification uses
 Revision note (2026-09-05): recorded the implemented foundation and measured
 desktop evidence before CI/review/landing so another contributor can resume the
 remaining gate from this file alone.
+
+Revision note (2026-09-05): incorporated first-round council findings and
+replaced permissive visual assertions with exact revision, palette, window, and
+pixel observations.

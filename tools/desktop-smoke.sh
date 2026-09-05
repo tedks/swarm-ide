@@ -43,40 +43,97 @@ wait_for_title() {
   return 1
 }
 
-wmctrl -i -a "$window_id"
-xdotool windowfocus --sync "$window_id"
+wait_for_title_without() {
+  local needle="$1"
+  local attempts="$2"
+  local title=""
+  for _ in $(seq 1 "$attempts"); do
+    title=$(xdotool getwindowname "$window_id")
+    [[ "$title" != *"$needle"* ]] && return 0
+    sleep 0.04
+  done
+  echo "window title still contained '$needle': $title" >&2
+  return 1
+}
+
+activate_window() {
+  local active=""
+  wmctrl -i -a "$window_id"
+  for _ in $(seq 1 25); do
+    active=$(xdotool getactivewindow 2>/dev/null || true)
+    [[ "$active" == "$window_id" ]] && return 0
+    sleep 0.02
+  done
+  echo "could not activate the selected swarm-ide window; active window is '$active'" >&2
+  return 1
+}
+
+activate_window
+geometry=$(xdotool getwindowgeometry --shell "$window_id")
+WIDTH=$(sed -n 's/^WIDTH=//p' <<<"$geometry")
+HEIGHT=$(sed -n 's/^HEIGHT=//p' <<<"$geometry")
+if [[ ! "$WIDTH" =~ ^[0-9]+$ || ! "$HEIGHT" =~ ^[0-9]+$ ]]; then
+  echo "could not parse Electron window geometry" >&2
+  exit 4
+fi
+
+capture_window() {
+  local destination="$1"
+  activate_window
+  sleep 0.05
+  import -window "$window_id" "$destination"
+}
 
 # Reset through the keyboard command surface so every run begins at work:a1.
 xdotool key --clearmodifiers Escape
+wait_for_title_without "Palette open" 25
 xdotool key --clearmodifiers ctrl+k
-sleep 0.1
+wait_for_title "Palette open" 25
+xdotool mousemove --window "$window_id" "$((WIDTH / 2))" "$((HEIGHT * 14 / 100))" click 1
 xdotool key --clearmodifiers ctrl+a
 xdotool type --clearmodifiers --delay 3 'Reset fixture world'
 xdotool key --clearmodifiers Return
-sleep 0.08
-xdotool key --clearmodifiers Escape
-wait_for_title "Consistent" 25
-import -window "$window_id" "$artifact_dir/before.png"
+wait_for_title_without "Palette open" 25
+sleep 0.2
+reset_title=$(xdotool getwindowname "$window_id")
+if [[ "$reset_title" != *"work:a1"* || "$reset_title" == *"FraudCheck visible"* ]]; then
+  echo "fixture reset did not restore the exact work:a1 world: $reset_title" >&2
+  exit 4
+fi
+capture_window "$artifact_dir/before.png"
 
 # Open with a hotkey, then dispatch by clicking the top command.
 xdotool key --clearmodifiers ctrl+k
-sleep 0.14
-import -window "$window_id" "$artifact_dir/command-palette.png"
-eval "$(xdotool getwindowgeometry --shell "$window_id")"
+wait_for_title "Palette open" 25
+sleep 0.25
+capture_window "$artifact_dir/command-palette.png"
 palette_command_y=$((HEIGHT * 11 / 100 + 80))
+activate_window
 xdotool mousemove --window "$window_id" "$((WIDTH / 2))" "$palette_command_y" click 1
 
+wait_for_title_without "Palette open" 25
 wait_for_title "Reconciling" 25
-sleep 0.1
-import -window "$window_id" "$artifact_dir/reconciling.png"
-wait_for_title "FraudCheck visible" 55
-import -window "$window_id" "$artifact_dir/reconciled.png"
-
-difference=$(compare -metric AE "$artifact_dir/before.png" "$artifact_dir/reconciled.png" null: 2>&1 || true)
-changed_pixels=${difference%% *}
-if [[ ! "$changed_pixels" =~ ^[0-9]+([.][0-9]+)?$ ]] || ! awk -v value="$changed_pixels" 'BEGIN { exit !(value >= 1000) }'; then
-  echo "desktop state assertion failed: only '$difference' pixels changed" >&2
+yellow_title=$(xdotool getwindowname "$window_id")
+if [[ "$yellow_title" != *"work:b2"* || "$yellow_title" == *"FraudCheck visible"* ]]; then
+  echo "yellow state did not retain the expected work:a1 topology over work:b2: $yellow_title" >&2
   exit 4
+fi
+sleep 0.25
+capture_window "$artifact_dir/reconciling.png"
+wait_for_title "FraudCheck visible" 55
+green_title=$(xdotool getwindowname "$window_id")
+if [[ "$green_title" != *"work:b2"* ]]; then
+  echo "green publication does not identify work:b2: $green_title" >&2
+  exit 4
+fi
+sleep 0.25
+capture_window "$artifact_dir/reconciled.png"
+
+changed_pixels=$(magick "$artifact_dir/before.png" "$artifact_dir/reconciled.png" \
+  -compose difference -composite -threshold 0 -format '%[fx:round(mean*w*h)]' info:)
+if [[ ! "$changed_pixels" =~ ^[0-9]+$ ]] || (( changed_pixels < 1000 )); then
+  echo "desktop state assertion failed: only '$changed_pixels' pixels changed" >&2
+  exit 5
 fi
 
 echo "desktop smoke passed"

@@ -34,36 +34,59 @@ restore_probe() {
 trap restore_probe EXIT
 
 wmctrl -i -a "$window_id"
+capture_window() {
+  local destination="$1"
+  wmctrl -i -a "$window_id"
+  sleep 0.05
+  import -window "$window_id" "$destination"
+}
 before_title=$(xdotool getwindowname "$window_id")
-import -window "$window_id" "$artifact_dir/before.png"
+capture_window "$artifact_dir/before.png"
+import -window "$window_id" -crop 48x48+0+0 +repage "$artifact_dir/before-probe.png"
+before_generation=$(sed -n 's/.*HMR \([0-9][0-9]*\):[0-9][0-9]*ms.*/\1/p' <<<"$before_title")
 start_ms=$(date +%s%3N)
-sed -i 's/--hmr-probe-hue: 165/--hmr-probe-hue: 166/' "$probe"
+sed -i -E 's/(--hmr-probe-hue: )[0-9]+/\1205/' "$probe"
+grep -q -- '--hmr-probe-hue: 205' "$probe"
 
 after_title="$before_title"
+after_generation=""
+title_ms=""
+pixel_ms=""
+changed_pixels="0"
 for _ in $(seq 1 100); do
   after_title=$(xdotool getwindowname "$window_id")
-  if [[ "$after_title" != "$before_title" && "$after_title" == *"HMR "* ]]; then
+  after_generation=$(sed -n 's/.*HMR \([0-9][0-9]*\):[0-9][0-9]*ms.*/\1/p' <<<"$after_title")
+  now_ms=$(date +%s%3N)
+  if [[ -z "$title_ms" && -n "$after_generation" && "$after_generation" != "$before_generation" ]]; then
+    title_ms=$((now_ms - start_ms))
+  fi
+  import -window "$window_id" -crop 48x48+0+0 +repage "$artifact_dir/after-probe.png"
+  pixel_observed_ms=$(date +%s%3N)
+  changed_pixels=$(magick "$artifact_dir/before-probe.png" "$artifact_dir/after-probe.png" \
+    -compose difference -composite -threshold 0 -format '%[fx:round(mean*w*h)]' info:)
+  if [[ -z "$pixel_ms" && "$changed_pixels" =~ ^[0-9]+$ ]] && (( changed_pixels > 0 )); then
+    pixel_ms=$((pixel_observed_ms - start_ms))
+  fi
+  if [[ -n "$title_ms" && -n "$pixel_ms" ]]; then
     break
   fi
-  sleep 0.01
+  sleep 0.005
 done
-if [[ "$after_title" == "$before_title" ]]; then
+if [[ -z "$title_ms" ]]; then
   echo "Vite did not publish a visible HMR generation" >&2
   exit 4
 fi
-end_ms=$(date +%s%3N)
-import -window "$window_id" "$artifact_dir/after.png"
-
-paint_ms=$(sed -n 's/.*HMR [0-9][0-9]*:\([0-9][0-9]*\)ms.*/\1/p' <<<"$after_title")
-difference=$(compare -metric AE "$artifact_dir/before.png" "$artifact_dir/after.png" null: 2>&1 || true)
-changed_pixels=${difference%% *}
-if [[ ! "$changed_pixels" =~ ^[0-9]+([.][0-9]+)?$ ]] || ! awk -v value="$changed_pixels" 'BEGIN { exit !(value > 0) }'; then
-  echo "HMR title changed but screenshot assertion did not" >&2
+if [[ -z "$pixel_ms" ]]; then
+  echo "HMR title changed but the dedicated screen probe did not" >&2
   exit 5
 fi
+capture_window "$artifact_dir/after.png"
+
+paint_ms=$(sed -n 's/.*HMR [0-9][0-9]*:\([0-9][0-9]*\)ms.*/\1/p' <<<"$after_title")
 
 echo "HMR measurement passed"
-echo "edit_to_visible_title_ms=$((end_ms - start_ms))"
+echo "edit_to_observed_pixel_ms=$pixel_ms"
+echo "edit_to_visible_title_ms=$title_ms"
 echo "vite_event_to_next_paint_ms=${paint_ms:-unknown}"
 echo "changed_pixels=$changed_pixels"
 echo "before_title=$before_title"
