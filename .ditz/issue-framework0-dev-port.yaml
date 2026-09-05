@@ -1,0 +1,16 @@
+id: framework0-dev-port
+title: Make the development server port configurable
+desc: ""
+type: bugfix
+component: development
+release:
+reporter: Ted Smith <tedks@riseup.net>
+status: unstarted
+disposition:
+creation_time: 2026-09-05T08:45:35-00:00
+references: []
+log_events:
+- time: 2026-09-05T08:45:35-00:00
+  who: Ted Smith
+  what: created
+  comment: ""
