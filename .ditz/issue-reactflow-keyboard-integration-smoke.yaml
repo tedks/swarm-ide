@@ -14,3 +14,9 @@ log_events:
   who: Ted Smith
   what: created
   comment: ""
+- time: 2026-09-05T21:09:55-00:00
+  who: Ted Smith
+  what: commented
+  comment: 'Council follow-up: the component test proves our selection callback, but
+    its React Flow surface is mocked. Add a bounded real-window or upstream-integrated
+    keyboard test for focus/selection semantics without expanding this topology slice.'
