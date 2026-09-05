@@ -449,11 +449,16 @@ window_ready_ms=$(( $(now_ms) - start_ms ))
 
 resource_snapshot() {
   local phase="$1"
-  "$ps_bin" -e -o pid=,sid=,rss=,comm= | awk \
-    -v phase="$phase" -v stamp="$(now_ms)" -v x="$xvfb_session" -v w="$wm_session" -v a="$app_session" \
-    '$2 == x || $2 == w || $2 == a { print stamp "\t" phase "\t" $0 }' >>"$artifact_dir/resources.tsv"
+  local stamp pid sid rss command pss
+  stamp=$(now_ms)
+  while read -r pid sid rss command; do
+    [[ "$sid" == "$xvfb_session" || "$sid" == "$wm_session" || "$sid" == "$app_session" ]] || continue
+    pss=$(awk '/^Pss:/ {print $2; exit}' "/proc/$pid/smaps_rollup" 2>/dev/null || true)
+    [[ "$pss" =~ ^[0-9]+$ ]] || pss=0
+    printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\n' "$stamp" "$phase" "$pid" "$sid" "$rss" "$pss" "$command"
+  done < <("$ps_bin" -e -o pid=,sid=,rss=,comm=) >>"$artifact_dir/resources.tsv"
 }
-printf 'timestamp_ms\tphase\tpid\tsid\trss_kib\tcommand\n' >"$artifact_dir/resources.tsv"
+printf 'timestamp_ms\tphase\tpid\tsid\trss_kib\tpss_kib\tcommand\n' >"$artifact_dir/resources.tsv"
 resource_snapshot ready
 write_ownership_artifact
 

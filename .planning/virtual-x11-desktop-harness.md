@@ -18,7 +18,7 @@ The visible proof is a reported artifact directory containing the virtual deskto
 - [x] (2026-09-05 22:00Z) Implemented and adversarially tested the bounded virtual desktop supervisor, including display/port conflicts, missing and crashing dependencies, app exit, scenario failure/timeout, signals, unrelated-process survival, and reuse after teardown.
 - [x] (2026-09-05 22:00Z) Moved topology/source, zoom, and the pre-existing HMR probe onto the shared driver; proved all three end to end under hostile inherited `DISPLAY=:0`, with exact screenshots and clean teardown.
 - [x] (2026-09-05 22:00Z) Added Nix dependencies, Bazel run/test entrypoints, undeclared-output routing, CI coverage/upload, and contributor/development documentation.
-- [ ] Run full uncached Bazel gates, measure runtime/resources, and inspect exact screenshots without touching `DISPLAY=:0`.
+- [x] (2026-09-05 22:03Z) Ran the full Bazel build and uncached `//...` test gates, inspected exact topology/source and zoom screenshots, and captured per-process RSS/PSS, timing, PID/session, and cleanup evidence without targeting `DISPLAY=:0`.
 - [ ] Push the PR through council review to fixpoint and green hosted CI, merge normally, synchronize master and Ditz, and clean only feature-owned resources.
 
 ## Surprises & Discoveries
@@ -151,3 +151,5 @@ Revision note (2026-09-05): Initial executable plan created after inspecting the
 Revision note (2026-09-05 21:49Z): Marked the shared driver milestone complete after `//tools:x11-driver-test` passed uncached. The implementation rechecks title, PID, marker, process session, X-server start time, and ownership before operations rather than trusting discovery output.
 
 Revision note (2026-09-05 22:00Z): Recorded the completed supervisor, scenario migration, Nix/Bazel/CI wiring, real-run evidence, teardown race resolution, and HMR boundary decision. Full repository gates, hosted review, and landing remain.
+
+Revision note (2026-09-05 22:03Z): Marked local repository validation complete after all 17 Bazel build targets and all four Bazel test targets passed uncached; the test suite includes 105 application tests plus the driver, supervisor, and real virtual-desktop gates. Resource output now records proportional set size as well as aggregate resident size so Electron shared-memory accounting is not overstated.
