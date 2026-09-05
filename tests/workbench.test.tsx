@@ -12,6 +12,8 @@ import {
 import { INTERFACE_ZOOM_STORAGE_KEY } from "../app/renderer/zoom";
 import type { Lifecycle, LifecycleBridge } from "../app/lifecycle";
 import { dirtySnapshot, initialSnapshot, paymentsFileFocus } from "../fixtures/world";
+const testHotMemory = vi.hoisted(() => ({ workbench: undefined as unknown }));
+vi.mock("../app/renderer/hot-memory", () => ({ hotMemory: testHotMemory }));
 
 vi.mock("../app/renderer/GraphPane", () => ({
   GraphPane: ({ graph, onConnectionFocus }: { graph: GraphSlice; onConnectionFocus: (connection: unknown) => void }) => {
@@ -24,6 +26,26 @@ vi.mock("../app/renderer/GraphPane", () => ({
 
 import { App } from "../app/renderer/App";
 describe("selective live recovery", () => {
+it("preserves an outstanding save as unknown across a structural component remount", async () => {
+    shell();
+    let finish!: (response: CoreResponse) => void;
+    const source = files(() => new Promise<CoreResponse>((resolve) => { finish = resolve; }));
+    const first = render(<App />); const editor = await open(source.path);
+    act(() => editor.dispatch({ changes: { from: editor.state.doc.length, insert: "mine\n" } }));
+    fireEvent.keyDown(editor.contentDOM, { key: "s", ctrlKey: true });
+    await waitFor(() => expect(document.querySelector(".file-state")?.classList.contains("file-saving")).toBe(true));
+    first.unmount();
+    render(<App />);
+    await screen.findByRole("button", { name: "Check disk" });
+    expect(document.querySelector(".cm-content")?.textContent).toContain("mine");
+    await act(async () => finish({ protocolVersion: PROTOCOL_VERSION, requestId: "old-save", ok: false, error: { code: "WRITE_OUTCOME_UNKNOWN", message: "old component's promise settled" } }));
+    expect(source.request.mock.calls.filter(([r]) => r.type === "file.write")).toHaveLength(1);
+    expect(screen.getByRole("button", { name: "Check disk" })).toBeTruthy();
+    source.disk("base\nmine\n");
+    fireEvent.click(screen.getByRole("button", { name: "Check disk" }));
+    await waitFor(() => expect(document.querySelector(".file-state")?.classList.contains("file-saved")).toBe(true));
+    expect(source.request.mock.calls.filter(([r]) => r.type === "file.write")).toHaveLength(1);
+  });
   function shell() {
     let state: Lifecycle = { revision: 1, core: { generation: 1, phase: "ready", message: "Ready" }, reload: "idle", notice: "" };
     let listener: ((status: Lifecycle) => void) | undefined;
@@ -117,6 +139,7 @@ afterEach(() => {
   Reflect.deleteProperty(window, "swarm");
   Reflect.deleteProperty(window, "swarmView");
   Reflect.deleteProperty(window, "swarmLifecycle");
+  testHotMemory.workbench = undefined;
   vi.restoreAllMocks();
 });
 
@@ -459,26 +482,26 @@ describe("workbench shell", () => {
     const editor = EditorView.findFromDOM(document.querySelector(".cm-editor")!);
     if (!editor) throw new Error("CodeMirror editor was not mounted");
     act(() => editor.dispatch({ changes: { from: editor.state.doc.length, insert: "saved locally\n" } }));
-    await waitFor(() => expect(document.querySelector(".file-dirty")).toBeTruthy());
+    await waitFor(() => expect(document.querySelector(".file-state")?.classList.contains("file-dirty")).toBeTruthy());
     fireEvent.keyDown(editor.contentDOM, { key: "s", code: "KeyS", ctrlKey: true });
     await waitFor(() => expect(requests.some((item) => item.type === "file.write")).toBe(true));
-    await waitFor(() => expect(document.querySelector(".file-saved")).toBeTruthy());
+    await waitFor(() => expect(document.querySelector(".file-state")?.classList.contains("file-saved")).toBeTruthy());
     expect(disk.content).toContain("saved locally");
 
     act(() => editor.dispatch({ changes: { from: editor.state.doc.length, insert: "saved twice\n" } }));
     fireEvent.keyDown(editor.contentDOM, { key: "s", code: "KeyS", ctrlKey: true });
     await waitFor(() => expect(requests.filter((item) => item.type === "file.write")).toHaveLength(2));
-    await waitFor(() => expect(document.querySelector(".file-saved")).toBeTruthy());
+    await waitFor(() => expect(document.querySelector(".file-state")?.classList.contains("file-saved")).toBeTruthy());
     act(() => listener?.({ protocolVersion: PROTOCOL_VERSION, type: "file.changed", sequence: 3, emittedAt: "2026-09-05T12:01:01.000Z", path, revision: disk.revision, change: "modified" }));
-    expect(document.querySelector(".file-saved")).toBeTruthy();
+    expect(document.querySelector(".file-state")?.classList.contains("file-saved")).toBeTruthy();
 
     act(() => editor.dispatch({ changes: { from: editor.state.doc.length, insert: "my unsaved line\n" } }));
     disk = { content: "external replacement\n", revision: "d".repeat(64) };
     act(() => listener?.({ protocolVersion: PROTOCOL_VERSION, type: "file.changed", sequence: 4, emittedAt: "2026-09-05T12:02:00.000Z", path, revision: disk.revision, change: "modified" }));
-    await waitFor(() => expect(document.querySelector(".file-conflict")).toBeTruthy());
+    await waitFor(() => expect(document.querySelector(".file-state")?.classList.contains("file-conflict")).toBeTruthy());
     expect(editor.state.doc.toString()).toContain("my unsaved line");
     act(() => editor.dispatch({ changes: { from: editor.state.doc.length, insert: "still mine\n" } }));
-    expect(document.querySelector(".file-conflict")).toBeTruthy();
+    expect(document.querySelector(".file-state")?.classList.contains("file-conflict")).toBeTruthy();
     fireEvent.keyDown(editor.contentDOM, { key: "s", code: "KeyS", ctrlKey: true });
     expect(screen.getByText("The working file changed; your local buffer is preserved.")).toBeTruthy();
     expect(editor.state.doc.toString()).toContain("my unsaved line");
@@ -490,7 +513,7 @@ describe("workbench shell", () => {
     expect(editor.state.doc.toString()).toContain("still mine");
     fireEvent.click(screen.getByRole("button", { name: "Reload disk" }));
     await waitFor(() => expect(editor.state.doc.toString()).toBe("external replacement\n"));
-    expect(document.querySelector(".file-saved")).toBeTruthy();
+    expect(document.querySelector(".file-state")?.classList.contains("file-saved")).toBeTruthy();
   });
 
   it("keeps a conflict raised during save and leaves transient failures dirty and retryable", async () => {
@@ -521,17 +544,17 @@ describe("workbench shell", () => {
     act(() => editor.dispatch({ changes: { from: editor.state.doc.length, insert: "mine\n" } }));
     fireEvent.keyDown(editor.contentDOM, { key: "s", ctrlKey: true });
     await waitFor(() => expect(screen.getByText(/can be retried/)).toBeTruthy());
-    expect(document.querySelector(".file-dirty")).toBeTruthy();
+    expect(document.querySelector(".file-state")?.classList.contains("file-dirty")).toBeTruthy();
     fireEvent.keyDown(window, { key: "w", ctrlKey: true });
     expect(screen.getByRole("button", { name: `Close ${path}` })).toBeTruthy();
 
     fireEvent.keyDown(editor.contentDOM, { key: "s", ctrlKey: true });
-    await waitFor(() => expect(document.querySelector(".file-saving")).toBeTruthy());
+    await waitFor(() => expect(document.querySelector(".file-state")?.classList.contains("file-saving")).toBeTruthy());
     act(() => listener?.({ protocolVersion: PROTOCOL_VERSION, type: "file.changed", sequence: 4, emittedAt: "2026-09-05T12:03:00.000Z", path, revision: "c".repeat(64), change: "modified" }));
-    await waitFor(() => expect(document.querySelector(".file-conflict")).toBeTruthy());
+    await waitFor(() => expect(document.querySelector(".file-state")?.classList.contains("file-conflict")).toBeTruthy());
     finishSave({ protocolVersion: PROTOCOL_VERSION, requestId: "save", ok: true, sequence: 5, snapshot, file: { kind: "write", path, revision: "b".repeat(64), workingFingerprint: "d".repeat(64) } });
     await act(async () => { await delayedSave; });
-    expect(document.querySelector(".file-conflict")).toBeTruthy();
+    expect(document.querySelector(".file-state")?.classList.contains("file-conflict")).toBeTruthy();
     expect(editor.state.doc.toString()).toContain("mine");
   });
 
@@ -623,7 +646,7 @@ describe("workbench shell", () => {
     releaseInitial(response("initial", "initial\n", "a".repeat(64)));
     await waitFor(() => expect(document.querySelector(".cm-content")?.textContent).toContain("newest"));
     expect(readCount).toBe(2);
-    expect(document.querySelector(".file-saved")).toBeTruthy();
+    expect(document.querySelector(".file-state")?.classList.contains("file-saved")).toBeTruthy();
   });
 
   it("hands initial observation off before a post-read event can be dropped", async () => {
@@ -666,7 +689,7 @@ describe("workbench shell", () => {
     });
     await waitFor(() => expect(document.querySelector(".cm-content")?.textContent).toContain("post-handoff"));
     expect(readCount).toBe(2);
-    expect(document.querySelector(".file-saved")).toBeTruthy();
+    expect(document.querySelector(".file-state")?.classList.contains("file-saved")).toBeTruthy();
   });
 
   it("does not let an observed read from a closed tab overwrite its reopened lifecycle", async () => {

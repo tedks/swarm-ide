@@ -15,9 +15,10 @@ The privileged main process owns a single BrowserWindow; only its trusted top-le
 ## Progress
 
 
-- [x] (2026-09-06 00:00Z) Created designated feature worktree from synchronized b513ac0; started both Ditz issues; installed frozen dependencies; traced development, IPC, editor and virtual-display lifecycles.
-- [x] (2026-09-06 03:23Z) Implemented executable-byte build dispatch, cumulative update revisions, utility supervision and 8 lifecycle tests.
-- [x] (2026-09-06 03:23Z) Implemented guarded document refresh, stale-view retention, file re-observation, navigation persistence and unknown-save disk reconciliation; 131 focused tests pass.
+- [x] (2026-09-05 22:59Z) Created designated feature worktree from synchronized b513ac0; started both Ditz issues; installed frozen dependencies; traced development, IPC, editor and virtual-display lifecycles.
+- [x] (2026-09-05 23:23Z) Implemented executable-byte build dispatch, cumulative update revisions, utility supervision and 8 lifecycle tests.
+- [x] (2026-09-05 23:23Z) Implemented guarded document refresh, stale-view retention, file re-observation, navigation persistence and unknown-save disk reconciliation; 131 focused tests pass.
+- [x] (2026-09-05 23:32Z) Fixed native council findings: Fast Refresh remount checkpoints including uncertain saves, working-reference retagging, and stale topology persistence across combined core/preload updates. Extended virtual proof passed and 134 focused tests passed.
 - [ ] Add virtual reload proof and targeted tests; run final Bazel gates and relevant desktop scenarios.
 - [ ] Push draft PR, council to fixpoint, normal merge after gates, synchronize issues/master, preserve evidence and clean owned resources.
 
@@ -28,12 +29,16 @@ The existing development launcher restarts the entire desktop after every succes
 
 React/DOM tests exposed a stale selector-cache result in the installed jsdom version: querying an old class returned the same element after its class had changed. The recovery test now checks the stable file-state element's current class instead. The buffer's disk reconciliation was correct.
 
+The first hosted PR #7 run hit the same dynamic-class selector problem in an existing save test: its DOM printed `saved · Saved · working cccccccccccc` while `.file-saved` returned null. All file-state assertions now query the stable element and inspect its current class. This is a targeted test correction, not a timeout waiver. The disposable virtual world needs a real Git HEAD and a fresh frozen dependency materialization, not copied package-store metadata. The extended scenario also exposed restoration running before lifecycle readiness; restoration now waits for ready.
+
 ## Decision Log
 
 
 Use a single multi-entry esbuild context and publish only complete successful output sets, comparing bundle contents to choose an action. This avoids independent watchers racing shared dependency edits. Main changes latch a restart-required notice instead of silently replacing the window. Keep the core protocol independent of shell lifecycle: add a bounded validated shell lifecycle channel and generation-tagged transport envelopes. Defer document refresh while source buffers or save outcomes require attention. These are intentionally conservative defaults, chosen on 2026-09-06 by the implementation owner.
 
 User steering refined the intent: preserve everything an edit did not invalidate. Compare executable bytes with external source maps, not bundle timestamps; a comment-only rebuild performs no lifecycle action. Core replacement does not rebuild unrelated derived data automatically; it retains the previous topology as stale until an explicit build reconciles it. Cumulative core/preload revisions in the control snapshot prevent a fast later edit from hiding an earlier required update.
+
+The first council was not clean: native Codex found that hook-changing Fast Refresh remounts bypass beforeunload, old graph navigation identities were stale after core source changes, and combined core/preload replacement lost the retained graph. A small Vite-only module checkpoint now preserves component state and marks outstanding saves unknown after remount; validated session storage preserves the stale snapshot over a permitted document refresh. Working navigation is retagged without changing derivation provenance. Claude timed out after 300 seconds without a review; agy hit its headless command-permission failure and then timed out after the helper's one retry. These are missing foreign seats, not clean opinions.
 
 ## Outcomes & Retrospective
 
@@ -79,7 +84,7 @@ Build outputs and test evidence are disposable; source changes are committed and
 ## Artifacts and Notes
 
 
-Final evidence and PR/CI/council identifiers will be recorded here and in the marker-qualified executive recap. The final response begins `STABLE-WINDOW-RELOAD-20260905-8C42 COMPLETE — EXECUTIVE RECAP`; if blocked it must clearly identify the unmet gate rather than claiming an unverified success.
+PR #7 contains the implementation and virtual proof. The extended passing scenario under `artifacts/reload-fifth` recorded window 4194307, main PID 1533698, app workspace 0, active workspace 1, focus owner 14680091 throughout all update classes. Renderer update was 218ms, core update 494ms, crash recovery 423ms, and save-to-preload refresh 370ms. The same scenario preserved a populated FraudCheck topology through a structural HMR remount and a combined core/preload update. Final evidence and merge/CI/council identifiers will be added at landing. The final response begins `STABLE-WINDOW-RELOAD-20260905-8C42 COMPLETE — EXECUTIVE RECAP`; an unmet gate must be explicit.
 
 ## Interfaces and Dependencies
 

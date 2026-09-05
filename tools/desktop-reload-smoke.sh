@@ -21,7 +21,8 @@ mkdir "$scratch/repo"
 (cd "$workspace" && git ls-files -z | tar --null -T - -cf -) | tar -xf - -C "$scratch/repo"
 git -C "$scratch/repo" init -q
 git -C "$scratch/repo" add .
-cp -a --reflink=auto "$workspace/node_modules" "$scratch/repo/node_modules"
+git -C "$scratch/repo" -c user.name='Swarm reload scenario' -c user.email='scenario@localhost' -c commit.gpgsign=false commit -qm 'Seed disposable reload world'
+(cd "$scratch/repo" && pnpm install --frozen-lockfile)
 export SWARM_SOURCE_WORKSPACE="$scratch/repo"
 export SWARM_ARTIFACT_DIR=${SWARM_ARTIFACT_DIR:-$workspace/artifacts/reload-smoke/$(date -u +%Y%m%dT%H%M%SZ)-$$}
 "$script_dir/virtual-desktop-run.sh" "$script_dir/desktop-reload-scenario.sh" "$script_dir/dev.sh" reload-smoke

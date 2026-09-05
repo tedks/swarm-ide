@@ -20,6 +20,7 @@ import {
 import { discardStoredZoom, persistZoom, readStoredZoom, stepZoom, zoomShortcut } from "./zoom";
 import type { Lifecycle } from "../lifecycle";
 import { NAVIGATION_KEY, readNavigation, protectsBuffer, staleSnapshot, retainDerived } from "./recovery";
+import { hotMemory } from "./hot-memory";
 
 const lensTabs = ["System", "Plan", "Performance", "Refactor"] as const;
 const FRAUDCHECK_IMPLEMENTATION = "examples/checkout-world/services/fraudcheck/fraudcheck.ts";
@@ -36,6 +37,15 @@ interface FileTab {
   message: string;
   flash: SourceFlash | null;
 }
+
+interface HotWorkbench {
+  workspace: WorkspaceState;
+  files: FileTab[];
+  activeSurface: string;
+  lens: (typeof lensTabs)[number];
+}
+// Fast Refresh can remount a component (for example after a hook is added)
+// without beforeunload. Its module data survives that replacement, unlike hooks.
 
 function statusLabel(status: ReconciliationStatus): string {
   return { gray: "Unobserved", yellow: "Reconciling", green: "Consistent", red: "Failed" }[status];
@@ -60,29 +70,30 @@ interface ZoomRequest {
 }
 
 export function App() {
+  const [hotCheckpoint] = useState(() => hotMemory?.workbench as HotWorkbench | undefined);
   const [restoredNavigation] = useState(readNavigation);
   const [lifecycle, setLifecycle] = useState<Lifecycle | null>(null);
   const lifecycleRef = useRef<Lifecycle | null>(null);
   const coreGenerationRef = useRef(0);
   const lastRecoveryRef = useRef(-1);
   const [reloadNotice, setReloadNotice] = useState("");
-  const [workspace, setWorkspace] = useState<WorkspaceState>(emptyWorkspaceState);
+  const [workspace, setWorkspace] = useState<WorkspaceState>(() => hotCheckpoint?.workspace ?? (restoredNavigation?.snapshot ? loadSnapshot(restoredNavigation.snapshot, -1) : emptyWorkspaceState));
   const [error, setError] = useState<string | null>(null);
-  const [activeLens, setActiveLens] = useState<(typeof lensTabs)[number]>(restoredNavigation?.lens ?? "System");
+  const [activeLens, setActiveLens] = useState<(typeof lensTabs)[number]>(hotCheckpoint?.lens ?? restoredNavigation?.lens ?? "System");
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [commandQuery, setCommandQuery] = useState("");
   const [hmr, setHmr] = useState({ generation: 0, milliseconds: 0 });
-  const [fileTabs, setFileTabs] = useState<FileTab[]>([]);
-  const [activeSurface, setActiveSurface] = useState<string>("graphs");
+  const [fileTabs, setFileTabs] = useState<FileTab[]>(hotCheckpoint?.files ?? []);
+  const [activeSurface, setActiveSurface] = useState<string>(hotCheckpoint?.activeSurface ?? "graphs");
   const [selectedConnection, setSelectedConnection] = useState<GraphConnectionFocus | null>(null);
   const workspaceRef = useRef<WorkspaceState>(workspace);
-  const fileTabsRef = useRef<FileTab[]>([]);
-  const activeSurfaceRef = useRef<string>("graphs");
+  const fileTabsRef = useRef<FileTab[]>(fileTabs);
+  const activeSurfaceRef = useRef<string>(activeSurface);
   const fileEventsRef = useRef(new Map<string, FileEvent>());
   const openGenerationsRef = useRef(new Map<string, number>());
   const openingFilesRef = useRef(new Map<string, number>());
   const reloadGenerationsRef = useRef(new Map<string, number>());
-  const desiredFilesRef = useRef(new Set<string>());
+  const desiredFilesRef = useRef(new Set<string>(fileTabs.map((tab) => tab.path)));
   const savesInFlightRef = useRef(new Set<string>());
   const flashId = useRef(0);
   const [initialZoom] = useState(() => readStoredZoom(rendererStorage()));
@@ -96,6 +107,10 @@ export function App() {
   const queuedZoomRef = useRef<ZoomRequest | null>(null);
   const zoomInitializedRef = useRef(false);
   const commandInput = useRef<HTMLInputElement>(null);
+  if (hotMemory) hotMemory.workbench = {
+    workspace, activeSurface, lens: activeLens,
+    files: fileTabs.map((tab) => savesInFlightRef.current.has(tab.path) || tab.status === "saving" ? { ...tab, status: "unknown", message: "Renderer replaced during save; check disk before retrying. Buffer preserved." } : tab),
+  };
 
   useEffect(() => { fileTabsRef.current = fileTabs; }, [fileTabs]);
   useEffect(() => { workspaceRef.current = workspace; }, [workspace]);
@@ -304,7 +319,7 @@ export function App() {
     if (!bridge) return;
     let live = true;
     const generation = coreGenerationRef.current;
-    const recovered = lastRecoveryRef.current >= 0 && lastRecoveryRef.current !== generation;
+    const recovered = lastRecoveryRef.current >= 0 ? lastRecoveryRef.current !== generation : Boolean(hotCheckpoint);
     lastRecoveryRef.current = generation;
     if (recovered) {
       fileEventsRef.current.clear();
@@ -323,7 +338,7 @@ export function App() {
       });
       if (recovered) {
         const oldFocus = workspaceRef.current.snapshot?.focus;
-        if (oldFocus?.path) void invoke({ type: "focus.select", requestId: requestId(), protocolVersion: PROTOCOL_VERSION, focus: { ...oldFocus, revisionId: response.snapshot.revisions.working.id } });
+        if (oldFocus) void invoke({ type: "focus.select", requestId: requestId(), protocolVersion: PROTOCOL_VERSION, focus: { ...oldFocus, revisionId: response.snapshot.revisions.working.id } });
         for (const path of desiredFilesRef.current) {
           void (async () => {
             const watch = await invoke({ type: "file.watch", requestId: requestId(), protocolVersion: PROTOCOL_VERSION, path });
@@ -344,7 +359,7 @@ export function App() {
       }
     }).catch((cause) => setError(cause instanceof Error ? cause.message : "Could not open the working world"));
     return () => { live = false; };
-  }, [lifecycle?.core.generation, lifecycle?.core.phase, invoke]);
+  }, [lifecycle?.core.generation, lifecycle?.core.phase, invoke, hotCheckpoint]);
 
   const openFile = useCallback(async (path: string, coordinateFocus = true) => {
     if (coordinateFocus) activateFile(path);
@@ -480,19 +495,20 @@ export function App() {
 
   const navigationRestoredRef = useRef(false);
   useEffect(() => {
+    if (window.swarmLifecycle && lifecycle?.core.phase !== "ready") return;
     if (!workspace.snapshot || navigationRestoredRef.current) return;
     navigationRestoredRef.current = true;
-    if (!restoredNavigation) return;
+    if (!restoredNavigation || hotCheckpoint) return;
     for (const path of restoredNavigation.paths) void openFile(path, false);
     showSurface(restoredNavigation.activeSurface);
     if (restoredNavigation.focus) void invoke({ type: "focus.select", requestId: requestId(), protocolVersion: PROTOCOL_VERSION, focus: { ...restoredNavigation.focus, revisionId: workspace.snapshot.revisions.working.id } });
-  }, [workspace.snapshot, restoredNavigation, openFile, showSurface, invoke]);
+  }, [workspace.snapshot, restoredNavigation, openFile, showSurface, invoke, hotCheckpoint, lifecycle?.core.phase]);
 
   useEffect(() => {
     const unload = (event: BeforeUnloadEvent) => {
       try {
         if (fileTabsRef.current.some(protectsBuffer) || savesInFlightRef.current.size) throw new Error("Save or reconcile buffers before reloading.");
-        window.sessionStorage.setItem(NAVIGATION_KEY, JSON.stringify({ paths: [...desiredFilesRef.current], activeSurface: activeSurfaceRef.current, lens: activeLens, focus: workspaceRef.current.snapshot?.focus ?? null }));
+        window.sessionStorage.setItem(NAVIGATION_KEY, JSON.stringify({ paths: [...desiredFilesRef.current], activeSurface: activeSurfaceRef.current, lens: activeLens, focus: workspaceRef.current.snapshot?.focus ?? null, snapshot: workspaceRef.current.snapshot ?? undefined }));
       } catch {
         event.preventDefault();
         event.returnValue = "";
