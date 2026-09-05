@@ -2,6 +2,17 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { PROTOCOL_VERSION, type CoreRequest, type FocusRef, type ReconciliationStatus } from "../../protocol/schema";
 import { applyCoreEvent, emptyWorkspaceState, loadSnapshot, type WorkspaceState } from "./state";
 import { GraphPane } from "./GraphPane";
+import {
+  DEFAULT_INTERFACE_ZOOM,
+  INTERFACE_ZOOM_LEVELS,
+  type InterfaceZoomPercent,
+} from "../view-shell";
+import {
+  persistZoom,
+  readStoredZoom,
+  stepZoom,
+  zoomShortcut,
+} from "./zoom";
 
 const lensTabs = ["System", "Plan", "Performance", "Refactor"] as const;
 
@@ -17,6 +28,14 @@ function requestId(): string {
   return `renderer:${crypto.randomUUID()}`;
 }
 
+function rendererStorage(): Storage | null {
+  try {
+    return window.localStorage;
+  } catch {
+    return null;
+  }
+}
+
 export function App() {
   const [workspace, setWorkspace] = useState<WorkspaceState>(emptyWorkspaceState);
   const [error, setError] = useState<string | null>(null);
@@ -24,7 +43,40 @@ export function App() {
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [commandQuery, setCommandQuery] = useState("");
   const [hmr, setHmr] = useState({ generation: 0, milliseconds: 0 });
+  const [initialZoom] = useState(() => readStoredZoom(rendererStorage()));
+  const [zoomPercent, setZoomPercent] = useState<InterfaceZoomPercent>(DEFAULT_INTERFACE_ZOOM);
+  const [zoomNotice, setZoomNotice] = useState<string | null>(initialZoom.notice);
   const commandInput = useRef<HTMLInputElement>(null);
+
+  const applyZoom = useCallback((percent: InterfaceZoomPercent, persist: boolean, notice: string | null = null) => {
+    const bridge = window.swarmView;
+    if (!bridge) {
+      setZoomNotice("Interface zoom is unavailable outside the swarm-ide Electron shell.");
+      return false;
+    }
+
+    try {
+      const result = bridge.setZoomPercent(percent);
+      if (!result.ok) {
+        setZoomNotice(result.message);
+        return false;
+      }
+      setZoomPercent(result.percent);
+      setZoomNotice(persist ? persistZoom(rendererStorage(), result.percent) : notice);
+      return true;
+    } catch {
+      setZoomNotice("The interface zoom bridge failed; the previous zoom level is still active.");
+      return false;
+    }
+  }, []);
+
+  const zoomIn = useCallback(() => applyZoom(stepZoom(zoomPercent, "in"), true), [applyZoom, zoomPercent]);
+  const zoomOut = useCallback(() => applyZoom(stepZoom(zoomPercent, "out"), true), [applyZoom, zoomPercent]);
+  const resetZoom = useCallback(() => applyZoom(DEFAULT_INTERFACE_ZOOM, true), [applyZoom]);
+
+  useEffect(() => {
+    void applyZoom(initialZoom.percent, false, initialZoom.notice);
+  }, [applyZoom, initialZoom]);
 
   const invoke = useCallback(async (request: CoreRequest) => {
     try {
@@ -53,6 +105,14 @@ export function App() {
 
   useEffect(() => {
     const listener = (event: KeyboardEvent) => {
+      const zoomAction = zoomShortcut(event);
+      if (zoomAction) {
+        event.preventDefault();
+        if (zoomAction === "in") void zoomIn();
+        if (zoomAction === "out") void zoomOut();
+        if (zoomAction === "reset") void resetZoom();
+        return;
+      }
       if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "k") {
         event.preventDefault();
         setPaletteOpen((open) => !open);
@@ -61,7 +121,7 @@ export function App() {
     };
     window.addEventListener("keydown", listener);
     return () => window.removeEventListener("keydown", listener);
-  }, []);
+  }, [resetZoom, zoomIn, zoomOut]);
 
   useEffect(() => {
     if (paletteOpen) {
@@ -94,8 +154,8 @@ export function App() {
       : "";
     const palette = paletteOpen ? " — Palette open" : "";
     const hmrSuffix = hmr.generation ? ` — HMR ${hmr.generation}:${hmr.milliseconds}ms` : "";
-    document.title = `swarm-ide — ${title}${focus}${revision}${fraudVisible}${palette}${hmrSuffix}`;
-  }, [hmr, paletteOpen, snapshot, title]);
+    document.title = `swarm-ide — ${title}${focus}${revision}${fraudVisible}${palette} — Zoom ${zoomPercent}%${hmrSuffix}`;
+  }, [hmr, paletteOpen, snapshot, title, zoomPercent]);
 
   const selectFocus = useCallback((focus: FocusRef) =>
     invoke({ type: "focus.select", requestId: requestId(), protocolVersion: PROTOCOL_VERSION, focus }), [invoke]);
@@ -123,6 +183,11 @@ export function App() {
           {lensTabs.map((lens) => <button key={lens} className={activeLens === lens ? "active" : ""} onClick={() => setActiveLens(lens)}>{lens}</button>)}
         </nav>
         <button className="command-trigger" onClick={() => setPaletteOpen(true)}><span>Search, navigate, direct…</span><kbd>Ctrl K</kbd></button>
+        <div className="zoom-control" role="group" aria-label="Interface zoom">
+          <button aria-label="Zoom out" title="Zoom out (Ctrl+-)" disabled={zoomPercent === INTERFACE_ZOOM_LEVELS[0]} onClick={() => void zoomOut()}>−</button>
+          <button className="zoom-value" aria-label={`Reset zoom to 100%. Current zoom ${zoomPercent}%`} title="Reset zoom (Ctrl+0)" onClick={() => void resetZoom()}>{zoomPercent}%</button>
+          <button aria-label="Zoom in" title="Zoom in (Ctrl+=)" disabled={zoomPercent === INTERFACE_ZOOM_LEVELS.at(-1)} onClick={() => void zoomIn()}>+</button>
+        </div>
         <div className={`global-truth status-${snapshot.reconciliation.status}`}><i />{title}<small>epoch {snapshot.reconciliation.epoch}</small></div>
       </header>
 
@@ -169,6 +234,7 @@ export function App() {
 
       {paletteOpen ? <div className="palette-scrim" onMouseDown={() => setPaletteOpen(false)}><section className="command-palette" onMouseDown={(event) => event.stopPropagation()}><header><span>⌕</span><input ref={commandInput} value={commandQuery} onChange={(event) => setCommandQuery(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter" && commands[0]) void commands[0].run(); }} placeholder="Navigate or apply intelligence…" /><kbd>esc</kbd></header><div className="command-results">{commands.map((command) => <button key={command.label} onClick={() => void command.run()}><span>{command.label}<small>{command.detail}</small></span><kbd>↵</kbd></button>)}</div><footer><span>Current focus: {focusLabel(snapshot.focus)}</span><span>scope · action · artifact</span></footer></section></div> : null}
       {error ? <div className="error-toast">{error}</div> : null}
+      {zoomNotice ? <div className="zoom-toast" role="status">{zoomNotice}</div> : null}
     </main>
   );
 }
