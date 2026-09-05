@@ -23,6 +23,7 @@ filegroup(
         "desktop-zoom-scenario.sh",
         "desktop-zoom-smoke.sh",
         "hmr-scenario.sh",
+        "hmr-scenario.test.sh",
         "measure-hmr.sh",
         "virtual-desktop-run.sh",
         "x11-driver.sh",
@@ -88,6 +89,12 @@ sh_test(
         ":virtual-desktop-run.sh",
         ":x11-driver-source",
     ],
+)
+
+sh_test(
+    name = "hmr-scenario-test",
+    srcs = ["hmr-scenario.test.sh"],
+    data = [":hmr-scenario.sh"],
 )
 
 sh_test(

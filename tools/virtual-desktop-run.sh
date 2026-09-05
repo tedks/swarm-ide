@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
+umask 077
 
 usage() {
   echo "usage: virtual-desktop-run.sh <scenario> <dev-launcher> <scenario-name>" >&2
@@ -73,6 +74,10 @@ touch "$supervisor_log"
 
 log() {
   printf '%s %s\n' "$(date -u +%Y-%m-%dT%H:%M:%S.%3NZ)" "$*" | tee -a "$supervisor_log"
+}
+
+log_stderr() {
+  printf '%s %s\n' "$(date -u +%Y-%m-%dT%H:%M:%S.%3NZ)" "$*" | tee -a "$supervisor_log" >&2
 }
 
 fail() {
@@ -298,6 +303,11 @@ cleanup() {
         log "ERROR: owned display lock is not empty: $display_lock"
         cleanup_failed=1
       }
+    elif [[ ! -e "$display_lock/token" ]] && rmdir -- "$display_lock" 2>/dev/null; then
+      # A signal can arrive after our atomic mkdir but before its token write.
+      # The mode-0700 empty directory is still safe to remove because its path
+      # was registered while termination was deferred.
+      :
     else
       log "REFUSED: display lock token changed; leaving $display_lock"
       cleanup_failed=1
@@ -319,24 +329,24 @@ cleanup() {
 
 on_signal() {
   local signal_name="$1" exit_code="$2"
-  log "received $signal_name; beginning owned teardown"
+  log_stderr "received $signal_name; beginning owned teardown"
   exit "$exit_code"
 }
 
-defer_registration_signal() {
+defer_ownership_signal() {
   local signal_name="$1" exit_code="$2"
   registration_signal=$exit_code
-  log "received $signal_name while recording child identity; teardown deferred until ownership is registered"
+  log_stderr "received $signal_name while recording resource ownership; teardown deferred until ownership is registered"
 }
 
-begin_child_registration() {
+begin_ownership_registration() {
   registration_signal=0
-  trap 'defer_registration_signal INT 130' INT
-  trap 'defer_registration_signal TERM 143' TERM
-  trap 'defer_registration_signal HUP 129' HUP
+  trap 'defer_ownership_signal INT 130' INT
+  trap 'defer_ownership_signal TERM 143' TERM
+  trap 'defer_ownership_signal HUP 129' HUP
 }
 
-finish_child_registration() {
+finish_ownership_registration() {
   trap 'on_signal INT 130' INT
   trap 'on_signal TERM 143' TERM
   trap 'on_signal HUP 129' HUP
@@ -392,19 +402,28 @@ acquire_display() {
   local candidate_lock="$lock_root/.swarm-ide-x11-$number.lock"
   [[ ! -e "$socket_root/X$number" && ! -e "/tmp/.X${number}-lock" ]] || return 1
   mkdir "$candidate_lock" 2>/dev/null || return 1
-  chmod 700 "$candidate_lock"
-  printf '%s\n' "$token" >"$candidate_lock/token"
   display_lock="$candidate_lock"
+  registration_test_pause display-lock
+  chmod 700 "$candidate_lock" || return 2
+  printf '%s\n' "$token" >"$candidate_lock/token" || return 2
   display=":$number"
 }
 
 if [[ -n "${SWARM_VIRTUAL_DISPLAY:-}" ]]; then
   [[ "$SWARM_VIRTUAL_DISPLAY" =~ ^:([1-9][0-9]*)$ ]] || { fail "SWARM_VIRTUAL_DISPLAY must be a nonzero local display such as :99"; exit 2; }
   requested_number=${BASH_REMATCH[1]}
-  acquire_display "$requested_number" || { fail "requested display :$requested_number is occupied or stale"; exit 3; }
+  begin_ownership_registration
+  if acquire_display "$requested_number"; then acquire_status=0; else acquire_status=$?; fi
+  finish_ownership_registration
+  if (( acquire_status == 1 )); then fail "requested display :$requested_number is occupied or stale"; exit 3; fi
+  if (( acquire_status != 0 )); then fail "could not initialize the owned display lock for :$requested_number"; exit 4; fi
 else
   for number in $(seq 90 189); do
-    acquire_display "$number" && break
+    begin_ownership_registration
+    if acquire_display "$number"; then acquire_status=0; else acquire_status=$?; fi
+    finish_ownership_registration
+    if (( acquire_status == 0 )); then break; fi
+    if (( acquire_status != 1 )); then fail "could not initialize the owned display lock for :$number"; exit 4; fi
   done
   [[ -n "$display" ]] || { fail "no owned display was available in :90 through :189"; exit 3; }
 fi
@@ -434,7 +453,7 @@ printf '%s\n' "$authority" >"$ownership_dir/xauthority"
 printf '%s\n' "$token" >"$ownership_dir/token"
 
 start_ms=$(now_ms)
-begin_child_registration
+begin_ownership_registration
 env DISPLAY="$display" XAUTHORITY="$authority" SWARM_X11_TOKEN="$token" \
   "$setsid_bin" "$xvfb_bin" "$display" -screen 0 1440x900x24 -nolisten tcp -noreset -auth "$authority" \
   >"$artifact_dir/xvfb.log" 2>&1 &
@@ -442,7 +461,7 @@ xvfb_pid=$!
 registration_test_pause xvfb
 xvfb_identity=$(wait_for_isolated_identity "$xvfb_pid" 2>/dev/null || true)
 read -r xvfb_session xvfb_start <<<"$xvfb_identity"
-finish_child_registration
+finish_ownership_registration
 [[ -n "$xvfb_session" && -n "$xvfb_start" ]] || { fail "X server exited before its identity could be recorded"; exit 4; }
 printf '%s\n' "$xvfb_pid" >"$ownership_dir/xvfb.pid"
 printf '%s\n' "$xvfb_start" >"$ownership_dir/xvfb.start"
@@ -465,7 +484,7 @@ cat >"$runtime_dir/openbox-rc.xml" <<'OPENBOX'
   <desktops><number>1</number></desktops>
 </openbox_config>
 OPENBOX
-begin_child_registration
+begin_ownership_registration
 env DISPLAY="$display" XAUTHORITY="$authority" SWARM_X11_TOKEN="$token" \
   "$setsid_bin" "$wm_bin" --config-file "$runtime_dir/openbox-rc.xml" \
   >"$artifact_dir/wm.log" 2>&1 &
@@ -473,7 +492,7 @@ wm_pid=$!
 registration_test_pause wm
 wm_identity=$(wait_for_isolated_identity "$wm_pid" 2>/dev/null || true)
 read -r wm_session wm_start <<<"$wm_identity"
-finish_child_registration
+finish_ownership_registration
 [[ -n "$wm_session" && -n "$wm_start" ]] || { fail "window manager exited before its identity could be recorded"; exit 4; }
 
 deadline=$(( $(now_ms) + ${SWARM_WM_START_TIMEOUT_MS:-5000} ))
@@ -492,7 +511,7 @@ renderer_marker=$(SWARM_DEV_PORT="$port" "$node_bin" "$workspace/tools/dev-port.
 }
 [[ -n "$renderer_marker" ]] || { fail "development marker resolution returned empty output"; exit 4; }
 
-begin_child_registration
+begin_ownership_registration
 env DISPLAY="$display" XAUTHORITY="$authority" SWARM_X11_TOKEN="$token" \
   SWARM_X11_DISPLAY="$display" SWARM_X11_XAUTHORITY="$authority" \
   SWARM_X11_OWNERSHIP_DIR="$ownership_dir" SWARM_RENDERER_PROCESS_ARGUMENT="$renderer_marker" \
@@ -503,7 +522,7 @@ app_pid=$!
 registration_test_pause app
 app_identity=$(wait_for_isolated_identity "$app_pid" 2>/dev/null || true)
 read -r app_session app_start <<<"$app_identity"
-finish_child_registration
+finish_ownership_registration
 [[ -n "$app_session" && -n "$app_start" ]] || { fail "app exited before its identity could be recorded"; exit 5; }
 printf '%s\n' "$app_pid" >"$ownership_dir/app.pid"
 printf '%s\n' "$app_start" >"$ownership_dir/app.start"
@@ -560,7 +579,7 @@ write_ownership_artifact
 scenario_timeout_seconds="${SWARM_SCENARIO_TIMEOUT_SECONDS:-120}"
 [[ "$scenario_timeout_seconds" =~ ^[1-9][0-9]*$ ]] || { fail "scenario timeout must be positive seconds"; exit 2; }
 scenario_started_ms=$(now_ms)
-begin_child_registration
+begin_ownership_registration
 env DISPLAY="$display" XAUTHORITY="$authority" SWARM_X11_TOKEN="$token" \
   SWARM_X11_DISPLAY="$display" SWARM_X11_XAUTHORITY="$authority" \
   SWARM_X11_OWNERSHIP_DIR="$ownership_dir" SWARM_XDOTOOL_BIN="$xdotool_bin" \
@@ -577,7 +596,7 @@ scenario_pid=$!
 registration_test_pause scenario
 scenario_identity=$(wait_for_isolated_identity "$scenario_pid" 2>/dev/null || true)
 read -r scenario_session scenario_start <<<"$scenario_identity"
-finish_child_registration
+finish_ownership_registration
 [[ -n "$scenario_session" && -n "$scenario_start" ]] || { fail "scenario exited before its identity could be recorded"; exit 6; }
 set +e
 wait "$scenario_pid"

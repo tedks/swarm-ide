@@ -70,6 +70,14 @@ printf '%s|%s|import %s\n' "${DISPLAY:-unset}" "${XAUTHORITY:-unset}" "$*" >>"$S
 [[ "${SWARM_FAKE_CAPTURE_FAIL:-0}" != 1 ]] || exit 31
 printf 'synthetic virtual screenshot\n' >"${!#}"
 SH
+cat >"$bin_dir/ps-with-stale-member" <<'SH'
+#!/usr/bin/env bash
+"$SWARM_REAL_PS_BIN" "$@"
+if [[ "$#" == 3 && "$1" == -e && "$2" == -o && "$3" == pid=,sid= &&
+      -n "${SWARM_FAKE_UNRELATED_PID:-}" && -f "$SWARM_X11_OWNERSHIP_DIR/app.session" ]]; then
+  printf '%s %s\n' "$SWARM_FAKE_UNRELATED_PID" "$(<"$SWARM_X11_OWNERSHIP_DIR/app.session")"
+fi
+SH
 cat >"$bin_dir/dev" <<'SH'
 #!/usr/bin/env bash
 [[ "${SWARM_FAKE_APP_EXIT:-0}" != 1 ]] || exit 29
@@ -205,6 +213,16 @@ done
 [[ -z "$(ps -e -o sid= | awk -v wanted="$reused_session" '$1 == wanted { print; exit }')" ]] ||
   fail "reused-session test cleanup could not stop its intentionally retained app"
 
+setsid sleep 60 &
+unrelated_pid=$!
+run_failure stale-member-pid "REFUSED: PID $unrelated_pid" \
+  SWARM_PS_BIN="$bin_dir/ps-with-stale-member" SWARM_REAL_PS_BIN="$(command -v ps)" \
+  SWARM_FAKE_UNRELATED_PID="$unrelated_pid"
+kill -0 "$unrelated_pid" || fail "stale-member validation signaled the unrelated process"
+kill -TERM "$unrelated_pid"
+wait "$unrelated_pid" 2>/dev/null || true
+unrelated_pid=""
+
 prepare_case occupied-display
 mkdir -p "$case_dir"
 touch "$socket_root/X${case_display#:}"
@@ -270,7 +288,7 @@ grep -q 'received TERM' "$case_dir/output" || fail "runner did not record TERM"
 grep -q 'cleanup_complete=1' "$case_dir/supervisor.log" || fail "interrupt cleanup was incomplete"
 [[ ! -e "$lock_root/.swarm-ide-x11-${case_display#:}.lock" ]] || fail "interrupt left a display lock"
 
-for registration_phase in xvfb wm app scenario; do
+for registration_phase in display-lock xvfb wm app scenario; do
   prepare_case "interrupt-registration-$registration_phase"
   env "${base_env[@]}" SWARM_ARTIFACT_DIR="$case_dir" SWARM_FAKE_GUI_LOG="$case_dir/gui.log" \
     SWARM_VIRTUAL_DISPLAY="$case_display" SWARM_VIRTUAL_DESKTOP_PORT="$case_port" \
