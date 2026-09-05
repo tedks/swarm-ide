@@ -288,6 +288,7 @@ describe("workbench shell", () => {
     expect(surfaceTabs.some((tab) => tab.textContent?.includes("payments.ts"))).toBe(true);
     expect(surfaceTabs.some((tab) => tab.textContent?.includes("contract.ts"))).toBe(true);
     fireEvent.click(surfaceTabs.find((tab) => tab.textContent?.includes("payments.ts"))!);
+    await waitFor(() => expect(request.mock.calls.filter(([input]) => input.type === "focus.select").at(-1)?.[0]).toMatchObject({ type: "focus.select", focus: { path: paths[0] } }));
     const paymentsEditor = EditorView.findFromDOM(document.querySelector(".cm-editor")!);
     if (!paymentsEditor) throw new Error("CodeMirror editor was not mounted");
     act(() => paymentsEditor.dispatch({ selection: { anchor: 1 } }));
@@ -298,10 +299,13 @@ describe("workbench shell", () => {
     expect(document.querySelector(".cm-removed-ghost")?.textContent).toContain("old");
     expect(paymentsEditor.state.selection.main.anchor).toBe(1);
     const closeShortcut = new KeyboardEvent("keydown", { key: "w", ctrlKey: true, cancelable: true });
+    const focusRequestsBeforeClose = request.mock.calls.filter(([input]) => input.type === "focus.select").length;
     window.dispatchEvent(closeShortcut);
     expect(closeShortcut.defaultPrevented).toBe(true);
     await waitFor(() => expect(screen.queryByRole("button", { name: `Close ${paths[0]}` })).toBeNull());
     expect(screen.getByRole("button", { name: `Close ${paths[1]}` })).toBeTruthy();
+    await waitFor(() => expect(request.mock.calls.filter(([input]) => input.type === "focus.select")).toHaveLength(focusRequestsBeforeClose + 1));
+    expect(request.mock.calls.filter(([input]) => input.type === "focus.select").at(-1)?.[0]).toMatchObject({ type: "focus.select", focus: { path: paths[1] } });
     expect(screen.getAllByTestId("graph-pane")).toHaveLength(2);
   });
 
@@ -323,6 +327,8 @@ describe("workbench shell", () => {
       if (input.type === "file.write") {
         if (input.expectedRevision !== disk.revision) return { protocolVersion: PROTOCOL_VERSION, requestId: input.requestId, ok: false, error: { code: "REVISION_CONFLICT", message: "disk changed" } };
         disk = { content: input.content, revision: "b".repeat(64) };
+        listener?.({ protocolVersion: PROTOCOL_VERSION, type: "file.changed", sequence: 1, emittedAt: "2026-09-05T12:01:00.000Z", path, revision: disk.revision, change: "modified" });
+        await new Promise((resolve) => setTimeout(resolve, 0));
         return { protocolVersion: PROTOCOL_VERSION, requestId: input.requestId, ok: true, sequence: 0, snapshot, file: { kind: "write", path, revision: disk.revision, workingFingerprint: "c".repeat(64) } };
       }
       return { protocolVersion: PROTOCOL_VERSION, requestId: input.requestId, ok: true, sequence: 0, snapshot };
@@ -347,7 +353,7 @@ describe("workbench shell", () => {
 
     act(() => editor.dispatch({ changes: { from: editor.state.doc.length, insert: "my unsaved line\n" } }));
     disk = { content: "external replacement\n", revision: "d".repeat(64) };
-    act(() => listener?.({ protocolVersion: PROTOCOL_VERSION, type: "file.changed", sequence: 1, emittedAt: "2026-09-05T12:02:00.000Z", path, revision: disk.revision, change: "modified" }));
+    act(() => listener?.({ protocolVersion: PROTOCOL_VERSION, type: "file.changed", sequence: 2, emittedAt: "2026-09-05T12:02:00.000Z", path, revision: disk.revision, change: "modified" }));
     await waitFor(() => expect(document.querySelector(".file-conflict")).toBeTruthy());
     expect(editor.state.doc.toString()).toContain("my unsaved line");
     act(() => editor.dispatch({ changes: { from: editor.state.doc.length, insert: "still mine\n" } }));
@@ -457,5 +463,51 @@ describe("workbench shell", () => {
     await act(async () => { await Promise.resolve(); });
     expect(document.querySelector(".cm-content")?.textContent).toContain("newest");
     expect(document.querySelector(".cm-content")?.textContent).not.toContain("older");
+  });
+
+  it("does not let an observed read from a closed tab overwrite its reopened lifecycle", async () => {
+    let listener: ((event: CoreEvent | FileEvent) => void) | undefined;
+    const path = "services/fraudcheck/fraudcheck.ts";
+    const base = initialSnapshot(paymentsFileFocus);
+    const snapshot: WorkspaceSnapshot = {
+      ...base,
+      widgets: [{ id: "source-paths", title: "Implementation sources", kind: "list", priority: 0, value: [path], provenance: base.widgets[0]!.provenance }],
+    };
+    let readCount = 0;
+    let releaseOldLifecycle!: (response: CoreResponse) => void;
+    const oldLifecycleRead = new Promise<CoreResponse>((resolve) => { releaseOldLifecycle = resolve; });
+    const response = (requestIdValue: string, content: string, revision: string): CoreResponse => ({
+      protocolVersion: PROTOCOL_VERSION,
+      requestId: requestIdValue,
+      ok: true,
+      sequence: 0,
+      snapshot,
+      file: { kind: "read", path, content, revision, size: content.length },
+    });
+    const request = vi.fn(async (input: CoreRequest): Promise<CoreResponse> => {
+      if (input.type === "file.read") {
+        readCount += 1;
+        if (readCount === 1) return response(input.requestId, "initial\n", "a".repeat(64));
+        if (readCount === 2) return oldLifecycleRead;
+        return response(input.requestId, "reopened\n", "c".repeat(64));
+      }
+      return { protocolVersion: PROTOCOL_VERSION, requestId: input.requestId, ok: true, sequence: 0, snapshot };
+    });
+    Object.defineProperty(window, "swarm", { configurable: true, value: { request, onEvent: (next: (event: CoreEvent | FileEvent) => void) => { listener = next; return () => undefined; } } });
+    installViewBridge();
+    render(<App />);
+    await screen.findByText("Implementation sources");
+    fireEvent.click(screen.getAllByRole("button", { name: path })[0]!);
+    await waitFor(() => expect(document.querySelector(".cm-content")?.textContent).toContain("initial"));
+    act(() => listener?.({ protocolVersion: PROTOCOL_VERSION, type: "file.changed", sequence: 1, emittedAt: "2026-09-05T12:04:00.000Z", path, revision: "b".repeat(64), change: "modified" }));
+    await waitFor(() => expect(readCount).toBe(2));
+    fireEvent.click(screen.getByRole("button", { name: `Close ${path}` }));
+    await waitFor(() => expect(screen.queryByRole("button", { name: `Close ${path}` })).toBeNull());
+    fireEvent.click(screen.getAllByRole("button", { name: path })[0]!);
+    await waitFor(() => expect(document.querySelector(".cm-content")?.textContent).toContain("reopened"));
+    releaseOldLifecycle(response("old-lifecycle", "stale\n", "b".repeat(64)));
+    await act(async () => { await oldLifecycleRead; });
+    expect(document.querySelector(".cm-content")?.textContent).toContain("reopened");
+    expect(document.querySelector(".cm-content")?.textContent).not.toContain("stale");
   });
 });

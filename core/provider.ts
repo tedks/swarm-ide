@@ -1,7 +1,9 @@
 import { execFile } from "node:child_process";
 import { createHash } from "node:crypto";
-import { realpath } from "node:fs/promises";
-import { isAbsolute, join, relative } from "node:path";
+import { mkdtemp, realpath, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { isAbsolute, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import {
   PROTOCOL_VERSION,
   WorkspaceSnapshotSchema,
@@ -37,6 +39,7 @@ const INTERFACE_DECLARATIONS = new Map([
   ["interface:payments.authorize", "examples/checkout-world/services/payments/payments.proto"],
 ]);
 const MAX_ARTIFACT_BYTES = 512 * 1024;
+const MAX_BUILD_EVENT_BYTES = 4 * 1024 * 1024;
 const MAX_MANIFEST_BYTES = 64 * 1024;
 const MAX_SOURCE_BYTES = 1024 * 1024;
 
@@ -73,15 +76,72 @@ function bazel(workspaceRoot: string, args: string[]): Promise<string> {
   });
 }
 
-async function runBazel(workspaceRoot: string): Promise<BazelBuildResult> {
-  await bazel(workspaceRoot, ["build", SERVICE_TOPOLOGY_TARGET, "--color=no", "--curses=no"]);
-  const reported = (await bazel(workspaceRoot, ["info", "bazel-bin", "--color=no", "--curses=no"])).trim();
-  if (!reported || reported.includes("\n") || !isAbsolute(reported)) throw new Error("Bazel did not report one absolute output directory");
-  const outputRoot = await realpath(reported);
+interface BuildEventFile {
+  name?: unknown;
+  uri?: unknown;
+}
+
+interface BuildEvent {
+  id?: { targetCompleted?: { label?: unknown } };
+  completed?: { success?: unknown; importantOutput?: unknown };
+}
+
+export function topologyArtifactPathFromBuildEvents(bytes: Buffer): string {
+  let text: string;
+  try {
+    text = new TextDecoder("utf-8", { fatal: true }).decode(bytes);
+  } catch {
+    throw new Error("the Bazel build-event stream is not valid UTF-8");
+  }
+  const matchingEvents: BuildEvent[] = [];
+  for (const line of text.split("\n")) {
+    if (!line.trim()) continue;
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(line);
+    } catch {
+      throw new Error("the Bazel build-event stream contains malformed JSON");
+    }
+    if (typeof parsed !== "object" || parsed === null) throw new Error("the Bazel build-event stream contains a non-object event");
+    const event = parsed as BuildEvent;
+    if (event.id?.targetCompleted?.label === SERVICE_TOPOLOGY_TARGET) matchingEvents.push(event);
+  }
+  if (matchingEvents.length !== 1) throw new Error("Bazel did not report exactly one completion for the fixed topology target");
+  const completed = matchingEvents[0]!.completed;
+  if (completed?.success !== true || !Array.isArray(completed.importantOutput)) throw new Error("the fixed topology target did not report a successful bounded output");
   const relativeArtifact = SERVICE_TOPOLOGY_ARTIFACT.slice("bazel-bin/".length);
-  const artifactPath = join(outputRoot, relativeArtifact);
-  if (relative(outputRoot, artifactPath).startsWith("..")) throw new Error("the fixed topology output escaped Bazel's reported output directory");
-  return { artifactPath };
+  const outputs = (completed.importantOutput as BuildEventFile[]).filter((output) => output.name === relativeArtifact);
+  if (outputs.length !== 1 || typeof outputs[0]!.uri !== "string") throw new Error("Bazel did not report exactly one fixed topology artifact");
+  let artifactPath: string;
+  try {
+    const url = new URL(outputs[0]!.uri);
+    if (url.protocol !== "file:" || url.hostname) throw new Error("not a local file URL");
+    artifactPath = fileURLToPath(url);
+  } catch {
+    throw new Error("the fixed topology artifact is not a local file URL");
+  }
+  if (!isAbsolute(artifactPath) || !artifactPath.includes("/bazel-out/") || !artifactPath.endsWith(`/bin/${relativeArtifact}`)) {
+    throw new Error("the fixed topology artifact escaped Bazel's declared output tree");
+  }
+  return artifactPath;
+}
+
+async function runBazel(workspaceRoot: string): Promise<BazelBuildResult> {
+  const eventDirectory = await mkdtemp(join(tmpdir(), "swarm-ide-build-events-"));
+  const eventPath = join(eventDirectory, "topology.jsonl");
+  try {
+    await bazel(workspaceRoot, [
+      "build",
+      SERVICE_TOPOLOGY_TARGET,
+      "--color=no",
+      "--curses=no",
+      `--build_event_json_file=${eventPath}`,
+    ]);
+    const events = await readBoundedRegularFile(eventPath, MAX_BUILD_EVENT_BYTES, "the Bazel build-event stream");
+    return { artifactPath: await realpath(topologyArtifactPathFromBuildEvents(events)) };
+  } finally {
+    await rm(eventDirectory, { recursive: true, force: true });
+  }
 }
 
 function framed(hash: ReturnType<typeof createHash>, value: string | Buffer): void {
@@ -236,6 +296,7 @@ export class RealWorkspaceProvider {
   private currentAttempt = 0;
   private serviceMappings: NavigationMapping[] = [];
   private serviceWidgets: Widget[] = [];
+  private workingWorldUnknown = false;
 
   private constructor(
     private readonly workspaceRoot: string,
@@ -297,7 +358,9 @@ export class RealWorkspaceProvider {
   }
 
   markWorkingWorldChanged(fingerprint: string, publish: ProviderPublish): WorkspaceSnapshot {
-    if (fingerprint === this.snapshotValue.revisions.working.fingerprint) return this.snapshotValue;
+    const recoveredFromUnknown = this.workingWorldUnknown;
+    this.workingWorldUnknown = false;
+    if (fingerprint === this.snapshotValue.revisions.working.fingerprint && !recoveredFromUnknown) return this.snapshotValue;
     ++this.currentAttempt;
     const epoch = this.snapshotValue.reconciliation.epoch + 1;
     const observedAt = this.dependencies.now();
@@ -335,6 +398,7 @@ export class RealWorkspaceProvider {
   }
 
   markWorkingWorldUnknown(message: string, publish: ProviderPublish): WorkspaceSnapshot {
+    this.workingWorldUnknown = true;
     ++this.currentAttempt;
     const epoch = this.snapshotValue.reconciliation.epoch + 1;
     this.snapshotValue = WorkspaceSnapshotSchema.parse({
@@ -360,6 +424,7 @@ export class RealWorkspaceProvider {
     try {
       const beforeFingerprint = await this.dependencies.fingerprint(this.workspaceRoot);
       if (attempt !== this.currentAttempt) return;
+      this.workingWorldUnknown = false;
       const observedAt = this.dependencies.now();
       const hadGreen = this.snapshotValue.reconciliation.lastConsistentFingerprint !== "unobserved";
       const previousServiceGraph = this.snapshotValue.graphs.find((graph) => graph.topologyId === "service")!;

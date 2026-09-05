@@ -3,7 +3,12 @@ import { mkdtemp, mkdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import { computeTopologyInputDigest, readBuiltTopologyArtifact } from "../core/provider";
+import {
+  computeTopologyInputDigest,
+  readBuiltTopologyArtifact,
+  SERVICE_TOPOLOGY_TARGET,
+  topologyArtifactPathFromBuildEvents,
+} from "../core/provider";
 
 const roots: string[] = [];
 const fraudRoot = "examples/checkout-world/services/fraudcheck";
@@ -12,6 +17,24 @@ const paymentsRoot = "examples/checkout-world/services/payments";
 afterEach(async () => Promise.all(roots.splice(0).map((root) => rm(root, { recursive: true, force: true }))));
 
 describe("real topology artifact boundary", () => {
+  it("accepts exactly one fixed artifact from the completed Bazel invocation", () => {
+    const artifactPath = "/cache/execroot/_main/bazel-out/k8-opt/bin/examples/checkout-world/services/fraudcheck/service-topology.json";
+    const event = {
+      id: { targetCompleted: { label: SERVICE_TOPOLOGY_TARGET } },
+      completed: {
+        success: true,
+        importantOutput: [{
+          name: "examples/checkout-world/services/fraudcheck/service-topology.json",
+          uri: `file://${artifactPath}`,
+        }],
+      },
+    };
+    expect(topologyArtifactPathFromBuildEvents(Buffer.from(`${JSON.stringify({ id: { started: {} } })}\n${JSON.stringify(event)}\n`))).toBe(artifactPath);
+    expect(() => topologyArtifactPathFromBuildEvents(Buffer.from(`${JSON.stringify(event)}\n${JSON.stringify(event)}\n`))).toThrow("exactly one completion");
+    expect(() => topologyArtifactPathFromBuildEvents(Buffer.from(JSON.stringify({ ...event, completed: { ...event.completed, importantOutput: [{ name: event.completed.importantOutput[0]!.name, uri: "file:///tmp/stale.json" }] } })))).toThrow("escaped");
+    expect(() => topologyArtifactPathFromBuildEvents(Buffer.from("{not-json}\n"))).toThrow("malformed JSON");
+  });
+
   it("accepts only a Bazel-reported artifact whose digest matches canonical current inputs", async () => {
     const root = await mkdtemp(join(tmpdir(), "swarm-provider-boundary-"));
     const output = await mkdtemp(join(tmpdir(), "swarm-provider-output-"));

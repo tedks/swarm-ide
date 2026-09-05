@@ -24,6 +24,7 @@ export class WorkingWorldObserver {
   private closed = false;
   private timer: WorkingWorldObserverTimer | null = null;
   private lastFingerprint: string;
+  private observationFailed = false;
 
   constructor(
     initialFingerprint: string,
@@ -38,7 +39,13 @@ export class WorkingWorldObserver {
 
   start(): void {
     if (this.closed || this.timer) return;
-    this.timer = this.clock.every(this.pollMilliseconds, () => this.request());
+    // A periodic hint must not invalidate work already in flight: a slow Git
+    // fingerprint still describes a real observed world, and the next tick
+    // will sample again. Explicit filesystem/save hints continue to request a
+    // newer generation through request().
+    this.timer = this.clock.every(this.pollMilliseconds, () => {
+      if (!this.running) this.request();
+    });
     this.timer.unref?.();
   }
 
@@ -50,6 +57,7 @@ export class WorkingWorldObserver {
 
   observeKnown(fingerprint: string): void {
     this.lastFingerprint = fingerprint;
+    this.observationFailed = false;
     // Invalidate a computation that may have started before the caller's
     // atomic save, then reconcile once more against Git's complete view.
     this.request();
@@ -70,14 +78,19 @@ export class WorkingWorldObserver {
           const fingerprint = await this.compute();
           this.processed = generation;
           if (generation !== this.requested || this.closed) continue;
-          if (fingerprint !== this.lastFingerprint) {
+          const recovered = this.observationFailed;
+          this.observationFailed = false;
+          if (fingerprint !== this.lastFingerprint || recovered) {
             this.lastFingerprint = fingerprint;
             this.changed(fingerprint);
           }
         } catch (cause) {
           this.processed = generation;
           if (generation !== this.requested || this.closed) continue;
-          this.failed(cause instanceof Error ? cause : new Error("unknown working-world observation failure"));
+          if (!this.observationFailed) {
+            this.observationFailed = true;
+            this.failed(cause instanceof Error ? cause : new Error("unknown working-world observation failure"));
+          }
         }
       }
     } finally {

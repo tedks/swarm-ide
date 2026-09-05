@@ -170,6 +170,30 @@ export function App() {
     }
   }, []);
 
+  const coordinateFileFocus = useCallback((path: string) => {
+    setSelectedConnection(null);
+    const currentSnapshot = workspaceRef.current.snapshot;
+    if (!currentSnapshot) return;
+    void invoke({
+      type: "focus.select",
+      requestId: requestId(),
+      protocolVersion: PROTOCOL_VERSION,
+      focus: {
+        worldId: currentSnapshot.world.id,
+        revisionKind: "working",
+        revisionId: currentSnapshot.revisions.working.id,
+        domain: "repo",
+        key: `file:${path}`,
+        path,
+      },
+    });
+  }, [invoke]);
+
+  const activateFile = useCallback((path: string) => {
+    coordinateFileFocus(path);
+    setActiveSurface(path);
+  }, [coordinateFileFocus]);
+
   const reloadObservedFile = useCallback(async (event: FileEvent) => {
     const latestEvent = fileEventsRef.current.get(event.path);
     if (latestEvent && event.sequence <= latestEvent.sequence) return;
@@ -184,7 +208,9 @@ export function App() {
       setFileTabs((tabs) => tabs.map((tab) => tab.path === event.path ? { ...tab, status: "error", message: event.message ?? "The observed file is unavailable." } : tab));
       return;
     }
+    const openGeneration = openGenerationsRef.current.get(event.path);
     const response = await invoke({ type: "file.read", requestId: requestId(), protocolVersion: PROTOCOL_VERSION, path: event.path });
+    if (openGenerationsRef.current.get(event.path) !== openGeneration || !desiredFilesRef.current.has(event.path)) return;
     if (!response?.ok || !response.file || response.file.kind !== "read") return;
     if (fileEventsRef.current.get(event.path)?.sequence !== event.sequence || response.file.revision !== event.revision) return;
     const incoming = response.file;
@@ -230,24 +256,8 @@ export function App() {
   }, [reloadObservedFile]);
 
   const openFile = useCallback(async (path: string, coordinateFocus = true) => {
-    setSelectedConnection(null);
-    const currentSnapshot = workspaceRef.current.snapshot;
-    if (coordinateFocus && currentSnapshot && currentSnapshot.focus.path !== path) {
-      void invoke({
-        type: "focus.select",
-        requestId: requestId(),
-        protocolVersion: PROTOCOL_VERSION,
-        focus: {
-          worldId: currentSnapshot.world.id,
-          revisionKind: "working",
-          revisionId: currentSnapshot.revisions.working.id,
-          domain: "repo",
-          key: `file:${path}`,
-          path,
-        },
-      });
-    }
-    setActiveSurface(path);
+    if (coordinateFocus) activateFile(path);
+    else setActiveSurface(path);
     if (fileTabsRef.current.some((tab) => tab.path === path)) return;
     desiredFilesRef.current.add(path);
     const generation = (openGenerationsRef.current.get(path) ?? 0) + 1;
@@ -269,11 +279,20 @@ export function App() {
     const file = response.file;
     const eventAfterRead = fileEventsRef.current.get(path);
     if (eventAfterRead && eventAfterRead.sequence > eventBeforeRead && eventAfterRead.revision !== file.revision) {
-      void reloadObservedFile(eventAfterRead);
+      const observedResponse = await invoke({ type: "file.read", requestId: requestId(), protocolVersion: PROTOCOL_VERSION, path });
+      if (openGenerationsRef.current.get(path) !== generation || !desiredFilesRef.current.has(path)) return;
+      const latestEvent = fileEventsRef.current.get(path);
+      if (!observedResponse?.ok || !observedResponse.file || observedResponse.file.kind !== "read") {
+        setFileTabs((tabs) => tabs.map((tab) => tab.path === path ? { ...tab, status: "error", message: "The newest observed source revision could not be opened." } : tab));
+        return;
+      }
+      if (latestEvent?.sequence !== eventAfterRead.sequence || observedResponse.file.revision !== eventAfterRead.revision) return;
+      const observed = observedResponse.file;
+      setFileTabs((tabs) => tabs.map((tab) => tab.path === path ? { ...tab, content: observed.content, savedContent: observed.content, revision: observed.revision, status: "saved", message: "Watching the newest working file revision", flash: null } : tab));
       return;
     }
     setFileTabs((tabs) => tabs.map((tab) => tab.path === path ? { ...tab, content: file.content, savedContent: file.content, revision: file.revision, status: "saved", message: "Watching the working file", flash: null } : tab));
-  }, [invoke, reloadObservedFile]);
+  }, [activateFile, invoke]);
 
   const closeFile = useCallback((path: string) => {
     const tab = fileTabsRef.current.find((candidate) => candidate.path === path);
@@ -284,12 +303,14 @@ export function App() {
     desiredFilesRef.current.delete(path);
     openGenerationsRef.current.set(path, (openGenerationsRef.current.get(path) ?? 0) + 1);
     void invoke({ type: "file.unwatch", requestId: requestId(), protocolVersion: PROTOCOL_VERSION, path });
-    setFileTabs((tabs) => {
-      const next = tabs.filter((tab) => tab.path !== path);
-      if (activeSurface === path) setActiveSurface(next.at(-1)?.path ?? "graphs");
-      return next;
-    });
-  }, [activeSurface, invoke]);
+    const remaining = fileTabsRef.current.filter((candidate) => candidate.path !== path);
+    setFileTabs(remaining);
+    if (activeSurface === path) {
+      const nextPath = remaining.at(-1)?.path;
+      if (nextPath) activateFile(nextPath);
+      else setActiveSurface("graphs");
+    }
+  }, [activateFile, activeSurface, invoke]);
 
   const saveFile = useCallback(async (path: string) => {
     const tab = fileTabsRef.current.find((candidate) => candidate.path === path);
@@ -308,7 +329,7 @@ export function App() {
     const write = response.file;
     setFileTabs((tabs) => tabs.map((candidate) => candidate.path === path ? {
       ...candidate,
-      ...((candidate.status === "conflict" || ((fileEventsRef.current.get(path)?.sequence ?? 0) > eventSequenceBeforeSave && fileEventsRef.current.get(path)?.revision !== write.revision))
+      ...(((fileEventsRef.current.get(path)?.sequence ?? 0) > eventSequenceBeforeSave && fileEventsRef.current.get(path)?.revision !== write.revision)
         ? { status: "conflict" as const, message: "The working file changed while save completed; your local buffer is preserved." }
         : {
           savedContent,
@@ -377,6 +398,7 @@ export function App() {
 
   const snapshot = workspace.snapshot;
   const activeFile = fileTabs.find((tab) => tab.path === activeSurface);
+  const reconciliationRunning = snapshot?.jobs.some((job) => job.kind === "build" && job.status === "running") ?? false;
   const title = snapshot ? statusLabel(snapshot.reconciliation.status) : "Loading";
   const zoomTitle = zoomPending ? "Zoom applying" : zoomPercent === null ? "Zoom unknown" : `Zoom ${zoomPercent}%${import.meta.env.DEV ? `@${zoomOperation}` : ""}`;
   useEffect(() => {
@@ -444,13 +466,13 @@ export function App() {
         <div className="field-toolbar">
           <div><span className="eyebrow">central navigation</span><strong>{activeFile?.path ?? focusLabel(snapshot.focus)}</strong><small>{activeFile ? `${activeFile.status} · ${activeFile.message}` : `${snapshot.focus.domain} · ${snapshot.focus.revisionId.slice(0, 12)}`}</small></div>
           <div className="world-chips"><span>working <b>{snapshot.revisions.working.id.slice(0, 8)}</b></span><span>built <b>{snapshot.revisions.built.id.slice(0, 8) || "—"}</b></span><span>deployed <b>{snapshot.revisions.deployed.environment}</b></span></div>
-          <button id="reconcile-success" className="build-button" onClick={() => void reconcile()} disabled={snapshot.reconciliation.status === "yellow"}>▶ Build topology</button>
+          <button id="reconcile-success" className="build-button" onClick={() => void reconcile()} disabled={reconciliationRunning}>▶ Build topology</button>
         </div>
         <nav className="surface-tabs" aria-label="Central workspace tabs">
           <button className={activeSurface === "graphs" ? "active" : ""} onClick={() => setActiveSurface("graphs")}><span>⌘</span> System graphs</button>
-          {fileTabs.map((tab) => <div key={tab.path} className={`surface-tab ${activeSurface === tab.path ? "active" : ""}`}><button className="surface-tab-main" onClick={() => setActiveSurface(tab.path)} title={tab.path}><span className={`tab-state status-${tab.status}`}>{tab.status === "dirty" ? "●" : tab.status === "saving" ? "◌" : tab.status === "conflict" || tab.status === "error" ? "!" : "◇"}</span>{tab.path.split("/").at(-1)}</button><button className="surface-tab-close" aria-label={`Close ${tab.path}`} onClick={() => closeFile(tab.path)}>×</button></div>)}
+          {fileTabs.map((tab) => <div key={tab.path} className={`surface-tab ${activeSurface === tab.path ? "active" : ""}`}><button className="surface-tab-main" onClick={() => activateFile(tab.path)} title={tab.path}><span className={`tab-state status-${tab.status}`}>{tab.status === "dirty" ? "●" : tab.status === "saving" ? "◌" : tab.status === "conflict" || tab.status === "error" ? "!" : "◇"}</span>{tab.path.split("/").at(-1)}</button><button className="surface-tab-close" aria-label={`Close ${tab.path}`} onClick={() => closeFile(tab.path)}>×</button></div>)}
         </nav>
-        <div className={`graphs-grid ${activeFile ? "is-sidebar" : activeSurface === "graphs" ? "is-active" : "is-hidden"}`}>{snapshot.graphs.map((graph) => <GraphPane key={graph.topologyId} graph={graph} focus={snapshot.focus} mappings={snapshot.mappings} interfaceZoom={zoomPercent} onFocus={selectFocus} onConnectionFocus={selectConnection} />)}</div>
+        <div className={`graphs-grid ${activeFile ? "is-sidebar" : activeSurface === "graphs" ? "is-active" : "is-hidden"}`}>{snapshot.graphs.map((graph) => <GraphPane key={graph.topologyId} graph={graph} focus={snapshot.focus} mappings={snapshot.mappings} interfaceZoom={zoomPercent} onFocus={selectFocus} onConnectionFocus={selectConnection} onReconcile={() => { void reconcile(); }} reconciliationRunning={reconciliationRunning} />)}</div>
         {activeFile ? <section className={`source-surface ${activeFile.status === "conflict" || activeFile.status === "error" ? "has-banner" : ""}`}>
           <header><div><span className="eyebrow">source observatory</span><strong>{activeFile.path}</strong></div><div className={`file-state file-${activeFile.status}`}><i />{activeFile.status}<button onClick={() => void saveFile(activeFile.path)} disabled={activeFile.status !== "dirty"}>Save <kbd>Ctrl S</kbd></button></div></header>
           {activeFile.status === "loading" ? <div className="source-message">Loading the canonical working file…</div> : <>

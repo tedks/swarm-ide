@@ -20,12 +20,14 @@ function TopologyNode({ data }: NodeProps) {
 
 const nodeTypes = { topology: TopologyNode };
 
-export function GraphPane({ graph, focus, mappings, onFocus, onConnectionFocus, interfaceZoom }: {
+export function GraphPane({ graph, focus, mappings, onFocus, onConnectionFocus, onReconcile, reconciliationRunning, interfaceZoom }: {
   graph: GraphSlice;
   focus: FocusRef;
   mappings: NavigationMapping[];
   onFocus: (focus: FocusRef) => void;
   onConnectionFocus: (connection: GraphConnectionFocus) => void;
+  onReconcile: () => void;
+  reconciliationRunning: boolean;
   interfaceZoom: number | null;
 }) {
   const adapted = useMemo(() => adaptGraph(graph, focus, mappings), [graph, focus, mappings]);
@@ -49,7 +51,9 @@ export function GraphPane({ graph, focus, mappings, onFocus, onConnectionFocus, 
     <section className="graph-pane" data-topology={graph.topologyId}>
       <header className="graph-header">
         <div><span className="eyebrow">{graph.topologyId} lens</span><h2>{graph.title}</h2></div>
-        <div className="graph-meta"><span>{graph.scope}</span><span>{graph.zoomBand}</span><span className={`truth-dot status-${graph.reconciliation}`}>{graph.reconciliation}</span></div>
+        <div className="graph-meta"><span>{graph.scope}</span><span>{graph.zoomBand}</span>{graph.reconciliation === "yellow"
+          ? <button className="truth-dot status-yellow" aria-label={reconciliationRunning ? "Topology build in progress" : "Build repository service topology"} title={reconciliationRunning ? "Topology build in progress" : "Working world changed — build topology"} disabled={reconciliationRunning} onClick={onReconcile} />
+          : <span className={`truth-dot status-${graph.reconciliation}`} role="status" aria-label={`Topology ${graph.reconciliation === "green" ? "consistent" : graph.reconciliation === "gray" ? "unobserved" : "failed"}`} title={graph.reconciliation === "green" ? "Topology consistent" : graph.reconciliation === "gray" ? "Topology unobserved" : "Topology build failed"} />}</div>
       </header>
       <div className="graph-canvas">
         <ReactFlow
@@ -64,8 +68,9 @@ export function GraphPane({ graph, focus, mappings, onFocus, onConnectionFocus, 
           nodesConnectable={false}
           elementsSelectable
           onNodeClick={(_event, node) => onFocus((node.data as TopologyNodeData).focus)}
-          onEdgeClick={(_event, selected) => {
-            const connection = describeGraphConnection(graph, selected.id);
+          onSelectionChange={({ edges }) => {
+            if (edges.length !== 1) return;
+            const connection = describeGraphConnection(graph, edges[0]!.id);
             if (connection) onConnectionFocus(connection);
           }}
           edgesFocusable

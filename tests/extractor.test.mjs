@@ -1,9 +1,10 @@
 // @vitest-environment node
 import { execFileSync } from "node:child_process";
-import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
+import { readBuiltTopologyArtifact } from "../core/provider.ts";
 
 const roots = [];
 const extractor = resolve(process.cwd(), "tools/extract-service-topology.mjs");
@@ -45,10 +46,14 @@ function descriptorSet({ file, packageName, service, method, request, response, 
 async function inputs() {
   const root = await mkdtemp(join(tmpdir(), "swarm-extractor-"));
   roots.push(root);
-  const manifest = join(root, "service.swarm.json");
-  const implementation = join(root, "fraudcheck.ts");
-  const fraudProto = join(root, "fraudcheck.proto");
-  const paymentsProto = join(root, "payments.proto");
+  const fraudRoot = join(root, "examples/checkout-world/services/fraudcheck");
+  const paymentsRoot = join(root, "examples/checkout-world/services/payments");
+  await mkdir(fraudRoot, { recursive: true });
+  await mkdir(paymentsRoot, { recursive: true });
+  const manifest = join(fraudRoot, "service.swarm.json");
+  const implementation = join(fraudRoot, "fraudcheck.ts");
+  const fraudProto = join(fraudRoot, "fraudcheck.proto");
+  const paymentsProto = join(paymentsRoot, "payments.proto");
   const fraudDescriptor = join(root, "fraudcheck.pb");
   const paymentsDescriptor = join(root, "payments.pb");
   await writeFile(manifest, JSON.stringify({
@@ -106,6 +111,7 @@ describe("service topology extractor", () => {
     expect(artifact).not.toHaveProperty("nodes");
     expect(artifact).not.toHaveProperty("reconciliation");
     expect(artifact).not.toHaveProperty("timestamp");
+    await expect(readBuiltTopologyArtifact(input.root, { artifactPath: first })).resolves.toMatchObject({ artifact: { inputDigest: artifact.inputDigest } });
   });
 
   it("rejects unknown schema versions and missing interface source linkages", async () => {

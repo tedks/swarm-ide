@@ -123,6 +123,16 @@ describe("real workspace provider", () => {
     expect(provider.snapshot().mappings.every((mapping) => mapping.from.revisionId === c)).toBe(true);
   });
 
+  it("recovers an observer-caused red state even when the fingerprint is unchanged", async () => {
+    const fingerprint = "a".repeat(64);
+    const provider = await RealWorkspaceProvider.create("/unused", dependencies([fingerprint]));
+    const events: WorkspaceSnapshot[] = [];
+    provider.markWorkingWorldUnknown("git briefly unavailable", (_type, snapshot) => events.push(snapshot));
+    provider.markWorkingWorldChanged(fingerprint, (_type, snapshot) => events.push(snapshot));
+    expect(events.map((snapshot) => snapshot.reconciliation.status)).toEqual(["red", "yellow"]);
+    expect(provider.snapshot().reconciliation.message).toContain("build to observe");
+  });
+
   it("publishes a bounded red state when fingerprint preflight fails", async () => {
     const provider = await RealWorkspaceProvider.create("/unused", dependencies(["a".repeat(64)]));
     const published: WorkspaceSnapshot[] = [];

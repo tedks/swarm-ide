@@ -19,6 +19,8 @@ describe("application menu", () => {
     expect(roles).not.toContain("zoomIn");
     expect(roles).not.toContain("zoomOut");
     expect(roles).not.toContain("resetZoom");
-    expect(applicationMenuTemplate("darwin").map((item) => item.role)).toContain("appMenu");
+    const darwin = applicationMenuTemplate("darwin");
+    expect(darwin.map((item) => item.role)).toContain("appMenu");
+    expect(darwin.map((item) => item.label)).not.toContain("File");
   });
 });

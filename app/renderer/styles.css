@@ -155,8 +155,11 @@ kbd { border: 1px solid #314344; border-radius: 4px; padding: 2px 5px; backgroun
 .graph-meta { min-width: 0; display: flex; align-items: center; gap: 10px; overflow: hidden; color: #526b68; font: 8px "DM Mono", monospace; }
 .graph-meta > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .graph-meta .truth-dot { flex: none; }
-.truth-dot { display: flex; align-items: center; gap: 5px; text-transform: uppercase; }
-.truth-dot::before { content: ""; width: 5px; height: 5px; border-radius: 50%; background: currentColor; box-shadow: 0 0 8px currentColor; }
+.truth-dot { display: flex; align-items: center; justify-content: center; width: 15px; height: 15px; padding: 0; border: 0; background: transparent; }
+.truth-dot::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: currentColor; box-shadow: 0 0 8px currentColor; }
+button.truth-dot { cursor: pointer; }
+button.truth-dot:hover::before, button.truth-dot:focus-visible::before { width: 9px; height: 9px; box-shadow: 0 0 12px currentColor; }
+button.truth-dot:disabled { cursor: wait; opacity: 0.72; }
 .graph-canvas { min-height: 0; }
 .react-flow__controls { overflow: hidden; border: 1px solid #263a3a !important; border-radius: 5px; box-shadow: none !important; }
 .react-flow__controls-button { width: 22px !important; height: 22px !important; border-color: #263a3a !important; background: #0e1a1b !important; fill: #78918e !important; }
