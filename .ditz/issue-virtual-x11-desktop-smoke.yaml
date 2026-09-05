@@ -39,6 +39,20 @@ log_events:
   who: Ted Smith
   what: blocks stable-native-window-dev-reload
   comment: ""
+- time: 2026-09-05T21:27:54-00:00
+  who: Ted Smith
+  what: commented
+  comment: 'Executive steering (2026-09-05): real DISPLAY=:0 automation is prohibited
+    and has stopped. The isolated owned virtual-X11 harness must re-prove all remaining
+    GUI gates: exact-window discovery/ownership; gray-to-yellow-to-green topology
+    build; the unlabeled yellow-dot click action and in-progress disabling; FraudCheck/interface
+    node and edge selection with contextual instruments; graph/source transitions
+    with graph camera preservation; multiple source tabs and renderer-owned Ctrl-W;
+    Ctrl-S, dirty/save/reload, external-edit conflict preservation; transient green
+    insertions and red deletions; visible traversal/symlink/binary/oversize/write
+    failures; HMR/native-window stability; and click-to-yellow/build-to-green timing.
+    Screenshots may be captured only inside the isolated display and retained as test
+    artifacts. Do not expand PR #4 or run any of these gates against the user''s desktop.'
 blocks:
 - first-real-agent-run-surface
 - supervise-local-core
