@@ -1,4 +1,4 @@
-import { contextBridge, ipcRenderer, webFrame } from "electron";
+import { contextBridge, ipcRenderer } from "electron";
 import {
   parseCoreEvent,
   parseCoreRequest,
@@ -8,7 +8,8 @@ import {
   type CoreResponse,
 } from "../../protocol/schema";
 import {
-  applyInterfaceZoom,
+  VIEW_SHELL_ZOOM_CHANNEL,
+  parseViewShellResult,
   type ViewShellBridge,
 } from "../view-shell";
 
@@ -36,8 +37,9 @@ const bridge: SwarmBridge = {
 };
 
 const viewShellBridge: ViewShellBridge = {
-  setZoomPercent(percent) {
-    return applyInterfaceZoom(percent, (factor) => webFrame.setZoomFactor(factor));
+  async setZoomPercent(percent) {
+    const response: unknown = await ipcRenderer.invoke(VIEW_SHELL_ZOOM_CHANNEL, percent);
+    return parseViewShellResult(response);
   },
 };
 

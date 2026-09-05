@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { StrictMode } from "react";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { CoreRequest, CoreResponse } from "../protocol/schema";
@@ -40,7 +41,7 @@ function installViewBridge(result?: (percent: number) => ViewShellResult): ViewS
       ? { ok: true, percent }
       : { ok: false, message: "not allowed" });
   const bridge: ViewShellBridge = {
-    setZoomPercent: vi.fn(implementation),
+    setZoomPercent: vi.fn(async (percent) => implementation(percent)),
   };
   Object.defineProperty(window, "swarmView", { configurable: true, value: bridge });
   return bridge;
@@ -98,7 +99,7 @@ describe("workbench shell", () => {
 
     first.unmount();
     const reloadBridge = installViewBridge();
-    render(<App />);
+    render(<StrictMode><App /></StrictMode>);
     expect(await screen.findByRole("button", { name: /Current zoom 125%/ })).toBeTruthy();
     expect(reloadBridge.setZoomPercent).toHaveBeenCalledWith(125);
 
@@ -128,7 +129,7 @@ describe("workbench shell", () => {
     render(<App />);
     expect(await screen.findByText("Checkout hardening")).toBeTruthy();
     expect(screen.getByText("Interface zoom is unavailable outside the swarm-ide Electron shell.")).toBeTruthy();
-    expect(screen.getByRole("button", { name: /Current zoom 100%/ })).toBeTruthy();
+    expect(screen.getByRole("button", { name: /Current zoom pending/ })).toBeTruthy();
   });
 
   it("handles Ctrl zoom while preserving editable focus and ignores plain text keys", async () => {

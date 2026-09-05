@@ -68,6 +68,15 @@ activate_window() {
   return 1
 }
 
+restore_window() {
+  if [[ -n "${window_id:-}" ]] && xdotool getwindowname "$window_id" >/dev/null 2>&1; then
+    wmctrl -i -a "$window_id" >/dev/null 2>&1 || true
+    xdotool key --clearmodifiers Escape >/dev/null 2>&1 || true
+    xdotool key --clearmodifiers ctrl+0 >/dev/null 2>&1 || true
+  fi
+}
+trap restore_window EXIT
+
 capture_window() {
   local destination="$1"
   activate_window
@@ -90,8 +99,9 @@ capture_window "$artifact_dir/zoom-100-focused.png"
 xdotool key --clearmodifiers ctrl+equal
 wait_for_title "Zoom 125%"
 wait_for_title "Palette open"
-xdotool type --clearmodifiers --delay 4 ' editable'
 capture_window "$artifact_dir/zoom-125-focused.png"
+xdotool type --clearmodifiers --delay 20 ' editable'
+capture_window "$artifact_dir/zoom-125-focus-retained.png"
 
 # Reload must reconstruct the zoom from renderer-local persistence. The palette
 # disappearing proves that a document reload occurred rather than a stale title
@@ -101,15 +111,52 @@ wait_for_title "Palette open" absent
 wait_for_title "Zoom 125%"
 capture_window "$artifact_dir/zoom-125-reloaded.png"
 
+# Exercise both shifted plus and minus through every bound. Repeated presses at
+# the endpoints prove no hidden native menu accelerator can escape the ladder.
+xdotool key --clearmodifiers ctrl+shift+equal
+wait_for_title "Zoom 150%"
+xdotool key --clearmodifiers ctrl+shift+equal
+wait_for_title "Zoom 160%"
+for _ in $(seq 1 4); do xdotool key --clearmodifiers ctrl+shift+equal; done
+wait_for_title "Zoom 160%"
+capture_window "$artifact_dir/zoom-160-bound.png"
+
+for expected in 150 125 100 90 80; do
+  xdotool key --clearmodifiers ctrl+minus
+  wait_for_title "Zoom ${expected}%"
+done
+for _ in $(seq 1 4); do xdotool key --clearmodifiers ctrl+minus; done
+wait_for_title "Zoom 80%"
+capture_window "$artifact_dir/zoom-80-bound.png"
+
 xdotool key --clearmodifiers ctrl+0
 wait_for_title "Zoom 100%"
 capture_window "$artifact_dir/zoom-reset.png"
 
-changed_pixels_raw=$(magick "$artifact_dir/zoom-100-focused.png" "$artifact_dir/zoom-125-focused.png" \
-  -compose difference -composite -threshold 0 -format '%[fx:mean*w*h]' info:)
-changed_pixels=$(awk -v value="$changed_pixels_raw" 'BEGIN { printf "%.0f", value }')
-if [[ ! "$changed_pixels" =~ ^[0-9]+$ ]] || (( changed_pixels < 1000 )); then
+pixel_difference() {
+  local first="$1"
+  local second="$2"
+  local raw=""
+  raw=$(magick "$first" "$second" -compose difference -composite -threshold 0 -format '%[fx:mean*w*h]' info:)
+  awk -v value="$raw" 'BEGIN { printf "%.0f", value }'
+}
+
+total_pixels_raw=$(identify -format '%[fx:w*h]' "$artifact_dir/zoom-100.png")
+total_pixels=$(awk -v value="$total_pixels_raw" 'BEGIN { printf "%.0f", value }')
+minimum_changed_pixels=$((total_pixels / 20))
+changed_pixels=$(pixel_difference "$artifact_dir/zoom-100-focused.png" "$artifact_dir/zoom-125-focused.png")
+reload_changed_pixels=$(pixel_difference "$artifact_dir/zoom-125-reloaded.png" "$artifact_dir/zoom-reset.png")
+restored_pixels=$(pixel_difference "$artifact_dir/zoom-100.png" "$artifact_dir/zoom-reset.png")
+if [[ ! "$changed_pixels" =~ ^[0-9]+$ ]] || (( changed_pixels < minimum_changed_pixels )); then
   echo "zoom assertion failed: only '$changed_pixels' pixels changed" >&2
+  exit 4
+fi
+if [[ ! "$reload_changed_pixels" =~ ^[0-9]+$ ]] || (( reload_changed_pixels < minimum_changed_pixels )); then
+  echo "reloaded zoom assertion failed: only '$reload_changed_pixels' pixels changed before reset" >&2
+  exit 4
+fi
+if [[ ! "$restored_pixels" =~ ^[0-9]+$ ]] || (( restored_pixels >= minimum_changed_pixels )); then
+  echo "reset assertion failed: '$restored_pixels' pixels still differ from the 100% baseline" >&2
   exit 4
 fi
 
@@ -118,7 +165,10 @@ echo "window_id=$window_id"
 echo "renderer_url=$renderer_url"
 echo "window_title=$(xdotool getwindowname "$window_id")"
 echo "changed_pixels=$changed_pixels"
+echo "reload_changed_pixels=$reload_changed_pixels"
+echo "restored_pixels=$restored_pixels"
 echo "artifacts=$artifact_dir"
 identify "$artifact_dir/zoom-100.png" "$artifact_dir/zoom-100-focused.png" \
-  "$artifact_dir/zoom-125-focused.png" \
-  "$artifact_dir/zoom-125-reloaded.png" "$artifact_dir/zoom-reset.png"
+  "$artifact_dir/zoom-125-focused.png" "$artifact_dir/zoom-125-focus-retained.png" \
+  "$artifact_dir/zoom-125-reloaded.png" "$artifact_dir/zoom-160-bound.png" \
+  "$artifact_dir/zoom-80-bound.png" "$artifact_dir/zoom-reset.png"
