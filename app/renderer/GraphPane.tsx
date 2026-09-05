@@ -6,11 +6,12 @@ import { adaptGraph, type TopologyNodeData } from "./graph-adapter";
 function TopologyNode({ data }: NodeProps) {
   const node = data as TopologyNodeData;
   return (
-    <div className={`topology-node status-${node.status} ${node.focused ? "is-focused" : ""}`}>
+    <div className={`topology-node status-${node.status} ${node.focused ? "is-focused" : ""} ${node.ambiguous ? "is-ambiguous" : ""}`} title={node.mappingReason}>
       <Handle type="target" position={Position.Left} />
       <span className="node-kind">{node.kind}</span>
       <strong>{node.label}</strong>
       {node.detail ? <small>{node.detail}</small> : null}
+      {node.ambiguous && node.mappingConfidence !== undefined ? <span className="mapping-badge">candidate {Math.round(node.mappingConfidence * 100)}%</span> : null}
       <Handle type="source" position={Position.Right} />
     </div>
   );

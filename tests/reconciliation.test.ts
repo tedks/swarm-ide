@@ -43,7 +43,45 @@ describe("reconciliation event ordering", () => {
       ...valid,
       reconciliation: { ...valid.reconciliation, inputFingerprint: "work:someone-else" },
     };
-    expect(() => applyCoreEvent(current, event(invalid, 2))).toThrow("green publication must match its exact working fingerprint");
+    expect(applyCoreEvent(current, event(invalid, 2)).ignoredEvents).toBe(1);
     expect(applyCoreEvent(current, event(valid, 2)).snapshot?.reconciliation.status).toBe("green");
+  });
+
+  it("advances successive attempts and retains the last green topology", () => {
+    const firstDirty = dirtySnapshot(initialSnapshot());
+    const firstGreen = successfulSnapshot(firstDirty);
+    const secondDirty = dirtySnapshot(firstGreen);
+    const secondGreen = successfulSnapshot(secondDirty);
+
+    expect(secondDirty.reconciliation.epoch).toBe(3);
+    expect(secondDirty.revisions.working.fingerprint).toBe("work:c3");
+    expect(secondDirty.graphs.find((graph) => graph.topologyId === "service")?.nodes.some((node) => node.id === "service-fraud")).toBe(true);
+    expect(secondGreen.revisions.built).toEqual({ id: "build:c3", sourceFingerprint: "work:c3" });
+  });
+
+  it("rejects a stale prior green after a later attempt", () => {
+    const firstGreen = successfulSnapshot(dirtySnapshot(initialSnapshot()));
+    const secondDirty = dirtySnapshot(firstGreen);
+    const current = applyCoreEvent(loadSnapshot(firstGreen), event(secondDirty, 10));
+    const result = applyCoreEvent(current, event(firstGreen, 11));
+    expect(result.snapshot?.reconciliation.status).toBe("yellow");
+    expect(result.snapshot?.reconciliation.epoch).toBe(3);
+    expect(result.ignoredEvents).toBe(1);
+  });
+
+  it("accepts an explicit authoritative fixture reset", () => {
+    const green = successfulSnapshot(dirtySnapshot(initialSnapshot()));
+    const current = applyCoreEvent(loadSnapshot(green, 8), event(dirtySnapshot(green), 9));
+    const reset = { ...event(initialSnapshot(), 10), type: "workspace.reset" as const };
+    const result = applyCoreEvent(current, reset);
+    expect(result.snapshot?.revisions.working.id).toBe("work:a1");
+    expect(result.lastSequence).toBe(10);
+  });
+
+  it("rejects an event whose envelope and snapshot epochs disagree", () => {
+    const current = loadSnapshot(initialSnapshot());
+    const result = applyCoreEvent(current, event(initialSnapshot(), 1, 99));
+    expect(result.snapshot?.reconciliation.epoch).toBe(1);
+    expect(result.ignoredEvents).toBe(1);
   });
 });

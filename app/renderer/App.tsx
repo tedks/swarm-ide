@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { CoreRequest, FocusRef, ReconciliationStatus } from "../../protocol/schema";
+import { PROTOCOL_VERSION, type CoreRequest, type FocusRef, type ReconciliationStatus } from "../../protocol/schema";
 import { applyCoreEvent, emptyWorkspaceState, loadSnapshot, type WorkspaceState } from "./state";
 import { GraphPane } from "./GraphPane";
 
@@ -28,11 +28,11 @@ export function App() {
 
   const invoke = useCallback(async (request: CoreRequest) => {
     try {
+      if (!window.swarm) throw new Error("Open this interface through the swarm-ide Electron shell");
       const response = await window.swarm.request(request);
       if (!response.ok) throw new Error(response.error.message);
-      setWorkspace((current) => ({ ...current, snapshot: response.snapshot }));
       setError(null);
-      return response.snapshot;
+      return response;
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Unknown local-core error");
       return null;
@@ -40,10 +40,15 @@ export function App() {
   }, []);
 
   useEffect(() => {
-    void invoke({ type: "workspace.snapshot", requestId: requestId(), protocolVersion: 1 }).then((snapshot) => {
-      if (snapshot) setWorkspace(loadSnapshot(snapshot));
+    const bridge = window.swarm;
+    if (!bridge) {
+      setError("Open this interface through the swarm-ide Electron shell");
+      return;
+    }
+    void invoke({ type: "workspace.snapshot", requestId: requestId(), protocolVersion: PROTOCOL_VERSION }).then((response) => {
+      if (response) setWorkspace(loadSnapshot(response.snapshot, response.sequence));
     });
-    return window.swarm.onEvent((event) => setWorkspace((current) => applyCoreEvent(current, event)));
+    return bridge.onEvent((event) => setWorkspace((current) => applyCoreEvent(current, event)));
   }, [invoke]);
 
   useEffect(() => {
@@ -83,25 +88,27 @@ export function App() {
   const title = snapshot ? statusLabel(snapshot.reconciliation.status) : "Loading";
   useEffect(() => {
     const focus = snapshot ? ` — ${focusLabel(snapshot.focus)}` : "";
+    const revision = snapshot ? ` — ${snapshot.revisions.working.id}` : "";
     const fraudVisible = snapshot?.graphs.some((graph) => graph.nodes.some((node) => node.label === "FraudCheck"))
       ? " — FraudCheck visible"
       : "";
+    const palette = paletteOpen ? " — Palette open" : "";
     const hmrSuffix = hmr.generation ? ` — HMR ${hmr.generation}:${hmr.milliseconds}ms` : "";
-    document.title = `swarm-ide — ${title}${focus}${fraudVisible}${hmrSuffix}`;
-  }, [hmr, snapshot, title]);
+    document.title = `swarm-ide — ${title}${focus}${revision}${fraudVisible}${palette}${hmrSuffix}`;
+  }, [hmr, paletteOpen, snapshot, title]);
 
   const selectFocus = useCallback((focus: FocusRef) =>
-    invoke({ type: "focus.select", requestId: requestId(), protocolVersion: 1, focus }), [invoke]);
+    invoke({ type: "focus.select", requestId: requestId(), protocolVersion: PROTOCOL_VERSION, focus }), [invoke]);
   const reconcile = useCallback((mode: "success" | "failure" | "stale") => {
     setPaletteOpen(false);
-    return invoke({ type: "reconciliation.start", requestId: requestId(), protocolVersion: 1, mode });
+    return invoke({ type: "reconciliation.start", requestId: requestId(), protocolVersion: PROTOCOL_VERSION, mode });
   }, [invoke]);
 
   const commands = useMemo(() => [
     { label: "Build and reconcile current world", detail: "yellow → green · publishes FraudCheck", run: () => reconcile("success") },
     { label: "Simulate extractor failure", detail: "red · retains last green topology", run: () => reconcile("failure") },
     { label: "Simulate stale result", detail: "reject old epoch, then publish current", run: () => reconcile("stale") },
-    { label: "Reset fixture world", detail: "return to work:a1", run: () => invoke({ type: "fixture.reset", requestId: requestId(), protocolVersion: 1 }) },
+    { label: "Reset fixture world", detail: "return to work:a1", run: () => { setPaletteOpen(false); return invoke({ type: "fixture.reset", requestId: requestId(), protocolVersion: PROTOCOL_VERSION }); } },
   ].filter((command) => command.label.toLowerCase().includes(commandQuery.toLowerCase())), [commandQuery, invoke, reconcile]);
 
   if (!snapshot) {

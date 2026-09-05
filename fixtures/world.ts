@@ -15,19 +15,13 @@ function observedAtOffset(seconds: number): string {
   return new Date(Date.parse(observedAt) + seconds * 1_000).toISOString();
 }
 
-const repoProvenance: Provenance = {
-  sourceKind: "repo",
-  uri: "repo://swarm-ide/BUILD.bazel",
-  version: "work:a1",
-  observedAt,
-};
+function repoProvenance(version: string): Provenance {
+  return { sourceKind: "repo", uri: "repo://swarm-ide/BUILD.bazel", version, observedAt };
+}
 
-const buildProvenance: Provenance = {
-  sourceKind: "build",
-  uri: "bazel://reports/service-topology.json",
-  version: "build:a1",
-  observedAt,
-};
+function buildProvenance(version: string): Provenance {
+  return { sourceKind: "build", uri: "bazel://reports/service-topology.json", version, observedAt };
+}
 
 const runtimeProvenance: Provenance = {
   sourceKind: "runtime",
@@ -53,6 +47,11 @@ function focus(
   };
 }
 
+function revisionId(kind: "work" | "build", epoch: number): string {
+  const generation = epoch <= 26 ? String.fromCharCode(96 + epoch) : `e${epoch}`;
+  return `${kind}:${generation}${epoch}`;
+}
+
 export const checkoutServiceFocus = focus("service", "service:checkout");
 export const paymentsServiceFocus = focus("service", "service:payments");
 export const fraudServiceFocus = focus("service", "service:fraud-check");
@@ -73,7 +72,11 @@ export const authorizeFocus = focus(
   "authorize",
 );
 
-function repoGraph(status: GraphSlice["reconciliation"], epoch: number): GraphSlice {
+function repoGraph(
+  status: GraphSlice["reconciliation"],
+  epoch: number,
+  inputFingerprint: string,
+): GraphSlice {
   return {
     schemaVersion: PROTOCOL_VERSION,
     topologyId: "repo",
@@ -82,8 +85,8 @@ function repoGraph(status: GraphSlice["reconciliation"], epoch: number): GraphSl
     zoomBand: "file",
     epoch,
     reconciliation: status,
-    inputFingerprint: status === "green" && epoch > 1 ? "work:b2" : "work:a1",
-    provenance: [repoProvenance],
+    inputFingerprint,
+    provenance: [repoProvenance(inputFingerprint)],
     nodes: [
       {
         id: "repo-root",
@@ -133,6 +136,8 @@ function serviceGraph(
   status: GraphSlice["reconciliation"],
   epoch: number,
   includeFraud: boolean,
+  inputFingerprint: string,
+  buildId: string,
 ): GraphSlice {
   const nodes: GraphSlice["nodes"] = [
     {
@@ -182,7 +187,7 @@ function serviceGraph(
       status: "green",
       position: { x: 390, y: 5 },
       focus: fraudServiceFocus,
-      detail: "new · build:b2",
+      detail: `new · ${buildId}`,
     });
     edges.push(
       {
@@ -221,8 +226,8 @@ function serviceGraph(
     zoomBand: "service",
     epoch,
     reconciliation: status,
-    inputFingerprint: includeFraud ? "work:b2" : "work:a1",
-    provenance: [buildProvenance],
+    inputFingerprint,
+    provenance: [buildProvenance(buildId)],
     nodes,
     edges,
   };
@@ -292,7 +297,7 @@ export const mappings: NavigationMapping[] = [
 function widgetsFor(selected: FocusRef): Widget[] {
   const common = {
     priority: 10,
-    provenance: repoProvenance,
+    provenance: repoProvenance(selected.revisionId),
   };
   if (selected.key.includes("payments") || selected.key.includes("authorize")) {
     return [
@@ -312,9 +317,10 @@ function widgetsFor(selected: FocusRef): Widget[] {
 function retagWorkingReferences(snapshot: WorkspaceSnapshot, revisionId: string): WorkspaceSnapshot {
   const retag = (value: FocusRef): FocusRef =>
     value.revisionKind === "working" ? { ...value, revisionId } : value;
+  const retaggedFocus = retag(snapshot.focus);
   return {
     ...snapshot,
-    focus: retag(snapshot.focus),
+    focus: retaggedFocus,
     graphs: snapshot.graphs.map((graph) => ({
       ...graph,
       nodes: graph.nodes.map((node) => ({ ...node, focus: retag(node.focus) })),
@@ -327,7 +333,27 @@ function retagWorkingReferences(snapshot: WorkspaceSnapshot, revisionId: string)
         focus: retag(candidate.focus),
       })),
     })),
+    widgets: widgetsFor(retaggedFocus),
   };
+}
+
+function markGraphsPending(graphs: GraphSlice[], epoch: number): GraphSlice[] {
+  const affectedNodes = new Set(["repo-services", "repo-checkout", "service-checkout"]);
+  const affectedEdges = new Set(["repo-e2", "service-e2"]);
+  return graphs.map((graph) => ({
+    ...graph,
+    epoch,
+    reconciliation: "yellow",
+    nodes: graph.nodes.map((node) => ({
+      ...node,
+      status: affectedNodes.has(node.id) ? "yellow" : node.status === "red" ? "green" : node.status,
+      detail: node.id === "service-checkout" ? "reconciling source changes" : node.detail,
+    })),
+    edges: graph.edges.map((edge) => ({
+      ...edge,
+      status: affectedEdges.has(edge.id) ? "yellow" : edge.status === "red" ? "green" : edge.status,
+    })),
+  }));
 }
 
 const baseActivity: Activity[] = [
@@ -347,7 +373,7 @@ export function initialSnapshot(selected: FocusRef = checkoutServiceFocus): Work
       deployed: { id: "deploy:local-084", buildId: "build:a0", environment: "local" },
     },
     focus: selected,
-    graphs: [repoGraph("green", 1), serviceGraph("green", 1, false)],
+    graphs: [repoGraph("green", 1, "work:a1"), serviceGraph("green", 1, false, "work:a1", "build:a1")],
     mappings,
     widgets: widgetsFor(selected),
     jobs: [],
@@ -363,16 +389,18 @@ export function initialSnapshot(selected: FocusRef = checkoutServiceFocus): Work
 }
 
 export function dirtySnapshot(previous: WorkspaceSnapshot): WorkspaceSnapshot {
+  const epoch = previous.reconciliation.epoch + 1;
+  const workingId = revisionId("work", epoch);
   return retagWorkingReferences({
     ...previous,
     revisions: {
       ...previous.revisions,
-      working: { id: "work:b2", fingerprint: "work:b2" },
+      working: { id: workingId, fingerprint: workingId },
     },
-    graphs: [repoGraph("yellow", 2), serviceGraph("yellow", 2, false)],
+    graphs: markGraphsPending(previous.graphs, epoch),
     jobs: [
       {
-        id: "job:reconcile-2",
+        id: `job:reconcile-${epoch}`,
         label: "bazel build //services/...",
         kind: "build",
         status: "running",
@@ -382,17 +410,17 @@ export function dirtySnapshot(previous: WorkspaceSnapshot): WorkspaceSnapshot {
       },
     ],
     activity: [
-      { id: "a4", at: observedAtOffset(1), kind: "build", summary: "Reconciliation started for work:b2", status: "yellow" },
+      { id: `activity:${epoch}:start`, at: observedAtOffset(epoch), kind: "build" as const, summary: `Reconciliation started for ${workingId}`, status: "yellow" as const },
       ...previous.activity,
-    ],
+    ].slice(0, 32),
     reconciliation: {
-      epoch: 2,
+      epoch,
       status: "yellow",
-      inputFingerprint: "work:b2",
-      lastConsistentFingerprint: "work:a1",
+      inputFingerprint: workingId,
+      lastConsistentFingerprint: previous.reconciliation.lastConsistentFingerprint,
       message: "Source changed; retaining the last consistent topology",
     },
-  }, "work:b2");
+  }, workingId);
 }
 
 export function progressSnapshot(previous: WorkspaceSnapshot, progress: number): WorkspaceSnapshot {
@@ -409,13 +437,19 @@ export function progressSnapshot(previous: WorkspaceSnapshot, progress: number):
 }
 
 export function successfulSnapshot(previous: WorkspaceSnapshot): WorkspaceSnapshot {
+  const epoch = previous.reconciliation.epoch;
+  const workingId = previous.revisions.working.fingerprint;
+  const buildId = revisionId("build", epoch);
+  const fraudAlreadyVisible = previous.graphs.some((graph) =>
+    graph.nodes.some((node) => node.id === "service-fraud"),
+  );
   return retagWorkingReferences({
     ...previous,
     revisions: {
       ...previous.revisions,
-      built: { id: "build:b2", sourceFingerprint: "work:b2" },
+      built: { id: buildId, sourceFingerprint: workingId },
     },
-    graphs: [repoGraph("green", 2), serviceGraph("green", 2, true)],
+    graphs: [repoGraph("green", epoch, workingId), serviceGraph("green", epoch, true, workingId, buildId)],
     mappings: [
       ...mappings,
       {
@@ -433,17 +467,17 @@ export function successfulSnapshot(previous: WorkspaceSnapshot): WorkspaceSnapsh
       message: "Topology and documentation published atomically",
     })),
     activity: [
-      { id: "a5", at: observedAtOffset(2), kind: "system", summary: "FraudCheck appeared in the service graph", status: "green" },
+      { id: `activity:${epoch}:published`, at: observedAtOffset(epoch + 1), kind: "system" as const, summary: fraudAlreadyVisible ? `Topology published for ${buildId}` : "FraudCheck appeared in the service graph", status: "green" as const },
       ...previous.activity,
-    ],
+    ].slice(0, 32),
     reconciliation: {
-      epoch: 2,
+      epoch,
       status: "green",
-      inputFingerprint: "work:b2",
-      lastConsistentFingerprint: "work:b2",
-      message: "Build-derived views match work:b2",
+      inputFingerprint: workingId,
+      lastConsistentFingerprint: workingId,
+      message: `Build-derived views match ${workingId}`,
     },
-  }, "work:b2");
+  }, workingId);
 }
 
 export function failedSnapshot(previous: WorkspaceSnapshot): WorkspaceSnapshot {
@@ -457,9 +491,9 @@ export function failedSnapshot(previous: WorkspaceSnapshot): WorkspaceSnapshot {
       message: "Service topology extractor failed at checkout.ts:84",
     })),
     activity: [
-      { id: "a6", at: observedAtOffset(3), kind: "build", summary: "Extraction failed; last green graph retained", status: "red" },
+      { id: `activity:${previous.reconciliation.epoch}:failed`, at: observedAtOffset(previous.reconciliation.epoch + 2), kind: "build" as const, summary: "Extraction failed; last green graph retained", status: "red" as const },
       ...previous.activity,
-    ],
+    ].slice(0, 32),
     reconciliation: {
       ...previous.reconciliation,
       status: "red",

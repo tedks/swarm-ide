@@ -17,27 +17,33 @@ export const emptyWorkspaceState: WorkspaceState = {
   ignoredEvents: 0,
 };
 
-export function loadSnapshot(input: unknown): WorkspaceState {
+export function loadSnapshot(input: unknown, sequence = 0): WorkspaceState {
   return {
     snapshot: WorkspaceSnapshotSchema.parse(input),
-    lastSequence: 0,
+    lastSequence: sequence,
     ignoredEvents: 0,
   };
 }
 
 export function applyCoreEvent(state: WorkspaceState, input: unknown): WorkspaceState {
-  const event: CoreEvent = CoreEventSchema.parse(input);
+  const parsed = CoreEventSchema.safeParse(input);
+  if (!parsed.success) {
+    console.error("Ignored invalid local-core event", parsed.error);
+    return { ...state, ignoredEvents: state.ignoredEvents + 1 };
+  }
+  const event: CoreEvent = parsed.data;
+  if (event.sequence <= state.lastSequence) {
+    return { ...state, ignoredEvents: state.ignoredEvents + 1 };
+  }
+  if (event.type === "workspace.reset") {
+    return { snapshot: event.snapshot, lastSequence: event.sequence, ignoredEvents: state.ignoredEvents };
+  }
   const currentEpoch = state.snapshot?.reconciliation.epoch ?? -1;
   const currentWorkingFingerprint = state.snapshot?.revisions.working.fingerprint;
   const publishesGreen = event.snapshot.reconciliation.status === "green";
-  const greenMatchesWorking =
-    event.snapshot.reconciliation.inputFingerprint ===
-    event.snapshot.revisions.working.fingerprint;
 
   if (
-    event.sequence <= state.lastSequence ||
     event.epoch < currentEpoch ||
-    (publishesGreen && !greenMatchesWorking) ||
     (publishesGreen &&
       currentWorkingFingerprint !== undefined &&
       event.epoch === currentEpoch &&

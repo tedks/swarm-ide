@@ -1,5 +1,8 @@
 import {
   PROTOCOL_VERSION,
+  CoreEventSchema,
+  CoreResponseSchema,
+  WorkspaceSnapshotSchema,
   parseCoreRequest,
   type CoreEvent,
   type CoreResponse,
@@ -27,21 +30,27 @@ function publish(
   next: WorkspaceSnapshot,
   options: { epoch?: number; sequence?: number } = {},
 ): void {
-  snapshot = next;
-  post({
+  const validatedSnapshot = WorkspaceSnapshotSchema.parse(next);
+  const event = CoreEventSchema.parse({
     protocolVersion: PROTOCOL_VERSION,
     type,
     sequence: options.sequence ?? ++sequence,
     epoch: options.epoch ?? next.reconciliation.epoch,
     emittedAt: new Date().toISOString(),
-    snapshot: next,
+    snapshot: validatedSnapshot,
   });
+  snapshot = validatedSnapshot;
+  post(event);
 }
 
 function schedule(delayMs: number, action: () => void): void {
   const timer = setTimeout(() => {
     timers.delete(timer);
-    action();
+    try {
+      action();
+    } catch (error) {
+      console.error("Scheduled local-core publication failed validation", error);
+    }
   }, delayMs);
   timers.add(timer);
 }
@@ -52,16 +61,22 @@ function cancelScheduledWork(): void {
 }
 
 function ok(requestId: string): CoreResponse {
-  return { protocolVersion: PROTOCOL_VERSION, requestId, ok: true, snapshot };
+  return CoreResponseSchema.parse({
+    protocolVersion: PROTOCOL_VERSION,
+    requestId,
+    ok: true,
+    sequence,
+    snapshot: WorkspaceSnapshotSchema.parse(snapshot),
+  });
 }
 
 function fail(requestId: string, code: string, message: string): CoreResponse {
-  return {
+  return CoreResponseSchema.parse({
     protocolVersion: PROTOCOL_VERSION,
     requestId,
     ok: false,
     error: { code, message },
-  };
+  });
 }
 
 function startReconciliation(mode: "success" | "failure" | "stale"): void {
@@ -86,14 +101,14 @@ function startReconciliation(mode: "success" | "failure" | "stale"): void {
           message: "Late build result for work:a1 (must be ignored)",
         },
       };
-      post({
+      post(CoreEventSchema.parse({
         protocolVersion: PROTOCOL_VERSION,
         type: "graph.published",
         sequence: ++sequence,
         epoch: before.reconciliation.epoch,
         emittedAt: new Date().toISOString(),
         snapshot: stale,
-      });
+      }));
     });
   }
 
@@ -111,6 +126,14 @@ process.parentPort?.on("message", (event) => {
         post(ok(requestId));
         return;
       case "focus.select":
+        if (
+          request.focus.worldId !== snapshot.world.id ||
+          (request.focus.revisionKind === "working" &&
+            request.focus.revisionId !== snapshot.revisions.working.id)
+        ) {
+          post(fail(requestId, "STALE_FOCUS", "Focus does not belong to the current working world"));
+          return;
+        }
         publish("workspace.changed", selectFocus(snapshot, request.focus));
         post(ok(requestId));
         return;
@@ -120,7 +143,7 @@ process.parentPort?.on("message", (event) => {
         return;
       case "fixture.reset":
         cancelScheduledWork();
-        publish("workspace.changed", initialSnapshot());
+        publish("workspace.reset", initialSnapshot());
         post(ok(requestId));
         return;
     }

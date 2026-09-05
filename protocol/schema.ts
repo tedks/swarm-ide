@@ -71,9 +71,9 @@ export const GraphSliceSchema = z.object({
   epoch: z.number().int().nonnegative(),
   reconciliation: ReconciliationStatusSchema,
   inputFingerprint: z.string().min(1),
-  nodes: z.array(GraphNodeSchema),
-  edges: z.array(GraphEdgeSchema),
-  provenance: z.array(ProvenanceSchema).min(1),
+  nodes: z.array(GraphNodeSchema).max(500),
+  edges: z.array(GraphEdgeSchema).max(2_000),
+  provenance: z.array(ProvenanceSchema).min(1).max(16),
 });
 export type GraphSlice = z.infer<typeof GraphSliceSchema>;
 
@@ -87,7 +87,7 @@ export const NavigationMappingSchema = z.object({
       confidence: z.number().min(0).max(1),
       reason: z.string().min(1),
     }),
-  ),
+  ).max(32),
   ambiguous: z.boolean(),
 });
 export type NavigationMapping = z.infer<typeof NavigationMappingSchema>;
@@ -136,11 +136,11 @@ export const WorkspaceSnapshotSchema = z.object({
     deployed: z.object({ id: z.string(), buildId: z.string(), environment: z.string() }),
   }),
   focus: FocusRefSchema,
-  graphs: z.array(GraphSliceSchema).min(1),
-  mappings: z.array(NavigationMappingSchema),
-  widgets: z.array(WidgetSchema),
-  jobs: z.array(JobSchema),
-  activity: z.array(ActivitySchema),
+  graphs: z.array(GraphSliceSchema).min(1).max(8),
+  mappings: z.array(NavigationMappingSchema).max(2_000),
+  widgets: z.array(WidgetSchema).max(64),
+  jobs: z.array(JobSchema).max(128),
+  activity: z.array(ActivitySchema).max(256),
   reconciliation: z.object({
     epoch: z.number().int().nonnegative(),
     status: ReconciliationStatusSchema,
@@ -167,10 +167,35 @@ export const WorkspaceSnapshotSchema = z.object({
     }
     topologyIds.add(graph.topologyId);
     const nodeIds = new Set(graph.nodes.map((node) => node.id));
+    if (nodeIds.size !== graph.nodes.length) {
+      context.addIssue({ code: "custom", path: ["graphs", graphIndex, "nodes"], message: "node ids must be unique within a topology" });
+    }
+    const edgeIds = new Set(graph.edges.map((edge) => edge.id));
+    if (edgeIds.size !== graph.edges.length) {
+      context.addIssue({ code: "custom", path: ["graphs", graphIndex, "edges"], message: "edge ids must be unique within a topology" });
+    }
     for (const [edgeIndex, edge] of graph.edges.entries()) {
       if (!nodeIds.has(edge.source) || !nodeIds.has(edge.target)) {
         context.addIssue({ code: "custom", path: ["graphs", graphIndex, "edges", edgeIndex], message: "edge endpoints must exist in the same bounded slice" });
       }
+    }
+  }
+
+  const graphsById = new Map(snapshot.graphs.map((graph) => [graph.topologyId, graph]));
+  for (const [mappingIndex, mapping] of snapshot.mappings.entries()) {
+    const target = graphsById.get(mapping.targetTopology);
+    if (!target) {
+      context.addIssue({ code: "custom", path: ["mappings", mappingIndex, "targetTopology"], message: "mapping target topology must exist" });
+      continue;
+    }
+    const targetNodes = new Set(target.nodes.map((node) => node.id));
+    for (const [candidateIndex, candidate] of mapping.candidates.entries()) {
+      if (!targetNodes.has(candidate.nodeId)) {
+        context.addIssue({ code: "custom", path: ["mappings", mappingIndex, "candidates", candidateIndex, "nodeId"], message: "mapping candidate must reference a node in its target topology" });
+      }
+    }
+    if (mapping.ambiguous !== (mapping.candidates.length > 1)) {
+      context.addIssue({ code: "custom", path: ["mappings", mappingIndex, "ambiguous"], message: "ambiguity must reflect whether multiple candidates exist" });
     }
   }
 
@@ -185,6 +210,25 @@ export const WorkspaceSnapshotSchema = z.object({
     for (const [graphIndex, graph] of snapshot.graphs.entries()) {
       if (graph.reconciliation === "green" && graph.inputFingerprint !== fingerprint) {
         context.addIssue({ code: "custom", path: ["graphs", graphIndex, "inputFingerprint"], message: "green graph must match the working fingerprint" });
+      }
+      const acceptedVersions = new Set([
+        fingerprint,
+        snapshot.revisions.built.id,
+        snapshot.revisions.deployed.id,
+      ]);
+      if (!graph.provenance.some((item) => acceptedVersions.has(item.version))) {
+        context.addIssue({ code: "custom", path: ["graphs", graphIndex, "provenance"], message: "green graph provenance must identify the working, built, or deployed revision" });
+      }
+    }
+    for (const [widgetIndex, widget] of snapshot.widgets.entries()) {
+      const expectedVersion = {
+        repo: snapshot.revisions.working.id,
+        build: snapshot.revisions.built.id,
+        runtime: snapshot.revisions.deployed.id,
+        mock: widget.provenance.version,
+      }[widget.provenance.sourceKind];
+      if (widget.provenance.version !== expectedVersion) {
+        context.addIssue({ code: "custom", path: ["widgets", widgetIndex, "provenance", "version"], message: "green widget provenance must match its source revision" });
       }
     }
   }
@@ -215,6 +259,7 @@ export const CoreResponseSchema = z.discriminatedUnion("ok", [
     protocolVersion: z.literal(PROTOCOL_VERSION),
     requestId: z.string().min(1),
     ok: z.literal(true),
+    sequence: z.number().int().nonnegative(),
     snapshot: WorkspaceSnapshotSchema,
   }),
   z.object({
@@ -230,6 +275,7 @@ export const CoreEventSchema = z.object({
   protocolVersion: z.literal(PROTOCOL_VERSION),
   type: z.enum([
     "workspace.changed",
+    "workspace.reset",
     "reconciliation.changed",
     "graph.published",
     "job.changed",
@@ -238,6 +284,10 @@ export const CoreEventSchema = z.object({
   epoch: z.number().int().nonnegative(),
   emittedAt: z.string().datetime(),
   snapshot: WorkspaceSnapshotSchema,
+}).superRefine((event, context) => {
+  if (event.epoch !== event.snapshot.reconciliation.epoch) {
+    context.addIssue({ code: "custom", path: ["epoch"], message: "event epoch must match its snapshot epoch" });
+  }
 });
 export type CoreEvent = z.infer<typeof CoreEventSchema>;
 

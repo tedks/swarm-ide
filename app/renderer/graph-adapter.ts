@@ -7,17 +7,44 @@ export interface TopologyNodeData extends Record<string, unknown> {
   detail?: string;
   status: GraphSlice["reconciliation"];
   focused: boolean;
+  ambiguous: boolean;
+  mappingConfidence?: number;
+  mappingReason?: string;
   focus: FocusRef;
 }
 
-function mappedNodeIds(focus: FocusRef, topologyId: string, mappings: NavigationMapping[]): Set<string> {
-  const ids = new Set<string>();
+function sameFocus(left: FocusRef, right: FocusRef): boolean {
+  return (
+    left.worldId === right.worldId &&
+    left.revisionKind === right.revisionKind &&
+    left.revisionId === right.revisionId &&
+    left.domain === right.domain &&
+    left.key === right.key &&
+    left.path === right.path &&
+    left.symbol === right.symbol &&
+    left.range?.startLine === right.range?.startLine &&
+    left.range?.endLine === right.range?.endLine
+  );
+}
+
+function mappedCandidates(
+  focus: FocusRef,
+  topologyId: string,
+  mappings: NavigationMapping[],
+): Map<string, { confidence: number; reason: string; ambiguous: boolean }> {
+  const candidates = new Map<string, { confidence: number; reason: string; ambiguous: boolean }>();
   for (const mapping of mappings) {
-    if (mapping.from.key === focus.key && mapping.targetTopology === topologyId) {
-      for (const candidate of mapping.candidates) ids.add(candidate.nodeId);
+    if (sameFocus(mapping.from, focus) && mapping.targetTopology === topologyId) {
+      for (const candidate of mapping.candidates) {
+        candidates.set(candidate.nodeId, {
+          confidence: candidate.confidence,
+          reason: candidate.reason,
+          ambiguous: mapping.ambiguous,
+        });
+      }
     }
   }
-  return ids;
+  return candidates;
 }
 
 export function adaptGraph(
@@ -25,7 +52,7 @@ export function adaptGraph(
   focus: FocusRef,
   mappings: NavigationMapping[],
 ): { nodes: Array<Node<TopologyNodeData>>; edges: Edge[] } {
-  const mapped = mappedNodeIds(focus, graph.topologyId, mappings);
+  const mapped = mappedCandidates(focus, graph.topologyId, mappings);
   return {
     nodes: graph.nodes.map((node) => ({
       id: node.id,
@@ -38,7 +65,10 @@ export function adaptGraph(
         kind: node.kind,
         detail: node.detail,
         status: node.status,
-        focused: node.focus.key === focus.key || mapped.has(node.id),
+        focused: sameFocus(node.focus, focus) || mapped.has(node.id),
+        ambiguous: mapped.get(node.id)?.ambiguous ?? false,
+        mappingConfidence: mapped.get(node.id)?.confidence,
+        mappingReason: mapped.get(node.id)?.reason,
         focus: node.focus,
       },
     })),
@@ -48,7 +78,7 @@ export function adaptGraph(
       target: edge.target,
       label: edge.label,
       animated: edge.status === "yellow",
-      markerEnd: { type: MarkerType.ArrowClosed, color: edge.status === "yellow" ? "#e8b55b" : "#477d77" },
+      markerEnd: { type: MarkerType.ArrowClosed, color: edge.status === "red" ? "#d76161" : edge.status === "yellow" ? "#e8b55b" : "#477d77" },
       style: {
         stroke: edge.status === "red" ? "#d76161" : edge.status === "yellow" ? "#e8b55b" : "#477d77",
         strokeWidth: 1.5,

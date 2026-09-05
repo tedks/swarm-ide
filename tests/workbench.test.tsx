@@ -20,7 +20,7 @@ describe("workbench shell", () => {
     const requests: CoreRequest[] = [];
     const request = vi.fn(async (input: CoreRequest): Promise<CoreResponse> => {
       requests.push(input);
-      return { protocolVersion: 1, requestId: input.requestId, ok: true, snapshot: initialSnapshot() };
+      return { protocolVersion: 1, requestId: input.requestId, ok: true, sequence: 0, snapshot: initialSnapshot() };
     });
     Object.defineProperty(window, "swarm", {
       configurable: true,
@@ -42,7 +42,7 @@ describe("workbench shell", () => {
     Object.defineProperty(window, "swarm", {
       configurable: true,
       value: {
-        request: async (input: CoreRequest) => ({ protocolVersion: 1, requestId: input.requestId, ok: true, snapshot: initialSnapshot() }),
+        request: async (input: CoreRequest) => ({ protocolVersion: 1, requestId: input.requestId, ok: true, sequence: 0, snapshot: initialSnapshot() }),
         onEvent: () => () => undefined,
       },
     });
