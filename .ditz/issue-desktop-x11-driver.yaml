@@ -1,0 +1,16 @@
+id: desktop-x11-driver
+title: Extract a shared exact-window X11 desktop driver
+desc: ""
+type: task
+component: tooling
+release:
+reporter: Ted Smith <tedks@riseup.net>
+status: unstarted
+disposition:
+creation_time: 2026-09-05T17:48:44-00:00
+references: []
+log_events:
+- time: 2026-09-05T17:48:44-00:00
+  who: Ted Smith
+  what: created
+  comment: ""
