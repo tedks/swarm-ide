@@ -1,7 +1,7 @@
-import type {
-  FraudAssessmentDecision,
-  FraudAssessmentRequest,
-} from "./contract";
+// These structural types mirror fraudcheck.proto for the deliberately tiny demo
+// implementation. A language plugin can replace them with generated bindings.
+type FraudAssessmentRequest = { orderId: string; accountId: string; amountMinor: number };
+type FraudAssessmentDecision = { disposition: "allow" | "review" | "deny"; reason: string };
 
 /** The first real service used to prove Swarm IDE's build-derived topology. */
 export function assess(request: FraudAssessmentRequest): FraudAssessmentDecision {

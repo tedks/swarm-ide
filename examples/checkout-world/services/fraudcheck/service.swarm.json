@@ -8,8 +8,8 @@
     {
       "id": "interface:fraud-check.assess",
       "name": "Assess",
-      "requestType": "FraudAssessmentRequest",
-      "responseType": "FraudAssessmentDecision"
+      "requestType": "checkout.fraud.v1.FraudAssessmentRequest",
+      "responseType": "checkout.fraud.v1.FraudAssessmentDecision"
     }
   ],
   "requiredInterfaces": [
@@ -17,8 +17,8 @@
       "id": "interface:payments.authorize",
       "name": "Payments.Authorize",
       "serviceId": "service:payments",
-      "requestType": "PaymentAuthorizationRequest",
-      "responseType": "PaymentAuthorizationDecision"
+      "requestType": "checkout.payments.v1.PaymentAuthorizationRequest",
+      "responseType": "checkout.payments.v1.PaymentAuthorizationDecision"
     }
   ]
 }
