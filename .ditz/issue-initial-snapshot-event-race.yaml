@@ -8,8 +8,8 @@ type: bugfix
 component: default
 release:
 reporter: Ted Smith <tedks@riseup.net>
-status: in_progress
-disposition:
+status: closed
+disposition: fixed
 creation_time: 2026-09-05T08:12:00-00:00
 references: []
 log_events:
@@ -21,3 +21,8 @@ log_events:
   who: Ted Smith
   what: started
   comment: ""
+- time: 2026-09-05T21:24:48-00:00
+  who: Ted Smith
+  what: 'closed: fixed'
+  comment: 'PR #4 merged: subscribe-first bootstrap and sequence-watermarked snapshot
+    acceptance prevent stale initialization.'
