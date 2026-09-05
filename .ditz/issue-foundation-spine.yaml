@@ -19,3 +19,10 @@ log_events:
   who: Ted Smith
   what: started
   comment: ""
+- time: 2026-09-05T08:12:00-00:00
+  who: Ted Smith
+  what: commented
+  comment: 'Council convergence: native Codex found one narrow initial snapshot/event
+    bootstrap race; CTO explicitly deferred it to initial-snapshot-event-race. Claude
+    produced no result after repeated waits and was stopped; agy could not read the
+    repo under headless permissions. No other Critical/Important finding was reported.'
