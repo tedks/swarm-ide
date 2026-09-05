@@ -13,6 +13,20 @@ desktop window:
     nix develop --command bazel run //tools:desktop-smoke
     nix develop --command bazel run //tools:measure-hmr
 
+The loop uses `SWARM_DEV_PORT`, defaulting to `5173`. Set the same explicit value
+on the long-running process and both verification commands when that port is
+occupied, for example:
+
+    SWARM_DEV_PORT=55173 nix develop --command bazel run //:dev
+    SWARM_DEV_PORT=55173 nix develop --command bazel run //tools:desktop-smoke
+    SWARM_DEV_PORT=55173 nix develop --command bazel run //tools:measure-hmr
+
+The value is accepted only as decimal digits in the TCP-port range `1..65535`.
+An empty, malformed, out-of-range, or already-bound value stops with a clear
+error. The launcher resolves the endpoint once for Vite and Electron; the smoke
+and HMR commands then select the window running that exact renderer URL instead
+of whichever Swarm IDE window happens to appear first.
+
 The desktop smoke driver uses `wmctrl`, `xdotool`, and ImageMagick from the Nix
 shell. It resolves the Electron window by ID even when it is on another
 workspace, activates that exact window before each capture, uses `Ctrl-K`, types
