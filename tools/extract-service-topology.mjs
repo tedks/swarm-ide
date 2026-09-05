@@ -270,16 +270,16 @@ try {
 const manifest = parseManifest(manifestInput);
 const sources = args.sources.map(parseSource).sort((left, right) => left.logicalPath.localeCompare(right.logicalPath));
 if (new Set(sources.map((source) => source.logicalPath)).size !== sources.length) fail("source paths must be unique");
-const interfaceSources = args.interfaceDescriptors.map(parseInterfaceDescriptor).sort((left, right) => left.interfaceId.localeCompare(right.interfaceId));
-const interfaceInputs = args.interfaceSources.map(parseInterfaceDescriptor).sort((left, right) => left.interfaceId.localeCompare(right.interfaceId));
+const interfaceDescriptors = args.interfaceDescriptors.map(parseInterfaceDescriptor).sort((left, right) => left.interfaceId.localeCompare(right.interfaceId));
+const interfaceSources = args.interfaceSources.map(parseInterfaceDescriptor).sort((left, right) => left.interfaceId.localeCompare(right.interfaceId));
 const declaredInterfaceIds = [...manifest.providedInterfaces, ...manifest.requiredInterfaces].map((item) => item.id).sort();
-if (interfaceSources.length !== declaredInterfaceIds.length || interfaceSources.some((source, index) => source.interfaceId !== declaredInterfaceIds[index]) ||
-    interfaceInputs.length !== declaredInterfaceIds.length || interfaceInputs.some((source, index) => source.interfaceId !== declaredInterfaceIds[index])) {
+if (interfaceDescriptors.length !== declaredInterfaceIds.length || interfaceDescriptors.some((source, index) => source.interfaceId !== declaredInterfaceIds[index]) ||
+    interfaceSources.length !== declaredInterfaceIds.length || interfaceSources.some((source, index) => source.interfaceId !== declaredInterfaceIds[index])) {
   fail("every declared interface must have exactly one Bazel-declared source");
 }
+if (new Set(interfaceDescriptors.map((source) => source.interfaceId)).size !== interfaceDescriptors.length) fail("interface descriptor ids must be unique");
 if (new Set(interfaceSources.map((source) => source.interfaceId)).size !== interfaceSources.length) fail("interface source ids must be unique");
-if (new Set(interfaceInputs.map((source) => source.interfaceId)).size !== interfaceInputs.length) fail("interface input ids must be unique");
-if (interfaceSources.some((source, index) => source.logicalPath !== interfaceInputs[index].logicalPath)) fail("interface descriptor and source paths disagree");
+if (interfaceDescriptors.some((source, index) => source.logicalPath !== interfaceSources[index].logicalPath)) fail("interface descriptor and source paths disagree");
 
 const digest = createHash("sha256");
 digest.update("swarm-service-topology-input-v3\0");
@@ -292,7 +292,7 @@ for (const source of sources) {
   framed(digest, source.logicalPath);
   framed(digest, bytes);
 }
-for (const source of interfaceSources) {
+for (const source of interfaceDescriptors) {
   const bytes = await readBounded(source.execPath, MAX_DESCRIPTOR_BYTES, `descriptor ${source.logicalPath}`);
   totalBytes += bytes.byteLength;
   if (bytes.byteLength > MAX_SOURCE_BYTES || totalBytes > MAX_TOTAL_SOURCE_BYTES) fail("interface source inputs are oversized");
@@ -304,7 +304,7 @@ for (const source of interfaceSources) {
   const methodName = provided ? provided.name : required.name.slice(required.name.indexOf(".") + 1);
   assertDescriptorContract(parseDescriptorSet(bytes, source.logicalPath), source, contract, serviceName, methodName);
 }
-for (const source of interfaceInputs) {
+for (const source of interfaceSources) {
   const bytes = await readBounded(source.execPath, MAX_SOURCE_BYTES, `interface source ${source.logicalPath}`);
   totalBytes += bytes.byteLength;
   if (bytes.byteLength > MAX_SOURCE_BYTES || totalBytes > MAX_TOTAL_SOURCE_BYTES) fail("interface source inputs are oversized");
@@ -321,7 +321,7 @@ const artifact = {
   requiredInterfaces: [...manifest.requiredInterfaces].sort((left, right) => left.id.localeCompare(right.id)),
   owningTarget: args.owningTarget,
   implementationPaths: sources.map((source) => source.logicalPath),
-  interfaceDeclarationPaths: interfaceSources.map(({ interfaceId, logicalPath }) => ({ interfaceId, path: logicalPath })),
+  interfaceDeclarationPaths: interfaceDescriptors.map(({ interfaceId, logicalPath }) => ({ interfaceId, path: logicalPath })),
   inputDigest: digest.digest("hex"),
 };
 await writeFile(args.out, `${JSON.stringify(artifact, null, 2)}\n`, "utf8");
