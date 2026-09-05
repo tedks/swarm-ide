@@ -1,0 +1,28 @@
+package(default_visibility = ["//visibility:public"])
+
+filegroup(
+    name = "fraudcheck_sources",
+    srcs = [
+        "contract.ts",
+        "fraudcheck.ts",
+    ],
+)
+
+genrule(
+    name = "service_topology",
+    srcs = [
+        "contract.ts",
+        "fraudcheck.ts",
+        "service.swarm.json",
+    ],
+    outs = ["service-topology.json"],
+    cmd = " ".join([
+        "$(location //tools:extract-service-topology)",
+        "--manifest $(location service.swarm.json)",
+        "--owning-target //examples/checkout-world/services/fraudcheck:fraudcheck_sources",
+        "--source examples/checkout-world/services/fraudcheck/contract.ts=$(location contract.ts)",
+        "--source examples/checkout-world/services/fraudcheck/fraudcheck.ts=$(location fraudcheck.ts)",
+        "--out $@",
+    ]),
+    tools = ["//tools:extract-service-topology"],
+)
