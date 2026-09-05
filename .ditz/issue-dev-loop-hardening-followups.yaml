@@ -14,3 +14,13 @@ log_events:
   who: Ted Smith
   what: created
   comment: ""
+- time: 2026-09-05T09:23:35-00:00
+  who: Ted Smith
+  what: commented
+  comment: 'Follow-ups deliberately excluded from narrow port remediation: detect
+    a locked X11 session before desktop/HMR automation; consolidate duplicate exact-window
+    selection; consider a renderer-url CLI output instead of stripping the marker;
+    improve invalid-port CLI formatting/type detail and explicitly pin leading-zero
+    policy; scope the CSP transform if multiple HTML entries or configurable/IPv6
+    hosts become supported. Current supported contract remains fixed 127.0.0.1 through
+    Bazel //:dev.'
