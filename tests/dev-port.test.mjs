@@ -68,16 +68,19 @@ describe("development port", () => {
 
   it("can be imported when the host uses a non-filesystem argv entry", () => {
     const moduleUrl = new URL("../tools/dev-port.mjs", import.meta.url).href;
-    expect(() =>
-      execFileSync(
-        process.execPath,
-        [
-          "--input-type=module",
-          "--eval",
-          `process.argv[1] = "/does/not/exist"; await import(${JSON.stringify(moduleUrl)});`,
-        ],
-        { encoding: "utf8" },
-      ),
-    ).not.toThrow();
+    const missingArgv = join(
+      tmpdir(),
+      `swarm-dev-port-missing-${process.pid}-${Date.now()}`,
+    );
+    const output = execFileSync(
+      process.execPath,
+      [
+        "--input-type=module",
+        "--eval",
+        `process.argv[1] = ${JSON.stringify(missingArgv)}; await import(${JSON.stringify(moduleUrl)});`,
+      ],
+      { encoding: "utf8" },
+    );
+    expect(output).toBe("");
   });
 });
