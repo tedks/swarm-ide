@@ -35,8 +35,13 @@ log_events:
   who: Ted Smith
   what: blocks supervise-local-core
   comment: ""
+- time: 2026-09-05T20:09:39-00:00
+  who: Ted Smith
+  what: blocks stable-native-window-dev-reload
+  comment: ""
 blocks:
 - first-real-agent-run-surface
 - supervise-local-core
+- stable-native-window-dev-reload
 blocked_by:
 - desktop-x11-driver
