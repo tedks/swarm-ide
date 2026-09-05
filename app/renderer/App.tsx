@@ -504,12 +504,13 @@ export function App() {
     if (restoredNavigation.focus) void invoke({ type: "focus.select", requestId: requestId(), protocolVersion: PROTOCOL_VERSION, focus: { ...restoredNavigation.focus, revisionId: workspace.snapshot.revisions.working.id } });
   }, [workspace.snapshot, restoredNavigation, openFile, showSurface, invoke, hotCheckpoint, lifecycle?.core.phase]);
 
+  const checkpointDocument = useCallback(() => {
+    if (fileTabsRef.current.some(protectsBuffer) || savesInFlightRef.current.size) throw new Error("Save or reconcile buffers before reloading.");
+    window.sessionStorage.setItem(NAVIGATION_KEY, JSON.stringify({ paths: [...desiredFilesRef.current], activeSurface: activeSurfaceRef.current, lens: activeLens, focus: workspaceRef.current.snapshot?.focus ?? null, snapshot: workspaceRef.current.snapshot ?? undefined }));
+  }, [activeLens]);
   useEffect(() => {
     const unload = (event: BeforeUnloadEvent) => {
-      try {
-        if (fileTabsRef.current.some(protectsBuffer) || savesInFlightRef.current.size) throw new Error("Save or reconcile buffers before reloading.");
-        window.sessionStorage.setItem(NAVIGATION_KEY, JSON.stringify({ paths: [...desiredFilesRef.current], activeSurface: activeSurfaceRef.current, lens: activeLens, focus: workspaceRef.current.snapshot?.focus ?? null, snapshot: workspaceRef.current.snapshot ?? undefined }));
-      } catch {
+      try { checkpointDocument(); } catch {
         event.preventDefault();
         event.returnValue = "";
         setReloadNotice("Reload deferred: preserve or reconcile your buffers first (navigation storage must also be available).");
@@ -517,13 +518,20 @@ export function App() {
     };
     window.addEventListener("beforeunload", unload);
     return () => window.removeEventListener("beforeunload", unload);
-  }, [activeLens]);
+  }, [checkpointDocument]);
 
   useEffect(() => {
     if (lifecycle?.reload !== "pending" || lifecycle.core.phase !== "ready") return;
     if (fileTabs.some(protectsBuffer) || savesInFlightRef.current.size) return;
+    // Preflight storage before acknowledging. Otherwise a quota failure in
+    // beforeunload would repeatedly veto and re-trigger automatic reload.
+    try { checkpointDocument(); } catch {
+      setReloadNotice("Preload refresh deferred: the document checkpoint could not be stored. Current state is retained.");
+      return;
+    }
+    setReloadNotice("");
     void window.swarmLifecycle?.reload(lifecycle.revision).catch(() => setReloadNotice("Preload refresh could not be applied; current document retained."));
-  }, [lifecycle, fileTabs]);
+  }, [lifecycle, fileTabs, checkpointDocument]);
 
   useEffect(() => {
     const listener = (event: KeyboardEvent) => {
