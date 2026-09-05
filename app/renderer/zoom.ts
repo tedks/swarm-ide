@@ -81,7 +81,7 @@ export function stepZoom(
 export function zoomShortcut(event: Pick<KeyboardEvent, "altKey" | "code" | "ctrlKey" | "key" | "metaKey" | "shiftKey">): ZoomShortcut | null {
   if (!event.ctrlKey || event.altKey || event.metaKey) return null;
 
-  if (!event.shiftKey && (event.key === "0" || event.code === "Digit0" || (event.code === "Numpad0" && event.key === "0"))) return "reset";
+  if (!event.shiftKey && event.key === "0") return "reset";
   if (event.code === "NumpadAdd") return event.key === "+" ? "in" : null;
   if (event.code === "NumpadSubtract") return event.key === "-" ? "out" : null;
   if (event.key === "=" || event.key === "+") return "in";

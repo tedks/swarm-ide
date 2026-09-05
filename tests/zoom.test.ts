@@ -83,6 +83,7 @@ describe("interface zoom model", () => {
     expect(zoomShortcut(event({ code: "Numpad0", key: "Insert" }))).toBeNull();
     expect(zoomShortcut(event({ code: "BracketRight", key: "+" }))).toBe("in");
     expect(zoomShortcut(event({ code: "Slash", key: "-" }))).toBe("out");
+    expect(zoomShortcut(event({ code: "Digit0", key: "à" }))).toBeNull();
     expect(zoomShortcut(event({ code: "Digit0", key: ")", shiftKey: true }))).toBeNull();
     expect(zoomShortcut(event({ ctrlKey: false, code: "Equal", key: "=" }))).toBeNull();
     expect(zoomShortcut(event({ altKey: true, code: "Equal", key: "=" }))).toBeNull();
