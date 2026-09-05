@@ -2,6 +2,7 @@
 import { StrictMode } from "react";
 import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { EditorView } from "@codemirror/view";
 import { PROTOCOL_VERSION, type CoreEvent, type CoreRequest, type CoreResponse, type FileEvent, type WorkspaceSnapshot } from "../protocol/schema";
 import {
   isInterfaceZoomPercent,
@@ -263,6 +264,7 @@ describe("workbench shell", () => {
     await screen.findByText("Implementation sources");
     fireEvent.click(screen.getAllByRole("button", { name: paths[0] })[0]!);
     await waitFor(() => expect(document.querySelector(".cm-content")?.textContent).toContain("old"));
+    expect(screen.getAllByTestId("graph-pane")).toHaveLength(2);
     fireEvent.click(screen.getAllByRole("button", { name: paths[1] })[0]!);
     await waitFor(() => expect(document.querySelectorAll(".surface-tabs button")).toHaveLength(3));
     const surfaceTabs = [...document.querySelectorAll<HTMLButtonElement>(".surface-tabs button")];
@@ -274,5 +276,55 @@ describe("workbench shell", () => {
     act(() => listener?.({ protocolVersion: PROTOCOL_VERSION, type: "file.changed", sequence: 1, emittedAt: "2026-09-05T12:01:00.000Z", path: paths[0]!, revision: "c".repeat(64), change: "modified" }));
     await waitFor(() => expect(document.querySelector(".cm-added-flash")?.textContent).toContain("new"));
     expect(document.querySelector(".cm-removed-ghost")?.textContent).toContain("old");
+  });
+
+  it("saves with the expected revision and preserves a dirty buffer on external conflict", async () => {
+    let listener: ((event: CoreEvent | FileEvent) => void) | undefined;
+    const path = "services/payments/payments.ts";
+    const base = initialSnapshot(paymentsFileFocus);
+    const snapshot: WorkspaceSnapshot = {
+      ...base,
+      widgets: [{ id: "source-paths", title: "Implementation sources", kind: "list", priority: 0, value: [path], provenance: base.widgets[0]!.provenance }],
+    };
+    let disk = { content: "one\n", revision: "a".repeat(64) };
+    const requests: CoreRequest[] = [];
+    const request = vi.fn(async (input: CoreRequest): Promise<CoreResponse> => {
+      requests.push(input);
+      if (input.type === "file.read") {
+        return { protocolVersion: PROTOCOL_VERSION, requestId: input.requestId, ok: true, sequence: 0, snapshot, file: { kind: "read", path, content: disk.content, revision: disk.revision, size: disk.content.length } };
+      }
+      if (input.type === "file.write") {
+        if (input.expectedRevision !== disk.revision) return { protocolVersion: PROTOCOL_VERSION, requestId: input.requestId, ok: false, error: { code: "REVISION_CONFLICT", message: "disk changed" } };
+        disk = { content: input.content, revision: "b".repeat(64) };
+        return { protocolVersion: PROTOCOL_VERSION, requestId: input.requestId, ok: true, sequence: 0, snapshot, file: { kind: "write", path, revision: disk.revision, workingFingerprint: "c".repeat(64) } };
+      }
+      return { protocolVersion: PROTOCOL_VERSION, requestId: input.requestId, ok: true, sequence: 0, snapshot };
+    });
+    Object.defineProperty(window, "swarm", {
+      configurable: true,
+      value: { request, onEvent: (next: (event: CoreEvent | FileEvent) => void) => { listener = next; return () => undefined; } },
+    });
+    installViewBridge();
+    render(<App />);
+    await screen.findByText("Implementation sources");
+    fireEvent.click(screen.getAllByRole("button", { name: path })[0]!);
+    await waitFor(() => expect(document.querySelector(".cm-content")?.textContent).toContain("one"));
+    const editor = EditorView.findFromDOM(document.querySelector(".cm-editor")!);
+    if (!editor) throw new Error("CodeMirror editor was not mounted");
+    act(() => editor.dispatch({ changes: { from: editor.state.doc.length, insert: "saved locally\n" } }));
+    await waitFor(() => expect(document.querySelector(".file-dirty")).toBeTruthy());
+    fireEvent.keyDown(editor.contentDOM, { key: "s", code: "KeyS", ctrlKey: true });
+    await waitFor(() => expect(requests.some((item) => item.type === "file.write")).toBe(true));
+    await waitFor(() => expect(document.querySelector(".file-saved")).toBeTruthy());
+    expect(disk.content).toContain("saved locally");
+
+    act(() => editor.dispatch({ changes: { from: editor.state.doc.length, insert: "my unsaved line\n" } }));
+    disk = { content: "external replacement\n", revision: "d".repeat(64) };
+    act(() => listener?.({ protocolVersion: PROTOCOL_VERSION, type: "file.changed", sequence: 1, emittedAt: "2026-09-05T12:02:00.000Z", path, revision: disk.revision, change: "modified" }));
+    await waitFor(() => expect(document.querySelector(".file-conflict")).toBeTruthy());
+    expect(editor.state.doc.toString()).toContain("my unsaved line");
+    fireEvent.keyDown(editor.contentDOM, { key: "s", code: "KeyS", ctrlKey: true });
+    expect(await screen.findByText("disk changed")).toBeTruthy();
+    expect(editor.state.doc.toString()).toContain("my unsaved line");
   });
 });

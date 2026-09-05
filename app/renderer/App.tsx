@@ -20,6 +20,8 @@ import {
 import { discardStoredZoom, persistZoom, readStoredZoom, stepZoom, zoomShortcut } from "./zoom";
 
 const lensTabs = ["System", "Plan", "Performance", "Refactor"] as const;
+const FRAUDCHECK_IMPLEMENTATION = "examples/checkout-world/services/fraudcheck/fraudcheck.ts";
+const FRAUDCHECK_CONTRACT = "examples/checkout-world/services/fraudcheck/fraudcheck.proto";
 
 type FileStatus = "loading" | "saved" | "dirty" | "conflict" | "error";
 
@@ -292,10 +294,11 @@ export function App() {
     const revision = snapshot ? ` — ${snapshot.revisions.working.id.slice(0, 12)}` : "";
     const fraudVisible = snapshot?.graphs.some((graph) => graph.nodes.some((node) => node.label === "FraudCheck")) ? " — FraudCheck visible" : "";
     const surface = activeSurface === "graphs" ? " — Graphs" : ` — Source ${activeSurface.split("/").at(-1)}`;
+    const files = ` — ${fileTabs.length} file tab${fileTabs.length === 1 ? "" : "s"}`;
     const palette = paletteOpen ? " — Palette open" : "";
     const hmrSuffix = hmr.generation ? ` — HMR ${hmr.generation}:${hmr.milliseconds}ms` : "";
-    document.title = `swarm-ide — ${title}${focus}${revision}${fraudVisible}${surface}${palette} — ${zoomTitle}${hmrSuffix}`;
-  }, [activeSurface, hmr, paletteOpen, snapshot, title, zoomTitle]);
+    document.title = `swarm-ide — ${title}${focus}${revision}${fraudVisible}${surface}${files}${palette} — ${zoomTitle}${hmrSuffix}`;
+  }, [activeSurface, fileTabs.length, hmr, paletteOpen, snapshot, title, zoomTitle]);
 
   const selectFocus = useCallback((focus: FocusRef) => {
     void invoke({ type: "focus.select", requestId: requestId(), protocolVersion: PROTOCOL_VERSION, focus });
@@ -309,7 +312,9 @@ export function App() {
   const commands = useMemo(() => [
     { label: "Build repository service topology", detail: "exact fingerprint → Bazel artifact → green", run: reconcile },
     { label: "Show system graphs", detail: "return to the coordinated repository and service views", run: () => { setPaletteOpen(false); setActiveSurface("graphs"); } },
-  ].filter((command) => command.label.toLowerCase().includes(commandQuery.toLowerCase())), [commandQuery, reconcile]);
+    { label: "Open FraudCheck implementation", detail: FRAUDCHECK_IMPLEMENTATION, run: () => { setPaletteOpen(false); void openFile(FRAUDCHECK_IMPLEMENTATION); } },
+    { label: "Open FraudCheck protobuf contract", detail: FRAUDCHECK_CONTRACT, run: () => { setPaletteOpen(false); void openFile(FRAUDCHECK_CONTRACT); } },
+  ].filter((command) => command.label.toLowerCase().includes(commandQuery.toLowerCase())), [commandQuery, openFile, reconcile]);
 
   if (!snapshot) return <main className="loading-screen"><div className="loading-mark hmr-probe" />Opening the working world…{error ? <strong>{error}</strong> : null}</main>;
   const activeFile = fileTabs.find((tab) => tab.path === activeSurface);
