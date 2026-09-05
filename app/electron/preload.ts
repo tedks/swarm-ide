@@ -7,6 +7,11 @@ import {
   type CoreRequest,
   type CoreResponse,
 } from "../../protocol/schema";
+import {
+  VIEW_SHELL_ZOOM_CHANNEL,
+  parseViewShellResult,
+  type ViewShellBridge,
+} from "../view-shell";
 
 const REQUEST_CHANNEL = "swarm:request";
 const EVENT_CHANNEL = "swarm:event";
@@ -31,4 +36,12 @@ const bridge: SwarmBridge = {
   },
 };
 
+const viewShellBridge: ViewShellBridge = {
+  async setZoomPercent(percent) {
+    const response: unknown = await ipcRenderer.invoke(VIEW_SHELL_ZOOM_CHANNEL, percent);
+    return parseViewShellResult(response);
+  },
+};
+
 contextBridge.exposeInMainWorld("swarm", bridge);
+contextBridge.exposeInMainWorld("swarmView", viewShellBridge);

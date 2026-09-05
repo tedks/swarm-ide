@@ -1,5 +1,5 @@
-import { useMemo } from "react";
-import { Background, Controls, Handle, Position, ReactFlow, type NodeProps } from "@xyflow/react";
+import { useEffect, useMemo, useRef } from "react";
+import { Background, Controls, Handle, Position, ReactFlow, type Edge, type Node, type NodeProps, type ReactFlowInstance } from "@xyflow/react";
 import type { FocusRef, GraphSlice, NavigationMapping } from "../../protocol/schema";
 import { adaptGraph, type TopologyNodeData } from "./graph-adapter";
 
@@ -19,13 +19,30 @@ function TopologyNode({ data }: NodeProps) {
 
 const nodeTypes = { topology: TopologyNode };
 
-export function GraphPane({ graph, focus, mappings, onFocus }: {
+export function GraphPane({ graph, focus, mappings, onFocus, interfaceZoom }: {
   graph: GraphSlice;
   focus: FocusRef;
   mappings: NavigationMapping[];
   onFocus: (focus: FocusRef) => void;
+  interfaceZoom: number | null;
 }) {
   const adapted = useMemo(() => adaptGraph(graph, focus, mappings), [graph, focus, mappings]);
+  const flow = useRef<ReactFlowInstance<Node<TopologyNodeData>, Edge> | null>(null);
+
+  useEffect(() => {
+    if (interfaceZoom === null) return;
+    let secondFrame = 0;
+    const firstFrame = requestAnimationFrame(() => {
+      secondFrame = requestAnimationFrame(() => {
+        void flow.current?.fitView({ padding: 0.18, maxZoom: 1.35 });
+      });
+    });
+    return () => {
+      cancelAnimationFrame(firstFrame);
+      cancelAnimationFrame(secondFrame);
+    };
+  }, [interfaceZoom]);
+
   return (
     <section className="graph-pane" data-topology={graph.topologyId}>
       <header className="graph-header">
@@ -41,6 +58,7 @@ export function GraphPane({ graph, focus, mappings, onFocus }: {
           fitViewOptions={{ padding: 0.18, maxZoom: 1.35 }}
           minZoom={0.25}
           maxZoom={2.2}
+          onInit={(instance) => { flow.current = instance; }}
           nodesConnectable={false}
           elementsSelectable
           onNodeClick={(_event, node) => onFocus((node.data as TopologyNodeData).focus)}

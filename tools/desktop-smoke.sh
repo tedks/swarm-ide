@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# This target exercises a Vite-served Electron development window; its title
+# synchronization channel is intentionally absent from packaged builds.
 set -euo pipefail
 
 workspace="${BUILD_WORKSPACE_DIRECTORY:-}"
@@ -73,6 +75,30 @@ activate_window() {
 }
 
 activate_window
+# User-local zoom may survive an earlier development run. Normalize it before
+# coordinate-based assertions so this general smoke test retains its baseline.
+before_zoom_revision=""
+for _ in $(seq 1 100); do
+  initial_zoom_title=$(xdotool getwindowname "$window_id")
+  before_zoom_revision=$(sed -n 's/.*Zoom [0-9][0-9]*%@\([0-9][0-9]*\).*/\1/p' <<<"$initial_zoom_title")
+  [[ -n "$before_zoom_revision" ]] && break
+  sleep 0.04
+done
+if [[ -z "$before_zoom_revision" ]]; then
+  echo "initial zoom never reached a confirmed state: ${initial_zoom_title:-unknown}" >&2
+  exit 4
+fi
+xdotool key --clearmodifiers ctrl+0
+for _ in $(seq 1 100); do
+  zoom_title=$(xdotool getwindowname "$window_id")
+  after_zoom_revision=$(sed -n 's/.*Zoom 100%@\([0-9][0-9]*\).*/\1/p' <<<"$zoom_title")
+  if [[ -n "$before_zoom_revision" && -n "$after_zoom_revision" ]] && (( after_zoom_revision > before_zoom_revision )); then break; fi
+  sleep 0.04
+done
+if [[ -z "${after_zoom_revision:-}" ]] || (( after_zoom_revision <= before_zoom_revision )); then
+  echo "Ctrl+0 did not receive a confirmed zoom acknowledgment: ${zoom_title:-unknown}" >&2
+  exit 4
+fi
 geometry=$(xdotool getwindowgeometry --shell "$window_id")
 WIDTH=$(sed -n 's/^WIDTH=//p' <<<"$geometry")
 HEIGHT=$(sed -n 's/^HEIGHT=//p' <<<"$geometry")

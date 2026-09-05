@@ -15,13 +15,16 @@
 }
 
 * { box-sizing: border-box; }
-html, body, #root { width: 100%; height: 100%; margin: 0; overflow: hidden; }
+html { width: 100%; height: 100%; margin: 0; overflow: auto; }
+body, #root { width: 100%; height: 100%; margin: 0; overflow: visible; }
 button, input { font: inherit; }
 button { color: inherit; }
 
 .workbench {
   width: 100%;
   height: 100%;
+  min-width: 985px;
+  min-height: 650px;
   display: grid;
   grid-template-columns: 222px minmax(520px, 1fr) 310px;
   grid-template-rows: 52px minmax(0, 1fr) 180px;
@@ -38,7 +41,7 @@ kbd { border: 1px solid #314344; border-radius: 4px; padding: 2px 5px; backgroun
 .topbar {
   grid-area: top;
   display: grid;
-  grid-template-columns: 222px auto minmax(230px, 430px) auto;
+  grid-template-columns: 222px auto minmax(200px, 430px) auto auto;
   align-items: center;
   border-bottom: 1px solid #213031;
   background: rgba(7, 15, 16, .96);
@@ -54,6 +57,12 @@ kbd { border: 1px solid #314344; border-radius: 4px; padding: 2px 5px; backgroun
 .lens-tabs button.active { color: #eef7f4; }
 .lens-tabs button.active::after { content: ""; position: absolute; left: 12px; right: 12px; bottom: -1px; height: 2px; background: var(--green); box-shadow: 0 0 12px #57d3ad88; }
 .command-trigger { margin: 0 12px; height: 30px; min-width: 0; display: flex; align-items: center; justify-content: space-between; gap: 16px; border: 1px solid #263738; border-radius: 6px; background: #0c1718; color: #667d7a; padding: 0 8px 0 12px; text-align: left; font-size: 11px; }
+.zoom-control { height: 28px; display: grid; grid-template-columns: 24px 45px 24px; align-items: stretch; border: 1px solid #263738; border-radius: 5px; background: #0c1718; overflow: hidden; -webkit-app-region: no-drag; }
+.zoom-control button { min-width: 0; padding: 0; border: 0; background: transparent; color: #819793; font: 11px "DM Mono", monospace; }
+.zoom-control button:hover:not([aria-disabled="true"]), .zoom-control button:focus-visible { background: #142425; color: #d8e5e1; outline: none; }
+.zoom-control button:focus-visible { box-shadow: inset 0 0 0 1px var(--green); }
+.zoom-control button[aria-disabled="true"] { color: #3f5350; }
+.zoom-control .zoom-value { border-right: 1px solid #263738; border-left: 1px solid #263738; color: #a8bbb7; font-size: 9px; }
 .global-truth { height: 100%; display: grid; grid-template-columns: auto auto; grid-template-rows: 1fr 1fr; align-content: center; column-gap: 7px; padding: 8px 18px; border-left: 1px solid #213031; font: 500 10px "DM Mono", monospace; text-transform: uppercase; }
 .global-truth i { grid-row: 1 / 3; align-self: center; width: 7px; height: 7px; border-radius: 50%; background: currentColor; box-shadow: 0 0 12px currentColor; }
 .global-truth small { color: #5c7470; font-size: 8px; }
@@ -170,6 +179,7 @@ kbd { border: 1px solid #314344; border-radius: 4px; padding: 2px 5px; backgroun
 .command-results button small { color: #617975; font-size: 8px; }
 .command-palette > footer { display: flex; justify-content: space-between; padding: 9px 14px; border-top: 1px solid #1d2f30; color: #506965; font: 8px "DM Mono", monospace; }
 .error-toast { position: fixed; right: 15px; bottom: 195px; z-index: 80; max-width: 400px; padding: 10px 13px; border: 1px solid #743d3d; border-radius: 6px; background: #281516; color: #ef9b9b; font: 9px "DM Mono", monospace; }
+.zoom-toast { position: fixed; right: 15px; bottom: 235px; z-index: 80; max-width: 400px; padding: 9px 12px; border: 1px solid #70572d; border-radius: 6px; background: #261f14; color: #e7bc70; font: 9px "DM Mono", monospace; }
 .loading-screen { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; gap: 12px; background: var(--bg); color: #78918e; font: 11px "DM Mono", monospace; }
 .loading-screen strong { color: var(--red); }
 .loading-mark { width: 12px; height: 12px; border-radius: 2px 9px 2px 9px; animation: breathe 1.2s infinite; }
@@ -178,6 +188,6 @@ kbd { border: 1px solid #314344; border-radius: 4px; padding: 2px 5px; backgroun
 
 @media (max-width: 1220px) {
   .workbench { grid-template-columns: 205px minmax(500px, 1fr) 280px; }
-  .topbar { grid-template-columns: 205px auto minmax(190px, 1fr) auto; }
+  .topbar { grid-template-columns: 205px auto minmax(170px, 1fr) auto auto; }
   .world-chips span:first-child { display: none; }
 }
