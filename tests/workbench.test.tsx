@@ -1,15 +1,15 @@
 // @vitest-environment jsdom
 import { StrictMode } from "react";
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import type { CoreRequest, CoreResponse } from "../protocol/schema";
+import { PROTOCOL_VERSION, type CoreEvent, type CoreRequest, type CoreResponse, type FileEvent, type WorkspaceSnapshot } from "../protocol/schema";
 import {
   isInterfaceZoomPercent,
   type ViewShellBridge,
   type ViewShellResult,
 } from "../app/view-shell";
 import { INTERFACE_ZOOM_STORAGE_KEY } from "../app/renderer/zoom";
-import { initialSnapshot } from "../fixtures/world";
+import { dirtySnapshot, initialSnapshot, paymentsFileFocus } from "../fixtures/world";
 
 vi.mock("../app/renderer/GraphPane", () => ({
   GraphPane: ({ graph }: { graph: { title: string } }) => <section data-testid="graph-pane">{graph.title}</section>,
@@ -29,7 +29,7 @@ function installCoreBridge() {
   Object.defineProperty(window, "swarm", {
     configurable: true,
     value: {
-      request: async (input: CoreRequest) => ({ protocolVersion: 1, requestId: input.requestId, ok: true, sequence: 0, snapshot: initialSnapshot() }),
+      request: async (input: CoreRequest) => ({ protocolVersion: PROTOCOL_VERSION, requestId: input.requestId, ok: true, sequence: 0, snapshot: initialSnapshot() }),
       onEvent: () => () => undefined,
     },
   });
@@ -52,7 +52,7 @@ describe("workbench shell", () => {
     const requests: CoreRequest[] = [];
     const request = vi.fn(async (input: CoreRequest): Promise<CoreResponse> => {
       requests.push(input);
-      return { protocolVersion: 1, requestId: input.requestId, ok: true, sequence: 0, snapshot: initialSnapshot() };
+      return { protocolVersion: PROTOCOL_VERSION, requestId: input.requestId, ok: true, sequence: 0, snapshot: initialSnapshot() };
     });
     Object.defineProperty(window, "swarm", {
       configurable: true,
@@ -61,13 +61,13 @@ describe("workbench shell", () => {
     installViewBridge();
 
     render(<App />);
-    expect(await screen.findByText("Checkout hardening")).toBeTruthy();
+    expect(await screen.findByText("swarm-ide")).toBeTruthy();
     expect(screen.getByText("Repository topology")).toBeTruthy();
     expect(screen.getByText("Service calls")).toBeTruthy();
     expect(screen.getByText("Changes entering the world")).toBeTruthy();
     expect(screen.getByText("Relevant bugs")).toBeTruthy();
 
-    fireEvent.click(screen.getByRole("button", { name: /Build world/ }));
+    fireEvent.click(screen.getByRole("button", { name: /Build topology/ }));
     await waitFor(() => expect(requests.some((item) => item.type === "reconciliation.start")).toBe(true));
   });
 
@@ -75,13 +75,13 @@ describe("workbench shell", () => {
     Object.defineProperty(window, "swarm", {
       configurable: true,
       value: {
-        request: async (input: CoreRequest) => ({ protocolVersion: 1, requestId: input.requestId, ok: true, sequence: 0, snapshot: initialSnapshot() }),
+        request: async (input: CoreRequest) => ({ protocolVersion: PROTOCOL_VERSION, requestId: input.requestId, ok: true, sequence: 0, snapshot: initialSnapshot() }),
         onEvent: () => () => undefined,
       },
     });
     installViewBridge();
     render(<App />);
-    await screen.findByText("Checkout hardening");
+    await screen.findByText("swarm-ide");
     fireEvent.keyDown(window, { key: "k", ctrlKey: true });
     expect(await screen.findByPlaceholderText("Navigate or apply intelligence…")).toBeTruthy();
   });
@@ -128,7 +128,7 @@ describe("workbench shell", () => {
   it("reports a missing view bridge without preventing the workbench from loading", async () => {
     installCoreBridge();
     render(<App />);
-    expect(await screen.findByText("Checkout hardening")).toBeTruthy();
+    expect(await screen.findByText("swarm-ide")).toBeTruthy();
     expect(screen.getByText("Interface zoom is unavailable outside the swarm-ide Electron shell.")).toBeTruthy();
     expect(screen.getByRole("button", { name: /Current zoom unknown/ })).toBeTruthy();
   });
@@ -137,7 +137,7 @@ describe("workbench shell", () => {
     installCoreBridge();
     const bridge = installViewBridge();
     render(<App />);
-    await screen.findByText("Checkout hardening");
+    await screen.findByText("swarm-ide");
 
     fireEvent.keyDown(window, { key: "k", code: "KeyK", ctrlKey: true });
     const input = await screen.findByPlaceholderText("Navigate or apply intelligence…");
@@ -205,5 +205,74 @@ describe("workbench shell", () => {
     render(<App />);
     expect(await screen.findByRole("button", { name: /Current zoom unknown/ })).toBeTruthy();
     expect(screen.getByText("The interface zoom bridge failed; the applied zoom level is unknown.")).toBeTruthy();
+  });
+
+  it("does not let a delayed bootstrap snapshot replace a newer event", async () => {
+    let resolveSnapshot!: (response: CoreResponse) => void;
+    let listener: ((event: CoreEvent | FileEvent) => void) | undefined;
+    const response = new Promise<CoreResponse>((resolve) => { resolveSnapshot = resolve; });
+    Object.defineProperty(window, "swarm", {
+      configurable: true,
+      value: {
+        request: vi.fn(async (request: CoreRequest) => request.type === "workspace.snapshot" ? response : ({ protocolVersion: PROTOCOL_VERSION, requestId: request.requestId, ok: true, sequence: 10, snapshot: dirtySnapshot(initialSnapshot()) })),
+        onEvent: (next: (event: CoreEvent | FileEvent) => void) => { listener = next; return () => undefined; },
+      },
+    });
+    installViewBridge();
+    render(<App />);
+    await waitFor(() => expect(listener).toBeTruthy());
+    const dirty = dirtySnapshot(initialSnapshot());
+    act(() => listener?.({ protocolVersion: PROTOCOL_VERSION, type: "reconciliation.changed", sequence: 10, epoch: dirty.reconciliation.epoch, emittedAt: "2026-09-05T12:00:00.000Z", snapshot: dirty }));
+    resolveSnapshot({ protocolVersion: PROTOCOL_VERSION, requestId: "bootstrap", ok: true, sequence: 0, snapshot: initialSnapshot() });
+    expect(await screen.findByText("Reconciling")).toBeTruthy();
+    expect(document.title).toContain("work:b2");
+  });
+
+  it("opens real source responses in multiple tabs and visualizes an external replacement", async () => {
+    let listener: ((event: CoreEvent | FileEvent) => void) | undefined;
+    const base = initialSnapshot(paymentsFileFocus);
+    const paths = ["services/payments/payments.ts", "services/payments/contract.ts"];
+    const snapshot: WorkspaceSnapshot = {
+      ...base,
+      widgets: [{
+        id: "source-paths",
+        title: "Implementation sources",
+        kind: "list",
+        priority: 0,
+        value: paths,
+        provenance: base.widgets[0]!.provenance,
+      }],
+    };
+    let disk = new Map([
+      [paths[0]!, { content: "one\nold\n", revision: "a".repeat(64) }],
+      [paths[1]!, { content: "export interface Contract {}\n", revision: "b".repeat(64) }],
+    ]);
+    const request = vi.fn(async (input: CoreRequest): Promise<CoreResponse> => {
+      if (input.type === "file.read") {
+        const file = disk.get(input.path)!;
+        return { protocolVersion: PROTOCOL_VERSION, requestId: input.requestId, ok: true, sequence: 0, snapshot, file: { kind: "read", path: input.path, content: file.content, revision: file.revision, size: file.content.length } };
+      }
+      return { protocolVersion: PROTOCOL_VERSION, requestId: input.requestId, ok: true, sequence: 0, snapshot };
+    });
+    Object.defineProperty(window, "swarm", {
+      configurable: true,
+      value: { request, onEvent: (next: (event: CoreEvent | FileEvent) => void) => { listener = next; return () => undefined; } },
+    });
+    installViewBridge();
+    render(<App />);
+    await screen.findByText("Implementation sources");
+    fireEvent.click(screen.getAllByRole("button", { name: paths[0] })[0]!);
+    await waitFor(() => expect(document.querySelector(".cm-content")?.textContent).toContain("old"));
+    fireEvent.click(screen.getAllByRole("button", { name: paths[1] })[0]!);
+    await waitFor(() => expect(document.querySelectorAll(".surface-tabs button")).toHaveLength(3));
+    const surfaceTabs = [...document.querySelectorAll<HTMLButtonElement>(".surface-tabs button")];
+    expect(surfaceTabs.some((tab) => tab.textContent?.includes("payments.ts"))).toBe(true);
+    expect(surfaceTabs.some((tab) => tab.textContent?.includes("contract.ts"))).toBe(true);
+    fireEvent.click(surfaceTabs.find((tab) => tab.textContent?.includes("payments.ts"))!);
+
+    disk = new Map(disk).set(paths[0]!, { content: "one\nnew\n", revision: "c".repeat(64) });
+    act(() => listener?.({ protocolVersion: PROTOCOL_VERSION, type: "file.changed", sequence: 1, emittedAt: "2026-09-05T12:01:00.000Z", path: paths[0]!, revision: "c".repeat(64), change: "modified" }));
+    await waitFor(() => expect(document.querySelector(".cm-added-flash")?.textContent).toContain("new"));
+    expect(document.querySelector(".cm-removed-ghost")?.textContent).toContain("old");
   });
 });
