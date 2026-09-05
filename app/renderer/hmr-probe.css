@@ -1,0 +1,7 @@
+:root {
+  --hmr-probe-hue: 165;
+}
+
+.hmr-probe {
+  background: hsl(var(--hmr-probe-hue) 72% 54%);
+}

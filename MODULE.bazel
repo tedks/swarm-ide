@@ -1,0 +1,4 @@
+module(
+    name = "swarm_ide",
+    version = "0.1.0",
+)

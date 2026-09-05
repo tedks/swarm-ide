@@ -1,0 +1,40 @@
+package(default_visibility = ["//visibility:public"])
+
+filegroup(
+    name = "quality_sources",
+    srcs = glob([
+        "app/**",
+        "core/**",
+        "fixtures/**",
+        "protocol/**",
+        "tests/**",
+    ]) + [
+        "index.html",
+        "package.json",
+        "pnpm-lock.yaml",
+        "pnpm-workspace.yaml",
+        "tsconfig.json",
+        "tsconfig.node.json",
+        "vite.config.mts",
+        "vitest.config.mts",
+    ],
+)
+
+genrule(
+    name = "desktop-bundle",
+    srcs = [":quality_sources", "package.json"],
+    outs = ["swarm-ide-foundation.tar.gz"],
+    cmd = "$(location //tools:build-app) $@ $(location package.json)",
+    local = True,
+    tools = ["//tools:build-app"],
+)
+
+alias(
+    name = "dev",
+    actual = "//tools:dev",
+)
+
+test_suite(
+    name = "quality",
+    tests = ["//tools:quality"],
+)

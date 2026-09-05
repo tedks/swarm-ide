@@ -1,0 +1,30 @@
+# Nix
+result
+result-*
+.direnv/
+
+# Node and generated output
+node_modules/
+.swarm-dev/
+dist/
+dist-node/
+bazel-*
+coverage/
+*.tsbuildinfo
+
+# UI verification artifacts
+artifacts/
+
+# IDE and editor state
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS and environment
+.DS_Store
+Thumbs.db
+.env
+.env.local
+.env.*.local

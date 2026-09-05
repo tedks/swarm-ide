@@ -1,0 +1,34 @@
+{
+  "name": "swarm-ide",
+  "version": "0.1.0",
+  "private": true,
+  "license": "AGPL-3.0-only",
+  "packageManager": "pnpm@11.22.0",
+  "dependencies": {
+    "@xyflow/react": "12.11.6",
+    "react": "19.2.8",
+    "react-dom": "19.2.8",
+    "zod": "4.5.4"
+  },
+  "devDependencies": {
+    "@testing-library/react": "16.3.1",
+    "@testing-library/user-event": "14.6.1",
+    "@types/node": "22.19.7",
+    "@types/react": "19.2.18",
+    "@types/react-dom": "19.2.3",
+    "@vitejs/plugin-react": "6.1.1",
+    "electron": "43.4.1",
+    "esbuild": "0.28.2",
+    "jsdom": "27.0.0",
+    "typescript": "5.9.3",
+    "vite": "8.2.2",
+    "vitest": "5.0.0"
+  },
+  "scripts": {
+    "build:node": "tsc -p tsconfig.node.json",
+    "build:renderer": "vite build",
+    "dev:internal": "node tools/dev.mjs",
+    "test:internal": "vitest run",
+    "typecheck:internal": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.node.json --noEmit"
+  }
+}
