@@ -73,6 +73,8 @@ describe("runtime contracts", () => {
     expect(() => CoreRequestSchema.parse({ requestId: "large", protocolVersion: PROTOCOL_VERSION, type: "file.write", path: "src/file.ts", expectedRevision: revision, content: "x".repeat(MAX_EDITABLE_FILE_BYTES + 1) })).toThrow();
     const response = CoreResponseSchema.parse({ protocolVersion: PROTOCOL_VERSION, requestId: "read", ok: true, sequence: 0, snapshot, file: { kind: "read", path: "src/file.ts", content: "next\n", revision, size: 5 } });
     expect(response.ok && response.file?.kind).toBe("read");
+    expect(CoreResponseSchema.parse({ protocolVersion: PROTOCOL_VERSION, requestId: "write-warning", ok: true, sequence: 0, snapshot, file: { kind: "write", path: "src/file.ts", revision, workingFingerprint: null, fingerprintError: "saved; refresh failed" } }).ok).toBe(true);
+    expect(() => CoreResponseSchema.parse({ protocolVersion: PROTOCOL_VERSION, requestId: "dishonest-write", ok: true, sequence: 0, snapshot, file: { kind: "write", path: "src/file.ts", revision, workingFingerprint: null } })).toThrow();
     expect(FileEventSchema.parse({ protocolVersion: PROTOCOL_VERSION, type: "file.changed", sequence: 1, emittedAt: "2026-09-05T12:00:00.000Z", path: "src/file.ts", revision, change: "modified" }).change).toBe("modified");
   });
 });

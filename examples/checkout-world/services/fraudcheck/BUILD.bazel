@@ -16,10 +16,11 @@ proto_library(
 genrule(
     name = "service_topology",
     srcs = [
+        ":fraudcheck_proto",
         "fraudcheck.proto",
         "fraudcheck.ts",
         "service.swarm.json",
-        "//examples/checkout-world/services/payments:payments.proto",
+        "//examples/checkout-world/services/payments:payments_proto",
     ],
     outs = ["service-topology.json"],
     cmd = " ".join([
@@ -28,8 +29,8 @@ genrule(
         "--owning-target //examples/checkout-world/services/fraudcheck:fraudcheck_sources",
         "--source examples/checkout-world/services/fraudcheck/fraudcheck.proto=$(location fraudcheck.proto)",
         "--source examples/checkout-world/services/fraudcheck/fraudcheck.ts=$(location fraudcheck.ts)",
-        "--interface-source interface:fraud-check.assess=examples/checkout-world/services/fraudcheck/fraudcheck.proto=$(location fraudcheck.proto)",
-        "--interface-source interface:payments.authorize=examples/checkout-world/services/payments/payments.proto=$(location //examples/checkout-world/services/payments:payments.proto)",
+        "--interface-descriptor interface:fraud-check.assess=examples/checkout-world/services/fraudcheck/fraudcheck.proto=$(location :fraudcheck_proto)",
+        "--interface-descriptor interface:payments.authorize=examples/checkout-world/services/payments/payments.proto=$(location //examples/checkout-world/services/payments:payments_proto)",
         "--out $@",
     ]),
     tools = ["//tools:extract-service-topology"],

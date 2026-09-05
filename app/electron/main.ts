@@ -43,12 +43,12 @@ let mainWindow: BrowserWindow | null = null;
 let core: UtilityProcess | null = null;
 const pending = new Map<
   string,
-  { resolve: (response: CoreResponse) => void; timeout: NodeJS.Timeout }
+  { resolve: (response: CoreResponse) => void; timeout: NodeJS.Timeout | null }
 >();
 
 function rejectPending(message: string): void {
   for (const [requestId, item] of pending) {
-    clearTimeout(item.timeout);
+    if (item.timeout) clearTimeout(item.timeout);
     item.resolve({
       protocolVersion: PROTOCOL_VERSION,
       requestId,
@@ -83,7 +83,7 @@ function startCore(): void {
     if (responseResult) {
       const item = pending.get(responseResult.requestId);
       if (item) {
-        clearTimeout(item.timeout);
+        if (item.timeout) clearTimeout(item.timeout);
         pending.delete(responseResult.requestId);
         item.resolve(responseResult);
       }
@@ -109,7 +109,7 @@ function startCore(): void {
           : null;
       const item = requestId ? pending.get(requestId) : undefined;
       if (requestId && item) {
-        clearTimeout(item.timeout);
+        if (item.timeout) clearTimeout(item.timeout);
         pending.delete(requestId);
         item.resolve({
           protocolVersion: PROTOCOL_VERSION,
@@ -154,7 +154,10 @@ function requestCore(input: unknown): Promise<CoreResponse> {
   }
 
   return new Promise((resolve) => {
-    const timeout = setTimeout(() => {
+    // Writes are commit-bearing operations and cannot safely be reported as
+    // timed out while the core may still rename the file. Core exit remains a
+    // terminal failure signal; read-only requests retain a bounded deadline.
+    const timeout = request.type === "file.write" ? null : setTimeout(() => {
       pending.delete(request.requestId);
       resolve({
         protocolVersion: PROTOCOL_VERSION,

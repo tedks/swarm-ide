@@ -1,6 +1,6 @@
 // @vitest-environment node
 import { execFileSync } from "node:child_process";
-import { chmod, mkdtemp, readFile, rm, stat, symlink, writeFile } from "node:fs/promises";
+import { chmod, mkdir, mkdtemp, readFile, rename, rm, stat, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
@@ -49,14 +49,45 @@ describe("sandboxed workspace files", () => {
     expect(await readFile(join(root, "source.ts"), "utf8")).toBe("external edit\n");
   });
 
+  it("serializes concurrent optimistic saves so only one matching revision commits", async () => {
+    const root = await repository();
+    const opened = await readWorkspaceFile(root, "source.ts");
+    const results = await Promise.allSettled([
+      writeWorkspaceFile(root, "source.ts", opened.revision, "first writer\n"),
+      writeWorkspaceFile(root, "source.ts", opened.revision, "second writer\n"),
+    ]);
+    expect(results.filter((result) => result.status === "fulfilled")).toHaveLength(1);
+    const rejected = results.find((result) => result.status === "rejected");
+    expect(rejected?.status === "rejected" && rejected.reason).toMatchObject({ code: "REVISION_CONFLICT" });
+    expect(["first writer\n", "second writer\n"]).toContain(await readFile(join(root, "source.ts"), "utf8"));
+  });
+
+  it("reads the validated descriptor when its pathname is raced to an outside symlink", async () => {
+    const root = await repository();
+    const opened = await readWorkspaceFile(root, "source.ts", {
+      afterValidatedOpen: async () => {
+        await rename(join(root, "source.ts"), join(root, "source-original.ts"));
+        await symlink("/etc/passwd", join(root, "source.ts"));
+      },
+    });
+    expect(opened.content).toBe("export const value = 1;\n");
+    expect(opened.content).not.toContain("root:");
+  });
+
   it("rejects traversal, symlink escape, binary data, oversized data, and write failure", async () => {
     const root = await repository();
+    const outside = await mkdtemp(join(tmpdir(), "swarm-outside-"));
+    roots.push(outside);
+    await writeFile(join(outside, "secret"), "outside\n");
+    await mkdir(join(root, "inside"));
+    await symlink(outside, join(root, "inside", "alias"));
     await symlink("/etc/passwd", join(root, "escape"));
     await writeFile(join(root, "binary"), Buffer.from([0, 1, 2]));
     await writeFile(join(root, "control-binary"), Buffer.from([65, 7, 66]));
     await writeFile(join(root, "large"), Buffer.alloc(MAX_EDITABLE_FILE_BYTES + 1, 65));
     expect(await code(readWorkspaceFile(root, "../outside"))).toBe("INVALID_PATH");
     expect(await code(readWorkspaceFile(root, "escape"))).toBe("SYMLINK_ESCAPE");
+    expect(await code(readWorkspaceFile(root, "inside/alias/secret"))).toBe("SYMLINK_ESCAPE");
     expect(await code(readWorkspaceFile(root, "binary"))).toBe("BINARY_FILE");
     expect(await code(readWorkspaceFile(root, "control-binary"))).toBe("BINARY_FILE");
     expect(await code(readWorkspaceFile(root, "large"))).toBe("FILE_TOO_LARGE");

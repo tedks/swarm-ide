@@ -286,7 +286,12 @@ export const FileResultSchema = z.discriminatedUnion("kind", [
     kind: z.literal("write"),
     path: z.string().min(1),
     revision: z.string().regex(/^[a-f0-9]{64}$/),
-    workingFingerprint: z.string().regex(/^[a-f0-9]{64}$/),
+    workingFingerprint: z.string().regex(/^[a-f0-9]{64}$/).nullable(),
+    fingerprintError: z.string().min(1).max(512).optional(),
+  }).superRefine((result, context) => {
+    if ((result.workingFingerprint === null) !== Boolean(result.fingerprintError)) {
+      context.addIssue({ code: "custom", path: ["workingFingerprint"], message: "a missing post-save fingerprint requires an explicit error" });
+    }
   }),
 ]);
 export type FileResult = z.infer<typeof FileResultSchema>;
