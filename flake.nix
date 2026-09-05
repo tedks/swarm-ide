@@ -27,6 +27,7 @@
               xauth
               xdpyinfo
               xdotool
+              xmessage
               xorg-server
               xwininfo
             ];
