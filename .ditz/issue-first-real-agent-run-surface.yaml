@@ -29,6 +29,11 @@ log_events:
   what: commented
   comment: Blocked on the virtual-X11 desktop harness by executive decision; no agent-surface
     UI automation may target the developer desktop.
+- time: 2026-09-05T20:09:39-00:00
+  who: Ted Smith
+  what: blocked by supervise-local-core
+  comment: ""
 blocked_by:
 - real-service-topology-provider
 - virtual-x11-desktop-smoke
+- supervise-local-core
