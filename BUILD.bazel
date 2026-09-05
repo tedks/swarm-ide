@@ -1,0 +1,12 @@
+package(default_visibility = ["//visibility:public"])
+
+sh_binary(
+    name = "dev",
+    srcs = ["tools/dev.sh"],
+)
+
+sh_test(
+    name = "quality",
+    srcs = ["tools/quality.sh"],
+    tags = ["local"],
+)

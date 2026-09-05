@@ -1,0 +1,7 @@
+package(default_visibility = ["//visibility:public"])
+
+sh_binary(
+    name = "desktop-smoke",
+    srcs = ["desktop-smoke.sh"],
+    tags = ["manual"],
+)
