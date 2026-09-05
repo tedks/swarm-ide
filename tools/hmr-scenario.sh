@@ -21,6 +21,9 @@ cleanup_pending_probe() {
   [[ -z "$pending_probe" ]] || rm -f -- "$pending_probe"
 }
 trap cleanup_pending_probe EXIT
+trap 'exit 130' INT
+trap 'exit 143' TERM
+trap 'exit 129' HUP
 pending_probe=$(mktemp "$(dirname "$probe")/.hmr-probe.css.XXXXXX")
 if [[ "${SWARM_HMR_TEST_MODE:-0}" == 1 && "${SWARM_HMR_TEST_PAUSE_AFTER_TEMP:-0}" == 1 ]]; then
   printf '%s\n' "$pending_probe" >"$artifact_dir/hmr-temp-created"
