@@ -1,0 +1,21 @@
+id: adopt-stable-window-on-framework0
+title: Deliberately adopt the stable-window supervisor on framework0
+desc: 'PR #7 changes the launcher/main supervisor. The existing physical-desktop master
+  process still runs the old restart-on-every-bundle implementation. Before fast-forwarding
+  that watched checkout, obtain the deliberate adoption choice: stop/restart it, or
+  explicitly pause its old launcher while preserving the current window. Do not silently
+  recreate the physical-desktop window. Resume new supervisor on master port 55173
+  after saving buffers; never disturb unrelated 5173.'
+type: task
+component: tooling
+release:
+reporter: Ted Smith <tedks@riseup.net>
+status: unstarted
+disposition:
+creation_time: 2026-09-05T23:41:45-00:00
+references: []
+log_events:
+- time: 2026-09-05T23:41:45-00:00
+  who: Ted Smith
+  what: created
+  comment: ""
