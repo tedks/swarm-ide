@@ -17,3 +17,9 @@ log_events:
   who: Ted Smith
   what: created
   comment: ""
+- time: 2026-09-05T09:20:50-00:00
+  who: Ted Smith
+  what: commented
+  comment: 'PR #2 auxiliary claude-review run 33957628960 failed only because the
+    Claude Code GitHub App is not installed (401 during app-token exchange); build-and-test
+    passed. Council review independently reached a three-provider clean fixpoint.'
