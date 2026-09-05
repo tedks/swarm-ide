@@ -8,7 +8,7 @@ const MAX_MANIFEST_BYTES = 64 * 1024;
 const MAX_SOURCE_BYTES = 1024 * 1024;
 const MAX_TOTAL_SOURCE_BYTES = 8 * 1024 * 1024;
 const MAX_SOURCES = 64;
-const ID_PATTERN = /^(service|interface):[a-z0-9][a-z0-9.-]*$/;
+const INTERFACE_ID_PATTERN = /^interface:[a-z0-9][a-z0-9.-]*$/;
 
 function fail(message) {
   throw new Error(`service topology extraction failed: ${message}`);
@@ -53,17 +53,25 @@ function text(value, label, pattern) {
   return value;
 }
 
+function serviceIdForName(name) {
+  return `service:${name.replace(/([a-z0-9])([A-Z])/g, "$1-$2").toLowerCase()}`;
+}
+
 function parseInterface(value, required) {
   const item = object(value, "interface");
   const keys = ["id", "name", "requestType", "responseType", ...(required ? ["serviceId"] : [])];
   exactKeys(item, keys, "interface");
   const parsed = {
-    id: text(item.id, "interface id", ID_PATTERN),
-    name: text(item.name, "interface name"),
+    id: text(item.id, "interface id", INTERFACE_ID_PATTERN),
+    name: text(item.name, "interface name", required ? /^[A-Za-z][A-Za-z0-9]*\.[A-Za-z][A-Za-z0-9]*$/ : /^[A-Za-z][A-Za-z0-9]*$/),
     requestType: text(item.requestType, "request type", /^[A-Za-z][A-Za-z0-9_.]*$/),
     responseType: text(item.responseType, "response type", /^[A-Za-z][A-Za-z0-9_.]*$/),
   };
-  return required ? { ...parsed, serviceId: text(item.serviceId, "required service id", /^service:[a-z0-9][a-z0-9.-]*$/) } : parsed;
+  if (!required) return parsed;
+  const serviceId = text(item.serviceId, "required service id", /^service:[a-z0-9][a-z0-9.-]*$/);
+  const serviceName = parsed.name.slice(0, parsed.name.indexOf("."));
+  if (serviceId !== serviceIdForName(serviceName)) fail("required interface name and serviceId disagree");
+  return { ...parsed, serviceId };
 }
 
 function parseManifest(input) {
@@ -113,6 +121,45 @@ function parseInterfaceSource(value) {
   return { interfaceId, ...source };
 }
 
+function regexEscape(value) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function canonicalProtoType(type, packageName) {
+  const withoutRoot = type.startsWith(".") ? type.slice(1) : type;
+  return withoutRoot.includes(".") ? withoutRoot : `${packageName}.${withoutRoot}`;
+}
+
+function assertProtoContract(bytes, source, contract, serviceName, methodName) {
+  if (!source.logicalPath.endsWith(".proto")) fail(`interface source is not a .proto file: ${source.logicalPath}`);
+  let proto;
+  try {
+    proto = new TextDecoder("utf-8", { fatal: true }).decode(bytes);
+  } catch {
+    fail(`interface source is not valid UTF-8: ${source.logicalPath}`);
+  }
+  const syntax = proto
+    .replace(/\/\*[\s\S]*?\*\//g, "")
+    .replace(/\/\/[^\n\r]*/g, "");
+  const packageName = syntax.match(/(?:^|[\r\n])\s*package\s+([A-Za-z_][A-Za-z0-9_.]*)\s*;/)?.[1];
+  if (!packageName) fail(`interface source has no protobuf package: ${source.logicalPath}`);
+  const serviceBody = syntax.match(new RegExp(`\\bservice\\s+${regexEscape(serviceName)}\\s*\\{([\\s\\S]*?)\\}`))?.[1];
+  if (!serviceBody) fail(`protobuf service ${serviceName} is missing from ${source.logicalPath}`);
+  const rpc = serviceBody.match(new RegExp(`\\brpc\\s+${regexEscape(methodName)}\\s*\\(\\s*([.]?[A-Za-z_][A-Za-z0-9_.]*)\\s*\\)\\s*returns\\s*\\(\\s*([.]?[A-Za-z_][A-Za-z0-9_.]*)\\s*\\)`));
+  if (!rpc) fail(`protobuf RPC ${serviceName}.${methodName} is missing from ${source.logicalPath}`);
+  if (canonicalProtoType(rpc[1], packageName) !== contract.requestType || canonicalProtoType(rpc[2], packageName) !== contract.responseType) {
+    fail(`protobuf RPC ${serviceName}.${methodName} types disagree with the manifest`);
+  }
+  for (const type of [contract.requestType, contract.responseType]) {
+    const prefix = `${packageName}.`;
+    if (!type.startsWith(prefix)) fail(`protobuf message ${type} is not declared in ${source.logicalPath}`);
+    const messageName = type.slice(prefix.length);
+    if (messageName.includes(".") || !new RegExp(`\\bmessage\\s+${regexEscape(messageName)}\\s*\\{`).test(syntax)) {
+      fail(`protobuf message ${type} is missing from ${source.logicalPath}`);
+    }
+  }
+}
+
 const args = parseArgs(process.argv.slice(2));
 const manifestBytes = await readFile(args.manifest);
 if (manifestBytes.byteLength > MAX_MANIFEST_BYTES) fail("manifest is oversized");
@@ -148,6 +195,13 @@ for (const source of interfaceSources) {
   const bytes = await readFile(source.execPath);
   totalBytes += bytes.byteLength;
   if (bytes.byteLength > MAX_SOURCE_BYTES || totalBytes > MAX_TOTAL_SOURCE_BYTES) fail("interface source inputs are oversized");
+  const provided = manifest.providedInterfaces.find((item) => item.id === source.interfaceId);
+  const required = manifest.requiredInterfaces.find((item) => item.id === source.interfaceId);
+  const contract = provided ?? required;
+  if (!contract) fail(`interface source has no manifest declaration: ${source.interfaceId}`);
+  const serviceName = provided ? manifest.service.displayName : required.name.slice(0, required.name.indexOf("."));
+  const methodName = provided ? provided.name : required.name.slice(required.name.indexOf(".") + 1);
+  assertProtoContract(bytes, source, contract, serviceName, methodName);
   digest.update("\0interface\0");
   digest.update(source.interfaceId);
   digest.update("\0");

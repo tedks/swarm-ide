@@ -14,26 +14,15 @@ import {
 } from "../protocol/schema";
 import { readWorkspaceFile, resolveWorkspaceFile, WorkspaceFileError, writeWorkspaceFile } from "./files";
 import { RealWorkspaceProvider } from "./provider";
+import { BoundedRequestIds } from "./request-ids";
 
 const workspaceRoot = process.env.SWARM_WORKSPACE_ROOT ?? process.cwd();
 let sequence = 0;
-const seenRequestIds = new Set<string>();
-const seenRequestOrder: string[] = [];
+const requestIds = new BoundedRequestIds(512);
 const watchers = new Map<string, { watcher: FSWatcher; timer: NodeJS.Timeout | null }>();
 
 function post(message: CoreResponse | CoreEvent | FileEvent): void {
   process.parentPort?.postMessage(message);
-}
-
-function rememberRequest(requestId: string): boolean {
-  if (seenRequestIds.has(requestId)) return false;
-  seenRequestIds.add(requestId);
-  seenRequestOrder.push(requestId);
-  if (seenRequestOrder.length > 512) {
-    const oldest = seenRequestOrder.shift();
-    if (oldest) seenRequestIds.delete(oldest);
-  }
-  return true;
 }
 
 function publish(type: CoreEvent["type"], snapshot: WorkspaceSnapshot): void {
@@ -122,7 +111,7 @@ process.parentPort?.on("message", async (event) => {
   try {
     const request = parseCoreRequest(event.data);
     requestId = request.requestId;
-    if (!rememberRequest(requestId)) {
+    if (!requestIds.accept(requestId)) {
       post(fail(requestId, "DUPLICATE_REQUEST", "This request id has already been processed"));
       return;
     }

@@ -31,6 +31,10 @@ const DECLARATION_PATHS = [
   "examples/checkout-world/services/fraudcheck/fraudcheck.proto",
   "examples/checkout-world/services/payments/payments.proto",
 ];
+const INTERFACE_DECLARATIONS = new Map([
+  ["interface:fraud-check.assess", "examples/checkout-world/services/fraudcheck/fraudcheck.proto"],
+  ["interface:payments.authorize", "examples/checkout-world/services/payments/payments.proto"],
+]);
 const MAX_ARTIFACT_BYTES = 512 * 1024;
 
 export interface ProviderDependencies {
@@ -75,6 +79,9 @@ async function readArtifact(workspaceRoot: string): Promise<{ bytes: Buffer; art
   }
   if (artifact.implementationPaths.length !== SOURCE_PATHS.length || artifact.implementationPaths.some((path, index) => path !== SOURCE_PATHS[index])) {
     throw new Error("the topology artifact does not contain the exact Bazel-owned source set");
+  }
+  if (artifact.interfaceDeclarationPaths.length !== INTERFACE_DECLARATIONS.size || artifact.interfaceDeclarationPaths.some(({ interfaceId, path }) => INTERFACE_DECLARATIONS.get(interfaceId) !== path)) {
+    throw new Error("the topology artifact does not contain the exact interface declaration set");
   }
   for (const source of artifact.implementationPaths) await resolveWorkspaceFile(workspaceRoot, source);
   for (const declaration of artifact.interfaceDeclarationPaths) await resolveWorkspaceFile(workspaceRoot, declaration.path);
@@ -251,12 +258,15 @@ export class RealWorkspaceProvider {
     const observedAt = this.dependencies.now();
     const hadGreen = this.snapshotValue.reconciliation.lastConsistentFingerprint !== "unobserved";
     const previousGraphs = this.snapshotValue.graphs;
+    const previousServiceGraph = previousGraphs.find((graph) => graph.topologyId === "service")!;
     this.snapshotValue = WorkspaceSnapshotSchema.parse(retagSnapshot({
       ...this.snapshotValue,
       revisions: { ...this.snapshotValue.revisions, working: { id: beforeFingerprint, fingerprint: beforeFingerprint } },
       graphs: [
         repositoryGraph(beforeFingerprint, epoch, "yellow", observedAt),
-        { ...previousGraphs.find((graph) => graph.topologyId === "service")!, epoch, reconciliation: "yellow" as const },
+        hadGreen
+          ? { ...previousServiceGraph, epoch, reconciliation: "yellow" as const }
+          : emptyServiceGraph(beforeFingerprint, epoch, "yellow", observedAt),
       ],
       jobs: [{
         id: `job:service-topology:${epoch}`,
@@ -280,7 +290,9 @@ export class RealWorkspaceProvider {
 
     try {
       await this.dependencies.build(this.workspaceRoot);
+      if (attempt !== this.currentAttempt) return;
       const { bytes, artifact } = await this.dependencies.readArtifact(this.workspaceRoot);
+      if (attempt !== this.currentAttempt) return;
       const afterFingerprint = await this.dependencies.fingerprint(this.workspaceRoot);
       if (attempt !== this.currentAttempt) return;
       if (afterFingerprint !== beforeFingerprint) throw new Error("working source changed during the build; refusing stale green publication");
@@ -315,8 +327,6 @@ export class RealWorkspaceProvider {
       this.snapshotValue = WorkspaceSnapshotSchema.parse({
         ...this.snapshotValue,
         graphs: this.snapshotValue.graphs.map((graph) => ({ ...graph, reconciliation: "red" as const })),
-        mappings: this.serviceMappings.length ? this.serviceMappings : this.snapshotValue.mappings,
-        widgets: this.serviceWidgets.length ? this.serviceWidgets : this.snapshotValue.widgets,
         jobs: this.snapshotValue.jobs.map((job) => ({ ...job, status: "failed" as const, message: message.slice(0, 300) })),
         activity: [{ id: `activity:topology:${epoch}:red`, at: this.dependencies.now(), kind: "build", summary: "Topology build failed; last consistent graph retained", status: "red" }, ...this.snapshotValue.activity].slice(0, 32),
         reconciliation: { ...this.snapshotValue.reconciliation, status: "red", message: `Topology build failed: ${message.slice(0, 240)}` },

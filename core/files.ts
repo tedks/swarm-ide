@@ -24,6 +24,12 @@ function revision(content: Buffer): string {
   return createHash("sha256").update(content).digest("hex");
 }
 
+function rejectBinaryControlBytes(bytes: Buffer): void {
+  if (bytes.includes(0) || bytes.some((byte) => byte < 32 && byte !== 9 && byte !== 10 && byte !== 13)) {
+    throw new WorkspaceFileError("BINARY_FILE", "Binary control bytes are not allowed in the source observatory");
+  }
+}
+
 function validateRelativePath(path: string): void {
   if (
     !path ||
@@ -67,7 +73,7 @@ export async function resolveWorkspaceFile(workspaceRoot: string, path: string):
 async function readUtf8(absolutePath: string): Promise<{ bytes: Buffer; content: string }> {
   const bytes = await readFile(absolutePath);
   if (bytes.byteLength > MAX_EDITABLE_FILE_BYTES) throw new WorkspaceFileError("FILE_TOO_LARGE", `Files larger than ${MAX_EDITABLE_FILE_BYTES} bytes cannot be opened`);
-  if (bytes.includes(0)) throw new WorkspaceFileError("BINARY_FILE", "Binary files cannot be opened in the source observatory");
+  rejectBinaryControlBytes(bytes);
   try {
     return { bytes, content: new TextDecoder("utf-8", { fatal: true }).decode(bytes) };
   } catch {
@@ -89,7 +95,8 @@ export async function writeWorkspaceFile(
 ): Promise<Extract<FileResult, { kind: "write" }>> {
   const contentBytes = Buffer.from(content, "utf8");
   if (contentBytes.byteLength > MAX_EDITABLE_FILE_BYTES) throw new WorkspaceFileError("FILE_TOO_LARGE", `Files larger than ${MAX_EDITABLE_FILE_BYTES} bytes cannot be saved`);
-  if (content.includes("\0")) throw new WorkspaceFileError("BINARY_FILE", "NUL bytes are not allowed in source text");
+  rejectBinaryControlBytes(contentBytes);
+  if (contentBytes.toString("utf8") !== content) throw new WorkspaceFileError("INVALID_UTF8", "The source buffer contains invalid Unicode text");
   const resolved = await resolveWorkspaceFile(workspaceRoot, path);
   const before = await readUtf8(resolved.absolutePath);
   if (revision(before.bytes) !== expectedRevision) throw new WorkspaceFileError("REVISION_CONFLICT", "The file changed outside this editor; your buffer was preserved");

@@ -11,7 +11,7 @@ function gitStatus(workspaceRoot: string): Promise<Buffer> {
   return new Promise((resolve, reject) => {
     execFile(
       "git",
-      ["status", "--porcelain=v2", "-z", "--branch", "--no-ahead-behind", "--untracked-files=all"],
+      ["status", "--porcelain=v2", "-z", "--branch", "--no-ahead-behind", "--untracked-files=all", "--no-renames"],
       { cwd: workspaceRoot, encoding: "buffer", maxBuffer: MAX_GIT_OUTPUT_BYTES },
       (error, stdout, stderr) => {
         if (error) {
@@ -41,7 +41,13 @@ function afterSpaces(record: string, count: number): string {
 
 export async function computeWorkingWorldFingerprint(workspaceRoot: string): Promise<string> {
   const output = await gitStatus(workspaceRoot);
-  const records = output.toString("utf8").split("\0").filter(Boolean);
+  let statusText: string;
+  try {
+    statusText = new TextDecoder("utf8", { fatal: true }).decode(output);
+  } catch {
+    throw new Error("git status returned a path that is not valid UTF-8");
+  }
+  const records = statusText.split("\0").filter(Boolean);
   const oidRecord = records.find((record) => record.startsWith("# branch.oid "));
   const head = oidRecord?.slice("# branch.oid ".length);
   if (!head || !/^[a-f0-9]{40,64}$/.test(head)) throw new Error("git status returned an invalid HEAD revision");
@@ -64,7 +70,9 @@ export async function computeWorkingWorldFingerprint(workspaceRoot: string): Pro
   const hash = createHash("sha256");
   hash.update("swarm-working-world-v1\0");
   hash.update(head);
-  const observedChanges = await Promise.all(changes.map(async (change) => {
+  const observedChanges: Array<{ change: (typeof changes)[number]; kind: string; mode: string; bytes: Buffer }> = [];
+  let totalBytes = 0;
+  for (const change of changes) {
     validateGitPath(change.path);
     if (change.originalPath) validateGitPath(change.originalPath);
     const absolutePath = `${workspaceRoot}/${change.path}`;
@@ -72,7 +80,10 @@ export async function computeWorkingWorldFingerprint(workspaceRoot: string): Pro
     try {
       metadata = await lstat(absolutePath);
     } catch (error) {
-      if ((error as NodeJS.ErrnoException).code === "ENOENT") return { change, kind: "deleted", mode: "", bytes: Buffer.alloc(0) };
+      if ((error as NodeJS.ErrnoException).code === "ENOENT") {
+        observedChanges.push({ change, kind: "deleted", mode: "", bytes: Buffer.alloc(0) });
+        continue;
+      }
       throw error;
     }
     let bytes: Buffer;
@@ -86,10 +97,10 @@ export async function computeWorkingWorldFingerprint(workspaceRoot: string): Pro
     } else {
       throw new Error(`changed path is not a regular file or symbolic link: ${change.path}`);
     }
-    return { change, kind, mode: (metadata.mode & 0o777).toString(8), bytes };
-  }));
-  const totalBytes = observedChanges.reduce((total, item) => total + item.bytes.byteLength, 0);
-  if (totalBytes > MAX_CHANGED_BYTES) throw new Error("changed working-world content exceeds the fingerprint bound");
+    totalBytes += bytes.byteLength;
+    if (totalBytes > MAX_CHANGED_BYTES) throw new Error("changed working-world content exceeds the fingerprint bound");
+    observedChanges.push({ change, kind, mode: (metadata.mode & 0o777).toString(8), bytes });
+  }
   for (const { change, kind, mode, bytes } of observedChanges) {
     hash.update("\0status\0");
     hash.update(change.record);

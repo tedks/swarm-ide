@@ -53,13 +53,17 @@ describe("sandboxed workspace files", () => {
     const root = await repository();
     await symlink("/etc/passwd", join(root, "escape"));
     await writeFile(join(root, "binary"), Buffer.from([0, 1, 2]));
+    await writeFile(join(root, "control-binary"), Buffer.from([65, 7, 66]));
     await writeFile(join(root, "large"), Buffer.alloc(MAX_EDITABLE_FILE_BYTES + 1, 65));
     expect(await code(readWorkspaceFile(root, "../outside"))).toBe("INVALID_PATH");
     expect(await code(readWorkspaceFile(root, "escape"))).toBe("SYMLINK_ESCAPE");
     expect(await code(readWorkspaceFile(root, "binary"))).toBe("BINARY_FILE");
+    expect(await code(readWorkspaceFile(root, "control-binary"))).toBe("BINARY_FILE");
     expect(await code(readWorkspaceFile(root, "large"))).toBe("FILE_TOO_LARGE");
 
     const opened = await readWorkspaceFile(root, "source.ts");
+    expect(await code(writeWorkspaceFile(root, "source.ts", opened.revision, "alert\u0007"))).toBe("BINARY_FILE");
+    expect(await code(writeWorkspaceFile(root, "source.ts", opened.revision, "unpaired \ud800"))).toBe("INVALID_UTF8");
     await chmod(root, 0o555);
     try {
       await expect(writeWorkspaceFile(root, "source.ts", opened.revision, "cannot write\n")).rejects.toThrow();

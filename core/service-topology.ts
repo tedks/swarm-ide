@@ -10,19 +10,24 @@ import {
   type Widget,
 } from "../protocol/schema";
 
-const IdSchema = z.string().regex(/^(service|interface):[a-z0-9][a-z0-9.-]*$/);
-const InterfaceSchema = z.object({
+const IdSchema = z.string().regex(/^interface:[a-z0-9][a-z0-9.-]*$/);
+const ProtoTypeSchema = z.string().regex(/^[A-Za-z][A-Za-z0-9_]*(?:\.[A-Za-z][A-Za-z0-9_]*)+$/);
+const InterfaceBaseSchema = z.object({
   id: IdSchema,
-  name: z.string().min(1).max(160),
-  requestType: z.string().regex(/^[A-Za-z][A-Za-z0-9_.]*$/),
-  responseType: z.string().regex(/^[A-Za-z][A-Za-z0-9_.]*$/),
+  requestType: ProtoTypeSchema,
+  responseType: ProtoTypeSchema,
+});
+const ProvidedInterfaceSchema = InterfaceBaseSchema.extend({ name: z.string().regex(/^[A-Za-z][A-Za-z0-9]*$/) }).strict();
+const RequiredInterfaceSchema = InterfaceBaseSchema.extend({
+  name: z.string().regex(/^[A-Za-z][A-Za-z0-9]*\.[A-Za-z][A-Za-z0-9]*$/),
+  serviceId: z.string().regex(/^service:[a-z0-9][a-z0-9.-]*$/),
 }).strict();
 
 export const ServiceTopologyArtifactSchema = z.object({
   schemaVersion: z.literal(1),
   service: z.object({ id: z.string().regex(/^service:[a-z0-9][a-z0-9.-]*$/), displayName: z.string().min(1).max(160) }).strict(),
-  providedInterfaces: z.array(InterfaceSchema).min(1).max(32),
-  requiredInterfaces: z.array(InterfaceSchema.extend({ serviceId: z.string().regex(/^service:[a-z0-9][a-z0-9.-]*$/) }).strict()).max(32),
+  providedInterfaces: z.array(ProvidedInterfaceSchema).min(1).max(32),
+  requiredInterfaces: z.array(RequiredInterfaceSchema).max(32),
   owningTarget: z.string().regex(/^\/\/[A-Za-z0-9_./-]+:[A-Za-z0-9_.-]+$/),
   implementationPaths: z.array(z.string().min(1).max(4_096)).min(1).max(64),
   interfaceDeclarationPaths: z.array(z.object({ interfaceId: IdSchema, path: z.string().min(1).max(4_096) }).strict()).min(1).max(64),
@@ -30,14 +35,25 @@ export const ServiceTopologyArtifactSchema = z.object({
 }).strict().superRefine((artifact, context) => {
   const ids = [artifact.service.id, ...artifact.providedInterfaces.map((item) => item.id), ...artifact.requiredInterfaces.map((item) => item.id)];
   if (new Set(ids).size !== ids.length) context.addIssue({ code: "custom", path: ["providedInterfaces"], message: "service and interface ids must be unique" });
-  const paths = new Set<string>();
-  const allPaths = [...artifact.implementationPaths, ...artifact.interfaceDeclarationPaths.map((item) => item.path)];
-  for (const [index, path] of allPaths.entries()) {
+  const implementationPaths = new Set<string>();
+  for (const [index, path] of artifact.implementationPaths.entries()) {
     if (path.startsWith("/") || path.includes("\\") || posix.normalize(path) !== path || path.split("/").includes("..")) {
       context.addIssue({ code: "custom", path: ["implementationPaths", index], message: "implementation path must be canonical and contained" });
     }
-    if (paths.has(path) && index < artifact.implementationPaths.length) context.addIssue({ code: "custom", path: ["implementationPaths", index], message: "implementation paths must be unique" });
-    paths.add(path);
+    if (implementationPaths.has(path)) context.addIssue({ code: "custom", path: ["implementationPaths", index], message: "implementation paths must be unique" });
+    implementationPaths.add(path);
+  }
+  for (const [index, { path }] of artifact.interfaceDeclarationPaths.entries()) {
+    if (path.startsWith("/") || path.includes("\\") || posix.normalize(path) !== path || path.split("/").includes("..")) {
+      context.addIssue({ code: "custom", path: ["interfaceDeclarationPaths", index, "path"], message: "interface declaration path must be canonical and contained" });
+    }
+  }
+  for (const [index, required] of artifact.requiredInterfaces.entries()) {
+    const serviceName = required.name.slice(0, required.name.indexOf("."));
+    const expectedServiceId = `service:${serviceName.replace(/([a-z0-9])([A-Z])/g, "$1-$2").toLowerCase()}`;
+    if (required.serviceId !== expectedServiceId) {
+      context.addIssue({ code: "custom", path: ["requiredInterfaces", index, "serviceId"], message: "required interface name and serviceId disagree" });
+    }
   }
   const interfaceIds = [...artifact.providedInterfaces, ...artifact.requiredInterfaces].map((item) => item.id).sort();
   const sourceIds = artifact.interfaceDeclarationPaths.map((item) => item.interfaceId).sort();
@@ -96,7 +112,7 @@ export function adaptServiceTopology(
   }
   for (const required of artifact.requiredInterfaces) {
     const interfaceFocus = focus("interface", required.id, fingerprint, declarationPaths.get(required.id), required.name);
-    nodes.push({ id: required.id, label: required.name, kind: "required interface", status: "green", position: { x: 310, y }, focus: interfaceFocus, detail: `${required.requestType} → ${required.responseType}` });
+    nodes.push({ id: required.id, label: required.name, kind: "required interface", status: "green", position: { x: 310, y }, focus: interfaceFocus, detail: `${required.serviceId} · ${required.requestType} → ${required.responseType}` });
     edges.push({ id: `${artifact.service.id}:requires:${required.id}`, source: artifact.service.id, target: required.id, kind: "requires", label: "requires", status: "green" });
     y += 130;
   }
@@ -110,7 +126,7 @@ export function adaptServiceTopology(
         focus: focus("repo", `file:${candidatePath}`, fingerprint, candidatePath),
         nodeId: `repo:file:${candidatePath}`,
         confidence: 1,
-        reason: "declared implementation source",
+        reason: item.domain === "interface" ? "declared protobuf interface source" : "Bazel-owned implementation source",
       }],
     });
   }
@@ -120,7 +136,7 @@ export function adaptServiceTopology(
     { id: "provided-interfaces", title: "Provided", kind: "list", priority: 2, value: artifact.providedInterfaces.map((item) => `${item.name}: ${item.requestType} → ${item.responseType}`), provenance },
     { id: "required-interfaces", title: "Required", kind: "list", priority: 3, value: artifact.requiredInterfaces.map((item) => `${item.name}: ${item.requestType} → ${item.responseType}`), provenance },
     { id: "source-paths", title: "Implementation sources", kind: "list", priority: 4, value: artifact.implementationPaths, provenance },
-    { id: "artifact", title: "Topology artifact", kind: "status", priority: 5, value: `${artifactUri} · sha256:${buildId.slice(0, 12)}`, provenance },
+    { id: "artifact", title: "Topology artifact", kind: "status", priority: 5, value: `${artifactUri} · artifact sha256:${buildId.slice(0, 12)} · inputs sha256:${artifact.inputDigest.slice(0, 12)}`, provenance },
     { id: "deployment", title: "Deployment", kind: "status", priority: 6, value: "not configured", provenance: { sourceKind: "repo", uri: `repo://${MANIFEST_PATH}`, version: fingerprint, observedAt } },
   ];
   return {

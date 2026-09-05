@@ -1,6 +1,6 @@
 // @vitest-environment node
 import { execFileSync } from "node:child_process";
-import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, rename, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
@@ -45,5 +45,14 @@ describe("working-world fingerprint", () => {
     const root = await repository();
     await writeFile(join(root, "untracked.txt"), "same\n", "utf8");
     expect(await computeWorkingWorldFingerprint(root)).toBe(await computeWorkingWorldFingerprint(root));
+  });
+
+  it("handles spaces and rename-like delete/add changes without Git config dependence", async () => {
+    const root = await repository();
+    const clean = await computeWorkingWorldFingerprint(root);
+    await rename(join(root, "tracked.txt"), join(root, "renamed source.txt"));
+    const renamed = await computeWorkingWorldFingerprint(root);
+    expect(renamed).not.toBe(clean);
+    expect(renamed).toBe(await computeWorkingWorldFingerprint(root));
   });
 });

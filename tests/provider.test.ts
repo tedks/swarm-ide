@@ -7,8 +7,8 @@ import { ServiceTopologyArtifactSchema, type ServiceTopologyArtifact } from "../
 const artifact: ServiceTopologyArtifact = {
   schemaVersion: 1,
   service: { id: "service:fraud-check", displayName: "FraudCheck" },
-  providedInterfaces: [{ id: "interface:fraud-check.assess", name: "Assess", requestType: "FraudAssessmentRequest", responseType: "FraudAssessmentDecision" }],
-  requiredInterfaces: [{ id: "interface:payments.authorize", name: "Payments.Authorize", serviceId: "service:payments", requestType: "PaymentAuthorizationRequest", responseType: "PaymentAuthorizationDecision" }],
+  providedInterfaces: [{ id: "interface:fraud-check.assess", name: "Assess", requestType: "checkout.fraud.v1.FraudAssessmentRequest", responseType: "checkout.fraud.v1.FraudAssessmentDecision" }],
+  requiredInterfaces: [{ id: "interface:payments.authorize", name: "Payments.Authorize", serviceId: "service:payments", requestType: "checkout.payments.v1.PaymentAuthorizationRequest", responseType: "checkout.payments.v1.PaymentAuthorizationDecision" }],
   owningTarget: "//examples/checkout-world/services/fraudcheck:fraudcheck_sources",
   implementationPaths: [
     "examples/checkout-world/services/fraudcheck/fraudcheck.proto",
@@ -21,11 +21,15 @@ const artifact: ServiceTopologyArtifact = {
   inputDigest: "d".repeat(64),
 };
 
-function dependencies(fingerprints: string[], build: () => Promise<void> = async () => undefined): ProviderDependencies {
+function dependencies(
+  fingerprints: string[],
+  build: () => Promise<void> = async () => undefined,
+  readArtifact: ProviderDependencies["readArtifact"] = async () => ({ bytes: Buffer.from(JSON.stringify(artifact)), artifact }),
+): ProviderDependencies {
   return {
     fingerprint: async () => fingerprints.shift() ?? (() => { throw new Error("unexpected fingerprint request"); })(),
     build: async () => build(),
-    readArtifact: async () => ({ bytes: Buffer.from(JSON.stringify(artifact)), artifact }),
+    readArtifact,
     now: () => "2026-09-05T12:00:00.000Z",
   };
 }
@@ -68,6 +72,21 @@ describe("real workspace provider", () => {
     const red = published.at(-1)!;
     expect(red.reconciliation.status).toBe("red");
     expect(red.graphs.find((graph) => graph.topologyId === "service")?.nodes.some((node) => node.label === "FraudCheck")).toBe(true);
+    expect(red.mappings.every((mapping) => mapping.from.revisionId === c)).toBe(true);
+  });
+
+  it("turns a first build or artifact failure red without fabricating a topology", async () => {
+    for (const deps of [
+      dependencies(["a".repeat(64), "b".repeat(64)], async () => { throw new Error("bazel failed"); }),
+      dependencies(["a".repeat(64), "b".repeat(64)], undefined, async () => { throw new Error("artifact is malformed"); }),
+    ]) {
+      const provider = await RealWorkspaceProvider.create("/unused", deps);
+      const published: WorkspaceSnapshot[] = [];
+      await provider.startReconciliation((_type, snapshot) => published.push(snapshot));
+      expect(published.map((snapshot) => snapshot.reconciliation.status)).toEqual(["yellow", "red"]);
+      expect(provider.snapshot().reconciliation.lastConsistentFingerprint).toBe("unobserved");
+      expect(provider.snapshot().graphs.find((graph) => graph.topologyId === "service")?.nodes).toEqual([]);
+    }
   });
 
   it("turns red instead of green when the workspace changes during a successful build", async () => {
@@ -77,10 +96,37 @@ describe("real workspace provider", () => {
     expect(provider.snapshot().reconciliation.message).toContain("changed during the build");
   });
 
+  it("never publishes an older overlapping build after a newer attempt completes", async () => {
+    let releaseFirst!: () => void;
+    let markFirstStarted!: () => void;
+    const firstBuild = new Promise<void>((resolve) => { releaseFirst = resolve; });
+    const firstStarted = new Promise<void>((resolve) => { markFirstStarted = resolve; });
+    let buildNumber = 0;
+    const provider = await RealWorkspaceProvider.create("/unused", dependencies(
+      ["a".repeat(64), "b".repeat(64), "c".repeat(64), "c".repeat(64)],
+      async () => {
+        buildNumber += 1;
+        if (buildNumber === 1) { markFirstStarted(); await firstBuild; }
+      },
+    ));
+    const published: WorkspaceSnapshot[] = [];
+    const first = provider.startReconciliation((_type, snapshot) => published.push(snapshot));
+    await firstStarted;
+    await provider.startReconciliation((_type, snapshot) => published.push(snapshot));
+    releaseFirst();
+    await first;
+    expect(provider.snapshot().reconciliation.status).toBe("green");
+    expect(provider.snapshot().reconciliation.epoch).toBe(2);
+    expect(provider.snapshot().reconciliation.inputFingerprint).toBe("c".repeat(64));
+    expect(published.filter((snapshot) => snapshot.reconciliation.status === "green")).toHaveLength(1);
+  });
+
   it("rejects malformed versions, duplicate ids, escaping paths, and missing provided interfaces", () => {
     expect(() => ServiceTopologyArtifactSchema.parse({ ...artifact, schemaVersion: 2 })).toThrow();
     expect(() => ServiceTopologyArtifactSchema.parse({ ...artifact, requiredInterfaces: [{ ...artifact.requiredInterfaces[0]!, id: artifact.providedInterfaces[0]!.id }] })).toThrow("unique");
     expect(() => ServiceTopologyArtifactSchema.parse({ ...artifact, implementationPaths: ["../escape.ts"] })).toThrow("canonical");
     expect(() => ServiceTopologyArtifactSchema.parse({ ...artifact, providedInterfaces: [] })).toThrow();
+    expect(() => ServiceTopologyArtifactSchema.parse({ ...artifact, providedInterfaces: [{ ...artifact.providedInterfaces[0]!, id: "service:not-an-interface" }] })).toThrow();
+    expect(() => ServiceTopologyArtifactSchema.parse({ ...artifact, requiredInterfaces: [{ ...artifact.requiredInterfaces[0]!, serviceId: "service:orders" }] })).toThrow("disagree");
   });
 });

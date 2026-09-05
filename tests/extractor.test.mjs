@@ -18,12 +18,22 @@ async function inputs() {
   await writeFile(manifest, JSON.stringify({
     schemaVersion: 1,
     service: { id: "service:fraud-check", displayName: "FraudCheck" },
-    providedInterfaces: [{ id: "interface:fraud-check.assess", name: "Assess", requestType: "checkout.fraud.v1.Request", responseType: "checkout.fraud.v1.Response" }],
-    requiredInterfaces: [{ id: "interface:payments.authorize", name: "Payments.Authorize", serviceId: "service:payments", requestType: "checkout.payments.v1.Request", responseType: "checkout.payments.v1.Response" }],
+    providedInterfaces: [{ id: "interface:fraud-check.assess", name: "Assess", requestType: "checkout.fraud.v1.FraudAssessmentRequest", responseType: "checkout.fraud.v1.FraudAssessmentDecision" }],
+    requiredInterfaces: [{ id: "interface:payments.authorize", name: "Payments.Authorize", serviceId: "service:payments", requestType: "checkout.payments.v1.PaymentAuthorizationRequest", responseType: "checkout.payments.v1.PaymentAuthorizationDecision" }],
   }));
   await writeFile(implementation, "export const assess = () => true;\n");
-  await writeFile(fraudProto, "syntax = \"proto3\";\n");
-  await writeFile(paymentsProto, "syntax = \"proto3\";\n");
+  await writeFile(fraudProto, `syntax = "proto3";
+package checkout.fraud.v1;
+service FraudCheck { rpc Assess(FraudAssessmentRequest) returns (FraudAssessmentDecision); }
+message FraudAssessmentRequest {}
+message FraudAssessmentDecision {}
+`);
+  await writeFile(paymentsProto, `syntax = "proto3";
+package checkout.payments.v1;
+service Payments { rpc Authorize(PaymentAuthorizationRequest) returns (PaymentAuthorizationDecision); }
+message PaymentAuthorizationRequest {}
+message PaymentAuthorizationDecision {}
+`);
   return { root, manifest, implementation, fraudProto, paymentsProto };
 }
 
@@ -72,5 +82,16 @@ describe("service topology extractor", () => {
     const missing = args(valid, join(valid.root, "missing.json"));
     missing.splice(missing.indexOf("--interface-source"), 2);
     expect(() => execFileSync(process.execPath, missing, { stdio: "pipe" })).toThrow();
+  });
+
+  it("rejects a manifest that drifts from the Bazel-declared protobuf contract", async () => {
+    const input = await inputs();
+    await writeFile(input.fraudProto, `syntax = "proto3";
+package checkout.fraud.v1;
+service FraudCheck { rpc Score(FraudAssessmentRequest) returns (FraudAssessmentDecision); }
+message FraudAssessmentRequest {}
+message FraudAssessmentDecision {}
+`);
+    expect(() => execFileSync(process.execPath, args(input, join(input.root, "drift.json")), { stdio: "pipe" })).toThrow();
   });
 });
