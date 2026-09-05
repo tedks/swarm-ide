@@ -2,7 +2,7 @@ package(default_visibility = ["//visibility:public"])
 
 filegroup(
     name = "dev-port-source",
-    srcs = ["dev-port.mjs"],
+    srcs = ["dev-port.mjs", "dev-update.mjs"],
 )
 
 filegroup(
@@ -19,6 +19,8 @@ filegroup(
     name = "desktop-automation-sources",
     srcs = [
         "desktop-smoke.sh",
+        "desktop-reload-smoke.sh",
+        "desktop-reload-scenario.sh",
         "desktop-topology-scenario.sh",
         "desktop-zoom-scenario.sh",
         "desktop-zoom-smoke.sh",
@@ -50,6 +52,13 @@ sh_test(
     srcs = ["quality.sh"],
     data = ["//:quality_sources"],
     tags = ["local"],
+)
+
+sh_binary(
+    name = "desktop-reload-smoke",
+    srcs = ["desktop-reload-smoke.sh"],
+    data = [":desktop-reload-scenario.sh", ":dev", ":virtual-desktop-run.sh", ":x11-driver-source"],
+    tags = ["manual"],
 )
 
 sh_binary(

@@ -16,8 +16,8 @@ The privileged main process owns a single BrowserWindow; only its trusted top-le
 
 
 - [x] (2026-09-06 00:00Z) Created designated feature worktree from synchronized b513ac0; started both Ditz issues; installed frozen dependencies; traced development, IPC, editor and virtual-display lifecycles.
-- [ ] Implement coherent build dispatch and tested utility-process supervision.
-- [ ] Implement safe document refresh, recovery/resubscription and interrupted-save reconciliation.
+- [x] (2026-09-06 03:23Z) Implemented executable-byte build dispatch, cumulative update revisions, utility supervision and 8 lifecycle tests.
+- [x] (2026-09-06 03:23Z) Implemented guarded document refresh, stale-view retention, file re-observation, navigation persistence and unknown-save disk reconciliation; 131 focused tests pass.
 - [ ] Add virtual reload proof and targeted tests; run final Bazel gates and relevant desktop scenarios.
 - [ ] Push draft PR, council to fixpoint, normal merge after gates, synchronize issues/master, preserve evidence and clean owned resources.
 
@@ -26,10 +26,14 @@ The privileged main process owns a single BrowserWindow; only its trusted top-le
 
 The existing development launcher restarts the entire desktop after every successful bundle, including a core-only edit. The main process ignores core.ready/core.failed and has no recovery after exit. Writes deliberately have no timeout; this is correct for commit-bearing operations but requires explicit unknown-outcome handling after exit. Hosted PR #5 CI had a cold topology timeout despite successful local proof; that recorded waiver is not a waiver for new failures.
 
+React/DOM tests exposed a stale selector-cache result in the installed jsdom version: querying an old class returned the same element after its class had changed. The recovery test now checks the stable file-state element's current class instead. The buffer's disk reconciliation was correct.
+
 ## Decision Log
 
 
 Use a single multi-entry esbuild context and publish only complete successful output sets, comparing bundle contents to choose an action. This avoids independent watchers racing shared dependency edits. Main changes latch a restart-required notice instead of silently replacing the window. Keep the core protocol independent of shell lifecycle: add a bounded validated shell lifecycle channel and generation-tagged transport envelopes. Defer document refresh while source buffers or save outcomes require attention. These are intentionally conservative defaults, chosen on 2026-09-06 by the implementation owner.
+
+User steering refined the intent: preserve everything an edit did not invalidate. Compare executable bytes with external source maps, not bundle timestamps; a comment-only rebuild performs no lifecycle action. Core replacement does not rebuild unrelated derived data automatically; it retains the previous topology as stale until an explicit build reconciles it. Cumulative core/preload revisions in the control snapshot prevent a fast later edit from hiding an earlier required update.
 
 ## Outcomes & Retrospective
 

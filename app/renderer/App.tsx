@@ -18,12 +18,14 @@ import {
   type ViewShellResult,
 } from "../view-shell";
 import { discardStoredZoom, persistZoom, readStoredZoom, stepZoom, zoomShortcut } from "./zoom";
+import type { Lifecycle } from "../lifecycle";
+import { NAVIGATION_KEY, readNavigation, protectsBuffer, staleSnapshot, retainDerived } from "./recovery";
 
 const lensTabs = ["System", "Plan", "Performance", "Refactor"] as const;
 const FRAUDCHECK_IMPLEMENTATION = "examples/checkout-world/services/fraudcheck/fraudcheck.ts";
 const FRAUDCHECK_CONTRACT = "examples/checkout-world/services/fraudcheck/fraudcheck.proto";
 
-type FileStatus = "loading" | "saved" | "dirty" | "saving" | "conflict" | "error";
+type FileStatus = "loading" | "saved" | "dirty" | "saving" | "conflict" | "unknown" | "error";
 
 interface FileTab {
   path: string;
@@ -58,9 +60,15 @@ interface ZoomRequest {
 }
 
 export function App() {
+  const [restoredNavigation] = useState(readNavigation);
+  const [lifecycle, setLifecycle] = useState<Lifecycle | null>(null);
+  const lifecycleRef = useRef<Lifecycle | null>(null);
+  const coreGenerationRef = useRef(0);
+  const lastRecoveryRef = useRef(-1);
+  const [reloadNotice, setReloadNotice] = useState("");
   const [workspace, setWorkspace] = useState<WorkspaceState>(emptyWorkspaceState);
   const [error, setError] = useState<string | null>(null);
-  const [activeLens, setActiveLens] = useState<(typeof lensTabs)[number]>("System");
+  const [activeLens, setActiveLens] = useState<(typeof lensTabs)[number]>(restoredNavigation?.lens ?? "System");
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [commandQuery, setCommandQuery] = useState("");
   const [hmr, setHmr] = useState({ generation: 0, milliseconds: 0 });
@@ -157,9 +165,11 @@ export function App() {
   }, [applyZoom, initialZoom]);
 
   const invoke = useCallback(async (request: CoreRequest) => {
+    const generation = coreGenerationRef.current;
     try {
       if (!window.swarm) throw new Error("Open this interface through the swarm-ide Electron shell");
       const response = await window.swarm.request(request);
+      if (request.type !== "file.write" && (generation !== coreGenerationRef.current || (window.swarmLifecycle && lifecycleRef.current?.core.phase !== "ready"))) return null;
       if (!response.ok) {
         setError(response.error.message);
         return response;
@@ -210,8 +220,8 @@ export function App() {
     // Recording the newest event is enough; openFile will observe it and retry
     // without relying on React's later ref-synchronization effect.
     if (!before || openingFilesRef.current.has(event.path) || event.revision === before.revision) return;
-    if (before.status === "dirty" || before.status === "saving" || before.status === "conflict") {
-      setFileTabs((tabs) => tabs.map((tab) => tab.path === event.path ? { ...tab, status: "conflict", message: "The working file changed; your local buffer is preserved." } : tab));
+    if (protectsBuffer(before)) {
+      setFileTabs((tabs) => tabs.map((tab) => tab.path === event.path ? { ...tab, status: tab.status === "unknown" ? "unknown" : "conflict", message: "The working file changed; your local buffer is preserved." } : tab));
       return;
     }
     if (event.change !== "modified") {
@@ -233,7 +243,7 @@ export function App() {
     const incoming = response.file;
     setFileTabs((tabs) => tabs.map((tab) => {
       if (tab.path !== event.path) return tab;
-      if (tab.status === "dirty" || tab.status === "saving" || tab.status === "conflict" || tab.revision === incoming.revision) return tab;
+      if (protectsBuffer(tab) || tab.revision === incoming.revision) return tab;
       return {
         ...tab,
         content: incoming.content,
@@ -247,30 +257,94 @@ export function App() {
   }, [invoke]);
 
   useEffect(() => {
+    const shell = window.swarmLifecycle;
+    if (!shell) return;
+    let live = true;
+    const receive = (status: Lifecycle) => {
+      if (!live || status.revision <= (lifecycleRef.current?.revision ?? -1)) return;
+      lifecycleRef.current = status;
+      if (coreGenerationRef.current !== status.core.generation) {
+        coreGenerationRef.current = status.core.generation;
+        fileEventsRef.current.clear();
+        setWorkspace((current) => ({ ...current, lastSequence: -1 }));
+      }
+      if (status.core.phase !== "ready") {
+        setWorkspace((current) => current.snapshot ? { ...current, snapshot: staleSnapshot(current.snapshot, status.core.message) } : current);
+      }
+      setLifecycle(status);
+    };
+    const unsubscribe = shell.onStatus(receive);
+    void shell.status().then(receive).catch(() => setReloadNotice("Lifecycle bridge unavailable; automatic document refresh disabled."));
+    return () => { live = false; unsubscribe(); };
+  }, []);
+
+  useEffect(() => {
     const bridge = window.swarm;
     if (!bridge) {
       setError("Open this interface through the swarm-ide Electron shell");
       return;
     }
     const unsubscribe = bridge.onEvent((event) => {
+      if (window.swarmLifecycle && lifecycleRef.current?.core.phase !== "ready") return;
       if (event.type === "file.changed") {
         void reloadObservedFile(event);
       } else {
-        setWorkspace((current) => applyCoreEvent(current, event));
+        setWorkspace((current) => {
+          const next = applyCoreEvent(current, event);
+          return next.snapshot ? { ...next, snapshot: retainDerived(current.snapshot, next.snapshot) } : next;
+        });
       }
     });
+    return unsubscribe;
+  }, [reloadObservedFile]);
+
+  useEffect(() => {
+    if (window.swarmLifecycle && lifecycle?.core.phase !== "ready") return;
+    const bridge = window.swarm;
+    if (!bridge) return;
+    let live = true;
+    const generation = coreGenerationRef.current;
+    const recovered = lastRecoveryRef.current >= 0 && lastRecoveryRef.current !== generation;
+    lastRecoveryRef.current = generation;
+    if (recovered) {
+      fileEventsRef.current.clear();
+      openingFilesRef.current.clear();
+      for (const path of desiredFilesRef.current) openGenerationsRef.current.set(path, (openGenerationsRef.current.get(path) ?? 0) + 1);
+    }
     void bridge.request({ type: "workspace.snapshot", requestId: requestId(), protocolVersion: PROTOCOL_VERSION }).then((response) => {
+      if (!live || coreGenerationRef.current !== generation) return;
       if (!response.ok) {
         setError(response.error.message);
         return;
       }
       setWorkspace((current) => {
         if (current.snapshot && response.sequence <= current.lastSequence) return current;
-        return loadSnapshot(response.snapshot, response.sequence);
+        return loadSnapshot(retainDerived(current.snapshot, response.snapshot), response.sequence);
       });
+      if (recovered) {
+        const oldFocus = workspaceRef.current.snapshot?.focus;
+        if (oldFocus?.path) void invoke({ type: "focus.select", requestId: requestId(), protocolVersion: PROTOCOL_VERSION, focus: { ...oldFocus, revisionId: response.snapshot.revisions.working.id } });
+        for (const path of desiredFilesRef.current) {
+          void (async () => {
+            const watch = await invoke({ type: "file.watch", requestId: requestId(), protocolVersion: PROTOCOL_VERSION, path });
+            if (!live || coreGenerationRef.current !== generation || !desiredFilesRef.current.has(path)) return;
+            const fileResponse = watch?.ok ? await invoke({ type: "file.read", requestId: requestId(), protocolVersion: PROTOCOL_VERSION, path }) : null;
+            if (!live || coreGenerationRef.current !== generation || !desiredFilesRef.current.has(path)) return;
+            setFileTabs((tabs) => tabs.map((tab) => {
+              if (tab.path !== path) return tab;
+              if (!fileResponse?.ok || fileResponse.file?.kind !== "read") return { ...tab, status: protectsBuffer(tab) ? "conflict" : "error", message: "Core recovered, but source could not be reconciled; buffer preserved." };
+              const file = fileResponse.file;
+              const latest = fileEventsRef.current.get(path);
+              if (latest && latest.revision !== file.revision) return tab;
+              if (protectsBuffer(tab)) return { ...tab, status: tab.status === "unknown" ? "unknown" : tab.revision === file.revision ? "dirty" : "conflict", message: "Core recovered; local buffer preserved. Reconcile an uncertain save before retrying." };
+              return { ...tab, content: file.content, savedContent: file.content, revision: file.revision, status: "saved", message: "Source observation restored", flash: null };
+            }));
+          })();
+        }
+      }
     }).catch((cause) => setError(cause instanceof Error ? cause.message : "Could not open the working world"));
-    return unsubscribe;
-  }, [reloadObservedFile]);
+    return () => { live = false; };
+  }, [lifecycle?.core.generation, lifecycle?.core.phase, invoke]);
 
   const openFile = useCallback(async (path: string, coordinateFocus = true) => {
     if (coordinateFocus) activateFile(path);
@@ -324,7 +398,7 @@ export function App() {
 
   const closeFile = useCallback((path: string) => {
     const tab = fileTabsRef.current.find((candidate) => candidate.path === path);
-    if (tab && (tab.content !== tab.savedContent || tab.status === "saving" || tab.status === "conflict")) {
+    if (tab && protectsBuffer(tab)) {
       setFileTabs((tabs) => tabs.map((candidate) => candidate.path === path ? { ...candidate, message: "Save or reload this buffer before closing it." } : candidate));
       return;
     }
@@ -346,6 +420,7 @@ export function App() {
   }, [activateFile, invoke, showSurface]);
 
   const saveFile = useCallback(async (path: string) => {
+    if (window.swarmLifecycle && lifecycleRef.current?.core.phase !== "ready") return;
     const tab = fileTabsRef.current.find((candidate) => candidate.path === path);
     if (!tab || !tab.revision || tab.status !== "dirty" || savesInFlightRef.current.has(path)) return;
     const savedContent = tab.content;
@@ -356,7 +431,8 @@ export function App() {
     savesInFlightRef.current.delete(path);
     if (!response?.ok || !response.file || response.file.kind !== "write") {
       const conflict = response && !response.ok && response.error.code === "REVISION_CONFLICT";
-      setFileTabs((tabs) => tabs.map((candidate) => candidate.path === path ? { ...candidate, status: conflict ? "conflict" : candidate.content !== candidate.savedContent ? "dirty" : "error", message: `${response && !response.ok ? response.error.message : "Save failed"}; your buffer is preserved${conflict ? "" : " and can be retried"}.` } : candidate));
+      const unknown = !response || (!response.ok && response.error.code === "WRITE_OUTCOME_UNKNOWN");
+      setFileTabs((tabs) => tabs.map((candidate) => candidate.path === path ? { ...candidate, status: unknown ? "unknown" : conflict ? "conflict" : candidate.content !== candidate.savedContent ? "dirty" : "error", message: unknown ? "Save outcome unknown; buffer preserved. Check disk before retrying; no write will be replayed." : `${response && !response.ok ? response.error.message : "Save failed"}; your buffer is preserved${conflict ? "" : " and can be retried"}.` } : candidate));
       return;
     }
     const write = response.file;
@@ -379,7 +455,7 @@ export function App() {
 
   const reloadFile = useCallback(async (path: string) => {
     const before = fileTabsRef.current.find((candidate) => candidate.path === path);
-    if (!before) return;
+    if (!before || savesInFlightRef.current.has(path)) return;
     const openGeneration = openGenerationsRef.current.get(path);
     const eventSequence = fileEventsRef.current.get(path)?.sequence ?? 0;
     const reloadGeneration = (reloadGenerationsRef.current.get(path) ?? 0) + 1;
@@ -393,9 +469,45 @@ export function App() {
       if (tab.path !== path) return tab;
       if (tab.content !== before.content || tab.revision !== before.revision) return { ...tab, message: "Reload completed after this buffer changed; the newer buffer was preserved." };
       if (latestEvent && latestEvent.sequence > eventSequence && latestEvent.revision !== file.revision) return tab;
+      if (tab.status === "unknown") {
+        if (file.content === tab.content) return { ...tab, savedContent: file.content, revision: file.revision, status: "saved", message: "Disk confirms the buffer was saved; no write replayed", flash: null };
+        if (file.content === tab.savedContent) return { ...tab, revision: file.revision, status: "dirty", message: "Disk still has the previous content; buffer preserved and explicit retry is now safe", flash: null };
+        return { ...tab, status: "conflict", message: "Disk differs from both the saved content and this buffer. Buffer preserved; resolve the conflict explicitly." };
+      }
       return { ...tab, content: file.content, savedContent: file.content, revision: file.revision, status: "saved", message: "Reloaded the canonical working file", flash: null };
     }));
   }, [invoke]);
+
+  const navigationRestoredRef = useRef(false);
+  useEffect(() => {
+    if (!workspace.snapshot || navigationRestoredRef.current) return;
+    navigationRestoredRef.current = true;
+    if (!restoredNavigation) return;
+    for (const path of restoredNavigation.paths) void openFile(path, false);
+    showSurface(restoredNavigation.activeSurface);
+    if (restoredNavigation.focus) void invoke({ type: "focus.select", requestId: requestId(), protocolVersion: PROTOCOL_VERSION, focus: { ...restoredNavigation.focus, revisionId: workspace.snapshot.revisions.working.id } });
+  }, [workspace.snapshot, restoredNavigation, openFile, showSurface, invoke]);
+
+  useEffect(() => {
+    const unload = (event: BeforeUnloadEvent) => {
+      try {
+        if (fileTabsRef.current.some(protectsBuffer) || savesInFlightRef.current.size) throw new Error("Save or reconcile buffers before reloading.");
+        window.sessionStorage.setItem(NAVIGATION_KEY, JSON.stringify({ paths: [...desiredFilesRef.current], activeSurface: activeSurfaceRef.current, lens: activeLens, focus: workspaceRef.current.snapshot?.focus ?? null }));
+      } catch {
+        event.preventDefault();
+        event.returnValue = "";
+        setReloadNotice("Reload deferred: preserve or reconcile your buffers first (navigation storage must also be available).");
+      }
+    };
+    window.addEventListener("beforeunload", unload);
+    return () => window.removeEventListener("beforeunload", unload);
+  }, [activeLens]);
+
+  useEffect(() => {
+    if (lifecycle?.reload !== "pending" || lifecycle.core.phase !== "ready") return;
+    if (fileTabs.some(protectsBuffer) || savesInFlightRef.current.size) return;
+    void window.swarmLifecycle?.reload(lifecycle.revision).catch(() => setReloadNotice("Preload refresh could not be applied; current document retained."));
+  }, [lifecycle, fileTabs]);
 
   useEffect(() => {
     const listener = (event: KeyboardEvent) => {
@@ -435,6 +547,9 @@ export function App() {
   const activeFile = fileTabs.find((tab) => tab.path === activeSurface);
   const reconciliationRunning = snapshot?.jobs.some((job) => job.kind === "build" && job.status === "running") ?? false;
   const title = snapshot ? statusLabel(snapshot.reconciliation.status) : "Loading";
+  const coreUnavailable = Boolean(window.swarmLifecycle && lifecycle?.core.phase !== "ready");
+  const lifecycleNotice = lifecycle?.reload === "pending" ? "Preload refresh pending — save or reconcile buffers to apply it." : lifecycle?.core.phase !== "ready" ? lifecycle?.core.message : lifecycle?.notice;
+  const lifecycleTitle = import.meta.env.DEV && lifecycle ? ` — Core ${lifecycle.core.generation}:${lifecycle.core.phase} — Doc ${Math.round(performance.timeOrigin)} — Reload ${lifecycle.reload}${lifecycle.notice.includes("Build failed") ? " — Build failed" : ""}${lifecycle.notice.includes("restart required") ? " — Restart required" : ""}` : "";
   const zoomTitle = zoomPending ? "Zoom applying" : zoomPercent === null ? "Zoom unknown" : `Zoom ${zoomPercent}%${import.meta.env.DEV ? `@${zoomOperation}` : ""}`;
   useEffect(() => {
     if (!selectedConnection || !snapshot) return;
@@ -451,8 +566,8 @@ export function App() {
     const files = ` — ${fileTabs.length} file tab${fileTabs.length === 1 ? "" : "s"}`;
     const palette = paletteOpen ? " — Palette open" : "";
     const hmrSuffix = hmr.generation ? ` — HMR ${hmr.generation}:${hmr.milliseconds}ms` : "";
-    document.title = `swarm-ide — ${title}${focus}${revision}${fraudVisible}${surface}${files}${palette} — ${zoomTitle}${hmrSuffix}`;
-  }, [activeFile?.status, activeSurface, fileTabs.length, hmr, paletteOpen, snapshot, title, zoomTitle]);
+    document.title = `swarm-ide — ${title}${focus}${revision}${fraudVisible}${surface}${files}${palette} — ${zoomTitle}${hmrSuffix}${lifecycleTitle}`;
+  }, [activeFile?.status, activeSurface, fileTabs.length, hmr, paletteOpen, snapshot, title, zoomTitle, lifecycleTitle]);
 
   const selectFocus = useCallback((focus: FocusRef) => {
     setSelectedConnection(null);
@@ -475,7 +590,7 @@ export function App() {
     { label: "Open FraudCheck protobuf contract", detail: FRAUDCHECK_CONTRACT, run: () => { setPaletteOpen(false); void openFile(FRAUDCHECK_CONTRACT); } },
   ].filter((command) => command.label.toLowerCase().includes(commandQuery.toLowerCase())), [commandQuery, openFile, reconcile, showSurface]);
 
-  if (!snapshot) return <main className="loading-screen"><div className="loading-mark hmr-probe" />Opening the working world…{error ? <strong>{error}</strong> : null}</main>;
+  if (!snapshot) return <main className="loading-screen"><div className="loading-mark hmr-probe" />Opening the working world…{error ? <strong>{error}</strong> : null}<small>{lifecycleNotice}</small></main>;
   return (
     <main className="workbench">
       <header className="topbar">
@@ -501,23 +616,27 @@ export function App() {
         <div className="field-toolbar">
           <div><span className="eyebrow">central navigation</span><strong>{activeFile?.path ?? focusLabel(snapshot.focus)}</strong><small>{activeFile ? `${activeFile.status} · ${activeFile.message}` : `${snapshot.focus.domain} · ${snapshot.focus.revisionId.slice(0, 12)}`}</small></div>
           <div className="world-chips"><span>working <b>{snapshot.revisions.working.id.slice(0, 8)}</b></span><span>built <b>{snapshot.revisions.built.id.slice(0, 8) || "—"}</b></span><span>deployed <b>{snapshot.revisions.deployed.environment}</b></span></div>
-          <button id="reconcile-success" className="build-button" onClick={() => void reconcile()} disabled={reconciliationRunning}>▶ Build topology</button>
+          <button id="reconcile-success" className="build-button" onClick={() => void reconcile()} disabled={reconciliationRunning || coreUnavailable}>▶ Build topology</button>
         </div>
         <nav className="surface-tabs" aria-label="Central workspace tabs">
           <button className={activeSurface === "graphs" ? "active" : ""} onClick={() => showSurface("graphs")}><span>⌘</span> System graphs</button>
           {fileTabs.map((tab) => <div key={tab.path} className={`surface-tab ${activeSurface === tab.path ? "active" : ""}`}><button className="surface-tab-main" onClick={() => activateFile(tab.path)} title={tab.path}><span className={`tab-state status-${tab.status}`}>{tab.status === "dirty" ? "●" : tab.status === "saving" ? "◌" : tab.status === "conflict" || tab.status === "error" ? "!" : "◇"}</span>{tab.path.split("/").at(-1)}</button><button className="surface-tab-close" aria-label={`Close ${tab.path}`} onClick={() => closeFile(tab.path)}>×</button></div>)}
         </nav>
         <div className={`graphs-grid ${activeFile ? "is-sidebar" : activeSurface === "graphs" ? "is-active" : "is-hidden"}`}>{snapshot.graphs.map((graph) => <GraphPane key={graph.topologyId} graph={graph} focus={snapshot.focus} mappings={snapshot.mappings} interfaceZoom={zoomPercent} onFocus={selectFocus} onConnectionFocus={selectConnection} onReconcile={() => { void reconcile(); }} reconciliationRunning={reconciliationRunning} />)}</div>
-        {activeFile ? <section className={`source-surface ${activeFile.status === "conflict" || activeFile.status === "error" ? "has-banner" : ""}`}>
-          <header><div><span className="eyebrow">source observatory</span><strong>{activeFile.path}</strong></div><div className={`file-state file-${activeFile.status}`}><i />{activeFile.status}<button onClick={() => void saveFile(activeFile.path)} disabled={activeFile.status !== "dirty"}>Save <kbd>Ctrl S</kbd></button></div></header>
+        {activeFile ? <section className={`source-surface ${["conflict", "unknown", "error"].includes(activeFile.status) ? "has-banner" : ""}`}>
+          <header><div><span className="eyebrow">source observatory</span><strong>{activeFile.path}</strong></div><div className={`file-state file-${activeFile.status}`}><i />{activeFile.status}<button onClick={() => void saveFile(activeFile.path)} disabled={activeFile.status !== "dirty" || coreUnavailable}>Save <kbd>Ctrl S</kbd></button></div></header>
           {activeFile.status === "loading" ? <div className="source-message">Loading the canonical working file…</div> : <>
-            {activeFile.status === "conflict" || activeFile.status === "error" ? <div className="source-message source-error source-banner"><span>{activeFile.message}</span><button onClick={() => void reloadFile(activeFile.path)}>Reload disk</button></div> : null}
-            {activeFile.revision ? <EditorPane key={activeFile.path} content={activeFile.content} flash={activeFile.flash} onChange={(content) => setFileTabs((tabs) => tabs.map((tab) => {
+            {["conflict", "unknown", "error"].includes(activeFile.status) ? <div className="source-message source-error source-banner"><span>{activeFile.message}</span><button disabled={coreUnavailable || savesInFlightRef.current.has(activeFile.path)} onClick={() => void reloadFile(activeFile.path)}>{activeFile.status === "unknown" ? "Check disk" : "Reload disk"}</button></div> : null}
+            {activeFile.revision ? <EditorPane key={activeFile.path} content={activeFile.content} flash={activeFile.flash} onChange={(content) => {
+              const update = (tab: FileTab): FileTab => {
               if (tab.path !== activeFile.path) return tab;
-              const unresolved = tab.status === "conflict" || tab.status === "error";
+              const unresolved = ["conflict", "unknown", "error"].includes(tab.status);
               const status = unresolved ? tab.status : tab.status === "saving" ? "saving" : content === tab.savedContent ? "saved" : "dirty";
               return { ...tab, content, status, message: unresolved ? tab.message : content === tab.savedContent ? "Watching the working file" : "Local buffer differs from disk", flash: null };
-            }))} onSave={() => void saveFile(activeFile.path)} /> : <div className="source-message source-error">{activeFile.message}</div>}
+              };
+              fileTabsRef.current = fileTabsRef.current.map(update);
+              setFileTabs((tabs) => tabs.map(update));
+            }} onSave={() => void saveFile(activeFile.path)} /> : <div className="source-message source-error">{activeFile.message}</div>}
           </>}
         </section> : null}
       </section>
@@ -538,6 +657,7 @@ export function App() {
       </section>
 
       {paletteOpen ? <div className="palette-scrim" onMouseDown={() => setPaletteOpen(false)}><section className="command-palette" onMouseDown={(event) => event.stopPropagation()}><header><span>⌕</span><input ref={commandInput} value={commandQuery} onChange={(event) => setCommandQuery(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter" && commands[0]) void commands[0].run(); }} placeholder="Navigate or apply intelligence…" /><kbd>esc</kbd></header><div className="command-results">{commands.map((command) => <button key={command.label} onClick={() => void command.run()}><span>{command.label}<small>{command.detail}</small></span><kbd>↵</kbd></button>)}</div><footer><span>Current focus: {focusLabel(snapshot.focus)}</span><span>scope · action · artifact</span></footer></section></div> : null}
+      {reloadNotice || lifecycleNotice ? <div className="lifecycle-notice" role="status">{reloadNotice || lifecycleNotice}</div> : null}
       {error ? <div className="error-toast">{error}</div> : null}
       {zoomNotice ? <div className="zoom-toast" role="status">{zoomNotice}</div> : null}
     </main>

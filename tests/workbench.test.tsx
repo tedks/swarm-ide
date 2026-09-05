@@ -10,6 +10,7 @@ import {
   type ViewShellResult,
 } from "../app/view-shell";
 import { INTERFACE_ZOOM_STORAGE_KEY } from "../app/renderer/zoom";
+import type { Lifecycle, LifecycleBridge } from "../app/lifecycle";
 import { dirtySnapshot, initialSnapshot, paymentsFileFocus } from "../fixtures/world";
 
 vi.mock("../app/renderer/GraphPane", () => ({
@@ -22,6 +23,87 @@ vi.mock("../app/renderer/GraphPane", () => ({
 }));
 
 import { App } from "../app/renderer/App";
+describe("selective live recovery", () => {
+  function shell() {
+    let state: Lifecycle = { revision: 1, core: { generation: 1, phase: "ready", message: "Ready" }, reload: "idle", notice: "" };
+    let listener: ((status: Lifecycle) => void) | undefined;
+    const bridge: LifecycleBridge = {
+      status: async () => state,
+      onStatus: (next) => { listener = next; return () => { listener = undefined; }; },
+      reload: vi.fn(async () => state),
+    };
+    Object.defineProperty(window, "swarmLifecycle", { configurable: true, value: bridge });
+    return { bridge, update: (patch: Partial<Lifecycle>) => act(() => { state = { ...state, ...patch, revision: state.revision + 1 }; listener?.(state); }) };
+  }
+  function files(writeResult?: (input: CoreRequest) => Promise<CoreResponse>) {
+    const path = "services/payments/payments.ts";
+    const base = initialSnapshot(paymentsFileFocus);
+    let snapshot: WorkspaceSnapshot = { ...base, widgets: [{ id: "source-paths", title: "Implementation sources", kind: "list", priority: 0, value: [path], provenance: base.widgets[0]!.provenance }] };
+    let listener: ((event: CoreEvent | FileEvent) => void) | undefined;
+    let disk = "base\n";
+    const request = vi.fn(async (input: CoreRequest): Promise<CoreResponse> => {
+      if (input.type === "file.write" && writeResult) return writeResult(input);
+      return { protocolVersion: PROTOCOL_VERSION, requestId: input.requestId, ok: true, sequence: 0, snapshot, ...(input.type === "file.read" ? { file: { kind: "read" as const, path, content: disk, revision: (disk === "base\n" ? "a" : "b").repeat(64), size: disk.length } } : {}) };
+    });
+    Object.defineProperty(window, "swarm", { configurable: true, value: { request, onEvent: (next: typeof listener) => { listener = next; return () => undefined; } } });
+    installViewBridge();
+    return { request, path, disk: (text: string) => { disk = text; }, event: (sequence: number) => act(() => listener?.({ protocolVersion: PROTOCOL_VERSION, type: "workspace.changed", sequence, epoch: snapshot.reconciliation.epoch, emittedAt: "2026-09-06T00:00:00.000Z", snapshot })) };
+  }
+  async function open(path: string) {
+    await screen.findByText("Implementation sources");
+    fireEvent.click(screen.getAllByRole("button", { name: path })[0]!);
+    await waitFor(() => expect(document.querySelector(".cm-content")?.textContent).toContain("base"));
+    return EditorView.findFromDOM(document.querySelector(".cm-editor")!)!;
+  }
+  it("defers preload refresh and keyboard unload for a dirty buffer; a clean document can refresh", async () => {
+    const lifecycle = shell(); const source = files();
+    render(<App />); const editor = await open(source.path);
+    act(() => editor.dispatch({ changes: { from: 0, insert: "mine\n" } }));
+    lifecycle.update({ reload: "pending" });
+    expect(lifecycle.bridge.reload).not.toHaveBeenCalled();
+    const unload = new Event("beforeunload", { cancelable: true });
+    act(() => window.dispatchEvent(unload));
+    expect(unload.defaultPrevented).toBe(true);
+    expect(editor.state.doc.toString()).toBe("mine\nbase\n");
+    act(() => editor.dispatch({ changes: { from: 0, to: 5, insert: "" } }));
+    await waitFor(() => expect(lifecycle.bridge.reload).toHaveBeenCalled());
+  });
+  it("keeps the same editor and dirty text across core replacement, re-watches files and accepts reset sequences", async () => {
+    const lifecycle = shell(); const source = files();
+    render(<App />); const editor = await open(source.path);
+    source.event(50);
+    act(() => editor.dispatch({ changes: { from: 0, insert: "mine\n" } }));
+    lifecycle.update({ core: { generation: 1, phase: "unavailable", message: "Disconnected; prior data stale" } });
+    expect(screen.getAllByText(/Disconnected; prior data stale/).length).toBeGreaterThan(0);
+    lifecycle.update({ core: { generation: 2, phase: "ready", message: "Recovered" } });
+    await waitFor(() => expect(source.request.mock.calls.filter(([r]) => r.type === "file.watch")).toHaveLength(2));
+    expect(EditorView.findFromDOM(document.querySelector(".cm-editor")!)).toBe(editor);
+    expect(editor.state.doc.toString()).toBe("mine\nbase\n");
+    source.event(1);
+    await waitFor(() => expect(document.title).toContain("Consistent"));
+  });
+  it.each(["base\n", "base\nmine\n", "someone else\n"])("never replays an unknown save; reconciles disk %j without overwriting the buffer", async (disk) => {
+    const lifecycle = shell();
+    const source = files(async (input) => ({ protocolVersion: PROTOCOL_VERSION, requestId: input.requestId, ok: false, error: { code: "WRITE_OUTCOME_UNKNOWN", message: "Core exited after possible rename" } }));
+    render(<App />); const editor = await open(source.path);
+    act(() => editor.dispatch({ changes: { from: editor.state.doc.length, insert: "mine\n" } }));
+    fireEvent.keyDown(editor.contentDOM, { key: "s", ctrlKey: true });
+    await screen.findByRole("button", { name: "Check disk" });
+    lifecycle.update({ reload: "pending" });
+    expect(lifecycle.bridge.reload).not.toHaveBeenCalled();
+    // Further typing must not clear the unknown-outcome guard.
+    act(() => editor.dispatch({ changes: { from: editor.state.doc.length, insert: "x" } }));
+    act(() => editor.dispatch({ changes: { from: editor.state.doc.length - 1, to: editor.state.doc.length, insert: "" } }));
+    fireEvent.keyDown(editor.contentDOM, { key: "s", ctrlKey: true });
+    expect(source.request.mock.calls.filter(([r]) => r.type === "file.write")).toHaveLength(1);
+    source.disk(disk);
+    fireEvent.click(screen.getByRole("button", { name: "Check disk" }));
+    await waitFor(() => expect(document.querySelector(".file-state")?.classList.contains("file-unknown")).toBe(false));
+    expect(editor.state.doc.toString()).toBe("base\nmine\n");
+    expect(source.request.mock.calls.filter(([r]) => r.type === "file.write")).toHaveLength(1);
+    expect(document.querySelector(disk === "base\n" ? ".file-dirty" : disk === "base\nmine\n" ? ".file-saved" : ".file-conflict")).toBeTruthy();
+  });
+});
 
 beforeAll(() => {
   Object.defineProperty(Range.prototype, "getClientRects", { configurable: true, value: () => [] });
@@ -31,8 +113,10 @@ beforeAll(() => {
 afterEach(() => {
   cleanup();
   window.localStorage.clear();
+  window.sessionStorage.clear();
   Reflect.deleteProperty(window, "swarm");
   Reflect.deleteProperty(window, "swarmView");
+  Reflect.deleteProperty(window, "swarmLifecycle");
   vi.restoreAllMocks();
 });
 
