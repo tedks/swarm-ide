@@ -1,0 +1,20 @@
+id: document-refresh-editor-viewstate
+title: Preserve editor and graph view state across document refresh
+desc: The stable-window change preserves buffers and pending writes through HMR, and
+  paths, focus, lens, interface zoom and stale topology over safe document refresh.
+  Editor cursor/scroll/undo history and per-graph pan/zoom are not yet checkpointed
+  across a required preload/document refresh. Add bounded view-state snapshots when
+  useful; preserve the existing dirty and in-flight-write guards.
+type: feature
+component: tooling
+release:
+reporter: Ted Smith <tedks@riseup.net>
+status: unstarted
+disposition:
+creation_time: 2026-09-05T23:41:46-00:00
+references: []
+log_events:
+- time: 2026-09-05T23:41:46-00:00
+  who: Ted Smith
+  what: created
+  comment: ""
