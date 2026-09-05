@@ -1,0 +1,20 @@
+id: scalable-working-world-observer
+title: Replace working-world fingerprint polling with scalable filesystem hints
+desc: The first real provider uses a globally ordered one-second Git fingerprint poll
+  as the correctness fallback so unopened and newly added files revoke green truth.
+  Replace the fallback with a scalable monorepo-capable observer (for example Watchman
+  or Git fsmonitor integration) while retaining global generation ordering, bounded
+  failure behavior, and periodic audit reconciliation.
+type: task
+component: default
+release:
+reporter: Ted Smith <tedks@riseup.net>
+status: unstarted
+disposition:
+creation_time: 2026-09-05T20:31:53-00:00
+references: []
+log_events:
+- time: 2026-09-05T20:31:53-00:00
+  who: Ted Smith
+  what: created
+  comment: ""
