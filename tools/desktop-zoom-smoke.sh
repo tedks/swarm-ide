@@ -115,6 +115,8 @@ restore_window() {
   set +e
   activate_window >/dev/null 2>&1 || return 0
   xdotool key --clearmodifiers Escape >/dev/null 2>&1
+  # Restoration deliberately uses the same acknowledged path as the test; on
+  # a wedged renderer the EXIT trap can therefore take roughly 30 seconds.
   apply_zoom_shortcut ctrl+0 100 >/dev/null 2>&1
   case "$original_zoom" in
     80) apply_zoom_shortcut ctrl+minus 90 >/dev/null 2>&1; apply_zoom_shortcut ctrl+minus 80 >/dev/null 2>&1 ;;
@@ -136,6 +138,8 @@ capture_window() {
 }
 
 activate_window
+# Fail closed if the renderer cannot first confirm its current level. Ctrl+0
+# cannot distinguish a recovered bridge from a stale title in that state.
 wait_for_zoom_ready
 original_zoom=$(zoom_percent "$(xdotool getwindowname "$window_id")")
 xdotool key --clearmodifiers Escape

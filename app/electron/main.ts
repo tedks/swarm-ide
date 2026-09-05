@@ -213,7 +213,7 @@ ipcMain.handle(REQUEST_CHANNEL, (event, input: unknown) => {
 ipcMain.handle(VIEW_SHELL_ZOOM_CHANNEL, (event, percent: unknown): ViewShellResult => {
   const senderFrame = event.senderFrame;
   if (!senderFrame || !isAllowedRendererUrl(senderFrame.url) || senderFrame !== mainWindow?.webContents.mainFrame) {
-    return { ok: false, message: "Interface zoom was interrupted by a renderer navigation.", zoomState: "unchanged" };
+    return { ok: false, message: "Interface zoom is unavailable for this renderer frame.", zoomState: "unchanged" };
   }
   if (typeof percent !== "number") {
     return { ok: false, message: "The requested interface zoom level is not allowed.", zoomState: "unchanged" };

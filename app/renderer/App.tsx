@@ -66,7 +66,6 @@ export function App() {
 
   const applyZoom = useCallback(async (percent: InterfaceZoomPercent, persist: boolean, notice: string | null = null) => {
     const request: ZoomRequest = { percent, persist, notice };
-    desiredZoomRef.current = percent;
     const bridge = window.swarmView;
     if (!bridge) {
       zoomPercentRef.current = null;
@@ -75,6 +74,7 @@ export function App() {
       setZoomNotice("Interface zoom is unavailable outside the swarm-ide Electron shell.");
       return false;
     }
+    desiredZoomRef.current = percent;
     if (zoomPendingRef.current) {
       queuedZoomRef.current = request;
       return true;
@@ -84,42 +84,46 @@ export function App() {
     setZoomPending(true);
     let activeRequest: ZoomRequest | null = request;
     let firstRequestSucceeded = false;
-    while (activeRequest) {
-      let result: ViewShellResult;
-      try {
-        result = await bridge.setZoomPercent(activeRequest.percent);
-      } catch {
-        result = {
-          ok: false,
-          message: "The interface zoom bridge failed; the applied zoom level is unknown.",
-          zoomState: "unknown",
-        };
-      }
+    try {
+      while (activeRequest) {
+        let result: ViewShellResult;
+        try {
+          result = await bridge.setZoomPercent(activeRequest.percent);
+        } catch {
+          result = {
+            ok: false,
+            message: "The interface zoom bridge failed; the applied zoom level is unknown.",
+            zoomState: "unknown",
+          };
+        }
 
-      if (!result.ok) {
-        if (result.zoomState === "unknown") {
+        if (!result.ok) {
+          if (result.zoomState === "unknown") {
+            zoomPercentRef.current = null;
+            setZoomPercent(null);
+          }
+          setZoomNotice(result.message);
+        } else if (!isInterfaceZoomPercent(result.percent)) {
           zoomPercentRef.current = null;
           setZoomPercent(null);
+          setZoomNotice("The interface zoom bridge returned an invalid zoom level.");
+        } else {
+          zoomPercentRef.current = result.percent;
+          setZoomPercent(result.percent);
+          setZoomOperation((operation) => operation + 1);
+          setZoomNotice(activeRequest.persist ? persistZoom(rendererStorage(), result.percent) : activeRequest.notice);
+          if (activeRequest === request) firstRequestSucceeded = true;
         }
-        setZoomNotice(result.message);
-      } else if (!isInterfaceZoomPercent(result.percent)) {
-        zoomPercentRef.current = null;
-        setZoomPercent(null);
-        setZoomNotice("The interface zoom bridge returned an invalid zoom level.");
-      } else {
-        zoomPercentRef.current = result.percent;
-        setZoomPercent(result.percent);
-        setZoomOperation((operation) => operation + 1);
-        setZoomNotice(activeRequest.persist ? persistZoom(rendererStorage(), result.percent) : activeRequest.notice);
-        if (activeRequest === request) firstRequestSucceeded = true;
-      }
 
-      activeRequest = queuedZoomRef.current;
+        activeRequest = queuedZoomRef.current;
+        queuedZoomRef.current = null;
+      }
+    } finally {
       queuedZoomRef.current = null;
+      desiredZoomRef.current = zoomPercentRef.current;
+      zoomPendingRef.current = false;
+      setZoomPending(false);
     }
-    desiredZoomRef.current = zoomPercentRef.current;
-    zoomPendingRef.current = false;
-    setZoomPending(false);
     return firstRequestSucceeded;
   }, []);
 
@@ -206,7 +210,7 @@ export function App() {
     ? "Zoom applying"
     : zoomPercent === null
       ? "Zoom unknown"
-      : `Zoom ${zoomPercent}%@${zoomOperation}`;
+      : `Zoom ${zoomPercent}%${import.meta.env.DEV ? `@${zoomOperation}` : ""}`;
   useEffect(() => {
     const focus = snapshot ? ` — ${focusLabel(snapshot.focus)}` : "";
     const revision = snapshot ? ` — ${snapshot.revisions.working.id}` : "";

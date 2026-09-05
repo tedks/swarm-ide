@@ -194,4 +194,16 @@ describe("workbench shell", () => {
     expect(document.activeElement).toBe(zoomInButton);
     expect(zoomInButton.hasAttribute("disabled")).toBe(false);
   });
+
+  it("reports an unknown applied level when the view bridge throws", async () => {
+    installCoreBridge();
+    const bridge: ViewShellBridge = {
+      setZoomPercent: vi.fn(async () => { throw new Error("renderer was destroyed"); }),
+    };
+    Object.defineProperty(window, "swarmView", { configurable: true, value: bridge });
+
+    render(<App />);
+    expect(await screen.findByRole("button", { name: /Current zoom unknown/ })).toBeTruthy();
+    expect(screen.getByText("The interface zoom bridge failed; the applied zoom level is unknown.")).toBeTruthy();
+  });
 });
