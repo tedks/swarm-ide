@@ -20,7 +20,9 @@ filegroup(
         "vitest.config.mts",
     ] + [
         "//tools:dev-port-source",
+        "//tools:electron-runtime-source",
         "//tools:extract-service-topology",
+        "//tools:desktop-automation-sources",
     ],
 )
 

@@ -5,6 +5,31 @@ filegroup(
     srcs = ["dev-port.mjs"],
 )
 
+filegroup(
+    name = "electron-runtime-source",
+    srcs = ["electron-runtime.mjs"],
+)
+
+filegroup(
+    name = "x11-driver-source",
+    srcs = ["x11-driver.sh"],
+)
+
+filegroup(
+    name = "desktop-automation-sources",
+    srcs = [
+        "desktop-smoke.sh",
+        "desktop-topology-scenario.sh",
+        "desktop-zoom-scenario.sh",
+        "desktop-zoom-smoke.sh",
+        "hmr-scenario.sh",
+        "hmr-scenario.test.sh",
+        "measure-hmr.sh",
+        "virtual-desktop-run.sh",
+        "x11-driver.sh",
+    ],
+)
+
 sh_binary(
     name = "dev",
     srcs = ["dev.sh"],
@@ -30,17 +55,77 @@ sh_test(
 sh_binary(
     name = "desktop-smoke",
     srcs = ["desktop-smoke.sh"],
+    data = [
+        ":desktop-topology-scenario.sh",
+        ":dev",
+        ":virtual-desktop-run.sh",
+        ":x11-driver-source",
+    ],
     tags = ["manual"],
 )
 
 sh_binary(
     name = "desktop-zoom-smoke",
     srcs = ["desktop-zoom-smoke.sh"],
+    data = [
+        ":desktop-zoom-scenario.sh",
+        ":dev",
+        ":virtual-desktop-run.sh",
+        ":x11-driver-source",
+    ],
     tags = ["manual"],
+)
+
+sh_test(
+    name = "x11-driver-test",
+    srcs = ["x11-driver.test.sh"],
+    data = [":x11-driver-source"],
+)
+
+sh_test(
+    name = "virtual-desktop-supervisor-test",
+    srcs = ["virtual-desktop-supervisor.test.sh"],
+    data = [
+        ":virtual-desktop-run.sh",
+        ":x11-driver-source",
+    ],
+)
+
+sh_test(
+    name = "hmr-scenario-test",
+    srcs = ["hmr-scenario.test.sh"],
+    data = [":hmr-scenario.sh"],
+)
+
+sh_test(
+    name = "virtual-desktop-smoke-test",
+    srcs = ["virtual-desktop-smoke.test.sh"],
+    data = [":desktop-smoke"],
+    env_inherit = [
+        "DISPLAY",
+        "SWARM_ELECTRON_BIN",
+        "SWARM_ELECTRON_NO_SANDBOX",
+        "SWARM_SOURCE_WORKSPACE",
+        "SWARM_VIRTUAL_DESKTOP_PORT",
+        "XAUTHORITY",
+    ],
+    tags = [
+        "desktop",
+        "exclusive",
+        "local",
+        "no-sandbox",
+    ],
+    timeout = "long",
 )
 
 sh_binary(
     name = "measure-hmr",
     srcs = ["measure-hmr.sh"],
+    data = [
+        ":dev",
+        ":hmr-scenario.sh",
+        ":virtual-desktop-run.sh",
+        ":x11-driver-source",
+    ],
     tags = ["manual"],
 )

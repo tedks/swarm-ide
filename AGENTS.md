@@ -37,9 +37,9 @@ nix develop --command <cmd>
 
 If using direnv, `.envrc` is `use flake`.
 
-The first `nix develop` may download Electron and browser dependencies. The
-desktop automation loop currently targets X11 and reports an explicit error on
-unsupported compositors.
+The first `nix develop` may download Electron and browser dependencies. Desktop
+automation creates and owns a disposable Xvfb/Openbox session; it must never
+target an inherited physical desktop display.
 
 ## Build and test
 
@@ -51,6 +51,8 @@ nix develop --command bazel build //...
 nix develop --command bazel test //...
 nix develop --command bazel run //:dev
 nix develop --command bazel run //tools:desktop-smoke
+nix develop --command bazel run //tools:desktop-zoom-smoke
+nix develop --command bazel run //tools:measure-hmr
 ```
 
 Do not invoke Vite, TypeScript, Vitest, Playwright, Electron, or package-manager

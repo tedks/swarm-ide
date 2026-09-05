@@ -42,4 +42,38 @@ jobs:
         run: nix develop --command bazel build //...
 
       - name: Test
-        run: nix develop --command bazel test //... --test_output=errors
+        env:
+          SWARM_ELECTRON_NO_SANDBOX: "1"
+        run: nix develop --command bazel test //... --test_tag_filters=-desktop --test_output=errors
+
+      - name: Virtual desktop smoke
+        env:
+          DISPLAY: ":0"
+          XAUTHORITY: /tmp/hostile-ambient-xauthority
+          SWARM_SOURCE_WORKSPACE: ${{ github.workspace }}
+          SWARM_VIRTUAL_DESKTOP_PORT: "55174"
+          # GitHub's Nix store cannot provide a root-owned setuid
+          # chrome-sandbox. Electron's renderer API restrictions and context
+          # isolation remain configured, but Chromium's OS sandbox is off.
+          SWARM_ELECTRON_NO_SANDBOX: "1"
+        run: nix develop --command bazel test //tools:virtual-desktop-smoke-test --test_output=streamed --nocache_test_results
+
+      - name: Unpack virtual desktop evidence
+        if: always()
+        run: |
+          evidence="$RUNNER_TEMP/virtual-desktop-evidence"
+          mkdir -p "$evidence"
+          archive="$(find bazel-testlogs/tools/virtual-desktop-smoke-test/test.outputs -name outputs.zip -print -quit 2>/dev/null || true)"
+          if [[ -n "$archive" ]]; then
+            unzip -q "$archive" -d "$evidence"
+          else
+            printf 'No undeclared-output archive was produced. Inspect the job log.\n' >"$evidence/README.txt"
+          fi
+
+      - name: Upload virtual desktop evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: virtual-desktop-evidence
+          path: ${{ runner.temp }}/virtual-desktop-evidence/**
+          if-no-files-found: warn

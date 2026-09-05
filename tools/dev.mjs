@@ -4,11 +4,13 @@ import { mkdir, readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { createServer } from "vite";
 import { resolveDevEndpoint } from "./dev-port.mjs";
+import { resolveElectronRuntimeArguments } from "./electron-runtime.mjs";
 
 const workspace = process.cwd();
 const outputRoot = resolve(workspace, ".swarm-dev");
 const electronBinary = process.env.SWARM_ELECTRON_BIN;
 const devEndpoint = resolveDevEndpoint();
+const electronRuntimeArguments = resolveElectronRuntimeArguments();
 
 if (!electronBinary) {
   throw new Error("SWARM_ELECTRON_BIN is unset; enter through `nix develop`");
@@ -17,7 +19,9 @@ if (!electronBinary) {
 const electronPackage = JSON.parse(
   await readFile(resolve(workspace, "node_modules/electron/package.json"), "utf8"),
 );
-const runtimeElectronVersion = execFileSync(electronBinary, ["--version"], { encoding: "utf8" })
+const runtimeElectronVersion = execFileSync(electronBinary, [...electronRuntimeArguments, "--version"], {
+  encoding: "utf8",
+})
   .trim()
   .replace(/^v/, "");
 if (runtimeElectronVersion !== electronPackage.version) {
@@ -41,7 +45,11 @@ function launchDesktop() {
     // Electron clears its procfs environment and flattens cmdline into one
     // process-title string. This inert, slash-terminated marker lets the X11
     // verification tools identify the exact window without configuring it.
-    [resolve(outputRoot, "app/electron/main.js"), devEndpoint.rendererProcessArgument],
+    [
+      ...electronRuntimeArguments,
+      resolve(outputRoot, "app/electron/main.js"),
+      devEndpoint.rendererProcessArgument,
+    ],
     {
       cwd: workspace,
       env: {

@@ -19,9 +19,15 @@
               imagemagick
               jq
               nodejs_22
+              openbox
               pnpm
+              procps
+              util-linux
               wmctrl
+              xauth
+              xdpyinfo
               xdotool
+              xorg-server
               xwininfo
             ];
 
