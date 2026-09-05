@@ -1,0 +1,16 @@
+id: reactflow-keyboard-integration-smoke
+title: Verify real React Flow keyboard edge selection in desktop smoke
+desc: ""
+type: task
+component: ui
+release:
+reporter: Ted Smith <tedks@riseup.net>
+status: unstarted
+disposition:
+creation_time: 2026-09-05T21:09:50-00:00
+references: []
+log_events:
+- time: 2026-09-05T21:09:50-00:00
+  who: Ted Smith
+  what: created
+  comment: ""
