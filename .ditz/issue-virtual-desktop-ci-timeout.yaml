@@ -14,3 +14,11 @@ log_events:
   who: Ted Smith
   what: created
   comment: ""
+- time: 2026-09-05T22:54:38-00:00
+  who: Ted Smith
+  what: commented
+  comment: 'Merged PR #5 hosted run 33996877628 reached the exact owned window and
+    Reconciling state, then exceeded the 30000ms Consistent-title wait on a cold GitHub
+    runner. Cleanup completed successfully and evidence upload ran. Local topology
+    completed repeatedly in about 19.7-25.0s. Calibrate a bounded CI-safe topology
+    wait or separate build deadline without weakening state assertions.'
