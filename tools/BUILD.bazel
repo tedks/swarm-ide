@@ -6,6 +6,11 @@ filegroup(
 )
 
 filegroup(
+    name = "electron-runtime-source",
+    srcs = ["electron-runtime.mjs"],
+)
+
+filegroup(
     name = "x11-driver-source",
     srcs = ["x11-driver.sh"],
 )
@@ -92,6 +97,7 @@ sh_test(
     env_inherit = [
         "DISPLAY",
         "SWARM_ELECTRON_BIN",
+        "SWARM_ELECTRON_NO_SANDBOX",
         "SWARM_SOURCE_WORKSPACE",
         "SWARM_VIRTUAL_DESKTOP_PORT",
         "XAUTHORITY",

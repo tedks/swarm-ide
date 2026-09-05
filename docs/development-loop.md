@@ -60,4 +60,10 @@ The current driver is intentionally virtual-X11-first. It refuses display zero
 or any display not backed by its private ownership record and live Xvfb PID;
 Wayland versus X11 on the host is irrelevant. CI runs the topology/source smoke
 as `//tools:virtual-desktop-smoke-test` without a logged-in desktop and uploads
-its undeclared-output archive even on failure.
+its unpacked undeclared-output evidence even on failure.
+
+Local Electron runs retain Chromium's operating-system process sandbox. Hosted
+CI sets `SWARM_ELECTRON_NO_SANDBOX=1` only because the immutable Nix store
+cannot install Electron's helper as a root-owned setuid binary; the renderer's
+Electron `sandbox: true` and context-isolation boundary remain enabled. The
+launcher rejects every other value so an accidental local setting fails closed.
