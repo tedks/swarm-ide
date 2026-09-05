@@ -1,0 +1,19 @@
+id: initial-snapshot-event-race
+title: Prevent a delayed initial snapshot from replacing a newer event
+desc: 'Guard the renderer bootstrap so a delayed workspace.snapshot response cannot
+  overwrite a newer core event that arrived after subscription. Merge the response
+  through a functional state update keyed by its sequence watermark and add a deferred-response
+  regression test. Deferred from PR #1 by CTO decision after convergence review.'
+type: bugfix
+component: default
+release:
+reporter: Ted Smith <tedks@riseup.net>
+status: unstarted
+disposition:
+creation_time: 2026-09-05T08:12:00-00:00
+references: []
+log_events:
+- time: 2026-09-05T08:12:00-00:00
+  who: Ted Smith
+  what: created
+  comment: ""
