@@ -80,6 +80,7 @@ describe("interface zoom model", () => {
     expect(zoomShortcut(event({ code: "Equal", key: "+", shiftKey: true }))).toBe("in");
     expect(zoomShortcut(event({ code: "Minus", key: "_", shiftKey: true }))).toBe("out");
     expect(zoomShortcut(event({ code: "NumpadAdd", key: "+" }))).toBe("in");
+    expect(zoomShortcut(event({ code: "Numpad0", key: "0" }))).toBe("reset");
     expect(zoomShortcut(event({ code: "Numpad0", key: "Insert" }))).toBeNull();
     expect(zoomShortcut(event({ code: "BracketRight", key: "+" }))).toBe("in");
     expect(zoomShortcut(event({ code: "Slash", key: "-" }))).toBe("out");
