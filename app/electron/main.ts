@@ -3,6 +3,7 @@ import { join } from "node:path";
 import {
   PROTOCOL_VERSION,
   parseCoreEvent,
+  parseFileEvent,
   parseCoreRequest,
   parseCoreResponse,
   type CoreResponse,
@@ -63,6 +64,7 @@ function startCore(): void {
   core = utilityProcess.fork(entry, [], {
     serviceName: "swarm-ide-local-core",
     stdio: "pipe",
+    env: { ...process.env, SWARM_WORKSPACE_ROOT: process.cwd() },
   });
 
   core.stdout?.on("data", (chunk) => process.stdout.write(`[core] ${chunk}`));
@@ -72,7 +74,7 @@ function startCore(): void {
       typeof message === "object" &&
       message !== null &&
       "type" in message &&
-      message.type === "core.ready"
+      (message.type === "core.ready" || message.type === "core.failed")
     ) {
       return;
     }
@@ -92,6 +94,13 @@ function startCore(): void {
       const event = parseCoreEvent(message);
       mainWindow?.webContents.send(EVENT_CHANNEL, event);
     } catch (error) {
+      try {
+        const fileEvent = parseFileEvent(message);
+        mainWindow?.webContents.send(EVENT_CHANNEL, fileEvent);
+        return;
+      } catch {
+        // The common invalid-message handler below reports a bounded error.
+      }
       console.error("Dropped invalid local-core message", error);
       const requestId =
         typeof message === "object" && message !== null && "requestId" in message &&

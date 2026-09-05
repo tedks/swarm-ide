@@ -1,6 +1,8 @@
 import { z } from "zod";
 
-export const PROTOCOL_VERSION = 1 as const;
+export const PROTOCOL_VERSION = 2 as const;
+
+export const MAX_EDITABLE_FILE_BYTES = 2 * 1024 * 1024;
 
 export const RevisionKindSchema = z.enum(["working", "built", "deployed"]);
 export type RevisionKind = z.infer<typeof RevisionKindSchema>;
@@ -17,7 +19,7 @@ export const FocusRefSchema = z.object({
   worldId: z.string().min(1),
   revisionKind: RevisionKindSchema,
   revisionId: z.string().min(1),
-  domain: z.enum(["repo", "service", "symbol", "design"]),
+  domain: z.enum(["repo", "service", "interface", "symbol", "design"]),
   key: z.string().min(1),
   path: z.string().min(1).optional(),
   symbol: z.string().min(1).optional(),
@@ -251,8 +253,43 @@ export const CoreRequestSchema = z.discriminatedUnion("type", [
     mode: z.enum(["success", "failure", "stale"]),
   }),
   RequestBaseSchema.extend({ type: z.literal("fixture.reset") }),
+  RequestBaseSchema.extend({
+    type: z.literal("file.read"),
+    path: z.string().min(1).max(4_096),
+  }),
+  RequestBaseSchema.extend({
+    type: z.literal("file.write"),
+    path: z.string().min(1).max(4_096),
+    expectedRevision: z.string().regex(/^[a-f0-9]{64}$/),
+    content: z.string().max(MAX_EDITABLE_FILE_BYTES),
+  }),
+  RequestBaseSchema.extend({
+    type: z.literal("file.watch"),
+    path: z.string().min(1).max(4_096),
+  }),
+  RequestBaseSchema.extend({
+    type: z.literal("file.unwatch"),
+    path: z.string().min(1).max(4_096),
+  }),
 ]);
 export type CoreRequest = z.infer<typeof CoreRequestSchema>;
+
+export const FileResultSchema = z.discriminatedUnion("kind", [
+  z.object({
+    kind: z.literal("read"),
+    path: z.string().min(1),
+    content: z.string(),
+    revision: z.string().regex(/^[a-f0-9]{64}$/),
+    size: z.number().int().nonnegative().max(MAX_EDITABLE_FILE_BYTES),
+  }),
+  z.object({
+    kind: z.literal("write"),
+    path: z.string().min(1),
+    revision: z.string().regex(/^[a-f0-9]{64}$/),
+    workingFingerprint: z.string().regex(/^[a-f0-9]{64}$/),
+  }),
+]);
+export type FileResult = z.infer<typeof FileResultSchema>;
 
 export const CoreResponseSchema = z.discriminatedUnion("ok", [
   z.object({
@@ -261,6 +298,7 @@ export const CoreResponseSchema = z.discriminatedUnion("ok", [
     ok: z.literal(true),
     sequence: z.number().int().nonnegative(),
     snapshot: WorkspaceSnapshotSchema,
+    file: FileResultSchema.optional(),
   }),
   z.object({
     protocolVersion: z.literal(PROTOCOL_VERSION),
@@ -291,6 +329,18 @@ export const CoreEventSchema = z.object({
 });
 export type CoreEvent = z.infer<typeof CoreEventSchema>;
 
+export const FileEventSchema = z.object({
+  protocolVersion: z.literal(PROTOCOL_VERSION),
+  type: z.literal("file.changed"),
+  sequence: z.number().int().positive(),
+  emittedAt: z.string().datetime(),
+  path: z.string().min(1).max(4_096),
+  revision: z.string().regex(/^[a-f0-9]{64}$/).nullable(),
+  change: z.enum(["modified", "deleted", "error"]),
+  message: z.string().min(1).max(512).optional(),
+});
+export type FileEvent = z.infer<typeof FileEventSchema>;
+
 export function parseCoreRequest(input: unknown): CoreRequest {
   return CoreRequestSchema.parse(input);
 }
@@ -301,4 +351,8 @@ export function parseCoreResponse(input: unknown): CoreResponse {
 
 export function parseCoreEvent(input: unknown): CoreEvent {
   return CoreEventSchema.parse(input);
+}
+
+export function parseFileEvent(input: unknown): FileEvent {
+  return FileEventSchema.parse(input);
 }
