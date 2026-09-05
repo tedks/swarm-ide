@@ -84,7 +84,9 @@ if [[ "$yellow_title" != *"Graphs"* ]]; then
   echo "yellow state left the graph surface unexpectedly: $yellow_title" >&2
   exit 4
 fi
-swarm_window_wait_title "Consistent" present 30000
+# The owned desktop has an isolated, initially cold Bazel cache. Hosted builds
+# need more startup time; keep the same state assertion and a bounded deadline.
+swarm_window_wait_title "Consistent" present 90000
 swarm_window_wait_title "FraudCheck visible"
 green_ms=$(( $(date +%s%3N) - build_started_ms ))
 green_title=$(swarm_window_title)
