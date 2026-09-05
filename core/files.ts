@@ -173,6 +173,21 @@ export async function readCanonicalWorkspaceBytes(workspaceRoot: string, path: s
   }
 }
 
+export async function readBoundedRegularFile(path: string, maximumBytes: number, description: string): Promise<Buffer> {
+  let handle: FileHandle;
+  try {
+    handle = await open(path, constants.O_RDONLY | constants.O_NOFOLLOW);
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "ELOOP") throw new Error(`${description} must not be a symbolic link`);
+    throw error;
+  }
+  try {
+    return await readBoundedHandle(handle, maximumBytes, `${description} exceeds ${maximumBytes} bytes`);
+  } finally {
+    await handle.close();
+  }
+}
+
 export async function writeWorkspaceFile(
   workspaceRoot: string,
   path: string,

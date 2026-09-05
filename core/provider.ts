@@ -1,4 +1,6 @@
 import { execFile } from "node:child_process";
+import { realpath } from "node:fs/promises";
+import { join } from "node:path";
 import {
   PROTOCOL_VERSION,
   WorkspaceSnapshotSchema,
@@ -10,7 +12,7 @@ import {
   type WorkspaceSnapshot,
 } from "../protocol/schema";
 import { computeWorkingWorldFingerprint } from "./fingerprint";
-import { readCanonicalWorkspaceBytes, resolveWorkspaceFile } from "./files";
+import { readBoundedRegularFile, resolveWorkspaceFile } from "./files";
 import {
   ServiceTopologyArtifactSchema,
   adaptServiceTopology,
@@ -65,7 +67,12 @@ function runBazel(workspaceRoot: string): Promise<void> {
 }
 
 async function readArtifact(workspaceRoot: string): Promise<{ bytes: Buffer; artifact: ServiceTopologyArtifact }> {
-  const bytes = await readCanonicalWorkspaceBytes(workspaceRoot, SERVICE_TOPOLOGY_ARTIFACT, MAX_ARTIFACT_BYTES);
+  // `bazel-bin` is a Bazel-managed symlink to its output tree, which normally
+  // lives outside the checkout. Resolve that one fixed build-system boundary,
+  // then open the fixed artifact itself without following another symlink.
+  const outputRoot = await realpath(join(workspaceRoot, "bazel-bin"));
+  const relativeArtifact = SERVICE_TOPOLOGY_ARTIFACT.slice("bazel-bin/".length);
+  const bytes = await readBoundedRegularFile(join(outputRoot, relativeArtifact), MAX_ARTIFACT_BYTES, "the Bazel topology output");
   let input: unknown;
   try {
     input = JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(bytes));
