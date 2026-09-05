@@ -7,8 +7,8 @@ type: task
 component: default
 release:
 reporter: Ted Smith <tedks@riseup.net>
-status: in_progress
-disposition:
+status: closed
+disposition: fixed
 creation_time: 2026-09-05T08:07:56-00:00
 references: []
 log_events:
@@ -57,6 +57,12 @@ log_events:
   who: Ted Smith
   what: started
   comment: ""
+- time: 2026-09-05T22:52:14-00:00
+  who: Ted Smith
+  what: 'closed: fixed'
+  comment: 'Merged PR #5: self-contained Xvfb/Openbox supervisor, topology/source
+    CI smoke, zoom and HMR scenarios, undeclared-output evidence, bounded ownership-safe
+    teardown, and hostile lifecycle tests are landed.'
 blocks:
 - first-real-agent-run-surface
 - supervise-local-core
