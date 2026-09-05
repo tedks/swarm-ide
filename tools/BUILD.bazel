@@ -5,6 +5,11 @@ filegroup(
     srcs = ["dev-port.mjs"],
 )
 
+filegroup(
+    name = "x11-driver-source",
+    srcs = ["x11-driver.sh"],
+)
+
 sh_binary(
     name = "dev",
     srcs = ["dev.sh"],
@@ -37,6 +42,12 @@ sh_binary(
     name = "desktop-zoom-smoke",
     srcs = ["desktop-zoom-smoke.sh"],
     tags = ["manual"],
+)
+
+sh_test(
+    name = "x11-driver-test",
+    srcs = ["x11-driver.test.sh"],
+    data = [":x11-driver-source"],
 )
 
 sh_binary(

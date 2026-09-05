@@ -14,7 +14,7 @@ The visible proof is a reported artifact directory containing the virtual deskto
 
 - [x] (2026-09-05 21:36Z) Verified clean synchronized master at merge `8176e758d4e92a724e9d802d835fa28cbc9afd44`, created `feature/virtual-x11-desktop-harness` in `/home/tedks/Projects/swarm-ide/virtual-x11-desktop-harness`, and started Ditz issues `desktop-x11-driver` and `virtual-x11-desktop-smoke`.
 - [x] (2026-09-05 21:38Z) Inspected the current smoke scripts, Bazel targets, Nix shell, CI workflow, dev launcher, renderer marker, and port resolver; recorded the security and lifecycle model in this plan.
-- [ ] Implement and unit-test the shared owned-display and exact-window driver.
+- [x] (2026-09-05 21:49Z) Implemented and unit-tested the shared owned-display and exact-window driver, including hostile ambient-display, decoy, ambiguity, input/capture failure, token mismatch, dead server, and PID-reuse cases.
 - [ ] Implement and adversarially test the bounded virtual desktop supervisor.
 - [ ] Move topology/source and zoom scenarios onto the shared driver and prove both end to end.
 - [ ] Add Nix dependencies, Bazel entrypoints, CI coverage, artifact publication, and documentation.
@@ -134,3 +134,5 @@ The master app on 55173 is outside this plan. Port 5173 is known to belong to an
 `tools/virtual-desktop-run.sh` accepts a scenario executable and the development launcher as arguments. It exports the owned `DISPLAY`, `XAUTHORITY`, ownership-directory path, app session, renderer marker, artifact directory, and driver path to the scenario. Production defaults are Xvfb, xauth, Openbox, xdpyinfo, wmctrl, xdotool, ImageMagick, Node.js, and standard process utilities supplied by `flake.nix`; tests may replace a command only through documented absolute-path environment seams.
 
 Revision note (2026-09-05): Initial executable plan created after inspecting the merged PR #4 baseline. It fixes the ownership, selection, lifecycle, artifact, adversarial-test, and landing decisions before implementation so later discoveries can be compared against an explicit security model.
+
+Revision note (2026-09-05 21:49Z): Marked the shared driver milestone complete after `//tools:x11-driver-test` passed uncached. The implementation rechecks title, PID, marker, process session, X-server start time, and ownership before operations rather than trusting discovery output.
