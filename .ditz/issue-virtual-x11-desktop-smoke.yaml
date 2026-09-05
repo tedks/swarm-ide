@@ -7,7 +7,7 @@ type: task
 component: default
 release:
 reporter: Ted Smith <tedks@riseup.net>
-status: unstarted
+status: in_progress
 disposition:
 creation_time: 2026-09-05T08:07:56-00:00
 references: []
@@ -53,6 +53,10 @@ log_events:
     failures; HMR/native-window stability; and click-to-yellow/build-to-green timing.
     Screenshots may be captured only inside the isolated display and retained as test
     artifacts. Do not expand PR #4 or run any of these gates against the user''s desktop.'
+- time: 2026-09-05T21:33:08-00:00
+  who: Ted Smith
+  what: started
+  comment: ""
 blocks:
 - first-real-agent-run-surface
 - supervise-local-core
