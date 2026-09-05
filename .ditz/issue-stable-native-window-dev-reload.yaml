@@ -27,6 +27,13 @@ log_events:
   who: Ted Smith
   what: blocks first-real-agent-run-surface
   comment: ""
+- time: 2026-09-05T20:09:40-00:00
+  who: Ted Smith
+  what: commented
+  comment: Acceptance must distinguish renderer HMR, preload webContents reload, core
+    utility-process restart, and exceptional Electron-main restart. Tests run only
+    on the owned virtual display and assert window identity/workspace stability for
+    all ordinary edit paths.
 blocks:
 - first-real-agent-run-surface
 blocked_by:
