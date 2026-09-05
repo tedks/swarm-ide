@@ -27,7 +27,14 @@ Run the real-window verification loop with:
 
 ```bash
 nix develop --command bazel run //tools:desktop-smoke
+nix develop --command bazel run //tools:measure-hmr
 ```
+
+The service topology shown by the foundation is deterministic fixture data. It
+crosses the production protocol boundary, but it is not yet extracted from real
+services. See [the product foundation](docs/product-foundation.md),
+[architecture](docs/architecture.md), and
+[development loop](docs/development-loop.md) for the precise boundary.
 
 ## Structure
 

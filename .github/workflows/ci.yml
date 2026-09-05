@@ -35,10 +35,11 @@ jobs:
 
       # --- end of shared preamble; steps below are repo-specific ---
 
+      - name: Install JavaScript dependencies
+        run: nix develop --command pnpm install --frozen-lockfile
+
       - name: Build
-        run: |
-          nix develop --command echo "TODO: replace with the repo's build command"
+        run: nix develop --command bazel build //...
 
       - name: Test
-        run: |
-          nix develop --command echo "TODO: replace with the repo's test command"
+        run: nix develop --command bazel test //... --test_output=errors
