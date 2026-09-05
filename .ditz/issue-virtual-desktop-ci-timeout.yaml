@@ -31,3 +31,11 @@ log_events:
     Commit4f5779d raises only Consistent wait to90s inside existing120s scenario bound;
     state assertions unchanged. Native convergence CLEAN; hosted run33999707395 will
     decide whether this narrow calibration resolves the debt.'
+- time: 2026-09-05T23:57:15-00:00
+  who: Ted Smith
+  what: commented
+  comment: 'Calibration did NOT resolve hosted failure: final code-head run33999707395
+    on4f5779d passed build and unit tests but virtual topology remained Reconciling
+    past90s. PR7 is not merged; no waiver assumed. Local matching topology passes26.2-26.8s
+    and selective reload proofs pass. Need scoped hosted-CI diagnosis rather than
+    further blind timeout increases. Failure evidence archived under master/artifacts/stable-window-reload-final/ci-33999707395.'
