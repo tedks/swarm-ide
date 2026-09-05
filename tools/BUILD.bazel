@@ -1,7 +1,25 @@
 package(default_visibility = ["//visibility:public"])
 
 sh_binary(
+    name = "dev",
+    srcs = ["dev.sh"],
+)
+
+sh_test(
+    name = "quality",
+    srcs = ["quality.sh"],
+    data = ["//:quality_sources"],
+    tags = ["local"],
+)
+
+sh_binary(
     name = "desktop-smoke",
     srcs = ["desktop-smoke.sh"],
+    tags = ["manual"],
+)
+
+sh_binary(
+    name = "measure-hmr",
+    srcs = ["measure-hmr.sh"],
     tags = ["manual"],
 )

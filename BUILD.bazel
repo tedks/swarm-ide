@@ -1,12 +1,31 @@
 package(default_visibility = ["//visibility:public"])
 
-sh_binary(
-    name = "dev",
-    srcs = ["tools/dev.sh"],
+filegroup(
+    name = "quality_sources",
+    srcs = glob([
+        "app/**",
+        "core/**",
+        "fixtures/**",
+        "protocol/**",
+        "tests/**",
+    ]) + [
+        "index.html",
+        "package.json",
+        "pnpm-lock.yaml",
+        "pnpm-workspace.yaml",
+        "tsconfig.json",
+        "tsconfig.node.json",
+        "vite.config.mts",
+        "vitest.config.mts",
+    ],
 )
 
-sh_test(
+alias(
+    name = "dev",
+    actual = "//tools:dev",
+)
+
+test_suite(
     name = "quality",
-    srcs = ["tools/quality.sh"],
-    tags = ["local"],
+    tests = ["//tools:quality"],
 )

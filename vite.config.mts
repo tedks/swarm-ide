@@ -5,6 +5,7 @@ function hmrTimingProbe(): Plugin {
   return {
     name: "swarm-hmr-timing-probe",
     handleHotUpdate(context) {
+      if (!context.file.includes("/app/renderer/")) return;
       context.server.ws.send({
         type: "custom",
         event: "swarm:hmr-start",

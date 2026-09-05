@@ -5,7 +5,9 @@ result-*
 
 # Node and generated output
 node_modules/
+.swarm-dev/
 dist/
+dist-node/
 bazel-*
 coverage/
 *.tsbuildinfo
