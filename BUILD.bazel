@@ -21,7 +21,7 @@ filegroup(
     ] + [
         "//tools:dev-port-source",
         "//tools:extract-service-topology",
-        "//tools:x11-driver-source",
+        "//tools:desktop-automation-sources",
     ],
 )
 

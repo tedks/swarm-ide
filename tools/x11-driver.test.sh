@@ -143,7 +143,10 @@ swarm_window_key ctrl+k
 swarm_window_type 'safe text' 0
 swarm_window_click 10 20
 swarm_window_capture "$test_root/capture.png"
+swarm_window_capture "$test_root/crop.png" '48x48+0+0'
 [[ -s "$test_root/capture.png" ]] || fail "capture was not written"
+[[ -s "$test_root/crop.png" ]] || fail "cropped capture was not written"
+expect_failure invalid-crop swarm_window_capture "$test_root/invalid.png" '../unsafe'
 if grep -q '^:0|' "$SWARM_FAKE_GUI_LOG"; then
   fail "a GUI command targeted the ambient display"
 fi

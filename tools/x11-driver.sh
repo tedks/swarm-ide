@@ -263,6 +263,7 @@ swarm_window_click() {
 
 swarm_window_capture() {
   local destination="$1"
+  local crop="${2:-}"
   local import_bin
   [[ -n "$destination" && "$destination" == /* ]] ||
     swarm_x11_error "screenshot destination must be absolute" || return 1
@@ -270,7 +271,14 @@ swarm_window_capture() {
   import_bin=$(_swarm_x11_command SWARM_IMPORT_BIN import) || return 1
   mkdir -p "$(dirname "$destination")"
   swarm_window_activate || return 1
-  swarm_x11_exec "$import_bin" -window "$SWARM_WINDOW_ID" "$destination" ||
-    swarm_x11_error "screenshot capture failed for '$destination'" || return 1
+  if [[ -n "$crop" ]]; then
+    [[ "$crop" =~ ^[1-9][0-9]*x[1-9][0-9]*\+[0-9]+\+[0-9]+$ ]] ||
+      swarm_x11_error "invalid screenshot crop '$crop'" || return 1
+    swarm_x11_exec "$import_bin" -window "$SWARM_WINDOW_ID" -crop "$crop" +repage "$destination" ||
+      swarm_x11_error "screenshot capture failed for '$destination'" || return 1
+  else
+    swarm_x11_exec "$import_bin" -window "$SWARM_WINDOW_ID" "$destination" ||
+      swarm_x11_error "screenshot capture failed for '$destination'" || return 1
+  fi
   [[ -s "$destination" ]] || swarm_x11_error "screenshot capture produced no data" || return 1
 }
