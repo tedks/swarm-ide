@@ -64,6 +64,7 @@ its unpacked undeclared-output evidence even on failure.
 
 Local Electron runs retain Chromium's operating-system process sandbox. Hosted
 CI sets `SWARM_ELECTRON_NO_SANDBOX=1` only because the immutable Nix store
-cannot install Electron's helper as a root-owned setuid binary; the renderer's
-Electron `sandbox: true` and context-isolation boundary remain enabled. The
-launcher rejects every other value so an accidental local setting fails closed.
+cannot install Electron's helper as a root-owned setuid binary. Chromium's OS
+sandbox is therefore disabled in that CI process, while the renderer's API
+restrictions and context-isolation boundary remain configured. The launcher
+rejects every other value so an accidental local setting fails closed.

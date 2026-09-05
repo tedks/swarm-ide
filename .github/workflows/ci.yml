@@ -53,7 +53,8 @@ jobs:
           SWARM_SOURCE_WORKSPACE: ${{ github.workspace }}
           SWARM_VIRTUAL_DESKTOP_PORT: "55174"
           # GitHub's Nix store cannot provide a root-owned setuid
-          # chrome-sandbox. Renderer sandboxing remains enabled in Electron.
+          # chrome-sandbox. Electron's renderer API restrictions and context
+          # isolation remain configured, but Chromium's OS sandbox is off.
           SWARM_ELECTRON_NO_SANDBOX: "1"
         run: nix develop --command bazel test //tools:virtual-desktop-smoke-test --test_output=streamed --nocache_test_results
 

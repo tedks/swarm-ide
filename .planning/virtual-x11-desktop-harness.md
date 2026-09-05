@@ -44,7 +44,7 @@ The visible proof is a reported artifact directory containing the virtual deskto
   Evidence: the first post-review adversarial run observed the pre-exec identity. Registration now waits a bounded one second for the exact `session == pid` transition while deferring signals until that identity is saved.
 
 - Observation: GitHub's immutable Nix store cannot provide Electron's root-owned mode-4755 `chrome-sandbox` helper.
-  Evidence: hosted smoke run `33994799916` stopped in Electron before window creation. CI now opts into Chromium `--no-sandbox` with one exact environment value; local runs keep the operating-system sandbox, and Electron's renderer sandbox remains enabled in both paths.
+  Evidence: hosted smoke run `33994799916` stopped in Electron before window creation. CI now opts into Chromium `--no-sandbox` with one exact environment value; local runs keep the operating-system sandbox. In CI, renderer API restrictions and context isolation remain configured, but Chromium's OS sandbox is disabled.
 
 ## Decision Log
 
@@ -77,7 +77,7 @@ The visible proof is a reported artifact directory containing the virtual deskto
   Date/Author: 2026-09-05 / Codex
 
 - Decision: Permit Chromium's `--no-sandbox` only when `SWARM_ELECTRON_NO_SANDBOX` is exactly `1`, and set it only in hosted CI.
-  Rationale: CI cannot satisfy the setuid-helper requirement, but an implicit or loosely parsed exception could weaken local execution. A pure validated argument resolver keeps the deviation explicit and testable while renderer sandboxing and context isolation remain enabled.
+  Rationale: CI cannot satisfy the setuid-helper requirement, but an implicit or loosely parsed exception could weaken local execution. A pure validated argument resolver keeps the OS-sandbox deviation explicit and testable while renderer API restrictions and context isolation remain configured.
   Date/Author: 2026-09-05 / Codex
 
 ## Outcomes & Retrospective
