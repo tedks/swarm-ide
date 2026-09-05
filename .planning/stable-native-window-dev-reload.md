@@ -1,0 +1,85 @@
+# Preserve the native window during development reloads
+
+This living ExecPlan follows `.planning/PLANS.md`. Maintain its Progress, discoveries, decisions, and outcome sections as the implementation evolves.
+
+## Purpose / Big Picture
+
+
+An ordinary code edit must reach the running Linux cockpit without replacing its native window, changing its workspace, stealing focus, or throwing away source buffers. Renderer edits use Vite's existing in-document update mechanism. Core edits replace only the privileged utility process. Preload edits reload the existing document when it is safe. Main-process edits explicitly require a deliberate restart.
+
+## Assumptions and failure modes
+
+
+The privileged main process owns a single BrowserWindow; only its trusted top-level renderer can request bounded operations. Development builds are local trusted inputs, not commands accepted from the renderer. An individual build may fail or overlap another edit, the core may exit before or after a file rename, and messages from an old process can arrive after a replacement is ready. A save without its acknowledgement has an unknown outcome, not proof that nothing was written. Never automatically replay it. A dirty or unresolved buffer blocks document reload, including keyboard reload. A core restart must settle read requests, drain intentional writes, and invalidate old events without resetting the native window. Shutdown must disable retries before killing anything. Crashes that repeat must exhaust a bounded retry budget. The physical master app on 55173 and the unrelated 5173 listener are out of scope for automation.
+
+## Progress
+
+
+- [x] (2026-09-06 00:00Z) Created designated feature worktree from synchronized b513ac0; started both Ditz issues; installed frozen dependencies; traced development, IPC, editor and virtual-display lifecycles.
+- [ ] Implement coherent build dispatch and tested utility-process supervision.
+- [ ] Implement safe document refresh, recovery/resubscription and interrupted-save reconciliation.
+- [ ] Add virtual reload proof and targeted tests; run final Bazel gates and relevant desktop scenarios.
+- [ ] Push draft PR, council to fixpoint, normal merge after gates, synchronize issues/master, preserve evidence and clean owned resources.
+
+## Surprises & Discoveries
+
+
+The existing development launcher restarts the entire desktop after every successful bundle, including a core-only edit. The main process ignores core.ready/core.failed and has no recovery after exit. Writes deliberately have no timeout; this is correct for commit-bearing operations but requires explicit unknown-outcome handling after exit. Hosted PR #5 CI had a cold topology timeout despite successful local proof; that recorded waiver is not a waiver for new failures.
+
+## Decision Log
+
+
+Use a single multi-entry esbuild context and publish only complete successful output sets, comparing bundle contents to choose an action. This avoids independent watchers racing shared dependency edits. Main changes latch a restart-required notice instead of silently replacing the window. Keep the core protocol independent of shell lifecycle: add a bounded validated shell lifecycle channel and generation-tagged transport envelopes. Defer document refresh while source buffers or save outcomes require attention. These are intentionally conservative defaults, chosen on 2026-09-06 by the implementation owner.
+
+## Outcomes & Retrospective
+
+
+Implementation and validation are pending. Adoption of the new main process will require one deliberate restart of the existing physical-desktop instance; the step will not perform that restart automatically.
+
+## Context and Orientation
+
+
+`tools/dev.mjs` compiles Electron main/preload and `core/worker.ts`, and launches Vite plus Electron through `tools/dev.sh` and Bazel. `app/electron/main.ts` owns the native window and the utility process (a separate OS process for filesystem/build/provider work). `app/electron/preload.ts` exposes validated bounded methods to the sandboxed renderer. `protocol/schema.ts` defines existing request/response/event schemas. `app/renderer/App.tsx` owns source tabs, optimistic saves, observation, navigation and zoom. `app/renderer/state.ts` applies ordered graph snapshots. An epoch is a monotonic identifier for a sequence of derived work within one core; a process generation additionally distinguishes epochs after restart. `tools/virtual-desktop-run.sh` owns Xvfb/Openbox and app/scenario processes; `tools/x11-driver.sh` rejects unowned displays and windows.
+
+## Plan of Work
+
+
+First extract utility-process lifecycle and request settling into a dependency-injected supervisor with fake-process unit tests. Integrate it into the small Electron shell and forward generation-tagged events/responses. Add a validated shell status/refresh bridge. Change the development launcher to publish successful multi-bundle changes through an owned development control file; main changes remain deferred. Prove failed builds and output classification with tests.
+
+Next teach the renderer to retain stale content during recovery, discard old asynchronous reads, resubscribe source observation, and obtain a fresh workspace snapshot with reset counters scoped to the new generation. Preserve dirty buffers; interrupted saves require a disk read before any retry. Protect document unload and save practical navigation state for clean refreshes; zoom already has persistence. Keep diagnostics visible without creating windows.
+
+Finally add an owned-X11 scenario alongside existing topology/zoom/HMR scenarios. It edits disposable source copies, observes actual visible markers, asserts unchanged main PID/window ID/workspace/focus, and exercises core crashes, failed and rapid rebuilds, dirty deferral and recovery. No general test-harness replacement or future product features belong in this step.
+
+## Concrete Steps
+
+
+Work only in `/home/tedks/Projects/swarm-ide/stable-native-window-dev-reload`, branch `feature/stable-native-window-dev-reload`. Run tooling through Nix and builds/tests only through Bazel:
+
+    nix develop --command bazel test //tools:quality
+    nix develop --command bazel build //...
+    nix develop --command bazel test //...
+    SWARM_VIRTUAL_DESKTOP_PORT=55174 nix develop --command bazel run //tools:desktop-reload-smoke
+
+Create and push an early draft PR with granular commits. Run the council-review skill to a clean fixpoint, recording missing foreign seats. Close `supervise-local-core` and `stable-native-window-dev-reload` only after verified landing, and run `nix run github:tedks/ditz -- sync`. Normal-merge through the PR, fetch and fast-forward master, archive evidence under `master/artifacts/stable-window-reload-final`. Stop only this feature's owned app/test resources and Bazel server, then remove the clean merged worktree and its branches.
+
+## Validation and Acceptance
+
+
+Tests must cover readiness and failure deadlines, exhausted crash retries, shutdown, read settling, unknown writes, draining writes, duplicate requests and stale process messages. Renderer tests must show new generation sequence zero is accepted, prior graph content is explicitly stale, open files are watched again, and a dirty buffer survives core replacement. Unacknowledged saves must not trigger a write retry until disk is reconciled. Virtual evidence must record the same native X11 window ID and Electron main PID before and after actual renderer/preload/core edits, unchanged workspace and focus when another virtual window is active, expected document/core generation changes, dirty refresh deferral, failed-build last-good behavior, crash recovery and rapid build convergence. Record timings and screenshots, not merely successful compilation. Hosted CI must be green or a specific new exception must be authorized; PR #5's debt stays visible.
+
+## Idempotence and Recovery
+
+
+Build outputs and test evidence are disposable; source changes are committed and pushed incrementally. Scenarios must restore only their own expected edits or operate on disposable copies. Failed builds leave last-good output available. A permanently failed core remains visibly unavailable, preserving buffers; it does not enter an unbounded crash loop. A source edit requiring a main restart remains visibly pending until the user chooses to restart. Never kill or automate the physical desktop to adopt it.
+
+## Artifacts and Notes
+
+
+Final evidence and PR/CI/council identifiers will be recorded here and in the marker-qualified executive recap. The final response begins `STABLE-WINDOW-RELOAD-20260905-8C42 COMPLETE — EXECUTIVE RECAP`; if blocked it must clearly identify the unmet gate rather than claiming an unverified success.
+
+## Interfaces and Dependencies
+
+
+Use existing Electron utilityProcess/BrowserWindow, React, Zod, esbuild, Vite and Nix/Bazel dependencies. Add a shell lifecycle contract with monotonically increasing status revision, core generation/readiness, document reload state and bounded messages. The supervisor accepts injected process launch and event/status callbacks so lifecycle behavior is testable without a display. Renderer privileges remain bounded: observe lifecycle and acknowledge a safe reload, never launch arbitrary processes or evaluate code.
+
+Revision note: initial plan records the bounded design and failure assumptions before implementation.
