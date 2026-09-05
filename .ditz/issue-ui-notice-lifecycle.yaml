@@ -14,3 +14,9 @@ log_events:
   who: Ted Smith
   what: created
   comment: ""
+- time: 2026-09-05T17:48:51-00:00
+  who: Ted Smith
+  what: commented
+  comment: 'Council nit deferred from PR #3: zoom/storage notices currently persist
+    until the next successful zoom and fixed toast offsets can collide. Keep outside
+    the micro-feature scope; design unified dismiss/timeout/stack behavior.'
