@@ -283,6 +283,7 @@ describe("workbench shell", () => {
     expect(document.querySelector(".graphs-grid.is-sidebar")).toBeTruthy();
     fireEvent.click(screen.getAllByRole("button", { name: paths[1] })[0]!);
     await waitFor(() => expect(document.querySelectorAll(".surface-tabs > button, .surface-tab-main")).toHaveLength(3));
+    expect(request.mock.calls.some(([input]) => input.type === "focus.select" && input.focus.path === paths[1])).toBe(true);
     const surfaceTabs = [...document.querySelectorAll<HTMLButtonElement>(".surface-tabs > button, .surface-tab-main")];
     expect(surfaceTabs.some((tab) => tab.textContent?.includes("payments.ts"))).toBe(true);
     expect(surfaceTabs.some((tab) => tab.textContent?.includes("contract.ts"))).toBe(true);

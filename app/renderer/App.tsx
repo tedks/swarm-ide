@@ -67,6 +67,7 @@ export function App() {
   const [fileTabs, setFileTabs] = useState<FileTab[]>([]);
   const [activeSurface, setActiveSurface] = useState<string>("graphs");
   const [selectedConnection, setSelectedConnection] = useState<GraphConnectionFocus | null>(null);
+  const workspaceRef = useRef<WorkspaceState>(workspace);
   const fileTabsRef = useRef<FileTab[]>([]);
   const fileEventsRef = useRef(new Map<string, FileEvent>());
   const openGenerationsRef = useRef(new Map<string, number>());
@@ -87,6 +88,7 @@ export function App() {
   const commandInput = useRef<HTMLInputElement>(null);
 
   useEffect(() => { fileTabsRef.current = fileTabs; }, [fileTabs]);
+  useEffect(() => { workspaceRef.current = workspace; }, [workspace]);
 
   const applyZoom = useCallback(async (percent: InterfaceZoomPercent, persist: boolean, notice: string | null = null) => {
     const request: ZoomRequest = { percent, persist, notice };
@@ -227,7 +229,24 @@ export function App() {
     return unsubscribe;
   }, [reloadObservedFile]);
 
-  const openFile = useCallback(async (path: string) => {
+  const openFile = useCallback(async (path: string, coordinateFocus = true) => {
+    setSelectedConnection(null);
+    const currentSnapshot = workspaceRef.current.snapshot;
+    if (coordinateFocus && currentSnapshot && currentSnapshot.focus.path !== path) {
+      void invoke({
+        type: "focus.select",
+        requestId: requestId(),
+        protocolVersion: PROTOCOL_VERSION,
+        focus: {
+          worldId: currentSnapshot.world.id,
+          revisionKind: "working",
+          revisionId: currentSnapshot.revisions.working.id,
+          domain: "repo",
+          key: `file:${path}`,
+          path,
+        },
+      });
+    }
     setActiveSurface(path);
     if (fileTabsRef.current.some((tab) => tab.path === path)) return;
     desiredFilesRef.current.add(path);
@@ -361,6 +380,13 @@ export function App() {
   const title = snapshot ? statusLabel(snapshot.reconciliation.status) : "Loading";
   const zoomTitle = zoomPending ? "Zoom applying" : zoomPercent === null ? "Zoom unknown" : `Zoom ${zoomPercent}%${import.meta.env.DEV ? `@${zoomOperation}` : ""}`;
   useEffect(() => {
+    if (!selectedConnection || !snapshot) return;
+    const stillCurrent = selectedConnection.interfaceFocus.revisionId === snapshot.revisions.working.id &&
+      snapshot.graphs.some((graph) => graph.edges.some((edge) => edge.id === selectedConnection.id));
+    if (!stillCurrent) setSelectedConnection(null);
+  }, [selectedConnection, snapshot]);
+
+  useEffect(() => {
     const focus = snapshot ? ` — ${focusLabel(snapshot.focus)}` : "";
     const revision = snapshot ? ` — ${snapshot.revisions.working.id.slice(0, 12)}` : "";
     const fraudVisible = snapshot?.graphs.some((graph) => graph.nodes.some((node) => node.label === "FraudCheck")) ? " — FraudCheck visible" : "";
@@ -374,7 +400,7 @@ export function App() {
   const selectFocus = useCallback((focus: FocusRef) => {
     setSelectedConnection(null);
     void invoke({ type: "focus.select", requestId: requestId(), protocolVersion: PROTOCOL_VERSION, focus });
-    if (focus.path) void openFile(focus.path);
+    if (focus.path) void openFile(focus.path, false);
   }, [invoke, openFile]);
   const selectConnection = useCallback((connection: GraphConnectionFocus) => {
     setSelectedConnection(connection);
