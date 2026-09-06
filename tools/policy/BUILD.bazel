@@ -1,0 +1,29 @@
+package(default_visibility = ["//visibility:public"])
+
+filegroup(
+    name = "sources",
+    srcs = glob(["*.mjs", "*.mts", "*.nix", "*.sh"]) + ["//:flake.lock"],
+)
+
+sh_binary(
+    name = "probe",
+    srcs = ["probe.sh"],
+    data = [":sources"],
+    tags = ["manual", "local"],
+)
+
+sh_test(
+    name = "runtime-pinning-test",
+    srcs = ["runtime.test.sh"],
+    data = [":sources"],
+    tags = ["local", "no-sandbox"],
+    timeout = "moderate",
+)
+
+sh_test(
+    name = "boundary-test",
+    srcs = ["boundary.test.sh"],
+    data = [":probe"],
+    tags = ["local", "no-sandbox"],
+    timeout = "moderate",
+)

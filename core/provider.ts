@@ -135,6 +135,7 @@ async function runBazel(workspaceRoot: string): Promise<BazelBuildResult> {
     await bazel(workspaceRoot, [
       "build",
       SERVICE_TOPOLOGY_TARGET,
+      "--jobs=3",
       "--color=no",
       "--curses=no",
       `--build_event_json_file=${eventPath}`,
