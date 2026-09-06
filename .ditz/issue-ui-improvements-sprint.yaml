@@ -21,3 +21,11 @@ log_events:
   who: Ted Smith
   what: started
   comment: ""
+- time: 2026-09-06T21:02:44-00:00
+  who: Ted Smith
+  what: commented
+  comment: 'Personal steering checkpoint: user approved spatial directory containment
+    and zoom-up/down navigation. Bottom dock now has agent-run tabs selected from
+    sidebar, retained draft/output and a Jobs & activity tab. Real execution remains
+    unavailable; canvas stays on ui-sprint:55175 with HMR. Final checkpoint checks
+    underway; no merge or sprint completion.'
