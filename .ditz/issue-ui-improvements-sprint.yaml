@@ -48,3 +48,12 @@ log_events:
     Service-definition/call-site navigation remains next request, tracked ui-service-source-navigation;
     generic live links tracked ui-live-build-links. Sprint remains active and PR38
     draft; full landing review/acceptance pending.'
+- time: 2026-09-06T22:10:44-00:00
+  who: Ted Smith
+  what: commented
+  comment: Build lens now accepts //..., recursive package patterns and package :all/:*
+    over captured rules. Pattern expansions are not limited to eight targets; the
+    existing 80-node display bound is explicit. Broad results wrap into columns. Local
+    quality 1146 tests/83 files plus typechecks/builds passed; HMR canvas retained.
+    This increment has unit/form regression coverage, not a new virtual screenshot
+    or full landing council.
