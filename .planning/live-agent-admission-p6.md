@@ -28,7 +28,7 @@ by the human and future bounded read tools remain on the roadmap.
 - [x] (2026-09-06 14:38Z) Native steering fix-delta finding resolved in bbb82fe. OpenAI and Google convergence CLEAN; Anthropic actual usage-credit exhaustion is MISSING, not approval.
 - [x] (2026-09-06 14:38Z) Local only-two-document, whitespace, relative-link, cited-symbol and evidence-identity checks pass; no new product tests/GUI/probes performed.
 - [x] (2026-09-06 14:46Z) ROOT explicitly cleared C2 normal dbe457d for this landing continuation; merged that exact aggregate into the own feature branch. Final aggregate has only two added P6 docs, unchanged cited agent seams and passing local documentation checks. The normal-merge/Ditz receipt is recorded in the ignored handoff after the operation.
-- [ ] (2026-09-06 14:48Z) Normal merge/closure held again: the immediate pre-merge guard observed new T2 PR31 normal 7642eb663565ce0e1f97590acf55e21b761c7320. ROOT's ledger does not yet clear this head. Guard stopped before invoking the PR merge; no T2 consumed. Return this exact need to ROOT without waiting or duplicating work.
+- [x] The 14:48Z T2 aggregate hold was subsequently resolved by ROOT's independent verification and explicit publication clearance. Consumed exact T2 normal7642eb663565ce0e1f97590acf55e21b761c7320 for this final landing only; no future T3 work. Repeated proportionate final documentation checks. Final merge/Ditz receipt is recorded in the handoff, not inferred from remote membership.
 - [x] (2026-09-06 14:40Z) Publish reviewed/pushed design handoff, exact landing hold and retained resources; no successor dispatched.
 
 
@@ -98,11 +98,13 @@ Aggregate clearance and publication are NOT ROOT approval of this proposed
 design or authority for its implementation. Nothing is activated and no
 successor is dispatched.
 
-The landing continuation's immediate pre-merge guard subsequently found remote
-master advanced to T2 PR31 normal7642eb663565ce0e1f97590acf55e21b761c7320.
-ROOT has not cleared that new aggregate. Per the explicit continuation order,
-stop before PR merge, retain the clean pushed C2-based feature, and report the
-exact new authority needed. PR34 is still open; Ditz design remains in progress.
+The earlier pre-merge guard correctly stopped on then-unreviewed T2. ROOT has
+now independently verified exact T2 PR31 normal7642eb663565ce0e1f97590acf55e21b761c7320
+and explicitly cleared its consumption. ROOT personally read the full design
+and accepts publication as a **reviewed blocked proposal**, not implementation
+authority. Only that approved aggregate is included in final landing. T3 is
+independent and no future T3 head is consumed. Actual merge, Ditz closure and
+hosted status are recorded in the final handoff after verification.
 
 Google's source-table wording nit was fixed. Its dense comparison-table nit is
 tracked in `live-agent-gate-ledger-readability`: retain the finite comparative
@@ -382,6 +384,8 @@ proportionate documentation checks on the exact approved aggregate; no
 substantive design change or repeated product build/probe/review was needed.
 The immutable final merge receipt and post-merge checks live in the handoff.
 
-Landing gate note, 2026-09-06: no merge receipt exists yet because the pre-merge
-remote-head equality guard stopped on unreviewed T2. The handoff records the
-validated C2-based topic, new exact hold and unchanged design/activation gates.
+Historical landing gate note, 2026-09-06: the earlier remote-head equality guard
+stopped on then-unreviewed T2 rather than silently consuming it. ROOT resolved
+that hold explicitly for this final publication. The final handoff supersedes
+historical unmerged recaps with actual verified landing state. Proposed P7
+remains held absent explicit later user authority; no successor is dispatched.
