@@ -10,12 +10,17 @@ Users can enlarge the interface without losing their place in either repository 
 
 - [x] (2026-09-06 06:40Z) Inspected the exact GraphPane cause and W3 measurements; created designated isolated worktree from reviewed e2f3da7.
 - [x] (2026-09-06 06:43Z) Proved all four targeted regressions red against unchanged GraphPane (554 existing tests passed); removed only the offending effect and unused ref/imports.
-- [ ] Verify actual deliberate cameras, source state and mounted instances in the owned virtual desktop; run full local gates.
+- [x] (2026-09-06 06:48Z) Verified actual deliberate cameras/source/instances in owned X11: first scenario78.327s, cleanup1. Full24-target build/all8 uncached tests passed,558tests/49files; code review available-seat fixpoint CLEAN.
+- [ ] Complete exact aggregate gates after normally merging I2 PR24: full25-target build passed; all9 tests and final visibly framed camera capture running.
 - [ ] Complete provider-diverse council to fixpoint, normal PR landing, issue synchronization and owned-process cleanup.
 
 ## Surprises & Discoveries
 
 GraphPane explicitly schedules two animation frames after every non-null interfaceZoom change and then calls the ReactFlow instance's fitView. That operation is unrelated to ordinary container resize and is the evidenced reset cause. A gesture after the first frame can also be overwritten by the second. ReactFlow already owns each mounted graph's camera, initialization and explicit Fit controls.
+
+The installed ReactFlow12.11.6 source confirms ordinary resize updates its width/height without fitting. A stable fitView=true prop does not requeue a fit on rerenders; initial fitting and Controls do not require GraphPane's onInit callback. The existing service projection begins empty and correctly performs its initial fit when the real topology build first supplies nodes, as observed in X11.
+
+The first visual proof preserved exact cameras but began its deliberate gestures from a camera fitted before source navigation narrowed the panes, leaving parts of the scene offscreen at150%. That is consistent with the invariant, but weak visual communication. The final temporary proof explicitly Fits the source-open layout first, then makes real pan and graph-zoom gestures; it does not manufacture camera state or change product behavior.
 
 ## Decision Log
 
@@ -25,7 +30,7 @@ Remove the interface-zoom-driven imperative fit and its now-unused instance ref,
 
 ## Outcomes & Retrospective
 
-Work is in progress. Unit camera ownership assertions alone are not evidence of real ReactFlow behavior; actual owned X11 input and DOM measurements must confirm the library behaves as expected. No real agent or policy capability is involved.
+The minimal removal fixed all four failing orchestration regressions, and actual owned X11 input confirmed independent deliberate cameras through interface zoom, compact panes, rapid resize and unsaved source work. Initial Fit, explicit Fit and source/service focus mapping remain available. Unit tests establish only application orchestration; the actual X11 proof establishes library/editor behavior. Aggregate landing remains in progress. No real agent or policy capability is involved.
 
 ## Context and Orientation
 
@@ -48,6 +53,12 @@ Run from `/home/tedks/Projects/swarm-ide/graph-camera-zoom`:
 
 The temporary owned proof is executed through `bazel run //tools:dev --run_under=<archived wrapper>` under the same lock. Only ports 55174 and optional measurement 55175 are used; actual desktop DISPLAY=:0, watched 55173 and unrelated 5173 are excluded.
 
+Exact temporary invocation:
+
+    flock --close /tmp/swarm-ide-overnight.UgO2Aw/virtual.lock nix develop --command bazel run //tools:dev --jobs=3 --run_under=/tmp/swarm-ide-graph-camera-w4.OofLMn/camera-preview-wrapper.sh
+
+Reproduction scripts are retained in the ignored evidence directory's `reproduce/` folder. The scenario uses only ownership-checked X11 input for clicks, wheel, keyboard and native resize. Loopback CDP reads DOM transforms/dimensions and retains DOM object handles for identity comparison; it never invokes camera APIs or mutates application/DOM state.
+
 ## Validation and Acceptance
 
 Before the fix the new deliberate-camera/late-frame tests must fail because GraphPane calls fitView. After the fix they must pass without changing their assertions. The virtual proof must record non-default pan and graph zoom for each graph before and after a 100→150→100 interface-zoom roundtrip and compact pane/source interaction. Compare exact viewport transforms only as test observations, preserve DOM identities and unsaved source contents, and show that explicit Fit still changes the deliberate camera. Record CSS viewport dimensions and screenshots. Full Bazel build and all actual local tests are required separately from review. Hosted CI status must be reported as observed, never inferred from local success.
@@ -65,3 +76,5 @@ Concise seam: `/tmp/swarm-ide-graph-camera-w4.OofLMn/seam.md`. Sanitized evidenc
 Keep ReactFlow and all existing prop/callback contracts unchanged. Add no package, helper or generalized camera state management. W4 owns only GraphPane, this plan and the focused new test. Actual graph rendering depends on the pinned @xyflow/react installation; its initial fitting and explicit controls are exercised in the virtual acceptance, not reimplemented.
 
 Revision note: Initial plan states the invariant and failure modes before product code changes.
+
+Revision note2026-09-06: Recorded four red regressions, first green/local/actual-X11 evidence, source-backed initialization behavior, available-seat CLEAN review and the reason for improving the visibly framed acceptance baseline. Aggregate landing is explicitly still pending.
