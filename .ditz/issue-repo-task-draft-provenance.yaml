@@ -17,3 +17,9 @@ log_events:
   who: Ted Smith
   what: created
   comment: ""
+- time: 2026-09-06T06:15:54-00:00
+  who: Ted Smith
+  what: blocked by repo-task-surface
+  comment: ""
+blocked_by:
+- repo-task-surface
