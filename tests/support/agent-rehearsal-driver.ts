@@ -25,7 +25,7 @@ export type RehearsalLedger = {
 };
 type Action =
   | { action: "observe" | "remember" | "continuity" | "palette" | "confirm" | "editor-focus" | "remove-click-observer" }
-  | { action: "click" | "click-point"; label: string }
+  | { action: "click" | "focus-button"; label: string }
   | { action: "click-observed"; token: string }
   | { action: "expand-reload-guard" }
   | { action: "text"; field: "task" | "instruction"; value: string }
@@ -55,7 +55,7 @@ async function rendererAction(input: Action): Promise<unknown> {
   }
   if (input.action === "click-observed") {
     const saved = target.__rehearsalClickObservation;
-    if (!saved || saved.token !== input.token) throw new Error("Expected matching pointer click observation");
+    if (!saved || saved.token !== input.token) throw new Error("Expected matching trusted activation observation");
     if (!saved.observed) return false;
     saved.off(); delete target.__rehearsalClickObservation; return true;
   }
@@ -82,13 +82,13 @@ async function rendererAction(input: Action): Promise<unknown> {
   if (input.action === "palette") {
     window.dispatchEvent(new KeyboardEvent("keydown", { key: "k", ctrlKey: true, bubbles: true })); return true;
   }
-  if (input.action === "click" || input.action === "click-point") {
+  if (input.action === "click" || input.action === "focus-button") {
     const candidates = buttons().filter((button) => button.getAttribute("aria-label") === input.label || button.textContent?.trim() === input.label ||
       (button.closest(".command-results") && button.querySelector("span")?.firstChild?.textContent === input.label));
     if (candidates.length !== 1 || candidates[0]!.disabled) throw new Error(`Expected one enabled UI control: ${input.label}`);
     const button = candidates[0]!;
     // The palette helper keeps its fixed DOM selection, but ordinary run
-    // controls are clicked by real Electron pointer events in the caller.
+    // controls are activated by real Electron keyboard events in the caller.
     // DOM .click() does not grant document user activation after a reload;
     // without it Chromium may suppress a legitimate beforeunload veto.
     if (input.action === "click") { button.click(); return true; }
@@ -100,7 +100,7 @@ async function rendererAction(input: Action): Promise<unknown> {
       if (x < 0 || y < 0 || x >= innerWidth || y >= innerHeight) continue;
       const hit = document.elementFromPoint(x, y);
       if (hit && button.contains(hit)) {
-        if (target.__rehearsalClickObservation) throw new Error("Previous pointer click observation still pending");
+        if (target.__rehearsalClickObservation) throw new Error("Previous trusted activation observation still pending");
         const token = crypto.randomUUID();
         const saved: ClickObservation = { token, observed: false, off: () => document.removeEventListener("click", receive, true) };
         function receive(event: MouseEvent) {
@@ -110,7 +110,8 @@ async function rendererAction(input: Action): Promise<unknown> {
         }
         target.__rehearsalClickObservation = saved;
         document.addEventListener("click", receive, true);
-        return { x, y, token };
+        button.focus();
+        return { token };
       }
     }
     throw new Error(`UI control has no visible unobstructed pointer target: ${input.label}`);
@@ -198,11 +199,14 @@ export async function runRehearsalProof(options: {
   const ui = (label: string, accepts: (value: Observation) => boolean) => until(label, observe, accepts);
   const click = async (label: string) => {
     await ui(`enabled ${label}`, (value) => value.buttons.some((button) => button.label === label && !button.disabled));
-    const { x, y, token } = await evaluate<{ x: number; y: number; token: string }>({ action: "click-point", label });
-    ownedWindow.webContents.sendInputEvent({ type: "mouseMove", x, y });
-    ownedWindow.webContents.sendInputEvent({ type: "mouseDown", button: "left", clickCount: 1, x, y });
-    ownedWindow.webContents.sendInputEvent({ type: "mouseUp", button: "left", clickCount: 1, x, y });
-    await until(`trusted pointer click delivered: ${label}`, () => evaluate<boolean>({ action: "click-observed", token }), Boolean);
+    const { token } = await evaluate<{ token: string }>({ action: "focus-button", label });
+    // Activate the actual focused button with a native keyboard gesture. This
+    // avoids mixing CSS coordinates with native/DPI-scaled input coordinates.
+    ownedWindow.focus(); ownedWindow.webContents.focus();
+    ownedWindow.webContents.sendInputEvent({ type: "keyDown", keyCode: "Enter" });
+    ownedWindow.webContents.sendInputEvent({ type: "char", keyCode: "\r" });
+    ownedWindow.webContents.sendInputEvent({ type: "keyUp", keyCode: "Enter" });
+    await until(`trusted keyboard activation delivered: ${label}`, () => evaluate<boolean>({ action: "click-observed", token }), Boolean);
   };
   const snapshot = async () => {
     const result = await evaluate<CoreResponse>({ action: "read", version: PROTOCOL_VERSION });
