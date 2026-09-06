@@ -16,3 +16,9 @@ log_events:
   who: Ted Smith
   what: created
   comment: ""
+- time: 2026-09-06T01:29:32-00:00
+  who: Ted Smith
+  what: blocked by agent-run-contract-base
+  comment: ""
+blocked_by:
+- agent-run-contract-base
