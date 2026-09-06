@@ -23,3 +23,12 @@ log_events:
     vs output-size diagnostics if AgentError union evolves. Current broker independently
     enforces canonical containment, protocol bounds remain strict, reserved31+1 provenance
     marker respects max32, and failures are sanitized. No raw error/config logging.'
+- time: 2026-09-06T03:04:21-00:00
+  who: Ted Smith
+  what: commented
+  comment: 'Final Anthropic convergence CLEAN c373f37; nonblocking nits retained:
+    refine sanitized expected-vs-unexpected logging for invalid UTF8/Git/missing-root;
+    preserve timeout hint in policy message; derive provenance marker literals from
+    one source; strengthen explicit wait for late observer completion in regression
+    and exercise FILE_CHANGED provenance injection. R0 instructionSource already supports
+    changing, so enum concern is not a defect. No raw diagnostic text should be surfaced.'
