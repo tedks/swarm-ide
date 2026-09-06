@@ -161,11 +161,24 @@ describe("compact workbench presentation boundaries", () => {
     fireEvent.change(instruction, { target: { value: "Unsent fixture instruction" } });
     const run = screen.getByRole("region", { name: "Selected agent run" });
     const slider = screen.getByRole("slider", { name: "Run pane height" }) as HTMLInputElement;
+    const output = screen.getByLabelText("Agent output");
+    const heading = run.querySelector<HTMLElement>(".agent-pane-header strong")!;
+    const activity = screen.getByLabelText("Build and activity summary");
+    // Bounded scrolling regions and overflowed headings must remain native
+    // keyboard focus targets. Actual scroll geometry is a virtual-X11 gate.
+    for (const target of [output, heading, activity]) {
+      expect(target.tabIndex).toBe(0);
+      target.focus();
+      expect(document.activeElement).toBe(target);
+    }
     const callsBefore = request.mock.calls.length;
     for (const value of [slider.min, slider.max]) {
       fireEvent.change(slider, { target: { value } });
       toggle("information"); toggle("work");
       act(() => { window.dispatchEvent(new Event("resize")); });
+      // The upper endpoint stays above the 160px lower endpoint even when
+      // 40vh falls below it, so growing the slider cannot shrink the dock.
+      expect(document.querySelector<HTMLElement>("main.workbench")!.style.gridTemplateRows).toContain("clamp(180px, 40vh, 448px)");
       expect(screen.getByRole("region", { name: "Selected agent run" })).toBe(run);
       expect(screen.getByLabelText("Instruction to this run")).toBe(instruction);
       expect(instruction.value).toBe("Unsent fixture instruction");
