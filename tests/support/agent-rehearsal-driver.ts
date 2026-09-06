@@ -26,7 +26,7 @@ export type RehearsalLedger = {
 type Action =
   | { action: "observe" | "remember" | "continuity" | "palette" | "confirm" | "editor-focus" | "remove-click-observer" }
   | { action: "click" | "focus-button"; label: string }
-  | { action: "click-observed"; token: string }
+  | { action: "click-observed" | "button-focused"; token: string }
   | { action: "expand-reload-guard" }
   | { action: "text"; field: "task" | "instruction"; value: string }
   | { action: "pan-point"; index: number }
@@ -44,12 +44,16 @@ type Observation = {
 // and read-only protocol operations, never arbitrary JS or mutation requests.
 async function rendererAction(input: Action): Promise<unknown> {
   type Memory = { graphs: Element[]; editor: Element | null; cameras: string[]; source: string | null; text: string };
-  type ClickObservation = { token: string; observed: boolean; off: () => void };
+  type ClickObservation = { token: string; button: HTMLButtonElement; observed: boolean; off: () => void };
   const target = window as Window & { __rehearsalProofMemory?: Memory; __rehearsalClickObservation?: ClickObservation };
   const source = () => document.querySelector(".source-surface > header strong")?.textContent ?? null;
   const graphs = () => [...document.querySelectorAll(".react-flow")];
   const cameras = () => [...document.querySelectorAll<HTMLElement>(".react-flow__viewport")].map((node) => node.style.transform);
   const buttons = () => [...document.querySelectorAll<HTMLButtonElement>("button")];
+  if (input.action === "button-focused") {
+    const saved = target.__rehearsalClickObservation;
+    return Boolean(saved?.token === input.token && document.hasFocus() && document.activeElement === saved.button);
+  }
   if (input.action === "remove-click-observer") {
     target.__rehearsalClickObservation?.off(); delete target.__rehearsalClickObservation; return true;
   }
@@ -102,7 +106,7 @@ async function rendererAction(input: Action): Promise<unknown> {
       if (hit && button.contains(hit)) {
         if (target.__rehearsalClickObservation) throw new Error("Previous trusted activation observation still pending");
         const token = crypto.randomUUID();
-        const saved: ClickObservation = { token, observed: false, off: () => document.removeEventListener("click", receive, true) };
+        const saved: ClickObservation = { token, button, observed: false, off: () => document.removeEventListener("click", receive, true) };
         function receive(event: MouseEvent) {
           if (event.isTrusted && event.target instanceof Node && button.contains(event.target)) {
             saved.observed = true; saved.off();
@@ -199,10 +203,15 @@ export async function runRehearsalProof(options: {
   const ui = (label: string, accepts: (value: Observation) => boolean) => until(label, observe, accepts);
   const click = async (label: string) => {
     await ui(`enabled ${label}`, (value) => value.buttons.some((button) => button.label === label && !button.disabled));
+    // Native activation may restore the previously focused renderer element.
+    // Finish it BEFORE selecting the button, then attest exact DOM focus before
+    // sending the single gesture. Never retry an action with unknown delivery.
+    ownedWindow.focus(); ownedWindow.webContents.focus();
+    await until("owned window focused", async () => ownedWindow.isFocused() && ownedWindow.webContents.isFocused(), Boolean);
     const { token } = await evaluate<{ token: string }>({ action: "focus-button", label });
+    await until(`exact button focused: ${label}`, () => evaluate<boolean>({ action: "button-focused", token }), Boolean);
     // Activate the actual focused button with a native keyboard gesture. This
     // avoids mixing CSS coordinates with native/DPI-scaled input coordinates.
-    ownedWindow.focus(); ownedWindow.webContents.focus();
     ownedWindow.webContents.sendInputEvent({ type: "keyDown", keyCode: "Enter" });
     ownedWindow.webContents.sendInputEvent({ type: "char", keyCode: "\r" });
     ownedWindow.webContents.sendInputEvent({ type: "keyUp", keyCode: "Enter" });
