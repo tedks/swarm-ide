@@ -5,7 +5,7 @@ type: task
 component: default
 release:
 reporter: Ted Smith <tedks@riseup.net>
-status: unstarted
+status: in_progress
 disposition:
 creation_time: 2026-09-06T04:11:34-00:00
 references: []
@@ -24,3 +24,7 @@ log_events:
     Next W3 should coordinate a safe document reload guard or explicit approved persistence/discard
     flow, preserving unknown operation evidence without accidental replay or a permanent
     trapped reload. Not implemented in this bounded HMR slice.'
+- time: 2026-09-06T04:28:40-00:00
+  who: Ted Smith
+  what: started
+  comment: ""
