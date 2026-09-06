@@ -127,10 +127,9 @@ async function main() {
     await wc.insertText("// unsaved navigation intent"); key("Home", ["control"]); key("Right");
     await until(() => run(() => document.querySelector(".cm-content").cmView.rootView.view.state.selection.main.anchor === 1), "exact logical cursor");
     const dirtySource = `${fixture.sourceText}// unsaved navigation intent`;
-    const draftPoint = await run(() => { const node = document.querySelector(".agent-rail .agent-primary"); node.scrollIntoView({ block: "nearest" }); const rect = node.getBoundingClientRect(); return { x: Math.round(rect.x + rect.width / 2), y: Math.round(rect.y + rect.height / 2) }; });
-    wc.sendInputEvent({ type: "mouseMove", ...draftPoint });
-    wc.sendInputEvent({ type: "mouseDown", ...draftPoint, button: "left", clickCount: 1 });
-    wc.sendInputEvent({ type: "mouseUp", ...draftPoint, button: "left", clickCount: 1 });
+    // Native keyboard activation is independent of the preceding graph drag's
+    // browser click-suppression bookkeeping and exercises a first-class gesture.
+    await focus(".agent-rail .agent-primary"); key("Enter");
     await until(() => has(".agent-draft textarea"), "independent draft");
     await fill(".agent-draft textarea", "Keep my source, my place, and this independent draft.");
     await paint();
