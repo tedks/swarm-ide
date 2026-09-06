@@ -176,8 +176,9 @@ Separate canonical root/committed-HEAD registration from whole-world fingerprint
 startup. Once registration succeeds, initialize the provider and permit directory
 and existing source reads while the fingerprint is pending or failed. Extend
 `revisions.working` with evidence `observed | unavailable` (existing valid
-snapshots default to observed). Unavailable evidence has an empty fingerprint and
-a registration-scoped `unobserved:` coordinate ID, never a content digest. Require
+snapshots default to observed). Before any successful observation, unavailable
+evidence has an empty fingerprint and a registration-scoped `unobserved:`
+coordinate ID, never a content digest. Require
 observed evidence for green publication and agent context/admission; do not
 weaken the fingerprint parser or enable agents. Bounded initial fingerprint work
 must not gate `workspace.snapshot`/`repo.list`; a later successful observation
