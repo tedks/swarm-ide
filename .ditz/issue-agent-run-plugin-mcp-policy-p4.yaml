@@ -1,0 +1,19 @@
+id: agent-run-plugin-mcp-policy-p4
+title: Prove one plugin-supplied MCP startup exclusion without a model turn
+desc: P4 bounded source feasibility then one immutable fixed local plugin positive/negative
+  startup control under existing independent26-boundary acceptance; stop at reviewed
+  exact source finding if turn/auth/remote install/writable config ancestry is required.
+  No production availability or credentialed equivalence.
+type: task
+component: default
+release:
+reporter: Ted Smith <tedks@riseup.net>
+status: unstarted
+disposition:
+creation_time: 2026-09-06T06:29:39-00:00
+references: []
+log_events:
+- time: 2026-09-06T06:29:39-00:00
+  who: Ted Smith
+  what: created
+  comment: ""
