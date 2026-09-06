@@ -61,6 +61,14 @@ log_events:
   who: Ted Smith
   what: blocks agent-run-policy-harness-diagnostics
   comment: ""
+- time: 2026-09-06T06:08:05-00:00
+  who: Ted Smith
+  what: commented
+  comment: 'P3 final-topic be93b7b hosted34015320911 is FAILURE, not pending: SEED_PIPE_FAILED
+    with codexStarted=false and bootstrapDiagnostic UNRECOGNIZED_STDERR/truncated=false
+    at2026-09-06T06:05:15Z. No underlying namespace cause proven. Local topic full
+    gates passed; bounded diagnostic preserves fail-closed behavior without raw stderr
+    exposure or assertion skip.'
 blocks:
 - agent-run-owned-process-hosted-proof
 - agent-run-policy-harness-diagnostics
