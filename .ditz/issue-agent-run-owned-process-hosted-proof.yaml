@@ -39,5 +39,13 @@ log_events:
     fallback or speculative cause. Local reviewed combined558tests49files/full25/all9
     + postmerge focused proof pass; normal6e054e5/integration746644c share treecee00e5f.
     Hosted positive acceptance remains open; no production capability.'
+- time: 2026-09-06T08:04:37-00:00
+  who: Ted Smith
+  what: commented
+  comment: P5 exact topic ececf26 run34020132843 failed required namespace-positive
+    unshare prerequisite; no installed Codex turn occurs in hosted default suites.
+    Merge207637c run34020396207 also FAILED. Exact local aggregate all10 including
+    external process proof4tests and owned X11 rehearsal passed; no test skips/host-security
+    changes. Remains open; sanitized logs master/artifacts/overnight-wave/policy-p5.
 blocked_by:
 - agent-policy-boundary-hosted-seed-pipe
