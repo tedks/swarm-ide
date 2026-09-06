@@ -2,7 +2,6 @@ import { execFileSync, spawn } from "node:child_process";
 import { createServer } from "node:http";
 import { createRequire } from "node:module";
 import { access, lstat, mkdtemp, readFile, realpath, rm, writeFile } from "node:fs/promises";
-import { tmpdir } from "node:os";
 import { dirname, isAbsolute, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { createTaskFixture } from "./fixture.mjs";
@@ -23,8 +22,9 @@ if (!electron || !isAbsolute(electron)) throw new Error("Nix Electron required")
 const runfiles = process.env.TEST_SRCDIR || process.env.RUNFILES_DIR;
 const bundle = runfiles ? join(runfiles, "_main", "swarm-ide-foundation.tar.gz") : join(process.cwd(), "bazel-bin", "swarm-ide-foundation.tar.gz");
 await access(bundle);
-// Artifact and repository share a fresh /tmp parent, outside source dependency ancestors.
-const scratch = await mkdtemp(join(tmpdir(), "swarm-task-package-"));
+// Outside source dependency ancestors, inside the supervisor's private cleanup
+// boundary even if this launcher receives SIGKILL before its finally block.
+const scratch = await mkdtemp(join(owner, "swarm-task-package-"));
 let server, desktop, killTimer;
 const handlers = new Map();
 try {

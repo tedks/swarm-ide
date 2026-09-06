@@ -35,7 +35,9 @@ async function main() {
   const text = (selector) => run((s) => document.querySelector(s)?.textContent ?? "", selector);
   const button = (label) => `[aria-label=${JSON.stringify(label)}]`;
   const key = (keyCode, modifiers = []) => {
+    if (keyCode === "Return") keyCode = "Enter";
     wc.sendInputEvent({ type: "keyDown", keyCode, modifiers });
+    if (keyCode === "Enter") wc.sendInputEvent({ type: "char", keyCode: "\r", modifiers });
     wc.sendInputEvent({ type: "keyUp", keyCode, modifiers });
   };
   const focus = (selector) => run((s) => {
