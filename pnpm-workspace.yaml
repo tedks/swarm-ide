@@ -3,3 +3,6 @@ packages:
 
 allowBuilds:
   esbuild: true
+
+overrides:
+  '@codemirror/state': 6.7.4

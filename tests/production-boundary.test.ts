@@ -5,7 +5,7 @@ import { describe, expect, it } from "vitest";
 describe("production truth and privilege boundaries", () => {
   it("boots the real provider and keeps deterministic fixtures out of the worker", async () => {
     const entry = await readFile("core/worker.ts", "utf8");
-    expect(entry).toContain("startCoreWorker();");
+    expect(entry).toContain("startCoreWorker({ createTasks: createDitzTaskProvider });");
     expect(entry).not.toMatch(/fixtures|process.env/);
     const worker = await readFile("core/worker-runtime.ts", "utf8");
     expect(worker).toContain('import { RealWorkspaceProvider } from "./provider"');

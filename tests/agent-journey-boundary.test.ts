@@ -30,7 +30,7 @@ describe("test-only journey packaging boundary", () => {
     const productionEntry = await readFile("core/worker.ts", "utf8");
     const launch = await readFile("app/electron/core-launch.ts", "utf8");
     expect(normalDev).not.toMatch(/journey|fixture.control/);
-    expect(productionEntry).toContain("startCoreWorker();");
+    expect(productionEntry).toContain("startCoreWorker({ createTasks: createDitzTaskProvider });");
     expect(productionEntry).not.toContain("process.env");
     expect(launch).toContain('join(__dirname, "../../core/worker.js")');
     expect(launch).not.toMatch(/journey|fixture/);

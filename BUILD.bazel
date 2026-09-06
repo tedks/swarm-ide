@@ -28,6 +28,7 @@ filegroup(
         "//tools:agent-journey-sources",
         "//tools:agent-rehearsal-sources",
         "//tools/policy:sources",
+        "//tools/task-integration:sources",
     ],
 )
 
