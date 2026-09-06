@@ -43,5 +43,13 @@ log_events:
   who: Ted Smith
   what: started
   comment: ""
+- time: 2026-09-06T04:51:03-00:00
+  who: Ted Smith
+  what: commented
+  comment: Pushed83da50f PR17. Independent Linux boundary and actual installed offline
+    inspection pass seven cases/eight expectations, all9 feature pages. Four native
+    Important review issues fixed, OpenAI+Google convergence CLEAN; Anthropic pending.
+    Full22targetbuild passed; fulluncached tests under virtual lock underway. Policy
+    parent stays unavailable/open.
 blocks:
 - agent-run-effective-policy
