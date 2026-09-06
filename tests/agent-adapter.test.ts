@@ -42,7 +42,7 @@ async function fixture(overrides: Partial<AdapterCapabilities> = {}, input = dra
   const handle = await adapter.start(input, (event) => events.push(event)); handles.push(handle);
   const receive = (message: unknown) => sink.stdout(Buffer.from(JSON.stringify(message) + "\n"));
   const reply = async (method: string, result: unknown) => {
-    const request = requests.findLast((r) => r.method === method);
+    const request = requests.filter((r) => r.method === method).at(-1);
     expect(request).toBeDefined(); receive({ id: request!.id, result }); await flush();
   };
   const notify = (method: string, params: unknown) => receive({ method, params });
