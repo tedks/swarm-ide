@@ -1,0 +1,23 @@
+id: ui-service-source-navigation
+title: Open service definitions and evidence-backed call sites from graph selections
+desc: 'Personally steered UI request remains after the mock-tab checkpoint: clicking
+  a service should open its definition; clicking a call edge should open the caller
+  implementation and highlight actual call locations. Existing FraudCheck topology
+  carries an implementation focus and interface declaration paths but no generic definition/call-site
+  mapping. Its declared Payments.Authorize dependency is not an actual call in fraudcheck.ts.
+  Add explicit source-link metadata and preserve missing/stale-location honesty, protected
+  source buffers, graph cameras, and the existing broker. Do not fabricate highlights
+  from declared edges.'
+type: feature
+component: default
+release:
+reporter: Ted Smith <tedks@riseup.net>
+status: unstarted
+disposition:
+creation_time: 2026-09-06T21:59:12-00:00
+references: []
+log_events:
+- time: 2026-09-06T21:59:12-00:00
+  who: Ted Smith
+  what: created
+  comment: ""
