@@ -746,7 +746,7 @@ export function App() {
       </section>
 
       {paletteOpen ? <div className="palette-scrim" onMouseDown={() => setPaletteOpen(false)}><section className="command-palette" onMouseDown={(event) => event.stopPropagation()}><header><span>⌕</span><input ref={commandInput} value={commandQuery} onChange={(event) => setCommandQuery(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter" && commands[0]) void commands[0].run(); }} placeholder="Navigate or apply intelligence…" /><kbd>esc</kbd></header><div className="command-results">{commands.map((command) => <button key={command.label} onClick={() => void command.run()}><span>{command.label}<small>{command.detail}</small></span><kbd>↵</kbd></button>)}</div><footer><span>Current focus: {focusLabel(snapshot.focus)}</span><span>scope · action · artifact</span></footer></section></div> : null}
-      {reloadNotice || lifecycleNotice ? <div className="lifecycle-notice" role="status">{reloadNotice || lifecycleNotice}</div> : null}
+      {reloadNotice || lifecycleNotice ? <div className="lifecycle-notice" role="status" tabIndex={0} aria-label="Development status">{reloadNotice || lifecycleNotice}</div> : null}
       {error ? <div className="error-toast">{error}</div> : null}
       {zoomNotice ? <div className="zoom-toast" role="status">{zoomNotice}</div> : null}
     </main>

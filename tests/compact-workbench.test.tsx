@@ -140,6 +140,10 @@ describe("compact workbench presentation boundaries", () => {
     toggle("information");
     expect(selectedPanel()).toBe("info");
     expect(unload().defaultPrevented).toBe(true);
+    const notice = screen.getByLabelText("Development status");
+    expect(notice.tabIndex).toBe(0);
+    notice.focus();
+    expect(document.activeElement).toBe(notice);
     toggle("work");
     expect(screen.getByLabelText("Task")).toBe(task);
     expect(screen.getByLabelText("Requested model")).toBe(model);

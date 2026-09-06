@@ -55,6 +55,8 @@
 .agent-launch-context pre { white-space: pre-wrap; overflow-wrap: anywhere; max-height: 200px; overflow: auto; }
 .agent-pane .agent-pagination { display: flex; flex-wrap: wrap; gap: 5px; padding: 4px 12px; }
 .work-rail:has(.agent-rail) { overflow: auto; }
+.work-rail > * { flex-shrink: 0; }
+.work-rail .agent-rail { overflow: visible; }
 @media (min-width: 1101px) {
   .workbench:has(.agent-draft) { grid-template-columns: 280px minmax(0, 1fr) minmax(220px, 24%); }
 }
