@@ -55,12 +55,12 @@ export function LiveRunPane({ state, onInstruction, onSteer, onStop, onRead, onF
 
   return <section className="agent-pane" aria-label="Selected agent run">
     <div className="agent-resize"><label>Run pane height<input aria-label="Run pane height" type="range" min={230} max={420} step={10} value={state.height} onChange={(event) => onHeight(Number(event.target.value))} /></label></div>
-    <header className="agent-pane-header"><div><strong>{displayAgentText(summary?.taskLabel ?? "Selected agent run")}</strong><span className={`agent-state agent-state-${run?.state ?? summary?.state ?? "unknown"}`}>{stateLabel}</span></div><div>
+    <header className="agent-pane-header"><div><strong tabIndex={0}>{displayAgentText(summary?.taskLabel ?? "Selected agent run")}</strong><span className={`agent-state agent-state-${run?.state ?? summary?.state ?? "unknown"}`}>{stateLabel}</span></div><div>
       <button title="Explicitly reveal the launch focus in the current working revision; selecting a run does not move source or graphs" disabled={!run} onClick={() => { if (run) onReveal(run.launchContext.focus); }}>Reveal launch focus</button>
       <button disabled={!stopEnabled} onClick={() => { if (stopEnabled) onStop(); }}>Stop</button>
       <button aria-label="Close run pane" onClick={onClose}>×</button>
     </div></header>
-    <div className="agent-pane-body"><div className="agent-output">
+    <div className="agent-pane-body"><div className="agent-output" tabIndex={0} aria-label="Agent output">
       <div className="agent-evidence">
         <div>Turn: {stateLabel} · process: {run?.processState ?? "unobserved"} · cleanup: {run?.cleanup.status ?? "unobserved"}</div>
         <div>Requested model: {run ? displayAgentText(run.launchContext.requested.model ?? "provider default (unresolved)") : "unobserved"} · Observed model: {run?.providerObservation ? displayAgentText(run.providerObservation.model) : "unobserved"} · usage / performance: unavailable</div>

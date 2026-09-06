@@ -102,6 +102,7 @@ export function App() {
   const [error, setError] = useState<string | null>(null);
   const [activeLens, setActiveLens] = useState<(typeof lensTabs)[number]>(hotCheckpoint?.lens ?? restoredNavigation?.lens ?? "System");
   const [paletteOpen, setPaletteOpen] = useState(false);
+  const [compactPanel, setCompactPanel] = useState<"work" | "info" | null>(null);
   const [commandQuery, setCommandQuery] = useState("");
   const [hmr, setHmr] = useState({ generation: 0, milliseconds: 0 });
   const [fileTabs, setFileTabs] = useState<FileTab[]>(hotCheckpoint?.files ?? []);
@@ -652,17 +653,17 @@ export function App() {
   }, [invoke]);
 
   const commands = useMemo(() => [
-    { label: "Ask an agent about this focus", detail: "inspect disk context before explicit read-only launch", run: () => { setPaletteOpen(false); if (workspaceRef.current.snapshot) agentClient.openDraft(workspaceRef.current.snapshot.focus); } },
+    { label: "Ask an agent about this focus", detail: "inspect disk context before explicit read-only launch", run: () => { setPaletteOpen(false); setCompactPanel("work"); if (workspaceRef.current.snapshot) agentClient.openDraft(workspaceRef.current.snapshot.focus); } },
     { label: "Build repository service topology", detail: "exact fingerprint → Bazel artifact → green", run: reconcile },
     { label: "Show system graphs", detail: "return to the coordinated repository and service views", run: () => { setPaletteOpen(false); showSurface("graphs"); } },
     { label: "Open FraudCheck implementation", detail: FRAUDCHECK_IMPLEMENTATION, run: () => { setPaletteOpen(false); void openFile(FRAUDCHECK_IMPLEMENTATION); } },
     { label: "Open FraudCheck protobuf contract", detail: FRAUDCHECK_CONTRACT, run: () => { setPaletteOpen(false); void openFile(FRAUDCHECK_CONTRACT); } },
-    ...(agentFixtureEnabled ? [{ label: "Preview agent fixture", detail: "DEMO only · no provider or file bytes · explicit launch", run: () => { setPaletteOpen(false); openAgentDraft(); } }] : []),
+    ...(agentFixtureEnabled ? [{ label: "Preview agent fixture", detail: "DEMO only · no provider or file bytes · explicit launch", run: () => { setPaletteOpen(false); setCompactPanel("work"); openAgentDraft(); } }] : []),
   ].filter((command) => command.label.toLowerCase().includes(commandQuery.toLowerCase())), [agentClient, agentFixtureEnabled, openAgentDraft, commandQuery, openFile, reconcile, showSurface]);
 
   if (!snapshot) return <main className="loading-screen"><div className="loading-mark hmr-probe" />Opening the working world…{error ? <strong>{error}</strong> : null}<small>{lifecycleNotice}</small><AgentReloadGuard state={liveAgents} client={agentClient} /></main>;
   return (
-    <main className="workbench" style={agents.selected || liveAgents.paneOpen ? { gridTemplateRows: `52px minmax(150px, 1fr) min(${(liveAgents.paneOpen ? liveAgents.height : agentPaneHeight) + 28}px, 48vh)` } : undefined}>
+    <main className="workbench" data-compact-panel={compactPanel ?? "none"} style={agents.selected || liveAgents.paneOpen ? { gridTemplateRows: `var(--topbar-height) minmax(0, 1fr) calc(160px + (clamp(180px, 40vh, 448px) - 160px) * ${Math.min(1, Math.max(0, ((liveAgents.paneOpen ? liveAgents.height : agentPaneHeight) - 230) / 190))})` } : undefined}>
       <header className="topbar">
         <div className="product-mark"><span className="hmr-probe" />swarm</div>
         <nav className="lens-tabs" aria-label="Workspace lenses">{lensTabs.map((lens) => <button key={lens} className={activeLens === lens ? "active" : ""} onClick={() => setActiveLens(lens)}>{lens}</button>)}</nav>
@@ -673,21 +674,25 @@ export function App() {
           <button aria-label="Zoom in" title="Zoom in (Ctrl+=)" aria-disabled={zoomPercent === INTERFACE_ZOOM_LEVELS.at(-1)} onClick={() => { if (zoomPercent !== INTERFACE_ZOOM_LEVELS.at(-1)) void zoomIn(); }}>+</button>
         </div>
         <div className={`global-truth status-${snapshot.reconciliation.status}`}><i />{title}<small>epoch {snapshot.reconciliation.epoch}</small></div>
+        <div className="compact-panel-controls" aria-label="Compact cockpit panels">
+          <button aria-label="Toggle work panel" aria-controls="work-panel" aria-expanded={compactPanel === "work"} onClick={() => setCompactPanel((panel) => panel === "work" ? null : "work")}>Work{agentIntentProtected ? " · local intent" : ""}</button>
+          <button aria-label="Toggle information panel" aria-controls="information-panel" aria-expanded={compactPanel === "info"} onClick={() => setCompactPanel((panel) => panel === "info" ? null : "info")}>Information</button>
+        </div>
       </header>
 
-      <aside className="work-rail panel">
+      <aside id="work-panel" aria-label="Work panel" className="work-rail panel">
         <div className="rail-section"><span className="eyebrow">working world</span><h1>swarm-ide</h1><p className="muted">real local repository</p></div>
-        <LiveRunRail state={liveAgents} client={agentClient} onDraft={() => agentClient.openDraft(snapshot.focus)} />
+        <LiveRunRail state={liveAgents} client={agentClient} onDraft={() => { setCompactPanel("work"); agentClient.openDraft(snapshot.focus); }} />
         <AgentReloadGuard state={liveAgents} client={agentClient} />
         <PreparedLaunchDraft state={liveAgents} client={agentClient} dirtyPaths={fileTabs.filter((tab) => protectsBuffer(tab)).map((tab) => tab.path)} />
-        {agentFixtureEnabled ? <RunRail state={agents} fixtureEnabled={agentFixtureEnabled} onDraft={openAgentDraft} onSelect={() => { agentClient.closePane(); setAgents((state) => ({ ...state, selected: true })); }} /> : null}
+        {agentFixtureEnabled ? <RunRail state={agents} fixtureEnabled={agentFixtureEnabled} onDraft={() => { setCompactPanel("work"); openAgentDraft(); }} onSelect={() => { agentClient.closePane(); setAgents((state) => ({ ...state, selected: true })); }} /> : null}
         {agents.draftOpen && agentFixtureEnabled ? <LaunchDraft focus={snapshot.focus} onClose={() => setAgents((state) => ({ ...state, draftOpen: false }))} onLaunch={(context) => { agentClient.closePane(); setAgents((state) => fixtureReducer(state, { type: "launch", context })); }} /> : null}
         <div className="rail-section dispatch-list"><div className="section-heading"><span>Dispatch queue</span><b>0</b></div><div className="empty-rail">Task provider is not connected.</div></div>
       </aside>
 
       <section className={`navigation-field ${activeFile ? "source-open" : ""}`}>
         <div className="field-toolbar">
-          <div><span className="eyebrow">central navigation</span><strong>{activeFile?.path ?? focusLabel(snapshot.focus)}</strong><small>{activeFile ? `${activeFile.status} · ${activeFile.message}` : `${snapshot.focus.domain} · ${snapshot.focus.revisionId.slice(0, 12)}`}</small></div>
+          <div><span className="eyebrow">central navigation</span><strong>{activeFile?.path ?? focusLabel(snapshot.focus)}</strong><small tabIndex={0}>{activeFile ? `${activeFile.status} · ${activeFile.message}` : `${snapshot.focus.domain} · ${snapshot.focus.revisionId.slice(0, 12)}`}</small></div>
           <div className="world-chips"><span>working <b>{snapshot.revisions.working.id.slice(0, 8)}</b></span><span>built <b>{snapshot.revisions.built.id.slice(0, 8) || "—"}</b></span><span>deployed <b>{snapshot.revisions.deployed.environment}</b></span></div>
           <button id="reconcile-success" className="build-button" onClick={() => void reconcile()} disabled={reconciliationRunning || coreUnavailable}>▶ Build topology</button>
         </div>
@@ -714,7 +719,7 @@ export function App() {
         </section> : null}
       </section>
 
-      <aside className="instrument-panel panel">
+      <aside id="information-panel" aria-label="Information panel" className="instrument-panel panel">
         <div className="instrument-heading"><div><span className="eyebrow">contextual instruments</span><h2>{selectedConnection?.label ?? focusLabel(snapshot.focus)}</h2></div><button>•••</button></div>
         <div className="breadcrumbs">world / {selectedConnection ? "connection" : snapshot.focus.domain} / <b>{selectedConnection?.id ?? focusLabel(snapshot.focus)}</b></div>
         <div className="widget-grid">
@@ -736,12 +741,12 @@ export function App() {
           else setError("Launch focus cannot be mapped to this working world.");
         }} onClose={() => setAgents((state) => ({ ...state, selected: false }))} height={agentPaneHeight} onHeight={setAgentPaneHeight} /> : null}
         <div className="dock-header"><div><span className="eyebrow">activity / jobs</span><strong>Changes entering the world</strong></div><span className="ignored-events">{workspace.ignoredEvents} stale events rejected</span></div>
-        <div className="job-strip">{snapshot.jobs.length ? snapshot.jobs.map((job) => <article className={`job status-${job.status === "failed" ? "red" : job.status === "succeeded" ? "green" : "yellow"}`} key={job.id}><header><strong>{job.label}</strong><span>{Math.round(job.progress * 100)}%</span></header><div className="job-progress"><i style={{ width: `${job.progress * 100}%` }} /></div><footer><span>{job.message}</span><b>{job.resources.cpuPercent || job.resources.memoryMiB ? `CPU ${job.resources.cpuPercent}% · ${job.resources.memoryMiB} MiB` : "telemetry unavailable"}</b></footer></article>) : <article className="job idle"><strong>No derived work running</strong><span>Build the repository service topology to observe the current world.</span></article>}<div className="activity-list">{snapshot.activity.slice(0, 4).map((activity) => <div key={activity.id}><i className={`status-${activity.status}`} /><span>{activity.summary}</span><small>{activity.kind}</small></div>)}</div></div>
-        {agents.selected || liveAgents.paneOpen ? <div className="agent-job-summary">Build / activity · {snapshot.jobs.length ? snapshot.jobs.map((job) => `${job.label}: ${job.status} · ${job.resources.cpuPercent || job.resources.memoryMiB ? `${job.resources.cpuPercent}% CPU / ${job.resources.memoryMiB} MiB` : "telemetry unavailable"}`).join(" · ") : "no derived work running"} · {snapshot.activity[0]?.summary ?? "no recent events"}</div> : null}
+        <div className="job-strip" tabIndex={0} aria-label="Build jobs and recent activity">{snapshot.jobs.length ? snapshot.jobs.map((job) => <article className={`job status-${job.status === "failed" ? "red" : job.status === "succeeded" ? "green" : "yellow"}`} key={job.id}><header><strong>{job.label}</strong><span>{Math.round(job.progress * 100)}%</span></header><div className="job-progress"><i style={{ width: `${job.progress * 100}%` }} /></div><footer><span>{job.message}</span><b>{job.resources.cpuPercent || job.resources.memoryMiB ? `CPU ${job.resources.cpuPercent}% · ${job.resources.memoryMiB} MiB` : "telemetry unavailable"}</b></footer></article>) : <article className="job idle"><strong>No derived work running</strong><span>Build the repository service topology to observe the current world.</span></article>}<div className="activity-list">{snapshot.activity.slice(0, 4).map((activity) => <div key={activity.id}><i className={`status-${activity.status}`} /><span>{activity.summary}</span><small>{activity.kind}</small></div>)}</div></div>
+        {agents.selected || liveAgents.paneOpen ? <div className="agent-job-summary" tabIndex={0} aria-label="Build and activity summary">Build / activity · {snapshot.jobs.length ? snapshot.jobs.map((job) => `${job.label}: ${job.status} · ${job.resources.cpuPercent || job.resources.memoryMiB ? `${job.resources.cpuPercent}% CPU / ${job.resources.memoryMiB} MiB` : "telemetry unavailable"}`).join(" · ") : "no derived work running"} · {snapshot.activity[0]?.summary ?? "no recent events"}</div> : null}
       </section>
 
       {paletteOpen ? <div className="palette-scrim" onMouseDown={() => setPaletteOpen(false)}><section className="command-palette" onMouseDown={(event) => event.stopPropagation()}><header><span>⌕</span><input ref={commandInput} value={commandQuery} onChange={(event) => setCommandQuery(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter" && commands[0]) void commands[0].run(); }} placeholder="Navigate or apply intelligence…" /><kbd>esc</kbd></header><div className="command-results">{commands.map((command) => <button key={command.label} onClick={() => void command.run()}><span>{command.label}<small>{command.detail}</small></span><kbd>↵</kbd></button>)}</div><footer><span>Current focus: {focusLabel(snapshot.focus)}</span><span>scope · action · artifact</span></footer></section></div> : null}
-      {reloadNotice || lifecycleNotice ? <div className="lifecycle-notice" role="status">{reloadNotice || lifecycleNotice}</div> : null}
+      {reloadNotice || lifecycleNotice ? <div className="lifecycle-notice" role="status" tabIndex={0} aria-label="Development status">{reloadNotice || lifecycleNotice}</div> : null}
       {error ? <div className="error-toast">{error}</div> : null}
       {zoomNotice ? <div className="zoom-toast" role="status">{zoomNotice}</div> : null}
     </main>
