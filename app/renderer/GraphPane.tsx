@@ -1,9 +1,10 @@
-import { useLayoutEffect, useMemo, useRef, type ReactNode } from "react";
+import { memo, useMemo, type ReactNode } from "react";
 import { Background, Controls, Handle, Position, ReactFlow, type NodeProps } from "@xyflow/react";
 import type { FocusRef, GraphSlice, NavigationMapping } from "../../protocol/schema";
 import { adaptGraph, describeGraphConnection, type GraphConnectionFocus, type TopologyNodeData } from "./graph-adapter";
 import { useDirectoryCamera } from "./repository/camera";
 import type { RepositoryCameraIntent } from "./repository/navigation";
+import { useFramePresentation } from "./repository/presentation";
 export type { GraphConnectionFocus } from "./graph-adapter";
 
 function TopologyNode({ data }: NodeProps) {
@@ -22,7 +23,7 @@ function TopologyNode({ data }: NodeProps) {
 
 const nodeTypes = { topology: TopologyNode };
 
-export function GraphPane({ graph, focus, mappings, onFocus, onConnectionFocus, onReconcile, reconciliationRunning, repositoryNavigation, repositoryCameraIntent }: {
+interface GraphPaneProps {
   graph: GraphSlice;
   focus: FocusRef;
   mappings: NavigationMapping[];
@@ -33,20 +34,20 @@ export function GraphPane({ graph, focus, mappings, onFocus, onConnectionFocus, 
   interfaceZoom: number | null;
   repositoryNavigation?: ReactNode;
   repositoryCameraIntent?: RepositoryCameraIntent | null;
-}) {
+}
+
+export function GraphPane(props: GraphPaneProps) {
+  return props.graph.topologyId === "repo" ? <RepositoryGraphPane {...props} /> : <GraphPaneContent {...props} />;
+}
+
+function RepositoryGraphPane(props: GraphPaneProps) {
+  const presented = useFramePresentation(props);
+  return <GraphPaneContent {...presented} />;
+}
+
+const GraphPaneContent = memo(function GraphPaneContent({ graph, focus, mappings, onFocus, onConnectionFocus, onReconcile, reconciliationRunning, repositoryNavigation, repositoryCameraIntent }: GraphPaneProps) {
   const adapted = useMemo(() => adaptGraph(graph, focus, mappings), [graph, focus, mappings]);
-  const initial = useRef(adapted);
   const camera = useDirectoryCamera(graph.directory, repositoryCameraIntent);
-  useLayoutEffect(() => {
-    if (graph.topologyId !== "repo" || !camera.instance) return;
-    // Controlled ReactFlow props are copied into its store in a passive
-    // effect. A node ResizeObserver can flush that pending effect while it is
-    // still delivering the previous page's measurements. The public instance
-    // queues instead commit in ReactFlow's layout phase, before paint: controls,
-    // node actions, edges and the current observation change together.
-    camera.instance.setNodes(adapted.nodes);
-    camera.instance.setEdges(adapted.edges);
-  }, [graph.topologyId, camera.instance, adapted]);
   // Interface zoom resizes CSS presentation, not the user's graph camera.
   // Let each mounted ReactFlow retain its own viewport through zoom/resize;
   // only initial fit and the explicit Fit control should frame the graph.
@@ -62,8 +63,8 @@ export function GraphPane({ graph, focus, mappings, onFocus, onConnectionFocus, 
       {repositoryNavigation}
       <div className="graph-canvas">
         <ReactFlow
-          {...(graph.topologyId === "repo" ? { defaultNodes: initial.current.nodes, defaultEdges: initial.current.edges }
-            : { nodes: adapted.nodes, edges: adapted.edges })}
+          nodes={adapted.nodes}
+          edges={adapted.edges}
           onInit={camera.onInit}
           onMoveStart={camera.onMoveStart}
           onMoveEnd={camera.onMoveEnd}
@@ -89,4 +90,4 @@ export function GraphPane({ graph, focus, mappings, onFocus, onConnectionFocus, 
       </div>
     </section>
   );
-}
+});

@@ -14,9 +14,8 @@ vi.mock("@xyflow/react", async () => {
     Handle: () => null,
     MarkerType: { ArrowClosed: "arrowclosed" },
     Position: { Left: "left", Right: "right" },
-    ReactFlow: ({ nodes, defaultNodes, onInit, fitView, fitViewOptions, onNodeClick, children }: {
-      nodes?: Array<{ id: string; data: unknown }>;
-      defaultNodes?: Array<{ id: string; data: unknown }>;
+    ReactFlow: ({ nodes, onInit, fitView, fitViewOptions, onNodeClick, children }: {
+      nodes: Array<{ id: string; data: unknown }>;
       onInit?: (instance: { fitView: () => Promise<boolean> }) => void;
       fitView: boolean;
       fitViewOptions: { padding: number; maxZoom: number };
@@ -24,13 +23,12 @@ vi.mock("@xyflow/react", async () => {
       children: import("react").ReactNode;
     }) => {
       const [camera, setCamera] = React.useState("initial-fit");
-      const [storedNodes, setStoredNodes] = React.useState(defaultNodes ?? []);
-      const [instance] = React.useState(() => ({ fitView: async () => { setCamera("imperative-fit"); return true; }, setNodes: setStoredNodes, setEdges: () => undefined }));
+      const [instance] = React.useState(() => ({ fitView: async () => { setCamera("imperative-fit"); return true; } }));
       React.useEffect(() => { onInit?.(instance); }, [instance]); // Deliberately mount-only, like ReactFlow's onInit.
       return <div data-testid="flow" data-camera={camera} data-initial-fit={fitView} data-fit-options={JSON.stringify(fitViewOptions)}>
         <button onClick={() => setCamera("x:83,y:-41,zoom:1.73")}>Pan and zoom A</button>
         <button onClick={() => setCamera("x:-62,y:27,zoom:0.81")}>Pan and zoom B</button>
-        <button onClick={() => onNodeClick({}, (nodes ?? storedNodes)[0]!)}>Select first node</button>
+        <button onClick={() => onNodeClick({}, nodes[0]!)}>Select first node</button>
         {children}
       </div>;
     },

@@ -17,27 +17,23 @@ vi.mock("@xyflow/react", async () => {
   return {
     Background: () => null, Controls: () => null, Handle: () => null,
     Position: { Left: "left", Right: "right" }, MarkerType: { ArrowClosed: "arrow" },
-    ReactFlow: ({ nodes, defaultNodes, onInit, onNodeClick, onMoveStart, onMoveEnd, children }: {
-      nodes?: Array<{ id: string; data: { label: string; focus: FocusRef } }>;
-      defaultNodes?: Array<{ id: string; data: { label: string; focus: FocusRef } }>;
+    ReactFlow: ({ nodes, onInit, onNodeClick, onMoveStart, onMoveEnd, children }: {
+      nodes: Array<{ id: string; data: { label: string; focus: FocusRef } }>;
       onInit: (value: unknown) => void; onNodeClick: (event: unknown, node: unknown) => void;
       onMoveStart: (event: unknown) => void; onMoveEnd: (event: unknown, camera: unknown) => void; children: ReactNode;
     }) => {
       const viewport = React.useRef({ x: 0, y: 0, zoom: 1 });
       const [camera, setCamera] = React.useState(viewport.current);
       const [fits, setFits] = React.useState(0);
-      const [storedNodes, setStoredNodes] = React.useState(defaultNodes ?? []);
       const [instance] = React.useState(() => ({
         getViewport: () => viewport.current,
         fitView: async () => { viewport.current = { x: 0, y: 0, zoom: 1 }; setCamera(viewport.current); setFits((n) => n + 1); return true; },
         setViewport: async (value: typeof viewport.current) => { viewport.current = value; setCamera(value); return true; },
-        setNodes: setStoredNodes,
-        setEdges: () => undefined,
       }));
       React.useEffect(() => { onInit(instance); }, [instance]);
       return <div data-testid="repository-flow" data-camera={JSON.stringify(camera)} data-fits={fits}>
         <button aria-label="Pan graph" onClick={() => { onMoveStart({}); viewport.current = { x: 73, y: -29, zoom: 1.7 }; setCamera(viewport.current); onMoveEnd({}, viewport.current); }}>Pan</button>
-        {(nodes ?? storedNodes).map((node) => <button key={node.id} aria-label={`Graph node ${node.data.label}`} onClick={() => onNodeClick({}, node)}>{node.data.label}</button>)}{children}
+        {nodes.map((node) => <button key={node.id} aria-label={`Graph node ${node.data.label}`} onClick={() => onNodeClick({}, node)}>{node.data.label}</button>)}{children}
       </div>;
     },
   };
@@ -154,16 +150,17 @@ describe("repository controls and coordinated cameras", () => {
     vi.stubGlobal("requestAnimationFrame", (callback: FrameRequestCallback) => { frames.set(++next, callback); return next; });
     vi.stubGlobal("cancelAnimationFrame", (id: number) => frames.delete(id));
     const frame = () => act(() => { const callbacks = [...frames.values()]; frames.clear(); callbacks.forEach((callback) => callback(0)); });
+    const settle = () => { frame(); frame(); frame(); };
     const snapshot = initialSnapshot();
     const props = { focus: snapshot.focus, mappings: [], onFocus: vi.fn(), onConnectionFocus: vi.fn(), onReconcile: vi.fn(), reconciliationRunning: false, interfaceZoom: 100 };
-    const view = render(<GraphPane {...props} graph={graph(observation())} />); frame(); frame();
+    const view = render(<GraphPane {...props} graph={graph(observation())} />); settle();
     const flow = screen.getByTestId("repository-flow"); fireEvent.click(screen.getByRole("button", { name: "Pan graph" }));
     const deliberate = flow.getAttribute("data-camera");
-    view.rerender(<GraphPane {...props} graph={graph(observation("core"))} repositoryCameraIntent={{ directory: "core", page: 0, restore: false, serial: 1 }} />); frame(); frame();
+    view.rerender(<GraphPane {...props} graph={graph(observation("core"))} repositoryCameraIntent={{ directory: "core", page: 0, restore: false, serial: 1 }} />); settle();
     expect(flow.getAttribute("data-fits")).toBe("1");
-    view.rerender(<GraphPane {...props} graph={graph(observation())} repositoryCameraIntent={{ directory: "", page: 0, restore: true, serial: 2 }} />); frame(); frame();
+    view.rerender(<GraphPane {...props} graph={graph(observation())} repositoryCameraIntent={{ directory: "", page: 0, restore: true, serial: 2 }} />); settle();
     expect(flow.getAttribute("data-camera")).toBe(deliberate);
-    view.rerender(<GraphPane {...props} interfaceZoom={150} graph={graph(observation("", { observationId: "refresh", state: "stale" }))} />); frame(); frame();
+    view.rerender(<GraphPane {...props} interfaceZoom={150} graph={graph(observation("", { observationId: "refresh", state: "stale" }))} />); settle();
     expect(flow.getAttribute("data-camera")).toBe(deliberate); expect(flow.getAttribute("data-fits")).toBe("1");
     view.rerender(<GraphPane {...props} graph={graph(observation("docs"))} />); frame();
     fireEvent.click(screen.getByRole("button", { name: "Pan graph" })); frame();
@@ -178,21 +175,37 @@ describe("repository controls and coordinated cameras", () => {
     expect(mapped.nodes.filter((node) => node.data.focused).map((node) => node.id)).toEqual([repo.nodes[0]!.id]);
     expect(mapped.nodes[0]!.data.ambiguous).toBe(true);
   });
-  it("commits directory nodes before paint with their observation and retains the instance through fast pages", () => {
+  it("presents only the latest whole repository props per frame, retaining the mounted graph and cancelling on disposal", () => {
+    const frames = new Map<number, FrameRequestCallback>(); let serial = 0;
+    vi.stubGlobal("requestAnimationFrame", (callback: FrameRequestCallback) => { frames.set(++serial, callback); return serial; });
+    const cancel = vi.fn((id: number) => frames.delete(id)); vi.stubGlobal("cancelAnimationFrame", cancel);
+    const frame = () => act(() => { const callbacks = [...frames.values()]; frames.clear(); callbacks.forEach((callback) => callback(0)); });
     const snapshot = initialSnapshot(), onFocus = vi.fn();
     const props = { focus: snapshot.focus, mappings: [], onFocus, onConnectionFocus: vi.fn(), onReconcile: vi.fn(), reconciliationRunning: false, interfaceZoom: 100 };
     // Legacy/mock repository graphs have no directory observation. Switching
     // to the real reader must not switch ReactFlow mode or remount its camera.
     const view = render(<GraphPane {...props} graph={snapshot.graphs[0]!} />);
     const flow = screen.getByTestId("repository-flow");
+    const latestFocus = vi.fn();
     for (const directory of ["one", "two", "three"]) {
       const next = graph(observation(directory));
-      view.rerender(<GraphPane {...props} graph={next} />);
-      expect(flow.closest("[data-directory]")?.getAttribute("data-directory")).toBe(directory);
-      const file = screen.getByRole("button", { name: "Graph node files.ts" });
-      fireEvent.click(file); expect(onFocus).toHaveBeenLastCalledWith(next.nodes[0]!.focus);
-      expect(screen.getByTestId("repository-flow")).toBe(flow);
+      view.rerender(<GraphPane {...props} onFocus={latestFocus} graph={next} repositoryNavigation={<span data-testid="directory-control">{directory}</span>} />);
+      expect(flow.closest("[data-directory]")).toBeNull();
+      expect(screen.queryByTestId("directory-control")).toBeNull();
+      expect(frames.size).toBe(1);
     }
+    frame();
+    expect(flow.closest("[data-directory]")?.getAttribute("data-directory")).toBe("three");
+    expect(screen.getByTestId("directory-control").textContent).toBe("three");
+    fireEvent.click(screen.getByRole("button", { name: "Graph node files.ts" }));
+    expect(latestFocus).toHaveBeenCalledWith(graph(observation("three")).nodes[0]!.focus);
+    expect(onFocus).not.toHaveBeenCalled(); expect(screen.getByTestId("repository-flow")).toBe(flow);
+    view.rerender(<GraphPane {...props} graph={graph(observation("cancelled"))} />);
+    expect(frames.size).toBe(1);
+    const pending = [...frames.values()];
+    view.unmount(); expect(frames.size).toBe(0); expect(cancel).toHaveBeenCalled();
+    act(() => pending.forEach((callback) => callback(0)));
+    expect(screen.queryByTestId("repository-flow")).toBeNull();
   });
 });
 
