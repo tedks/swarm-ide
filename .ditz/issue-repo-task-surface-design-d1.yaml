@@ -20,3 +20,11 @@ log_events:
   who: Ted Smith
   what: started
   comment: ""
+- time: 2026-09-06T06:14:46-00:00
+  who: Ted Smith
+  what: commented
+  comment: 'PR25 initial5f74bb5: two docs only. Real Ditz ref/JSON/source checks ground
+    pinned local Git reader; first release read-only browse+Reveal, separate agent
+    attachment gate. Light native OpenAI design review CLEAN; no full code council
+    warranted. Current opener requires bounded referenced-line/error presentation
+    in T2. No model, build, app or master changes.'
