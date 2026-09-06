@@ -14,3 +14,17 @@ log_events:
   who: Ted Smith
   what: created
   comment: ""
+- time: 2026-09-06T04:06:35-00:00
+  who: Ted Smith
+  what: commented
+  comment: 'PR13 Anthropic d9725c5 convergence CLEAN with documentary nits deferred
+    to P2: explicitly distinguish rejected --profile flag from possible inherited
+    legacy profile tables (fact-check, no assertion of unsupported -c profile); normalize
+    all codex-rs source-path prefixes; mark ignored E1 schema archive machine-local/add
+    digests; record nested platform manifest version; investigate a supported remote-control
+    exclusion without assuming features.remote_control is effective (source apply_map
+    ignores this removed alias); clarify unsatisfiable immutable-policy/writable-runtime-state
+    separation must fail unavailable; specify verified subcommand strict-config placement;
+    retain working plan link (locally confirmed). Rationale: no helper or available
+    policy exists, these do not weaken conservative report; resolve alongside actual
+    executable fixture rather than another speculative recipe.'
