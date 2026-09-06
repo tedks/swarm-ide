@@ -91,5 +91,15 @@ log_events:
     exact-final hosted34013205311 or equivalent documentation/merge run is observed
     accepted; do not confuse earlier positive timing proof with final-head status.
     Safe cache reuse and occupied-port observation are separate issues.'
+- time: 2026-09-06T05:16:41-00:00
+  who: Ted Smith
+  what: commented
+  comment: Final hosted update before C1 closeout:34013205311 on2df26ea FAILED in
+    upstream //tools/policy:boundary-test with SEED_PIPE_FAILED (no Codex startup),
+    while quality/harness/runtime-pinning passed. Desktop stage SKIPPED; this is not
+    evidence of another topology timeout. New agent-policy-boundary-hosted-seed-pipe
+    tracks exact blocker for ROOT/P2. Keep parent open for actual final desktop acceptance
+    after independent upstream CI gate is resolved; timing-change34012788098 remains
+    genuinely green.
 blocked_by:
 - virtual-desktop-cold-build-c1
