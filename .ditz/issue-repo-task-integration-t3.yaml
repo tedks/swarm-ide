@@ -8,8 +8,8 @@ type: feature
 component: default
 release:
 reporter: Ted Smith <tedks@riseup.net>
-status: in_progress
-disposition:
+status: closed
+disposition: fixed
 creation_time: 2026-09-06T15:09:01-00:00
 references: []
 log_events:
@@ -33,6 +33,16 @@ log_events:
   who: Ted Smith
   what: blocked by editor-codemirror-state-identity
   comment: ""
+- time: 2026-09-06T15:57:49-00:00
+  who: Ted Smith
+  what: 'closed: fixed'
+  comment: PR35 normal2270922 landed reviewed real createTasks composition, archive-local
+    pinned YAML plus relative assets, task-only deadline and real Ditz CLI-authoring
+    through packaged cockpit. Full32build/all12uncached1030/70; strict ownedvirtual
+    package9.8s with literal/pinned/last-good/reveal/dirty/camera proof and cleanup1.
+    Reviewed integrationc25b958 pushed identical tree; exact integration rerun underway,
+    final evidence in T3 handoff. No model turns/task authoring in product or watchedapp
+    adoption.
 blocks:
 - repo-task-surface
 blocked_by:
