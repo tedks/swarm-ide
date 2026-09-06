@@ -111,7 +111,7 @@ describe("GraphPane keeps interface zoom separate from the library-owned camera"
     expect(service.getByTestId("flow").dataset.camera).toBe("x:-62,y:27,zoom:0.81");
   });
 
-  it("retains initial-fit options, library controls and node-to-source focus mapping without replacing the instance", () => {
+  it("retains initial-fit options, library controls and node-focus wiring without replacing the instance", () => {
     const view = render(<Pair zoom={null} />); settle();
     const repo = within(view.getByTestId("repo"));
     const flow = repo.getByTestId("flow");
@@ -122,8 +122,10 @@ describe("GraphPane keeps interface zoom separate from the library-owned camera"
     onFocus.mockClear();
     fireEvent.click(repo.getByText("Select first node"));
     expect(onFocus).toHaveBeenCalledOnce();
-    expect(onFocus).toHaveBeenCalledWith(snapshot.graphs.find((graph) => graph.topologyId === "repo")!.nodes[0]!.focus);
-    view.rerender(<Pair zoom={1.5} focus={paymentsFileFocus} source />); settle();
+    const selectedFocus = snapshot.graphs.find((graph) => graph.topologyId === "repo")!.nodes[0]!.focus;
+    expect(selectedFocus).not.toEqual(snapshot.focus);
+    expect(onFocus).toHaveBeenCalledWith(selectedFocus);
+    view.rerender(<Pair zoom={1.5} focus={selectedFocus} source />); settle();
     expect(repo.getByTestId("flow")).toBe(flow);
     expect(flow.dataset.camera).toBe("x:83,y:-41,zoom:1.73");
   });
