@@ -36,6 +36,13 @@ log_events:
   who: Ted Smith
   what: started
   comment: ""
+- time: 2026-09-06T02:01:30-00:00
+  who: Ted Smith
+  what: commented
+  comment: 'PR #9 pushed at d57de1c. R0 schemas/interfaces/unavailable bridge complete.
+    First full local build and all 5 tests passed, including virtual X11; council
+    boundary findings fixed and undergoing convergence. No provider execution or user-app/master
+    adoption.'
 blocks:
 - agent-run-runtime
 - agent-run-workbench
