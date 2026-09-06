@@ -5,7 +5,7 @@ import {
 import { parseCoreResponseForRequest, PROTOCOL_VERSION, type CoreResponse, type FocusRef } from "../../../protocol/schema";
 import type { SwarmBridge } from "../../electron/preload";
 import type { Lifecycle, LifecycleBridge } from "../../lifecycle";
-import { displayAgentText, emptyLiveAgentState, recoverLiveAgentState, type LiveAgentState, type LocalOperation } from "./live-state";
+import { displayAgentText, emptyLiveAgentState, recoverLiveAgentState, unresolvedOperation, type LiveAgentState, type LocalOperation } from "./live-state";
 
 // This class is an observer/client, never a provider selector. Only the core can
 // supply prepared context, admitted runs, policy and durable delivery receipts.
@@ -21,6 +21,7 @@ export class AgentBridgeClient {
   private snapshotTicket = 0;
   private prepareTicket = 0;
   private readAgain = false;
+  private reconciling = new Map<string, symbol>();
 
   constructor(checkpoint?: LiveAgentState, private readonly persistCheckpoint?: (state: LiveAgentState) => void,
     private readonly activateCheckpoint?: () => void) {
@@ -35,6 +36,7 @@ export class AgentBridgeClient {
   }
 
   connect(bridge: SwarmBridge | undefined, lifecycle?: LifecycleBridge): () => void {
+    this.reconciling.clear();
     this.activateCheckpoint?.();
     this.bridge = bridge;
     const connection = ++this.epoch;
@@ -51,6 +53,7 @@ export class AgentBridgeClient {
       if (!live || status.core.generation < this.generation) return;
       const changed = status.core.generation !== this.generation;
       if (changed || status.core.phase !== "ready") {
+        this.reconciling.clear();
         ++this.epoch;
         ++this.readTicket;
         ++this.prepareTicket;
@@ -79,6 +82,7 @@ export class AgentBridgeClient {
       live = false; offEvent?.(); offStatus?.();
       // Connection epochs, not UI selection, invalidate dispatched promises.
       if (connection <= this.epoch) {
+        this.reconciling.clear();
         ++this.epoch; ++this.readTicket; ++this.prepareTicket;
         this.bridge = undefined;
         this.update(recoverLiveAgentState(this.state));
@@ -140,6 +144,56 @@ export class AgentBridgeClient {
     this.update({ draft: { focus: structuredClone(focus), task: "Explain this focus's inputs, outputs and failure cases.", model: "", prepared: null, confirmed: false, preparing: false } });
   }
   closeDraft() { ++this.prepareTicket; this.update({ draft: null }); }
+  clearLocalIntent(observed: LiveAgentState, allowDocumentLoss = false) {
+    // A click authorizes only what its rendered controls showed. Newer drafts,
+    // text and receipts must remain protected, including between preflight and
+    // actual unload. Do not remove mutation identities or change their outcome.
+    const clearDraft = this.state.draft === observed.draft;
+    const newerIntent = !clearDraft || this.state.instructions !== observed.instructions ||
+      (allowDocumentLoss && this.state.operations.some((op) => unresolvedOperation(op) && !observed.operations.includes(op)));
+    if (clearDraft && this.state.draft) ++this.prepareTicket;
+    this.update({
+      ...(clearDraft ? { draft: null } : {}),
+      instructions: this.state.instructions === observed.instructions ? {} : this.state.instructions,
+      operations: this.state.operations.map((op) => allowDocumentLoss && unresolvedOperation(op) && observed.operations.includes(op)
+        ? { ...op, text: null, documentLossAcknowledged: true } : op),
+      notice: newerIntent ? "Newer local agent intent was preserved. Inspect the current text and receipts before clearing again."
+        : "Local agent loss decision applied. Command outcomes and source buffers are unchanged; nothing was resent.",
+    });
+  }
+  async reconcileOperation(requestId: string) {
+    const operation = this.state.operations.find((op) => op.requestId === requestId);
+    if (!operation || !unresolvedOperation(operation) || !this.state.connected) return;
+    if (operation.kind === "cancel") { this.update({ notice: "Stop delivery cannot be reconciled by this protocol. Inspect separate run/cleanup evidence or explicitly acknowledge local receipt loss." }); return; }
+    if (this.reconciling.has(requestId)) { this.update({ notice: "A read of this receipt is already pending; no command resent." }); return; }
+    const ticket = Symbol("receipt-read");
+    this.reconciling.set(requestId, ticket);
+    try {
+      // Inspect even a run missing from the bounded snapshot, without selecting
+      // it, moving focus, replacing a transcript page, or replaying a mutation.
+      const result = await this.request({ protocolVersion: PROTOCOL_VERSION, requestId: this.id(), type: "agent.read", runId: operation.runId, afterRecord: 0 });
+      if (!result || (result.ok && result.sequence < this.watermark)) {
+        if (this.state.operations.some((op) => op.requestId === requestId && unresolvedOperation(op))) this.update({ notice: "Receipt read became stale or disconnected. Local evidence retained; refresh or reconcile again when connected. No command resent." });
+        return;
+      }
+      if (!result.ok) { this.update({ notice: `${result.error.code}: ${displayAgentText(result.error.message)} Delivery remains unresolved; absence is not rejection. No command resent.` }); return; }
+      if (result.agent?.kind !== "read") return;
+      // This is authoritative read evidence too: an older overlapping detail
+      // response/event must not undo the receipt we are about to reconcile.
+      this.watermark = result.sequence;
+      const run = result.agent.run;
+      const receipt = operation.kind === "steer" ? run.instructions.find((r) => r.requestId === requestId) : null;
+      // A durable run proves admission, not activity/completion. The contract
+      // has no durable cancel request identity: terminal state cannot prove it.
+      const status = operation.kind === "launch" ? "accepted" : receipt?.status;
+      this.update({ operations: this.state.operations.map((op) => op.requestId === requestId && unresolvedOperation(op) && status
+        ? { ...op, status, message: receipt?.error?.message ?? (op.kind === "launch" ? "Durable admission observed; not turn completion." : "Durable instruction receipt observed; not completion.") } : op),
+        notice: status ? `Durable receipt observed: ${status}. This is not turn completion; no command resent.` : "No matching durable command receipt observed. Delivery remains unresolved; absence is not rejection. No command resent.",
+        detailStale: this.state.selectedRunId !== null && result.sequence > this.detailSequence,
+      });
+      if (this.state.detailStale) void this.refresh();
+    } finally { if (this.reconciling.get(requestId) === ticket) this.reconciling.delete(requestId); }
+  }
   editDraft(patch: { task?: string; model?: string }) {
     if (!this.state.draft) return;
     ++this.prepareTicket;

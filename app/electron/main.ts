@@ -30,7 +30,7 @@ const supervisor = new CoreSupervisor({
   launch() {
     const child = utilityProcess.fork(join(__dirname, "../../core/worker.js"), [], {
       serviceName: "swarm-ide-local-core", stdio: "pipe",
-      env: { ...process.env, SWARM_WORKSPACE_ROOT: process.cwd() },
+      env: { ...process.env, SWARM_WORKSPACE_ROOT: process.cwd(), SWARM_AGENT_STORE_ROOT: join(app.getPath("userData"), "agent-runs") },
     });
     child.stdout?.on("data", (chunk) => process.stdout.write(`[core] ${chunk}`));
     child.stderr?.on("data", (chunk) => process.stderr.write(`[core] ${chunk}`));
