@@ -1,0 +1,21 @@
+id: agent-run-restart-drain-policy
+title: Decide bounded agent acknowledgement drain on core restart
+desc: Anthropic R0 council nit; operator decision for ROOT/R2, not a blocker for R1/W1/E1
+  fixture work. Current safe behavior immediately marks in-flight agent mutations
+  unknown during intentional core replacement, unlike draining file.write. Consider
+  whether R2 should wait the existing bounded acknowledgement deadline before replacement.
+  Preserve no replay, native-window stability, and owned process cleanup; do not change
+  policy implicitly in R0.
+type: task
+component: default
+release:
+reporter: Ted Smith <tedks@riseup.net>
+status: unstarted
+disposition:
+creation_time: 2026-09-06T02:07:16-00:00
+references: []
+log_events:
+- time: 2026-09-06T02:07:16-00:00
+  who: Ted Smith
+  what: created
+  comment: ""
