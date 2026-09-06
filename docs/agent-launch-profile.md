@@ -1,6 +1,6 @@
 # Codex 0.153.4 launch-policy blockers: P1 investigation
 
-Status: **not verified; real launch remains `ADAPTER_POLICY_UNAVAILABLE`**.
+Status: **full effective policy not verified; real launch remains `ADAPTER_POLICY_UNAVAILABLE`**.
 This is a bounded source investigation, not a launch recipe or evidence of
 authentication. No product helper or capability upgrade is delivered. Runtime
 continues to own `core/agents/policy.ts`, the adapter, and integration.
@@ -226,3 +226,78 @@ and authenticated read-only acceptance. The offline fixture result alone must
 not authorize a credentialed process with different configuration or inherited
 environment. R2/W2/E2 can finish the unavailable/deterministic cockpit without
 waiting for this investigation; write-enabled agents remain a later gate.
+
+## P2: executable offline acceptance harness
+
+`tools/policy/` now supplies a standalone experimental harness, not a product
+adapter. Run it from a Nix shell exclusively through Bazel:
+
+    nix develop --command bazel test //tools/policy:boundary-test --jobs=3
+    nix develop --command bazel run //tools/policy:probe --jobs=3
+    nix develop --command bazel run //tools/policy:probe --jobs=3 -- --trace-startup
+
+The first command uses synthetic programs only. The manual probe reads only the
+declared complete package under the current user's `.npm-global` installation,
+checks its exact 0.153.4 layout, snapshots all declared resources and companions,
+and records executable, companion and whole-tree digests. A different layout,
+missing file, symlink, unsupported namespace or changed input fails closed.
+It never reads the user's Codex configuration, authentication or installation ID.
+The returned JSON always has `productionAvailable: false`.
+
+The test runtime is pinned by the existing repository `flake.lock` through a
+separate Nix expression. Bubblewrap receives an explicit environment and only
+owned pipes, creates private user/PID/network/IPC/mount namespaces, prohibits
+nested user namespaces and drops all capabilities. Only individual pinned Nix
+runtime closure paths, the copied complete package and synthetic fixture trees
+are mounted readonly; no host home, `/run`, `/etc`, `/proc`, entire Nix store or
+physical desktop is exposed. Its `/proc` is freshly mounted in the private PID
+namespace. State and temporary files use separate private tmpfs mounts. This
+assumes trusted host/kernel/operator and immutable Nix store, not protection
+against hostile same-account replacement of the harness. Deadline/output bounds
+are not a comprehensive process-count/memory-resource sandbox.
+
+Before admitting Codex, independent tests verify readonly policy/configuration
+paths and their ancestors, absent host configuration/credential/bus paths,
+exact environment, no ambient descriptors, no capabilities/new privileges,
+private network with no outbound route, and an executable synthetic canary that
+successfully writes inside isolated state. They test output overflow, deadline
+termination and SIGKILL of the owner while a detached descendant exists. Kernel
+PID-namespace teardown, not a saved-PID kill or process-group guess, owns cleanup.
+Uncertain cleanup retains owned scratch and stops before further startup.
+
+An actual startup requirement was found and narrowly accommodated. Codex opens
+`CODEX_HOME/installation_id` read/write/create even when an ID already exists
+(`core/src/installation_id.rs:19` in P1's source). A file-operation-only trace
+observed this EROFS failure; the `.codex/tmp` PATH-alias warning was nonfatal.
+The harness therefore gives **one named runtime-identity file** a writable,
+Bubblewrap-private copied inode seeded with a fixed synthetic UUID. This is not
+a writable host inode or directory. Configuration and all containing directories
+remain readonly; tests prove identity in-place writes work but unlink/replacement
+and config mutation do not. No real installation ID is inspected or copied.
+
+With that exception, actual 0.153.4 startup and model-free
+`initialize`, `config/read`, all nine `experimentalFeature/list` pages and
+`configRequirements/read` completed offline. The process starts in `/work`, also
+the config-read cwd; feature listing has no cwd parameter. Raw config is not
+mistaken for resolved features. Output includes bounded feature booleans, missing
+required names, count-only MCP/layer information and named limitations, not raw
+config dumps. Strict malformed TOML was rejected. Baseline, alias collision,
+project, inherited MCP, legacy notify and managed-requirement fixtures distinguish
+what actually loaded from what remains unproved; failed expectations produce a
+named unavailable result rather than a fabricated passing profile.
+
+Observed counterexamples include canonical `apps=false` resolving to true with
+`connectors=true`, and a managed Apps requirement overriding a false setting.
+Legacy notify can remain populated while hooks are false. Sentinel absence
+without an activation event is **not** a disabled-hook/MCP/plugin proof. Complete
+feature enumeration does not establish effective per-executor/plugin MCP,
+built-in/executor hooks, telemetry runtime state, persisted remote-control/plugin
+state, thread policy or credentialed-process equivalence. Hook/trust-bypass and
+bundled/executor-plugin activation fixtures remain a named follow-up, not covered
+by synthetic placeholder configuration or empty tools lists. No thread/start,
+turn/start, model request, real connector or authentication acceptance occurs.
+
+The next bounded slice should use this proven offline boundary to test the
+remaining auxiliary startup/activation paths with genuine positive controls.
+Production process/config binding and credential-preserving admission remain
+separate ROOT gates. Do not reuse an offline result as `AgentCapabilities`.
