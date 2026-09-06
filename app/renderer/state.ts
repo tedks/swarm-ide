@@ -35,7 +35,7 @@ export function applyCoreEvent(state: WorkspaceState, input: unknown): Workspace
   if (event.sequence <= state.lastSequence) {
     return { ...state, ignoredEvents: state.ignoredEvents + 1 };
   }
-  if (event.type === "workspace.reset") {
+  if (event.type === "workspace.reset" || state.lastSequence === -1) {
     return { snapshot: event.snapshot, lastSequence: event.sequence, ignoredEvents: state.ignoredEvents };
   }
   const currentEpoch = state.snapshot?.reconciliation.epoch ?? -1;

@@ -1,259 +1,122 @@
-import { app, BrowserWindow, ipcMain, Menu, utilityProcess, type UtilityProcess } from "electron";
+import { app, BrowserWindow, ipcMain, Menu, utilityProcess, type IpcMainInvokeEvent } from "electron";
+import { readFile } from "node:fs/promises";
+import { watchFile, unwatchFile } from "node:fs";
 import { join } from "node:path";
-import {
-  PROTOCOL_VERSION,
-  parseCoreEvent,
-  parseFileEvent,
-  parseCoreRequest,
-  parseCoreResponse,
-  type CoreResponse,
-} from "../../protocol/schema";
-import {
-  VIEW_SHELL_ZOOM_CHANNEL,
-  applyInterfaceZoom,
-  type ViewShellResult,
-} from "../view-shell";
+import { PROTOCOL_VERSION, type CoreResponse } from "../../protocol/schema";
+import { VIEW_SHELL_ZOOM_CHANNEL, applyInterfaceZoom, type ViewShellResult } from "../view-shell";
+import { DevUpdateSchema, LIFECYCLE_CHANNEL, LIFECYCLE_REQUEST_CHANNEL, LifecycleRequestSchema, type Lifecycle } from "../lifecycle";
 import { applicationMenuTemplate } from "./menu";
+import { CoreSupervisor } from "./core-supervisor";
 
 const REQUEST_CHANNEL = "swarm:request";
 const EVENT_CHANNEL = "swarm:event";
-const REQUEST_TIMEOUT_MS = 5_000;
-
-// The prototype runs on development workstations where Chromium's GPU process may
-// be unavailable (for example, remote X11 sessions). Keep the desktop loop stable;
-// hardware acceleration can become an explicit capability once rendering needs it.
 app.disableHardwareAcceleration();
-
-function productionPagePath(): string {
-  return join(__dirname, "../../renderer/index.html");
-}
-
+function productionPagePath(): string { return join(__dirname, "../../renderer/index.html"); }
 function isAllowedRendererUrl(candidate: string): boolean {
   try {
-    const candidateUrl = new URL(candidate);
+    const url = new URL(candidate);
     const rendererUrl = process.env.SWARM_RENDERER_URL;
-    if (rendererUrl) return candidateUrl.origin === new URL(rendererUrl).origin;
-    return candidateUrl.protocol === "file:" && decodeURIComponent(candidateUrl.pathname) === productionPagePath();
-  } catch {
-    return false;
-  }
+    return rendererUrl ? url.origin === new URL(rendererUrl).origin : url.protocol === "file:" && decodeURIComponent(url.pathname) === productionPagePath();
+  } catch { return false; }
 }
-
 let mainWindow: BrowserWindow | null = null;
-let core: UtilityProcess | null = null;
-const pending = new Map<
-  string,
-  { resolve: (response: CoreResponse) => void; timeout: NodeJS.Timeout | null }
->();
-
-function rejectPending(message: string): void {
-  for (const [requestId, item] of pending) {
-    if (item.timeout) clearTimeout(item.timeout);
-    item.resolve({
-      protocolVersion: PROTOCOL_VERSION,
-      requestId,
-      ok: false,
-      error: { code: "CORE_UNAVAILABLE", message },
+let shuttingDown = false;
+let lifecycle: Lifecycle = { revision: 0, core: { generation: 0, phase: "starting", message: "Opening local core" }, reload: "idle", notice: "" };
+function publish(update: Partial<Lifecycle>) {
+  lifecycle = { ...lifecycle, ...update, revision: lifecycle.revision + 1 };
+  if (!mainWindow?.isDestroyed()) mainWindow?.webContents.send(LIFECYCLE_CHANNEL, lifecycle);
+}
+const supervisor = new CoreSupervisor({
+  launch() {
+    const child = utilityProcess.fork(join(__dirname, "../../core/worker.js"), [], {
+      serviceName: "swarm-ide-local-core", stdio: "pipe",
+      env: { ...process.env, SWARM_WORKSPACE_ROOT: process.cwd() },
     });
-  }
-  pending.clear();
+    child.stdout?.on("data", (chunk) => process.stdout.write(`[core] ${chunk}`));
+    child.stderr?.on("data", (chunk) => process.stderr.write(`[core] ${chunk}`));
+    child.on("spawn", () => console.log(`[core] spawned pid=${child.pid} generation=${supervisor.state.generation}`));
+    return child;
+  },
+  status: (core) => publish({ core }),
+  event: (generation, event) => mainWindow?.webContents.send(EVENT_CHANNEL, { generation, event }),
+});
+function trusted(event: IpcMainInvokeEvent) {
+  return Boolean(event.senderFrame && isAllowedRendererUrl(event.senderFrame.url) && event.senderFrame === mainWindow?.webContents.mainFrame);
 }
-
-function startCore(): void {
-  const entry = join(__dirname, "../../core/worker.js");
-  core = utilityProcess.fork(entry, [], {
-    serviceName: "swarm-ide-local-core",
-    stdio: "pipe",
-    env: { ...process.env, SWARM_WORKSPACE_ROOT: process.cwd() },
-  });
-
-  core.stdout?.on("data", (chunk) => process.stdout.write(`[core] ${chunk}`));
-  core.stderr?.on("data", (chunk) => process.stderr.write(`[core] ${chunk}`));
-  core.on("message", (message: unknown) => {
-    if (
-      typeof message === "object" &&
-      message !== null &&
-      "type" in message &&
-      (message.type === "core.ready" || message.type === "core.failed")
-    ) {
-      return;
-    }
-
-    const responseResult = parseCoreResponseSafe(message);
-    if (responseResult) {
-      const item = pending.get(responseResult.requestId);
-      if (item) {
-        if (item.timeout) clearTimeout(item.timeout);
-        pending.delete(responseResult.requestId);
-        item.resolve(responseResult);
-      }
-      return;
-    }
-
-    try {
-      const event = parseCoreEvent(message);
-      mainWindow?.webContents.send(EVENT_CHANNEL, event);
-    } catch (error) {
-      try {
-        const fileEvent = parseFileEvent(message);
-        mainWindow?.webContents.send(EVENT_CHANNEL, fileEvent);
-        return;
-      } catch {
-        // The common invalid-message handler below reports a bounded error.
-      }
-      console.error("Dropped invalid local-core message", error);
-      const requestId =
-        typeof message === "object" && message !== null && "requestId" in message &&
-        typeof message.requestId === "string"
-          ? message.requestId
-          : null;
-      const item = requestId ? pending.get(requestId) : undefined;
-      if (requestId && item) {
-        if (item.timeout) clearTimeout(item.timeout);
-        pending.delete(requestId);
-        item.resolve({
-          protocolVersion: PROTOCOL_VERSION,
-          requestId,
-          ok: false,
-          error: { code: "INVALID_CORE_MESSAGE", message: "Local core returned an invalid response" },
-        });
-      }
-    }
-  });
-  core.on("exit", (code) => {
-    core = null;
-    rejectPending(`Local core exited with code ${code}`);
-  });
-}
-
-function parseCoreResponseSafe(message: unknown): CoreResponse | null {
-  try {
-    return parseCoreResponse(message);
-  } catch {
-    return null;
-  }
-}
-
-function requestCore(input: unknown): Promise<CoreResponse> {
-  const request = parseCoreRequest(input);
-  if (!core) {
-    return Promise.resolve({
-      protocolVersion: PROTOCOL_VERSION,
-      requestId: request.requestId,
-      ok: false,
-      error: { code: "CORE_UNAVAILABLE", message: "Local core is not running" },
-    });
-  }
-  if (pending.has(request.requestId)) {
-    return Promise.resolve({
-      protocolVersion: PROTOCOL_VERSION,
-      requestId: request.requestId,
-      ok: false,
-      error: { code: "DUPLICATE_REQUEST", message: "A request with this id is already pending" },
-    });
-  }
-
-  return new Promise((resolve) => {
-    // Writes are commit-bearing operations and cannot safely be reported as
-    // timed out while the core may still rename the file. Core exit remains a
-    // terminal failure signal; read-only requests retain a bounded deadline.
-    const timeout = request.type === "file.write" ? null : setTimeout(() => {
-      pending.delete(request.requestId);
-      resolve({
-        protocolVersion: PROTOCOL_VERSION,
-        requestId: request.requestId,
-        ok: false,
-        error: { code: "CORE_TIMEOUT", message: "Local core did not respond in time" },
-      });
-    }, REQUEST_TIMEOUT_MS);
-    pending.set(request.requestId, { resolve, timeout });
-    core?.postMessage(request);
-  });
-}
-
-function createWindow(): void {
+function createWindow() {
   mainWindow = new BrowserWindow({
-    title: "swarm-ide — Loading",
-    width: 1480,
-    height: 940,
-    minWidth: 1080,
-    minHeight: 700,
-    backgroundColor: "#071011",
-    autoHideMenuBar: true,
-    webPreferences: {
-      preload: join(__dirname, "preload.js"),
-      contextIsolation: true,
-      nodeIntegration: false,
-      sandbox: true,
-    },
+    title: "swarm-ide — Loading", width: 1480, height: 940, minWidth: 1080, minHeight: 700,
+    backgroundColor: "#071011", autoHideMenuBar: true,
+    webPreferences: { preload: join(__dirname, "preload.js"), contextIsolation: true, nodeIntegration: false, sandbox: true },
   });
-
-  const rendererUrl = process.env.SWARM_RENDERER_URL;
-  const productionPage = productionPagePath();
   mainWindow.webContents.setWindowOpenHandler(() => ({ action: "deny" }));
-  mainWindow.webContents.on("will-navigate", (event, url) => {
-    if (!isAllowedRendererUrl(url)) event.preventDefault();
+  mainWindow.webContents.on("will-navigate", (event, url) => { if (!isAllowedRendererUrl(url)) event.preventDefault(); });
+  // Electron cancels unload by default. Never override a dirty-buffer veto.
+  mainWindow.webContents.on("will-prevent-unload", () => {
+    publish({ reload: lifecycle.reload === "reloading" ? "pending" : lifecycle.reload, notice: "Document reload deferred: save or reconcile your buffers first." });
   });
-  if (rendererUrl) {
-    void mainWindow.loadURL(rendererUrl);
-  } else {
-    void mainWindow.loadFile(productionPage);
-  }
-  mainWindow.on("closed", () => {
-    mainWindow = null;
+  mainWindow.webContents.on("did-finish-load", () => {
+    publish({ reload: lifecycle.reload === "reloading" ? "idle" : lifecycle.reload });
   });
+  if (process.env.SWARM_RENDERER_URL) void mainWindow.loadURL(process.env.SWARM_RENDERER_URL);
+  else void mainWindow.loadFile(productionPagePath());
+  mainWindow.on("closed", () => { mainWindow = null; });
 }
-
-ipcMain.handle(REQUEST_CHANNEL, (event, input: unknown) => {
-  const senderFrame = event.senderFrame;
-  if (!senderFrame || !isAllowedRendererUrl(senderFrame.url) || senderFrame !== mainWindow?.webContents.mainFrame) {
-    const requestId =
-      typeof input === "object" && input !== null && "requestId" in input &&
-      typeof input.requestId === "string"
-        ? input.requestId
-        : "rejected-request";
-    return {
-      protocolVersion: PROTOCOL_VERSION,
-      requestId,
-      ok: false,
-      error: { code: "UNTRUSTED_RENDERER", message: "IPC sender is not the swarm-ide main frame" },
-    } satisfies CoreResponse;
+ipcMain.handle(REQUEST_CHANNEL, async (event, input: unknown) => {
+  const generation = supervisor.state.generation;
+  if (!trusted(event)) {
+    const requestId = typeof input === "object" && input !== null && "requestId" in input && typeof input.requestId === "string" ? input.requestId : "rejected-request";
+    return { generation, response: { protocolVersion: PROTOCOL_VERSION, requestId, ok: false, error: { code: "UNTRUSTED_RENDERER", message: "IPC sender is not the swarm-ide main frame" } } satisfies CoreResponse };
   }
-  return requestCore(input);
+  return { generation, response: await supervisor.request(input) };
 });
-
+ipcMain.handle(LIFECYCLE_REQUEST_CHANNEL, (event, input: unknown) => {
+  if (!trusted(event)) throw new Error("Untrusted lifecycle caller");
+  const request = LifecycleRequestSchema.parse(input);
+  if (request.type === "reload" && request.revision === lifecycle.revision && lifecycle.reload === "pending" && lifecycle.core.phase === "ready" && !shuttingDown) {
+    publish({ reload: "reloading", notice: "Refreshing preload in the existing native window" });
+    // beforeunload is the final synchronous veto if an edit raced this ack.
+    mainWindow?.webContents.reload();
+  }
+  return lifecycle;
+});
 ipcMain.handle(VIEW_SHELL_ZOOM_CHANNEL, (event, percent: unknown): ViewShellResult => {
-  const senderFrame = event.senderFrame;
-  if (!senderFrame || !isAllowedRendererUrl(senderFrame.url) || senderFrame !== mainWindow?.webContents.mainFrame) {
-    return { ok: false, message: "Interface zoom is unavailable for this renderer frame.", zoomState: "unchanged" };
-  }
-  if (typeof percent !== "number") {
-    return { ok: false, message: "The requested interface zoom level is not allowed.", zoomState: "unchanged" };
-  }
-  return applyInterfaceZoom(
-    percent,
-    // Electron stores host zoom independently of the renderer-local preference
-    // (and localhost ports share that host state). Each window therefore
-    // reasserts its own confirmed preference after load.
-    (factor) => event.sender.setZoomFactor(factor),
-    () => event.sender.getZoomFactor(),
-  );
+  if (!trusted(event)) return { ok: false, message: "Interface zoom is unavailable for this renderer frame.", zoomState: "unchanged" };
+  if (typeof percent !== "number") return { ok: false, message: "The requested interface zoom level is not allowed.", zoomState: "unchanged" };
+  return applyInterfaceZoom(percent, (factor) => event.sender.setZoomFactor(factor), () => event.sender.getZoomFactor());
 });
 
+const controlPath = process.env.SWARM_DEV_CONTROL;
+let lastSerial = 0;
+let coreRevision = 0;
+let preloadRevision = 0;
+let restartRequired = false;
+async function readDevUpdate() {
+  if (!controlPath || shuttingDown) return;
+  try {
+    const bytes = await readFile(controlPath, "utf8");
+    if (bytes.length > 4_096) throw new Error("Oversized dev update");
+    const update = DevUpdateSchema.parse(JSON.parse(bytes));
+    if (update.serial <= lastSerial || shuttingDown) return;
+    lastSerial = update.serial;
+    if (update.action === "restart-required") restartRequired = true;
+    publish({ notice: restartRequired ? "Main process changed — deliberate app restart required; current window retained." : update.message });
+    if (restartRequired) return;
+    if (update.coreRevision > coreRevision) { coreRevision = update.coreRevision; supervisor.restart(); }
+    if (update.preloadRevision > preloadRevision) { preloadRevision = update.preloadRevision; publish({ reload: "pending" }); }
+  } catch (error) { console.error("Dev update was not applied", error); }
+}
 void app.whenReady().then(() => {
   Menu.setApplicationMenu(Menu.buildFromTemplate(applicationMenuTemplate()));
-  startCore();
+  supervisor.start();
   createWindow();
-  app.on("activate", () => {
-    if (BrowserWindow.getAllWindows().length === 0) createWindow();
-  });
+  if (controlPath) watchFile(controlPath, { interval: 100 }, () => { void readDevUpdate(); });
+  app.on("activate", () => { if (!shuttingDown && BrowserWindow.getAllWindows().length === 0) createWindow(); });
 });
-
-app.on("window-all-closed", () => {
-  if (process.platform !== "darwin") app.quit();
-});
-
-app.on("before-quit", () => {
-  rejectPending("Application is shutting down");
-  core?.kill();
+app.on("window-all-closed", () => { if (process.platform !== "darwin") app.quit(); });
+// before-quit can be vetoed by a dirty renderer; only stop after quit proceeds.
+app.on("will-quit", () => {
+  shuttingDown = true;
+  if (controlPath) unwatchFile(controlPath);
+  supervisor.stop();
 });

@@ -254,3 +254,5 @@ button.truth-dot:disabled { cursor: wait; opacity: 0.72; }
   .workbench:has(.navigation-field.source-open) { grid-template-columns: 190px minmax(600px, 3fr) minmax(400px, 2fr); }
   .workbench:has(.navigation-field.source-open) .topbar { grid-template-columns: 190px auto minmax(200px, 430px) auto auto; }
 }
+/* A quiet in-window diagnostic, never a notification or focus-taking window. */
+.lifecycle-notice { position: fixed; bottom: 4px; left: 16px; max-width: 85vw; font-size: 11px; color: #b7c9bb; background: #102020; padding: 4px 8px; z-index: 8; pointer-events: none; }

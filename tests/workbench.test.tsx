@@ -10,7 +10,10 @@ import {
   type ViewShellResult,
 } from "../app/view-shell";
 import { INTERFACE_ZOOM_STORAGE_KEY } from "../app/renderer/zoom";
+import type { Lifecycle, LifecycleBridge } from "../app/lifecycle";
 import { dirtySnapshot, initialSnapshot, paymentsFileFocus } from "../fixtures/world";
+const testHotMemory = vi.hoisted(() => ({ workbench: undefined as unknown }));
+vi.mock("../app/renderer/hot-memory", async (importOriginal) => ({ ...await importOriginal<typeof import("../app/renderer/hot-memory")>(), hotMemory: testHotMemory }));
 
 vi.mock("../app/renderer/GraphPane", () => ({
   GraphPane: ({ graph, onConnectionFocus }: { graph: GraphSlice; onConnectionFocus: (connection: unknown) => void }) => {
@@ -22,6 +25,139 @@ vi.mock("../app/renderer/GraphPane", () => ({
 }));
 
 import { App } from "../app/renderer/App";
+describe("selective live recovery", () => {
+it("waits for a fresh generation snapshot before restoring pathless service focus", async () => {
+    const lifecycle = shell();
+    const old = initialSnapshot();
+    const selected = { worldId: old.world.id, revisionKind: "working" as const, revisionId: old.revisions.working.id, domain: "service" as const, key: "service:checkout" };
+    window.sessionStorage.setItem("swarm:document-navigation:v1", JSON.stringify({ paths: [], activeSurface: "graphs", lens: "System", focus: selected, snapshot: initialSnapshot(selected) }));
+    const fresh = dirtySnapshot(old);
+    let resolveSnapshot!: (response: CoreResponse) => void;
+    const request = vi.fn(async (input: CoreRequest): Promise<CoreResponse> => {
+      if (input.type === "workspace.snapshot") return new Promise((resolve) => { resolveSnapshot = resolve; });
+      return { protocolVersion: PROTOCOL_VERSION, requestId: input.requestId, ok: true, sequence: 0, snapshot: fresh };
+    });
+    Object.defineProperty(window, "swarm", { configurable: true, value: { request, onEvent: () => () => undefined } });
+    installViewBridge(); render(<App />);
+    await waitFor(() => expect(request.mock.calls.some(([r]) => r.type === "workspace.snapshot")).toBe(true));
+    expect(request.mock.calls.some(([r]) => r.type === "focus.select")).toBe(false);
+    await act(async () => resolveSnapshot({ protocolVersion: PROTOCOL_VERSION, requestId: "fresh", ok: true, sequence: 0, snapshot: fresh }));
+    await waitFor(() => expect(request.mock.calls.some(([r]) => r.type === "focus.select" && r.focus.key === selected.key && r.focus.revisionId === fresh.revisions.working.id)).toBe(true));
+    expect(lifecycle.bridge.reload).not.toHaveBeenCalled();
+  });
+  it("does not enter a reload/veto loop when checkpoint storage is unavailable", async () => {
+    const lifecycle = shell(); const source = files();
+    render(<App />); await open(source.path);
+    vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => { throw new Error("quota"); });
+    lifecycle.update({ reload: "pending" });
+    await screen.findByText(/document checkpoint could not be stored/);
+    lifecycle.update({ notice: "another status update" });
+    expect(lifecycle.bridge.reload).not.toHaveBeenCalled();
+  });
+it("preserves an outstanding save as unknown across a structural component remount", async () => {
+    shell();
+    let finish!: (response: CoreResponse) => void;
+    const source = files(() => new Promise<CoreResponse>((resolve) => { finish = resolve; }));
+    const first = render(<App />); const editor = await open(source.path);
+    act(() => editor.dispatch({ changes: { from: editor.state.doc.length, insert: "mine\n" } }));
+    fireEvent.keyDown(editor.contentDOM, { key: "s", ctrlKey: true });
+    await waitFor(() => expect(document.querySelector(".file-state")?.classList.contains("file-saving")).toBe(true));
+    first.unmount();
+    render(<App />);
+    await screen.findByRole("button", { name: "Check disk" });
+    expect(document.querySelector(".cm-content")?.textContent).toContain("mine");
+    const readsBeforeCheck = source.request.mock.calls.filter(([r]) => r.type === "file.read").length;
+    expect((screen.getByRole("button", { name: "Check disk" }) as HTMLButtonElement).disabled).toBe(true);
+    fireEvent.click(screen.getByRole("button", { name: "Check disk" }));
+    expect(source.request.mock.calls.filter(([r]) => r.type === "file.read")).toHaveLength(readsBeforeCheck);
+    await act(async () => finish({ protocolVersion: PROTOCOL_VERSION, requestId: "old-save", ok: false, error: { code: "WRITE_OUTCOME_UNKNOWN", message: "old component's promise settled" } }));
+    expect(source.request.mock.calls.filter(([r]) => r.type === "file.write")).toHaveLength(1);
+    expect(screen.getByRole("button", { name: "Check disk" })).toBeTruthy();
+    source.disk("base\nmine\n");
+    fireEvent.click(screen.getByRole("button", { name: "Check disk" }));
+    await waitFor(() => expect(document.querySelector(".file-state")?.classList.contains("file-saved")).toBe(true));
+    expect(source.request.mock.calls.filter(([r]) => r.type === "file.write")).toHaveLength(1);
+  });
+  function shell() {
+    let state: Lifecycle = { revision: 1, core: { generation: 1, phase: "ready", message: "Ready" }, reload: "idle", notice: "" };
+    let listener: ((status: Lifecycle) => void) | undefined;
+    const bridge: LifecycleBridge = {
+      status: async () => state,
+      onStatus: (next) => { listener = next; return () => { listener = undefined; }; },
+      reload: vi.fn(async () => state),
+    };
+    Object.defineProperty(window, "swarmLifecycle", { configurable: true, value: bridge });
+    return { bridge, update: (patch: Partial<Lifecycle>) => act(() => { state = { ...state, ...patch, revision: state.revision + 1 }; listener?.(state); }) };
+  }
+  function files(writeResult?: (input: CoreRequest) => Promise<CoreResponse>) {
+    const path = "services/payments/payments.ts";
+    const base = initialSnapshot(paymentsFileFocus);
+    let snapshot: WorkspaceSnapshot = { ...base, widgets: [{ id: "source-paths", title: "Implementation sources", kind: "list", priority: 0, value: [path], provenance: base.widgets[0]!.provenance }] };
+    let listener: ((event: CoreEvent | FileEvent) => void) | undefined;
+    let disk = "base\n";
+    const request = vi.fn(async (input: CoreRequest): Promise<CoreResponse> => {
+      if (input.type === "file.write" && writeResult) return writeResult(input);
+      return { protocolVersion: PROTOCOL_VERSION, requestId: input.requestId, ok: true, sequence: 0, snapshot, ...(input.type === "file.read" ? { file: { kind: "read" as const, path, content: disk, revision: (disk === "base\n" ? "a" : "b").repeat(64), size: disk.length } } : {}) };
+    });
+    Object.defineProperty(window, "swarm", { configurable: true, value: { request, onEvent: (next: typeof listener) => { listener = next; return () => undefined; } } });
+    installViewBridge();
+    return { request, path, disk: (text: string) => { disk = text; }, event: (sequence: number) => act(() => listener?.({ protocolVersion: PROTOCOL_VERSION, type: "workspace.changed", sequence, epoch: snapshot.reconciliation.epoch, emittedAt: "2026-09-06T00:00:00.000Z", snapshot })) };
+  }
+  async function open(path: string) {
+    await screen.findByText("Implementation sources");
+    fireEvent.click(screen.getAllByRole("button", { name: path })[0]!);
+    await waitFor(() => expect(document.querySelector(".cm-content")?.textContent).toContain("base"));
+    return EditorView.findFromDOM(document.querySelector(".cm-editor")!)!;
+  }
+  it("defers preload refresh and keyboard unload for a dirty buffer; a clean document can refresh", async () => {
+    const lifecycle = shell(); const source = files();
+    render(<App />); const editor = await open(source.path);
+    act(() => editor.dispatch({ changes: { from: 0, insert: "mine\n" } }));
+    lifecycle.update({ reload: "pending" });
+    expect(lifecycle.bridge.reload).not.toHaveBeenCalled();
+    const unload = new Event("beforeunload", { cancelable: true });
+    act(() => window.dispatchEvent(unload));
+    expect(unload.defaultPrevented).toBe(true);
+    expect(editor.state.doc.toString()).toBe("mine\nbase\n");
+    act(() => editor.dispatch({ changes: { from: 0, to: 5, insert: "" } }));
+    await waitFor(() => expect(lifecycle.bridge.reload).toHaveBeenCalled());
+  });
+  it("keeps the same editor and dirty text across core replacement, re-watches files and accepts reset sequences", async () => {
+    const lifecycle = shell(); const source = files();
+    render(<App />); const editor = await open(source.path);
+    source.event(50);
+    act(() => editor.dispatch({ changes: { from: 0, insert: "mine\n" } }));
+    lifecycle.update({ core: { generation: 1, phase: "unavailable", message: "Disconnected; prior data stale" } });
+    expect(screen.getAllByText(/Disconnected; prior data stale/).length).toBeGreaterThan(0);
+    lifecycle.update({ core: { generation: 2, phase: "ready", message: "Recovered" } });
+    await waitFor(() => expect(source.request.mock.calls.filter(([r]) => r.type === "file.watch")).toHaveLength(2));
+    expect(EditorView.findFromDOM(document.querySelector(".cm-editor")!)).toBe(editor);
+    expect(editor.state.doc.toString()).toBe("mine\nbase\n");
+    source.event(1);
+    await waitFor(() => expect(document.title).toContain("Consistent"));
+  });
+  it.each(["base\n", "base\nmine\n", "someone else\n"])("never replays an unknown save; reconciles disk %j without overwriting the buffer", async (disk) => {
+    const lifecycle = shell();
+    const source = files(async (input) => ({ protocolVersion: PROTOCOL_VERSION, requestId: input.requestId, ok: false, error: { code: "WRITE_OUTCOME_UNKNOWN", message: "Core exited after possible rename" } }));
+    render(<App />); const editor = await open(source.path);
+    act(() => editor.dispatch({ changes: { from: editor.state.doc.length, insert: "mine\n" } }));
+    fireEvent.keyDown(editor.contentDOM, { key: "s", ctrlKey: true });
+    await screen.findByRole("button", { name: "Check disk" });
+    lifecycle.update({ reload: "pending" });
+    expect(lifecycle.bridge.reload).not.toHaveBeenCalled();
+    // Further typing must not clear the unknown-outcome guard.
+    act(() => editor.dispatch({ changes: { from: editor.state.doc.length, insert: "x" } }));
+    act(() => editor.dispatch({ changes: { from: editor.state.doc.length - 1, to: editor.state.doc.length, insert: "" } }));
+    fireEvent.keyDown(editor.contentDOM, { key: "s", ctrlKey: true });
+    expect(source.request.mock.calls.filter(([r]) => r.type === "file.write")).toHaveLength(1);
+    source.disk(disk);
+    fireEvent.click(screen.getByRole("button", { name: "Check disk" }));
+    await waitFor(() => expect(document.querySelector(".file-state")?.classList.contains("file-unknown")).toBe(false));
+    expect(editor.state.doc.toString()).toBe("base\nmine\n");
+    expect(source.request.mock.calls.filter(([r]) => r.type === "file.write")).toHaveLength(1);
+    expect(document.querySelector(disk === "base\n" ? ".file-dirty" : disk === "base\nmine\n" ? ".file-saved" : ".file-conflict")).toBeTruthy();
+  });
+});
 
 beforeAll(() => {
   Object.defineProperty(Range.prototype, "getClientRects", { configurable: true, value: () => [] });
@@ -31,8 +167,11 @@ beforeAll(() => {
 afterEach(() => {
   cleanup();
   window.localStorage.clear();
+  window.sessionStorage.clear();
   Reflect.deleteProperty(window, "swarm");
   Reflect.deleteProperty(window, "swarmView");
+  Reflect.deleteProperty(window, "swarmLifecycle");
+  testHotMemory.workbench = undefined;
   vi.restoreAllMocks();
 });
 
@@ -375,26 +514,26 @@ describe("workbench shell", () => {
     const editor = EditorView.findFromDOM(document.querySelector(".cm-editor")!);
     if (!editor) throw new Error("CodeMirror editor was not mounted");
     act(() => editor.dispatch({ changes: { from: editor.state.doc.length, insert: "saved locally\n" } }));
-    await waitFor(() => expect(document.querySelector(".file-dirty")).toBeTruthy());
+    await waitFor(() => expect(document.querySelector(".file-state")?.classList.contains("file-dirty")).toBeTruthy());
     fireEvent.keyDown(editor.contentDOM, { key: "s", code: "KeyS", ctrlKey: true });
     await waitFor(() => expect(requests.some((item) => item.type === "file.write")).toBe(true));
-    await waitFor(() => expect(document.querySelector(".file-saved")).toBeTruthy());
+    await waitFor(() => expect(document.querySelector(".file-state")?.classList.contains("file-saved")).toBeTruthy());
     expect(disk.content).toContain("saved locally");
 
     act(() => editor.dispatch({ changes: { from: editor.state.doc.length, insert: "saved twice\n" } }));
     fireEvent.keyDown(editor.contentDOM, { key: "s", code: "KeyS", ctrlKey: true });
     await waitFor(() => expect(requests.filter((item) => item.type === "file.write")).toHaveLength(2));
-    await waitFor(() => expect(document.querySelector(".file-saved")).toBeTruthy());
+    await waitFor(() => expect(document.querySelector(".file-state")?.classList.contains("file-saved")).toBeTruthy());
     act(() => listener?.({ protocolVersion: PROTOCOL_VERSION, type: "file.changed", sequence: 3, emittedAt: "2026-09-05T12:01:01.000Z", path, revision: disk.revision, change: "modified" }));
-    expect(document.querySelector(".file-saved")).toBeTruthy();
+    expect(document.querySelector(".file-state")?.classList.contains("file-saved")).toBeTruthy();
 
     act(() => editor.dispatch({ changes: { from: editor.state.doc.length, insert: "my unsaved line\n" } }));
     disk = { content: "external replacement\n", revision: "d".repeat(64) };
     act(() => listener?.({ protocolVersion: PROTOCOL_VERSION, type: "file.changed", sequence: 4, emittedAt: "2026-09-05T12:02:00.000Z", path, revision: disk.revision, change: "modified" }));
-    await waitFor(() => expect(document.querySelector(".file-conflict")).toBeTruthy());
+    await waitFor(() => expect(document.querySelector(".file-state")?.classList.contains("file-conflict")).toBeTruthy());
     expect(editor.state.doc.toString()).toContain("my unsaved line");
     act(() => editor.dispatch({ changes: { from: editor.state.doc.length, insert: "still mine\n" } }));
-    expect(document.querySelector(".file-conflict")).toBeTruthy();
+    expect(document.querySelector(".file-state")?.classList.contains("file-conflict")).toBeTruthy();
     fireEvent.keyDown(editor.contentDOM, { key: "s", code: "KeyS", ctrlKey: true });
     expect(screen.getByText("The working file changed; your local buffer is preserved.")).toBeTruthy();
     expect(editor.state.doc.toString()).toContain("my unsaved line");
@@ -406,7 +545,7 @@ describe("workbench shell", () => {
     expect(editor.state.doc.toString()).toContain("still mine");
     fireEvent.click(screen.getByRole("button", { name: "Reload disk" }));
     await waitFor(() => expect(editor.state.doc.toString()).toBe("external replacement\n"));
-    expect(document.querySelector(".file-saved")).toBeTruthy();
+    expect(document.querySelector(".file-state")?.classList.contains("file-saved")).toBeTruthy();
   });
 
   it("keeps a conflict raised during save and leaves transient failures dirty and retryable", async () => {
@@ -437,17 +576,17 @@ describe("workbench shell", () => {
     act(() => editor.dispatch({ changes: { from: editor.state.doc.length, insert: "mine\n" } }));
     fireEvent.keyDown(editor.contentDOM, { key: "s", ctrlKey: true });
     await waitFor(() => expect(screen.getByText(/can be retried/)).toBeTruthy());
-    expect(document.querySelector(".file-dirty")).toBeTruthy();
+    expect(document.querySelector(".file-state")?.classList.contains("file-dirty")).toBeTruthy();
     fireEvent.keyDown(window, { key: "w", ctrlKey: true });
     expect(screen.getByRole("button", { name: `Close ${path}` })).toBeTruthy();
 
     fireEvent.keyDown(editor.contentDOM, { key: "s", ctrlKey: true });
-    await waitFor(() => expect(document.querySelector(".file-saving")).toBeTruthy());
+    await waitFor(() => expect(document.querySelector(".file-state")?.classList.contains("file-saving")).toBeTruthy());
     act(() => listener?.({ protocolVersion: PROTOCOL_VERSION, type: "file.changed", sequence: 4, emittedAt: "2026-09-05T12:03:00.000Z", path, revision: "c".repeat(64), change: "modified" }));
-    await waitFor(() => expect(document.querySelector(".file-conflict")).toBeTruthy());
+    await waitFor(() => expect(document.querySelector(".file-state")?.classList.contains("file-conflict")).toBeTruthy());
     finishSave({ protocolVersion: PROTOCOL_VERSION, requestId: "save", ok: true, sequence: 5, snapshot, file: { kind: "write", path, revision: "b".repeat(64), workingFingerprint: "d".repeat(64) } });
     await act(async () => { await delayedSave; });
-    expect(document.querySelector(".file-conflict")).toBeTruthy();
+    expect(document.querySelector(".file-state")?.classList.contains("file-conflict")).toBeTruthy();
     expect(editor.state.doc.toString()).toContain("mine");
   });
 
@@ -539,7 +678,7 @@ describe("workbench shell", () => {
     releaseInitial(response("initial", "initial\n", "a".repeat(64)));
     await waitFor(() => expect(document.querySelector(".cm-content")?.textContent).toContain("newest"));
     expect(readCount).toBe(2);
-    expect(document.querySelector(".file-saved")).toBeTruthy();
+    expect(document.querySelector(".file-state")?.classList.contains("file-saved")).toBeTruthy();
   });
 
   it("hands initial observation off before a post-read event can be dropped", async () => {
@@ -582,7 +721,7 @@ describe("workbench shell", () => {
     });
     await waitFor(() => expect(document.querySelector(".cm-content")?.textContent).toContain("post-handoff"));
     expect(readCount).toBe(2);
-    expect(document.querySelector(".file-saved")).toBeTruthy();
+    expect(document.querySelector(".file-state")?.classList.contains("file-saved")).toBeTruthy();
   });
 
   it("does not let an observed read from a closed tab overwrite its reopened lifecycle", async () => {

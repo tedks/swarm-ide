@@ -1,10 +1,11 @@
 import { context } from "esbuild";
 import { execFileSync, spawn } from "node:child_process";
-import { mkdir, readFile } from "node:fs/promises";
-import { resolve } from "node:path";
+import { mkdir, readFile, writeFile, rename } from "node:fs/promises";
+import { resolve, dirname, relative } from "node:path";
 import { createServer } from "vite";
 import { resolveDevEndpoint } from "./dev-port.mjs";
 import { resolveElectronRuntimeArguments } from "./electron-runtime.mjs";
+import { classifyUpdate } from "./dev-update.mjs";
 
 const workspace = process.cwd();
 const outputRoot = resolve(workspace, ".swarm-dev");
@@ -34,9 +35,18 @@ await mkdir(outputRoot, { recursive: true });
 
 let desktop = null;
 let shuttingDown = false;
-let restartingDesktop = false;
-let restartTimer = null;
 let watchersReady = false;
+const controlPath = resolve(outputRoot, `control-${process.pid}.json`);
+let serial = 0;
+let coreRevision = 0;
+let preloadRevision = 0;
+let previousOutputs = null;
+let restartRequired = false;
+async function notify(action, message) {
+  console.log(`[dev] ${action}: ${message}`);
+  await writeFile(`${controlPath}.tmp`, JSON.stringify({ serial: ++serial, coreRevision, preloadRevision, action, message: message.slice(0, 2_000) }));
+  await rename(`${controlPath}.tmp`, controlPath);
+}
 
 function launchDesktop() {
   if (shuttingDown) return;
@@ -55,48 +65,18 @@ function launchDesktop() {
       env: {
         ...process.env,
         SWARM_RENDERER_URL: devEndpoint.rendererUrl,
+        SWARM_DEV_CONTROL: controlPath,
       },
       stdio: "inherit",
     },
   );
   desktop.on("exit", (code, signal) => {
     desktop = null;
-    if (restartingDesktop) {
-      restartingDesktop = false;
-      return;
-    }
-    if (!shuttingDown && restartTimer === null) {
+    if (!shuttingDown) {
       console.error(`Electron exited unexpectedly (${signal ?? code ?? "unknown"})`);
       void shutdown(1);
     }
   });
-}
-
-function requestDesktopRestart() {
-  if (!watchersReady || shuttingDown || restartingDesktop) return;
-  if (restartTimer !== null) clearTimeout(restartTimer);
-  restartTimer = setTimeout(() => {
-    restartTimer = null;
-    if (restartingDesktop) return;
-    if (!desktop) {
-      launchDesktop();
-      return;
-    }
-    restartingDesktop = true;
-    desktop.once("exit", launchDesktop);
-    desktop.kill("SIGTERM");
-  }, 120);
-}
-
-function restartPlugin(name) {
-  return {
-    name: `restart-electron-${name}`,
-    setup(build) {
-      build.onEnd((result) => {
-        if (result.errors.length === 0) requestDesktopRestart();
-      });
-    },
-  };
 }
 
 const common = {
@@ -104,34 +84,47 @@ const common = {
   platform: "node",
   format: "cjs",
   target: "node22",
-  sourcemap: "inline",
+  sourcemap: "external",
   logLevel: "info",
   external: ["electron"],
 };
 
-const builds = [
-  await context({
-    ...common,
-    entryPoints: [resolve(workspace, "app/electron/main.ts")],
-    outfile: resolve(outputRoot, "app/electron/main.js"),
-    plugins: [restartPlugin("main")],
-  }),
-  await context({
-    ...common,
-    entryPoints: [resolve(workspace, "app/electron/preload.ts")],
-    outfile: resolve(outputRoot, "app/electron/preload.js"),
-    plugins: [restartPlugin("preload")],
-  }),
-  await context({
-    ...common,
-    entryPoints: [resolve(workspace, "core/worker.ts")],
-    outfile: resolve(outputRoot, "core/worker.js"),
-    plugins: [restartPlugin("core")],
-  }),
-];
-
-for (const build of builds) await build.rebuild();
-for (const build of builds) await build.watch();
+const build = await context({
+  ...common,
+  entryPoints: ["app/electron/main.ts", "app/electron/preload.ts", "core/worker.ts"].map((path) => resolve(workspace, path)),
+  outbase: workspace,
+  outdir: outputRoot,
+  write: false,
+  plugins: [{ name: "minimal-live-update", setup(builder) {
+    builder.onEnd(async (result) => {
+      if (shuttingDown) return;
+      if (result.errors.length) {
+        if (watchersReady) await notify("build-failed", `Build failed; last usable code retained. ${result.errors[0].text}`);
+        return;
+      }
+      const next = new Map(result.outputFiles.filter((file) => file.path.endsWith(".js")).map((file) => [relative(outputRoot, file.path), file.text]));
+      const action = classifyUpdate(previousOutputs, next);
+      // Once the shell is incompatible, don't install a partially newer world.
+      // Renderer HMR and data observation continue; adopting the shell is manual.
+      if (watchersReady && (restartRequired || action === "restart-required")) {
+        restartRequired = true;
+        await notify("restart-required", "Main process changed — deliberate app restart required; current window retained.");
+        return;
+      }
+      for (const file of result.outputFiles) {
+        await mkdir(dirname(file.path), { recursive: true });
+        await writeFile(`${file.path}.tmp`, file.contents);
+        await rename(`${file.path}.tmp`, file.path);
+      }
+      previousOutputs = next;
+      if (action === "core" || action === "core-preload") coreRevision += 1;
+      if (action === "preload" || action === "core-preload") preloadRevision += 1;
+      if (watchersReady) await notify(action, action === "unchanged" ? "Build current; executable code unchanged" : `Applying ${action} update without replacing the native window`);
+    });
+  } }],
+});
+await build.rebuild();
+await build.watch();
 
 const vite = await createServer({
   configFile: resolve(workspace, "vite.config.mts"),
@@ -150,9 +143,8 @@ launchDesktop();
 async function shutdown(exitCode = 0) {
   if (shuttingDown) return;
   shuttingDown = true;
-  if (restartTimer !== null) clearTimeout(restartTimer);
   desktop?.kill("SIGTERM");
-  await Promise.all(builds.map((build) => build.dispose()));
+  await build.dispose();
   await vite.close();
   process.exit(exitCode);
 }

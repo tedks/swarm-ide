@@ -1,4 +1,5 @@
 import { contextBridge, ipcRenderer } from "electron";
+import { EventEnvelopeSchema, ResponseEnvelopeSchema, LifecycleSchema, LIFECYCLE_CHANNEL, LIFECYCLE_REQUEST_CHANNEL, type LifecycleBridge } from "../lifecycle";
 import {
   parseCoreEvent,
   parseFileEvent,
@@ -17,6 +18,11 @@ import {
 
 const REQUEST_CHANNEL = "swarm:request";
 const EVENT_CHANNEL = "swarm:event";
+let generation = 0;
+ipcRenderer.on(LIFECYCLE_CHANNEL, (_event, input: unknown) => {
+  const parsed = LifecycleSchema.safeParse(input);
+  if (parsed.success) generation = Math.max(generation, parsed.data.core.generation);
+});
 
 export interface SwarmBridge {
   request(input: CoreRequest): Promise<CoreResponse>;
@@ -26,16 +32,17 @@ export interface SwarmBridge {
 const bridge: SwarmBridge = {
   async request(input) {
     const request = parseCoreRequest(input);
-    const response: unknown = await ipcRenderer.invoke(REQUEST_CHANNEL, request);
-    return parseCoreResponse(response);
+    const envelope = ResponseEnvelopeSchema.parse(await ipcRenderer.invoke(REQUEST_CHANNEL, request));
+    if (envelope.generation < generation) return { protocolVersion: request.protocolVersion, requestId: request.requestId, ok: false, error: { code: request.type === "file.write" ? "WRITE_OUTCOME_UNKNOWN" : "CORE_GENERATION_CHANGED", message: "Core generation changed during the operation" } };
+    generation = envelope.generation;
+    return parseCoreResponse(envelope.response);
   },
   onEvent(listener) {
     const handler = (_event: Electron.IpcRendererEvent, input: unknown) => {
-      try {
-        listener(parseCoreEvent(input));
-      } catch {
-        listener(parseFileEvent(input));
-      }
+      const parsed = EventEnvelopeSchema.safeParse(input);
+      if (!parsed.success || parsed.data.generation < generation) return;
+      generation = parsed.data.generation;
+      listener(parsed.data.event);
     };
     ipcRenderer.on(EVENT_CHANNEL, handler);
     return () => ipcRenderer.removeListener(EVENT_CHANNEL, handler);
@@ -51,3 +58,16 @@ const viewShellBridge: ViewShellBridge = {
 
 contextBridge.exposeInMainWorld("swarm", bridge);
 contextBridge.exposeInMainWorld("swarmView", viewShellBridge);
+const lifecycleBridge: LifecycleBridge = {
+  async status() { const status = LifecycleSchema.parse(await ipcRenderer.invoke(LIFECYCLE_REQUEST_CHANNEL, { type: "status" })); generation = Math.max(generation, status.core.generation); return status; },
+  onStatus(listener) {
+    const handler = (_event: Electron.IpcRendererEvent, input: unknown) => {
+      const parsed = LifecycleSchema.safeParse(input);
+      if (parsed.success) listener(parsed.data);
+    };
+    ipcRenderer.on(LIFECYCLE_CHANNEL, handler);
+    return () => ipcRenderer.removeListener(LIFECYCLE_CHANNEL, handler);
+  },
+  async reload(revision) { return LifecycleSchema.parse(await ipcRenderer.invoke(LIFECYCLE_REQUEST_CHANNEL, { type: "reload", revision })); },
+};
+contextBridge.exposeInMainWorld("swarmLifecycle", lifecycleBridge);

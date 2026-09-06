@@ -77,8 +77,13 @@ or its newly written revision while treating any third revision as a conflict.
 
 `tools/dev.mjs` creates watched main, preload, and core bundles with esbuild,
 starts one Vite server, and launches the Nix-provided Electron binary. Renderer
-edits use Vite HMR without re-entering Bazel. Main/core/preload edits restart only
-Electron. Bazel remains the supported owner of the long-running command.
+edits use Vite HMR without re-entering Bazel. A successful multi-entry build is
+compared by executable bytes, excluding source maps: unchanged code does nothing,
+core changes replace only the utility process, and preload changes refresh the
+existing document when its buffers and pending writes are safe. Main changes
+defer the whole bundle update behind a deliberate restart-required notice; they
+never replace the native window automatically. Bazel remains the supported owner
+of the long-running command. See `docs/development-loop.md` for recovery limits.
 `bazel build //...` also builds `bazel-bin/swarm-ide-foundation.tar.gz`, containing
 the bundled Electron main/preload/core and Vite renderer outputs. This initial
 local genrule intentionally stops short of a generalized hermetic JavaScript
