@@ -29,5 +29,15 @@ log_events:
   who: Ted Smith
   what: started
   comment: ""
+- time: 2026-09-06T05:22:13-00:00
+  who: Ted Smith
+  what: commented
+  comment: 'A1 PR21: real FileRunStore post-rename directory-sync failure reproduced
+    false renderer rejection with persisted Run+AdmissionReceipt and zero adapter
+    starts. Service now classifies attempted-admission failures unknown and latches
+    typed/thrown store failures; unchanged renderer read reconciliation proves admission
+    only. Eleven new integrated store/service/client tests; d7de36e passed 436 quality
+    tests and all5/full19 build. Reviewed upstream P2/C1 merged into own topic45491ed
+    for final aggregate gates. Council native CLEAN, foreign seats pending. No model/policy/adoption.'
 blocks:
 - agent-run-vertical-proof
