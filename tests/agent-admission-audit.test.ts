@@ -134,7 +134,9 @@ describe("admission failure classification through real service and renderer", (
     const read = await recovered.read(f.prepared.runId, 0);
     if (phase === "write") expect(read).toMatchObject({ ok: false, error: { code: "RUN_NOT_ACTIVE" } });
     else {
-      expect(read).toMatchObject({ ok: true, value: { run: { state: "unknown", processState: "not-started", providerOutcome: { kind: "none" } } } });
+      // Recovery conservatively marks even an admitted-but-not-dispatched run
+      // unknown; the original receipt survives without claiming process cleanup.
+      expect(read).toMatchObject({ ok: true, value: { run: { state: "unknown", processState: "unknown", providerOutcome: { kind: "none" } } } });
       expect(await recovered.admit(f.prepared)).toMatchObject({ ok: true, value: { existing: true, receipt: entries[0]!.receipt } });
     }
   });
