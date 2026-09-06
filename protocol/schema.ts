@@ -2,6 +2,7 @@ import { z } from "zod";
 import { PROTOCOL_VERSION, FocusRefSchema } from "./common";
 import { AgentRequestSchema, AgentResultSchema, AgentFocusSchema, AgentLinksSchema, AgentBoundaryErrorSchema, type AgentRequest } from "./agents";
 import { TaskRequestSchema, TaskResultSchema, TaskBoundaryErrorSchema, parseTaskResultForRequest, type TaskRequest } from "./tasks";
+import { RepositoryObservationSchema, RepositoryPathSchema, RepositoryRequestSchema, RepositoryResultSchema, parseRepositoryResultForRequest } from "./repository";
 export { PROTOCOL_VERSION, FocusRefSchema, RevisionKindSchema, type FocusRef, type RevisionKind } from "./common";
 
 export const MAX_EDITABLE_FILE_BYTES = 2 * 1024 * 1024;
@@ -55,6 +56,11 @@ export const GraphSliceSchema = z.object({
   nodes: z.array(GraphNodeSchema).max(500),
   edges: z.array(GraphEdgeSchema).max(2_000),
   provenance: z.array(ProvenanceSchema).min(1).max(16),
+  directory: RepositoryObservationSchema.optional(),
+}).superRefine((graph, context) => {
+  if (graph.directory && (graph.topologyId !== "repo" || graph.reconciliation !== "gray" ||
+      !graph.provenance.some((item) => item.sourceKind === "repo" && item.version === graph.directory!.observationId)))
+    context.addIssue({ code: "custom", message: "Directory slices require neutral repository observation provenance" });
 });
 export type GraphSlice = z.infer<typeof GraphSliceSchema>;
 
@@ -64,9 +70,15 @@ export const NavigationMappingSchema = z.object({
   candidates: z.array(
     z.object({
       focus: FocusRefSchema,
-      nodeId: z.string().min(1),
+      nodeId: z.string().min(1).optional(),
+      revealPath: RepositoryPathSchema.optional(),
       confidence: z.number().min(0).max(1),
       reason: z.string().min(1),
+    }).strict().superRefine((candidate, context) => {
+      if (Boolean(candidate.nodeId) === Boolean(candidate.revealPath))
+        context.addIssue({ code: "custom", message: "Exactly one loaded node or reveal recipe is required" });
+      if (candidate.revealPath && (candidate.focus.domain !== "repo" || candidate.focus.path !== candidate.revealPath || candidate.focus.key !== `file:${candidate.revealPath}`))
+        context.addIssue({ code: "custom", message: "Reveal recipes require the same canonical repository file focus" });
     }),
   ).max(32),
   ambiguous: z.boolean(),
@@ -112,7 +124,9 @@ export const WorkspaceSnapshotSchema = z.object({
   project: z.object({ id: z.string().min(1), name: z.string().min(1) }),
   world: z.object({ id: z.string().min(1), label: z.string().min(1) }),
   revisions: z.object({
-    working: z.object({ id: z.string(), fingerprint: z.string() }),
+    // Registration coordinates identify a world, not observed content. Existing
+    // snapshots default to observed; empty never-observed fingerprints do not.
+    working: z.object({ id: z.string(), fingerprint: z.string(), evidence: z.enum(["observed", "unavailable"]).default("observed") }),
     built: z.object({ id: z.string(), sourceFingerprint: z.string() }),
     deployed: z.object({ id: z.string(), buildId: z.string(), environment: z.string() }),
   }),
@@ -130,6 +144,12 @@ export const WorkspaceSnapshotSchema = z.object({
     message: z.string().min(1),
   }),
 }).superRefine((snapshot, context) => {
+  const working = snapshot.revisions.working;
+  if ((!working.fingerprint && (working.evidence !== "unavailable" || !working.id.startsWith("unobserved:"))) ||
+      (working.id.startsWith("unobserved:") && (working.fingerprint !== "" || working.evidence !== "unavailable" ||
+        snapshot.reconciliation.lastConsistentFingerprint !== "unobserved")) ||
+      (working.evidence === "unavailable" && (snapshot.reconciliation.status === "green" || snapshot.graphs.some((graph) => graph.reconciliation === "green"))))
+    context.addIssue({ code: "custom", path: ["revisions", "working"], message: "Unavailable working evidence cannot confer content or green authority" });
   if (
     snapshot.focus.revisionKind === "working" &&
     snapshot.focus.revisionId !== snapshot.revisions.working.id
@@ -171,7 +191,7 @@ export const WorkspaceSnapshotSchema = z.object({
     }
     const targetNodes = new Set(target.nodes.map((node) => node.id));
     for (const [candidateIndex, candidate] of mapping.candidates.entries()) {
-      if (!targetNodes.has(candidate.nodeId)) {
+      if (candidate.nodeId ? !targetNodes.has(candidate.nodeId) : mapping.targetTopology !== "repo") {
         context.addIssue({ code: "custom", path: ["mappings", mappingIndex, "candidates", candidateIndex, "nodeId"], message: "mapping candidate must reference a node in its target topology" });
       }
     }
@@ -197,7 +217,7 @@ export const WorkspaceSnapshotSchema = z.object({
         snapshot.revisions.built.id,
         snapshot.revisions.deployed.id,
       ]);
-      if (!graph.provenance.some((item) => acceptedVersions.has(item.version))) {
+      if (!graph.directory && !graph.provenance.some((item) => acceptedVersions.has(item.version))) {
         context.addIssue({ code: "custom", path: ["graphs", graphIndex, "provenance"], message: "green graph provenance must identify the working, built, or deployed revision" });
       }
     }
@@ -251,7 +271,7 @@ const WorkspaceRequestSchema = z.discriminatedUnion("type", [
     path: z.string().min(1).max(4_096),
   }),
 ]);
-export const CoreRequestSchema = z.union([WorkspaceRequestSchema, AgentRequestSchema, TaskRequestSchema]);
+export const CoreRequestSchema = z.union([WorkspaceRequestSchema, AgentRequestSchema, TaskRequestSchema, RepositoryRequestSchema]);
 export type CoreRequest = z.infer<typeof CoreRequestSchema>;
 
 export const FileResultSchema = z.discriminatedUnion("kind", [
@@ -286,6 +306,7 @@ export const CoreResponseSchema = z.discriminatedUnion("ok", [
     file: FileResultSchema.optional(),
     agent: AgentResultSchema.optional(),
     task: TaskResultSchema.optional(),
+    repo: RepositoryResultSchema.optional(),
   }).strict(),
   z.object({
     protocolVersion: z.literal(PROTOCOL_VERSION),
@@ -345,6 +366,12 @@ const agentResultKind = {
 export function parseCoreResponseForRequest(input: unknown, request: CoreRequest): CoreResponse {
   const response = parseCoreResponse(input);
   if (response.requestId !== request.requestId) throw new Error("Response request ID mismatch");
+  if (request.type === "repo.list") {
+    if (response.ok) {
+      if (response.file || response.agent || response.task) throw new Error("Unexpected repository response authority");
+      parseRepositoryResultForRequest(response.repo, request);
+    }
+  } else if (response.ok && response.repo) throw new Error("Repository result supplied for a different command");
   if (isTaskRequest(request)) {
     if (!response.ok) TaskBoundaryErrorSchema.parse(response.error);
     else {

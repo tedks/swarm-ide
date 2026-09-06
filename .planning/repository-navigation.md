@@ -21,7 +21,8 @@ of a monorepo. Builds remain independent.
 - [x] (2026-09-06) N0 inspected the T3 base, actual navigation seams and unclosed foundations.
 - [x] (2026-09-06) N0 drafted the navigation contract and closure ledger.
 - [x] (2026-09-06) N0 completed native/Google design convergence and local document checks; PR36 holds normal-merge and Ditz handoff evidence.
-- [ ] ROOT evaluate the published contract and dispatch N1 if accepted.
+- [x] (2026-09-06) ROOT accepted N0 and dispatched N1 with explicit unavailable-evidence and privileged boundary conditions.
+- [ ] N1 shared protocol and adversarial regressions; bounded reader, renderer and packaged-proof helpers have distinct file ownership.
 - [ ] N1 implement the vertical, prove actual packaged behavior, review and land.
 - [ ] ROOT verify N1 and separately decide runtime adoption and next consumers.
 
@@ -293,3 +294,10 @@ selects a single visible vertical over another infrastructure-only split.
 Review revision (2026-09-06): separate fingerprint failure from navigation
 startup; distinguish captured-page Reveal from an uncaptured target; explicitly
 retain the last successful directory on a failed request. No product code changed.
+N1 defines registration coordinates as `unobserved:<canonical-root SHA256>`;
+the working fingerprint is empty until observed, and graph/reconciliation IDs
+may carry this coordinate without treating it as a digest. Last consistency
+remains `unobserved`; unavailable evidence revokes green and context authority
+even when an earlier digest is retained. `repo.list` adds an optional exact
+`revealPath` in the requested parent to resolve captured off-page targets without
+exposing or fabricating an unbounded directory inventory.
