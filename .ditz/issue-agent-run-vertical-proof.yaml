@@ -1,0 +1,20 @@
+id: agent-run-vertical-proof
+title: Prove and land the first real read-only steerable agent journey
+desc: 'Integration acceptance after runtime/workbench/context-evidence: real provider
+  task and live steering evidence, cancel/unknown/recovery proof, unchanged fixture
+  source, relevant local Bazel and owned-virtualX11 checks, review fixpoint and normal
+  PR merges. Root handles deliberate user-app adoption. This is not complete when
+  design lands.'
+type: task
+component: default
+release:
+reporter: Ted Smith <tedks@riseup.net>
+status: unstarted
+disposition:
+creation_time: 2026-09-06T01:28:59-00:00
+references: []
+log_events:
+- time: 2026-09-06T01:28:59-00:00
+  who: Ted Smith
+  what: created
+  comment: ""
