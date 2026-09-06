@@ -5,8 +5,8 @@ type: task
 component: agents
 release:
 reporter: Ted Smith <tedks@riseup.net>
-status: in_progress
-disposition:
+status: closed
+disposition: fixed
 creation_time: 2026-09-06T07:18:07-00:00
 references: []
 log_events:
@@ -32,5 +32,19 @@ log_events:
     Anthropic sessionlimit then fresh480s timeout missing. Full25/all9 finaltopic
     passed674tests; P3static6/P4plugin3 regressions passed. No model inference/credentials/productpromotion.
     Normalmerge/actualaggregateverification pending.'
+- time: 2026-09-06T08:02:44-00:00
+  who: Ted Smith
+  what: 'closed: fixed'
+  comment: 'Delivered PR30 normal merge 207637c6c73a425a3cf442f93642eb690bca7c06.
+    Exact merged tree: full29 build, all10 local suites including790tests/60files,
+    owned virtual desktop rehearsal; manual P5two matched ordinary SessionStart controls
+    plus P3six/P4three regressions passed. Each P5control executes one actual synthetic
+    protocol turn and one private HTTP response, enabledhook witness vs disablednone;
+    original26+new10 boundary checks and unchanged inputs pass. No external model
+    inference, credentials or production policy promotion. OpenAI/Google code convergence
+    CLEAN; Anthropic sessionlimit then480s timeout no verdict. Conditional remoteCI
+    waiver used; topicCI failed preCodex SEED_PIPE/namespace prerequisites, mergedCI
+    tracked in archived handoff. Broad activation/effective-policy and hosted-boundary
+    parents remain open.'
 blocks:
 - agent-run-offline-activation-proof
