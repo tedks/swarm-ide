@@ -9,8 +9,8 @@ type: feature
 component: default
 release:
 reporter: Ted Smith <tedks@riseup.net>
-status: in_progress
-disposition:
+status: closed
+disposition: fixed
 creation_time: 2026-09-06T16:19:13-00:00
 references: []
 log_events:
@@ -56,6 +56,15 @@ log_events:
     Full 34-target build passed; final all-local rerun follows narrow compatibility
     correction in two older palette drivers. No model turn or watched app adoption;
     search and other foundation gates remain open.'
+- time: 2026-09-06T18:28:02-00:00
+  who: Ted Smith
+  what: 'closed: fixed'
+  comment: 'N1 PR37 normal merge 7bd0ace: actual registered-repository browsing, bounded
+    captures and safe path activation implemented. Final topic d637199 passed 34-target
+    build, all 13 uncached local suites, quality 1083 tests/76 files, four real packaged
+    Git/filesystem navigation cases with zero renderer errors and owned cleanup. Native
+    OpenAI and foreign Google council CLEAN; Anthropic credits unavailable. Other
+    foundation gaps remain open; no watched-app adoption or live agent activation.'
 blocks:
 - repository-file-search
 blocked_by:
