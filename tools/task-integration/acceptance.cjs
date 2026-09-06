@@ -28,6 +28,7 @@ async function main() {
   wc.on("console-message", (event) => { if (event.level === "error") console.error(`Owned fixture renderer: ${event.message}`); });
   const run = (fn, ...args) => wc.executeJavaScript(`(${fn.toString()})(...${JSON.stringify(args)})`, true);
   await run(() => addEventListener("error", (event) => console.error(event.error?.stack ?? event.message)));
+  await run(() => { const report = console.error; console.error = (...args) => report(...args.map((value) => value instanceof Error ? value.stack : value)); });
   const has = (selector) => run((s) => Boolean(document.querySelector(s)), selector);
   const click = (selector) => run((s) => {
     const target = document.querySelector(s);
@@ -117,9 +118,11 @@ async function main() {
     wc.sendInputEvent({ type: "mouseWheel", x, y, deltaY: -47, deltaX: 0 });
     await until(async () => (await run((s) => document.querySelector(s).parentElement.querySelector(".react-flow__viewport").style.transform, selector)) !== before, `deliberately move ${topology} camera`);
   }
-  await focus(".cm-content"); key("End", ["control"]); await wc.insertText("\n// unsaved T3 intent"); key("Home", ["control"]); key("Right");
+  await focus(".cm-content"); key("End", ["control"]);
+  await until(() => run(() => { const s = document.querySelector(".cm-content").cmView.rootView.view.state; return s.selection.main.anchor === s.doc.length; }), "native end of source");
+  await wc.insertText("// unsaved T3 intent"); key("Home", ["control"]); key("Right");
   await until(() => run(() => document.querySelector(".cm-content").cmView.rootView.view.state.selection.main.anchor === 1), "exact dirty editor cursor");
-  assert.equal(await run(() => document.querySelector(".cm-content").cmView.rootView.view.state.doc.toString()), fixture.sourceText + "\n// unsaved T3 intent");
+  assert.equal(await run(() => document.querySelector(".cm-content").cmView.rootView.view.state.doc.toString()), fixture.sourceText + "// unsaved T3 intent");
   await focus(".agent-rail .agent-primary"); key("Return");
   await until(() => has(".agent-draft textarea"), "fixed-focus draft");
   await fill(".agent-draft textarea", "Retain this independent user draft; task text is not instructions.");
