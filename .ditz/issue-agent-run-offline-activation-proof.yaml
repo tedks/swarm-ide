@@ -32,6 +32,19 @@ log_events:
   who: Ted Smith
   what: blocked by agent-run-policy-independent-observer
   comment: ""
+- time: 2026-09-06T06:08:03-00:00
+  who: Ted Smith
+  what: commented
+  comment: P3 PR22 normal491a6d6 delivers six actual installed0.153.4 static MCP controls
+    in unchanged independently tested namespace, after source/schema no-model trigger
+    selection. Enabled and inherited full handshakes; matched disabled and project-disabled
+    none; initialization-failed and missing-executable distinguish attempted startup
+    from disablement. Evidence is provider-reported MCP startup/rejection plus fixed
+    canary, NOT independent syscall exclusion. Trace gaps found in review caused removal
+    of unsupported observer; agent-run-policy-independent-observer remains open. SessionStart
+    requires turn; hooks/trust/executor plugin-MCP/persisted remote state/telemetry
+    and credentialed production equivalence remain UNPROVED. No model turn/credentials/production
+    availability. Actual merged aggregate checks in progress; parent stays open.
 blocks:
 - agent-run-effective-policy
 blocked_by:
