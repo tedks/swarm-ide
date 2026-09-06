@@ -45,6 +45,15 @@ log_events:
   who: Ted Smith
   what: blocked by agent-policy-boundary-hosted-seed-pipe
   comment: ""
+- time: 2026-09-06T07:39:44-00:00
+  who: Ted Smith
+  what: commented
+  comment: 'P5 PR30 Google nonblocking review: current bounded duplicate-key preflight
+    intentionally leaves full JSON grammar to JSON.parse; malformed colon/value case
+    remains rejected. If grammar grows, consider formal tokenizer, not extra complexity
+    now. Output LIMIT is the existing256KiB from boundary.mjs, not unknown/unbounded;
+    preserve explicit small-bound regression in future harness maintenance. No control/gate
+    waiver.'
 blocked_by:
 - agent-run-policy-hosted-boundary-failure
 - agent-policy-boundary-hosted-seed-pipe
