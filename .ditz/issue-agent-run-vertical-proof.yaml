@@ -46,6 +46,10 @@ log_events:
   who: Ted Smith
   what: blocked by agent-run-post-admission-error-classification
   comment: ""
+- time: 2026-09-06T05:47:04-00:00
+  who: Ted Smith
+  what: blocked by agent-run-owned-process-i2
+  comment: ""
 blocks:
 - first-real-agent-run-surface
 - agent-run-write-authority
@@ -55,3 +59,4 @@ blocked_by:
 - agent-run-context-evidence
 - agent-run-effective-policy
 - agent-run-post-admission-error-classification
+- agent-run-owned-process-i2
