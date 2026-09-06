@@ -24,3 +24,9 @@ log_events:
     to clear inherited map. Product preflight remains ADAPTER_POLICY_UNAVAILABLE.
     No server/model/auth execution occurred. Resolve in bounded policy acceptance
     gate without global edits or expanding authority.
+- time: 2026-09-06T02:41:38-00:00
+  who: Ted Smith
+  what: blocks agent-run-vertical-proof
+  comment: ""
+blocks:
+- agent-run-vertical-proof
