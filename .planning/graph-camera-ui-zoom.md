@@ -12,8 +12,8 @@ Users can enlarge the interface without losing their place in either repository 
 - [x] (2026-09-06 06:43Z) Proved all four targeted regressions red against unchanged GraphPane (554 existing tests passed); removed only the offending effect and unused ref/imports.
 - [x] (2026-09-06 06:48Z) Verified actual deliberate cameras/source/instances in owned X11: first scenario78.327s, cleanup1. Full24-target build/all8 uncached tests passed,558tests/49files; code review available-seat fixpoint CLEAN.
 - [x] (2026-09-06 07:04Z) Frozen I2 aggregate passed full25/all9/562tests50files; actual first source-mount proof85.907s and final clearer left/up-pan proof89.695s each passed with cleanup1. Inspected wide/high-zoom screenshots.
-- [ ] Repeat final local gates after normally merging reviewed P4 PR26 and using actual percent units in the test props; product GraphPane bytes are unchanged.
-- [ ] Complete provider-diverse council to fixpoint, normal PR landing, issue synchronization and owned-process cleanup.
+- [x] (2026-09-06 07:08Z) Final frozen6cdcf8a including reviewed P4 PR26 passed full25-target build/all9 uncached tests. Actual percent-unit test delta and all W4 changes are native+Google CLEAN; Anthropic session-limit missing.
+- [ ] Record actual normal PR merge, Ditz synchronization and owned-process cleanup in the final executive handoff; no watched master/app adoption.
 
 ## Surprises & Discoveries
 
@@ -35,7 +35,7 @@ Remove the interface-zoom-driven imperative fit and its now-unused instance ref,
 
 ## Outcomes & Retrospective
 
-The minimal removal fixed all four failing orchestration regressions, and actual owned X11 input confirmed independent deliberate cameras through interface zoom, compact panes, rapid resize, first source mount and unsaved source work. Initial Fit, explicit Fit and source/service focus mapping remain available. Unit tests establish only application orchestration; the actual X11 proof establishes library/editor behavior. A smaller viewport can still crop a deliberately positioned scene; exact camera continuity is not automatic recentering or a promise to keep all nodes visible. No cross-session camera persistence or new configuration is added. Final reviewed-upstream aggregate landing remains in progress. No real agent or policy capability is involved.
+The minimal removal fixed all four failing orchestration regressions, and actual owned X11 input confirmed independent deliberate cameras through interface zoom, compact panes, rapid resize, first source mount and unsaved source work. Initial Fit, explicit Fit and source/service focus mapping remain available. Unit tests establish only application orchestration; the actual X11 proof establishes library/editor behavior. A smaller viewport can still crop a deliberately positioned scene; exact camera continuity is not automatic recentering or a promise to keep all nodes visible. No cross-session camera persistence or new configuration is added. Final reviewed-upstream aggregate passed all local gates; actual post-commit merge/cleanup is deliberately recorded in the executive handoff rather than claiming a future merge in this commit. No real agent or policy capability is involved.
 
 ## Context and Orientation
 
@@ -85,3 +85,5 @@ Revision note: Initial plan states the invariant and failure modes before produc
 Revision note2026-09-06: Recorded four red regressions, first green/local/actual-X11 evidence, source-backed initialization behavior, available-seat CLEAN review and the reason for improving the visibly framed acceptance baseline. Aggregate landing is explicitly still pending.
 
 Revision note2026-09-06 07:04Z: Recorded the contaminated smoke and frozen rerun, source-mount evidence correction, final visible-pan acceptance, honest viewport limitations and reviewed P4 aggregate gate. Test props now use100/125/150 percent units like App rather than normalized factors; camera values remain graph zoom, not interface zoom. Only the final aggregate and normal landing/cleanup checkboxes remain open.
+
+Revision note2026-09-06 07:08Z: Final frozen aggregate local build/all9 tests and native+Google review are complete. Hosted failures remain namespace/policy bootstrap failures under the user's conditional local-verification waiver, not green CI or a weakened gate. The final ignored handoff records actual merge and cleanup after this documentation commit.
