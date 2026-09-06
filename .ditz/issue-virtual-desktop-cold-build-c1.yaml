@@ -5,8 +5,8 @@ type: task
 component: default
 release:
 reporter: Ted Smith <tedks@riseup.net>
-status: in_progress
-disposition:
+status: closed
+disposition: fixed
 creation_time: 2026-09-06T04:39:25-00:00
 references: []
 log_events:
@@ -31,5 +31,14 @@ log_events:
     all-suite found original fail()-errexit masking timeout124 as1, fixed8659c1e and
     focused supervisor passes26.9s. Hosted8706993 hit separate prelaunch occupied-port
     refusal, new issue tracks it. No arbitrary timing change yet.
+- time: 2026-09-06T05:12:39-00:00
+  who: Ted Smith
+  what: 'closed: fixed'
+  comment: Delivered PR19 normal merge2cbea945, reviewed executable2df26ea and documentation-heade92700c.
+    Direct hosted cold cause measured; cold232.021s/hot629ms passed34012788098. Final
+    combined22-target build/all7 Bazel tests/464 quality tests, owned cold59.567s/hot214ms/HMR46ms
+    all pass; OpenAI+Google CLEAN, Anthropic unavailable600s. Final executable/doc/merge
+    hosted checks remain separate; parent kept open for exact-final acceptance. Master/app
+    untouched.
 blocks:
 - virtual-desktop-ci-timeout
