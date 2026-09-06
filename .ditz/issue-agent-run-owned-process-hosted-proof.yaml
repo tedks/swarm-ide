@@ -14,3 +14,15 @@ log_events:
   who: Ted Smith
   what: created
   comment: ""
+- time: 2026-09-06T06:04:18-00:00
+  who: Ted Smith
+  what: commented
+  comment: I2 PR24 code1fd0689 hosted34015116894 fails the real unshare user/PID/mount
+    namespace prerequisite before provider startup; fixed Nix true basename is present,
+    all3 positive scenarios skipped and explicit required gate FAILS, not positive
+    evidence. Local exact code runs all3 and passes. P3 already owns broader hosted
+    isolation diagnosis (agent-policy-boundary-hosted-seed-pipe); do not duplicate
+    it or weaken namespace/runner protections. Followup is obtain an approved supported
+    runner and record actual hosted positive proof; current ignored stderr limits
+    root-cause diagnosis, not permission to infer AppArmor/sysctl cause. No product
+    capability unlocked.
