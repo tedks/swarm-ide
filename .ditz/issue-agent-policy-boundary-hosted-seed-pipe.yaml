@@ -34,3 +34,9 @@ log_events:
     I1 local full24target build/all8uncached tests/474tests passed. Sanitized failed
     log master/artifacts/overnight-wave/agent-journey/ci-14d6da7-failed.log. No root
     cause inferred or policy bypass; same ROOT/P2 followup, not another issue.'
+- time: 2026-09-06T06:04:19-00:00
+  who: Ted Smith
+  what: blocks agent-run-owned-process-hosted-proof
+  comment: ""
+blocks:
+- agent-run-owned-process-hosted-proof
