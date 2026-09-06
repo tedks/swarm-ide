@@ -28,5 +28,16 @@ log_events:
   who: Ted Smith
   what: blocks agent-run-effective-policy
   comment: ""
+- time: 2026-09-06T04:05:45-00:00
+  who: Ted Smith
+  what: commented
+  comment: 'PR13 review further requires strict plain-server startup, pre-thread constraints,
+    executor hooks, legacy notify, remote plugin/control state and telemetry exclusion;
+    keyring/session-bus isolation as well as credential files; login rc/companion
+    sentinels; immutable policy layers separated from writable owned runtime data.
+    --profile is explicitly rejected for app-server in pinned release. Remote disable
+    is an internal daemon marker, not an attested public flag: do not invent supported
+    switches. Start with offline process-bound proof; production auth acceptance remains
+    ROOT gate.'
 blocks:
 - agent-run-effective-policy
