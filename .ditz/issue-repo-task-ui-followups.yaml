@@ -34,3 +34,15 @@ log_events:
     list; existing Boolean(workspace.snapshot) dependency already avoids snapshot-reference
     churn, optional hasSnapshot local would only improve readability. No behavior
     rewrite in bounded T2.'
+- time: 2026-09-06T14:20:52-00:00
+  who: Ted Smith
+  what: commented
+  comment: 'Warm Anthropic convergence nits: generalized unsuccessful navigation wording
+    to Reveal (null line does not pretend a requested line). Accept existing functional
+    notice updater on source focus for now; no evidence of measurable user cost, preserving
+    narrow ownership. Duplicate reconnect notice fixed with lifecycle ready-transition
+    clearing while retained snapshot retains stale reason. Verified core/watchers.ts
+    unwatch unknown path returns without error and worker replies ok; no orphan-watch
+    cleanup change needed. Actual owned broker FIFO test and all10 local targets passed
+    under Nix. useMemo matches reviewed agent client, no lifetime guarantee newly
+    claimed.'
