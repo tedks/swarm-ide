@@ -193,7 +193,11 @@ run_failure app-exit 'app exited' SWARM_FAKE_APP_EXIT=1
 run_failure input-failure 'key input failed' SWARM_FAKE_INPUT_FAIL=1
 run_failure capture-failure 'screenshot capture failed' SWARM_FAKE_CAPTURE_FAIL=1
 run_failure scenario-failure 'scenario exited with status' SWARM_FAKE_SCENARIO_FAIL=1
+[[ -s "$case_dir/failure.png" ]] || fail 'scenario failure lost its pre-teardown screenshot'
+[[ -s "$case_dir/topology-build.txt" ]] || fail 'scenario failure lost bounded build diagnostics'
+grep -q 'cleanup_complete=1' "$case_dir/supervisor.log" || fail 'failure diagnostics disrupted cleanup'
 run_failure scenario-timeout 'scenario timed out' SWARM_FAKE_SCENARIO_SLEEP=1 SWARM_SCENARIO_TIMEOUT_SECONDS=1
+[[ -s "$case_dir/failure.png" ]] || fail 'timeout lost its pre-teardown screenshot'
 
 run_failure cleanup-failure 'cleanup_complete=0' SWARM_FAKE_TAMPER_LOCK=1
 cleanup_failure_lock="$lock_root/.swarm-ide-x11-${case_display#:}.lock"
