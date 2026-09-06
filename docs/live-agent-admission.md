@@ -130,7 +130,7 @@ Require all relevant effective feature pages, matching cwd and requirements.
 | Package/system/user/profile/project/runtime config | Pin embedded defaults; construct `/etc/codex/config.toml`, `requirements.toml` and legacy `managed_config.toml` as exact manifest inputs or proven absence. Pin `$CODEX_HOME/config.toml`; no selected user profile. Empty canonical cwd/ancestors exclude project config and Git-root discovery. Only allowlisted core flags. Prove every path and ancestor immutable and verify actual loaded layers, including omissions from `config/read` |
 | Cloud/managed configuration | Do not bypass legitimate account requirements by hiding them. Before thread creation, acquire and approve the account's exact requirements through a separately accepted auth route, then bind/freeze them. A cloud reload or extra instructions not in the manifest rejects. Stock CLI's loader does not presently supply our required atomic freeze; this is a blocking seam, not an implemented flag |
 | Instructions/skills/rules | Only confirmed bounded instruction text, identified embedded base instructions and pinned model metadata. No automatic user/project AGENTS, skills, execpolicy rules, memories or `.env` imports. A response listing no instruction paths is not proof of complete prompt expansion; validate outbound structural inputs and loading paths |
-| Static MCP/apps/delegation/tools | Empty source definitions by construction plus effective disabling, aliases resolved. Inspect complete initial and thread-scoped sets. Disable shell/code/prewarm, browser, search, apps, multi-agent/guardian and dynamic-tool routes. Reject extra tools or requests before external delivery |
+| Static MCP/apps/delegation/tools | Require empty source definitions by construction plus effective disabling, aliases resolved. Inspect complete initial and thread-scoped sets. Disable shell/code/prewarm, browser, search, apps, multi-agent/guardian and dynamic-tool routes. Reject extra tools or requests before external delivery |
 | Plugins and catalogs | Effective `plugins=false` **and** `remote_plugin=false`; no caches/install metadata/overlays. Pinned `PluginsConfigInput` passes these gates into startup. P4's positive `plugins=true` can still fetch featured plugins with only remote_plugin off; do not misstate it as proof that plugins=false still fetches |
 | Hooks/notify/executor sources | Ordinary `hooks=false` plus no hook/trust/state files; explicit `notify=[]`, not merely hooks off. Disable plugin/built-in sources independently. No managed hook definitions, trust bypass RPC or executor-supplied sources. For pinned local executor, capability discovery must be false and logical read policy must not cause the restricted-filesystem discovery fallback; OS mount containment is independent of that logical policy. Never expose more host files to satisfy a logical-policy check |
 | Remote control and persisted state | Fresh private state plus managed `allow_remote_control=false`, no enable/enroll/config-write RPC. `features.remote_control` is a removed feature, not prohibition; the daemon-internal disable environment variable is not a public production recipe |
@@ -198,10 +198,14 @@ Three material blockers cannot be hand-waved away:
 1. **Built-in transport differs from P5.** `create_openai_provider` enables
    WebSockets. `merge_configured_model_providers` does not override this built-in
    with custom retry/WebSocket fields. `Session::schedule_startup_prewarm` uses
-   that capability and builds a prewarm prompt before a regular turn. Removed
+   that capability and builds a prewarm prompt before a regular turn. Source
+   describes its `generate=false` request as connection setup, not inference;
+   it still carries prompt/framing bytes and is not effect-free. Removed
    websocket flags and `code_mode_prewarm=false` do not disable it. The proposed
    profile requires no generation/prompt disclosure before the final gate and
-   bounded, non-replayed generation. A rejected prewarm is containment, not
+   bounded, non-replayed HTTP-only generation, including no normal-turn WebSocket
+   upgrade. Disabling prewarm alone does not disable turn-time WebSockets.
+   A rejected prewarm is containment, not
    proof that prewarm/retry behavior is disabled. A supported harness control or
    separately reviewed pinned Codex change is needed if the exact binary offers
    no effective mechanism; do not create a custom provider as a workaround.
@@ -221,17 +225,40 @@ pre-generation phase with its own independently accepted boundary. During this
 phase no prepared source is sent, no provider thread/turn exists, no arbitrary
 RPC or automatic browser is allowed. It cannot reuse a generic capability flag.
 
-1. ROOT accepts the exact offline boundary, profile and any auth/relay extension
-   before process startup. The core checks identities, immutable mounts, no
-   ambient FDs/environment and verified lifetime readiness for this instance.
-   Unsupported host controls or previous unknown cleanup reject before spawning.
-2. Perform only the separately authorized auth bootstrap if needed; capture
+Bootstrap needs a **new durable core-only setup record before spawn**, outside
+the immutable analysis context. This is not implemented by today's six agent
+commands. It records a unique setup ID, world/root, proposed profile and owner
+identities, creation/deadline, phase, request IDs and cleanup evidence—never login
+codes, bearer/refresh tokens or raw account replies. There is one exclusive
+setup-or-run slot. Aborted/rejected setup stays inspectable; storage failure or
+ambiguous setup admission starts no retry. After core loss, any unresolved setup
+is unknown and blocks another setup/run until owned cleanup is established,
+exactly like unresolved run ownership. Persisting just a PID is not ownership.
+
+An accepted setup may be transferred **once** to a subsequently confirmed run:
+persist the run's immutable context/admission and a setup-to-run claim intent
+before provider generation setup, then durably acknowledge that claim. A crash
+between records leaves an unresolved claim blocking both reuse and another
+launch; recovery never guesses ownership from an absent row. Do not rewrite a
+run's original context after login. A new process or account requires new setup
+and confirmation. This setup journal/transfer needs its own G4 tests and review,
+not reuse of a pre-auth `AgentCapabilities` result.
+
+1. ROOT accepts the exact offline boundary, profile and any auth/relay extension.
+   Persist setup intent, then check identities, immutable mounts, no ambient
+   FDs/environment and verified lifetime readiness before spawning this instance.
+   Unsupported host controls or previous unknown cleanup reject. Within the
+   accepted boundary, validate the `initialize`/`initialized` handshake **before**
+   any auth RPC; the pinned app-server rejects auth before initialization.
+2. Perform only the separately authorized auth bootstrap; capture
    effective account requirements and close/freeze loading paths before allowing
-   thread creation. Prepare/reconfirm disk context after any changed inputs.
-3. Persist the R2 admission intent/receipt before generation setup/dispatch.
+   thread creation. Once setup is ready, prepare/confirm disk context against
+   these exact inputs; any subsequent change invalidates that draft.
+3. Persist the R2 admission intent/receipt and exclusive setup claim before
+   generation setup/dispatch, with crash-safe reconciliation as above.
    Bind run ID, root/world, context hash, process/namespace identity, profile and
    dependency digests, account-policy epoch and lifetime token in core memory.
-4. Initialize, inspect exact config/requirements and every effective feature/MCP
+4. Inspect exact post-auth config/requirements and every effective feature/MCP
    page, then create one fresh thread only after startup is already safe. Check
    correlated thread policy, exact cwd, readOnly/networkAccess:false/never,
    effective tools and instruction expansion. Thread creation is not inert.
@@ -239,7 +266,8 @@ RPC or automatic browser is allowed. It cannot reuse a generic capability flag.
    prepared inputs; enable only the run's one generation route. Persist exact
    prompt bytes before dispatch. Later steering is bounded text to the correlated
    active turn, not a new turn/config change or broader data access.
-6. Close relay/auth and owned namespace on terminal/cancel/deadline/core loss.
+6. Close relay/auth and owned namespace on terminal/cancel/deadline/core loss,
+   including abandoned login or an unclaimed setup.
    Only independently confirmed cleanup permits another run. Terminal outcome,
    transport exit and cleanup remain separate evidence.
 
@@ -251,8 +279,11 @@ has no such setup gate; production must remain unavailable until it does.
 
 An instance binding is valid only while that exact process and immutable inputs
 exist, within the existing ten-minute run limit. The prepared draft expires in
-five minutes; time moving backwards rejects. Auth/bootstrap needs a separate
-bounded timeout and must not extend draft validity. A change in auth account,
+five minutes; time moving backwards rejects. Auth/bootstrap has a three-minute
+deadline from setup creation; an unclaimed ready setup has a five-minute
+deadline, still inside the ten-minute total owned-process lifetime from spawn.
+These bounds never extend draft validity or let a claimed run exceed that total
+lifetime. A change in auth account,
 requirements, config, model metadata, package, runtime, process, bridge generation
 or cleanup certainty invalidates unconsumed admission. An active run never
 silently adopts those changes: stop it, retain confirmed terminal evidence or
@@ -262,8 +293,16 @@ dispatch mark “world advanced”; the retained submitted bytes stay historical
 Keep current limits: one active run, task/steer 16 KiB, attachment 64 KiB, total
 explicit context 128 KiB; JSONL line 1 MiB, normalized record 64 KiB, transcript
 8 MiB/run, store 64 MiB/20 runs. Bounds are UTF-8 bytes. No implicit history
-deletion. Authentication and relay buffers need separate finite limits before
-their implementation is accepted, not an exemption from these resource norms.
+deletion. Proposed relay limits are 16 KiB headers, 1 MiB body per request,
+64 KiB response chunks and 8 MiB cumulative generation response; metadata/auth
+responses are at most 1 MiB each. Auth has at most 64 requests within its
+three-minute deadline; metadata at most 16. Reject truncation, extra traffic or
+an account flow exceeding those bounds. Auth request timeouts are ten seconds;
+generation uses the remaining owned lifetime and a 30-second idle timeout.
+One generation request, zero retries/fallbacks; a post-dispatch auth failure
+cannot refresh and replay it. Compatibility with these proposed bounds is
+unproved. The setup journal is at most 16 KiB per entry and shares the existing
+20-entry/64-MiB retention budget with run history; reserve it before spawning.
 Intentional core replacement retains at most 1000 ms pending-ack grace; crash
 recovery is immediate unknown. Stop waits at most five seconds before owned
 termination. Neither ambiguous delivery nor exit zero means success or replay.
@@ -321,7 +360,9 @@ and `core/src/config/mod.rs::plugins_config_input` (plugin gates),
 and `login_chatgpt_auth_tokens_response` (auth/policy transition),
 `model-provider-info/src/lib.rs::create_openai_provider` and
 `merge_configured_model_providers`, `core/src/client.rs::responses_websocket_enabled`,
-`core/src/session_startup_prewarm.rs::schedule_startup_prewarm` (transport),
+`core/src/session_startup_prewarm.rs::schedule_startup_prewarm` and
+`core/src/client.rs::prewarm_websocket` (non-inferencing but effectful prewarm
+and separate normal-turn WebSocket selection),
 `analytics/src/client.rs`, `core/src/otel_init.rs::build_provider`,
 `otel/src/provider.rs::try_new`, and `app-server/src/otel_reloader.rs`
 (disabled telemetry construction and post-auth rebuilding).

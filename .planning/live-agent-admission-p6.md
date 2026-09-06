@@ -23,8 +23,8 @@ by the human and future bounded read tools remain on the roadmap.
 
 
 - [x] (2026-09-06 14:10Z) Created designated worktree/branch from reviewed PR30 merge; read contracts, planning instructions and P5 evidence; started Ditz slice.
-- [x] (2026-09-06 14:25Z) Drafted exact blocked profile, finite gate map and next-slice decision using pinned source and current official interface docs.
-- [ ] Push an early draft PR and obtain independent native OpenAI plus bounded foreign Google/Anthropic review.
+- [x] (2026-09-06 14:23Z) Pushed draft 6647ff1 / PR34: exact blocked profile, finite gates and next-slice decision using pinned source/current official interface docs.
+- [x] (2026-09-06 14:30Z) Native OpenAI and Google reviews identified durable bootstrap accounting; native also identified initialize/auth ordering and missing normal-turn HTTP-only gate. Anthropic review remains bounded/in flight.
 - [ ] Resolve Important findings to a clean fixpoint; validate only-two-document scope, source anchors, links and evidence identity.
 - [ ] Normal merge under applicable local-doc verification/remote-CI waiver; close/sync only the design Ditz slice and publish final handoff.
 
@@ -68,10 +68,16 @@ identity and credentialed acceptance. Rationale: successful P5 fixture responses
 do not transfer across changes in configuration/auth/transport/lifetime.
 Date/author: 2026-09-06, P6.
 
-Decision: recommend one bounded native-provider startup-control proof before
+Decision: recommend one bounded native-provider transport-control proof before
 building a credential relay. Rationale: an unsupported pre-turn control is a
 known dependency that no broker or additional hook sentinel can remove.
 Date/author: 2026-09-06, P6.
+
+Decision: require a durable pre-spawn setup journal and exclusive crash-safe
+claim into the confirmed run, initialize before auth, and HTTP-only normal
+turns as well as disabled prewarm. Rationale: independent reviews exposed
+unaccounted login lifetime and transport-ordering gaps. Date/author:
+2026-09-06, P6 after native OpenAI/Google review.
 
 
 ## Outcomes & Retrospective
@@ -130,7 +136,7 @@ must not replace missing disablement with containment.
 | G1 Required disablement — Policy | Actual capability gates for all forbidden tools/auxiliaries and startup/retry effects, independently distinguished from blocked effects | Named static MCP/plugin/ordinary-hook controls; no comprehensive observer, telemetry/notify/executor/cloud closure unproved | Any forbidden reachable activation or missing observation; builtin prewarm/retry controls not established | Finite family controls below; unknown mechanism yields an unavailable report, not indefinite experiments |
 | G2 Independent containment — Boundary/Runtime | Private mount/user/PID/network/IPC namespaces, scrubbed env/FDs, immutable runtime, owned lifetime, separately tested relay | P2 26 and P5 10 for synthetic offline arrangement; R2/I2 lifetime separately | New mount/network/auth/process path not tested, replaced inode/ancestor, namespace unsupported or cleanup unknown rejects | Repeat original meanings on exact joined production-shaped synthetic envelope, including owner SIGKILL/deadline/output overflow; no leftover members |
 | G3 Auth and policy transition — ROOT/operator then Policy | Approved managed device flow, isolated process-local credentials, phase-specific route, exact account/requirements freeze | Source-backed candidate only; no credentialed evidence or auth inspection | No supported storage/route/freeze, new account/billing assumed, token bridge/log leakage, changed requirements/account rejects | Synthetic auth/refresh/failure controls before any explicit real account authorization; real credentials are a later gate |
-| G4 Per-process admission — Runtime | Core-only one-use binding of run/context/root/process/package/config/requirements/transport/lifetime; gate before thread and turn | Durable R2/A1 receipts and narrow R1 thread checks; no integrated binding | Generic cached capability, wrong process/cwd, stale draft, missing correlated inspection/page, TOCTOU or bridge replacement rejects | New adapter setup seam and owner join with mutation/restart/no-replay regression tests; production stays unavailable until all predecessors proved |
+| G4 Per-process admission — Runtime | Durable pre-spawn setup record; exclusive setup/run slot and crash-safe one-use claim; exact context/process/profile binding | R2/A1 run receipts and R1 thread checks, not bootstrap/claim binding | Unresolved setup/claim, stale or wrong identity, missing inspection, TOCTOU or replacement rejects | Journal/claim fault injection and adapter/owner join; initialize before auth; reject until predecessors proved |
 | G5 Full synthetic equivalence — Evidence/Runtime | Exact production-shaped adapter/service/boundary with fake credentials and fixed network responses, no external inference | I2 external fixture and I3 real cockpit separately; P5 fixed isolated Codex turn separately | Different provider/config/env/mount/lifetime, unobserved request, tool dispatch, ambiguous cleanup or hidden retry rejects | One joined positive journey and enumerated negative cases using owned virtual desktop; real and synthetic route difference explicitly itemized |
 | G6 Real acceptance — ROOT only | Explicit account/disclosure/run authority, exact admitted process, bounded allowed service traffic | None. Production remains unavailable | Any unproved prior gate, unsupported auth/model/effort, hidden disclosure, source/config drift or unknown cleanup rejects | One live read-only analysis and steering; explicit separate Stop run only if necessary; actual history/process/relay closure. No replay or write agents |
 
@@ -149,8 +155,9 @@ its feature flag. Telemetry requires a disabled exporter/analytics path, not an
 outbound denial. The last family is the recommended next slice below because
 the intended built-in provider differs decisively from the tested fixture.
 
-The true ordering is G0/G1/G2 before any new startup; G3's independently accepted
-bootstrap before account-bound final G0/G1 inspection and G4; then G5; then
+The true ordering is G0/G1/G2 plus G4's durable setup ownership before any new
+startup; initialize before G3's independently accepted bootstrap; account-bound
+final G0/G1 inspection before G4's exclusive claim and generation gate; then G5; then
 separately authorized G6. A prerequisite is allowed to finish with an exact
 unavailable result, but downstream execution stays blocked. T1 task reading,
 T2 task UI and C2 hosted prerequisites are independent work; none is a reason to
@@ -194,8 +201,12 @@ prewarm selected by provider capability and built-in provider overrides ignored.
 Do not spend another slice rediscovering that fact or merely denying the socket.
 
 Recommend a bounded **Codex harness control** increment: explicit disablement
-of model prewarm before the adapter's first-turn gate and explicit finite retry
-controls honored by the built-in provider. Prefer an upstream-supported control
+of model prewarm before the adapter's first-turn gate, effective HTTP-only
+transport for normal turns, and zero generation retries, all honored by the
+built-in provider. Prewarm sends `generate=false` in pinned source and is not
+inference, but it still sends framing/prompt bytes; do not call it effect-free.
+Disabling startup prewarm alone leaves normal-turn WebSockets enabled.
+Prefer an upstream-supported control
 if its exact inspected release supplies it. Otherwise ROOT must designate a
 separate pinned Codex-source worktree and authorize a minimal local patch/build;
 this is not permission to edit the shared cached audit source, upgrade global
@@ -203,7 +214,8 @@ Codex or introduce a custom model provider. Such a patched package changes every
 binary identity and must re-enter G0/G2 before any product use.
 
 The narrow upstream areas are `codex-rs/core/src/session_startup_prewarm.rs`,
-`codex-rs/model-provider-info/src/lib.rs` and their existing tests, plus only the
+`codex-rs/core/src/client.rs`, `codex-rs/model-provider-info/src/lib.rs` and their
+existing tests, plus only the
 minimum explicit configuration/schema plumbing needed for those controls. ROOT
 must lease exact files after checking the source revision. The Swarm-side owner
 may add a new `tools/policy/native-provider-contract.mjs` and new focused tests
@@ -211,7 +223,8 @@ in a later authorized branch; no current production capability is changed.
 
 Acceptance is finite: using synthetic credentials and an independently accepted
 private endpoint, the builtin provider's thread creation produces **zero prewarm
-requests**, a single explicitly allowed turn produces one request/response, and
+requests**, a single explicitly allowed turn produces one HTTP request/response
+and zero attempted WebSocket upgrades, and
 transport disconnect/5xx/partial-response controls produce no second request or
 turn. A matched prewarm-enabled control proves that the witness can observe the
 forbidden opportunity. Controls must distinguish no attempt from denied attempt;
@@ -274,7 +287,8 @@ profile with legacy notify; plugins on with only remote_plugin off; removed
 remote-control flag treated as prohibition; a pre-auth capability used after
 cloud reload; a readonly thread reply from another process; a copied OAuth
 cache; a blind hostname tunnel called payload enforcement; a native prewarm
-called “not a turn”; an ambiguous receipt retried after restart. It must state
+called effect-free because it is not inference; an ambiguous receipt retried
+after restart. It must state
 the loss of filesystem discovery explicitly and preserve model choice, source
 focus, immutable disk context and separate terminal/cleanup evidence.
 
