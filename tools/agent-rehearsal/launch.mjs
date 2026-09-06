@@ -2,7 +2,7 @@ import { execFileSync, spawn } from "node:child_process";
 import { constants } from "node:fs";
 import { access, chmod, lstat, mkdir, mkdtemp, readFile, realpath, rm } from "node:fs/promises";
 import { homedir, tmpdir } from "node:os";
-import { isAbsolute, join, resolve } from "node:path";
+import { isAbsolute, join } from "node:path";
 import { preview } from "vite";
 import { parseRehearsalArguments, rehearsalHelp } from "./options.mjs";
 import { rehearsalBundlePath } from "./artifact.mjs";
