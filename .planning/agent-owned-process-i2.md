@@ -13,9 +13,10 @@ and production remains policy-unavailable.
 ## Progress
 
 - [x] (2026-09-06) Read the frozen contract, owner, adapter and durable service; create the designated worktree from verified PR20.
-- [ ] Implement the fixed external fixture and headless joined scenarios.
-- [ ] Prove durable state sequences, targeted namespace teardown and hard-core recovery with no replay.
-- [ ] Run local gates, provider-diverse council, normal PR merge and actual reviewed integration checks.
+- [x] (2026-09-06 05:54Z) Fixed external fixture and all three joined scenarios pass at code1fd0689; no production changes required.
+- [x] (2026-09-06 05:58Z) Durable turn/cleanup ordering, resistant descendants, outside canary and hard-core recovery/no replay proven; full25-target build/all9 uncached tests pass,478 tests/44files.
+- [x] (2026-09-06 05:57Z) OpenAI native and Google council CLEAN; Anthropic actual session-limit unavailable, explicitly missing.
+- [ ] Normal PR merge and actual ROOT-verified reviewed integration checks.
 
 ## Surprises & Discoveries
 
@@ -37,8 +38,13 @@ provider. A separate harmless canary outside the namespace checks targeting.
 
 ## Outcomes & Retrospective
 
-Implementation and verification are pending. Live provider policy and the
-credentialed first-run parent remain open, regardless of fixture success.
+Code1fd0689 passes all three actual external-process scenarios, the full
+25-target build and all nine uncached local targets (478 tests across44files).
+Normal Stop/completion and unexpected exit confirm namespace cleanup; hard-core
+death independently removes live descendants but recovered product cleanup stays
+unknown and blocks another launch. Native OpenAI and Google reviews are CLEAN;
+Anthropic returned its session limit, not a review. Merge/integration remain
+pending. Live provider policy and the credentialed first-run parent stay open.
 
 ## Context and Orientation
 
@@ -63,9 +69,14 @@ in the designated integration branch and retest the actual aggregate.
 ## Concrete Steps
 
 From `agent-owned-process-proof`, materialize dependencies with
-`nix develop --command pnpm install --frozen-lockfile`. Run the focused Bazel
-owned-process target once implemented, then `nix develop --command bazel build
-//... --jobs=3` and all uncached tests under the shared virtual lock. Never use
+`nix develop --command pnpm install --frozen-lockfile`. Run:
+
+    nix develop --command bazel test //tools/agent-process:proof-test --jobs=3 --nocache_test_results --test_output=errors
+    nix develop --command bazel build //... --jobs=3
+    flock --close /tmp/swarm-ide-overnight.UgO2Aw/virtual.lock env SWARM_VIRTUAL_DESKTOP_PORT=55174 nix develop --command bazel test //... --jobs=3 --nocache_test_results --test_output=errors
+
+The focused target requires actual namespace support and took3.2s; full local
+tests took98.9s, including owned topology65.9s and agent journey5.4s. Never use
 the physical desktop or restart the watched application.
 
 ## Validation and Acceptance
@@ -99,3 +110,5 @@ executables resolve to pinned Nix paths. Builds/tests remain Bazel-owned; no new
 renderer, provider profile or application capability is introduced.
 
 Revision (2026-09-06): initial bounded external-process composition plan.
+Revision (2026-09-06 05:58Z): record proven composition and review/local gates;
+landing remains explicit and does not imply a live-provider capability.
