@@ -77,6 +77,15 @@ log_events:
     at06:10:40Z. Exact local merged tree a9099bd independently passed full24build,550tests47files,all8uncached
     gates, both owned virtual scenarios cleanup1, and all6actual activation cases/all26boundarychecks.
     Local waiver is not hosted acceptance; underlying runner cause remains unproved.'
+- time: 2026-09-06T06:50:22-00:00
+  who: Ted Smith
+  what: commented
+  comment: 'P4 PR26 code1a9b332 hosted34016892153 and docscef3228 hosted34017026634
+    again fail boundary-test before Codex: SEED_PIPE_FAILED, codexStarted=false, bootstrapDiagnostic
+    UNRECOGNIZED_STDERR/truncated=false. Locally same mandatory synthetic boundary
+    passes. No cause inferred/security change/test skip. P4 normal3c50d7f includes
+    only separate manual plugin proof; actual merged local acceptance in progress.
+    Keep canonical issue open.'
 blocks:
 - agent-run-owned-process-hosted-proof
 - agent-run-policy-harness-diagnostics
