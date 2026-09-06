@@ -46,8 +46,10 @@ it("waits for a fresh generation snapshot before restoring pathless service focu
     Object.defineProperty(window, "swarm", { configurable: true, value: { request, onEvent: () => () => undefined } });
     installViewBridge(); render(<App />);
     await waitFor(() => expect(request.mock.calls.some(([r]) => r.type === "workspace.snapshot")).toBe(true));
+    expect(document.title).not.toContain(" — Topology ");
     expect(request.mock.calls.some(([r]) => r.type === "focus.select")).toBe(false);
     await act(async () => resolveSnapshot({ protocolVersion: PROTOCOL_VERSION, requestId: "fresh", ok: true, sequence: 0, snapshot: fresh }));
+    await waitFor(() => expect(document.title).toContain(` — Topology ${fresh.reconciliation.epoch}:${fresh.reconciliation.status}`));
     await waitFor(() => expect(request.mock.calls.some(([r]) => r.type === "focus.select" && r.focus.key === selected.key && r.focus.revisionId === fresh.revisions.working.id)).toBe(true));
     expect(lifecycle.bridge.reload).not.toHaveBeenCalled();
   });
