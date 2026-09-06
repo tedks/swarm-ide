@@ -16,7 +16,9 @@ socket.on("end", () => {
     const result = JSON.parse(bytes.toString("utf8"));
     if (result.ok !== true || result.fixtureOnly !== true) throw new Error(result.error ?? "Fixture journey failed");
     complete = true;
-    console.log(JSON.stringify(result));
+    console.log(JSON.stringify({ ok: true, fixtureOnly: true, elapsedMs: result.elapsedMs,
+      coreGenerations: result.coreGenerations, finalState: result.finalState,
+      detail: "Full asserted evidence is in journey.json; no provider was contacted." }));
   } catch (error) { console.error(error.message); process.exitCode = 1; }
 });
 socket.on("error", (error) => { console.error(error.message); process.exitCode = 1; });

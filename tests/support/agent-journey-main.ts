@@ -45,8 +45,8 @@ async function install() {
         const window = BrowserWindow.getAllWindows()[0];
         try {
           if (!window) throw new Error("Owned test window missing");
-          if (input.action === "failure-probe") throw new Error("Deliberate owned scenario failure");
-          const evidence = await runJourney({ window, control, crashCore, artifactDirectory: artifacts });
+          const evidence = await runJourney({ window, control, crashCore, artifactDirectory: artifacts,
+            failAfterStreaming: input.action === "failure-probe" });
           const result = { ok: true, fixtureOnly: true, coreGenerations: fixtureGeneration(), ...evidence };
           await writeFile(join(artifacts, "journey.json"), JSON.stringify(result, null, 2), { mode: 0o600 });
           socket.end(JSON.stringify(result) + "\n");

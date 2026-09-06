@@ -139,7 +139,7 @@ type Diagnostics = {
 };
 
 export async function runJourney(options: {
-  window: BrowserWindow; control(input: unknown): Promise<unknown>; crashCore(): void; artifactDirectory: string;
+  window: BrowserWindow; control(input: unknown): Promise<unknown>; crashCore(): void; artifactDirectory: string; failAfterStreaming?: boolean;
 }): Promise<Record<string, unknown>> {
   const { window: ownedWindow, control, artifactDirectory } = options;
   const started = Date.now();
@@ -235,6 +235,7 @@ export async function runJourney(options: {
     assert.equal((await observe()).injectedElements, 0, "HTML remains literal text");
     await continuity("active output beside retained source and graphs");
     await screenshot("02-active-output-source-graphs");
+    if (options.failAfterStreaming) throw new Error("Deliberate owned scenario failure after fixture admission and streaming");
     await evaluate({ action: "text", field: "instruction", value: "FIXTURE: focus on interface contract failures instead." });
     await click("Send to this run");
     await until("durable pending steer", () => read(first), (value) => receipt(value.run, 0, "pending"));
