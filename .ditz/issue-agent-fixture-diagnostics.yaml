@@ -25,3 +25,11 @@ log_events:
     diagnostic/test clarity rather than correctness blockers. The suggested taskBytes
     mismatch is not a defect: frozen AgentRequestSchema steer and InstructionReceiptSchema
     both use AGENT_LIMITS.taskBytes.'
+- time: 2026-09-06T04:20:47-00:00
+  who: Ted Smith
+  what: commented
+  comment: 'Final Anthropic CLEAN delta additional nonblocking nit: name/share the
+    private256-byte protocol ID bound in future rather than hardcode fixture guard.
+    R0 currently exports no ID-limit constant; avoid shared ownership/schema churn
+    in this two-file fixture checkpoint. Current guard matches actual schema, multibyte
+    regression passes.'
