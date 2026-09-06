@@ -34,8 +34,13 @@ log_events:
   who: Ted Smith
   what: blocks first-real-agent-run-surface
   comment: ""
+- time: 2026-09-06T01:31:48-00:00
+  who: Ted Smith
+  what: blocks agent-run-write-authority
+  comment: ""
 blocks:
 - first-real-agent-run-surface
+- agent-run-write-authority
 blocked_by:
 - agent-run-runtime
 - agent-run-workbench
