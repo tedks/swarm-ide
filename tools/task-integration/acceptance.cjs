@@ -58,6 +58,7 @@ async function main() {
       await until(() => run(() => document.querySelector(".task-show-details").getBoundingClientRect().width > 0), "explicit work panel");
     }
     await focus(".task-show-details"); key("Return");
+    await until(() => run(() => document.activeElement?.textContent === "Return to source information"), "focus after keyboard Show");
     await until(() => has(".task-detail .task-title"), "task detail after keyboard Show");
     assert.equal(await run(() => document.activeElement?.textContent), "Return to source information");
   };
