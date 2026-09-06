@@ -1,0 +1,19 @@
+id: graph-camera-interface-zoom-reset
+title: Preserve deliberate graph cameras through interface zoom
+desc: W3 native council noted existing GraphPane.tsx effect unconditionally fits graphs
+  on observed interfaceZoom changes. W3 preserves actual camera through same-zoom
+  resizing/panel toggles, not existing UI-zoom reset. Follow up deliberately without
+  breaking original zoom calibration; GraphPane outside bounded W3 ownership.
+type: task
+component: default
+release:
+reporter: Ted Smith <tedks@riseup.net>
+status: unstarted
+disposition:
+creation_time: 2026-09-06T05:45:30-00:00
+references: []
+log_events:
+- time: 2026-09-06T05:45:30-00:00
+  who: Ted Smith
+  what: created
+  comment: ""
