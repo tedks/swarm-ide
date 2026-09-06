@@ -49,7 +49,12 @@
 .agent-launch-context pre { white-space: pre-wrap; overflow-wrap: anywhere; max-height: 200px; overflow: auto; }
 .agent-pane .agent-pagination { display: flex; flex-wrap: wrap; gap: 5px; padding: 4px 12px; }
 .work-rail:has(.agent-rail) { overflow: auto; }
+.workbench:has(.agent-dock-open) { min-height: 480px; }
 @media (max-width: 1000px) {
+  .workbench:has(.agent-dock-open) { min-width: 800px; grid-template-columns: 190px minmax(380px, 1fr) 230px; }
+  .workbench:has(.agent-dock-open) .topbar { grid-template-columns: 100px auto minmax(130px, 1fr) auto auto; }
+  .workbench:has(.agent-dock-open) .lens-tabs { padding: 0 4px; }
+  .workbench:has(.agent-dock-open) .lens-tabs button { padding: 0 6px; }
   .agent-pane-body { grid-template-columns: minmax(0, 1fr) minmax(180px, 42%); }
   .agent-pane-header { padding: 4px 8px; }
   .agent-pane-header strong { font-size: 10px; }
