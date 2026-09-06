@@ -2,7 +2,7 @@
 import { readFileSync, writeFileSync, writeSync, mkdirSync, renameSync, unlinkSync, existsSync, readdirSync, readlinkSync, openSync, closeSync } from 'node:fs';
 import { spawn, spawnSync } from 'node:child_process';
 import { connect } from 'node:net';
-import { ENV, REQUIRED, summarizePages, LIMIT, INSTALLATION_SEED } from './boundary.mjs';
+import { ENV, REQUIRED, summarizePages, summarizeConfig, LIMIT, INSTALLATION_SEED } from './boundary.mjs';
 
 const mode = process.argv[2];
 const denied = fn => { try { fn(); return false; } catch (error) { return ['EROFS', 'EACCES', 'EPERM'].includes(error.code); } };
@@ -130,18 +130,11 @@ async function inspect() {
     }
     const observed = summarizePages(pages, REQUIRED);
     const requirements = await request('configRequirements/read');
-    if (!requirements || !Object.hasOwn(requirements, 'requirements') ||
-      !(requirements.requirements === null || typeof requirements.requirements === 'object')) throw new Error('REQUIREMENTS_MISSING');
-    if (!config || typeof config.config !== 'object' || !Array.isArray(config.layers)) throw new Error('CONFIG_MISSING');
-    const c = config.config;
+    const metadata = summarizeConfig(config, requirements);
     const canaries = ['notify', 'hooks', 'mcp', 'login', 'plugin'].filter(name => existsSync(`/state/${name}`));
     emit({ status: 'OFFLINE_OBSERVED', codexStarted: true, checks,
       observations: { featurePages: observed.pages, features: observed.features, missingFeatures: observed.missing,
-        layerCount: config.layers.length, requirementsPresent: requirements.requirements !== null,
-        notifyEmpty: Array.isArray(c.notify) && c.notify.length === 0,
-        mcpEntries: c.mcp_servers && typeof c.mcp_servers === 'object' ? Object.keys(c.mcp_servers).length : null,
-        loginShellFalse: c.allow_login_shell === false,
-        sqlitePathMatches: c.sqlite_home === '/state/sqlite', logPathMatches: c.log_dir === '/state/logs',
+        ...metadata,
         canariesObserved: canaries },
       unproved: ['effective-per-executor-and-plugin-MCP', 'legacy-notify-activation-without-turn',
         'builtin-executor-hooks', 'persisted-remote-control-and-plugin-state', 'telemetry-runtime-state',

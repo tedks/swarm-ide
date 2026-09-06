@@ -168,6 +168,21 @@ export function summarizePages(pages, required = REQUIRED) {
   return { features, missing: required.filter(name => !Object.hasOwn(features, name)), pages: pages.length };
 }
 
+export function summarizeConfig(response, requirements) {
+  const config = response?.config;
+  if (!config || typeof config !== 'object' || Array.isArray(config) || !Array.isArray(response.layers) ||
+    !Array.isArray(config.notify) || config.notify.some(item => typeof item !== 'string') ||
+    !config.mcp_servers || typeof config.mcp_servers !== 'object' || Array.isArray(config.mcp_servers) ||
+    !requirements || !Object.hasOwn(requirements, 'requirements') ||
+    !(requirements.requirements === null || (typeof requirements.requirements === 'object' && !Array.isArray(requirements.requirements)))) {
+    throw new Error('CONFIG_OBSERVATION_INCOMPLETE');
+  }
+  return { layerCount: response.layers.length, requirementsPresent: requirements.requirements !== null,
+    notifyEmpty: config.notify.length === 0, mcpEntries: Object.keys(config.mcp_servers).length,
+    loginShellFalse: config.allow_login_shell === false,
+    sqlitePathMatches: config.sqlite_home === '/state/sqlite', logPathMatches: config.log_dir === '/state/logs' };
+}
+
 export async function sameNamespace(pid, namespace) {
   try { return await readlink(`/proc/${pid}/ns/pid`) === namespace; } catch { return false; }
 }

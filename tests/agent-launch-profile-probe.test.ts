@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { chmod, mkdir, mkdtemp, rm, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { buildArgs, boundedProcess, digestTree, ENV, LIMIT, summarizePages, validatePackageManifest, validatePackageLayout, verifyAfterProcess } from '../tools/policy/boundary.mjs';
+import { buildArgs, boundedProcess, digestTree, ENV, LIMIT, summarizePages, summarizeConfig, validatePackageManifest, validatePackageLayout, verifyAfterProcess } from '../tools/policy/boundary.mjs';
 
 const runtime = '/nix/store/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-runtime';
 const fixture = '/tmp/swarm-policy-Abc123/baseline';
@@ -69,6 +69,16 @@ describe('offline policy boundary contract (not production authority)', () => {
     const value = summarizePages([{ data: [{ name: 'hooks', enabled: false }], nextCursor: 'next' },
       { data: [{ name: 'apps', enabled: true }], nextCursor: null }], ['hooks', 'apps', 'plugins']);
     expect(value).toEqual({ features: { hooks: false, apps: true }, pages: 2, missing: ['plugins'] });
+  });
+  it('does not turn missing configuration into a successful notify/MCP counterexample', () => {
+    const response = { config: { notify: [], mcp_servers: {} }, layers: [] };
+    expect(summarizeConfig(response, { requirements: null })).toMatchObject({ notifyEmpty: true, mcpEntries: 0, requirementsPresent: false });
+    for (const config of [{ mcp_servers: {} }, { notify: null, mcp_servers: {} }, { notify: [{}], mcp_servers: {} },
+      { notify: [], mcp_servers: [] }, { notify: [] }]) {
+      expect(() => summarizeConfig({ config, layers: [] }, { requirements: null })).toThrow('CONFIG_OBSERVATION_INCOMPLETE');
+    }
+    expect(() => summarizeConfig(response, {})).toThrow();
+    expect(() => summarizeConfig(response, { requirements: [] })).toThrow();
   });
   it.each([
     [], [{ data: [], nextCursor: 'missing' }], [{ data: [] }],
