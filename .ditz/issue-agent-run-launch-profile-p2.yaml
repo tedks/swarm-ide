@@ -5,8 +5,8 @@ type: task
 component: default
 release:
 reporter: Ted Smith <tedks@riseup.net>
-status: in_progress
-disposition:
+status: closed
+disposition: fixed
 creation_time: 2026-09-06T03:55:06-00:00
 references: []
 log_events:
@@ -58,5 +58,13 @@ log_events:
     passed, OpenAI+GoogleCLEAN, Anthropicmissing600s, hostedinprogresswaived. PR18
     landed concurrently before merge; retained P2 feature branch/worktree fast-forwarded
     to exactc52f959 and re-running mergedaggregate gates, no master/app adoption.
+- time: 2026-09-06T05:03:44-00:00
+  who: Ted Smith
+  what: 'closed: fixed'
+  comment: Delivered standalone offline process/hostile-config acceptance harness,
+    normal-merged PR17 c52f959. Exact merged full22build/all7tests450passed; actual
+    installed0.153.4 offline7cases/8expectations/26boundarychecks/9pages passed. OpenAI+GoogleCLEAN,
+    Anthropic600s missing. Production/effective-policy remains unavailable; activation
+    continuation separately filed.
 blocks:
 - agent-run-effective-policy
