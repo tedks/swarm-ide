@@ -14,3 +14,14 @@ log_events:
   who: Ted Smith
   what: created
   comment: ""
+- time: 2026-09-06T02:58:58-00:00
+  who: Ted Smith
+  what: commented
+  comment: 'Observed during R1/E1: CLI queue accepted ownership messages, but recipient
+    E1 had not consumed them during its active turn. A direct composer message via
+    spawn-agent claude-send.sh was recorded as response_item/user and event_msg/user_message
+    at 2026-09-06T02:55:51.123Z; E1 then began the narrow approved helper delta. Preserve
+    idle-launch/completion queue workflow, but distinguish queued from consumed and
+    use verified live steering for urgent active-turn coordination. Avoid duplicate
+    task execution when older queued notices arrive later. No global tooling change
+    made.'
