@@ -22,5 +22,13 @@ log_events:
   who: Ted Smith
   what: blocks agent-run-effective-policy
   comment: ""
+- time: 2026-09-06T03:54:42-00:00
+  who: Ted Smith
+  what: commented
+  comment: 'Pushed b17a9f6, draft PR13. Source investigation localized safe-startup/config-identity
+    gates; no helper or availability upgrade. New evidence: recursive empty-map merge,
+    feature aliases, independent legacy notify and pre-initialize facilities. Quality
+    passed248 existing tests; native source-backed review CLEAN; foreign security
+    reviews/full local gates underway. No app-server/model/auth probe.'
 blocks:
 - agent-run-effective-policy
