@@ -57,3 +57,14 @@ log_events:
     quality 1146 tests/83 files plus typechecks/builds passed; HMR canvas retained.
     This increment has unit/form regression coverage, not a new virtual screenshot
     or full landing council.
+- time: 2026-09-06T22:40:26-00:00
+  who: Ted Smith
+  what: commented
+  comment: Build graph now follows coordinated file selection with exact captured
+    direct references, highlighted file targets and bounded upstream/downstream neighborhoods.
+    Follow file defaults on; manual target input pauses following without losing patterns;
+    missing mappings are explicit. Source-tab/sidebar App test preserves dirty text
+    and cursor; hidden Service lens not stolen; background updates retain camera.
+    Local quality 1151/83 + typechecks/builds passed. Owned virtual smoke 6.235s cleanup1,
+    evidence /tmp/swarm-ide-file-build-check.WoU9kF. Captured/static links only; sprint
+    and draft PR38 remain active.
