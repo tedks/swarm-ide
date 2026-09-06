@@ -1,0 +1,18 @@
+id: cockpit-touch-target-size
+title: Consider larger touch targets in a later touch-oriented cockpit view
+desc: 'W3 Google council nit: compact panel controls are Linux desktop keyboard/pointer-sized,
+  below mobile44px guidance. Desktop-first compact density retained intentionally;
+  assess touch targets when touch UI becomes a supported context.'
+type: task
+component: default
+release:
+reporter: Ted Smith <tedks@riseup.net>
+status: unstarted
+disposition:
+creation_time: 2026-09-06T05:45:33-00:00
+references: []
+log_events:
+- time: 2026-09-06T05:45:33-00:00
+  who: Ted Smith
+  what: created
+  comment: ""
