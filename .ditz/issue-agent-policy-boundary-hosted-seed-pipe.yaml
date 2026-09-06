@@ -5,7 +5,7 @@ type: bugfix
 component: testing
 release:
 reporter: Ted Smith <tedks@riseup.net>
-status: unstarted
+status: in_progress
 disposition:
 creation_time: 2026-09-06T05:16:38-00:00
 references: []
@@ -104,6 +104,10 @@ log_events:
     Exact merged local full29/all10 (790tests/60files), manual P5two/P3six/P4three
     controls passed. User conditional local-evidence waiver used, not hosted green;
     this hosted issue remains open.'
+- time: 2026-09-06T08:28:50-00:00
+  who: Ted Smith
+  what: started
+  comment: ""
 blocks:
 - agent-run-owned-process-hosted-proof
 - agent-run-policy-harness-diagnostics
