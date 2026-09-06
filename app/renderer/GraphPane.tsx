@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useRef } from "react";
-import { Background, Controls, Handle, Position, ReactFlow, type Edge, type Node, type NodeProps, type ReactFlowInstance } from "@xyflow/react";
+import { useMemo } from "react";
+import { Background, Controls, Handle, Position, ReactFlow, type NodeProps } from "@xyflow/react";
 import type { FocusRef, GraphSlice, NavigationMapping } from "../../protocol/schema";
 import { adaptGraph, describeGraphConnection, type GraphConnectionFocus, type TopologyNodeData } from "./graph-adapter";
 export type { GraphConnectionFocus } from "./graph-adapter";
@@ -20,7 +20,7 @@ function TopologyNode({ data }: NodeProps) {
 
 const nodeTypes = { topology: TopologyNode };
 
-export function GraphPane({ graph, focus, mappings, onFocus, onConnectionFocus, onReconcile, reconciliationRunning, interfaceZoom }: {
+export function GraphPane({ graph, focus, mappings, onFocus, onConnectionFocus, onReconcile, reconciliationRunning }: {
   graph: GraphSlice;
   focus: FocusRef;
   mappings: NavigationMapping[];
@@ -31,21 +31,9 @@ export function GraphPane({ graph, focus, mappings, onFocus, onConnectionFocus, 
   interfaceZoom: number | null;
 }) {
   const adapted = useMemo(() => adaptGraph(graph, focus, mappings), [graph, focus, mappings]);
-  const flow = useRef<ReactFlowInstance<Node<TopologyNodeData>, Edge> | null>(null);
-
-  useEffect(() => {
-    if (interfaceZoom === null) return;
-    let secondFrame = 0;
-    const firstFrame = requestAnimationFrame(() => {
-      secondFrame = requestAnimationFrame(() => {
-        void flow.current?.fitView({ padding: 0.18, maxZoom: 1.35 });
-      });
-    });
-    return () => {
-      cancelAnimationFrame(firstFrame);
-      cancelAnimationFrame(secondFrame);
-    };
-  }, [interfaceZoom]);
+  // Interface zoom resizes CSS presentation, not the user's graph camera.
+  // Let each mounted ReactFlow retain its own viewport through zoom/resize;
+  // only initial fit and the explicit Fit control should frame the graph.
 
   return (
     <section className="graph-pane" data-topology={graph.topologyId}>
@@ -64,7 +52,6 @@ export function GraphPane({ graph, focus, mappings, onFocus, onConnectionFocus, 
           fitViewOptions={{ padding: 0.18, maxZoom: 1.35 }}
           minZoom={0.25}
           maxZoom={2.2}
-          onInit={(instance) => { flow.current = instance; }}
           nodesConnectable={false}
           elementsSelectable
           onNodeClick={(_event, node) => onFocus((node.data as TopologyNodeData).focus)}
