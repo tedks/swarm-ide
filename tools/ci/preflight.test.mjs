@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
+import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { probeDefinitions, executeProbe, summarize, report } from './preflight.mjs';
 
@@ -31,6 +32,8 @@ test('spawn boundary uses fixed argv, clean environment and finite output/deadli
   executeProbe(runtime, definitions[2], (command, args, options) => {
     assert.equal(command, `${runtime}/bin/strace`);
     assert.ok(args.includes('--'));
+    assert.ok(args.includes('--kill-on-exit'));
+    assert.ok(args.includes('trace=unshare,clone,clone3,mount,capset,write,sendmsg,recvmsg,sendto,recvfrom'));
     assert.deepEqual(args.slice(-definitions[2].args.length), definitions[2].args);
     assert.deepEqual(options.env, { LANG: 'C.UTF-8' });
     assert.equal(options.cwd, '/');
@@ -48,6 +51,15 @@ test('reports observation without claiming AppArmor attribution', () => {
   assert.equal(result.denied.length, 1);
   assert.equal(result.observation, 'COMMAND_FAILED');
   assert.ok(!JSON.stringify(result).includes('APPARMOR'));
+});
+
+test('distinguishes observed UID-map and private-loopback bootstrap failures', () => {
+  assert.equal(summarize({ status: 1, stderr: 'unshare: write failed /proc/self/uid_map: Operation not permitted' })
+    .observation, 'UID_MAP_WRITE_FAILED');
+  const loopback = summarize({ status: 1, stderr: 'recvmsg(3, {error=-EPERM}, 0) = 64\nbwrap: loopback: Failed RTM_NEWADDR: Operation not permitted' });
+  assert.equal(loopback.observation, 'PRIVATE_LOOPBACK_SETUP_FAILED');
+  assert.equal(loopback.denied.length, 1);
+  assert.equal(summarize({ status: 0, stderr: 'loopback: Failed RTM_NEWADDR' }).observation, 'SUCCEEDED');
 });
 
 test('every required stage must pass once, in order, as non-root Linux', () => {
@@ -96,4 +108,25 @@ test('public wrapper rejects arguments before dependency acquisition or probes',
   const result = spawnSync('bash', [wrapper, '--help'], { env: { PATH: process.env.PATH }, timeout: 1000 });
   assert.equal(result.status, 2);
   assert.match(result.stderr.toString(), /LINUX_PREREQUISITE_INVALID_ARGUMENTS/);
+});
+
+test('actual pinned strace deadline kills both synthetic tracee and its child', async () => {
+  const actualRuntime = process.env.SWARM_CI_TEST_RUNTIME;
+  probeDefinitions(actualRuntime, unshare); // reject a missing or malformed test runtime
+  const script = `const {spawn}=require('node:child_process');
+process.stdout.write(process.pid+'\\n');
+spawn(process.execPath,['-e','process.stdout.write(process.pid+"\\\\n");setInterval(()=>{},1000)'],{stdio:['ignore','inherit','ignore']});
+setInterval(()=>{},1000);`;
+  const result = executeProbe(actualRuntime, { executable: process.execPath, args: ['-e', script] });
+  assert.equal(result.observation, 'DEADLINE');
+  const pids = result.stdout.trim().split(/\s+/).map(Number);
+  assert.equal(pids.length, 2);
+  assert.ok(pids.every(pid => Number.isInteger(pid) && pid > 1));
+  function running(pid) {
+    try { return readFileSync(`/proc/${pid}/stat`, 'utf8').split(') ')[1][0] !== 'Z'; }
+    catch (error) { if (error.code === 'ENOENT') return false; throw error; }
+  }
+  const end = Date.now() + 1000;
+  while (pids.some(running) && Date.now() < end) await new Promise(resolve => setTimeout(resolve, 10));
+  assert.ok(pids.every(pid => !running(pid)), 'all tracees stopped, without signaling numeric PIDs');
 });

@@ -10,6 +10,6 @@ sh_binary(
 sh_test(
     name = "preflight-test",
     srcs = ["preflight.test.sh"],
-    data = ["preflight.mjs", "preflight.test.mjs", "preflight.sh"],
+    data = ["preflight.mjs", "preflight.test.mjs", "preflight.sh", "//tools/policy:sources"],
     tags = ["local"],
 )

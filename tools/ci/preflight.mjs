@@ -8,6 +8,12 @@ const TIME_LIMIT = 3000;
 const store = '/nix/store/[a-z0-9]{32}-[A-Za-z0-9+._?-]+';
 const runtimePattern = /^\/nix\/store\/[a-z0-9]{32}-swarm-offline-policy-runtime(?![\s\S])/;
 const unsharePattern = new RegExp(`^${store}/bin/unshare(?![\\s\\S])`);
+// Only this fixed, bounded public-field read runs after unshare. No shell or caller code.
+const namespaceProfile = `const fs = require('node:fs');
+const fd = fs.openSync('/proc/self/attr/current', fs.constants.O_RDONLY | fs.constants.O_NONBLOCK);
+try { const b = Buffer.alloc(4096); const n = fs.readSync(fd,b,0,b.length,null);
+process.stdout.write(JSON.stringify({apparmorProfile:b.subarray(0,n).toString('utf8').trim()})+'\\n'); }
+finally { fs.closeSync(fd); }`;
 
 // Fixed public kernel interfaces only. Never read arbitrary paths or dump environment.
 function smallRead(path) {
@@ -40,7 +46,8 @@ export function probeDefinitions(runtime, unshare) {
   if (!runtimePattern.test(runtime) || !unsharePattern.test(unshare)) throw new Error('INVALID_NIX_EXECUTABLE');
   const truth = `${runtime}/bin/true`;
   return [
-    { stage: 'user-namespace-create', executable: unshare, args: ['--user', '--', truth] },
+    { stage: 'user-namespace-create', executable: unshare,
+      args: ['--user', '--', `${runtime}/bin/node`, '-e', namespaceProfile] },
     { stage: 'user-namespace-map', executable: unshare, args: ['--user', '--map-current-user', '--', truth] },
     { stage: 'owned-process-prerequisite', executable: unshare,
       args: ['--user', '--map-current-user', '--pid', '--fork', '--kill-child=SIGKILL', '--mount-proc', '--', truth] },
@@ -60,15 +67,18 @@ export function summarize(result) {
   if (result.error?.code === 'ETIMEDOUT') observation = 'DEADLINE';
   else if (result.error?.code === 'ENOBUFS') observation = 'OUTPUT_LIMIT';
   else if (result.error) observation = 'START_FAILED';
+  else if (!ok && stderr.includes('write failed /proc/self/uid_map')) observation = 'UID_MAP_WRITE_FAILED';
+  else if (!ok && stderr.includes('loopback: Failed RTM_NEWADDR')) observation = 'PRIVATE_LOOPBACK_SETUP_FAILED';
   // Trace evidence identifies the operation/errno, not the responsible security policy.
-  const denied = stderr.split('\n').filter(line => /= -1 (EPERM|EACCES|ENOSYS)\b/.test(line));
+  const denied = stderr.split('\n').filter(line => /= -1 (EPERM|EACCES|ENOSYS)\b|error=-(EPERM|EACCES)\b/.test(line));
   return { ok, observation, exitCode: result.status ?? null, signal: result.signal ?? null,
     denied, stdout, stderr };
 }
 
 export function executeProbe(runtime, probe, execute = spawnSync) {
   return summarize(execute(`${runtime}/bin/strace`, [
-    '-f', '-s', '160', '-e', 'trace=unshare,clone,clone3,mount,capset,write', '--', probe.executable, ...probe.args,
+    '-f', '--kill-on-exit', '-s', '160', '-e',
+    'trace=unshare,clone,clone3,mount,capset,write,sendmsg,recvmsg,sendto,recvfrom', '--', probe.executable, ...probe.args,
   ], { cwd: '/', env: { LANG: 'C.UTF-8' }, stdio: ['ignore', 'pipe', 'pipe'],
     timeout: TIME_LIMIT, killSignal: 'SIGKILL', maxBuffer: OUTPUT_LIMIT }));
 }
