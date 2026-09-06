@@ -23,11 +23,12 @@ application of intelligence before queues, swarm coordination or write authority
 - [x] (2026-09-06) Design: read existing cockpit, source bridge, core supervisor and prior topology/reload plans; verify local CLI schema capabilities without running a model.
 - [x] (2026-09-06) Design: choose the adapter, freeze the bridge/lifecycle/context contract, and define three isolated departments.
 - [x] (2026-09-06) ROOT accepted PR #8 and dispatched only R0 in its designated worktree.
-- [ ] R0: publish validated contracts, typed unavailable behavior and module interfaces; merge the small base PR.
+- [x] (2026-09-06) R0: publish validated contracts, typed unavailable behavior and module interfaces in PR #9; remote landing is recorded by that PR's normal merge transaction.
 - [x] (2026-09-06) R0: strict six-command schemas, interface-only adapter/context/store modules and production unavailable dispatch; initial and contract/bridge quality passes succeeded.
 - [x] (2026-09-06) R0: first full build and five uncached Bazel tests passed, including owned virtual desktop smoke (31.6 seconds); 151 focused tests passed at a6d8f4f.
 - [x] (2026-09-06) R0: first fix delta d57de1c passed the full local build/test again (154 focused tests; five Bazel targets, virtual smoke 30.4 seconds). Native and Google convergence clean.
-- [ ] R0: final local build/test, council fixpoint, normal merge and executive handoff without adopting watched master.
+- [x] (2026-09-06) R0: final code bb3ab3b passed full build and all five uncached Bazel tests (154 focused tests; owned virtual smoke 32.2 seconds). Test-only correction 01fc34c reran quality successfully; unchanged harness tests reused that local evidence.
+- [ ] R0: final council receipt, normal merge and executive handoff without adopting watched master; see PR #9 and master/artifacts/agent-run-contract-base-final for transaction evidence.
 - [ ] R1 and E1: establish installed-adapter conformance and bounded launch context/profile preflight; W1: show fixture-driven cockpit run surface in parallel.
 - [ ] R2: durable lifecycle, process ownership, cancellation and recovery; E2: adversarial fixtures and virtual scenario; W2: wire live state, steering and uncertainty.
 - [ ] R3/W3/E3: integrate, demonstrate one real read-only run, finish relevant local gates/review and normal-merge the feature PRs.
@@ -125,13 +126,43 @@ old-generation definitive rejections are tracked in
 agent-run-late-response-evidence. Neither authorizes replay nor blocks the
 independent R1/W1/E1 fixture slices. Existing conservative behavior is retained.
 
+Decision (2026-09-06, final R0 triage): agent-run-boundary-diagnostics tracks
+non-blocking read-error wording/classification, bounded sanitized validation
+diagnostics and visible Unicode-control handling for operator-facing provider
+summaries. R1/W2 own those concerns; never log raw context/transcript secrets.
+The final test-only correction starts timing rejection tests from a valid
+completed/cleaned-up baseline, so each assertion isolates its intended rule.
+
 ## Outcomes & Retrospective
 
 
-Design only so far. No agent runtime, UI, process-control fixture or credentialed
-run has been built/tested by this gate. Schema generation is evidence of API
-shapes, not a claim of authentication, permission enforcement or successful
-model execution. Keep that distinction in the implementation recaps.
+R0 now supplies the protocol v3 base: protocol/common.ts holds shared version
+and focus primitives; protocol/agents.ts validates six methods, named results,
+immutable prepared context, run summaries/detail, terminal/process/cleanup
+evidence and bounded transcript pages. core/agents/adapter.ts,
+context-provider.ts and store.ts are interfaces only. core/agents/unavailable.ts
+is the only production agent handler: snapshot explicitly reports unavailable,
+and every other agent method returns ADAPTER_UNAVAILABLE. No fake run fallback
+exists. core/worker.ts, app/lifecycle.ts, preload and supervisor carry separate
+agent events/results through the existing generation envelope. App.tsx merely
+ignores agent events in the workspace reducer; there are no new UI controls.
+
+Tests exercise the actual worker dispatcher and preload with explicitly injected
+test doubles, mutation uncertainty, invalid generations/results, bounded Unicode
+payloads, identity/cursor correlation and lifecycle evidence. Full local build
+and five tests, including owned virtual X11, passed for the final production
+code. Exact counts/head-specific logs and review receipts live under the ignored
+master/artifacts/agent-run-contract-base-final directory; PR #9 is the authority
+for normal-merge state, since a commit cannot name its future merge commit.
+
+R1/W1/E1 can build independently from the merged base. R1 owns normalized adapter
+events and shared seams; W1 consumes named results/snapshots with explicit
+fixtures; E1 implements AgentContextProvider and policy evidence. Actual provider
+execution, authentication/policy enforcement, durable storage, process ownership,
+recovery, cockpit controls and real vertical proof remain unimplemented. No
+credentialed run or physical-desktop automation occurred in R0. The existing
+master checkout and app are deliberately not adopted by this child. Keep these
+distinctions in subsequent recaps.
 
 ## Context and Orientation
 
@@ -444,3 +475,7 @@ base; deliberately limits the first real demonstration to read-only analysis.
 Plan revision note (2026-09-06, R0 start): record accepted gate, assumptions and
 the minimal shared-schema/unavailable seam before implementation. Later slices
 remain unstarted; watched master/runtime adoption belongs to ROOT.
+
+Plan revision note (2026-09-06, R0 handoff): record delivered module seams,
+local verification and scoped review dispositions. Merge/cleanup is a separate
+recorded transaction; no later department or runtime adoption is claimed.
