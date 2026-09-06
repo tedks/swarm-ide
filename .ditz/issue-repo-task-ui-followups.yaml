@@ -14,3 +14,15 @@ log_events:
   who: Ted Smith
   what: created
   comment: ""
+- time: 2026-09-06T08:30:20-00:00
+  who: Ted Smith
+  what: commented
+  comment: 'PR31 council nits deferred without hiding them: pre-existing source flash
+    offsets use raw CRLF while CodeMirror normalizes LF (needs its own source-diff
+    contract/tests); compact Information-only inspection intentionally stops Work
+    task checks, explicit Refresh/Work reopen is available and revision remains labelled;
+    obsolete dispatch-list CSS removal is outside T2 global styles lease; render-time
+    memory-map initialization is idempotent but can later be extracted for clarity.
+    None grants metadata readiness/model capability. Initial full scan failure intentionally
+    does not auto-rescan on 5s checks, now regression-tested. T3 remains actual provider/CLI/12s
+    deadline integration gate.'
