@@ -1,0 +1,24 @@
+id: agent-workbench-fixture-polish
+title: Polish fixture validation diagnostics and playback bookkeeping
+desc: 'W1 convergence nonblocking nits deferred to W2 boundary/presentation work:
+  distinguish schema validation from unexpected dev-only errors without exposing raw
+  context; derive escaped-bound test sizes from shared limits and assert raw bounds;
+  replace stream marker prefix sniff with explicit local marker; normalize trailing
+  whitespace in display labels if desired. Ctrl+Enter is deliberately form-local including
+  focused buttons; this is documented, no global binding. Current RunSummary text
+  schema permits newline/tab and trailing whitespace (no single-line regex), so multiline
+  tasks do not cause parser failure. Existing full candidate validation and regression
+  tests make these maintenance improvements, not missing runtime authority.'
+type: task
+component: default
+release:
+reporter: Ted Smith <tedks@riseup.net>
+status: unstarted
+disposition:
+creation_time: 2026-09-06T02:52:54-00:00
+references: []
+log_events:
+- time: 2026-09-06T02:52:54-00:00
+  who: Ted Smith
+  what: created
+  comment: ""
