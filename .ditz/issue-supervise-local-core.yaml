@@ -7,8 +7,8 @@ type: bugfix
 component: default
 release:
 reporter: Ted Smith <tedks@riseup.net>
-status: in_progress
-disposition:
+status: closed
+disposition: fixed
 creation_time: 2026-09-05T08:02:57-00:00
 references: []
 log_events:
@@ -43,6 +43,15 @@ log_events:
     wait failed at90s despite build/unit success. Keep in_progress until authorized
     verified merge; implementation branch4f5779d fully pushed. Physical master app
     untouched; one-time adoption tracked separately.'
+- time: 2026-09-06T00:06:52-00:00
+  who: Ted Smith
+  what: 'closed: fixed'
+  comment: Normal-merged PR7 as b8c58bd85ca0c94adf24abdea8f80294cfcbc5bf. Local19-target
+    build,5 uncached test targets,136 focused tests and extended selective-reload/zoom/HMR
+    proof pass; current4f5779d delta covered by post-calibration local tests. Native
+    council CLEAN; foreign seats unavailable. User explicitly waived remote CI conditional
+    on local proof; failed33999707395 preserved in virtual-desktop-ci-timeout. Physical
+    adoption remains separately tracked, not performed.
 blocks:
 - first-real-agent-run-surface
 blocked_by:
