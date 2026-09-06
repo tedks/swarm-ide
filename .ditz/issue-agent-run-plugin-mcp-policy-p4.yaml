@@ -25,5 +25,15 @@ log_events:
   who: Ted Smith
   what: blocks agent-run-offline-activation-proof
   comment: ""
+- time: 2026-09-06T06:45:27-00:00
+  who: Ted Smith
+  what: commented
+  comment: 'PR26 code1a9b332 and docscef3228: all3 installed no-turn local legacy
+    plugin controls pass28independent checks each. OpenAI native/Google CLEAN code+docdelta;
+    Anthropic actual session-limit MISSING. Quality592tests48files/full24build pass.
+    First whole-suite topology observation was invalidated by my concurrent docs commit
+    (owned X11 capture confirms working-source change); full stable-tree rerun required,
+    no product/harness defect claimed. Hosted34016892153 failed pre-Codex SEED_PIPE_FAILED/UNRECOGNIZED_STDERR,
+    existing canonical issue retained. No production availability/model/adoption.'
 blocks:
 - agent-run-offline-activation-proof
