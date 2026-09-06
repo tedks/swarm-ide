@@ -122,6 +122,7 @@ describe("GraphPane keeps interface zoom separate from the library-owned camera"
     onFocus.mockClear();
     fireEvent.click(repo.getByText("Select first node"));
     expect(onFocus).toHaveBeenCalledOnce();
+    expect(onFocus).toHaveBeenCalledWith(snapshot.graphs.find((graph) => graph.topologyId === "repo")!.nodes[0]!.focus);
     view.rerender(<Pair zoom={1.5} focus={paymentsFileFocus} source />); settle();
     expect(repo.getByTestId("flow")).toBe(flow);
     expect(flow.dataset.camera).toBe("x:83,y:-41,zoom:1.73");

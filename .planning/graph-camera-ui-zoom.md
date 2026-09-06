@@ -9,7 +9,7 @@ Users can enlarge the interface without losing their place in either repository 
 ## Progress
 
 - [x] (2026-09-06 06:40Z) Inspected the exact GraphPane cause and W3 measurements; created designated isolated worktree from reviewed e2f3da7.
-- [ ] Prove the reset with new targeted failing regressions, then remove only the offending behavior.
+- [x] (2026-09-06 06:43Z) Proved all four targeted regressions red against unchanged GraphPane (554 existing tests passed); removed only the offending effect and unused ref/imports.
 - [ ] Verify actual deliberate cameras, source state and mounted instances in the owned virtual desktop; run full local gates.
 - [ ] Complete provider-diverse council to fixpoint, normal PR landing, issue synchronization and owned-process cleanup.
 
