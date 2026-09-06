@@ -14,3 +14,13 @@ log_events:
   who: Ted Smith
   what: created
   comment: ""
+- time: 2026-09-06T02:41:37-00:00
+  who: Ted Smith
+  what: commented
+  comment: E1 inspected installed complete Codex0.153.4 help, generated stable/experimental
+    schemas and supported false feature overrides. Necessary readOnly/never/cwd fields
+    exist; no attested complete effective hooks/MCP/connectors/plugins/delegation
+    disablement. No universal MCP-disable observed, mcp_servers={} cannot be assumed
+    to clear inherited map. Product preflight remains ADAPTER_POLICY_UNAVAILABLE.
+    No server/model/auth execution occurred. Resolve in bounded policy acceptance
+    gate without global edits or expanding authority.
