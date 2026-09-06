@@ -20,7 +20,7 @@ of a monorepo. Builds remain independent.
 
 - [x] (2026-09-06) N0 inspected the T3 base, actual navigation seams and unclosed foundations.
 - [x] (2026-09-06) N0 drafted the navigation contract and closure ledger.
-- [ ] N0 finish design review, local document checks, normal merge and Ditz sync.
+- [x] (2026-09-06) N0 completed native/Google design convergence and local document checks; PR36 holds normal-merge and Ditz handoff evidence.
 - [ ] ROOT evaluate the published contract and dispatch N1 if accepted.
 - [ ] N1 implement the vertical, prove actual packaged behavior, review and land.
 - [ ] ROOT verify N1 and separately decide runtime adoption and next consumers.
@@ -69,6 +69,12 @@ N0 delivers design and open-issue accounting, not a repository browser. T3 task
 integration is already complete and must not be repeated. The earlier gap was
 mistaking real example source plus graph mechanics for a completed repository
 experience. N1 completion therefore requires visible production behavior.
+
+PR36 contains the three-document delivery. Native OpenAI found and re-verified
+the startup correction; Google reviewed the original and fix delta CLEAN.
+Anthropic is unavailable from known credit exhaustion, not replaced. Local
+scope/whitespace, internal links, twelve plan sections and existing symbol checks
+passed. No product build/test or hosted CI run is claimed for this docs-only step.
 
 ## Context and Orientation
 
