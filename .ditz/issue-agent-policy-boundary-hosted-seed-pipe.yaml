@@ -38,5 +38,14 @@ log_events:
   who: Ted Smith
   what: blocks agent-run-owned-process-hosted-proof
   comment: ""
+- time: 2026-09-06T06:04:19-00:00
+  who: Ted Smith
+  what: commented
+  comment: 'Corroborating but not causal I2 evidence: hosted34015116894 PR24 code1fd0689
+    plain pinned unshare --user --map-current-user --pid --fork --kill-child=SIGKILL
+    --mount-proc -- true also fails before fixed provider startup. New required owned-process
+    proof fails closed rather than skipping green. Local same exact target passes.
+    P3 remains sole isolation-diagnosis owner; agent-run-owned-process-hosted-proof
+    tracks eventual actual hosted acceptance, not a duplicate diagnosis.'
 blocks:
 - agent-run-owned-process-hosted-proof
