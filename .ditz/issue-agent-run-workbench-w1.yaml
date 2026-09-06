@@ -5,8 +5,8 @@ type: task
 component: default
 release:
 reporter: Ted Smith <tedks@riseup.net>
-status: in_progress
-disposition:
+status: closed
+disposition: fixed
 creation_time: 2026-09-06T02:31:30-00:00
 references: []
 log_events:
@@ -22,5 +22,12 @@ log_events:
   who: Ted Smith
   what: started
   comment: ""
+- time: 2026-09-06T02:55:40-00:00
+  who: Ted Smith
+  what: 'closed: fixed'
+  comment: Delivered PR10 normal merge with CLEAN Codex/Anthropic/Google convergence,170
+    local tests/full build/all5Bazel targets and final-head owned virtual screenshot.
+    Explicit renderer-only fixture; W2 parent stays in_progress. No real model or
+    master app adoption.
 blocks:
 - agent-run-workbench
