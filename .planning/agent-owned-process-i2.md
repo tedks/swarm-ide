@@ -16,7 +16,8 @@ and production remains policy-unavailable.
 - [x] (2026-09-06 05:54Z) Fixed external fixture and all three joined scenarios pass at code1fd0689; no production changes required.
 - [x] (2026-09-06 05:58Z) Durable turn/cleanup ordering, resistant descendants, outside canary and hard-core recovery/no replay proven; full25-target build/all9 uncached tests pass,478 tests/44files.
 - [x] (2026-09-06 05:57Z) OpenAI native and Google council CLEAN; Anthropic actual session-limit unavailable, explicitly missing.
-- [ ] Normal PR merge and actual ROOT-verified reviewed integration checks.
+- [x] (2026-09-06) ROOT-verified A1 c68aa4c integrated without conflicts. Final executable8619da1 and actual integrationb8a4149 share treeaf14e236ec5d559874017c3b035660f062c04e90. Full25 build/all9 uncached targets pass,493tests45files; native+Google final delta CLEAN.
+- [ ] Normal PR merge; P3 has advanced origin/master and its ROOT-verified handoff is awaited before consuming that peer.
 
 ## Surprises & Discoveries
 
@@ -45,6 +46,15 @@ death independently removes live descendants but recovered product cleanup stays
 unknown and blocks another launch. Native OpenAI and Google reviews are CLEAN;
 Anthropic returned its session limit, not a review. Merge/integration remain
 pending. Live provider policy and the credentialed first-run parent stay open.
+
+The later ROOT-verified A1 merge and final emitted-snapshot assertion delta are
+proven together at integrationb8a4149, identical to executable8619da1. All nine
+uncached targets pass with493tests45files, full25 build, actual external proof
+3.2s, owned topology65.2s and agent journey5.4s. Both available reviewers remain
+CLEAN. Hosted1fd0689 fails inherited policySEED_PIPE_FAILED and the explicit
+unshare prerequisite before fixture startup; no weaker fallback or green-CI
+claim. `agent-run-owned-process-hosted-proof` tracks actual supported-host
+acceptance without duplicating P3's isolation diagnosis.
 
 ## Context and Orientation
 
@@ -112,3 +122,5 @@ renderer, provider profile or application capability is introduced.
 Revision (2026-09-06): initial bounded external-process composition plan.
 Revision (2026-09-06 05:58Z): record proven composition and review/local gates;
 landing remains explicit and does not imply a live-provider capability.
+Revision (2026-09-06): record actual ROOT-approved A1 aggregate and final emitted
+state assertions, plus the required hosted-namespace prerequisite failure.

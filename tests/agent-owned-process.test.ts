@@ -9,7 +9,8 @@ import { build } from "esbuild";
 import { base, executable, openProcessFixture, value } from "../fixtures/agent-owned-process/composition";
 import type { Run } from "../protocol/agents";
 
-// No installed Codex, live model, policy probe, physical desktop or sockets.
+// No installed Codex, live model, policy probe, physical desktop or TCP listener.
+// The real store retains its owner-private abstract Unix-socket writer lock.
 // /proc observations below never grant authority to signal a numeric PID.
 const source = resolve(".");
 const provider = resolve("fixtures/agent-owned-process/provider.mjs");
