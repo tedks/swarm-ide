@@ -22,5 +22,14 @@ log_events:
   who: Ted Smith
   what: blocks agent-run-context-evidence
   comment: ""
+- time: 2026-09-06T03:56:27-00:00
+  who: Ted Smith
+  what: commented
+  comment: 'Pushed64b4a4d PR14: coherent shared schema-valid fixture frames/manual
+    AgentAdapter gates,281 quality tests. R2 publishes in-process service factory
+    only so far, no committed privileged virtual test entry; W2 labels published but
+    code underway. Full virtual agent journey split explicitly into agent-run-virtual-scenario-e2
+    rather than fake renderer fallback. Full local gates and provider-diverse council
+    underway; master/app untouched.'
 blocks:
 - agent-run-context-evidence
