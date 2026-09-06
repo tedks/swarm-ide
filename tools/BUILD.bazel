@@ -1,6 +1,27 @@
 package(default_visibility = ["//visibility:public"])
 
 filegroup(
+    name = "agent-journey-sources",
+    srcs = ["agent-journey-dev.mjs", "agent-journey-dev.sh", "agent-journey-client.mjs", "desktop-agent-scenario.sh", "desktop-agent-smoke.sh"],
+)
+
+sh_binary(
+    name = "desktop-agent-smoke",
+    srcs = ["desktop-agent-smoke.sh"],
+    data = [":agent-journey-sources", ":virtual-desktop-run.sh", ":x11-driver-source"],
+    tags = ["manual"],
+)
+
+sh_test(
+    name = "virtual-desktop-agent-test",
+    srcs = ["desktop-agent-smoke.sh"],
+    data = [":agent-journey-sources", ":virtual-desktop-run.sh", ":x11-driver-source", "//:quality_sources"],
+    env_inherit = ["DISPLAY", "XAUTHORITY", "SWARM_ELECTRON_BIN", "SWARM_ELECTRON_NO_SANDBOX", "SWARM_SOURCE_WORKSPACE", "SWARM_VIRTUAL_DESKTOP_PORT"],
+    tags = ["desktop", "exclusive", "local", "no-sandbox"],
+    timeout = "long",
+)
+
+filegroup(
     name = "dev-port-source",
     srcs = ["dev-port.mjs", "dev-update.mjs"],
 )
