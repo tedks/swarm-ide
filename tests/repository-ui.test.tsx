@@ -174,6 +174,13 @@ describe("repository controls and coordinated cameras", () => {
     expect(mapped.nodes.filter((node) => node.data.focused).map((node) => node.id)).toEqual([repo.nodes[0]!.id]);
     expect(mapped.nodes[0]!.data.ambiguous).toBe(true);
   });
+  it("gives each repository card known geometry before its first measurement without changing service sizing", () => {
+    const snapshot = initialSnapshot(), repo = graph(observation("core"), snapshot);
+    const cards = adaptGraph(repo, snapshot.focus, []).nodes;
+    expect(cards).toHaveLength(repo.directory!.entries.length + 1);
+    expect(cards.every((node) => node.width === 148 && node.height === 64 && node.data.repositoryCard)).toBe(true);
+    expect(adaptGraph(snapshot.graphs[1]!, snapshot.focus, []).nodes.every((node) => node.width === undefined && node.height === undefined && !node.data.repositoryCard)).toBe(true);
+  });
 });
 
 describe("actual App repository navigation wiring", () => {

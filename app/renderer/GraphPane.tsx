@@ -9,7 +9,7 @@ export type { GraphConnectionFocus } from "./graph-adapter";
 function TopologyNode({ data }: NodeProps) {
   const node = data as TopologyNodeData;
   return (
-    <div className={`topology-node status-${node.status} ${node.focused ? "is-focused" : ""} ${node.ambiguous ? "is-ambiguous" : ""} ${node.ignored ? "is-ignored" : ""} ${node.unavailable ? "is-unavailable" : ""}`} title={node.mappingReason ?? node.detail}>
+    <div className={`topology-node status-${node.status} ${node.focused ? "is-focused" : ""} ${node.ambiguous ? "is-ambiguous" : ""} ${node.ignored ? "is-ignored" : ""} ${node.unavailable ? "is-unavailable" : ""} ${node.repositoryCard ? "repository-card" : ""}`} title={node.mappingReason ?? node.detail}>
       <Handle type="target" position={Position.Left} />
       <span className="node-kind">{node.kind}</span>
       <strong>{node.label}</strong>

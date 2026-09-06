@@ -8,8 +8,12 @@ const { pathToFileURL } = require("node:url");
 const evidence = process.env.SWARM_NAVIGATION_EVIDENCE;
 const packaged = process.env.SWARM_NAVIGATION_PACKAGE;
 const rendererErrors = [];
+const rendererErrorStages = [];
+let stage = "startup";
 app.on("web-contents-created", (_event, contents) => {
-  contents.on("console-message", (event) => { if (event.level === "error") rendererErrors.push(event.message.slice(0, 4096)); });
+  contents.on("console-message", (event) => { if (event.level === "error") {
+    rendererErrors.push(event.message.slice(0, 4096)); rendererErrorStages.push({ stage, message: event.message.slice(0, 4096) });
+  } });
   contents.on("render-process-gone", (_event, details) => rendererErrors.push(`Renderer gone: ${details.reason}`));
 });
 require(path.join(packaged, "app/electron/main.js"));
@@ -32,6 +36,14 @@ async function main() {
     addEventListener("error", (event) => console.error(event.error?.stack ?? event.message));
     addEventListener("unhandledrejection", (event) => console.error(event.reason?.stack ?? event.reason));
     const report = console.error; console.error = (...args) => report(...args.map((value) => value instanceof Error ? value.stack : value));
+  });
+  await run(() => {
+    const events = [];
+    const record = (phase) => (event) => { events.push({ at: performance.now(), phase, target: event.target?.getAttribute?.("aria-label") ?? event.target?.className }); if (events.length > 64) events.shift(); };
+    window.addEventListener("click", record("window-capture"), true);
+    document.addEventListener("click", record("document-capture"), true);
+    window.addEventListener("click", record("window-bubble"));
+    globalThis.__navigationClickTrace = events;
   });
   const has = (selector) => run((s) => Boolean(document.querySelector(s)), selector);
   const label = (value) => `[aria-label=${JSON.stringify(value)}]`;
@@ -113,6 +125,7 @@ async function main() {
     facts.push("separate initial fingerprint failure leaves browsing/read usable", "no fabricated digest, green, or agent context");
     await screenshot("01-degraded-navigation.png");
   } else {
+    stage = "pan-independent-cameras";
     // Deliberately independent cameras. Every pointer gesture is completed.
     for (const topology of ["repo", "service"]) {
       const before = await viewport(topology);
@@ -125,6 +138,7 @@ async function main() {
       wc.sendInputEvent({ type: "mouseWheel", ...point, deltaY: -47, deltaX: 0 });
       await until(async () => await viewport(topology) !== before, `deliberate ${topology} camera`);
     }
+    stage = "dirty-source-and-draft";
     await focus(".cm-content"); key("End", ["control"]);
     await until(() => run(() => { const state = document.querySelector(".cm-content").cmView.rootView.view.state; return state.selection.main.anchor === state.doc.length; }), "source end");
     // Source already ends in a newline. Use the proven plain-text native append
@@ -132,9 +146,10 @@ async function main() {
     await wc.insertText("// unsaved navigation intent"); key("Home", ["control"]); key("Right");
     await until(() => run(() => document.querySelector(".cm-content").cmView.rootView.view.state.selection.main.anchor === 1), "exact logical cursor");
     const dirtySource = `${fixture.sourceText}// unsaved navigation intent`;
-    // Native keyboard activation is independent of the preceding graph drag's
-    // browser click-suppression bookkeeping and exercises a first-class gesture.
-    await focus(".agent-rail .agent-primary"); key("Enter");
+    // This setup button uses the same ordinary DOM click as Refresh/zoom. The
+    // keyboard acceptance belongs to repository entry/Up/Back and source edits;
+    // no provider, draft store or renderer state is injected here.
+    await click(".agent-rail .agent-primary");
     await until(() => has(".agent-draft textarea"), "independent draft");
     await fill(".agent-draft textarea", "Keep my source, my place, and this independent draft.");
     await paint();
@@ -156,6 +171,7 @@ async function main() {
           (!restore || saved.repoCamera === document.querySelector("[data-topology='repo'] .react-flow__viewport").style.transform);
       }, restoreRepo), true, "exact dirty text/cursor/draft, graph identity, service camera and deliberate Back camera");
     };
+    stage = "up-back-refresh";
     await focus(label("Repository Up")); key("Up", ["alt"]); await directory(""); await preserved();
     await focus(label("Repository Back")); key("Left", ["alt"]); await directory(fixture.directory); await paint(); await preserved(true);
     const beforeRefresh = observe(await snapshot()).observationId;
@@ -165,12 +181,14 @@ async function main() {
     assert.deepEqual((await snapshot()).graphs.find((graph) => graph.topologyId === "repo").nodes.map(({ id, position }) => ({ id, position })), beforePositions, "refresh retains surviving node positions");
     await preserved(true);
     for (const percent of [150, 100]) {
+      stage = `interface-zoom-${percent}`;
       if (percent === 150) { await click(label("Zoom in")); await until(() => wc.getZoomFactor() === 1.25, "zoom125"); await click(label("Zoom in")); }
       else await click(".zoom-value");
       await until(() => wc.getZoomFactor() === percent / 100, `zoom${percent}`);
       win.setSize(percent === 150 ? 1280 : 1480, percent === 150 ? 800 : 940); await paint(); await preserved(true);
       await screenshot(`02-source-retained-${percent}.png`);
     }
+    stage = "stale-refresh";
     await focus(label("Refresh directory"));
     await until(async () => (await navText()).toLowerCase().includes("stale"), "five-second explicit stale label", 10000);
     const staleId = observe(await snapshot()).observationId;
@@ -180,6 +198,7 @@ async function main() {
     facts.push("independent graph cameras", "exact dirty text/cursor/draft and graph DOM retained", "native Alt-Up/Alt-Left with Back camera restore", "100/150 zoom and resize do not refit", "stale state without rescans and explicit Refresh");
 
     if (fixture.kind === "unfamiliar") {
+      stage = "filesystem-boundaries";
       await click(label("Repository root")); await directory(""); world = await snapshot();
       const entries = observe(world).entries;
       for (const [name, classification] of [[".hidden", "tracked"], ["untracked.txt", "untracked"], ["ignored.txt", "ignored"]])
@@ -190,10 +209,12 @@ async function main() {
       for (const badPath of [".git/config", "nested/secret.ts", "submodule/secret.ts", "alias.ts", "pipe"]) {
         const rejected = await request({ type: "file.read", path: badPath }); assert(!rejected.ok, `privileged open rejects ${badPath}`);
       }
+      stage = "large-first-page";
       await click(label("Enter directory large")); await directory("large");
       let listing = observe(await snapshot());
       assert(!listing.complete && listing.capturedCount === 4096 && listing.entries.length === 200);
       const captureId = listing.observationId, captured = new Set(listing.entries.map((entry) => entry.path));
+      stage = "large-page-filter-reveal";
       await click(label("Next directory page")); await until(async () => observe(await snapshot()).page === 1, "ordinary next page");
       assert.equal(observe(await snapshot()).observationId, captureId);
       const offPage = observe(await snapshot()).entries[0].path;
@@ -206,6 +227,7 @@ async function main() {
       assert.equal(observe(await snapshot()).page, 1);
       assert.equal(observe(await snapshot()).filter, "");
       assert.equal(observe(await snapshot()).observationId, captureId);
+      stage = "large-capture-enumeration";
       for (let page = 1; page < listing.pageCount; page++) {
         const result = await request({ type: "repo.list", directory: "large", page, observationId: captureId, refresh: false, filter: "" });
         assert(result.ok); listing = result.repo.observation; listing.entries.forEach((entry) => captured.add(entry.path));
@@ -213,12 +235,14 @@ async function main() {
       assert.equal(captured.size, 4096);
       const outside = Array.from({ length: 4120 }, (_, index) => `large/entry-${String(index).padStart(5, "0")}.txt`).find((name) => !captured.has(name));
       assert(outside, "outside-capture path established from actual full capture, not assumed filesystem order");
+      stage = "uncaptured-open-path";
       await openPath(outside); await directory("large");
       await until(async () => (await navText()).includes("outside this partial directory capture"), "honest exact outside-capture notice");
       await until(() => run((expected) => document.querySelector(".source-surface header strong")?.textContent === expected, outside), "exact uncaptured path is actually active in editor");
       assert.equal((await request({ type: "file.read", path: outside })).ok, true);
       assert(!observe(await snapshot()).entries.some((entry) => entry.path === outside), "no invented graph node");
       // Re-open retained dirty source, then inspect task details while off-slice.
+      stage = "restore-dirty-source";
       await openPath(fixture.sourcePath); await directory("src");
       await until(() => run((expected) => document.querySelector(".cm-content").cmView.rootView.view.state.doc.toString() === expected, dirtySource), "return to exact retained dirty source");
       // Deliberate active-tab changes rebuild the existing editor by design;
@@ -228,6 +252,7 @@ async function main() {
       await run(() => { globalThis.__navigationProof.editor = document.querySelector(".cm-content"); });
       await preserved();
       await click(label("Repository root")); await directory("");
+      stage = "task-offslice-reveal";
       await until(() => has("[data-task-status='observed']"), "real Ditz task reference");
       await click(label("Select task navigation-reveal"));
       if (!await run(() => document.querySelector(".task-show-details").getBoundingClientRect().width > 0)) await click(label("Toggle work panel"));
@@ -235,6 +260,7 @@ async function main() {
       assert.equal(await currentDirectory(), "", "task details alone do not navigate");
       await click(label("Reveal working file src/main.ts at line 2")); await directory("src"); await preserved();
       await click(label("Repository root")); await directory("");
+      stage = "deleted-refresh";
       const beforeDelete = observe(await snapshot()).observationId;
       await fs.unlink(path.join(fixture.root, "untracked.txt"));
       assert(observe(await snapshot()).entries.some((entry) => entry.path === "untracked.txt"), "retained dated observation before refresh");
@@ -257,8 +283,14 @@ main().catch(async (error) => {
   const message = `${error.message}\n${error.stack}`; console.error(message);
   const win = BrowserWindow.getAllWindows()[0];
   if (win && !win.isDestroyed()) {
+    await fs.writeFile(path.join(evidence, "failure-focus.json"), JSON.stringify(await win.webContents.executeJavaScript(`(async () => {
+      const result = await window.swarm.request({protocolVersion:5,requestId:'failure-focus:'+crypto.randomUUID(),type:'workspace.snapshot'});
+      return {focus:result.ok?result.snapshot.focus:null,agentNotice:document.querySelector('.agent-rail')?.textContent,
+        draft:document.querySelector('.agent-draft')?.textContent,askDisabled:document.querySelector('.agent-rail .agent-primary')?.disabled,
+        clickTrace:globalThis.__navigationClickTrace};
+    })()`)));
     await fs.writeFile(path.join(evidence, "failure-window.png"), (await win.webContents.capturePage()).toPNG());
     console.error(await win.webContents.executeJavaScript(`JSON.stringify({active:document.activeElement?.outerHTML,body:document.querySelector('#root')?.textContent?.slice(0,3000)})`));
   }
-  await fs.writeFile(path.join(evidence, "navigation-failure.json"), JSON.stringify({ ok: false, message, rendererErrors }));
+  await fs.writeFile(path.join(evidence, "navigation-failure.json"), JSON.stringify({ ok: false, stage, message, rendererErrors, rendererErrorStages }));
 });
