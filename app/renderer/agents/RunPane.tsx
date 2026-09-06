@@ -22,7 +22,7 @@ export function RunPane({ state, dispatch, onReveal, onClose, height, onHeight }
         {state.records.map((record) => <div key={record.recordId} className={`agent-record agent-record-${record.kind}`}><small>{record.kind} / {record.recordId}</small><p>{record.text}</p></div>)}
       </div>
     </div><aside className="agent-controls">
-      <button className="agent-primary" disabled={run.processState === "exited" || (run.state === "cancelled" && run.processState === "not-started")} onClick={() => dispatch({ type: "advance" })}>Next fixture event</button>
+      <button autoFocus className="agent-primary" disabled={run.processState === "exited" || (run.state === "cancelled" && run.processState === "not-started")} onClick={() => dispatch({ type: "advance" })}>Next fixture event</button>
       <small>Manual scripted playback · never a live provider stream.</small>
       <details><summary>Submitted context</summary><p>{run.launchContext.focus.path ?? run.launchContext.focus.key}</p><p>Disk only, no file bytes attached. Requested model: {run.launchContext.requested.model ?? "provider default (unresolved)"}; reasoning: {run.launchContext.requested.effort ?? "provider default (unresolved)"}. Root, digests and timestamps are synthetic. No verified policy or measured usage.</p><pre>{run.launchContext.submittedPrompt}</pre></details>
       <form onSubmit={(event) => { event.preventDefault(); if (steerEnabled) dispatch({ type: "steer", text: instruction, outcome }); }}>

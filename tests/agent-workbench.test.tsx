@@ -98,7 +98,8 @@ describe("run-specific presentation", () => {
     const view = render(<LaunchDraft focus={paymentsFileFocus} onLaunch={onLaunch} onClose={() => undefined} />);
     view.rerender(<LaunchDraft focus={{ ...paymentsFileFocus, key: "changed", path: "changed.ts" }} onLaunch={onLaunch} onClose={() => undefined} />);
     expect(screen.getByText(/unsaved edits are not included/)).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: "Launch fixture — no provider" }));
+    expect(document.activeElement).toBe(screen.getByLabelText("Task"));
+    fireEvent.keyDown(screen.getByLabelText("Task"), { key: "Enter", ctrlKey: true });
     expect(onLaunch.mock.calls[0]![0].focus).toEqual(paymentsFileFocus);
     expect(onLaunch.mock.calls[0]![0].attachments).toEqual([]);
   });

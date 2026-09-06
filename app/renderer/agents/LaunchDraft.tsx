@@ -16,16 +16,18 @@ export function LaunchDraft({ focus, onLaunch, onClose }: { focus: FocusRef; onL
     // The exact submitted object, not just individual input lengths, gates launch.
     try { return fixtureLaunchContext(launchFocus, task, model, effort); } catch { return null; }
   }, [launchFocus, task, model, effort]);
-  return <form className="agent-draft" onSubmit={(event) => { event.preventDefault(); if (context) onLaunch(context); }}>
+  return <form className="agent-draft" onKeyDown={(event) => {
+    if (event.ctrlKey && event.key === "Enter") { event.preventDefault(); if (context) onLaunch(context); }
+  }} onSubmit={(event) => { event.preventDefault(); if (context) onLaunch(context); }}>
     <header><strong>Launch draft</strong><button type="button" aria-label="Close launch draft" onClick={onClose}>×</button></header>
     <span className="agent-demo-badge">FIXTURE / DEMO · no model execution</span>
     <p className="agent-context-path">{launchFocus.path ?? launchFocus.key}</p>
-    <label>Task<textarea value={task} onChange={(event) => setTask(event.target.value)} rows={3} maxLength={AGENT_LIMITS.taskBytes} /></label>
+    <label>Task<textarea autoFocus value={task} onChange={(event) => setTask(event.target.value)} rows={3} maxLength={AGENT_LIMITS.taskBytes} /></label>
     <label>Requested model<input placeholder="Provider default (unresolved)" value={model} maxLength={256} onChange={(event) => setModel(event.target.value)} /></label>
     <label>Requested reasoning<input placeholder="Provider default (unresolved)" value={effort} maxLength={64} onChange={(event) => setEffort(event.target.value)} /></label>
     <p>Disk version only; unsaved edits are not included. This fixture attaches <strong>no file bytes</strong>; disk preparation and revalidation arrive in W2.</p>
     <details><summary>Context, provenance &amp; read scope</summary><p>Captured focus: {launchFocus.revisionKind} / {launchFocus.revisionId}. Fixture hashes and root are synthetic. Instructions and configuration: unobserved.</p><p>Real launch will send selected content to the configured model service. Requested read-only / no tool network / never approve is not yet verified. Read-only is not host confidentiality: the harness may read files accessible to your account.</p></details>
     {!context ? <p role="alert">Use a working-world focus and nonempty task within the UTF-8 and total serialized context limits.</p> : null}
-    <button className="agent-primary" disabled={!context}>Launch fixture — no provider</button>
+    <button className="agent-primary" title="Launch fixture (Ctrl+Enter)" disabled={!context}>Launch fixture — no provider</button>
   </form>;
 }
