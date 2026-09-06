@@ -46,3 +46,11 @@ log_events:
     cleanup change needed. Actual owned broker FIFO test and all10 local targets passed
     under Nix. useMemo matches reviewed agent client, no lifetime guarantee newly
     claimed.'
+- time: 2026-09-06T14:24:27-00:00
+  who: Ted Smith
+  what: commented
+  comment: 'Final warm Anthropic delta CLEAN. Speculative nonblocking refocus observation
+    recorded: browser window reactivation might dispatch focus on the original Reveal
+    button and conservatively cancel a pending read. Not reproduced; honest cancellation/re-click
+    is safer than stealing newer focus. Future refinement could compare initiating
+    active element with a real activation regression. No change to bounded T2.'
