@@ -39,5 +39,14 @@ log_events:
     only. Eleven new integrated store/service/client tests; d7de36e passed 436 quality
     tests and all5/full19 build. Reviewed upstream P2/C1 merged into own topic45491ed
     for final aggregate gates. Council native CLEAN, foreign seats pending. No model/policy/adoption.'
+- time: 2026-09-06T05:29:57-00:00
+  who: Ted Smith
+  what: commented
+  comment: 'Review converged at5aa8f2c: native and Google CLEAN; Anthropic session-limit
+    error, unavailable. Google findings fixed: store semantic STALE_CONTEXT/BUSY pre-write
+    rejection stays definite; catch restricted to admission/read. Read BUSY after
+    successful admission still unknown. Fifteen new tests;479 tests/all7/full22 pass
+    before joining newly normal-merged I1. Current topic192c2cb includes I1 PR20 unchanged
+    and runs final aggregate gates; no watched app/adoption or actual model.'
 blocks:
 - agent-run-vertical-proof
