@@ -1,0 +1,22 @@
+id: agent-run-offline-activation-proof
+title: Prove remaining auxiliary activation paths in the offline policy harness
+desc: 'P2 PR17 establishes standalone offline namespace/immutable policy boundary
+  and actual model-free config/features counterexamples, not effective profile. Next
+  bounded slice: safe positive controls and genuine no-model triggers for ordinary
+  hooks/trust bypass, bundled/executor plugin hooks, per-executor/plugin MCP, persisted
+  remote-control/plugin and telemetry state. Use same immutable boundary, package
+  identity and cleanup tests. No production capability or credentialed process equivalence
+  until separate ROOT gate.'
+type: task
+component: default
+release:
+reporter: Ted Smith <tedks@riseup.net>
+status: unstarted
+disposition:
+creation_time: 2026-09-06T04:47:25-00:00
+references: []
+log_events:
+- time: 2026-09-06T04:47:25-00:00
+  who: Ted Smith
+  what: created
+  comment: ""
