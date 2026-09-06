@@ -80,6 +80,12 @@ Owned virtual rehearsal passed on :90 / 55174, 3.723s scenario / 5.830s total wi
 
 Resizable Context defaults to 30% of the main layout; without documents the graphs keep the majority of the remaining space. Graphs and text split the central area when documents are open. Sidebar thirds and the simultaneous builds/messages/activity dock remain unchanged. The source editor stays mounted under a task document; dirty buffers and independent graph cameras remain protected, except for the user's explicit once-on-open graph reframe.
 
+### Build target patterns
+
+User requested `//...` in the Build graph lens. The input now accepts exact captured labels, recursive `//...` / `//path/...` (optional `:all` / `:*`) and package `//path:all` / `//path:*`. Matching uses exact package boundaries, excludes external repositories and unsupported syntax, and never executes Bazel. The lens remains rule-only even for `:*`, with file omission stated explicitly. Reference semantics: [Bazel target patterns](https://bazel.build/run/build#specifying-targets-to-build).
+
+The eight-input bound now counts patterns, not their expansions. Expanded roots and dependencies share the existing 80-node limit with visible truncation; overlapping patterns deduplicate. Broad selections wrap into bounded-height columns, avoiding an unreadably tall single stack without overlapping dependency bands. Empty/uncaptured inputs cannot be added, existing selections remain intact, and removal reverses pattern expansion. Local `//tools:quality` passed: 1,146 tests / 83 files plus typechecks and node/renderer builds, including matcher boundaries, malformed patterns, >8 matches, exact display limits, dependency traversal, layout non-overlap and actual form add/remove behavior. HMR delivered the change to the existing canvas. No new owned-virtual run claimed for this incremental change; prior screenshots predate wildcard support.
+
 ## Interfaces and Dependencies
 
 Reuse React, existing runtime-validated repository observations, CodeMirror and ReactFlow. New display-only cache/tree helpers must not call filesystem APIs or confer file authority. Bound cache size and rendered rows; only requested folders are read. All build initiation goes through the existing typed `reconciliation.start` request. No dependencies are added.

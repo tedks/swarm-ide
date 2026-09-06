@@ -40,8 +40,29 @@ vi.mock("@xyflow/react", async () => {
 });
 import { GraphPane } from "../app/renderer/GraphPane";
 import { App } from "../app/renderer/App";
+import { BuildGraphPane } from "../app/renderer/repository/BuildGraphPane";
+import { buildTargets } from "../app/renderer/repository/build-view";
+import buildCapture from "../fixtures/ui-build-links.snapshot.json";
 
 const date = "2026-09-06T12:00:00.000Z";
+it("adds and removes //... as one build-view pattern without invoking a source action", () => {
+  const open = vi.fn();
+  render(<BuildGraphPane capture={buildCapture} mockAgents={true} mockVersion={1} onOpenBuild={open} />);
+  const input = screen.getByRole("combobox", { name: "Bazel target" });
+  const add = screen.getByRole("button", { name: "Add target" });
+  const before = screen.getAllByRole("button", { name: /^Graph node / }).length;
+  fireEvent.change(input, { target: { value: "//..." } });
+  expect((add as HTMLButtonElement).disabled).toBe(false);
+  fireEvent.click(add);
+  expect(screen.getAllByRole("button", { name: /^Graph node / })).toHaveLength(buildTargets(buildCapture).length);
+  expect((add as HTMLButtonElement).disabled).toBe(true);
+  fireEvent.click(screen.getByRole("button", { name: "//... ×" }));
+  expect(screen.getAllByRole("button", { name: /^Graph node / })).toHaveLength(before);
+  fireEvent.change(input, { target: { value: "//missing/..." } });
+  expect((add as HTMLButtonElement).disabled).toBe(true);
+  expect(screen.getByRole("status").textContent).toContain("No captured rule targets match");
+  expect(open).not.toHaveBeenCalled();
+});
 function observation(directory = "", patch: Partial<RepositoryObservation> = {}): RepositoryObservation {
   return { directory, observationId: `capture:${directory}`, capturedAt: date, state: "observed", complete: true,
     capturedCount: 2, filteredCount: 2, page: 0, pageCount: 1, filter: "",
