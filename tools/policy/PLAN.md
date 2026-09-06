@@ -16,7 +16,7 @@ is created. This is a development acceptance harness, never a product adapter.
 - [x] (2026-09-06 04:38Z) Implement pinned isolated runtime, frozen synthetic inputs and independent boundary canaries; owner-SIGKILL/deadline/output checks pass.
 - [x] (2026-09-06 04:49Z) Actual complete installed 0.153.4 metadata inspection succeeds after boundary acceptance; seven fixture cases and all eight expected counterexamples/coverage checks pass.
 - [x] (2026-09-06 04:49Z) Native council identified four Important findings; fixed explicit Nix config/overlay isolation, actual complete layout admission, unknown-cleanup-before-hashing and trace-mode unavailable status, with regressions. Foreign/convergence review pending.
-- [ ] Add negative tests, run local gates and provider-diverse review; land and archive proof.
+- [x] (2026-09-06 04:53Z) Added negative tests; full build22 targets and all7 uncached Bazel tests passed at83da50f (272 unit tests). OpenAI native and Google fix-delta CLEAN; Anthropic full-seat timed out600s with no review, explicitly missing. Remaining nits filed. PR17 records the eventual normal-merge transaction; final aggregate evidence is archived in the handoff.
 
 ## Surprises & Discoveries
 
@@ -55,7 +55,10 @@ Independent Linux boundary and real offline metadata/counterexample evidence now
 exist. No hook/plugin/MCP activation exclusion or credentialed equivalence is
 claimed. Ditz agent-run-offline-activation-proof tracks the next bounded proof;
 agent-run-policy-harness-diagnostics tracks nonblocking diagnostics/resource and
-protocol-drift limits. Production remains ADAPTER_POLICY_UNAVAILABLE.
+protocol-drift limits. Reviewed R2/W2/E2 origin/master e443b38 was normally merged
+without conflict into the topic for combined verification; no peer source was
+independently edited and no integration checkout/app was adopted. Production
+remains ADAPTER_POLICY_UNAVAILABLE.
 
 ## Context and Orientation
 
@@ -116,3 +119,5 @@ source, Bubblewrap, Node and fixed synthetic scripts, all invoked through Bazel.
 Revision (2026-09-06): initial implementation plan and assumptions before coding.
 Revision (2026-09-06 04:49Z): record observed runtime-state exception, actual offline
 counterexamples, exact ownership approval and first review corrections.
+Revision (2026-09-06 04:53Z): record converged available council seats, actual local
+gates and clean normal integration of reviewed peer work before final landing.
