@@ -1,9 +1,9 @@
 # Foundation closure ledger
 
-This is product accounting at T3 merge `2270922`, not implementation authority.
-N0 supplies design only. “Landed” does not mean the watched visualization adopted
-that revision. [Navigation contract](repository-navigation.md) is the next
-bounded proposal; ROOT accepts it before implementation.
+This is product accounting through N1's verified packaged navigation in PR37,
+not authority for another feature. “Landed” does not mean the watched
+visualization adopted that revision. The accepted
+[navigation contract](repository-navigation.md) now has actual visible proof.
 
 ## Verified foundations
 
@@ -25,11 +25,17 @@ T3 also fixed CodeMirror state identity with actual red/green evidence. Both T3
 trees passed all 12 local suites, 1,030 tests, and strict owned virtual packaged
 proof with no renderer exceptions. Task-to-draft provenance (D2) remains future.
 
+N1/PR37 replaces the fixed repository example with actual bounded directory
+browsing and exact file activation, independently of a successful service build.
+Both real-repository packaged journeys and both unavailable-fingerprint cases
+passed with zero renderer errors and owned cleanup. Navigation closes only with
+its local/review/normal-landing gate; no other foundation gap is closed by N1.
+
 ## Unclosed product experiences, in order
 
 | Gap / Ditz issue | User-visible completion and dependency |
 | --- | --- |
-| Find/open the repository: `repository-navigation`, then `repository-file-search` | Navigate actual root/directories and open files; then locate filenames beyond the loaded slice with stated coverage. N1 first; search consumes its path activation. `repository-project-entry` later lets a human choose an existing local repo without launch configuration. |
+| Find/open the repository: navigation verified by N1/PR37; `repository-file-search` remains open | Actual root/directory navigation and exact file opening now have packaged proof. Next locate filenames beyond the loaded slice with stated coverage, consuming N1 path activation. `repository-project-entry` remains open: choosing an existing local repo still requires launch configuration. |
 | Hierarchy: `semantic-hierarchy-navigation` | N1 closes directory descent/Up, not merely camera magnification. Later explicit function/component/service drilldown changes the information level without inventing links; depends on corresponding real providers. |
 | Context: `contextual-information` | Selecting two unrelated files shows their own known facts/links and honest unavailable instruments, not FraudCheck widgets for both. Follow navigation/search; later cursor-level metrics require symbol/runtime evidence. |
 | Lenses: `meaningful-workbench-lenses` | System/Plan/Performance/Refactor produce genuinely different supported information, or visibly report unavailable; styling alone is not completion. Depends on contextual data. |

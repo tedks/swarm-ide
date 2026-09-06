@@ -3,7 +3,8 @@
 
 This ExecPlan is maintained according to `.planning/PLANS.md`. It is a living
 implementation plan prepared by N0 and accepted by ROOT. N1 implements it in
-PR37; final packaged acceptance, review convergence and landing remain pending.
+PR37 with actual packaged acceptance. The PR and executive handoff record final
+local verification, normal landing and the separately leased integration.
 
 ## Purpose / Big Picture
 
@@ -25,8 +26,9 @@ of a monorepo. Builds remain independent.
 - [x] (2026-09-06 17:03 UTC) N1 pushed shared protocol, bounded reader/provider, navigation UI and packaged harness with distinct helper ownership.
 - [x] (2026-09-06 17:08 UTC) Actual packaged Swarm root → core/files.ts works without a service build; strict native-input assertions stopped the first proof, with no renderer errors and owned cleanup complete.
 - [x] (2026-09-06 17:15 UTC) Full quality passed 1,079 tests; BOM filename regressions proved three actual failures before the byte-preserving fix.
-- [ ] Finish observer-generation convergence, complete all four packaged cases and all previous local suites; normal reviewed landing and integration remain pending.
-- [ ] N1 implement the vertical, prove actual packaged behavior, review and land.
+- [x] (2026-09-06) Observer-generation and provider/renderer review converged; native OpenAI and Google CLEAN, Anthropic credit-unavailable and not replaced.
+- [x] (2026-09-06 18:03 UTC) All four ordinary packaged cases passed at `5af87b8`: Swarm 5.955s, unfamiliar 8.520s, invalid filename 0.663s and fingerprint budget 0.669s; zero renderer errors, all cleanup complete.
+- [x] N1 implemented the coupled vertical and its visible acceptance. Final local/review/normal-merge gates remain mandatory and are recorded on PR37; no hosted gate or watched-app adoption is implied.
 - [ ] ROOT verify N1 and separately decide runtime adoption and next consumers.
 
 ## Surprises & Discoveries
@@ -44,7 +46,16 @@ One preliminary unchanged owned-process test observed a transient namespace memb
 after cleanup attestation; later runs passed without changing its assertion.
 `owned-namespace-cleanup-attestation-race` records that follow-up, not a waiver.
 
-`core/provider.ts` hardcodes project identity and every repository node. Its
+Rapid replacement of 200 graph cards exposed a genuine ResizeObserver loop.
+Fixed geometry and uncontrolled layout publication did not eliminate it; both
+experiments were reverted. A small whole-pane, latest-frame controlled
+publication fixes the actual packaged case without dropping authoritative
+events or suppressing errors. Native review also caught local Backspace deletion
+in the discarded uncontrolled approach. The native-input harness separately
+needed to wait for d3's temporary post-drag click capture to end before its next
+button activation. The final proof uses no diagnostic mode or retry clicks.
+
+At the N0 baseline, `core/provider.ts` hardcoded project identity and every repository node. Its
 `markWorkingWorldChanged`, `startReconciliation` and failure paths reconstruct or
 recolor that graph. Replacing only initialization would revert browsing on the
 next build/event. `WorkspaceSnapshotSchema` in `protocol/schema.ts` requires every
@@ -99,6 +110,14 @@ the startup correction; Google reviewed the original and fix delta CLEAN.
 Anthropic is unavailable from known credit exhaustion, not replaced. Local
 scope/whitespace, internal links, twelve plan sections and existing symbol checks
 passed. No product build/test or hosted CI run is claimed for this docs-only step.
+
+N1 delivers the actual reader, protocol v5, provider/evidence composition,
+privileged boundary checks and coordinated navigation/editor path. Its packaged
+acceptance is real Git/filesystem/production-bridge behavior in disposable owned
+repositories, not model inference. Evidence lives under
+`master/artifacts/repository-navigation-n1/`; `frame-publication/run.z047i2`
+is the first complete four-case pass. Search, project selection, richer context,
+views and live-agent policy retain their separate open gates.
 
 ## Context and Orientation
 
