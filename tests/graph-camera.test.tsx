@@ -68,7 +68,7 @@ function Pair({ zoom, hidden = false, width = 800, source = false, focus = snaps
 
 describe("GraphPane keeps interface zoom separate from the library-owned camera", () => {
   it("preserves two deliberate independent cameras and mounted source through 100→150→100%, source and compact panes", () => {
-    const view = render(<Pair zoom={1} />); settle();
+    const view = render(<Pair zoom={100} />); settle();
     const repo = within(view.getByTestId("repo"));
     const service = within(view.getByTestId("service"));
     const repoFlow = repo.getByTestId("flow"), serviceFlow = service.getByTestId("flow");
@@ -76,7 +76,7 @@ describe("GraphPane keeps interface zoom separate from the library-owned camera"
     fireEvent.change(source, { target: { value: "unsaved text" } });
     fireEvent.click(repo.getByText("Pan and zoom A"));
     fireEvent.click(service.getByText("Pan and zoom B"));
-    for (const zoom of [1.5, 1]) {
+    for (const zoom of [150, 100]) {
       view.rerender(<Pair zoom={zoom} width={510} source />); settle();
       expect(repoFlow.dataset.camera).toBe("x:83,y:-41,zoom:1.73");
       expect(serviceFlow.dataset.camera).toBe("x:-62,y:27,zoom:0.81");
@@ -88,8 +88,8 @@ describe("GraphPane keeps interface zoom separate from the library-owned camera"
   });
 
   it("cannot overwrite a newer gesture with a late interface-zoom animation frame", () => {
-    const view = render(<Pair zoom={1} />); settle();
-    view.rerender(<Pair zoom={1.5} />); frame();
+    const view = render(<Pair zoom={100} />); settle();
+    view.rerender(<Pair zoom={150} />); frame();
     const repo = within(view.getByTestId("repo"));
     fireEvent.click(repo.getByText("Pan and zoom B"));
     frame();
@@ -102,11 +102,11 @@ describe("GraphPane keeps interface zoom separate from the library-owned camera"
     const service = within(view.getByTestId("service"));
     fireEvent.click(repo.getByText("Pan and zoom A"));
     fireEvent.click(service.getByText("Pan and zoom B"));
-    view.rerender(<Pair zoom={1.5} width={0} hidden />); frame();
-    view.rerender(<Pair zoom={1.1} width={0} hidden />); frame();
+    view.rerender(<Pair zoom={150} width={0} hidden />); frame();
+    view.rerender(<Pair zoom={125} width={0} hidden />); frame();
     fireEvent.click(repo.getByText("Pan and zoom B"));
-    view.rerender(<Pair zoom={1} width={510} />); settle();
-    view.rerender(<Pair zoom={1} width={900} source />); settle();
+    view.rerender(<Pair zoom={100} width={510} />); settle();
+    view.rerender(<Pair zoom={100} width={900} source />); settle();
     expect(repo.getByTestId("flow").dataset.camera).toBe("x:-62,y:27,zoom:0.81");
     expect(service.getByTestId("flow").dataset.camera).toBe("x:-62,y:27,zoom:0.81");
   });
@@ -125,7 +125,7 @@ describe("GraphPane keeps interface zoom separate from the library-owned camera"
     const selectedFocus = snapshot.graphs.find((graph) => graph.topologyId === "repo")!.nodes[0]!.focus;
     expect(selectedFocus).not.toEqual(snapshot.focus);
     expect(onFocus).toHaveBeenCalledWith(selectedFocus);
-    view.rerender(<Pair zoom={1.5} focus={selectedFocus} source />); settle();
+    view.rerender(<Pair zoom={150} focus={selectedFocus} source />); settle();
     expect(repo.getByTestId("flow")).toBe(flow);
     expect(flow.dataset.camera).toBe("x:83,y:-41,zoom:1.73");
   });

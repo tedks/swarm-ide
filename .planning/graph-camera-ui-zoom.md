@@ -11,7 +11,8 @@ Users can enlarge the interface without losing their place in either repository 
 - [x] (2026-09-06 06:40Z) Inspected the exact GraphPane cause and W3 measurements; created designated isolated worktree from reviewed e2f3da7.
 - [x] (2026-09-06 06:43Z) Proved all four targeted regressions red against unchanged GraphPane (554 existing tests passed); removed only the offending effect and unused ref/imports.
 - [x] (2026-09-06 06:48Z) Verified actual deliberate cameras/source/instances in owned X11: first scenario78.327s, cleanup1. Full24-target build/all8 uncached tests passed,558tests/49files; code review available-seat fixpoint CLEAN.
-- [ ] Complete exact aggregate gates after normally merging I2 PR24: full25-target build passed; all9 tests and final visibly framed camera capture running.
+- [x] (2026-09-06 07:04Z) Frozen I2 aggregate passed full25/all9/562tests50files; actual first source-mount proof85.907s and final clearer left/up-pan proof89.695s each passed with cleanup1. Inspected wide/high-zoom screenshots.
+- [ ] Repeat final local gates after normally merging reviewed P4 PR26 and using actual percent units in the test props; product GraphPane bytes are unchanged.
 - [ ] Complete provider-diverse council to fixpoint, normal PR landing, issue synchronization and owned-process cleanup.
 
 ## Surprises & Discoveries
@@ -22,6 +23,10 @@ The installed ReactFlow12.11.6 source confirms ordinary resize updates its width
 
 The first visual proof preserved exact cameras but began its deliberate gestures from a camera fitted before source navigation narrowed the panes, leaving parts of the scene offscreen at150%. That is consistent with the invariant, but weak visual communication. The final temporary proof explicitly Fits the source-open layout first, then makes real pan and graph-zoom gestures; it does not manufacture camera state or change product behavior.
 
+An aggregate smoke was invalidated by this child's own plan edit/commit while topology was building. The actual owned title reported Topology3:yellow, and the expected consistent-state wait timed out; cleanup completed. The worktree was then frozen and all9 tests passed, including the real topology smoke in68.2s. Keep even documentation commits outside these tests: working-world fingerprints intentionally include Git status/commit, not just compiled code. No product or harness bypass was made.
+
+Native evidence review caught a false distinction between mounting source and reopening an already-open source after service selection. The corrected scenario asserts the editor is absent, actually pans and wheel-zooms both graphs, opens source via command-palette input, and checks identical camera observations with the editor now mounted. It then retains editor identities for subsequent tests. A final repeat pans up/left to keep scene content visible through the smaller150% viewport. All earlier runs and their narrower claims remain identified in the evidence.
+
 ## Decision Log
 
 The invariant is exact preservation of each library-owned camera triple `{x, y, zoom}` in CSS coordinates relative to its graph pane. No anchor correction is necessary: interface zoom magnifies those CSS coordinates together with the rest of the interface. The visible extent can change with layout; preserving the camera does not promise that every formerly visible node remains visible. This avoids introducing a second camera state or parsing DOM transform strings in production. Date/author: 2026-09-06, W4.
@@ -30,7 +35,7 @@ Remove the interface-zoom-driven imperative fit and its now-unused instance ref,
 
 ## Outcomes & Retrospective
 
-The minimal removal fixed all four failing orchestration regressions, and actual owned X11 input confirmed independent deliberate cameras through interface zoom, compact panes, rapid resize and unsaved source work. Initial Fit, explicit Fit and source/service focus mapping remain available. Unit tests establish only application orchestration; the actual X11 proof establishes library/editor behavior. Aggregate landing remains in progress. No real agent or policy capability is involved.
+The minimal removal fixed all four failing orchestration regressions, and actual owned X11 input confirmed independent deliberate cameras through interface zoom, compact panes, rapid resize, first source mount and unsaved source work. Initial Fit, explicit Fit and source/service focus mapping remain available. Unit tests establish only application orchestration; the actual X11 proof establishes library/editor behavior. A smaller viewport can still crop a deliberately positioned scene; exact camera continuity is not automatic recentering or a promise to keep all nodes visible. No cross-session camera persistence or new configuration is added. Final reviewed-upstream aggregate landing remains in progress. No real agent or policy capability is involved.
 
 ## Context and Orientation
 
@@ -78,3 +83,5 @@ Keep ReactFlow and all existing prop/callback contracts unchanged. Add no packag
 Revision note: Initial plan states the invariant and failure modes before product code changes.
 
 Revision note2026-09-06: Recorded four red regressions, first green/local/actual-X11 evidence, source-backed initialization behavior, available-seat CLEAN review and the reason for improving the visibly framed acceptance baseline. Aggregate landing is explicitly still pending.
+
+Revision note2026-09-06 07:04Z: Recorded the contaminated smoke and frozen rerun, source-mount evidence correction, final visible-pan acceptance, honest viewport limitations and reviewed P4 aggregate gate. Test props now use100/125/150 percent units like App rather than normalized factors; camera values remain graph zoom, not interface zoom. Only the final aggregate and normal landing/cleanup checkboxes remain open.
