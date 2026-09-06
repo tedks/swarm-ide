@@ -38,6 +38,10 @@ log_events:
   who: Ted Smith
   what: blocks agent-run-write-authority
   comment: ""
+- time: 2026-09-06T02:41:38-00:00
+  who: Ted Smith
+  what: blocked by agent-run-effective-policy
+  comment: ""
 blocks:
 - first-real-agent-run-surface
 - agent-run-write-authority
@@ -45,3 +49,4 @@ blocked_by:
 - agent-run-runtime
 - agent-run-workbench
 - agent-run-context-evidence
+- agent-run-effective-policy
