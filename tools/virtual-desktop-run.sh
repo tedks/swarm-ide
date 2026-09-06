@@ -576,7 +576,74 @@ printf 'timestamp_ms\tphase\tpid\tsid\trss_kib\tpss_kib\tcommand\n' >"$artifact_
 resource_snapshot ready
 write_ownership_artifact
 
-scenario_timeout_seconds="${SWARM_SCENARIO_TIMEOUT_SECONDS:-120}"
+# Read only the known nested Bazel output tree for this workspace, never a
+# recursive log search or an environment dump. The tail deliberately retains
+# progress/timing lines, not compiler diagnostics (which can contain source).
+topology_build_diagnostics() {
+  "$timeout_bin" --signal=TERM --kill-after=1 3 "$node_bin" - \
+    "$workspace" "$runtime_dir/cache" "${TEST_TMPDIR:-}" "$app_session" "$app_start" <<'NODE'
+const fs = require('node:fs');
+const path = require('node:path');
+const crypto = require('node:crypto');
+const [workspace, cache, testTmp, session, start] = process.argv.slice(2);
+const safe = text => text.replace(/[^\x20-\x7e]/g, '?').slice(0, 512);
+const read = (name, limit, tail = false) => {
+  const fd = fs.openSync(name, fs.constants.O_RDONLY | fs.constants.O_NOFOLLOW | fs.constants.O_NONBLOCK);
+  try {
+    const stat = fs.fstatSync(fd);
+    if (!stat.isFile()) throw Error('not regular');
+    const bytes = Buffer.alloc(Math.min(limit, stat.size));
+    const count = fs.readSync(fd, bytes, 0, bytes.length, tail ? Math.max(0, stat.size - limit) : 0);
+    const text = bytes.subarray(0, count).toString('utf8');
+    // Only a tail starting after byte zero may begin mid-line.
+    if (tail && stat.size > limit) return text.includes('\n') ? text.slice(text.indexOf('\n') + 1) : '';
+    return text;
+  } finally { fs.closeSync(fd); }
+};
+const target = '//examples/checkout-world/services/fraudcheck:service_topology';
+console.log(`observed_at=${new Date().toISOString()} expected_target=${target}`);
+// /proc gives a session-local process observation, not authority to kill it.
+let count = 0;
+for (const entry of fs.readdirSync('/proc')) {
+  if (!/^\d+$/.test(entry) || count >= 64) continue;
+  try {
+    const raw = fs.readFileSync(`/proc/${entry}/stat`, 'utf8');
+    const fields = raw.slice(raw.lastIndexOf(')') + 2).trim().split(/\s+/);
+    if (fields[3] !== session || BigInt(fields[19]) < BigInt(start)) continue;
+    const comm = raw.slice(raw.indexOf('(') + 1, raw.lastIndexOf(')'));
+    console.log(`owned_pid=${entry} comm=${safe(comm)} state=${fields[0]} cpu_ticks=${Number(fields[11]) + Number(fields[12])}`);
+    count++;
+  } catch { /* process exited during observation */ }
+}
+const root = testTmp || path.join(cache, 'bazel');
+const user = require('node:os').userInfo().username;
+const base = path.join(root, `_bazel_${user}`, crypto.createHash('md5').update(workspace).digest('hex'));
+try {
+  // Refuse symlinks in the selected tree, including parents; no log outside
+  // the private test/cache root may be reached through indirection.
+  let current = '/';
+  for (const part of base.split('/').filter(Boolean)) {
+    current = path.join(current, part);
+    if (!fs.lstatSync(current).isDirectory() || fs.lstatSync(current).isSymbolicLink()) throw Error('unsafe tree');
+  }
+  console.log(`nested_output_base=${safe(base)}`);
+  const text = read(path.join(base, 'command.log'), 16384, true);
+  const lines = text.split('\n');
+  const progress = lines.filter(line => /^\[[\d,]+ \/ [\d,]+\] (Compiling|Linking|Generating|Extracting|\[Prepa\])/.test(line)
+    || /^INFO: (Elapsed time:|[0-9]+ processes:|Build completed|Found [0-9]+ target)/.test(line));
+  console.log(`phase=${/Compiling|Linking/.test(progress.join('\n')) ? 'toolchain-work-observed' : 'unclassified'}`);
+  console.log(`lock_wait_observed=${/Another command|Waiting for.*lock|waiting for it to complete/i.test(text)}`);
+  console.log(`error_line_observed=${/^ERROR:/m.test(text)}`);
+  for (const line of progress.slice(-20)) console.log(safe(line));
+} catch { console.log('nested_log=unavailable-or-unsafe'); }
+NODE
+}
+
+default_scenario_timeout_seconds=120
+# Only topology verification includes a measured cold compiler bootstrap plus
+# a separate incremental build. Other scenarios keep their existing deadline.
+if [[ "$scenario_name" == desktop-smoke ]]; then default_scenario_timeout_seconds=420; fi
+scenario_timeout_seconds="${SWARM_SCENARIO_TIMEOUT_SECONDS:-$default_scenario_timeout_seconds}"
 [[ "$scenario_timeout_seconds" =~ ^[1-9][0-9]*$ ]] || { fail "scenario timeout must be positive seconds"; exit 2; }
 scenario_started_ms=$(now_ms)
 begin_ownership_registration
@@ -604,12 +671,19 @@ scenario_status=$?
 set -e
 scenario_elapsed_ms=$(( $(now_ms) - scenario_started_ms ))
 resource_snapshot complete
+topology_build_diagnostics >"$artifact_dir/topology-build.txt" 2>&1 || \
+  log "bounded topology diagnostics unavailable"
 cat "$artifact_dir/scenario.log"
 if (( scenario_status != 0 )); then
+  # Capture before teardown, through the same exact-owned-window checks used
+  # by the scenario. Capture failure must never hide the original test result.
+  "$timeout_bin" --signal=TERM --kill-after=1 3 bash -c \
+    'source "$SWARM_X11_DRIVER_PATH"; swarm_window_capture "$1"' _ \
+    "$artifact_dir/failure.png" || log "failure screenshot unavailable"
   if (( scenario_status == 124 || scenario_status == 137 )); then
-    fail "scenario timed out after ${scenario_timeout_seconds}s"
+    fail "scenario timed out after ${scenario_timeout_seconds}s" || true
   else
-    fail "scenario exited with status $scenario_status"
+    fail "scenario exited with status $scenario_status" || true
   fi
   exit "$scenario_status"
 fi

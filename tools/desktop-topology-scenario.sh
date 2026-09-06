@@ -84,9 +84,10 @@ if [[ "$yellow_title" != *"Graphs"* ]]; then
   echo "yellow state left the graph surface unexpectedly: $yellow_title" >&2
   exit 4
 fi
-# The owned desktop has an isolated, initially cold Bazel cache. Hosted builds
-# need more startup time; keep the same state assertion and a bounded deadline.
-swarm_window_wait_title "Consistent" present 90000
+# Cold CI recompiles protobuf/protoc in the isolated nested cache (197 actions;
+# hosted evidence was still compiling action80 at90s, outer cold build264s).
+# Budget initial preparation separately; never spend this budget on hot rebuilds.
+swarm_window_wait_title "Consistent" present 360000
 swarm_window_wait_title "FraudCheck visible"
 green_ms=$(( $(date +%s%3N) - build_started_ms ))
 green_title=$(swarm_window_title)
@@ -95,6 +96,27 @@ if [[ "$green_title" != *"Consistent"* ]]; then
   exit 4
 fi
 capture_window "$artifact_dir/reconciled.png"
+
+# Rebuild the same working world through the UI, not a differently warmed input.
+# A warm no-op can finish before a yellow frame is sampled. Require the next
+# persistent green epoch instead, scoped to this same core/document lifetime.
+before_epoch=$(sed -n 's/.* — Topology \([0-9][0-9]*\):green.*/\1/p' <<<"$green_title")
+before_lifetime=$(sed -n 's/.* — Core \([0-9][0-9]*\):ready — Doc \([0-9][0-9]*\).*/\1:\2/p' <<<"$green_title")
+if [[ -z "$before_epoch" || -z "$before_lifetime" ]]; then
+  echo "missing initial topology epoch or core/document identity" >&2
+  exit 4
+fi
+run_command "Build repository service topology"
+incremental_started_ms=$last_command_submitted_ms
+swarm_window_wait_title "Topology $((before_epoch + 1)):green" present 30000
+incremental_title=$(swarm_window_title)
+after_lifetime=$(sed -n 's/.* — Core \([0-9][0-9]*\):ready — Doc \([0-9][0-9]*\).*/\1:\2/p' <<<"$incremental_title")
+if [[ "$after_lifetime" != "$before_lifetime" || "$incremental_title" != *" — Consistent — "* ]]; then
+  echo "incremental build lost its consistent core/document lifetime" >&2
+  exit 4
+fi
+swarm_window_wait_title "FraudCheck visible"
+incremental_ms=$(( $(date +%s%3N) - incremental_started_ms ))
 
 run_command "Open FraudCheck implementation"
 swarm_window_wait_title "Source fraudcheck.ts"
@@ -124,6 +146,7 @@ echo "renderer_marker=$SWARM_RENDERER_PROCESS_ARGUMENT"
 echo "window_title=$(swarm_window_title)"
 echo "click_to_yellow_ms=$yellow_ms"
 echo "click_to_green_ms=$green_ms"
+echo "incremental_to_green_ms=$incremental_ms"
 echo "changed_pixels=$changed_pixels"
 echo "artifacts=$artifact_dir"
 identify "$artifact_dir/before.png" "$artifact_dir/reconciled.png" "$artifact_dir/fraudcheck-source.png" "$artifact_dir/fraudcheck-contract.png" "$artifact_dir/returned-to-graphs.png"
