@@ -33,6 +33,15 @@ log_events:
   who: Ted Smith
   what: blocked by agent-run-runtime-r1
   comment: ""
+- time: 2026-09-06T03:18:06-00:00
+  who: Ted Smith
+  what: commented
+  comment: R1 complete; R2/R3 remain. Adapter reuses landed E1 validateCodexThreadPolicy;
+    current unavailablePolicyCapabilities still blocks real launch. R2 must compose
+    revalidation + durable admission/steer receipts + service/store/owned cleanup
+    through R0 bridge, after ROOT restart-drain decision. Model-specific reasoning
+    control evidence separately agent-run-model-capabilities. W2 needs R2 normalized
+    Run/snapshot/read/event service, not new R1 renderer contracts.
 blocks:
 - agent-run-vertical-proof
 blocked_by:
