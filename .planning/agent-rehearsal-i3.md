@@ -25,7 +25,7 @@ desktop without an explicit human launch choice.
 - [x] (2026-09-06 07:24Z) Actual ordinary-UI four-run proof passed26.058s on owned virtual X11, cleanup_complete=1; final disk/zero-timer validator passed after ordinary active close.
 - [x] (2026-09-06) Native OpenAI and foreign Google convergence CLEAN; Anthropic actual session-limit unavailable, not approval. Final evidence-label nit independently verified at657c4d6.
 - [x] (2026-09-06 07:43Z) ROOT-cleared T0/W4 aggregatea218277 included atb67d1ec. Final executable4bba518 passed full29-target build, all10 uncached local targets and716 tests across57 files; actual rehearsal27.6s target/cleanup1.
-- [ ] Complete local gates, provider-diverse review, Ditz, normal merge and reviewed integration.
+- [x] (2026-09-06 07:51Z) Complete all relevant local gates and provider-diverse review: native/Google CLEAN, Anthropic full review600s timeout without verdict after earlier actual session limits. Final normal PR/Ditz/integration transaction is recorded by PR29 and the executive handoff, not inferred from local readiness.
 
 ## Surprises & Discoveries
 
@@ -98,7 +98,8 @@ older I1 journey5.3 seconds and I2 external process proof3.6 seconds also passed
 The latest runfiles and native-focus fix deltas each converged CLEAN in native
 OpenAI and foreign Google; Anthropic's earlier actual session limit was missing,
 not approval. A full own-PR Anthropic review was requested after its reset and
-its final disposition belongs in the PR review record. Source/code contracts
+it timed out after600 seconds without a verdict, so that seat remains missing,
+not approval. The exact disposition is in the PR review record. Source/code contracts
 match the reviewed aggregate; accounting-only updates are checked inline.
 Normal PR merge and sole-owned integration landing are recorded in the PR and
 sanitized executive handoff. No model readiness, hosted success or watched-master
