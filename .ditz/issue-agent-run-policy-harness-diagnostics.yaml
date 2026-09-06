@@ -37,3 +37,9 @@ log_events:
     Exact merged framework0 all7 local targets/450tests and26 independent boundary
     checks passed. P3 owns bounded sanitized diagnostic and separate deterministic
     hosted-boundary followup; no skipping required checks or production availability.'
+- time: 2026-09-06T05:21:50-00:00
+  who: Ted Smith
+  what: blocked by agent-run-policy-hosted-boundary-failure
+  comment: ""
+blocked_by:
+- agent-run-policy-hosted-boundary-failure
