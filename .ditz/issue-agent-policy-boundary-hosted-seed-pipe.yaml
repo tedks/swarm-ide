@@ -128,6 +128,16 @@ log_events:
   who: Ted Smith
   what: blocked by hosted-linux-prerequisites-c2
   comment: ""
+- time: 2026-09-06T14:31:45-00:00
+  who: Ted Smith
+  what: commented
+  comment: 'PR33 normally merged dbe457d (topic9fe367d, executableba3f688), reviewed
+    stopping boundary delivered: exact hosted enforced userns profile/UID map and
+    private-loopback EPERM; no older security baseline or host toggles. All11 frozen
+    local targets and available-provider council passed. Hosted support NOT solved;
+    parent and blocked process/diagnostic obligations remain open. Operator-reviewed
+    runner accommodation and actual unchanged hosted proofs required. Exact normal-merge
+    regression recheck is underway before child handoff.'
 blocks:
 - agent-run-owned-process-hosted-proof
 - agent-run-policy-harness-diagnostics
