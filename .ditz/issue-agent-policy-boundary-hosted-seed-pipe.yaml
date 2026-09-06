@@ -138,6 +138,14 @@ log_events:
     parent and blocked process/diagnostic obligations remain open. Operator-reviewed
     runner accommodation and actual unchanged hosted proofs required. Exact normal-merge
     regression recheck is underway before child handoff.'
+- time: 2026-09-06T15:20:51-00:00
+  who: Ted Smith
+  what: commented
+  comment: 'PARKED/NON-BLOCKING by explicit user directive2026-09-06: local verification
+    is sole landing authority for this roadmap. No further hosted waiting/diagnosis/repair
+    work. Existing hosted failure evidence retained; this is not fixed/green. No active
+    roadmap dependency on hosted acceptance; local isolation proofs still mandatory.
+    See roadmap-local-gates.'
 blocks:
 - agent-run-owned-process-hosted-proof
 - agent-run-policy-harness-diagnostics
