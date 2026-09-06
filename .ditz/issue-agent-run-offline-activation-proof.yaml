@@ -62,9 +62,14 @@ log_events:
     remote/persisted state, telemetry and credentialed equivalence unproved. Independent
     observer parent remains open. Actual merge600tests/all9/full25 and both manual
     targets pass. No real model/product authority.'
+- time: 2026-09-06T07:25:18-00:00
+  who: Ted Smith
+  what: blocked by agent-run-sessionstart-policy-p5
+  comment: ""
 blocks:
 - agent-run-effective-policy
 blocked_by:
 - agent-run-policy-activation-p3
 - agent-run-policy-independent-observer
 - agent-run-plugin-mcp-policy-p4
+- agent-run-sessionstart-policy-p5
