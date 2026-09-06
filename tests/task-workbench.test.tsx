@@ -77,7 +77,9 @@ function showDetails() {
   fireEvent.click(within(document.getElementById("information-panel")!).getByRole("button", { name: "Show task details" }));
 }
 function reveal(path: string, line: number | null) {
-  fireEvent.click(screen.getByRole("button", { name: `Reveal working file ${path}${line === null ? "" : ` at line ${line}`}` }));
+  const button = screen.getByRole("button", { name: `Reveal working file ${path}${line === null ? "" : ` at line ${line}`}` });
+  act(() => button.focus());
+  fireEvent.click(button);
 }
 
 describe("task inspection in the source cockpit", () => {
@@ -236,11 +238,47 @@ describe("task inspection in the source cockpit", () => {
     reveal(source, 2);
     await screen.findByText(`Opening working file ${source}…`);
     fireEvent.pointerDown(document.querySelector(".source-surface")!);
-    await screen.findByText(/Reveal superseded by source navigation/);
+    await screen.findByText(/Reveal superseded by a newer interaction/);
     const before = test.request.mock.calls.length;
     await act(async () => { finish(); });
     expect(test.request.mock.calls.slice(before).some(([input]) => input.type === "focus.select")).toBe(false);
     expect(editor.state.selection.main.head).toBe(0);
+    expect(screen.queryByText(`Opening working file ${source}…`)).toBeNull();
+  });
+
+  it.each([
+    ["draft", "success"], ["draft", "failure"],
+    ["palette", "success"], ["palette", "failure"],
+  ] as const)("retains newer %s input when a delayed Reveal ends in %s", async (destination, outcome) => {
+    const test = setup(); render(<App />); const editor = await openSource();
+    fireEvent.click(screen.getByRole("button", { name: "Ask an agent about this focus" }));
+    const draft = screen.getByLabelText("Task") as HTMLTextAreaElement;
+    await selectTask();
+    const original = test.request.getMockImplementation()!;
+    let finish!: () => void;
+    test.request.mockImplementation((input) => input.type === "file.read" ? new Promise((resolve) => {
+      finish = () => { if (outcome === "success") void original(input).then(resolve);
+        else resolve({ protocolVersion: PROTOCOL_VERSION, requestId: input.requestId, ok: false,
+          error: { code: "FILE_NOT_FOUND", message: "Deleted during read" } }); };
+    }) : original(input));
+    reveal(source, 2); await screen.findByText(`Opening working file ${source}…`);
+    if (destination === "draft") {
+      act(() => draft.focus());
+      fireEvent.change(draft, { target: { value: "Newer agent instruction, still unsent" } });
+    } else {
+      // Revoke synchronously at the shortcut, before its deferred input focus.
+      fireEvent.keyDown(window, { key: "k", ctrlKey: true });
+    }
+    const before = test.request.mock.calls.length;
+    await act(async () => { finish(); });
+    const target = destination === "draft" ? draft : screen.getByPlaceholderText("Navigate or apply intelligence…");
+    await waitFor(() => expect(document.activeElement).toBe(target));
+    if (destination === "palette") fireEvent.change(target, { target: { value: "Newer palette search" } });
+    expect((target as HTMLInputElement).value).toBe(destination === "draft" ? "Newer agent instruction, still unsent" : "Newer palette search");
+    expect(EditorView.findFromDOM(document.querySelector(".cm-editor")!)).toBe(editor);
+    expect(editor.state.doc.toString()).toBe("one\ntwo\nthree\n");
+    expect(editor.state.selection.main.head).toBe(0);
+    expect(test.request.mock.calls.slice(before).some(([input]) => input.type === "focus.select" || input.type.startsWith("agent.") || input.type === "file.write")).toBe(false);
     expect(screen.queryByText(`Opening working file ${source}…`)).toBeNull();
   });
 

@@ -86,7 +86,8 @@ export class TaskBridgeClient {
         this.markDisconnected(`TASK_RECONNECT_REQUIRED: ${safeMessage(next.core.message)}`);
       }
       const reconnect = ready && !this.state.connected;
-      this.update({ connected: ready, ...(!ready ? { notice: `CORE_UNAVAILABLE: ${safeMessage(next.core.message)}` } : {}) });
+      this.update({ connected: ready, ...(!ready ? { notice: `CORE_UNAVAILABLE: ${safeMessage(next.core.message)}` }
+        : reconnect ? { notice: null } : {}) });
       if (reconnect) this.resumeVisible();
     };
     const offStatus = lifecycle?.onStatus((value) => { statusEvents++; status(value); });

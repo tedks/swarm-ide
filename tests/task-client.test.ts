@@ -333,6 +333,28 @@ describe("TaskBridgeClient connection and store lifetime", () => {
     h.status(h.ready(3, "failed", 3)); expect(h.client.getSnapshot().connected).toBe(true);
   });
 
+  it("does not claim reconnect failure during the first pending ready scan", async () => {
+    const h = harness(true); h.client.setVisible(true); h.status(h.ready(1));
+    expect(h.client.getSnapshot()).toMatchObject({ connected: true, refreshing: true, notice: null, observation: null });
+    await vi.advanceTimersByTimeAsync(9000);
+    expect(h.calls).toHaveLength(1);
+    expect(h.client.getSnapshot().notice).toBeNull();
+    h.snapshot(); await drain(); expect(h.client.getSnapshot().refreshing).toBe(false);
+  });
+
+  it.each(["same generation", "new generation"])("retains stale revision evidence but clears obsolete connection notices during %s recovery", async (kind) => {
+    const h = harness(true); h.client.setVisible(true); h.status(h.ready(1)); h.snapshot(); await drain();
+    const retained = h.client.getSnapshot().observation!.snapshot;
+    h.status(h.ready(1, "draining", 2));
+    expect(h.client.getSnapshot().notice).toContain("CORE_UNAVAILABLE");
+    h.status(h.ready(kind === "same generation" ? 1 : 2, "ready", 3));
+    expect(h.client.getSnapshot()).toMatchObject({ connected: true, refreshing: true, notice: null,
+      observation: { status: "stale", snapshot: retained, reason: { code: "TASK_RECONNECT_REQUIRED" } } });
+    await vi.advanceTimersByTimeAsync(9000);
+    expect(h.client.getSnapshot().notice).toBeNull();
+    expect(h.calls).toHaveLength(2);
+  });
+
   it("retains stale selected data across a core replacement and rejects pending detail before recovery", async () => {
     const h = harness(true); h.client.setVisible(true); h.status(h.ready(1)); h.snapshot(); await drain();
     h.client.select("task-fixture"); h.read(); await drain(); h.client.select("task-fixture"); const old = h.latest("tasks.read");

@@ -121,6 +121,7 @@ export function App() {
   const [sourceNavigation, setSourceNavigation] = useState<(SourceLineNavigation & { path: string }) | null>(null);
   const editorMemories = useRef(new Map<string, EditorMemory>());
   const navigationIntent = useRef(0);
+  const pendingRevealIntent = useRef<number | null>(null);
   const mounted = useRef(false);
   useEffect(() => { mounted.current = true; return () => { mounted.current = false; ++navigationIntent.current; }; }, []);
   const [commandQuery, setCommandQuery] = useState("");
@@ -195,6 +196,13 @@ export function App() {
   const reportRevealFailure = useCallback((message: string) => {
     setRevealNotice(message);
     setNoticeFocusRequest(navigationIntent.current);
+  }, []);
+  const interruptPendingReveal = useCallback(() => {
+    if (pendingRevealIntent.current === null) return;
+    pendingRevealIntent.current = null;
+    ++navigationIntent.current;
+    setRevealNotice((notice) => notice.startsWith("Opening working file")
+      ? "Reveal superseded by a newer interaction; previous source retained." : notice);
   }, []);
   useLayoutEffect(() => {
     if (sourceInfoFocusRequest && sourceInfoFocusRequest === navigationIntent.current) sourceInformationHeading.current?.focus();
@@ -522,58 +530,65 @@ export function App() {
   const revealTaskReference = useCallback(async (ref: TaskFileRef) => {
     if (!validTaskReference(ref)) { reportRevealFailure("Unsupported reference: only canonical relative working-file paths can be revealed."); return; }
     const intent = ++navigationIntent.current;
-    const coreGeneration = coreGenerationRef.current;
-    const prior = fileTabsRef.current.find((tab) => tab.path === ref.path);
-    setRevealNotice(`Opening working file ${ref.path}…`);
-    let tab = prior;
-    if (prior && !protectsBuffer(prior)) {
-      if (prior.status === "loading") { reportRevealFailure("Source observation is already in progress; Reveal again when it settles."); return; }
-      const openGeneration = openGenerationsRef.current.get(ref.path);
-      const eventSequenceBeforeRead = fileEventsRef.current.get(ref.path)?.sequence ?? 0;
-      if (prior.status === "error") {
-        const watch = await invoke({ type: "file.watch", requestId: requestId(), protocolVersion: PROTOCOL_VERSION, path: ref.path });
-        if (intent !== navigationIntent.current || coreGeneration !== coreGenerationRef.current) return;
-        if (!watch?.ok) { reportRevealFailure(watch && !watch.ok ? `${watch.error.code}: ${watch.error.message}` : "CORE_UNAVAILABLE: source observation interrupted."); return; }
+    pendingRevealIntent.current = intent;
+    try {
+      const coreGeneration = coreGenerationRef.current;
+      const prior = fileTabsRef.current.find((tab) => tab.path === ref.path);
+      setRevealNotice(`Opening working file ${ref.path}…`);
+      let tab = prior;
+      if (prior && !protectsBuffer(prior)) {
+        if (prior.status === "loading") { reportRevealFailure("Source observation is already in progress; Reveal again when it settles."); return; }
+        const openGeneration = openGenerationsRef.current.get(ref.path);
+        const eventSequenceBeforeRead = fileEventsRef.current.get(ref.path)?.sequence ?? 0;
+        if (prior.status === "error") {
+          const watch = await invoke({ type: "file.watch", requestId: requestId(), protocolVersion: PROTOCOL_VERSION, path: ref.path });
+          if (intent !== navigationIntent.current || coreGeneration !== coreGenerationRef.current) return;
+          if (!watch?.ok) { reportRevealFailure(watch && !watch.ok ? `${watch.error.code}: ${watch.error.message}` : "CORE_UNAVAILABLE: source observation interrupted."); return; }
+        }
+        const response = await invoke({ type: "file.read", requestId: requestId(), protocolVersion: PROTOCOL_VERSION, path: ref.path });
+        if (intent !== navigationIntent.current || coreGeneration !== coreGenerationRef.current ||
+            openGenerationsRef.current.get(ref.path) !== openGeneration || !desiredFilesRef.current.has(ref.path)) return;
+        if (!response?.ok || response.file?.kind !== "read") {
+          reportRevealFailure(response && !response.ok ? `${response.error.code}: ${response.error.message}` : "CORE_UNAVAILABLE: source read was interrupted."); return;
+        }
+        const file = response.file;
+        const current = fileTabsRef.current.find((item) => item.path === ref.path);
+        if (!current) return;
+        if (protectsBuffer(current)) tab = current;
+        else {
+          const latest = fileEventsRef.current.get(ref.path);
+          if (latest && latest.sequence > eventSequenceBeforeRead && latest.revision !== file.revision) { reportRevealFailure("Working file changed during Reveal; existing source and cursor retained. Try again after observation settles."); return; }
+          tab = { ...current, content: file.content, savedContent: file.content, revision: file.revision, status: "saved", message: "Watching the working file", flash: null };
+          const updated = tab;
+          fileTabsRef.current = fileTabsRef.current.map((item) => item.path === ref.path ? updated : item);
+          setFileTabs((tabs) => tabs.map((item) => item.path === ref.path ? updated : item));
+        }
+      } else if (!prior) tab = await openFile(ref.path, false, true) ?? undefined;
+      // A rejected candidate is not an opened source tab. Drop only this new,
+      // still-empty background failure, never an existing or activated buffer.
+      const failedBackground = fileTabsRef.current.find((item) => item.path === ref.path);
+      if (mounted.current && coreGeneration === coreGenerationRef.current && !prior && tab?.status === "error" && !tab.revision && failedBackground?.status === "error" &&
+          !failedBackground.revision && !protectsBuffer(failedBackground) && activeSurfaceRef.current !== ref.path) {
+        desiredFilesRef.current.delete(ref.path);
+        openGenerationsRef.current.set(ref.path, (openGenerationsRef.current.get(ref.path) ?? 0) + 1);
+        openingFilesRef.current.delete(ref.path);
+        fileTabsRef.current = fileTabsRef.current.filter((item) => item.path !== ref.path);
+        setFileTabs((tabs) => tabs.filter((item) => item.path !== ref.path));
+        void invoke({ type: "file.unwatch", requestId: requestId(), protocolVersion: PROTOCOL_VERSION, path: ref.path });
       }
-      const response = await invoke({ type: "file.read", requestId: requestId(), protocolVersion: PROTOCOL_VERSION, path: ref.path });
-      if (intent !== navigationIntent.current || coreGeneration !== coreGenerationRef.current ||
-          openGenerationsRef.current.get(ref.path) !== openGeneration || !desiredFilesRef.current.has(ref.path)) return;
-      if (!response?.ok || response.file?.kind !== "read") {
-        reportRevealFailure(response && !response.ok ? `${response.error.code}: ${response.error.message}` : "CORE_UNAVAILABLE: source read was interrupted."); return;
+      if (intent !== navigationIntent.current || coreGeneration !== coreGenerationRef.current) return;
+      if (!tab || !tab.revision || tab.status === "error" && !protectsBuffer(tab)) {
+        reportRevealFailure(tab?.message ?? "CORE_UNAVAILABLE: source opening was interrupted; previous source retained."); return;
       }
-      const file = response.file;
-      const current = fileTabsRef.current.find((item) => item.path === ref.path);
-      if (!current) return;
-      if (protectsBuffer(current)) tab = current;
-      else {
-        const latest = fileEventsRef.current.get(ref.path);
-        if (latest && latest.sequence > eventSequenceBeforeRead && latest.revision !== file.revision) { reportRevealFailure("Working file changed during Reveal; existing source and cursor retained. Try again after observation settles."); return; }
-        tab = { ...current, content: file.content, savedContent: file.content, revision: file.revision, status: "saved", message: "Watching the working file", flash: null };
-        const updated = tab;
-        fileTabsRef.current = fileTabsRef.current.map((item) => item.path === ref.path ? updated : item);
-        setFileTabs((tabs) => tabs.map((item) => item.path === ref.path ? updated : item));
-      }
-    } else if (!prior) tab = await openFile(ref.path, false, true) ?? undefined;
-    // A rejected candidate is not an opened source tab. Drop only this new,
-    // still-empty background failure, never an existing or activated buffer.
-    const failedBackground = fileTabsRef.current.find((item) => item.path === ref.path);
-    if (mounted.current && coreGeneration === coreGenerationRef.current && !prior && tab?.status === "error" && !tab.revision && failedBackground?.status === "error" &&
-        !failedBackground.revision && !protectsBuffer(failedBackground) && activeSurfaceRef.current !== ref.path) {
-      desiredFilesRef.current.delete(ref.path);
-      openGenerationsRef.current.set(ref.path, (openGenerationsRef.current.get(ref.path) ?? 0) + 1);
-      openingFilesRef.current.delete(ref.path);
-      fileTabsRef.current = fileTabsRef.current.filter((item) => item.path !== ref.path);
-      setFileTabs((tabs) => tabs.filter((item) => item.path !== ref.path));
-      void invoke({ type: "file.unwatch", requestId: requestId(), protocolVersion: PROTOCOL_VERSION, path: ref.path });
+      const target = taskLineTarget(tab, ref.line);
+      activateFile(ref.path);
+      setRevealNotice(target.notice);
+      setSourceNavigation({ path: ref.path, content: tab.content, line: target.line, nonce: intent, focus: true });
+    } finally {
+      // An explicit handoff after completion is not a competing interaction.
+      // Never clear a newer Reveal's token when an older read finally settles.
+      if (pendingRevealIntent.current === intent) pendingRevealIntent.current = null;
     }
-    if (intent !== navigationIntent.current || coreGeneration !== coreGenerationRef.current) return;
-    if (!tab || !tab.revision || tab.status === "error" && !protectsBuffer(tab)) {
-      reportRevealFailure(tab?.message ?? "CORE_UNAVAILABLE: source opening was interrupted; previous source retained."); return;
-    }
-    const target = taskLineTarget(tab, ref.line);
-    activateFile(ref.path);
-    setRevealNotice(target.notice);
-    setSourceNavigation({ path: ref.path, content: tab.content, line: target.line, nonce: intent, focus: true });
   }, [activateFile, invoke, openFile, reportRevealFailure]);
 
   const closeFile = useCallback((path: string) => {
@@ -726,7 +741,7 @@ export function App() {
         if (zoomAction === "reset") void resetZoom();
         return;
       }
-      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "k") { event.preventDefault(); setPaletteOpen((open) => !open); }
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "k") { event.preventDefault(); interruptPendingReveal(); setPaletteOpen((open) => !open); }
       if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "w") {
         event.preventDefault();
         if (activeSurface !== "graphs") closeFile(activeSurface);
@@ -736,7 +751,7 @@ export function App() {
     };
     window.addEventListener("keydown", listener);
     return () => window.removeEventListener("keydown", listener);
-  }, [activeSurface, closeFile, resetZoom, zoomIn, zoomOut]);
+  }, [activeSurface, closeFile, interruptPendingReveal, resetZoom, zoomIn, zoomOut]);
 
   useEffect(() => {
     if (paletteOpen) { setCommandQuery(""); requestAnimationFrame(() => commandInput.current?.focus()); }
@@ -809,7 +824,7 @@ export function App() {
 
   if (!snapshot) return <main className="loading-screen"><div className="loading-mark hmr-probe" />Opening the working world…{error ? <strong>{error}</strong> : null}<small>{lifecycleNotice}</small><AgentReloadGuard state={liveAgents} client={agentClient} /></main>;
   return (
-    <main className="workbench" data-compact-panel={compactPanel ?? "none"} style={agents.selected || liveAgents.paneOpen ? { gridTemplateRows: `var(--topbar-height) minmax(0, 1fr) calc(160px + (clamp(180px, 40vh, 448px) - 160px) * ${Math.min(1, Math.max(0, ((liveAgents.paneOpen ? liveAgents.height : agentPaneHeight) - 230) / 190))})` } : undefined}>
+    <main className="workbench" onPointerDownCapture={interruptPendingReveal} onFocusCapture={interruptPendingReveal} data-compact-panel={compactPanel ?? "none"} style={agents.selected || liveAgents.paneOpen ? { gridTemplateRows: `var(--topbar-height) minmax(0, 1fr) calc(160px + (clamp(180px, 40vh, 448px) - 160px) * ${Math.min(1, Math.max(0, ((liveAgents.paneOpen ? liveAgents.height : agentPaneHeight) - 230) / 190))})` } : undefined}>
       <header className="topbar">
         <div className="product-mark"><span className="hmr-probe" />swarm</div>
         <nav className="lens-tabs" aria-label="Workspace lenses">{lensTabs.map((lens) => <button key={lens} className={activeLens === lens ? "active" : ""} onClick={() => setActiveLens(lens)}>{lens}</button>)}</nav>
@@ -854,7 +869,7 @@ export function App() {
             {activeFile.revision ? <EditorPane key={activeFile.path} content={activeFile.content} flash={activeFile.flash}
               memory={(() => { let memory = editorMemories.current.get(activeFile.path); if (!memory) { memory = { state: null }; editorMemories.current.set(activeFile.path, memory); } return memory; })()}
               navigation={sourceNavigation?.path === activeFile.path ? sourceNavigation : null}
-              onNavigation={(nonce, applied) => { setSourceNavigation((current) => current?.nonce === nonce ? null : current); if (!applied) reportRevealFailure("Working buffer changed before line navigation; cursor retained. Reveal again after reconciling source."); }} onChange={(content) => {
+              onNavigation={(nonce, applied) => { setSourceNavigation((current) => current?.nonce === nonce ? null : current); if (!applied) reportRevealFailure("Working buffer changed before Reveal navigation; cursor retained. Reveal again after reconciling source."); }} onChange={(content) => {
               const update = (tab: FileTab): FileTab => {
               if (tab.path !== activeFile.path) return tab;
               const unresolved = ["conflict", "unknown", "error"].includes(tab.status);
