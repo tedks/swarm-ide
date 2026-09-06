@@ -50,6 +50,14 @@ log_events:
   who: Ted Smith
   what: blocked by agent-run-runtime-r2-vertical
   comment: ""
+- time: 2026-09-06T04:29:45-00:00
+  who: Ted Smith
+  what: commented
+  comment: 'R2 delivered in PR #16: durable state, owned namespace lifetime, ROOT
+    1000 ms restart-ack decision, real prepare/history and disabled production execution.
+    Follow-up agent-run-runtime-r2-vertical plus E2 virtual journey must prove explicit
+    test-only worker-to-W2 lifecycle; policy remains unavailable and ROOT owns adoption.
+    No real model turn.'
 blocks:
 - agent-run-vertical-proof
 blocked_by:
