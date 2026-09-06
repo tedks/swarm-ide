@@ -17,8 +17,8 @@ and changes only the measured failing boundary. No agent or watched-app work.
 - [x] (2026-09-06 04:40Z) Read prior evidence, harness and provider; created the designated C1 worktree and Ditz slice.
 - [x] (2026-09-06 04:56Z) Direct hosted evidence: at90s, nested protobuf compilation progressed50→80/197 actions with3 jobs; no observed lock wait/error. Owned failure screenshot retained.
 - [x] (2026-09-06 04:57Z) Add bounded progress/owned-process diagnostics, failure screenshot and original exit-code preservation; fix nested concurrency to3. Separate360s cold preparation from30s incremental proof, topology-only420s outer deadline.
-- [ ] Verify the cold/hot scenario change and complete local gates.
-- [ ] Run local gates, provider-diverse council and normal PR landing; retain actual hosted status.
+- [x] (2026-09-06 05:09Z) Final code2df26ea:22-target build,464 quality tests/41 files, all7 uncached Bazel targets, owned virtual cold59.567s/hot214ms and HMR46ms; cleanup_complete=1.
+- [x] (2026-09-06 05:09Z) Native OpenAI and foreign Google final fixpoint CLEAN; Anthropic unavailable after600s, not approval. PR19 records normal landing transaction and subsequent CI status.
 
 ## Surprises & Discoveries
 
@@ -66,14 +66,26 @@ The cold scenario still observes yellow. No state, IPC or lifecycle behavior
 was added. Reviewed upstream R2/W2B/P2 merge c52f959 was integrated cleanly for
 combined final verification; only C1's delta is new review material.
 
+Decision (2026-09-06 05:06Z, C1): the title suffix is conditional on a snapshot;
+loading has no topology evidence yet. Native convergence and TypeScript caught
+an initial null dereference. Dedicated delayed-initial-snapshot and retained-
+navigation tests now distinguish absent from historical data.
+
 ## Outcomes & Retrospective
 
 
-Direct cold-compilation diagnosis is complete. The pre-race-fix3d5daf5 passed
-19-target build/all5 tests and virtual smoke67.1s; owned HMR measured16ms with
-cleanup_complete=1. These are not final-head evidence: final combined gates and
-fix convergence remain in progress. Ditz `virtual-desktop-cold-build-c1` blocks
-`virtual-desktop-ci-timeout`; the parent remains open until actual resolution.
+Direct cold-compilation diagnosis and the implementation are complete. Hosted
+run34012788098 on timing-change3d5daf5 PASSED: cold232.021s, hot629ms, cleanup1.
+This verifies the formerly failing90s cold gate, not final-head hosted acceptance.
+Final combined executable code2df26ea passed22-target build,464 quality tests
+in41 files, all7 uncached Bazel tests, owned virtual cold59.567s/hot214ms and
+HMR46ms; hostile inherited DISPLAY was ignored and cleanup completed. Both
+available council seats converged CLEAN; Anthropic was unavailable. The parent
+issue's closure and normal merge are recorded by Ditz/PR19, not predicted here.
+Exact-final hosted verification remains separate (run34013205311 at publication).
+Cold compilation is still expensive; safe cache reuse is follow-up work, not
+claimed as an optimization in this slice. Occupied-port failure remains a
+separate tracked observation. Master/app adoption remains ROOT-controlled.
 
 ## Context and Orientation
 
@@ -149,3 +161,7 @@ then calibrate only initial preparation while adding a real incremental check.
 Revision (2026-09-06 05:02Z): replace timing-sensitive hot yellow observation
 with persistent fresh-epoch evidence scoped to core/document lifetime, record
 ROOT's narrow title approval and reviewed upstream integration.
+
+Revision (2026-09-06 05:09Z): record final executable-head local verification,
+available-seat convergence, null-startup regression and actual hosted acceptance
+of the cold calibration, without conflating it with final-head remote status.
