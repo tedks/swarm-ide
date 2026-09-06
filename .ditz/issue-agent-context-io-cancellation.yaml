@@ -15,3 +15,14 @@ log_events:
   who: Ted Smith
   what: created
   comment: ""
+- time: 2026-09-06T03:00:48-00:00
+  who: Ted Smith
+  what: commented
+  comment: E1 bounded5s/30s waits prevent late observation from publishing a draft
+    but do not cancel arbitrary trusted callbacks or kernel I/O. ROOT-authorized core/files.ts
+    O_NONBLOCK fixes direct ignored-FIFO attachment/provenance read. Existing core/fingerprint.ts
+    has its own lstat-then-blocking-open path; a regular-file-to-FIFO race could retain
+    underlying work after E1 timeout. Future shared fingerprint/callback owner should
+    add safe cancellation/nonblocking descriptor handling and regression under separate
+    explicit ownership. No claim of atomic filesystem freeze or forced arbitrary callback
+    cancellation.
