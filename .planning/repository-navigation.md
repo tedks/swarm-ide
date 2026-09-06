@@ -2,8 +2,8 @@
 
 
 This ExecPlan is maintained according to `.planning/PLANS.md`. It is a living
-implementation plan prepared by N0, a design-only department. ROOT must accept
-the design before dispatching N1; publication does not authorize execution.
+implementation plan prepared by N0 and accepted by ROOT. N1 implements it in
+PR37; final packaged acceptance, review convergence and landing remain pending.
 
 ## Purpose / Big Picture
 
@@ -22,12 +22,27 @@ of a monorepo. Builds remain independent.
 - [x] (2026-09-06) N0 drafted the navigation contract and closure ledger.
 - [x] (2026-09-06) N0 completed native/Google design convergence and local document checks; PR36 holds normal-merge and Ditz handoff evidence.
 - [x] (2026-09-06) ROOT accepted N0 and dispatched N1 with explicit unavailable-evidence and privileged boundary conditions.
-- [ ] N1 shared protocol and adversarial regressions; bounded reader, renderer and packaged-proof helpers have distinct file ownership.
+- [x] (2026-09-06 17:03 UTC) N1 pushed shared protocol, bounded reader/provider, navigation UI and packaged harness with distinct helper ownership.
+- [x] (2026-09-06 17:08 UTC) Actual packaged Swarm root → core/files.ts works without a service build; strict native-input assertions stopped the first proof, with no renderer errors and owned cleanup complete.
+- [x] (2026-09-06 17:15 UTC) Full quality passed 1,079 tests; BOM filename regressions proved three actual failures before the byte-preserving fix.
+- [ ] Finish observer-generation convergence, complete all four packaged cases and all previous local suites; normal reviewed landing and integration remain pending.
 - [ ] N1 implement the vertical, prove actual packaged behavior, review and land.
 - [ ] ROOT verify N1 and separately decide runtime adoption and next consumers.
 
 ## Surprises & Discoveries
 
+
+N1 native review found that UTF-8 decoding stripped a leading filename BOM,
+aliasing another entry; byte-preserving decode and exact roundtrip now protect
+identity. It also found that initial unavailable registration could discard
+retained service provenance and that the background observer could suppress
+unchanged-digest recovery. Retained built identity is separate from never-observed
+working coordinates; external fingerprint revocation must invalidate in-flight
+samples without suppressing a first failure or scanning on directory focus.
+
+One preliminary unchanged owned-process test observed a transient namespace member
+after cleanup attestation; later runs passed without changing its assertion.
+`owned-namespace-cleanup-attestation-race` records that follow-up, not a waiver.
 
 `core/provider.ts` hardcodes project identity and every repository node. Its
 `markWorkingWorldChanged`, `startReconciliation` and failure paths reconstruct or
@@ -48,6 +63,14 @@ one genuinely outside the capture budget.
 
 ## Decision Log
 
+
+N1 defines registration coordinates as `unobserved:<canonical-root SHA256>`;
+the working fingerprint is empty until observed, and graph/reconciliation IDs
+may carry this coordinate without treating it as a digest. Last consistency
+remains `unobserved`; unavailable evidence revokes green and context authority
+even when an earlier digest is retained. `repo.list` adds an optional exact
+`revealPath` in the requested parent to resolve captured off-page targets without
+exposing or fabricating an unbounded directory inventory.
 
 On 2026-09-06 N0 chose one mono-agent vertical because protocol, provider events,
 mappings and App activation are coupled. A separate contract-only landing would
@@ -293,11 +316,7 @@ selects a single visible vertical over another infrastructure-only split.
 
 Review revision (2026-09-06): separate fingerprint failure from navigation
 startup; distinguish captured-page Reveal from an uncaptured target; explicitly
-retain the last successful directory on a failed request. No product code changed.
-N1 defines registration coordinates as `unobserved:<canonical-root SHA256>`;
-the working fingerprint is empty until observed, and graph/reconciliation IDs
-may carry this coordinate without treating it as a digest. Last consistency
-remains `unobserved`; unavailable evidence revokes green and context authority
-even when an earlier digest is retained. `repo.list` adds an optional exact
-`revealPath` in the requested parent to resolve captured off-page targets without
-exposing or fabricating an unbounded directory inventory.
+retain the last successful directory on a failed request. No product code changed
+in N0. N1 revision (2026-09-06): record implementation and actual preliminary
+evidence, plus review-discovered filename/observer/restart corrections. No
+foundation completion is inferred before full packaged proof.

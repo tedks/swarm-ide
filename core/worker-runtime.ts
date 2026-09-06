@@ -79,7 +79,6 @@ function post(message: CoreResponse | CoreEvent | FileEvent | AgentEvent): void 
 
 function publish(type: CoreEvent["type"], snapshot: WorkspaceSnapshot): void {
   const validatedSnapshot = WorkspaceSnapshotSchema.parse(snapshot);
-  if (validatedSnapshot.revisions.working.evidence === "unavailable") workingWorldObserver?.invalidate();
   post(CoreEventSchema.parse({
     protocolVersion: PROTOCOL_VERSION,
     type,
@@ -216,7 +215,12 @@ process.parentPort?.on("message", async (event) => {
         }
         return;
       case "reconciliation.start":
-        void provider.startReconciliation(publish).catch((error) => console.error("Topology reconciliation terminated unexpectedly", error));
+        void provider.startReconciliation((type, snapshot) => {
+          // Only this external observer can revoke a digest independently of
+          // WorkingWorldObserver. Directory publications never trigger scans.
+          if (snapshot.revisions.working.evidence === "unavailable") workingWorldObserver?.invalidate();
+          publish(type, snapshot);
+        }).catch((error) => console.error("Topology reconciliation terminated unexpectedly", error));
         post(ok(requestId, provider.snapshot()));
         return;
       case "fixture.reset":
@@ -233,7 +237,10 @@ process.parentPort?.on("message", async (event) => {
           workingWorldObserver?.observeKnown(file.workingFingerprint);
           provider.markWorkingWorldChanged(file.workingFingerprint, publish);
         }
-        else provider.markWorkingWorldUnknown(file.fingerprintError ?? "unknown post-save fingerprint error", publish);
+        else {
+          workingWorldObserver?.invalidate();
+          provider.markWorkingWorldUnknown(file.fingerprintError ?? "unknown post-save fingerprint error", publish);
+        }
         post(ok(requestId, provider.snapshot(), file));
         return;
       }

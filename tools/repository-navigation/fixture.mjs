@@ -37,6 +37,8 @@ export async function createNavigationFixture(parent, kind, source) {
     await writeFile(join(root, ".gitignore"), "ignored.txt\nlarge/\npipe\nnested/\nsubmodule/\n.ditz-worktree/\n.fixture-home/\n");
   }
   await git(root, ["init", "--object-format=sha1", "-b", "main"]);
+  await git(root, ["config", "user.name", "Navigation proof"]);
+  await git(root, ["config", "user.email", "proof@example.invalid"]);
   await git(root, ["add", "--all"]); await git(root, ["commit", "-m", "Owned packaged navigation inputs"]);
   const committedHead = (await git(root, ["rev-parse", "HEAD"])).toString("utf8").trim();
   if (kind === "unfamiliar") {

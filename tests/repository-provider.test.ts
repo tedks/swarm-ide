@@ -85,6 +85,28 @@ async function actualRepository() {
 }
 
 describe("repository navigation independent of working and service evidence", () => {
+  it("does not suppress a first genuine failure after external invalidation during startup", async () => {
+    const subject = await provider(fixtureDependencies());
+    let reject!: (error: Error) => void;
+    const pending = new Promise<string>((_resolve, fail) => { reject = fail; });
+    const failures: string[] = [];
+    let observer!: WorkingWorldObserver;
+    const publish = ignorePublish;
+    observer = new WorkingWorldObserver("", () => pending,
+      (value) => subject.markWorkingWorldChanged(value, publish), (error) => {
+        failures.push(error.message); subject.markWorkingWorldUnknown(error.message, publish);
+      });
+    try {
+      observer.request();
+      await subject.listRepository(listRequest(), publish);
+      observer.invalidate();
+      reject(new Error("Initial filename evidence unavailable"));
+      await vi.waitFor(() => expect(failures).toEqual(["Initial filename evidence unavailable"]));
+      expect(subject.snapshot().reconciliation.status).toBe("red");
+      expect(repo(subject).directory?.state).toBe("stale");
+      expect(subject.snapshot().revisions.working).toMatchObject({ fingerprint: "", evidence: "unavailable" });
+    } finally { observer.close(); }
+  });
   it("registers a canonical committed root whose actual name ends in whitespace", async () => {
     const fixture = await actualRepository();
     const root = `${fixture.root} `;
@@ -99,18 +121,25 @@ describe("repository navigation independent of working and service evidence", ()
     } }));
     await subject.observeWorkingWorld(ignorePublish);
     const published: WorkspaceSnapshot[] = [];
+    const beforeRevocation = deferred<string>(), afterRevocation = deferred<string>();
+    let samples = 0;
     let observer!: WorkingWorldObserver;
-    const publish = (_type: string, snapshot: WorkspaceSnapshot) => {
+    const publish = (_type: string, snapshot: WorkspaceSnapshot) => { published.push(snapshot); };
+    const externalPublish = (type: string, snapshot: WorkspaceSnapshot) => {
       if (snapshot.revisions.working.evidence === "unavailable") observer.invalidate();
-      published.push(snapshot);
+      publish(type, snapshot);
     };
-    observer = new WorkingWorldObserver(fingerprint, async () => fingerprint,
+    observer = new WorkingWorldObserver(fingerprint, () => ++samples === 1 ? beforeRevocation.promise : afterRevocation.promise,
       (value) => subject.markWorkingWorldChanged(value, publish), (error) => subject.markWorkingWorldUnknown(error.message, publish));
     try {
-      failPreflight = true;
-      await subject.startReconciliation(publish);
-      expect(subject.snapshot().revisions.working).toMatchObject({ fingerprint, evidence: "unavailable" });
       observer.request();
+      failPreflight = true;
+      await subject.startReconciliation(externalPublish);
+      expect(subject.snapshot().revisions.working).toMatchObject({ fingerprint, evidence: "unavailable" });
+      beforeRevocation.resolve(fingerprint);
+      await vi.waitFor(() => expect(samples).toBe(2));
+      expect(subject.snapshot().revisions.working.evidence).toBe("unavailable");
+      afterRevocation.resolve(fingerprint);
       await vi.waitFor(() => expect(subject.snapshot().revisions.working.evidence).toBe("observed"));
       expect(subject.snapshot().reconciliation.status).toBe("yellow");
       expect(published.map((snapshot) => snapshot.reconciliation.status)).toEqual(["red", "yellow"]);

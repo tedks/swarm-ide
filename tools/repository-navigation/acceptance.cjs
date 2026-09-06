@@ -90,10 +90,15 @@ async function main() {
   const facts = ["actual archive main/preload/core", "actual committed repository root and directory activation", "native Enter opens exact source", "zero agent runs"];
 
   if (["invalid-name", "fingerprint-budget"].includes(fixture.kind)) {
-    await until(async () => (await snapshot()).revisions.working.evidence === "unavailable", "unavailable initial working evidence");
+    const failureReason = fixture.kind === "invalid-name" ? "not valid UTF-8" : "exceeds the fingerprint bound";
+    // Registration begins unavailable. It is not proof that the independent
+    // observer actually attempted and reported this particular failed input.
+    await until(async () => { const current = await snapshot(); return current.revisions.working.evidence === "unavailable" &&
+      current.reconciliation.status === "red" && current.reconciliation.message.includes(failureReason); }, `observed ${fixture.kind} failure with exact reason`);
     world = await snapshot();
     assert.equal(world.revisions.working.fingerprint, "");
-    assert.notEqual(world.reconciliation.status, "green");
+    assert.equal(world.reconciliation.status, "red");
+    assert(world.reconciliation.message.includes(failureReason));
     assert(world.graphs.every((graph) => graph.reconciliation !== "green"));
     const sourceFocus = world.graphs.find((graph) => graph.topologyId === "repo").nodes.find((node) => node.focus.path === fixture.sourcePath).focus;
     const prepared = await request({ type: "agent.prepare", worldId: world.world.id, focus: sourceFocus,
