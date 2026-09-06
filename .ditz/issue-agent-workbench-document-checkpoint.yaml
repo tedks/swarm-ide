@@ -41,5 +41,14 @@ log_events:
     finding fixed with regression; convergence pending, Google initial clean, Anthropic
     initial still running. Full19target build passed; first suite4/5 due occupied
     fixed supervisor test port58014; locked retry pending. No real model/adoption.
+- time: 2026-09-06T04:46:53-00:00
+  who: Ted Smith
+  what: commented
+  comment: 'Anthropic initial review returned (not missing). Admission-read concern
+    under review against actual R2 service: prepare only stores an in-memory draft;
+    Run is inserted only by store.admit, agent.read only reads store. Adding explicit
+    absent-run regression and clearer no-proof messaging. Addressing reconnect read
+    ownership, unsupported Stop reconcile and acknowledged-only copy. Native+Google
+    first fix CLEAN; final small delta review will include all seats.'
 blocks:
 - agent-run-workbench
