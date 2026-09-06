@@ -24,5 +24,13 @@ log_events:
   who: Ted Smith
   what: blocks agent-workbench-compact-layout
   comment: ""
+- time: 2026-09-06T05:47:23-00:00
+  who: Ted Smith
+  what: commented
+  comment: 'PR23 a2a3d01 then c566c12 fixes: native convergence CLEAN; Google convergence
+    running, Anthropic session limit unavailable. Owned virtual150% compact816x510CSS
+    no outer horizontal overflow, maxdock204px leaves source94px/output113px; shortviewport
+    fallback500px root scroll; samezoom camera/DOM/draftreload and keyboard steering/Stop
+    tested with explicit fixture. Full gates pending; production policy unavailable.'
 blocks:
 - agent-workbench-compact-layout
