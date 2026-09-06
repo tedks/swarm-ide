@@ -8,8 +8,8 @@ type: task
 component: default
 release:
 reporter: Ted Smith <tedks@riseup.net>
-status: in_progress
-disposition:
+status: closed
+disposition: fixed
 creation_time: 2026-09-06T05:45:30-00:00
 references: []
 log_events:
@@ -21,3 +21,12 @@ log_events:
   who: Ted Smith
   what: started
   comment: ""
+- time: 2026-09-06T07:15:24-00:00
+  who: Ted Smith
+  what: 'closed: fixed'
+  comment: 'Fixed in PR27: remove interface-zoom imperative refit; four red-to-green
+    regressions; actual both-graph pan/wheel, first source mount, UI100-150-100, compact
+    panels, editable unsaved source and explicit Fit preserved. Final aggregate675tests/all9/full25
+    and owned87.834s camera proof pass; native+Google CLEAN, Anthropic session-limit
+    missing. Hosted namespace/policy failures remain under user local-verification
+    waiver; no watched app adoption.'
