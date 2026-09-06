@@ -163,6 +163,25 @@ describe("real pinned Ditz provider", () => {
     const failed = await item.snapshot({ refresh: true });
     expect(failed).toMatchObject({ status: "error", snapshot: { metadataCommit: revision } });
     expect(JSON.stringify(failed)).not.toContain("secret-bearing");
+    expect(await item.snapshot({ refresh: false })).toMatchObject({ status: "error", localRef: revision,
+      snapshot: { metadataCommit: revision } });
+    expect(await item.snapshot({ refresh: true })).toMatchObject({ status: "observed" });
+  });
+
+  it("cannot erase a failed same-revision full scan with a cheap ref check, even after repair", async () => {
+    const root = await repo(); const revision = await commit(root, { "issue-first.yaml": issue() });
+    const item = await provider(root); const initial = await item.snapshot({ refresh: true });
+    const hash = initial.snapshot!.summaries[0].blob.hex;
+    const objectPath = path.join(root, ".git/objects", hash.slice(0, 2), hash.slice(2));
+    const objectBytes = await readFile(objectPath);
+    await rm(objectPath);
+    expect(await item.snapshot({ refresh: true })).toMatchObject({ status: "unavailable", localRef: revision,
+      snapshot: { metadataCommit: revision } });
+    expect(await item.snapshot({ refresh: false })).toMatchObject({ status: "unavailable", localRef: revision });
+    expect(await item.read({ metadataCommit: revision, taskId: "first" })).toMatchObject({ result: { ok: true } });
+    await writeFile(objectPath, objectBytes);
+    expect(await item.snapshot({ refresh: false })).toMatchObject({ status: "unavailable" });
+    expect(await item.snapshot({ refresh: true })).toMatchObject({ status: "observed", localRef: revision });
   });
 
   it("checks whole serialized envelopes rather than treating character counts as output byte limits", async () => {

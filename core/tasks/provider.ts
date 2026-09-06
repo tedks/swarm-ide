@@ -80,13 +80,15 @@ export const createDitzTaskProvider: CreateTaskProvider = (context): TaskProvide
         const after = await git.resolve(signal, deadline);
         next = { status: after && sameGitObject(localRef, after) ? "observed" : "stale",
           localRef: after, checkedAt: now(), reason: after && sameGitObject(localRef, after) ? null : changed };
+      } else if (attempt.reason && ["malformed", "limited", "error", "unavailable"].includes(attempt.status) &&
+          (!attempt.localRef || sameGitObject(attempt.localRef, localRef))) {
+        // A cheap ref check cannot attest that a failed full scan now works,
+        // even if the ref still equals the retained cache or the failed attempt
+        // could not resolve it at all. Only explicit refresh clears that failure.
+        next = { ...attempt, localRef, checkedAt: now() };
       } else if (cache) {
         if (sameGitObject(cache.snapshot.metadataCommit, localRef)) {
           next = { status: "observed", localRef, checkedAt: now(), reason: null };
-        } else if (attempt.localRef && sameGitObject(attempt.localRef, localRef) &&
-            ["malformed", "limited", "error", "unavailable"].includes(attempt.status)) {
-          // A cheap ref check cannot erase a failed full scan of this revision.
-          next = { ...attempt, checkedAt: now() };
         } else {
           next = { status: "stale", localRef, checkedAt: now(), reason: changed };
         }
