@@ -1,0 +1,18 @@
+id: agent-run-contract-base
+title: Publish the first-run shared contracts and unavailable bridge
+desc: R0 of .planning/first-agent-run-wave.md. Runtime owner freezes strict protocol
+  v3 agent schemas and adapter/context/store interfaces, wires unavailable behavior,
+  passes local bridge tests, normal-merges small base before builders diverge.
+type: task
+component: default
+release:
+reporter: Ted Smith <tedks@riseup.net>
+status: unstarted
+disposition:
+creation_time: 2026-09-06T01:28:49-00:00
+references: []
+log_events:
+- time: 2026-09-06T01:28:49-00:00
+  who: Ted Smith
+  what: created
+  comment: ""
