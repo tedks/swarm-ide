@@ -392,7 +392,8 @@ static-MCP provider-report/canary comparison above.
 | Ordinary SessionStart hooks disabled | `session/session.rs:1600–1623` queues source; `session/turn.rs:264,504` executes it | No permitted turn trigger | UNPROVED; do not invent a no-model hook control |
 | Legacy notify disabled | `hooks/src/registry.rs:113`, turn completion callback | P2 observes populated callback, no turn completion here | UNPROVED activation |
 | Hook-trust bypass, built-in/executor plugin hooks disabled | `hooks/src/engine/mod.rs:239,255`; executor hooks in `hooks/src/registry.rs:100` | No matched installed activation controls here | UNPROVED independently of ordinary hooks=false |
-| Plugin/per-executor MCP disabled | `core/src/session/mcp_runtime.rs:154` projects executor-owned configuration | Static MCP controls do not exercise this path | UNPROVED |
+| Named local legacy plugin MCP disabled | `core/src/mcp.rs:245`; `core-plugins/src/manager.rs:761` | P4 below: installed-cache enabled/full handshake vs feature-disabled created thread; required-init failure control | Named plugin startup only, not independent attempt exclusion or later turns |
+| Other plugin/per-executor MCP disabled | `core/src/session/mcp_runtime.rs:154` projects executor-owned configuration | Static and P4 legacy-local controls do not exercise these paths | UNPROVED |
 | Persisted remote-control/plugin state disabled | `app-server/src/lib.rs:453`; P1 source inventory | Fresh synthetic state, no seeded enabled-state control | UNPROVED; deferred to avoid writable policy ancestry |
 | Telemetry disabled | Exporter settings at startup, P1 inventory | Network namespace denies outbound traffic | UNPROVED runtime disablement; denied traffic is not a disabled exporter |
 | Credentialed production equivalence | A separately owned, exact admitted process | No host credentials/model turn/product process | UNPROVED; ROOT gate unchanged |
@@ -407,3 +408,61 @@ deadline/output limits. Only exact allowlisted observation labels and a truncati
 boolean are exported, never raw stderr or an inferred AppArmor/sysctl cause.
 `agent-run-policy-hosted-boundary-failure` tracks actual runner support; no test
 skip, global runner setting, kernel policy or CI weakening is authorized here.
+
+## P4: one local legacy plugin MCP startup path
+
+This is a separate manual comparison, not broader plugin/executor certification:
+
+    nix develop --command bazel test //tools/policy:plugin-activation-test --jobs=3 --test_tag_filters= --nocache_test_results --test_output=all
+
+The pinned source permits a synthetic installed-cache fixture without invoking
+installation: `core-plugins/src/store.rs:175` enumerates version directories,
+preferring `local`; `loader.rs:825` reads an enabled configured plugin, and
+`:1537` parses the legacy manifest's inline MCP definition. The exact path is
+`/home/probe/.codex/plugins/cache/proof/policy-plugin/local/.codex-plugin/plugin.json`,
+with manifest name `policy-plugin` and configuration key `policy-plugin@proof`.
+No remote install metadata or host plugin is copied. The manifest's single
+`policy_canary` is the existing fixed finite stdio handshake program. No static
+`mcp_servers` entry supplies it. `core/src/mcp.rs:245` and
+`core/src/config/mod.rs:1693` add this loaded plugin to initial MCP projection;
+the same required-server thread-initialization barrier used by P3 applies.
+`core-plugins/src/manager.rs:761` returns an empty outcome when the effective
+`plugins` feature is false.
+
+The three controls keep all inputs equal except the stated variable: features
+plugins=true produces named starting/ready and the full canary handshake;
+features plugins=false creates a thread without named startup or canary;
+the enabled plugin with the fixed canary's `fail` argument reaches initialize
+then produces the named required-MCP rejection. The last control distinguishes
+recognition and attempted initialization from a malformed or undiscovered plugin.
+The first actual installed 0.153.4 three-case run passed in 17.5 seconds.
+This uses the same package/executable identities listed above, not a source-build
+attestation. No generation, authentication, installation or product run occurs.
+
+Each actual process follows all26 P2 boundary checks plus exact regular-manifest
+write/unlink rejection and seven plugin/cache/marketplace-ancestor create/rename
+rejections. Immediate inner checks repeat before launch. Plugin/config/package
+trees are hashed unchanged through clean process/stdio close and namespace
+cleanup. No new mount or writable policy/config directory exists. The one
+installation_id inode exception is unchanged. Missing checks, malformed/partial
+output, failed startup, deadline or unknown cleanup remain unavailable.
+
+A readonly local-only marketplace requirement allows `/fixture/proof-market`
+and the configured `proof` marketplace. `marketplace_policy.rs:211` preserves
+that plugin while `manager.rs:697` rejects curated Git synchronization; local
+marketplaces skip auto-upgrade at `marketplace_upgrade.rs:212`. This does NOT
+eliminate all startup activity: `manager.rs:2843` still schedules featured-plugin
+warmup, and `remote_legacy.rs:123` attempts unauthenticated HTTP. The existing
+independently verified private network denies egress; neither this configuration
+nor absent canary records establish the absence of those attempts.
+
+Coverage advances only the named legacy installed-cache MCP path and its feature
+gate at no-turn startup. AgentPlugin-format overlays, executor MCP, hooks and
+trust bypass, remote/persisted state, telemetry disablement, independently complete
+attempt observation and credentialed process equivalence remain UNPROVED. The
+coverage ledger separates this named case from unproved executor/plugin paths.
+Static six-case acceptance remains separate and unchanged; default
+`//...` starts neither actual-package acceptance target. Production remains
+`ADAPTER_POLICY_UNAVAILABLE`; all broad parent issues stay open. The canonical
+hosted failure issue is `agent-policy-boundary-hosted-seed-pipe` (the earlier
+duplicate named above was closed as reorganization, not fixed).
