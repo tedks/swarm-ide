@@ -30,5 +30,14 @@ log_events:
   who: Ted Smith
   what: blocked by agent-policy-boundary-hosted-seed-pipe
   comment: ""
+- time: 2026-09-06T06:40:38-00:00
+  who: Ted Smith
+  what: commented
+  comment: 'I2 final PR24 topicf8e9fb3 hosted34016825636 FAILED at06:39Z: actual policy
+    SEED_PIPE_FAILED/codexStarted=false/UNRECOGNIZED_STDERR and required pinned unshare
+    namespace prerequisite before fixture start. Exactly two targets fail; no weaker
+    fallback or speculative cause. Local reviewed combined558tests49files/full25/all9
+    + postmerge focused proof pass; normal6e054e5/integration746644c share treecee00e5f.
+    Hosted positive acceptance remains open; no production capability.'
 blocked_by:
 - agent-policy-boundary-hosted-seed-pipe
