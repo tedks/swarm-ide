@@ -57,6 +57,17 @@ log_events:
   who: Ted Smith
   what: blocked by agent-workbench-document-checkpoint
   comment: ""
+- time: 2026-09-06T04:59:03-00:00
+  who: Ted Smith
+  what: commented
+  comment: 'W2B delivered: PR18 normal mergefa263e7, tested63def45 with reviewed R2/E2
+    upstream,425tests/all5/fullbuild/owned reload proof/all3councilCLEAN. Local agent
+    draft/instruction/uncertain receipt document refresh protection; explicit observed-only
+    clear/loss consent, no persistence/replay/source discard. Read-only receipt reconciliation
+    independent of selection. Parent remains open for integrated first-run journey.
+    Scope seam /tmp/swarm-ide-workbench-w2b.vi2P3j/seam.md; master/artifacts/overnight-wave/workbench-w2b/handoff.md.
+    Small copy followups tracked; separate post-admission classification audit gates
+    vertical proof.'
 blocks:
 - agent-run-vertical-proof
 blocked_by:
