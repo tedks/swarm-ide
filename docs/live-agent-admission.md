@@ -192,6 +192,16 @@ WebSocket upgrade, arbitrary query/CONNECT, credential forwarding to a second
 origin, unbounded polling or ambient proxy. Admission supplies a one-use route
 capability bound to the run; authentication and generation have separate phases.
 Extra traffic rejects and shuts down, not silently succeeds behind a denied route.
+One app-server turn can contain an initial model request and requests incorporating
+explicit steering. These are not retries: each continuation must consume a
+fresh one-use permit reserved against a durable steering intent for that run
+and expected turn before forwarding `turn/steer`. Reserve first because a model
+continuation can race the RPC acknowledgement. Rejected or delivery-unknown
+steering never grants a reusable permit or causes a resend. If effect/permit
+correlation cannot be established, stop with unknown outcome; do not infer it
+from timing. Multiple pending steering texts may be coalesced into one model
+request only when their exact intents are accounted for; a permit is never
+reused for a second request.
 
 Three material blockers cannot be hand-waved away:
 
@@ -263,9 +273,10 @@ not reuse of a pre-auth `AgentCapabilities` result.
    correlated thread policy, exact cwd, readOnly/networkAccess:false/never,
    effective tools and instruction expansion. Thread creation is not inert.
 5. Immediately before `turn/start`, verify the same binding and unchanged
-   prepared inputs; enable only the run's one generation route. Persist exact
-   prompt bytes before dispatch. Later steering is bounded text to the correlated
-   active turn, not a new turn/config change or broader data access.
+   prepared inputs; enable the run's initial one-use generation permit. Persist
+   exact prompt bytes before dispatch. Later steering reserves the separately
+   bounded continuation permit described above for the correlated active turn,
+   not a new turn/config change or broader data access.
 6. Close relay/auth and owned namespace on terminal/cancel/deadline/core loss,
    including abandoned login or an unclaimed setup.
    Only independently confirmed cleanup permits another run. Terminal outcome,
@@ -299,8 +310,10 @@ responses are at most 1 MiB each. Auth has at most 64 requests within its
 three-minute deadline; metadata at most 16. Reject truncation, extra traffic or
 an account flow exceeding those bounds. Auth request timeouts are ten seconds;
 generation uses the remaining owned lifetime and a 30-second idle timeout.
-One generation request, zero retries/fallbacks; a post-dispatch auth failure
-cannot refresh and replay it. Compatibility with these proposed bounds is
+One initial generation request plus at most one continuation per durable steer
+intent (existing maximum 128 receipts), all within the same cumulative byte/time
+bounds; zero retries/fallbacks or second app-server turn. A post-dispatch auth
+failure cannot refresh and replay a request. Compatibility with these bounds is
 unproved. The setup journal is at most 16 KiB per entry and shares the existing
 20-entry/64-MiB retention budget with run history; reserve it before spawning.
 Intentional core replacement retains at most 1000 ms pending-ack grace; crash
@@ -323,7 +336,10 @@ the answer correct merely because the turn completed.
 
 Only confirmed task, disk attachment, selected instructions, validated necessary
 provider framing/model metadata and explicitly sent steering text may leave as
-model input. The authentication phase necessarily exchanges identity/credentials
+model input, including already-observed provider output/opaque continuation
+identifiers needed for those same-provider steered continuations. This is not
+permission to upload raw local logs or additional files. The authentication
+phase necessarily exchanges identity/credentials
 with the exact auth service; these must not enter model prompts, run history,
 renderer logs or evidence. No unsaved buffer, arbitrary filesystem discovery,
 repo-wide upload or telemetry is implicitly allowed. Show the disclosure manifest

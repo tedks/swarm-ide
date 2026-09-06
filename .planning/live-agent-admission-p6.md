@@ -223,7 +223,7 @@ in a later authorized branch; no current production capability is changed.
 
 Acceptance is finite: using synthetic credentials and an independently accepted
 private endpoint, the builtin provider's thread creation produces **zero prewarm
-requests**, a single explicitly allowed turn produces one HTTP request/response
+requests**, a single explicitly allowed **unsteered** turn produces one HTTP request/response
 and zero attempted WebSocket upgrades, and
 transport disconnect/5xx/partial-response controls produce no second request or
 turn. A matched prewarm-enabled control proves that the witness can observe the
@@ -233,7 +233,11 @@ before actual installed turns. Keep the existing P5 provider separate. If a
 supported/patched control cannot be supplied in the bounded slice, publish the
 exact source-level unavailable stop and return to ROOT; do not investigate new
 auxiliary families. Auth/cloud freeze and telemetry remain separate G1/G3 work,
-not implicitly cleared by this transport proof.
+not implicitly cleared by this transport proof. P7's unsteered one-request
+control is not evidence for the complete steered journey. G4/G5 must separately
+prove bounded one-use continuation permits tied to durable steering intents and
+the same turn, including acknowledgement races and no-reuse after uncertainty.
+One app-server turn is not necessarily one model HTTP request.
 
 This successor depends only on ROOT's harness-worktree/patch authority and a
 properly reviewed synthetic boundary for that exact package. It does not depend
@@ -314,6 +318,19 @@ topic/normal-merge identities, review outcomes, actual local documentation and
 CI status, Ditz, cleanup and the one next slice. No credentials/raw transcripts
 or user context in evidence. The final marker belongs at the start of the
 entire last response; the external structured watcher wakes ROOT.
+
+
+## Review Clarification: Steering Is Not Retry
+
+
+Native fix-delta review found that a blanket one-request-per-run limit would
+break the promised steering workflow. The corrected profile permits an initial
+request and bounded explicitly authorized steering continuations, never retries
+or a second app-server turn. Continuation permits are reserved against durable
+steering intent before forwarding the RPC, because generation may race its ack.
+Unknown/rejected delivery does not create a reusable permit. G4/G5 must prove
+correlation and cleanup; missing evidence remains unavailable. This is a design
+correction, not a new implementation in P6.
 
 
 ## Interfaces and Dependencies
