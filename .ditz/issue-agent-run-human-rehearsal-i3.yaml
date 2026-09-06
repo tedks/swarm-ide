@@ -5,8 +5,8 @@ type: feature
 component: default
 release:
 reporter: Ted Smith <tedks@riseup.net>
-status: in_progress
-disposition:
+status: closed
+disposition: fixed
 creation_time: 2026-09-06T06:58:56-00:00
 references: []
 log_events:
@@ -41,5 +41,16 @@ log_events:
     edits or guard weakening. Native/Google fixpoint CLEAN; Claude full review after
     quota reset underway. Final combined all-target gates running; no model, physical
     desktop or watched app adoption.
+- time: 2026-09-06T07:53:08-00:00
+  who: Ted Smith
+  what: 'closed: fixed'
+  comment: Delivered fixed test-only human-paced rehearsal, PR29 normal6527495/topic0eb066f.
+    Real cockpit/bridge/E1 context/R2 private store, literal bounded in-process responder,
+    explicit human desktop/workspace opt-in and retained private profile. Executable4bba518
+    passed full29/all10uncached/716tests57files plus actual owned UI/reload/unknown/close/zero
+    timers, no model/source-writing responder. Native+Google CLEAN; Anthropic actual
+    limits then600s timeout missing. ROOT-cleared T0/W4/P4 integrated; no watched
+    app or production-policy readiness. Exact merged tree matches tested code with
+    only accounting docs.
 blocks:
 - first-real-agent-run-surface
