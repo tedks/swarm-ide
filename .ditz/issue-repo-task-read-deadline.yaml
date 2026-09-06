@@ -1,0 +1,20 @@
+id: repo-task-read-deadline
+title: Align task read IPC deadline with bounded metadata observation
+desc: T0 found existing CoreSupervisor read timeout is 5s while approved D1 whole
+  metadata scan budget is 10s. Before T1/T2 integration, ROOT must grant a narrow
+  core-supervisor task-read-only deadline change with regression (or explicitly reconcile
+  the budgets). Preserve all file/agent mutation acknowledgement and shutdown deadlines.
+  Tracked in .planning/repo-task-surface.md; no task parser or timeout change in T0.
+type: task
+component: workbench
+release:
+reporter: Ted Smith <tedks@riseup.net>
+status: unstarted
+disposition:
+creation_time: 2026-09-06T06:49:56-00:00
+references: []
+log_events:
+- time: 2026-09-06T06:49:56-00:00
+  who: Ted Smith
+  what: created
+  comment: ""
