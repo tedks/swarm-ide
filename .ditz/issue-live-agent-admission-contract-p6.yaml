@@ -26,6 +26,15 @@ log_events:
   who: Ted Smith
   what: blocks first-real-agent-run-surface
   comment: ""
+- time: 2026-09-06T14:39:09-00:00
+  who: Ted Smith
+  what: commented
+  comment: 'PR34 design reviewed and pushed: native OpenAI + Google CLEAN to fixpoint;
+    Anthropic usage-credit exhaustion missing. All local docs scope/links/anchors/whitespace
+    checks pass; no product tests/probes/auth/turns/GUI. Landing hold only: current
+    master C2 normaldbe457d not yet ROOT-cleared; ownership request /tmp/swarm-ide-live-contract-p6.7klaR5/ownership-request.md.
+    Keep this slice in progress until normal merge; parents remain open. Next native-provider-controls
+    is filed, NOT dispatched.'
 blocks:
 - agent-run-effective-policy
 - first-real-agent-run-surface
