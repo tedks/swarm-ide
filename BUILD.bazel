@@ -26,6 +26,7 @@ filegroup(
         "//tools:extract-service-topology",
         "//tools:desktop-automation-sources",
         "//tools:agent-journey-sources",
+        "//tools:agent-rehearsal-sources",
         "//tools/policy:sources",
     ],
 )
