@@ -3,6 +3,11 @@
 This ExecPlan follows `.planning/PLANS.md`. The living sections below record the
 bounded P2 boundary, P3 static MCP and P4 local-plugin MCP implementation, not production authorization.
 
+P5's separately authorized, manually selected synthetic-turn profile is tracked
+in `tools/policy/SESSIONSTART-PLAN.md`. References below to no allowed turn apply
+to the existing P2/P3/P4 modes, whose RPC allowlists remain unchanged. P5 uses one
+fixed local text response per control, no model inference or production capability.
+
 ## Purpose / Big Picture
 
 Developers can run `nix develop --command bazel run //tools/policy:probe` and get
