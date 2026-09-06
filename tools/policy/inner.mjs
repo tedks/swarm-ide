@@ -154,6 +154,27 @@ async function inspect() {
 
 try {
   if (mode === 'boundary') emit({ checks: await boundary(), namespace: readlinkSync('/proc/self/ns/pid'), networkNamespace: readlinkSync('/proc/self/ns/net') });
+  else if (mode === 'sessionstart-boundary' || mode === 'sessionstart') {
+    const checks = await boundary();
+    if (Object.values(checks).some(value => value !== true)) {
+      emit({ status: 'BOUNDARY_UNAVAILABLE', checks, codexStarted: false });
+    } else {
+      const { sessionstartReadonlyChecks, sessionstartEndpointChecks } = await import('./sessionstart-boundary.mjs');
+      const sessionstartChecks = { ...sessionstartReadonlyChecks(), ...await sessionstartEndpointChecks() };
+      if (Object.values(sessionstartChecks).some(value => value !== true)) {
+        emit({ status: 'SESSIONSTART_BOUNDARY_UNAVAILABLE', checks, sessionstartChecks, codexStarted: false });
+      } else if (mode === 'sessionstart-boundary') {
+        emit({ checks, sessionstartChecks, namespace: readlinkSync('/proc/self/ns/pid'), networkNamespace: readlinkSync('/proc/self/ns/net') });
+      } else {
+        const { sessionstart } = await import('./sessionstart.mjs');
+        emit({ ...await sessionstart(process.argv[3]), checks, sessionstartChecks, codexStarted: true });
+      }
+    }
+    process.exit(0);
+  } else if (mode === 'sessionstart-hold') {
+    const { sessionstartFamilyHold } = await import('./sessionstart-boundary.mjs');
+    await sessionstartFamilyHold();
+  }
   else if (mode === 'hold') {
     const child = spawn('/runtime/bin/node', ['-e', 'setInterval(()=>{},1000)'], { detached: true, stdio: 'ignore', env: ENV });
     child.unref(); emit({ holding: true, namespace: readlinkSync('/proc/self/ns/pid'), descendant: child.pid });

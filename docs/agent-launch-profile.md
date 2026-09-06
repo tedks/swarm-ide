@@ -389,7 +389,7 @@ static-MCP provider-report/canary comparison above.
 | Requested restriction | Pinned trigger/source | Positive opportunity and observation | Remaining limit |
 | --- | --- | --- | --- |
 | Named static stdio MCP disabled | Required initialization, sources above | Actual enabled startup+handshake vs disabled created thread without reported startup or canary; reached-failure and missing-executable controls | Provider-reported/static definitions only; not independent syscall exclusion, plugin/executor MCP or a later turn |
-| Ordinary SessionStart hooks disabled | `session/session.rs:1600–1623` queues source; `session/turn.rs:264,504` executes it | No permitted turn trigger | UNPROVED; do not invent a no-model hook control |
+| Ordinary SessionStart hooks disabled | `session/session.rs:1600–1623` queues source; `session/turn.rs:264,504` executes it | P5 below: one fixed ordinary user hook, actual synthetic turn and local text response | Named ordinary-hook comparison only; not built-in/executor hooks, trust bypass or credentialed execution |
 | Legacy notify disabled | `hooks/src/registry.rs:113`, turn completion callback | P2 observes populated callback, no turn completion here | UNPROVED activation |
 | Hook-trust bypass, built-in/executor plugin hooks disabled | `hooks/src/engine/mod.rs:239,255`; executor hooks in `hooks/src/registry.rs:100` | No matched installed activation controls here | UNPROVED independently of ordinary hooks=false |
 | Named local legacy plugin MCP disabled | `core/src/mcp.rs:245`; `core-plugins/src/manager.rs:761` | P4 below: installed-cache enabled/full handshake vs feature-disabled created thread; required-init failure control | Named plugin startup only, not independent attempt exclusion or later turns |
@@ -466,3 +466,112 @@ Static six-case acceptance remains separate and unchanged; default
 `ADAPTER_POLICY_UNAVAILABLE`; all broad parent issues stay open. The canonical
 hosted failure issue is `agent-policy-boundary-hosted-seed-pipe` (the earlier
 duplicate named above was closed as reorganization, not fixed).
+
+## P5: one ordinary SessionStart hook, one synthetic response
+
+P5 is a **separately authorized turn-capable offline profile**, not an expansion
+of P3/P4's no-turn RPC allowlists. The ordinary IDE and its adapter remain
+`ADAPTER_POLICY_UNAVAILABLE`. These manual targets are outside default `//...`:
+
+    nix develop --command bazel test //tools/policy:sessionstart-boundary-test --jobs=3 --test_tag_filters= --nocache_test_results --test_output=all
+    nix develop --command bazel test //tools/policy:sessionstart-test --jobs=3 --test_tag_filters= --nocache_test_results --test_output=all
+
+The first target is synthetic-only and starts no Codex. The second executes the
+installed complete 0.153.4 package only after independent acceptance, then sends
+one fixed `turn/start` in each of two fresh synthetic threads. This **is a turn
+and sampling request**: `syntheticTurnExecuted=true`, one local HTTP request and
+one finite response per control. The responder is fixed local code in the same
+private network namespace, not an LLM or external provider. Therefore
+`externalModelInference=false`; the configured `gpt-5.2` name is a fixture label,
+not a model identity observed performing inference. No credentials or user source
+are acquired, read, copied or sent. Reviews of this code are separate from the
+probe's no-model boundary.
+
+### Exact source and trust gate
+
+The [official app-server](https://learn.chatgpt.com/docs/app-server),
+[configuration](https://learn.chatgpt.com/docs/config-file/config-advanced) and
+[hooks](https://learn.chatgpt.com/docs/hooks) pages map public interfaces. P5's
+mechanism is checked against the same pinned `3d2ee51` source and observed package
+digests as P4; matching versions still are not a reproducible-build attestation.
+
+`core/src/session/turn.rs:264` executes pending SessionStart before sampling and
+before shell speculation at `:277`. `core/tests/suite/hooks.rs:1418` supplies the
+precedent for a finite response.created, assistant output_item.done and
+response.completed SSE sequence. P5 has no tool output, extra turn, Stop-hook
+continuation or mutable response. The unique `policy_p5_text_once` provider uses
+Responses HTTP on private `127.0.0.1:43129`, no auth or WebSocket support,
+`request_max_retries=0`, `stream_max_retries=0`, and
+`unbounded_connection_retries=false`. The last setting matters: it defaults true
+at `features/src/lib.rs:1199`, and `core/src/responses_retry.rs:58` checks it before
+ordinary stream limits. Shell snapshot/code-mode prewarming and agent identity
+are disabled. No-WebSocket startup can still enter local auth setup; with absent
+credentials and auth settings it resolves unauthenticated, not a model request.
+`include_environment_context=false` avoids a second environment user-message;
+the responder accepts exactly the fixed prompt and bounded synthetic metadata.
+
+The ordinary, non-managed hook lives at `/home/probe/.codex/hooks.json` and runs
+`/runtime/bin/node /fixture/sessionstart-canary.mjs`, matcher `startup`, timeout2,
+async=false. Its exact user-config state key is
+`/home/probe/.codex/hooks.json:session_start:0:0` (no `file:` prefix). The trusted
+hash is SHA-256 of canonical compact JSON for the normalized one-handler
+configuration, prefixed `sha256:`. `hooks/src/config_rules.rs:15-65` reads this
+state only from User/SessionFlags; `engine/discovery.rs:766-820` normalizes and
+compares identity; `config/src/fingerprint.rs:50-79` sorts keys recursively before
+serialization. The exact canonical bytes are checked into
+`tools/policy/sessionstart-contract.mjs`. No user trust record is copied, no trust
+RPC/bypass is invoked, and this source path does not write trust before use.
+The trust hash does **not** cover script contents, so the helper is independently
+immutable and hashed with the whole synthetic fixture. The fixed non-login hook
+shell is built at `core/src/session/mod.rs:4663`.
+
+### Independent boundary and actual observations
+
+Before every actual process, all original26 isolation/lifetime checks retain
+their meanings. P5 adds ten separately reported checks: immutable hook/config/
+helper files; their readonly ancestors; internal same-port listener reachability;
+closure; outbound same-port denial; independently correlated synthetic family
+membership; host listener absence; and family cleanup under owner death, deadline
+and output overflow. The family consists of a fixed synthetic responder, canary
+and Codex substitute, not an actual Codex process. Host `/proc` observations tie
+their namespace-local IDs to live owned processes and then require no remaining
+live members in that owned namespace. Existing original tests still exercise a
+detached descendant. This is bounded lifecycle acceptance, not a complete
+attempt/syscall observer or resource-count sandbox.
+
+The endpoint never binds in the host network. It accepts only bounded, strict
+UTF-8 JSON `POST /v1/responses`, one fixed user prompt, no credentials, proxy,
+upgrade, compressed/ambiguous request or second request. It emits one immutable
+text-only SSE response and EOF. Late/incomplete requests, extra calls, malformed
+output, missing turn/item IDs and unknown closure fail the proof. The driver
+requires exact acknowledged thread/turn correlation; only hook notifications may
+have nullable turn IDs. It checks the positive canary's actual source/cwd/private
+PID/network namespace and absent capabilities before delivering the response.
+State writes stay inside private `/state`; the existing single installation_id
+inode exception is unchanged. No policy ancestor becomes writable.
+
+The first installed-package comparison, after clean OpenAI/Google boundary
+review and a red/green correction to missing-turn-ID acceptance, observed:
+
+| Control | Actual turn / local HTTP response | Ordinary hook |
+| --- | --- | --- |
+| Hooks enabled, exact immutable trusted input | One completed / one delivered | One started, one completed, fixed witness |
+| Identical inputs except `hooks=false` | One completed / one delivered | No hook notification or witness |
+
+Both returned the exact `POLICY_P5_TEXT_ONLY` assistant item, clean Codex stdio
+closure and closed responder, with all36 checks true and unchanged input/package
+digests. A missing witness before a turn is not used as evidence; an untrusted,
+unrecognized or broken positive hook cannot pass. Deterministic tests reject
+such missing-positive observations as well as malformed request/transcript cases.
+P3's static6 and P4's plugin3 remain separate regressions with no allowed turn.
+
+The useful advance is this single ordinary-hook feature comparison, not universal
+policy enforcement. Built-in/executor/managed hooks, trust-bypass behavior, legacy
+notify, other plugin/MCP families, persisted remote state, runtime telemetry
+disablement, independently complete attempt observation and credentialed
+production-process equivalence remain UNPROVED. A denied auxiliary network
+attempt is contained, not evidence its source was disabled. Broad effective-policy
+and offline-activation parents stay open. PR30 and the sanitized
+`master/artifacts/overnight-wave/policy-p5/handoff.md` record final local gates,
+reviews, actual hosted status, normal-merge identity and cleanup; this profile
+does not authorize product or watched-app adoption.
