@@ -14,3 +14,10 @@ log_events:
   who: Ted Smith
   what: created
   comment: ""
+- time: 2026-09-06T04:05:22-00:00
+  who: Ted Smith
+  what: commented
+  comment: R2 recovery conservatively preserves unknown cleanup and blocks further
+    launches. Add a deliberate proof-based resolution workflow preserving history;
+    absence of a live owner or persisted PID alone is not termination proof. Never
+    kill-by-name or signal arbitrary stored PIDs. No automatic clearing in this checkpoint.
