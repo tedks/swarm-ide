@@ -97,7 +97,10 @@ async function rendererAction(input: RendererAction): Promise<unknown> {
     window.dispatchEvent(new KeyboardEvent("keydown", { key: "k", ctrlKey: true, bubbles: true })); return true;
   }
   if (input.action === "click") {
-    const candidates = buttons().filter((button) => button.getAttribute("aria-label") === input.label || button.textContent?.trim() === input.label ||
+    // The directory form has its own Open path button; this gesture belongs
+    // exclusively to the command palette, even while that form is mounted.
+    const scope = input.label === "Open path" ? [...document.querySelectorAll<HTMLButtonElement>(".command-results button")] : buttons();
+    const candidates = scope.filter((button) => button.getAttribute("aria-label") === input.label || button.textContent?.trim() === input.label ||
       (button.closest(".command-results") && button.querySelector("span")?.firstChild?.textContent === input.label));
     if (candidates.length !== 1 || candidates[0]!.disabled) throw new Error(`Expected exactly one enabled UI control: ${input.label}`);
     candidates[0]!.click(); return true;

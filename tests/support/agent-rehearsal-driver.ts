@@ -88,7 +88,11 @@ async function rendererAction(input: Action): Promise<unknown> {
     window.dispatchEvent(new KeyboardEvent("keydown", { key: "k", ctrlKey: true, bubbles: true })); return true;
   }
   if (input.action === "click" || input.action === "focus-button") {
-    const candidates = buttons().filter((button) => button.getAttribute("aria-label") === input.label || button.textContent?.trim() === input.label ||
+    // The directory form has its own Open path button; only this palette
+    // gesture is scoped, leaving ordinary trusted run-control inputs intact.
+    const scope = input.action === "click" && input.label === "Open path"
+      ? [...document.querySelectorAll<HTMLButtonElement>(".command-results button")] : buttons();
+    const candidates = scope.filter((button) => button.getAttribute("aria-label") === input.label || button.textContent?.trim() === input.label ||
       (button.closest(".command-results") && button.querySelector("span")?.firstChild?.textContent === input.label));
     if (candidates.length !== 1 || candidates[0]!.disabled) throw new Error(`Expected one enabled UI control: ${input.label}`);
     const button = candidates[0]!;
