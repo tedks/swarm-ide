@@ -17,8 +17,8 @@ the exact stopping boundary instead of a passing placeholder.
 ## Progress
 
 - [x] (2026-09-06 07:24Z) Inspect pinned source/provider/trust paths and complete installed package manifests; identify a source-feasible no-auth single-response route and immutable trust seed.
-- [ ] Independently verify fixed listener, hook/trust ancestry and owned lifetime, then obtain boundary review before any installed Codex turn.
-- [ ] Execute exactly matched enabled/disabled controls or document the exact source-only stopping boundary.
+- [x] (2026-09-06 07:36Z) Independent synthetic original26 +new10 all pass; native/Google boundary review then converges after the missing-turn-ID fix (red/green regression). Anthropic first attempt session-limited; fresh post-reset review underway.
+- [x] (2026-09-06 07:46Z) Actual installed0.153.4 first attempt: both controls complete one synthetic turn, one local request/response, exact output; enabled hook1/1/witness, disabled0/0/no witness. All36 checks percase, unchanged inputs, clean closures. No model inference.
 - [ ] Complete relevant local acceptance, council convergence, Ditz and normal PR landing; archive exact tested identities.
 
 ## Surprises & Discoveries
@@ -31,6 +31,18 @@ absence is therefore meaningless. Hooks trust hashes normalized command
 configuration, not executable contents; both need independent immutable inputs.
 `include_environment_context=false` prevents a separate environment user-message
 item, allowing strict validation of the sole fixed synthetic user prompt.
+
+The first host family scan encountered unrelated hardened host Codex processes.
+Read NSpid depth before restricted namespace links: a shallower host process
+cannot belong to this new nested namespace; unknown same/deeper candidates remain
+fatal. Initial synchronous output flooding hit pipe backpressure before the
+outer bound; switching to drain-aware writes proved the exact OUTPUT_LIMIT path,
+not a fabricated pass. Both false starts failed closed before actual Codex.
+
+Native review found that missing turn/item IDs passed correlation because hooks'
+nullable exception was applied universally. A synthetic transcript test reproduced
+the bug, then method-specific required identities fixed it before the first actual
+turn. Current code1ca16e4 passes674tests53files and independent36 checks.
 
 ## Decision Log
 
@@ -49,9 +61,12 @@ host networking, trust bypass or writable policy ancestry.
 
 ## Outcomes & Retrospective
 
-Feasibility is source-based only so far. No installed turn or response delivered;
-production remains `ADAPTER_POLICY_UNAVAILABLE`. The owned implementation and
-acceptance below are not yet delivered.
+The bounded installed comparison now works at1ca16e4: both fixed synthetic turns
+complete, hook execution differs only with its ordinary feature gate, and all36
+checks/input identities/closures pass. Production remains unavailable. Topic
+full25 build and all9 local targets passed before the correlation-only fix;
+current quality674 and independentboundary pass afterward. Final review/local
+reruns and normal merge are still pending; exact landing goes in the handoff.
 
 ## Context and Orientation
 
@@ -122,7 +137,16 @@ for every build/test. Manual actual-package targets must remain outside default
 `//...`; no normal test starts Codex. Full suites and any GUI use
 `flock --close /tmp/swarm-ide-overnight.UgO2Aw/virtual.lock` with owned X11/55174
 only. Never touch physical DISPLAY=:0, watched55173, unrelated5173 or peers.
-Exact new commands will be recorded with delivered targets, not invented here.
+Run synthetic acceptance with `nix develop --command bazel test
+//tools/policy:sessionstart-boundary-test --jobs=3 --test_tag_filters=
+--nocache_test_results --test_output=all`; expect BOUNDARY_VERIFIED,
+codexStarted=false, original26/new10 true. After independent boundary review,
+run `//tools/policy:sessionstart-test` with the same flags; expect
+OFFLINE_SESSIONSTART_CHECKPOINT, exactly2 SESSIONSTART_OBSERVED cases with one
+turn/request/response each and productionAvailable=false. Run the separate
+`:activation-test` and `:plugin-activation-test` regressions without changing
+their no-turn envelope. Full current local builds/tests and ownedGUI checks
+must pass before normal merge; do not edit/commit during the topology GUI run.
 
 ## Validation and Acceptance
 
@@ -165,3 +189,6 @@ actual isolated observations, where permitted, supply evidence.
 
 Revision (2026-09-06): state source-feasible new scope, immutable trust identity,
 connection retry pitfall and mandatory independent boundary gate before coding.
+Revision (2026-09-06 07:46Z): record genuine synthetic boundary failures/fixes,
+review-discovered correlation regression and actual first matched installed
+controls; distinguish completed proof from pending final landing.
