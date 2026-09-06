@@ -14,6 +14,7 @@ function cases() {
     isolation: Object.fromEntries(checks.map(key => [key, true])),
     observation: structuredClone(expected === 'enabled' ? positive : expected === 'disabled' ? negative : failure),
   }));
+}
 describe('one fixed plugin-provided MCP startup comparison, not a production certificate', () => {
   it('changes only the feature gate for the matched positive and negative', () => {
     const on = pluginFixture('plugin-enabled'), off = pluginFixture('plugin-feature-disabled');
