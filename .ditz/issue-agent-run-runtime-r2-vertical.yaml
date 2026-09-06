@@ -5,8 +5,8 @@ type: task
 component: default
 release:
 reporter: Ted Smith <tedks@riseup.net>
-status: in_progress
-disposition:
+status: closed
+disposition: fixed
 creation_time: 2026-09-06T04:03:19-00:00
 references: []
 log_events:
@@ -30,5 +30,13 @@ log_events:
   who: Ted Smith
   what: started
   comment: ""
+- time: 2026-09-06T05:23:41-00:00
+  who: Ted Smith
+  what: 'closed: fixed'
+  comment: 'PR20 normal merge7a583c5: actual test-only privileged worker, R2 durable
+    service/store/E1 disk context/E2 manual adapter through actual Electron/preload/UI;
+    local474tests/all8targets/fullbuild, virtual full lifecycle/recovery/no-replay
+    and active-failure cleanup. Fixture-only, real policy/ownership acceptance remains
+    separate.'
 blocks:
 - agent-run-runtime
