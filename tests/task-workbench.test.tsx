@@ -218,6 +218,19 @@ describe("task inspection in the source cockpit", () => {
     expect(document.activeElement).toBe(document.querySelector(".instrument-heading h2"));
   });
 
+  it("consumes palette Enter so its default action cannot click the newly focused Return button", async () => {
+    const { request } = setup(); render(<App />); await openSource();
+    const before = request.mock.calls.length;
+    fireEvent.keyDown(window, { key: "k", ctrlKey: true });
+    const input = await screen.findByPlaceholderText("Navigate or apply intelligence…");
+    fireEvent.change(input, { target: { value: "Show task details" } });
+    expect(fireEvent.keyDown(input, { key: "Enter", cancelable: true })).toBe(false);
+    fireEvent.keyUp(input, { key: "Enter" });
+    expect(screen.getByRole("region", { name: "Task details" })).toBeTruthy();
+    expect(document.activeElement).toBe(screen.getByRole("button", { name: "Return to source information" }));
+    expect(request.mock.calls.slice(before).some(([command]) => command.type === "focus.select" || command.type.startsWith("agent.") || command.type.startsWith("file."))).toBe(false);
+  });
+
   it("recovers a prior null-revision watcher error by rewatch/read without waiting for another filesystem mutation", async () => {
     const test = setup(); render(<App />); const editor = await openSource();
     test.event({ protocolVersion: PROTOCOL_VERSION, type: "file.changed", sequence: 100, path: source,

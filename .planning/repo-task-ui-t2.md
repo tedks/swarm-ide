@@ -39,6 +39,8 @@ Quota-resumed review exposed a keyboard race introduced by explicit asynchronous
 
 Warm Anthropic convergence also caught stale lifecycle notices surviving ready transitions after preserving transport warnings. Clear only obsolete ready-reconnect notice; the retained snapshot still explicitly says stale/reconnect required until observation succeeds. Three delayed nine-second first/same/new-generation cases prove this without weakening existing failed-check retention. Verified unknown-path unwatch is a core no-op and worker replies ok; actual FIFO broker tests already passed. Other nonblocking clarity/performance observations are documented in the follow-up issue, not silently dropped.
 
+Candidate13943b4 reached actual all-three-provider CLEAN and full29/all10/1017 tests. Its owned virtual run again failed at Show-details keyboard traversal, with cleanup1. The actual Enter gesture differs from fireEvent.click: the palette handler moved focus synchronously to Return without preventing Enter's default activation. Explicitly consume Enter when executing its matched command and add a default-prevention/focus regression. Keep the failed evidence; require a fresh actual desktop proof rather than extrapolating from jsdom.
+
 ## Decision Log
 
 
