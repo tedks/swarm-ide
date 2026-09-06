@@ -5,8 +5,8 @@ type: task
 component: default
 release:
 reporter: Ted Smith <tedks@riseup.net>
-status: in_progress
-disposition:
+status: closed
+disposition: fixed
 creation_time: 2026-09-06T03:46:26-00:00
 references: []
 log_events:
@@ -31,5 +31,14 @@ log_events:
     code underway. Full virtual agent journey split explicitly into agent-run-virtual-scenario-e2
     rather than fake renderer fallback. Full local gates and provider-diverse council
     underway; master/app untouched.'
+- time: 2026-09-06T04:22:33-00:00
+  who: Ted Smith
+  what: 'closed: fixed'
+  comment: Coherent E2 shared-fixture checkpoint delivered and normal-merged PR14
+    as a4ae558, tested topic5e26e78:286 quality tests/full19-target build/all5 uncached
+    Bazel tests, owned virtual baseline28.1s cleanup1, all3-provider CLEAN convergence.
+    Remaining full virtual agent journey explicitly split into agent-run-virtual-scenario-e2,
+    parent stays open. No provider turn/policy proof/production injection/adoption.
+    Hosted34010983121 in progress under local-proof waiver, not green.
 blocks:
 - agent-run-context-evidence
