@@ -12,7 +12,7 @@ import { createFileRunStore } from "../../core/agents/file-store";
 import { createAgentService } from "../../core/agents/service";
 import type { AgentOperation } from "../../core/agents/adapter";
 import type { RunStore } from "../../core/agents/store";
-import { AGENT_LIMITS, type AgentCapabilities, type AgentRequest, type PreparedAgentContext, type Run } from "../../protocol/agents";
+import { AGENT_LIMITS, type AgentCapabilities, type AgentRequest, type AgentSnapshot, type PreparedAgentContext, type Run } from "../../protocol/agents";
 import { PROTOCOL_VERSION } from "../../protocol/common";
 
 export type Scenario = "stop-terminal" | "unexpected-exit" | "core-death";
@@ -44,6 +44,7 @@ export async function openProcessFixture(directory: string, scenario: Scenario, 
   await mkdir(root, { mode: 0o700, recursive: true });
   const disk = await createFileRunStore(storePath);
   const transitions: Run[] = [];
+  const snapshots: AgentSnapshot[] = [];
   const calls = { connect: 0, close: 0, methods: [] as string[], admissionBeforeConnect: false };
   // Observe successful durable writes, not the timing of transient UI snapshots.
   const store: RunStore = { ...disk, async update(run) {
@@ -87,6 +88,7 @@ export async function openProcessFixture(directory: string, scenario: Scenario, 
       access: { policy: "read-only", toolNetwork: false, approvals: "never",
         hostConfidentiality: false, sendsSelectedContentToProvider: true } } };
   const service = await createAgentService({ store, adapter, capabilities: async () => capabilities,
+    emit: (snapshot) => snapshots.push(structuredClone(snapshot)),
     context: { prepare: async () => ({ ok: true, value: draft }), revalidate: async (current) => ({ ok: true, value: current }) },
     deadlineMs: 15000, cancelGraceMs: 1500 });
   const read = async (runId = draft.runId) => {
@@ -102,7 +104,7 @@ export async function openProcessFixture(directory: string, scenario: Scenario, 
   };
   const steerRequest: AgentRequest = { ...base(), type: "agent.steer", runId: draft.runId,
     expectedTurnId: "fixture-turn", text: "FIXTURE instruction: inspect termination evidence." };
-  return { service, disk, calls, transitions, draft, input, steerRequest, launch, read,
+  return { service, disk, calls, transitions, snapshots, draft, input, steerRequest, launch, read,
     async persisted() { return JSON.parse(await readFile(join(storePath, "snapshot.json"), "utf8")); },
     async close() { await service.shutdown(); await disk.close(); } };
 }

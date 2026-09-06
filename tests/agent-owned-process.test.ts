@@ -131,6 +131,8 @@ describe.skipIf(!namespacesAvailable)("joined service/stdio/private namespace fi
     expect(value(await fixture.service.request(fixture.steerRequest))).toMatchObject({ receipt: { status: "accepted" } });
     expect(value(await fixture.service.request(fixture.steerRequest))).toMatchObject({ receipt: { status: "accepted" } });
     expect(fixture.calls.methods.filter((method) => method === "turn/steer")).toHaveLength(1);
+    expect((await fixture.read()).run).toMatchObject({ state: "running", processState: "live", cleanup: { status: "pending" } });
+    expect(liveMembers(namespace).length).toBeGreaterThanOrEqual(3);
     expect(value(await fixture.service.request({ ...base(), type: "agent.cancel", runId: fixture.draft.runId }))).toMatchObject({ receipt: { status: "requested" } });
     await until(async () => (await fixture.read()).run.cleanup.status === "confirmed", "real cleanup");
     const final = (await fixture.read()).run;
@@ -149,8 +151,12 @@ describe.skipIf(!namespacesAvailable)("joined service/stdio/private namespace fi
     expect(liveMembers(namespace)).toEqual([]); canarySurvived(canary, namespace);
     expect((await fixture.persisted()).entries[0].run).toEqual(final);
     expect(fixture.calls.close).toBe(1);
+    const emittedStates = fixture.snapshots.map((snapshot) => snapshot.runs.find((run) => run.runId === fixture.draft.runId)!.state);
+    expect(emittedStates).toEqual(expect.arrayContaining(["starting", "running", "cancelling", "completed"]));
+    expect(emittedStates.indexOf("cancelling")).toBeLessThan(emittedStates.indexOf("completed"));
+    expect(emittedStates.slice(emittedStates.indexOf("completed")).every((state) => state === "completed")).toBe(true);
     reports.push({ scenario: "stop-terminal", receipt, calls: fixture.calls, sequence: sequence(fixture.transitions),
-      namespace, remainingLiveNamespaceMembers: 0, outsideCanarySurvived: true, witness: endedWitness });
+      emittedStates, namespace, remainingLiveNamespaceMembers: 0, outsideCanarySurvived: true, witness: endedWitness });
   }, 15000);
 
   it("unexpected provider exit preserves unknown turn and steering despite confirmed namespace teardown", async () => {
