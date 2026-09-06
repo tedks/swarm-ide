@@ -14,3 +14,14 @@ log_events:
   who: Ted Smith
   what: created
   comment: ""
+- time: 2026-09-06T05:16:40-00:00
+  who: Ted Smith
+  what: commented
+  comment: 'Observed during C1 final integrated code2df26ea hosted34013205311: Build
+    passed, quality/harness/runtime-pinning tests passed; //tools/policy:boundary-test
+    FAILED3.9s with {status:UNAVAILABLE,productionAvailable:false,codexStarted:false,failure:SEED_PIPE_FAILED}.
+    Dedicated virtual desktop stage skipped, so no final-topology verdict. Local same
+    combinedhead all7 gates passed. Policy source inherited reviewedP2 PR17 unchanged;
+    C1 owns no policy repair. Exact sanitized job log archived master/artifacts/overnight-wave/ci-cold/final-ci-failed.log.
+    ROOT/P2 should diagnose actual runner isolation boundary; do not silently skip/fake
+    availability or infer namespace cause from this code alone.'
