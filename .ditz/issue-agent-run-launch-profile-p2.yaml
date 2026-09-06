@@ -24,3 +24,9 @@ log_events:
     strict deadlines/cleanup. No real model/authentication acceptance. ROOT owns dispatch;
     Runtime owns later process-bound seam. P1 source investigation does not authorize
     production availability.
+- time: 2026-09-06T03:55:09-00:00
+  who: Ted Smith
+  what: blocks agent-run-effective-policy
+  comment: ""
+blocks:
+- agent-run-effective-policy
