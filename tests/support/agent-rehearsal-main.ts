@@ -1,10 +1,12 @@
 /** Separate fixed test artifact. No fixture authority enters the production entry. */
 import { app, BrowserWindow } from "electron";
 import { lstatSync, readFileSync } from "node:fs";
-import { writeFile } from "node:fs/promises";
+import { rename, writeFile } from "node:fs/promises";
 import { isAbsolute, join } from "node:path";
 import { drainRehearsalCore, rehearsalLedger, rehearsalShutdownDiagnostics } from "./agent-rehearsal-launch";
 import { runRehearsalProof } from "./agent-rehearsal-driver";
+import type { RehearsalDiagnostics } from "./agent-rehearsal-service";
+import { verifyRehearsalClose } from "./agent-rehearsal-close";
 
 const prefix = "--swarm-rehearsal-profile=";
 const profileArgs = process.argv.filter((value) => value.startsWith(prefix));
@@ -20,6 +22,7 @@ async function bootstrap() {
   const stat = lstatSync(profile);
   if (!stat.isDirectory() || stat.isSymbolicLink() || stat.uid !== process.getuid?.() || (stat.mode & 0o077) !== 0) throw new Error("Owner-private fresh rehearsal profile required");
   if (mode === "owned-acceptance") {
+    if (!process.env.SWARM_REHEARSAL_ARTIFACTS || !isAbsolute(process.env.SWARM_REHEARSAL_ARTIFACTS)) throw new Error("Absolute owned evidence directory required");
     const owned = process.env.SWARM_X11_OWNERSHIP_DIR;
     if (!owned || !isAbsolute(owned) || process.env.DISPLAY === ":0" || process.env.DISPLAY !== process.env.SWARM_X11_DISPLAY || !process.env.SWARM_X11_TOKEN) throw new Error("Owned virtual X11 required");
     const owner = lstatSync(owned);
@@ -37,13 +40,21 @@ async function bootstrap() {
     void drainRehearsalCore().then(async (drained) => {
       if (mode === "owned-acceptance") {
         const artifacts = process.env.SWARM_REHEARSAL_ARTIFACTS!;
-        await writeFile(join(artifacts, "rehearsal.json"), JSON.stringify({ ok: !failure && drained && proof !== null, proof,
-          shutdown: { drained, diagnostics: rehearsalShutdownDiagnostics() }, ledger: rehearsalLedger(),
+        const diagnostics = rehearsalShutdownDiagnostics() as RehearsalDiagnostics | null;
+        const disposed = diagnostics !== null && diagnostics.runs.length === 4 && diagnostics.runs.every((run) => run.activeTimers === 0 && run.cleanupSettled && !run.pendingSteer && !run.pendingInterrupt);
+        const retainedHistory = await verifyRehearsalClose({ profile, workspace: process.cwd(), diagnostics, proof });
+        await writeFile(join(artifacts, "rehearsal-result.tmp"), JSON.stringify({ ok: !failure && drained && disposed && proof !== null, proof,
+          shutdown: { drained, disposed, diagnostics, retainedHistory }, ledger: rehearsalLedger(),
           fixtureOnly: true, modelRequests: 0, externalAgentProcesses: 0 }, null, 2), { mode: 0o600 });
+        await rename(join(artifacts, "rehearsal-result.tmp"), join(artifacts, "rehearsal.json"));
       }
       console.log(`Rehearsal closed: runtime_drained=${drained}; private profile retained at ${profile}`);
       app.exit(failure || !drained ? 1 : 0);
-    }).catch(() => app.exit(1));
+    }).catch(async (error) => {
+      if (mode === "owned-acceptance") await writeFile(join(process.env.SWARM_REHEARSAL_ARTIFACTS!, "rehearsal-bootstrap-failure.json"),
+        JSON.stringify({ error: error instanceof Error ? error.message : "Rehearsal close proof failed" })).catch(() => {});
+      app.exit(1);
+    });
   });
   app.on("browser-window-created", (_event, window) => {
     window.webContents.on("did-finish-load", () => {

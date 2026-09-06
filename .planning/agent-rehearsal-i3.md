@@ -19,7 +19,9 @@ desktop without an explicit human launch choice.
 
 - [x] (2026-09-06) Read the reviewed I2 base and ownership; create designated worktree at 6e054e5.
 - [x] (2026-09-06) State bounded responder, no replay, honest cleanup and private history assumptions.
-- [ ] Implement fixed test-only responder/service, main/worker and compiled launch target.
+- [x] (2026-09-06 07:10Z) Implement fixed test-only responder/service, main/worker and compiled launch target; PR29 published at2f6c348.
+- [x] (2026-09-06) Real context/service tests and packaging/argument boundary quality passed; initial eight new service tests included566 tests across50 files.
+- [x] (2026-09-06) Integrate ROOT-cleared P4 normal3c50d7f without production changes.
 - [ ] Prove ordinary UI operation and reload/close behavior on owned virtual X11.
 - [ ] Complete local gates, provider-diverse review, Ditz, normal merge and reviewed integration.
 
@@ -31,6 +33,21 @@ that launcher open cannot provide a usable manual rehearsal. The production
 worker already accepts a privileged createAgents dependency, so this step can
 reuse its exact runtime without new public commands or production selectors.
 
+The first actual virtual run showed why pre-ready Electron configuration must
+remain synchronous: awaiting filesystem work before importing the fixed main
+allowed ready to fire first. Bootstrap now synchronously validates its small
+fixed launch envelope before importing main. Later actual GUI proof passed
+navigation/steering/Stop/history and dirty-buffer protection, but DOM click()
+did not establish browser sticky activation after reload. Ordinary controls now
+use actual trusted pointer input and wait for click delivery before another UI
+action. These are test-bootstrap/input corrections, not product guard changes.
+
+Native council identified stale success-file reuse and unasserted shutdown
+diagnostics. Each proof receives a fresh evidence subdirectory, complete JSON is
+published by rename, and a read-only after-exit validator checks all four actual
+stored runs and disposed responder timers. Old success/failure and premature
+shutdown evidence receive explicit negative tests.
+
 ## Decision Log
 
 
@@ -41,6 +58,13 @@ The main adds a static text-only label after every document load; it does not
 mutate app state or expose execution tools to the renderer. The launch command
 requires explicit desktop and workspace arguments and creates a fresh private
 profile whose path is printed and whose human history is retained on close.
+
+Decision (2026-09-06): both human and virtual modes load the same compiled
+file renderer. The old owned-X11 harness requires a loopback readiness port;
+virtual mode serves the same artifact only for that established ownership
+protocol. Human mode has no listener. The test-only shutdown wrapper delays
+final app exit for the existing private core shutdown handshake; production
+shutdown code and native window behavior are not changed.
 
 ## Outcomes & Retrospective
 

@@ -1,11 +1,31 @@
 // @vitest-environment node
 import { build } from "esbuild";
 import { execFileSync } from "node:child_process";
-import { readFile } from "node:fs/promises";
+import { copyFile, mkdir, mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { parseRehearsalArguments, rehearsalHelp } from "../tools/agent-rehearsal/options.mjs";
 
 describe("human rehearsal launch boundary", () => {
+  it("each actual smoke invocation ignores stale success and failure evidence", async () => {
+    const owned = await mkdtemp(join(tmpdir(), "rehearsal-launch-test-"));
+    try {
+      const tools = join(owned, "tools"); const scripts = join(tools, "agent-rehearsal"); const artifacts = join(owned, "evidence");
+      await mkdir(scripts, { recursive: true }); await mkdir(artifacts);
+      await copyFile("tools/agent-rehearsal/smoke.sh", join(scripts, "smoke.sh"));
+      // Fixed inert stand-in at the script's actual relative harness path. It
+      // records only the fresh path; no display, provider or process is opened.
+      await writeFile(join(tools, "virtual-desktop-run.sh"), '#!/bin/sh\nprintf "%s\\n" "$SWARM_REHEARSAL_ARTIFACTS"\n', { mode: 0o700 });
+      await writeFile(join(artifacts, "rehearsal.json"), '{"ok":true}');
+      await writeFile(join(artifacts, "rehearsal-failure.json"), '{"error":"old"}');
+      const run = () => execFileSync("bash", [join(scripts, "smoke.sh")], { env: { ...process.env, SWARM_ARTIFACT_DIR: artifacts }, encoding: "utf8", timeout: 5000 }).trim();
+      const first = run(), second = run();
+      expect(first).not.toBe(second); expect(first.startsWith(artifacts + "/run.")).toBe(true);
+      expect(await readdir(first)).toEqual([]); expect(await readdir(second)).toEqual([]);
+      expect(await readFile(join(artifacts, "rehearsal.json"), "utf8")).toBe('{"ok":true}');
+    } finally { await rm(owned, { recursive: true, force: true }); }
+  });
   it.each([[], ["--workspace", "/tmp"], ["--interactive-desktop"], ["--interactive-desktop", "--workspace", "relative"],
     ["--interactive-desktop", "--workspace", "/tmp", "--eval", "malicious"],
     ["--interactive-desktop", "--workspace", "/tmp\nspoof"]])("requires an exact deliberate desktop and absolute workspace choice %j", (...args) => {

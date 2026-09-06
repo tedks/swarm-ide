@@ -6,6 +6,7 @@ swarm_window_assert_selected
 rehearsal_deadline=$((SECONDS + 110))
 while [[ ! -s "${SWARM_REHEARSAL_ARTIFACTS:?}/rehearsal.json" ]]; do
   [[ ! -s "$SWARM_REHEARSAL_ARTIFACTS/rehearsal-failure.json" ]] || { echo 'Rehearsal ordinary-UI proof failed'; exit 1; }
+  [[ ! -s "$SWARM_REHEARSAL_ARTIFACTS/rehearsal-bootstrap-failure.json" ]] || { echo 'Rehearsal bootstrap/close proof failed'; exit 1; }
   (( SECONDS < rehearsal_deadline )) || { echo 'Rehearsal proof timed out'; exit 1; }
   sleep 0.1
 done

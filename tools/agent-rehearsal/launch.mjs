@@ -52,7 +52,9 @@ async function main() {
     const environment = { ...process.env, SWARM_DEV_CONTROL: "", VITE_SWARM_AGENT_DEMO: "0" };
     delete environment.SWARM_RENDERER_URL;
     delete environment.SWARM_AGENT_STORE_ROOT;
-    if (endpoint) environment.SWARM_RENDERER_URL = endpoint.rendererUrl;
+    // Both modes exercise the same compiled file:// renderer path. The virtual
+    // harness's loopback preview only proves artifact readiness for its existing
+    // port/window ownership protocol; human mode opens no listener at all.
     const args = [...runtimeArguments, join(extracted, "app/electron/main.js"), `--swarm-rehearsal-profile=${profile}`, `--swarm-rehearsal-mode=${options.mode}`];
     if (endpoint) args.push(endpoint.rendererProcessArgument);
     desktop = spawn(electron, args, { cwd: workspace, env: environment, stdio: "inherit" });

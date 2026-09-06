@@ -24,8 +24,9 @@ export type RehearsalLedger = {
   overflow: boolean;
 };
 type Action =
-  | { action: "observe" | "remember" | "continuity" | "palette" | "confirm" | "editor-focus" }
-  | { action: "click"; label: string }
+  | { action: "observe" | "remember" | "continuity" | "palette" | "confirm" | "editor-focus" | "remove-click-observer" }
+  | { action: "click" | "click-point"; label: string }
+  | { action: "click-observed"; token: string }
   | { action: "expand-reload-guard" }
   | { action: "text"; field: "task" | "instruction"; value: string }
   | { action: "pan-point"; index: number }
@@ -34,7 +35,7 @@ type Observation = {
   source: string | null; editor: boolean; graphs: number; cameras: string[]; state: string | null;
   draftFocus: string | null; context: string; receipts: string[]; evidence: string; notice: string;
   transcriptRecords: number; transcriptBytes: number; literalHtml: boolean; multibyte: boolean;
-  injectedElements: number; cursor: number | null; banner: string; dirty: boolean; guarded: boolean;
+  injectedElements: number; cursor: number | null; banner: string; dirty: boolean; guarded: boolean; userActivated: boolean;
   dimensions: { width: number; height: number; scrollWidth: number; editorHeight: number };
   buttons: { label: string; disabled: boolean }[];
 };
@@ -43,11 +44,21 @@ type Observation = {
 // and read-only protocol operations, never arbitrary JS or mutation requests.
 async function rendererAction(input: Action): Promise<unknown> {
   type Memory = { graphs: Element[]; editor: Element | null; cameras: string[]; source: string | null; text: string };
-  const target = window as Window & { __rehearsalProofMemory?: Memory };
+  type ClickObservation = { token: string; observed: boolean; off: () => void };
+  const target = window as Window & { __rehearsalProofMemory?: Memory; __rehearsalClickObservation?: ClickObservation };
   const source = () => document.querySelector(".source-surface > header strong")?.textContent ?? null;
   const graphs = () => [...document.querySelectorAll(".react-flow")];
   const cameras = () => [...document.querySelectorAll<HTMLElement>(".react-flow__viewport")].map((node) => node.style.transform);
   const buttons = () => [...document.querySelectorAll<HTMLButtonElement>("button")];
+  if (input.action === "remove-click-observer") {
+    target.__rehearsalClickObservation?.off(); delete target.__rehearsalClickObservation; return true;
+  }
+  if (input.action === "click-observed") {
+    const saved = target.__rehearsalClickObservation;
+    if (!saved || saved.token !== input.token) throw new Error("Expected matching pointer click observation");
+    if (!saved.observed) return false;
+    saved.off(); delete target.__rehearsalClickObservation; return true;
+  }
   if (input.action === "remember") {
     target.__rehearsalProofMemory = { graphs: graphs(), editor: document.querySelector(".cm-editor"), cameras: cameras(),
       source: source(), text: document.querySelector(".cm-content")?.textContent ?? "" };
@@ -71,11 +82,38 @@ async function rendererAction(input: Action): Promise<unknown> {
   if (input.action === "palette") {
     window.dispatchEvent(new KeyboardEvent("keydown", { key: "k", ctrlKey: true, bubbles: true })); return true;
   }
-  if (input.action === "click") {
+  if (input.action === "click" || input.action === "click-point") {
     const candidates = buttons().filter((button) => button.getAttribute("aria-label") === input.label || button.textContent?.trim() === input.label ||
       (button.closest(".command-results") && button.querySelector("span")?.firstChild?.textContent === input.label));
     if (candidates.length !== 1 || candidates[0]!.disabled) throw new Error(`Expected one enabled UI control: ${input.label}`);
-    candidates[0]!.click(); return true;
+    const button = candidates[0]!;
+    // The palette helper keeps its fixed DOM selection, but ordinary run
+    // controls are clicked by real Electron pointer events in the caller.
+    // DOM .click() does not grant document user activation after a reload;
+    // without it Chromium may suppress a legitimate beforeunload veto.
+    if (input.action === "click") { button.click(); return true; }
+    button.scrollIntoView({ block: "center", inline: "nearest", behavior: "auto" });
+    await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+    const rect = button.getBoundingClientRect();
+    for (const fy of [0.5, 0.25, 0.75]) for (const fx of [0.5, 0.25, 0.75]) {
+      const x = Math.round(rect.left + rect.width * fx); const y = Math.round(rect.top + rect.height * fy);
+      if (x < 0 || y < 0 || x >= innerWidth || y >= innerHeight) continue;
+      const hit = document.elementFromPoint(x, y);
+      if (hit && button.contains(hit)) {
+        if (target.__rehearsalClickObservation) throw new Error("Previous pointer click observation still pending");
+        const token = crypto.randomUUID();
+        const saved: ClickObservation = { token, observed: false, off: () => document.removeEventListener("click", receive, true) };
+        function receive(event: MouseEvent) {
+          if (event.isTrusted && event.target instanceof Node && button.contains(event.target)) {
+            saved.observed = true; saved.off();
+          }
+        }
+        target.__rehearsalClickObservation = saved;
+        document.addEventListener("click", receive, true);
+        return { x, y, token };
+      }
+    }
+    throw new Error(`UI control has no visible unobstructed pointer target: ${input.label}`);
   }
   if (input.action === "expand-reload-guard") {
     const details = document.querySelector<HTMLDetailsElement>(".agent-reload-guard > details");
@@ -128,6 +166,7 @@ async function rendererAction(input: Action): Promise<unknown> {
     banner: document.getElementById("test-only-rehearsal-label")?.textContent ?? "",
     dirty: Boolean(document.querySelector(".source-surface .file-dirty")),
     guarded: document.querySelector("[aria-label='Local agent reload protection'] > strong")?.textContent === "Agent intent protects this document",
+    userActivated: navigator.userActivation.hasBeenActive,
     dimensions: { width: innerWidth, height: innerHeight, scrollWidth: document.documentElement.scrollWidth,
       editorHeight: document.querySelector(".cm-editor")?.getBoundingClientRect().height ?? 0 },
     buttons: buttons().map((button) => ({ label: button.getAttribute("aria-label") ?? button.textContent?.trim() ?? "", disabled: button.disabled })),
@@ -159,7 +198,11 @@ export async function runRehearsalProof(options: {
   const ui = (label: string, accepts: (value: Observation) => boolean) => until(label, observe, accepts);
   const click = async (label: string) => {
     await ui(`enabled ${label}`, (value) => value.buttons.some((button) => button.label === label && !button.disabled));
-    await evaluate({ action: "click", label });
+    const { x, y, token } = await evaluate<{ x: number; y: number; token: string }>({ action: "click-point", label });
+    ownedWindow.webContents.sendInputEvent({ type: "mouseMove", x, y });
+    ownedWindow.webContents.sendInputEvent({ type: "mouseDown", button: "left", clickCount: 1, x, y });
+    ownedWindow.webContents.sendInputEvent({ type: "mouseUp", button: "left", clickCount: 1, x, y });
+    await until(`trusted pointer click delivered: ${label}`, () => evaluate<boolean>({ action: "click-observed", token }), Boolean);
   };
   const snapshot = async () => {
     const result = await evaluate<CoreResponse>({ action: "read", version: PROTOCOL_VERSION });
@@ -194,7 +237,10 @@ export async function runRehearsalProof(options: {
     await evaluate({ action: "confirm" });
   };
   const launch = async (text: string, count: number) => {
-    await click("Ask an agent about this focus"); await prepare(text); await click("Launch read-only run");
+    const source = (await observe()).source;
+    await click("Ask an agent about this focus");
+    await ui("draft created before preparation", (value) => value.draftFocus !== null && value.draftFocus === source);
+    await prepare(text); await click("Launch read-only run");
     const admitted = await until("one explicit durable admission", snapshot, (value) => value.runs.length === count && value.activeRunId !== null);
     const id = admitted.activeRunId!;
     await until("actual run is running", () => read(id), (value) => value.run.state === "running");
@@ -221,7 +267,9 @@ export async function runRehearsalProof(options: {
     }
     checkpoints.push({ stage: "ordinary pointer panned both graphs", initial: initial.cameras, panned: (await observe()).cameras });
     stage = "fixed focus and actual prepared disk context";
-    await click("Ask an agent about this focus"); await open("Open FraudCheck protobuf contract", CONTRACT);
+    await click("Ask an agent about this focus");
+    await ui("source draft created before navigation", (value) => value.draftFocus === SOURCE);
+    await open("Open FraudCheck protobuf contract", CONTRACT);
     await ui("draft focus retained", (value) => value.draftFocus === SOURCE && value.source === CONTRACT);
     await prepare(FIRST_TASK); await screenshot("01-prepared-disk-context");
     await click("Launch read-only run");
@@ -308,6 +356,7 @@ export async function runRehearsalProof(options: {
     const raced = await until("terminal disposal retains delivery uncertainty", () => read(third), (value) => value.run.state === "cancelled" &&
       value.run.cleanup.status === "confirmed" && value.run.instructions[0]?.status === "delivery-unknown");
     await ui("honest unknown instruction and reload protection", (value) => value.receipts.includes("Instruction · delivery-unknown") && value.guarded);
+    assert((await observe()).userActivated, "actual pointer input activated this reloaded document before testing its veto");
     const beforeUnknownVeto = prevented; const beforeUnknownLoads = loads; const beforeAcknowledgment = mutations();
     ownedWindow.webContents.reload();
     await until("unknown intent prevents document reload", async () => prevented, (value) => value > beforeUnknownVeto);
@@ -328,7 +377,7 @@ export async function runRehearsalProof(options: {
     assert.deepEqual(mutations(), beforeAcknowledgment, "no replay after acknowledged refresh");
     checkpoints.push({ stage, state: raced.run.state, cleanup: raced.run.cleanup.status, instruction: raced.run.instructions[0]?.status,
       reloadVetoObserved: true, explicitAction: "Discard local agent intent and allow refresh", acknowledgedLocalReceiptLossOnly: true,
-      durableReceiptUnchanged: true, replayedMutations: 0 });
+      durableReceiptUnchanged: true, replayedMutations: 0, realPointerActivationBeforeVeto: true });
     stage = "ordinary window close during active output";
     const fourth = await launch(CLOSE_TASK, 4);
     await ui("fourth active output before caller closes owned window", (value) => value.state === "running" && value.transcriptRecords > 0 && !value.guarded);
@@ -360,6 +409,7 @@ export async function runRehearsalProof(options: {
     try { await screenshot("rehearsal-failure"); } catch { /* Caller still owns failure cleanup. */ }
     throw error;
   } finally {
+    try { await evaluate({ action: "remove-click-observer" }); } catch { /* Destroyed documents own no surviving DOM listeners. */ }
     ownedWindow.webContents.removeListener("did-finish-load", loaded);
     ownedWindow.webContents.removeListener("will-prevent-unload", vetoed);
   }

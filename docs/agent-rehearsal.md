@@ -91,7 +91,10 @@ Serialize with all other GUI/full-suite users:
 
 For inspectable owned virtual evidence, use `//tools:desktop-agent-rehearsal-smoke`
 with `bazel run` under the same lock; optional `SWARM_ARTIFACT_DIR` selects an
-absolute evidence directory. No automatic check uses inherited physical DISPLAY.
+absolute evidence parent directory; every invocation creates a fresh run subdirectory
+so old success/failure cannot settle a new proof. Both modes use the compiled
+file renderer; the virtual wrapper alone starts a loopback artifact-readiness
+listener for the existing harness protocol. No automatic check uses inherited physical DISPLAY.
 The harness creates its own Xvfb/Openbox window and synthetic private profile;
 only those synthetic test resources are auto-cleaned. Its fixed ordinary-UI
 driver performs no private fixture settlement or hidden state mutation.
