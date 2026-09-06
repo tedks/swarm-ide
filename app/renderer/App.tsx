@@ -26,6 +26,10 @@ import { RunPane } from "./agents/RunPane";
 import { LaunchDraft } from "./agents/LaunchDraft";
 import { canPrepareFixture, emptyAgentWorkbench, fixtureReducer } from "./agents/state";
 import { fixturePreviewEnabled } from "./agents/client";
+import { useAgentWorkbench } from "./agents/use-agent-workbench";
+import { LiveRunRail } from "./agents/LiveRunRail";
+import { LiveRunPane } from "./agents/LiveRunPane";
+import { PreparedLaunchDraft } from "./agents/PreparedLaunchDraft";
 import "./agents/agents.css";
 
 const lensTabs = ["System", "Plan", "Performance", "Refactor"] as const;
@@ -76,6 +80,7 @@ interface ZoomRequest {
 }
 
 export function App() {
+  const { client: agentClient, state: liveAgents } = useAgentWorkbench();
   const [agents, setAgents] = useState(emptyAgentWorkbench);
   const [agentPaneHeight, setAgentPaneHeight] = useState(290);
   const agentFixtureEnabled = fixturePreviewEnabled(import.meta.env.DEV, import.meta.env.VITE_SWARM_AGENT_DEMO);
@@ -626,16 +631,17 @@ export function App() {
   }, [invoke]);
 
   const commands = useMemo(() => [
+    { label: "Ask an agent about this focus", detail: "inspect disk context before explicit read-only launch", run: () => { setPaletteOpen(false); if (workspaceRef.current.snapshot) agentClient.openDraft(workspaceRef.current.snapshot.focus); } },
     { label: "Build repository service topology", detail: "exact fingerprint → Bazel artifact → green", run: reconcile },
     { label: "Show system graphs", detail: "return to the coordinated repository and service views", run: () => { setPaletteOpen(false); showSurface("graphs"); } },
     { label: "Open FraudCheck implementation", detail: FRAUDCHECK_IMPLEMENTATION, run: () => { setPaletteOpen(false); void openFile(FRAUDCHECK_IMPLEMENTATION); } },
     { label: "Open FraudCheck protobuf contract", detail: FRAUDCHECK_CONTRACT, run: () => { setPaletteOpen(false); void openFile(FRAUDCHECK_CONTRACT); } },
     ...(agentFixtureEnabled ? [{ label: "Preview agent fixture", detail: "DEMO only · no provider or file bytes · explicit launch", run: () => { setPaletteOpen(false); openAgentDraft(); } }] : []),
-  ].filter((command) => command.label.toLowerCase().includes(commandQuery.toLowerCase())), [agentFixtureEnabled, openAgentDraft, commandQuery, openFile, reconcile, showSurface]);
+  ].filter((command) => command.label.toLowerCase().includes(commandQuery.toLowerCase())), [agentClient, agentFixtureEnabled, openAgentDraft, commandQuery, openFile, reconcile, showSurface]);
 
   if (!snapshot) return <main className="loading-screen"><div className="loading-mark hmr-probe" />Opening the working world…{error ? <strong>{error}</strong> : null}<small>{lifecycleNotice}</small></main>;
   return (
-    <main className="workbench" style={agents.selected ? { gridTemplateRows: `52px minmax(250px, 1fr) ${agentPaneHeight + 28}px` } : undefined}>
+    <main className="workbench" style={agents.selected || liveAgents.paneOpen ? { gridTemplateRows: `52px minmax(150px, 1fr) min(${(liveAgents.paneOpen ? liveAgents.height : agentPaneHeight) + 28}px, 48vh)` } : undefined}>
       <header className="topbar">
         <div className="product-mark"><span className="hmr-probe" />swarm</div>
         <nav className="lens-tabs" aria-label="Workspace lenses">{lensTabs.map((lens) => <button key={lens} className={activeLens === lens ? "active" : ""} onClick={() => setActiveLens(lens)}>{lens}</button>)}</nav>
@@ -650,7 +656,9 @@ export function App() {
 
       <aside className="work-rail panel">
         <div className="rail-section"><span className="eyebrow">working world</span><h1>swarm-ide</h1><p className="muted">real local repository</p></div>
-        <RunRail state={agents} fixtureEnabled={agentFixtureEnabled} onDraft={openAgentDraft} onSelect={() => setAgents((state) => ({ ...state, selected: true }))} />
+        <LiveRunRail state={liveAgents} client={agentClient} onDraft={() => agentClient.openDraft(snapshot.focus)} />
+        <PreparedLaunchDraft state={liveAgents} client={agentClient} dirtyPaths={fileTabs.filter((tab) => protectsBuffer(tab)).map((tab) => tab.path)} />
+        {agentFixtureEnabled ? <RunRail state={agents} fixtureEnabled={agentFixtureEnabled} onDraft={openAgentDraft} onSelect={() => { agentClient.closePane(); setAgents((state) => ({ ...state, selected: true })); }} /> : null}
         {agents.draftOpen && agentFixtureEnabled ? <LaunchDraft focus={snapshot.focus} onClose={() => setAgents((state) => ({ ...state, draftOpen: false }))} onLaunch={(context) => setAgents((state) => fixtureReducer(state, { type: "launch", context }))} /> : null}
         <div className="rail-section dispatch-list"><div className="section-heading"><span>Dispatch queue</span><b>0</b></div><div className="empty-rail">Task provider is not connected.</div></div>
       </aside>
@@ -694,14 +702,20 @@ export function App() {
         <article className="widget source-widget"><header><span>Truth source</span><i /></header>{snapshot.focus.path ? <button className="source-link" onClick={() => void openFile(snapshot.focus.path!)}>{snapshot.focus.path}</button> : <code>{snapshot.focus.key}</code>}<small>{snapshot.reconciliation.message}</small></article>
       </aside>
 
-      <section className={`activity-dock panel ${agents.selected ? "agent-dock-open" : ""}`}>
-        {agents.selected ? <RunPane key={agents.run?.runId} state={agents} dispatch={(action) => { if (agentFixtureEnabled) setAgents((state) => fixtureReducer(state, action)); }} onReveal={(focus) => {
+      <section className={`activity-dock panel ${agents.selected || liveAgents.paneOpen ? "agent-dock-open" : ""}`}>
+        {liveAgents.paneOpen ? <LiveRunPane state={liveAgents} onInstruction={(text) => agentClient.instruction(text)} onSteer={() => { void agentClient.steer(); }}
+          onStop={() => { void agentClient.stop(); }} onRead={(fromStart) => { void agentClient.read(fromStart); }} onClose={() => agentClient.closePane()}
+          onHeight={(height) => agentClient.resize(height)} currentWorldId={snapshot.world.id} currentFingerprint={snapshot.revisions.working.fingerprint}
+          onReveal={(focus) => {
+            if (focus.worldId === snapshot.world.id && focus.revisionKind === "working") selectFocus({ ...focus, revisionId: snapshot.revisions.working.id });
+            else setError("Launch focus cannot be mapped to this working world.");
+          }} /> : agents.selected ? <RunPane key={agents.run?.runId} state={agents} dispatch={(action) => { if (agentFixtureEnabled) setAgents((state) => fixtureReducer(state, action)); }} onReveal={(focus) => {
           if (focus.worldId === snapshot.world.id && focus.revisionKind === "working") selectFocus({ ...focus, revisionId: snapshot.revisions.working.id });
           else setError("Launch focus cannot be mapped to this working world.");
         }} onClose={() => setAgents((state) => ({ ...state, selected: false }))} height={agentPaneHeight} onHeight={setAgentPaneHeight} /> : null}
         <div className="dock-header"><div><span className="eyebrow">activity / jobs</span><strong>Changes entering the world</strong></div><span className="ignored-events">{workspace.ignoredEvents} stale events rejected</span></div>
         <div className="job-strip">{snapshot.jobs.length ? snapshot.jobs.map((job) => <article className={`job status-${job.status === "failed" ? "red" : job.status === "succeeded" ? "green" : "yellow"}`} key={job.id}><header><strong>{job.label}</strong><span>{Math.round(job.progress * 100)}%</span></header><div className="job-progress"><i style={{ width: `${job.progress * 100}%` }} /></div><footer><span>{job.message}</span><b>{job.resources.cpuPercent || job.resources.memoryMiB ? `CPU ${job.resources.cpuPercent}% · ${job.resources.memoryMiB} MiB` : "telemetry unavailable"}</b></footer></article>) : <article className="job idle"><strong>No derived work running</strong><span>Build the repository service topology to observe the current world.</span></article>}<div className="activity-list">{snapshot.activity.slice(0, 4).map((activity) => <div key={activity.id}><i className={`status-${activity.status}`} /><span>{activity.summary}</span><small>{activity.kind}</small></div>)}</div></div>
-        {agents.selected ? <div className="agent-job-summary">Build / activity · {snapshot.jobs.length ? snapshot.jobs.map((job) => `${job.label}: ${job.status} · ${job.resources.cpuPercent || job.resources.memoryMiB ? `${job.resources.cpuPercent}% CPU / ${job.resources.memoryMiB} MiB` : "telemetry unavailable"}`).join(" · ") : "no derived work running"} · {snapshot.activity[0]?.summary ?? "no recent events"}</div> : null}
+        {agents.selected || liveAgents.paneOpen ? <div className="agent-job-summary">Build / activity · {snapshot.jobs.length ? snapshot.jobs.map((job) => `${job.label}: ${job.status} · ${job.resources.cpuPercent || job.resources.memoryMiB ? `${job.resources.cpuPercent}% CPU / ${job.resources.memoryMiB} MiB` : "telemetry unavailable"}`).join(" · ") : "no derived work running"} · {snapshot.activity[0]?.summary ?? "no recent events"}</div> : null}
       </section>
 
       {paletteOpen ? <div className="palette-scrim" onMouseDown={() => setPaletteOpen(false)}><section className="command-palette" onMouseDown={(event) => event.stopPropagation()}><header><span>⌕</span><input ref={commandInput} value={commandQuery} onChange={(event) => setCommandQuery(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter" && commands[0]) void commands[0].run(); }} placeholder="Navigate or apply intelligence…" /><kbd>esc</kbd></header><div className="command-results">{commands.map((command) => <button key={command.label} onClick={() => void command.run()}><span>{command.label}<small>{command.detail}</small></span><kbd>↵</kbd></button>)}</div><footer><span>Current focus: {focusLabel(snapshot.focus)}</span><span>scope · action · artifact</span></footer></section></div> : null}

@@ -2,7 +2,7 @@ import { canPrepareFixture, type AgentWorkbenchState } from "./state";
 
 export function RunRail({ state, fixtureEnabled, onDraft, onSelect }: { state: AgentWorkbenchState; fixtureEnabled: boolean; onDraft: () => void; onSelect: () => void }) {
   return <div className="rail-section agent-rail">
-    <div className="section-heading"><span>Agent runs</span><b>{state.snapshot.runs.length}</b></div>
+    <div className="section-heading"><span>Fixture rehearsal</span><b>{state.snapshot.runs.length}</b></div>
     {fixtureEnabled ? <span className="agent-demo-badge">FIXTURE / DEMO</span> : null}
     {state.snapshot.runs.map((run) => <button key={run.runId} className={`agent-run-select ${state.selected ? "selected" : ""}`} aria-pressed={state.selected} onClick={onSelect}>
       <span className={`agent-state agent-state-${run.state}`}>{run.state}</span><strong>{run.taskLabel}</strong><small>{run.focusLabel}</small>
