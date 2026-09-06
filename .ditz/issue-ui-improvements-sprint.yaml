@@ -37,3 +37,14 @@ log_events:
     center, recent activity right, all simultaneously visible. Tabs now switch conversations
     only. Existing client state, drafts, output and policy gates unchanged; checking
     this focused layout increment.'
+- time: 2026-09-06T22:00:35-00:00
+  who: Ted Smith
+  what: commented
+  comment: 'Pushed UI checkpoint 06abb9b: individual Aster/Lumen/Quill tabs retain
+    drafts and follow sidebar selection; explicit mock commands, captured Bazel overlay/target
+    lens, independent document tabs, wider resizable Context and two-line expanding
+    tasks. Local quality 1139/82 and owned virtual focused smoke passed (cleanup1),
+    evidence /tmp/swarm-ide-ui-sprint-check.xPkS9D. No model turn/live telemetry claim.
+    Service-definition/call-site navigation remains next request, tracked ui-service-source-navigation;
+    generic live links tracked ui-live-build-links. Sprint remains active and PR38
+    draft; full landing review/acceptance pending.'
