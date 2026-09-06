@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { PROTOCOL_VERSION, FocusRefSchema } from "./common";
 import { AgentRequestSchema, AgentResultSchema, AgentFocusSchema, AgentLinksSchema, AgentBoundaryErrorSchema, type AgentRequest } from "./agents";
+import { TaskRequestSchema, TaskResultSchema, TaskBoundaryErrorSchema, parseTaskResultForRequest, type TaskRequest } from "./tasks";
 export { PROTOCOL_VERSION, FocusRefSchema, RevisionKindSchema, type FocusRef, type RevisionKind } from "./common";
 
 export const MAX_EDITABLE_FILE_BYTES = 2 * 1024 * 1024;
@@ -250,7 +251,7 @@ const WorkspaceRequestSchema = z.discriminatedUnion("type", [
     path: z.string().min(1).max(4_096),
   }),
 ]);
-export const CoreRequestSchema = z.union([WorkspaceRequestSchema, AgentRequestSchema]);
+export const CoreRequestSchema = z.union([WorkspaceRequestSchema, AgentRequestSchema, TaskRequestSchema]);
 export type CoreRequest = z.infer<typeof CoreRequestSchema>;
 
 export const FileResultSchema = z.discriminatedUnion("kind", [
@@ -284,7 +285,8 @@ export const CoreResponseSchema = z.discriminatedUnion("ok", [
     snapshot: WorkspaceSnapshotSchema,
     file: FileResultSchema.optional(),
     agent: AgentResultSchema.optional(),
-  }),
+    task: TaskResultSchema.optional(),
+  }).strict(),
   z.object({
     protocolVersion: z.literal(PROTOCOL_VERSION),
     requestId: z.string().min(1),
@@ -343,6 +345,15 @@ const agentResultKind = {
 export function parseCoreResponseForRequest(input: unknown, request: CoreRequest): CoreResponse {
   const response = parseCoreResponse(input);
   if (response.requestId !== request.requestId) throw new Error("Response request ID mismatch");
+  if (isTaskRequest(request)) {
+    if (!response.ok) TaskBoundaryErrorSchema.parse(response.error);
+    else {
+      if (response.file || response.agent || response.snapshot.world.id !== request.worldId) throw new Error("Unexpected task response authority");
+      const task = parseTaskResultForRequest(response.task, request);
+      const repositoryId = task.kind === "snapshot" ? task.observation.repositoryId : task.repositoryId;
+      if (repositoryId !== response.snapshot.project.id) throw new Error("Task repository identity mismatch");
+    }
+  } else if (response.ok && response.task) throw new Error("Task result supplied for a different command");
   if (!response.ok && isAgentRequest(request)) AgentBoundaryErrorSchema.parse(response.error);
   if (response.ok && isAgentRequest(request)) {
     if (!response.agent || response.agent.kind !== agentResultKind[request.type]) {
@@ -374,6 +385,10 @@ export function parseCoreResponseForRequest(input: unknown, request: CoreRequest
 
 export function isAgentRequest(request: CoreRequest): request is AgentRequest {
   return request.type.startsWith("agent.");
+}
+
+export function isTaskRequest(request: CoreRequest): request is TaskRequest {
+  return request.type === "tasks.snapshot" || request.type === "tasks.read";
 }
 
 export function uncertainMutationCode(request: CoreRequest): "WRITE_OUTCOME_UNKNOWN" | "AGENT_OUTCOME_UNKNOWN" | null {
