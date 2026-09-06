@@ -4,6 +4,7 @@ import { open, realpath, rename, unlink, type FileHandle } from "node:fs/promise
 import { basename, dirname, isAbsolute, relative, resolve, sep } from "node:path";
 import { MAX_EDITABLE_FILE_BYTES, type FileResult } from "../protocol/schema";
 import { computeWorkingWorldFingerprint } from "./fingerprint";
+import { assertRepositoryBoundary, RepositoryBoundaryError } from "./repository-boundary";
 
 export class WorkspaceFileError extends Error {
   constructor(public readonly code: string, message: string) {
@@ -54,6 +55,14 @@ function contained(root: string, candidate: string, allowRoot = false): boolean 
   return !fromRoot.startsWith(`..${sep}`) && fromRoot !== ".." && !isAbsolute(fromRoot);
 }
 
+async function validateRepositoryBoundary(root: string, path: string): Promise<void> {
+  try { await assertRepositoryBoundary(root, path); }
+  catch (error) {
+    if (error instanceof RepositoryBoundaryError) throw new WorkspaceFileError(error.code, error.message);
+    throw error;
+  }
+}
+
 function missingFile(path: string, error: unknown): never {
   const code = (error as NodeJS.ErrnoException).code;
   if (code === "ENOENT") throw new WorkspaceFileError("FILE_NOT_FOUND", `No workspace file exists at ${path}`);
@@ -95,6 +104,7 @@ async function openWorkspaceFile(
   const root = await realpath(workspaceRoot);
   const requested = resolve(root, path);
   if (!contained(root, requested)) throw new WorkspaceFileError("PATH_ESCAPE", "The file path escapes the opened workspace");
+  await validateRepositoryBoundary(root, path);
   let handle: FileHandle;
   try {
     handle = await open(requested, constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK);
@@ -106,6 +116,7 @@ async function openWorkspaceFile(
     if (!contained(root, canonical)) throw new WorkspaceFileError("SYMLINK_ESCAPE", "The opened file resolves outside the workspace");
     const canonicalRelative = relative(root, canonical).split(sep).join("/");
     if (canonicalRelative !== path) throw new WorkspaceFileError("NON_CANONICAL_PATH", "Symbolic-link aliases are not source-observatory files");
+    await validateRepositoryBoundary(root, canonicalRelative);
     const metadata = await handle.stat();
     if (!metadata.isFile()) throw new WorkspaceFileError("NOT_REGULAR_FILE", "Only canonical regular files can be opened");
     if (metadata.size > maximumBytes) throw new WorkspaceFileError("FILE_TOO_LARGE", `Files larger than ${maximumBytes} bytes cannot be opened`);
@@ -204,6 +215,7 @@ export async function writeWorkspaceFile(
   if (!contained(root, requested)) throw new WorkspaceFileError("PATH_ESCAPE", "The file path escapes the opened workspace");
 
   return serialized(requested, async () => {
+    await validateRepositoryBoundary(root, path);
     const requestedParent = dirname(requested);
     let directory: FileHandle;
     try {
@@ -221,8 +233,9 @@ export async function writeWorkspaceFile(
       if (!contained(root, canonicalParent, true) || relative(root, canonicalParent).split(sep).join("/") !== expectedParent) {
         throw new WorkspaceFileError("PATH_CHANGED", "The file's parent is no longer its canonical workspace directory");
       }
+      await validateRepositoryBoundary(root, path);
       const currentPath = `${descriptorDirectory}/${basename(path)}`;
-      const current = await open(currentPath, constants.O_RDONLY | constants.O_NOFOLLOW).catch((error) => missingFile(path, error));
+      const current = await open(currentPath, constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK).catch((error) => missingFile(path, error));
       let mode = 0;
       try {
         const actual = await descriptorPath(current);
@@ -248,7 +261,7 @@ export async function writeWorkspaceFile(
         await temporaryHandle.close();
       }
 
-      const latest = await open(currentPath, constants.O_RDONLY | constants.O_NOFOLLOW).catch((error) => missingFile(path, error));
+      const latest = await open(currentPath, constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK).catch((error) => missingFile(path, error));
       try {
         const actual = await descriptorPath(latest);
         if (actual !== resolve(canonicalParent, basename(path))) throw new WorkspaceFileError("PATH_CHANGED", "The target changed identity during save");
@@ -257,6 +270,7 @@ export async function writeWorkspaceFile(
       } finally {
         await latest.close();
       }
+      await validateRepositoryBoundary(root, path);
       await rename(temporary, currentPath);
       temporaryCreated = false;
       await directory.sync();

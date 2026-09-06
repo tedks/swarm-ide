@@ -29,6 +29,7 @@ filegroup(
         "//tools:agent-rehearsal-sources",
         "//tools/policy:sources",
         "//tools/task-integration:sources",
+        "//tools/repository-navigation:sources",
     ],
 )
 

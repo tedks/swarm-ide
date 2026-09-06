@@ -65,6 +65,13 @@ run_command() {
   swarm_window_type "$command" 2
   last_command_submitted_ms=$(date +%s%3N)
   swarm_window_key Return
+  if (( $# == 2 )); then
+    # Exact-path mode remains in the same palette until the path is submitted.
+    swarm_window_wait_title "Palette open"
+    swarm_window_key ctrl+a
+    swarm_window_type "$2" 2
+    swarm_window_key Return
+  fi
   swarm_window_wait_title "Palette open" absent
 }
 
@@ -118,11 +125,11 @@ fi
 swarm_window_wait_title "FraudCheck visible"
 incremental_ms=$(( $(date +%s%3N) - incremental_started_ms ))
 
-run_command "Open FraudCheck implementation"
+run_command "Open repository path" "examples/checkout-world/services/fraudcheck/fraudcheck.ts"
 swarm_window_wait_title "Source fraudcheck.ts"
 capture_window "$artifact_dir/fraudcheck-source.png"
 
-run_command "Open FraudCheck protobuf contract"
+run_command "Open repository path" "examples/checkout-world/services/fraudcheck/fraudcheck.proto"
 swarm_window_wait_title "Source fraudcheck.proto"
 capture_window "$artifact_dir/fraudcheck-contract.png"
 

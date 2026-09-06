@@ -40,6 +40,9 @@ async function fixture() {
   git("init", "-q"); git("config", "user.name", "Fixture"); git("config", "user.email", "fixture@example.invalid");
   git("add", "."); git("commit", "-qm", "fixture");
   const provider = await RealWorkspaceProvider.create(root);
+  await provider.observeWorkingWorld(() => undefined);
+  await provider.listRepository({ protocolVersion: PROTOCOL_VERSION, requestId: "fixture-directory", type: "repo.list",
+    directory: path.split("/").slice(0, -1).join("/"), page: 0, filter: "", refresh: true }, () => undefined);
   const focus = provider.snapshot().graphs[0]!.nodes.find((node) => node.focus.path === path)!.focus;
   const options = { root, storeRoot, snapshot: () => provider.snapshot(), emit() {} };
   const service = await createJourneyAgentService(options); services.push(service);
