@@ -1,0 +1,16 @@
+id: agent-policy-boundary-hosted-seed-pipe
+title: Diagnose hosted policy boundary SEED_PIPE_FAILED before desktop stage
+desc: ""
+type: bugfix
+component: testing
+release:
+reporter: Ted Smith <tedks@riseup.net>
+status: unstarted
+disposition:
+creation_time: 2026-09-06T05:16:38-00:00
+references: []
+log_events:
+- time: 2026-09-06T05:16:38-00:00
+  who: Ted Smith
+  what: created
+  comment: ""
