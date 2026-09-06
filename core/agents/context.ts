@@ -140,10 +140,12 @@ export class RegisteredAgentContextProvider implements AgentContextProvider {
   }
 
   private async capabilities(): Promise<AgentCapabilities> {
-    const observed = this.options.capabilities ? await this.options.capabilities() : unavailablePolicyCapabilities();
-    const parsed = AgentCapabilitiesSchema.safeParse(observed);
-    if (!parsed.success) throw new ContextFailure("ADAPTER_POLICY_UNAVAILABLE", "Provider policy evidence could not be validated.");
-    return parsed.data;
+    try {
+      const observed = this.options.capabilities ? await this.options.capabilities() : unavailablePolicyCapabilities();
+      const parsed = AgentCapabilitiesSchema.safeParse(observed);
+      if (parsed.success) return parsed.data;
+    } catch { /* Probe errors may contain private provider/configuration data. */ }
+    throw new ContextFailure("ADAPTER_POLICY_UNAVAILABLE", "Provider policy evidence could not be validated.");
   }
 
   private async source(path: string): Promise<Source> {
@@ -152,8 +154,8 @@ export class RegisteredAgentContextProvider implements AgentContextProvider {
     try {
       const bytes = await readCanonicalWorkspaceBytes(this.root, path, AGENT_LIMITS.attachmentBytes);
       return { path, digest: digest(bytes), observation: "observed", before, after: new Date(this.now()).toISOString() };
-    } catch {
-      return { path, digest: null, observation: "unobserved", before, after: new Date(this.now()).toISOString() };
+    } catch (error) {
+      return { path, digest: null, observation: error instanceof WorkspaceFileError && error.code === "FILE_CHANGED" ? "changing" : "unobserved", before, after: new Date(this.now()).toISOString() };
     }
   }
 

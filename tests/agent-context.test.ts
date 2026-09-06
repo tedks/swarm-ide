@@ -204,4 +204,19 @@ describe("registered disk-only launch context", () => {
     const second = value(await changing.prepare(f.input())); available = false;
     expect((await changing.revalidate(second)).ok).toBe(false);
   });
+
+  it("classifies thrown/invalid probes as policy unavailable and never exposes their sensitive error text", async () => {
+    const f = await fixture(); let throws = false;
+    const p = await RegisteredAgentContextProvider.create({ ...f.options, capabilities: async () => {
+      if (throws) throw new Error("provider secret=do-not-export");
+      return verifiedFixture;
+    } });
+    const draft = value(await p.prepare(f.input())); throws = true;
+    for (const result of [await p.revalidate(draft), await p.prepare(f.input())]) {
+      expect(result).toMatchObject({ ok: false, error: { code: "ADAPTER_POLICY_UNAVAILABLE" } });
+      expect(JSON.stringify(result)).not.toContain("do-not-export");
+    }
+    const invalid = await RegisteredAgentContextProvider.create({ ...f.options, capabilities: async () => ({} as AgentCapabilities) });
+    expect(await invalid.prepare(f.input())).toMatchObject({ ok: false, error: { code: "ADAPTER_POLICY_UNAVAILABLE" } });
+  });
 });
