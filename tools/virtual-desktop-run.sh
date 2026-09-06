@@ -601,7 +601,7 @@ const read = (name, limit, tail = false) => {
   } finally { fs.closeSync(fd); }
 };
 const target = '//examples/checkout-world/services/fraudcheck:service_topology';
-console.log(`observed_at=${new Date().toISOString()} target=${target}`);
+console.log(`observed_at=${new Date().toISOString()} expected_target=${target}`);
 // /proc gives a session-local process observation, not authority to kill it.
 let count = 0;
 for (const entry of fs.readdirSync('/proc')) {
@@ -677,9 +677,9 @@ if (( scenario_status != 0 )); then
     'source "$SWARM_X11_DRIVER_PATH"; swarm_window_capture "$1"' _ \
     "$artifact_dir/failure.png" || log "failure screenshot unavailable"
   if (( scenario_status == 124 || scenario_status == 137 )); then
-    fail "scenario timed out after ${scenario_timeout_seconds}s"
+    fail "scenario timed out after ${scenario_timeout_seconds}s" || true
   else
-    fail "scenario exited with status $scenario_status"
+    fail "scenario exited with status $scenario_status" || true
   fi
   exit "$scenario_status"
 fi
