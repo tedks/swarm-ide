@@ -11,6 +11,8 @@ export interface TopologyNodeData extends Record<string, unknown> {
   mappingConfidence?: number;
   mappingReason?: string;
   focus: FocusRef;
+  ignored?: boolean;
+  unavailable?: boolean;
 }
 
 export interface GraphConnectionFocus {
@@ -65,6 +67,8 @@ function mappedCandidates(
   for (const mapping of mappings) {
     if (sameFocus(mapping.from, focus) && mapping.targetTopology === topologyId) {
       for (const candidate of mapping.candidates) {
+        // Off-slice recipes count toward ambiguity but are not loaded nodes.
+        if (!candidate.nodeId) continue;
         candidates.set(candidate.nodeId, {
           confidence: candidate.confidence,
           reason: candidate.reason,
@@ -82,6 +86,7 @@ export function adaptGraph(
   mappings: NavigationMapping[],
 ): { nodes: Array<Node<TopologyNodeData>>; edges: Edge[] } {
   const mapped = mappedCandidates(focus, graph.topologyId, mappings);
+  const entries = new Map(graph.directory?.entries.map((entry) => [entry.id, entry]) ?? []);
   return {
     nodes: graph.nodes.map((node) => ({
       id: node.id,
@@ -99,6 +104,8 @@ export function adaptGraph(
         mappingConfidence: mapped.get(node.id)?.confidence,
         mappingReason: mapped.get(node.id)?.reason,
         focus: node.focus,
+        ignored: entries.get(node.id)?.git === "ignored",
+        unavailable: entries.get(node.id)?.actionable === false,
       },
     })),
     edges: graph.edges.map((edge) => ({

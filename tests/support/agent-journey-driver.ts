@@ -17,6 +17,7 @@ const SECOND_TASK = "FIXTURE ONLY: inspect the protobuf contract; demonstrate un
 type RendererAction =
   | { action: "observe" | "remember" | "continuity" | "install-observer" | "ledger" | "palette" | "confirm" | "remove-observer" }
   | { action: "click"; label: string }
+  | { action: "path"; value: string }
   | { action: "text"; field: "task" | "instruction"; value: string }
   | { action: "read"; runId?: string; afterRecord?: number; version: typeof PROTOCOL_VERSION };
 type UiObservation = {
@@ -107,6 +108,12 @@ async function rendererAction(input: RendererAction): Promise<unknown> {
     Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")!.set!.call(field, input.value);
     field.dispatchEvent(new Event("input", { bubbles: true })); return true;
   }
+  if (input.action === "path") {
+    const field = document.querySelector<HTMLInputElement>("input[aria-label='Exact repository path']");
+    if (!field) throw new Error("Expected exact repository path mode");
+    Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!.call(field, input.value);
+    field.dispatchEvent(new Event("input", { bubbles: true })); return true;
+  }
   if (input.action === "confirm") {
     const field = document.querySelector<HTMLInputElement>(".agent-confirm input[type=checkbox]");
     if (!field || field.checked) throw new Error("Expected unchecked context inspection confirmation");
@@ -191,7 +198,13 @@ export async function runJourney(options: {
     // Palette buttons include descriptive children, so only this fixed action
     // uses the closed function's label matcher instead of flattened button text.
     await until("command palette", async () => {
-      try { return await evaluate<boolean>({ action: "click", label: "Open FraudCheck protobuf contract" }); } catch { return false; }
+      try { return await evaluate<boolean>({ action: "click", label: "Open repository path" }); } catch { return false; }
+    }, Boolean);
+    await until("exact repository path mode", async () => {
+      try { return await evaluate<boolean>({ action: "path", value: CONTRACT }); } catch { return false; }
+    }, Boolean);
+    await until("open exact path", async () => {
+      try { return await evaluate<boolean>({ action: "click", label: "Open path" }); } catch { return false; }
     }, Boolean);
     await ui("protobuf source ready", (value) => value.source === CONTRACT && value.editor);
   };

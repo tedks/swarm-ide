@@ -7,6 +7,8 @@ import { afterEach, describe, expect, it } from "vitest";
 
 const roots: string[] = [];
 const build = "Build repository service topology";
+const sourcePath = "examples/checkout-world/services/fraudcheck/fraudcheck.ts";
+const contractPath = "examples/checkout-world/services/fraudcheck/fraudcheck.proto";
 // Functions are sourced by the real scenario; no desktop, Bazel, clock or image
 // processor is involved. Commands count only when Return actually dispatches them.
 const driver = String.raw`
@@ -16,6 +18,7 @@ epoch=40
 core=1
 doc=100
 pending=""
+palette=closed
 surface="Graphs"
 state="Consistent"
 record() { printf '%s\n' "$*" >> "$SCENARIO_LOG"; }
@@ -37,8 +40,21 @@ swarm_window_type() { pending="$1"; }
 swarm_window_key() {
   case "$1" in
     ctrl+0) zoom=1 ;;
+    Escape) palette=closed ;;
+    ctrl+k) palette=command ;;
     Return)
       record "command|$pending"
+      if [[ "$palette" == path ]]; then
+        case "$pending" in
+          examples/checkout-world/services/fraudcheck/fraudcheck.ts) surface='Source fraudcheck.ts' ;;
+          examples/checkout-world/services/fraudcheck/fraudcheck.proto) surface='Source fraudcheck.proto' ;;
+          *) echo "unexpected path: $pending" >&2; return 95 ;;
+        esac
+        palette=closed
+        return
+      fi
+      [[ "$palette" == command ]] || return 96
+      palette=closed
       case "$pending" in
         'Build repository service topology')
           builds=$((builds + 1))
@@ -50,8 +66,7 @@ swarm_window_key() {
               doc-changed) doc=101 ;;
             esac
           fi ;;
-        'Open FraudCheck implementation') surface='Source fraudcheck.ts' ;;
-        'Open FraudCheck protobuf contract') surface='Source fraudcheck.proto' ;;
+        'Open repository path') palette=path; pending="" ;;
         'Show system graphs') surface=Graphs ;;
         *) echo "unexpected command: $pending" >&2; return 91 ;;
       esac ;;
@@ -67,6 +82,9 @@ swarm_window_wait_title() {
     return 73
   fi
   case "$1" in
+    'Palette open')
+      if [[ "$mode" == absent ]]; then [[ "$palette" == closed ]] || return 97
+      else [[ "$palette" != closed ]] || return 97; fi ;;
     Reconciling) [[ "$state" == Reconciling ]] || return 92 ;;
     Consistent) if (( builds == 1 )); then state=Consistent; fi; [[ "$state" == Consistent ]] || return 93 ;;
     'Topology '*)
@@ -106,11 +124,12 @@ describe("desktop topology shell scenario", () => {
     expect(result.events.filter((event) => event.startsWith("command|") || /^wait\|(Reconciling|Consistent|Topology [^|]+)\|/.test(event))).toEqual([
       `command|${build}`, "wait|Reconciling|present|default", "wait|Consistent|present|360000",
       `command|${build}`, "wait|Topology 42:green|present|30000",
-      "command|Open FraudCheck implementation", "command|Open FraudCheck protobuf contract", "command|Show system graphs",
+      "command|Open repository path", `command|${sourcePath}`,
+      "command|Open repository path", `command|${contractPath}`, "command|Show system graphs",
     ]);
     for (const [command, title, capture] of [
-      ["Open FraudCheck implementation", "Source fraudcheck.ts", "fraudcheck-source.png"],
-      ["Open FraudCheck protobuf contract", "Source fraudcheck.proto", "fraudcheck-contract.png"],
+      [sourcePath, "Source fraudcheck.ts", "fraudcheck-source.png"],
+      [contractPath, "Source fraudcheck.proto", "fraudcheck-contract.png"],
       ["Show system graphs", "Graphs", "returned-to-graphs.png"],
     ]) {
       const commandIndex = result.events.indexOf(`command|${command}`);
@@ -139,6 +158,6 @@ describe("desktop topology shell scenario", () => {
     expect(result.stdout).not.toContain("desktop topology scenario passed");
     expect(result.events.filter((event) => event === `command|${build}`)).toHaveLength(2);
     expect(result.events).toContain("wait|Topology 42:green|present|30000");
-    expect(result.events).not.toContain("command|Open FraudCheck implementation");
+    expect(result.events).not.toContain("command|Open repository path");
   });
 });

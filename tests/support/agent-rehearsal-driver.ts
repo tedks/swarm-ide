@@ -29,6 +29,7 @@ type Action =
   | { action: "click-observed" | "button-focused"; token: string }
   | { action: "expand-reload-guard" }
   | { action: "text"; field: "task" | "instruction"; value: string }
+  | { action: "path"; value: string }
   | { action: "pan-point"; index: number }
   | { action: "read"; version: typeof PROTOCOL_VERSION; runId?: string; afterRecord?: number };
 type Observation = {
@@ -130,6 +131,12 @@ async function rendererAction(input: Action): Promise<unknown> {
     const field = document.querySelector<HTMLTextAreaElement>(input.field === "task" ? ".agent-draft textarea" : "textarea[aria-label='Instruction to this run']");
     if (!field) throw new Error("Expected actual rehearsal textarea");
     Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")!.set!.call(field, input.value);
+    field.dispatchEvent(new Event("input", { bubbles: true })); return true;
+  }
+  if (input.action === "path") {
+    const field = document.querySelector<HTMLInputElement>("input[aria-label='Exact repository path']");
+    if (!field) throw new Error("Expected exact repository path mode");
+    Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!.call(field, input.value);
     field.dispatchEvent(new Event("input", { bubbles: true })); return true;
   }
   if (input.action === "confirm") {
@@ -235,10 +242,16 @@ export async function runRehearsalProof(options: {
     assert(Object.values(value).every(Boolean), `${label}: ${JSON.stringify(value)}`);
     checkpoints.push({ stage: label, ...value });
   };
-  const open = async (label: string, path: string) => {
+  const open = async (path: string) => {
     await evaluate({ action: "palette" });
     await until("palette item", async () => {
-      try { return await evaluate<boolean>({ action: "click", label }); } catch { return false; }
+      try { return await evaluate<boolean>({ action: "click", label: "Open repository path" }); } catch { return false; }
+    }, Boolean);
+    await until("exact repository path mode", async () => {
+      try { return await evaluate<boolean>({ action: "path", value: path }); } catch { return false; }
+    }, Boolean);
+    await until("open exact path", async () => {
+      try { return await evaluate<boolean>({ action: "click", label: "Open path" }); } catch { return false; }
     }, Boolean);
     await ui("source ready", (value) => value.source === path && value.editor);
   };
@@ -266,7 +279,7 @@ export async function runRehearsalProof(options: {
   const mutations = () => ledger().requests.filter((entry) => ["agent.launch", "agent.steer", "agent.cancel"].includes(entry.type));
   try {
     await ui("both graphs and rehearsal label", (value) => value.graphs === 2 && value.banner.includes("REHEARSAL") && value.banner.includes("no model or external agent process"));
-    await open("Open FraudCheck implementation", SOURCE);
+    await open(SOURCE);
     assert.equal((await snapshot()).runs.length, 0, "fresh isolated rehearsal history");
     await new Promise((resolve) => setTimeout(resolve, 250));
     const initial = await observe();
@@ -282,7 +295,7 @@ export async function runRehearsalProof(options: {
     stage = "fixed focus and actual prepared disk context";
     await click("Ask an agent about this focus");
     await ui("source draft created before navigation", (value) => value.draftFocus === SOURCE);
-    await open("Open FraudCheck protobuf contract", CONTRACT);
+    await open(CONTRACT);
     await ui("draft focus retained", (value) => value.draftFocus === SOURCE && value.source === CONTRACT);
     await prepare(FIRST_TASK); await screenshot("01-prepared-disk-context");
     await click("Launch read-only run");
