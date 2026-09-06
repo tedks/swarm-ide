@@ -30,14 +30,14 @@
 .agent-pane-header > div { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
 .agent-pane-header strong { font-size: 12px; }
 .agent-pane-body { display: grid; grid-template-columns: minmax(0, 1fr) minmax(220px, 32%); min-height: 0; flex: 1; }
-.agent-output { display: flex; flex-direction: column; min-height: 0; min-width: 0; }
-.agent-evidence { padding: 7px 15px; font: 10px monospace; color: #90aaa1; border-bottom: 1px solid #1a3029; }
+.agent-output { min-height: 0; min-width: 0; overflow: auto; }
+.agent-evidence { padding: 7px 15px; font: 10px monospace; color: #90aaa1; border-bottom: 1px solid #1a3029; overflow-wrap: anywhere; }
 .agent-transcript { overflow: auto; min-height: 0; padding: 9px 15px; }
 .agent-record { display: grid; grid-template-columns: 82px minmax(0, 1fr); gap: 12px; padding: 7px 0; border-bottom: 1px solid #172e25; }
 .agent-record small { color: #6e9b8b; font: 9px/1.6 monospace; }
 .agent-record p { white-space: pre-wrap; overflow-wrap: anywhere; margin: 0; font: 12px/1.55 monospace; }
 .agent-record-recap { color: #a7e4c9; }
-.agent-controls { padding: 0 12px 10px; overflow: auto; border-left: 1px solid #294139; }
+.agent-controls { min-width: 0; padding: 0 12px 10px; overflow: auto; overflow-wrap: anywhere; border-left: 1px solid #294139; }
 .agent-controls > small, .agent-receipts > small, .agent-gap { font: 9px/1.6 monospace; color: #9aafa5; }
 .agent-controls pre { white-space: pre-wrap; overflow-wrap: anywhere; }
 .agent-steer-actions { display: flex; gap: 5px; align-items: center; }
@@ -45,7 +45,7 @@
 .agent-steer-actions button { flex: 1; }
 .agent-receipts { padding-top: 6px; }
 .activity-dock.agent-dock-open { display: grid; grid-template-rows: minmax(0, 1fr) 28px; }
-.agent-job-summary { padding: 6px 15px; font: 10px monospace; color: #8faa9e; border-top: 1px solid #284139; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.agent-job-summary { padding: 6px 15px; font: 10px monospace; color: #8faa9e; border-top: 1px solid #284139; overflow: auto; white-space: nowrap; }
 .agent-dock-open .job-strip, .agent-dock-open .dock-header { display: none; }
 .agent-secondary { width: 100%; margin-top: 7px; padding: 5px; font-size: 10px; background: #101d1a; border: 1px solid #30463e; }
 .agent-draft select { width: 100%; font-size: 10px; color: #aec1b9; background: #0d201a; padding: 5px; }
@@ -55,19 +55,24 @@
 .agent-launch-context pre { white-space: pre-wrap; overflow-wrap: anywhere; max-height: 200px; overflow: auto; }
 .agent-pane .agent-pagination { display: flex; flex-wrap: wrap; gap: 5px; padding: 4px 12px; }
 .work-rail:has(.agent-rail) { overflow: auto; }
-.workbench:has(.agent-draft), .workbench:has(.navigation-field.source-open):has(.agent-draft) { min-width: 1000px; grid-template-columns: 300px minmax(420px, 1fr) 280px; }
-.workbench:has(.agent-draft) .navigation-field.source-open { grid-template-columns: minmax(160px, .8fr) minmax(240px, 1.2fr); }
+@media (min-width: 1101px) {
+  .workbench:has(.agent-draft) { grid-template-columns: 280px minmax(0, 1fr) minmax(220px, 24%); }
+}
 .work-rail:has(.agent-draft) > * { flex-shrink: 0; }
 .work-rail .agent-draft { overflow: visible; }
 .work-rail:has(.agent-draft) .agent-rail { overflow: visible; }
-.workbench:has(.agent-dock-open) { min-height: 480px; }
+.agent-pane-header > div { min-width: 0; }
+.agent-pane-header strong { overflow-wrap: anywhere; max-width: min(380px, 45vw); max-height: 2.8em; overflow: auto; }
+.agent-pane-header > div:last-child { flex-shrink: 0; }
+.agent-steer-actions { flex-wrap: wrap; }
+.agent-run-select strong { overflow-wrap: anywhere; }
 @media (max-width: 1000px) {
-  .workbench:has(.agent-dock-open) { min-width: 800px; grid-template-columns: 190px minmax(380px, 1fr) 230px; }
-  .workbench:has(.agent-dock-open) .topbar { grid-template-columns: 100px auto minmax(130px, 1fr) auto auto; }
-  .workbench:has(.agent-dock-open) .lens-tabs { padding: 0 4px; }
-  .workbench:has(.agent-dock-open) .lens-tabs button { padding: 0 6px; }
   .agent-pane-body { grid-template-columns: minmax(0, 1fr) minmax(180px, 42%); }
   .agent-pane-header { padding: 4px 8px; }
   .agent-pane-header strong { font-size: 10px; }
   .agent-record { grid-template-columns: 45px minmax(0, 1fr); gap: 6px; }
+}
+@media (max-width: 500px) {
+  .agent-pane-body { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  .agent-record { grid-template-columns: minmax(0, 1fr); }
 }
