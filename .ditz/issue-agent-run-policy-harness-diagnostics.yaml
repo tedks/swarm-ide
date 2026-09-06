@@ -20,3 +20,11 @@ log_events:
   who: Ted Smith
   what: created
   comment: ""
+- time: 2026-09-06T04:51:02-00:00
+  who: Ted Smith
+  what: commented
+  comment: 'Google convergence CLEAN. Additional nits retained with rationale: INPUT_RECHECK_FAILED
+    deliberately sanitizes all underlying errors; future allowlisted errno diagnostics
+    may help. Required resource layout is intentionally coupled to pinned0.153.4 and
+    must be revalidated explicitly on version migration. Neither changes P2 proof
+    scope.'
