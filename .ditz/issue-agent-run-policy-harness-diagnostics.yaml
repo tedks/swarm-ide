@@ -54,6 +54,17 @@ log_events:
     now. Output LIMIT is the existing256KiB from boundary.mjs, not unknown/unbounded;
     preserve explicit small-bound regression in future harness maintenance. No control/gate
     waiver.'
+- time: 2026-09-06T08:07:34-00:00
+  who: Ted Smith
+  what: commented
+  comment: 'P5 closure: an initial synthetic-only boundary failure conservatively
+    retained user-owned mode700 /tmp/swarm-policy-kju2aG (180KiB) after incomplete
+    host-family observation. No actual Codex had started. Later corrected boundary
+    and actual controls prove their own cleanup; a targeted final scan found no current
+    matching P5 command, but this is not retroactive proof for that failed attempt.
+    Retain diagnostic directory rather than silently delete under uncertainty. Archived
+    boundary-first/second/third logs and P5 handoff account for this plus the already
+    noted Google parser/output-limit nits.'
 blocked_by:
 - agent-run-policy-hosted-boundary-failure
 - agent-policy-boundary-hosted-seed-pipe
