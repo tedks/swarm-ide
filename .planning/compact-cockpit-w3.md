@@ -16,9 +16,10 @@ than stretching the whole desktop beyond its window.
 
 
 - [x] (2026-09-06) Read product/contracts, instructions and prior screenshots; create designated branch from reviewed PR19 merge 2cbea945.
-- [ ] Implement bounded shell, compact peripheral panels and proportional dock sizing.
-- [ ] Add identity/state regressions and measure real owned-desktop rectangles and keyboard access at wide/compact, 100%/150%, and dock extremes.
-- [ ] Complete local build/tests, provider-diverse review to fixpoint, normal PR merge, Ditz and recoverable handoff.
+- [x] (2026-09-06 05:38Z) Implement bounded shell, explicit compact peripheral panels and proportional dock sizing; PR23 initial code a2a3d01 pushed.
+- [x] (2026-09-06 05:49Z) Four identity/state regressions and owned-desktop geometry/keyboard journey pass at wide/compact,100%/150%, dock extremes and160% fallback. Long text stress is explicitly DOM-only, not a model transcript.
+- [x] (2026-09-06 05:53Z) Native OpenAI and resumed Google council converge CLEAN after fixes through550b30e; Anthropic session-limit error is a missing seat. Aggregatee542a18 includes reviewed I1/A1 and passes24build/all8uncached test targets.
+- [ ] Final built-topology/pan screenshots, normal merge transaction, Ditz closure/sync and recoverable handoff; PR23 and ignored evidence record the future merge identity.
 
 ## Surprises & Discoveries
 
@@ -32,14 +33,17 @@ stops changing visible height when all values exceed its viewport cap.
 ## Decision Log
 
 
-Use a 1100 CSS-pixel compact breakpoint with explicit, nonmodal Work/Information
-drawers in the middle region; keep both sidebars mounted and source/graphs in
-their original order. These are temporary presentation choices in React memory,
-not configuration or private-text persistence. Wide layouts retain all panels.
+Use a1100 CSS-pixel compact breakpoint with explicit Work/Information panels in
+the middle region; keep both sidebars mounted and source/graphs in their original
+order. Council found that the initial overlay prototype could cover keyboard
+focus, so the final compact panels take nonoverlapping columns beside navigation.
+These are temporary choices in React memory, not configuration or private-text
+persistence. Wide layouts retain all panels. A draft-opening gesture reveals Work.
 
-Map the existing bounded height preference to a proportional usable viewport
-range, so both slider extremes remain meaningful after window resizing. Preserve
-existing client bounds and callbacks. Do not add a new layout library.
+Map the existing230–420 height preference to160px..clamp(180px,40vh,448px), so
+both slider extremes remain meaningful and never invert below400px viewport
+height. A500 CSS-pixel minimum shell gives a deliberate root scroll fallback in
+very short windows. Preserve existing client bounds and callbacks. No new library.
 
 Assumptions: Linux Electron supplies real UI zoom; CSS viewport size is distinct
 from native window size and ReactFlow camera zoom. Labels/output are untrusted
@@ -50,8 +54,27 @@ not reasons to reset state. No provider capability changes are authorized.
 ## Outcomes & Retrospective
 
 
-Pending actual implementation and evidence. Existing production launch remains
-ADAPTER_POLICY_UNAVAILABLE. Fixture presentation is not live model evidence.
+The useful supported desktop target is at least800×500 CSS pixels: at measured
+816×510 (1280×800 native request,150% interface zoom and the owned display's DPI),
+the maximum204px dock retains94px of source-editor height and113px for each
+output/instruction scroll area. At1440×900/100%, measured1377×861, the source is
+328px high with max344px dock. Dock minimum160px retains69px output/control areas.
+Below the target, measured676×438 at160% uses62px root vertical scrolling; source
+remains108px high and close/control focus stays reachable. No outer horizontal
+overflow occurred in the measured matrix. Graph navigation has its own bounded
+vertical scrolling when both100px surfaces cannot fit together above a max dock.
+
+No source/graph identity, source edits, selection or same-zoom camera position is
+discarded on panel toggles and window resizing. Existing GraphPane interface-zoom
+changes still deliberately trigger its old fit effect; that separate limitation
+is tracked in graph-camera-interface-zoom-reset, not claimed fixed. Mobile-size
+touch targets are cockpit-touch-target-size; desktop keyboard/pointer scope is
+intentional. Shared display-bound constants remain in the original parent issue.
+
+Production launch remains ADAPTER_POLICY_UNAVAILABLE. Actual unavailable draft
+and reload veto are tested independently from explicitly enabled fixture playback.
+DOM typography stress is labeled separately from scripted transcript evidence.
+No real model turn, authority change or watched master/application adoption.
 
 ## Context and Orientation
 
@@ -71,8 +94,9 @@ boundaries, wrap long readable information, and make the compact sidebars explic
 Keep the navigation region large enough to use source while exposing both graph
 surfaces. Add topbar toggles with aria-controls/expanded and automatically reveal
 Work only on an explicit draft opening. Keep all command and title names unchanged.
-Measure before/after in an owned virtual X11 window through the existing Bazel
-dev wrapper; any temporary automation belongs to this step, not global tooling.
+Measure in an owned virtual X11 window through the existing Bazel dev wrapper;
+temporary automation belongs to this step, not global tooling. Explicit focus
+targets allow keyboard scrolling of output, headings, activity and source status.
 
 ## Concrete Steps
 
@@ -86,6 +110,14 @@ Work only in `/home/tedks/Projects/swarm-ide/agent-workbench-compact`.
 
 Use an owned temporary wrapper via Bazel run for compact screenshots and bounded
 geometry checks, preserving physical DISPLAY=:0 and app port55173 untouched.
+
+    flock --close /tmp/swarm-ide-overnight.UgO2Aw/virtual.lock nix develop --command bazel run //tools:dev --jobs=3 --run_under=/tmp/swarm-ide-workbench-w3.kpsE9z/preview-wrapper.sh
+
+The temporary wrapper owns Xvfb/Openbox,55174 and one loopback55175 debug endpoint
+only for DOM measurements on the exact owned renderer. It refuses an occupied
+debug port, uses the existing X11 ownership checks and releases all owned processes.
+The script is archived with sanitized evidence for reproduction; it is not a new
+production debug endpoint or a checked-in global harness change.
 
 ## Validation and Acceptance
 
@@ -122,5 +154,7 @@ Existing React, CSS Grid/Flex, CodeMirror and ReactFlow only. Compact toggles us
 remains the existing bounded 230–420 value; presentation maps it to available space.
 No protocol, core, bridge-client, reload mutation, Electron or harness ownership moves.
 
-Revision note: initial W3 plan states environment/input assumptions and concrete
-failure modes before code; final measurements will refine support thresholds.
+Revision note: initial W3 plan states environment/input assumptions and failure
+modes before code. Convergence revision records actual measurements, side-by-side
+focus correction, keyboard-scroll targets, separate existing zoom limitation and
+review/local gates. Future merge identity belongs to PR23 and the final handoff.
