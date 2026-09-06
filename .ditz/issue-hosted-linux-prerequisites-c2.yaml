@@ -5,8 +5,8 @@ type: task
 component: testing
 release:
 reporter: Ted Smith <tedks@riseup.net>
-status: in_progress
-disposition:
+status: closed
+disposition: fixed
 creation_time: 2026-09-06T14:24:30-00:00
 references: []
 log_events:
@@ -41,5 +41,9 @@ log_events:
     and blocked hosted-proof issues remain open. No security/privilege changes; reviewed
     operator-boundary diagnostic slice ONLY complete. Feature cleanpushed, own Bazel
     stopped, retained branch/session/evidence for ROOT.
+- time: 2026-09-06T14:34:01-00:00
+  who: Ted Smith
+  what: 'closed: fixed'
+  comment: fixed
 blocks:
 - agent-policy-boundary-hosted-seed-pipe
