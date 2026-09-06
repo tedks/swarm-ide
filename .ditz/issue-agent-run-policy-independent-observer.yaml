@@ -1,0 +1,16 @@
+id: agent-run-policy-independent-observer
+title: Prove independent auxiliary-attempt observation without incomplete ptrace capture
+desc: ""
+type: task
+component: default
+release:
+reporter: Ted Smith <tedks@riseup.net>
+status: unstarted
+disposition:
+creation_time: 2026-09-06T05:53:32-00:00
+references: []
+log_events:
+- time: 2026-09-06T05:53:32-00:00
+  who: Ted Smith
+  what: created
+  comment: ""
