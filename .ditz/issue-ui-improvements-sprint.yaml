@@ -29,3 +29,11 @@ log_events:
     sidebar, retained draft/output and a Jobs & activity tab. Real execution remains
     unavailable; canvas stays on ui-sprint:55175 with HMR. Final checkpoint checks
     underway; no merge or sprint completion.'
+- time: 2026-09-06T21:07:37-00:00
+  who: Ted Smith
+  what: commented
+  comment: 'User correction implemented via HMR: retain the old activity/jobs surface
+    and insert agent messages in its middle. Builds/resources left, conversations
+    center, recent activity right, all simultaneously visible. Tabs now switch conversations
+    only. Existing client state, drafts, output and policy gates unchanged; checking
+    this focused layout increment.'
