@@ -10,8 +10,8 @@ type: task
 component: tooling
 release:
 reporter: Ted Smith <tedks@riseup.net>
-status: in_progress
-disposition:
+status: closed
+disposition: fixed
 creation_time: 2026-09-05T23:41:45-00:00
 references: []
 log_events:
@@ -31,3 +31,12 @@ log_events:
   who: Ted Smith
   what: started
   comment: ""
+- time: 2026-09-06T01:06:57-00:00
+  who: Ted Smith
+  what: 'closed: fixed'
+  comment: User explicitly authorized killing the old app without saving and moving
+    on. Stopped exact old launcher574939 and verified old Electron/core exited and55173
+    closed before ff-only update. Master nowb8c58bd; relaunched via Nix/Bazel in swarm-ide:app,
+    new launcher2113333 and core2113526 generation1, rendererHTTP200. Unrelated5173
+    process2344291 preserved. No physical-desktop GUI automation; behavioral proof
+    remains the passing owned-virtualX11 evidence.
