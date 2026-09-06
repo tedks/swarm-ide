@@ -210,7 +210,9 @@ export function createAgentAdapterFixture() {
   let cleanup: ReturnType<typeof deferred<CleanupEvidence>> | undefined;
   const calls: { method: "start" | "steer" | "interrupt" | "dispose"; turnId?: string; text?: string }[] = [];
   function record(call: typeof calls[number]) {
-    if (calls.length >= AGENT_FIXTURE_CALL_LIMIT || (call.text !== undefined && utf8Bytes(call.text) > AGENT_LIMITS.taskBytes)) {
+    if (calls.length >= AGENT_FIXTURE_CALL_LIMIT ||
+        (call.text !== undefined && utf8Bytes(call.text) > AGENT_LIMITS.taskBytes) ||
+        (call.turnId !== undefined && utf8Bytes(call.turnId) > 256)) {
       ledgerIncomplete = true;
     } else calls.push(call);
   }

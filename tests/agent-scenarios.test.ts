@@ -297,4 +297,10 @@ describe("manually gated adapter fixture for deterministic delay and race tests"
     expect(await pending).toMatchObject({ error: { code: "AGENT_OUTCOME_UNKNOWN" } });
     f.fixture.settleCleanup(cleanup); await disposing;
   });
+  it("bounds rejected turn identifiers in UTF-8 bytes without blocking cleanup", async () => {
+    const f = await start();
+    expect(await f.handle.steer("🧪".repeat(65), "small")).toMatchObject({ error: { code: "STALE_TURN" } });
+    expect(() => f.fixture.calls()).toThrow("ledger incomplete");
+    await dispose(f);
+  });
 });
