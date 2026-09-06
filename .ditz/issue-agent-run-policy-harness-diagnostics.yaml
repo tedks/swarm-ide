@@ -28,3 +28,12 @@ log_events:
     may help. Required resource layout is intentionally coupled to pinned0.153.4 and
     must be revalidated explicitly on version migration. Neither changes P2 proof
     scope.'
+- time: 2026-09-06T05:15:34-00:00
+  who: Ted Smith
+  what: commented
+  comment: 'ROOT verified P2 hosted run34012740498 now fails Test/policy:boundary-test
+    before Codex startup: UNAVAILABLE/SEED_PIPE_FAILED. Underlying bootstrap reason
+    not exposed; NOT the topology90s failure and no proven userns/AppArmor cause.
+    Exact merged framework0 all7 local targets/450tests and26 independent boundary
+    checks passed. P3 owns bounded sanitized diagnostic and separate deterministic
+    hosted-boundary followup; no skipping required checks or production availability.'
