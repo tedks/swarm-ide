@@ -124,6 +124,12 @@ log_events:
     No security changes or old-image downgrade: operator environment accommodation
     remains required. Independent proofs remain mandatory; historical seed-pipe stderr
     not retrospectively recovered. Local gates/review underway; parent stays open.'
+- time: 2026-09-06T14:24:31-00:00
+  who: Ted Smith
+  what: blocked by hosted-linux-prerequisites-c2
+  comment: ""
 blocks:
 - agent-run-owned-process-hosted-proof
 - agent-run-policy-harness-diagnostics
+blocked_by:
+- hosted-linux-prerequisites-c2
