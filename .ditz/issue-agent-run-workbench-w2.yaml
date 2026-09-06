@@ -5,8 +5,8 @@ type: feature
 component: default
 release:
 reporter: Ted Smith <tedks@riseup.net>
-status: in_progress
-disposition:
+status: closed
+disposition: fixed
 creation_time: 2026-09-06T03:46:02-00:00
 references: []
 log_events:
@@ -22,5 +22,14 @@ log_events:
   who: Ted Smith
   what: blocks agent-run-workbench
   comment: ""
+- time: 2026-09-06T04:18:50-00:00
+  who: Ted Smith
+  what: 'closed: fixed'
+  comment: 'W2 delivered and normal-merged in PR15 as6ead046f591930bea95b925c80afeef62f83f592.
+    Tested head8be2923: full19target build,274tests/31files, all5uncached Bazel gates,
+    ownedvirtual100/150percent screenshots4.647s/cleanup1. Native and Google council
+    convergence CLEAN; Anthropic600s timeout/unavailable. HostedCI inprogress atmerge
+    under userlocalproofwaiver. Runtime/process integration and full-document intent
+    checkpoint remain separately tracked; parent staysopen.'
 blocks:
 - agent-run-workbench
