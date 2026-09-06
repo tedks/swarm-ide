@@ -52,6 +52,10 @@ log_events:
   who: Ted Smith
   what: blocked by agent-run-human-rehearsal-i3
   comment: ""
+- time: 2026-09-06T14:12:26-00:00
+  who: Ted Smith
+  what: blocked by live-agent-admission-contract-p6
+  comment: ""
 blocked_by:
 - real-service-topology-provider
 - virtual-x11-desktop-smoke
@@ -59,3 +63,4 @@ blocked_by:
 - stable-native-window-dev-reload
 - agent-run-vertical-proof
 - agent-run-human-rehearsal-i3
+- live-agent-admission-contract-p6
