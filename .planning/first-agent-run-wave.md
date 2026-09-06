@@ -28,8 +28,11 @@ application of intelligence before queues, swarm coordination or write authority
 - [x] (2026-09-06) R0: first full build and five uncached Bazel tests passed, including owned virtual desktop smoke (31.6 seconds); 151 focused tests passed at a6d8f4f.
 - [x] (2026-09-06) R0: first fix delta d57de1c passed the full local build/test again (154 focused tests; five Bazel targets, virtual smoke 30.4 seconds). Native and Google convergence clean.
 - [x] (2026-09-06) R0: final code bb3ab3b passed full build and all five uncached Bazel tests (154 focused tests; owned virtual smoke 32.2 seconds). Test-only correction 01fc34c reran quality successfully; unchanged harness tests reused that local evidence.
-- [ ] R0: final council receipt, normal merge and executive handoff without adopting watched master; see PR #9 and master/artifacts/agent-run-contract-base-final for transaction evidence.
-- [ ] R1 and E1: establish installed-adapter conformance and bounded launch context/profile preflight; W1: show fixture-driven cockpit run surface in parallel.
+- [x] (2026-09-06) R0: PR #9 normal-merged as 1afb2b8; ROOT verified local gates and CLEAN three-provider review. Hosted CI was in progress under the conditional local-proof waiver. Watched master was not adopted.
+- [x] (2026-09-06) W1: renderer fixture cockpit normal-merged as 6b171b9 (PR #10, topic 28669ba); local full build, all five Bazel targets and owned virtual preview passed, three-provider council CLEAN. Hosted virtual smoke subsequently failed under the recorded local-proof waiver, not green. No watched-app adoption.
+- [x] (2026-09-06) E1: context/preflight normal-merged as 023c6e2 (PR #11, topic 8746804); its Ditz delivery records 212 tests with W1, full build/all five targets and three-provider CLEAN convergence. Effective limited policy remains unavailable. ROOT authorized its narrow nonblocking file-open/FIFO regression.
+- [x] (2026-09-06) R1: bounded adapter, deterministic conformance fixtures and actual fixed-argv fixture subprocess implemented. Shared public contracts unchanged; no live model turn or production wiring.
+- [ ] R1: final integrated local gates, council receipt and normal merge; see PR #12 and the runtime handoff for exact head/transaction evidence.
 - [ ] R2: durable lifecycle, process ownership, cancellation and recovery; E2: adversarial fixtures and virtual scenario; W2: wire live state, steering and uncertainty.
 - [ ] R3/W3/E3: integrate, demonstrate one real read-only run, finish relevant local gates/review and normal-merge the feature PRs.
 - [ ] ROOT deliberately adopts the integrated build if native-main changes require restart; do not silently replace the watched app.
@@ -59,6 +62,40 @@ invite replay. Existing workspace and file projections must remain unchanged.
 
 ## Decision Log
 
+
+Decision (2026-09-06, R1): the complete installed npm package now reports
+0.153.4, so this slice pins its locally generated stable protocol shapes rather
+than assuming the historical 0.146.0 installation remains. The default adapter
+probe can inspect version but returns policy-unavailable; only a trusted core
+probe/transport injection can exercise fixture execution. E1/R2 must supply
+effective profile evidence before real use. No orchestration bundle is packaged.
+Requested reasoning effort remains explicitly unsupported without model-specific
+capability evidence. The adapter reports the actual initial model, records
+reroutes as status, and preserves the frozen AdapterEvent contract.
+
+Decision (2026-09-06, R1 convergence): delay process-exit publication until
+stdout EOF or a one-second bounded drain, retaining buffered terminal/reply
+evidence; reject new controls during that drain. Deferred transport cleanup is
+close-once even when open reports synchronous failure. These are local stdio
+ordering rules, not the unresolved ROOT core-restart acknowledgement policy.
+Make invisible controls visible in normalized output and preserve observed
+unsupported versions rather than displaying the tested baseline as actual.
+
+Decision (2026-09-06, first-wave integration): merge reviewed W1/E1 upstream
+commits into the runtime topic before its final combined local verification.
+R1 reuses E1's landed validateCodexThreadPolicy instead of keeping divergent
+echo-policy rules. The default capability probe and prepared context are both
+unavailable without full effective-profile evidence. Schema/version support or
+thread echoes alone never attest disabled hooks/MCP/connectors/plugins/delegation.
+Non-null reasoning effort is explicitly unsupported until the separately tracked
+agent-run-model-capabilities work establishes model-specific evidence.
+
+Decision (2026-09-06, R1): use one bounded byte-framed transport and normalize
+only consumed lifecycle/message fields. Keep raw reasoning and stderr private.
+Unknown optional notifications are ignored; unknown server requests get a
+bounded unsupported reply and safe stop, known approval requests get cancel.
+Direct-process disposal is explicitly unknown for descendant cleanup, which
+requires R2's owner; a zero exit status never supplies turn success.
 
 Decision (2026-09-06, design department): use one Codex app-server over local
 stdio, a fresh thread and one turn, with live steering and interrupt. Local
@@ -135,6 +172,22 @@ completed/cleaned-up baseline, so each assertion isolates its intended rule.
 
 ## Outcomes & Retrospective
 
+
+First parallel wave: W1 supplies an explicitly labeled renderer-only rehearsal;
+E1 supplies bounded disk-context capture/revalidation and truthful unavailable
+policy; R1 supplies normalized adapter events and fixture-proven stdio handling.
+The current combined runtime topic contains the committed/pushed W1 and E1
+normal merges, not edits copied from sibling worktrees. No integration desktop
+or watched master update occurred. Separate integration-preview ownership remains
+Runtime; ROOT alone chooses visible adoption.
+
+W2 has no new renderer contract dependency on R1: R2 must turn AdapterEvent and
+the landed context provider into durable Run/snapshot/read results through the
+existing six-command protocol. W2 then wires live subscriptions, sequence/core
+generations, HMR, historical pagination and explicit uncertain steering. R2's
+service/store/owned lifetime and ROOT restart-drain decision remain outstanding;
+E1's effective-policy blocker still prevents any real turn. R1 does not claim
+authenticated execution, host confidentiality or descendant-cleanup proof.
 
 R0 now supplies the protocol v3 base: protocol/common.ts holds shared version
 and focus primitives; protocol/agents.ts validates six methods, named results,
@@ -479,3 +532,11 @@ remain unstarted; watched master/runtime adoption belongs to ROOT.
 Plan revision note (2026-09-06, R0 handoff): record delivered module seams,
 local verification and scoped review dispositions. Merge/cleanup is a separate
 recorded transaction; no later department or runtime adoption is claimed.
+
+Plan revision note (2026-09-06, R1 start): record the merged R0 base, current
+installed CLI evidence and first-slice fail-closed adapter boundary. No R2 or
+real-run acceptance is implied.
+
+Plan revision note (2026-09-06, R1 convergence): preserve verified peer landings,
+adapter ordering fixes, reused policy seam and exact next-slice dependencies.
+Master/app adoption and the R2 gate stay with ROOT.
