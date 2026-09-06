@@ -36,8 +36,10 @@ application of intelligence before queues, swarm coordination or write authority
 - [x] (2026-09-06) ROOT authorized overnight R2/W2/E2 plus independent P1 policy investigation, each isolated from f547e05; small native helpers allowed within explicit owned modules. R2 service/store/namespace owner and private shutdown handshake underway; W2 bridge/recovery cockpit and E2 shared adversarial fixtures underway. No real model turn is authorized in these four slices.
 - [x] (2026-09-06) R2 checkpoint355d40f: durable service/private store, real production disk preparation/history, typed policy-unavailable launch, private shutdown handshake and separately tested namespace-owned transport implemented. No real-provider transport is constructed in production.
 - [x] (2026-09-06) R2 local gates at355d40f:333 tests across33 files (20 service,38 store,12 owner,23 supervisor), full19-target build and all5 uncached Bazel targets passed. Owned virtual topology smoke26.3s; dedicated virtual selective-reload scenario31.7s, cleanup_complete=1. Native window/workspace/focus retained, dirty preload deferred; renderer176ms/core504ms/crash363ms. These are local fixture evidence, not hosted CI or live-agent execution.
-- [ ] R2 checkpoint: provider-diverse council convergence, normal merge and pushed integration handoff pending; watched master/app adoption remains ROOT-owned.
-- [ ] R2: durable lifecycle, process ownership, cancellation and recovery; E2: adversarial fixtures and virtual scenario; W2: wire live state, steering and uncertainty.
+- [x] (2026-09-06) R2 final code c6aa292: 340 tests across 33 files, full 19-target build and all five uncached local test targets passed. The final virtual reload scenario took 31.739 seconds, cleanup_complete=1; renderer 173 ms, core 501 ms and crash 407 ms, preserving native window/workspace/focus and dirty-buffer protection.
+- [x] (2026-09-06) R2 council converged CLEAN in OpenAI native and Google seats after fixing missing push-only storage-failure publication and safely recovering abandoned private snapshot temporaries. Anthropic timed out without a verdict and is explicitly missing, not approval. Hosted run 34011115120 failed its dedicated virtual smoke's known 90-second Reconciling wait; the conditional local-verification waiver applies, not a green-CI claim. PR #16 records the normal merge transaction and landing evidence.
+- [x] (2026-09-06) Reviewed integration d8cf40d combines R2 code with normal-merged W2 PR #15 (6ead046), E2 PR #14 (a4ae558) and P1 PR #13 (2f3ca7f). Full local build and all five uncached targets passed; 404 tests across 36 files. W2 supplies the actual bridge cockpit, E2 supplies adversarial fixtures, and R2 supplies durable lifecycle and separately tested owned process cleanup. No real provider was launched or watched master adopted.
+- [ ] Separate test-only worker/virtual execution journey: agent-run-runtime-r2-vertical and agent-run-virtual-scenario-e2. P1 supplied no effective-policy attestation; ROOT's separate policy gate remains closed.
 - [ ] R3/W3/E3: integrate, demonstrate one real read-only run, finish relevant local gates/review and normal-merge the feature PRs.
 - [ ] ROOT deliberately adopts the integrated build if native-main changes require restart; do not silently replace the watched app.
 
@@ -197,7 +199,7 @@ completed/cleaned-up baseline, so each assertion isolates its intended rule.
 ## Outcomes & Retrospective
 
 
-R2 checkpoint355d40f now joins durable admission, bounded event/command queues,
+R2 final code c6aa292 joins durable admission, bounded event/command queues,
 steering intent/outcomes, Stop races and recovery against the actual file store.
 Linux namespace fixtures demonstrate hard core-control loss stopping detached
 descendants without touching an unrelated canary. Store and service tests also
@@ -206,7 +208,12 @@ cleanup, old/duplicate events and shutdown during steering-intent persistence.
 Actual production worker construction supplies disk context and private history
 while returning ADAPTER_POLICY_UNAVAILABLE for launch. Full local and owned
 virtual reload gates passed; exact evidence is archived under
-master/artifacts/overnight-wave/runtime. PR #16 records future review/merge state.
+master/artifacts/overnight-wave/runtime. The two available council seats converged
+CLEAN; the third timed out. PR #16 records the normal merge transaction because
+this commit cannot name its future merge commit. Reviewed integration d8cf40d
+passed all five local targets and 404 tests with W2, E2 and P1. Hosted CI failed
+the known dedicated virtual Reconciling timeout; local evidence is not hosted
+CI success. The watched checkout and application remain deliberately unchanged.
 
 This remains a coherent nonlaunchable checkpoint. The separate core-owned test
 worker journey with W2/E2 is agent-run-runtime-r2-vertical (coordinated with E2's
@@ -224,13 +231,14 @@ normal merges, not edits copied from sibling worktrees. No integration desktop
 or watched master update occurred. Separate integration-preview ownership remains
 Runtime; ROOT alone chooses visible adoption.
 
-W2 has no new renderer contract dependency on R1: R2 must turn AdapterEvent and
+W2 has no new renderer contract dependency on R1: R2 turns AdapterEvent and
 the landed context provider into durable Run/snapshot/read results through the
-existing six-command protocol. W2 then wires live subscriptions, sequence/core
-generations, HMR, historical pagination and explicit uncertain steering. R2's
-service/store/owned lifetime and ROOT restart-drain decision remain outstanding;
-E1's effective-policy blocker still prevents any real turn. R1 does not claim
-authenticated execution, host confidentiality or descendant-cleanup proof.
+existing six-command protocol. W2 wires live subscriptions, sequence/core
+generations, HMR, historical pagination and explicit uncertain steering. The
+service/store/owned-lifetime checkpoint and ROOT restart-drain decision are
+implemented; the separate execution journey and effective-policy blocker still
+prevent any real turn. R1 by itself does not claim authenticated execution,
+host confidentiality or descendant-cleanup proof.
 
 R0 now supplies the protocol v3 base: protocol/common.ts holds shared version
 and focus primitives; protocol/agents.ts validates six methods, named results,
@@ -587,3 +595,7 @@ Master/app adoption and the R2 gate stay with ROOT.
 Plan revision note (2026-09-06, R2 checkpoint): record the delegated restart
 decision, bounded durable/runtime ownership implementation, exact local evidence,
 nonlaunchable production scope and smallest independently reviewable continuation.
+
+Plan revision note (2026-09-06, R2 convergence): record exact final code tests,
+review dispositions, hosted failure, reviewed peer integration and the remaining
+test-worker/policy/adoption gates without claiming a real model run.

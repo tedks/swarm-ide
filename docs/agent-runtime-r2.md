@@ -24,7 +24,10 @@ relationships. A Linux abstract Unix socket locks the directory's inode for one
 live writer and is automatically released on core death. Snapshot writes use a
 fresh file, file fsync, atomic rename and directory fsync. A failed post-rename
 sync poisons the writer rather than acknowledging ambiguous persistence. There
-is no automatic deletion, recovery replay, saved-PID signalling or model resume.
+is no automatic history eviction, recovery replay, saved-PID signalling or model
+resume. Under the exclusive writer lock, startup removes only verified abandoned
+internal UUID-named snapshot temporaries after a bounded directory scan; suspicious
+files fail closed and the committed history snapshot is never deleted.
 
 The 20-run/64 MiB store and 8 MiB-per-run transcript limits count encoded bytes.
 Ordinary writes preserve reserved final metadata/gap capacity. This checkpoint
