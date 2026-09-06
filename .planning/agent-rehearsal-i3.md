@@ -24,6 +24,7 @@ desktop without an explicit human launch choice.
 - [x] (2026-09-06) Integrate ROOT-cleared P4 normal3c50d7f without production changes.
 - [x] (2026-09-06 07:24Z) Actual ordinary-UI four-run proof passed26.058s on owned virtual X11, cleanup_complete=1; final disk/zero-timer validator passed after ordinary active close.
 - [x] (2026-09-06) Native OpenAI and foreign Google convergence CLEAN; Anthropic actual session-limit unavailable, not approval. Final evidence-label nit independently verified at657c4d6.
+- [x] (2026-09-06 07:43Z) ROOT-cleared T0/W4 aggregatea218277 included atb67d1ec. Final executable4bba518 passed full29-target build, all10 uncached local targets and716 tests across57 files; actual rehearsal27.6s target/cleanup1.
 - [ ] Complete local gates, provider-diverse review, Ditz, normal merge and reviewed integration.
 
 ## Surprises & Discoveries
@@ -48,6 +49,15 @@ diagnostics. Each proof receives a fresh evidence subdirectory, complete JSON is
 published by rename, and a read-only after-exit validator checks all four actual
 stored runs and disposed responder timers. Old success/failure and premature
 shutdown evidence receive explicit negative tests.
+
+The first full-suite invocation additionally exposed an artifact lookup hazard:
+the preceding topology build temporarily repoints workspace/bazel-bin. Resolve
+the fixed declared artifact through Bazel runfiles instead, with a missing-path
+regression. The next invocation exposed native window activation restoring an
+old DOM focus target; settle native focus before focusing the exact button and
+attest document/element focus before one gesture. Never retry uncertain action
+delivery. The actual Bazel rehearsal target and then the entire combined suite
+passed with those fixes, not just the earlier standalone launcher.
 
 ## Decision Log
 
@@ -81,13 +91,19 @@ zero pending timers/operations. The passing journey took26.058 seconds; total
 owned harness time27.002 seconds with cleanup_complete=1. Both modes use the
 same compiled file renderer. Human desktop access remains deliberately uninvoked.
 
-At657c4d6 the own code's review is CLEAN in native OpenAI and foreign Google;
-Anthropic hit its session limit and is missing, not approval. The quality gate
-passed640 tests across53 files; final full build/all-target checks and reviewed
-aggregate landing are recorded below when complete. Root integration is held
-at reviewed746644c until ordinary peer clearances are appended, not inferred
-from unreviewed remote-master movement. No model readiness, hosted success,
-watched-master adoption or remote merge is claimed at this checkpoint.
+Final executable4bba518 includes only ROOT-cleared T0/W4/P4/I2 peer heads and
+passes the full29-target local build, all10 uncached Bazel targets and716 tests
+across57 files. The repeated actual rehearsal target passed27.6 seconds; the
+older I1 journey5.3 seconds and I2 external process proof3.6 seconds also passed.
+The latest runfiles and native-focus fix deltas each converged CLEAN in native
+OpenAI and foreign Google; Anthropic's earlier actual session limit was missing,
+not approval. A full own-PR Anthropic review was requested after its reset and
+its final disposition belongs in the PR review record. Source/code contracts
+match the reviewed aggregate; accounting-only updates are checked inline.
+Normal PR merge and sole-owned integration landing are recorded in the PR and
+sanitized executive handoff. No model readiness, hosted success or watched-master
+adoption is implied. User remote-CI waiver applies only after these actual local
+gates; existing hosted private-namespace/policy-prerequisite debt is not green.
 
 ## Context and Orientation
 
