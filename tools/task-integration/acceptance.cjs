@@ -25,7 +25,8 @@ async function main() {
   const win = BrowserWindow.getAllWindows()[0];
   assert(win && !win.isDestroyed());
   const wc = win.webContents;
-  wc.on("console-message", (event) => { if (event.level === "error") console.error(`Owned fixture renderer: ${event.message}`); });
+  const rendererErrors = [];
+  wc.on("console-message", (event) => { if (event.level === "error") { rendererErrors.push(event.message.slice(0, 4096)); console.error(`Owned fixture renderer: ${event.message}`); } });
   const run = (fn, ...args) => wc.executeJavaScript(`(${fn.toString()})(...${JSON.stringify(args)})`, true);
   await run(() => addEventListener("error", (event) => console.error(event.error?.stack ?? event.message)));
   await run(() => { const report = console.error; console.error = (...args) => report(...args.map((value) => value instanceof Error ? value.stack : value)); });
@@ -49,7 +50,12 @@ async function main() {
   }, selector);
   win.focus(); wc.focus();
   await until(() => win.isFocused() && wc.isFocused(), "native window and webContents focus");
-  const fill = async (selector, value) => { await focus(selector); key("A", ["control"]); await wc.insertText(value); };
+  const fill = async (selector, value) => {
+    await focus(selector); key("A", ["control"]);
+    await until(() => run((s) => { const input = document.querySelector(s); return input.selectionStart === 0 && input.selectionEnd === input.value.length; }, selector), "native select-all input");
+    await wc.insertText(value);
+    await until(() => run((s, expected) => document.querySelector(s).value === expected, selector, value), "exact user input");
+  };
   const request = (input) => run((body) => window.swarm.request({ protocolVersion: 4, requestId: `task-proof:${crypto.randomUUID()}`, ...body }), input);
   const status = () => run(() => document.querySelector("[data-task-status]")?.getAttribute("data-task-status"));
   const snapshotRevision = () => run(() => document.querySelector(".task-panel .task-revision code")?.textContent);
@@ -58,14 +64,16 @@ async function main() {
     await click(".task-panel .task-heading button");
     await until(async () => await status() === expected && await run(() => !document.querySelector(".task-panel .task-heading button").disabled), `task status ${expected}`);
   };
-  const screenshot = async (name) => fs.writeFile(path.join(evidence, name), (await wc.capturePage()).toPNG());
+  const paint = () => run(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve(true)))));
+  const screenshot = async (name) => { await paint(); await fs.writeFile(path.join(evidence, name), (await wc.capturePage()).toPNG()); };
   const showDetails = async () => {
     if (!await run(() => document.querySelector(".task-show-details").getBoundingClientRect().width > 0)) {
       await click(button("Toggle work panel"));
       await until(() => run(() => document.querySelector(".task-show-details").getBoundingClientRect().width > 0), "explicit work panel");
     }
     await focus(".task-show-details"); key("Return");
-    await until(() => run(() => document.activeElement?.textContent === "Return to source information"), "focus after keyboard Show");
+    await until(() => run(() => document.activeElement?.textContent === "Return to source information" &&
+      document.querySelector(".workbench").dataset.compactPanel === "info" && document.querySelector(".task-detail").getBoundingClientRect().width > 0), "visible detail and focus after keyboard Show");
     await until(() => has(".task-detail .task-title"), "task detail after keyboard Show");
     assert.equal(await run(() => document.activeElement?.textContent), "Return to source information");
   };
@@ -163,12 +171,13 @@ async function main() {
       documentOverflow: document.documentElement.scrollWidth - innerWidth,
       editorWidth: document.querySelector(".cm-editor").getBoundingClientRect().width,
       taskOverflow: Math.max(0, document.querySelector(".task-detail").scrollWidth - document.querySelector(".task-detail").clientWidth),
+      taskWidth: document.querySelector(".task-detail").getBoundingClientRect().width,
       transforms: globalThis.__taskProof.transforms,
       cursor: { anchor: globalThis.__taskProof.anchor, head: globalThis.__taskProof.head },
       textLength: globalThis.__taskProof.source.length,
       focus: document.activeElement.textContent,
     }));
-    assert(measure.documentOverflow <= 1 && measure.taskOverflow <= 1 && measure.editorWidth > 100);
+    assert(measure.documentOverflow <= 1 && measure.taskOverflow <= 1 && measure.editorWidth > 100 && measure.taskWidth > 100);
     layouts.push({ percent, ...measure }); await screenshot(`02-real-tasks-${percent}-compact.png`);
     key("Return");
     await until(() => run(() => document.activeElement === document.querySelector(".instrument-heading h2")), "keyboard Return to source information");
@@ -206,9 +215,10 @@ async function main() {
   const lastAgent = await request({ type: "agent.snapshot" });
   assert(lastAgent.ok && lastAgent.agent.snapshot.runs.length === 0 && !lastAgent.agent.snapshot.capabilities.controls.launch);
   assert.equal(await fs.readFile(path.join(fixture.root, fixture.sourcePath), "utf8"), fixture.sourceText);
+  assert.deepEqual(rendererErrors, [], "renderer exceptions are failures, even if a later browser fallback restores final state");
   await fs.writeFile(path.join(evidence, "task-proof.json"), JSON.stringify({ ok: true, realDitz: true, packagedCore: true,
     modelTurns: 0, ditzVersion: fixture.ditzVersion, firstRevision: fixture.firstCommit, advancedRevision: advanced,
-    invalidGitStructureRevision: invalid, issueBlob: detail.task.result.detail.blob, layouts, elapsedMs: Date.now() - started,
+    invalidGitStructureRevision: invalid, issueBlob: detail.task.result.detail.blob, layouts, rendererErrors, elapsedMs: Date.now() - started,
     facts: ["file URL production assets", "archive-local YAML plus missing-parser negative", "real preload/main/core tasks",
       "literal hostile text", "explicit line Reveal", "dirty cursor/text/draft/graphs retained", "missing file typed error",
       "cheap stale and explicit adoption", "expired pinned detail", "retained malformed/unavailable and recovery", "source disk unchanged"] }, null, 2));

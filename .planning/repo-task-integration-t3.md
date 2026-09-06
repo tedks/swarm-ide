@@ -19,9 +19,10 @@ This is read-only browsing, not task dispatch or attachment to an agent draft.
 
 - [x] (2026-09-06 15:09Z) Read repository instructions, approved design, reader/UI seams and ROOT-reviewed authority; materialize frozen dependencies.
 - [x] (2026-09-06 15:09Z) State assumptions and split narrow deadline tests and CLI-fixture work into independent native helpers.
-- [ ] Compose real task provider and package the isolated parser dependency.
-- [ ] Prove task-only deadline and real CLI-authored pinned/cache/disposal behavior.
-- [ ] Prove packaged application bridge and ordinary task UI on owned virtual X11, including source/draft/camera/keyboard preservation at 100/150 percent.
+- [x] (2026-09-06 15:38Z) Compose real task provider, package pinned parser and relative file-URL assets; task-only deadline/CLI pinned/cache/disposal tests pass.
+- [x] (2026-09-06 15:38Z) Actual packaged CLI-to-UI path exercises Reveal, dirty source/draft/cameras,100/150, stale/adopt/malformed/missing/recovery and absent-parser negative. Initial32build/all12uncached pass; this is not final error-free acceptance.
+- [ ] Correct separately requested pre-existing CodeMirror state identity bug exposed by actual keyboard proof; runtime regression currently RED (undefined anchor).
+- [ ] Repeat error-free packaged UI proof with exact source/selection and visible painted detail measurements.
 - [ ] Complete full local gates, provider-diverse review to fixpoint, normal merge, reviewed integration, Ditz sync and owned cleanup.
 
 ## Surprises & Discoveries
@@ -32,6 +33,22 @@ source string requires `yaml` through a resolved module path; the current app
 archive does not contain that external module. A passing source-level test does
 not prove packaging. The supervisor's existing five-second read timeout also
 precedes the reader's ten-second whole-observation bound.
+
+Production Vite output used absolute asset URLs despite main loading a file URL;
+the leased packaging script now builds with a relative base. A first harness
+startup attempt waited asynchronously before requiring production main, too late
+for its hardware initialization. The corrected test transfers its already-owned
+CLI fixture to a synchronously loaded unchanged main; it does not replace any
+production provider.
+
+Actual keyboard testing exposed a pre-existing duplicate CodeMirror state:
+commands6.10.3 imports state6.7.4 while app/view use6.5.4. The old state's
+transaction resolver fails `instanceof EditorSelection` against the command's
+other class and interprets its missing top-level anchor/head as undefined.
+The browser can restore a final cursor after that exception, hiding the defect
+from a weak final-state check. NEW actual `cursorCharForwardLogical` regression
+fails with undefined instead of1; all1029 other tests pass. The dependency-only
+repair requires ROOT's explicit frozen-dependency exception before implementation.
 
 ## Decision Log
 
@@ -50,10 +67,16 @@ provider selector or new metadata authority is introduced.
 ## Outcomes & Retrospective
 
 
-Implementation and acceptance remain pending. Existing T1/T2 evidence establishes
-the independent consumers, not this joined production behavior. Hosted namespace
-prerequisites remain failed; the user's conditional local-gates waiver is not
-a hosted-green claim. Watched master/app remains untouched throughout.
+PR35 is pushed and ready. Initial exact0f3f605 full32-target build and all12
+uncached test targets pass; quality1029/69, task9.5s, topology65.7s, journey5.5s,
+rehearsal27.7s and owned cleanup1. This joined proof exposed the editor exception
+above, so final usable acceptance remains held. Native review strengthened full
+document/logical selection measurements; Google returned actual CLEAN after an
+initial acknowledgment-only non-verdict, Anthropic actual credits unavailable.
+All subsequent relevant fix deltas require convergence and fresh local gates.
+ROOT's superseding execution directive ignores hosted CI entirely; local checks,
+review, normal PR merge/push and owned virtual gates remain mandatory. Only ROOT
+may update the visualization; this child never adopts it.
 
 ## Context and Orientation
 
@@ -143,3 +166,6 @@ never a Ditz identifier. Later task-to-draft provenance is a separate contract.
 
 Revision note: initial T3 plan records exact ownership, failure assumptions and
 joined product/package proof before implementation.
+
+Revision note (15:41Z): record actual initial aggregate evidence, discovered
+keyboard corruption and genuine red regression without claiming final acceptance.
