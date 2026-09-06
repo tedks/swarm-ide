@@ -5,8 +5,8 @@ type: task
 component: default
 release:
 reporter: Ted Smith <tedks@riseup.net>
-status: in_progress
-disposition:
+status: closed
+disposition: fixed
 creation_time: 2026-09-06T05:19:52-00:00
 references: []
 log_events:
@@ -22,5 +22,17 @@ log_events:
   who: Ted Smith
   what: blocks agent-run-offline-activation-proof
   comment: ""
+- time: 2026-09-06T06:10:55-00:00
+  who: Ted Smith
+  what: 'closed: fixed'
+  comment: 'Delivered PR22 normal491a6d6 (reviewed topicbe93b7b). Exact merged tree
+    a9099bd: full24targetbuild,550tests47files,all8uncached gates, owned virtual desktop66.1s
+    and agent journey5.3s cleanup1; fresh6case actual0.153.4 activation acceptance
+    with all26 boundary checks before each launch. NativeOpenAI/GooglefixpointCLEAN;
+    Anthropic actualsessionlimitmissing. Local-CI waiver; hosted finaltopic34015320911failure
+    remains tracked. Proof limited to static requiredMCP provider-reported startup/rejection
+    plus fixed canary, not independent syscall exclusion, hooks, executor/plugin/persistedstate/telemetry
+    or production equivalence. NOmodel/credentials/availability/adoption; broadparent
+    remains open.'
 blocks:
 - agent-run-offline-activation-proof
