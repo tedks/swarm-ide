@@ -39,7 +39,7 @@ application of intelligence before queues, swarm coordination or write authority
 - [x] (2026-09-06) R2 final code c6aa292: 340 tests across 33 files, full 19-target build and all five uncached local test targets passed. The final virtual reload scenario took 31.739 seconds, cleanup_complete=1; renderer 173 ms, core 501 ms and crash 407 ms, preserving native window/workspace/focus and dirty-buffer protection.
 - [x] (2026-09-06) R2 council converged CLEAN in OpenAI native and Google seats after fixing missing push-only storage-failure publication and safely recovering abandoned private snapshot temporaries. Anthropic timed out without a verdict and is explicitly missing, not approval. Hosted run 34011115120 failed its dedicated virtual smoke's known 90-second Reconciling wait; the conditional local-verification waiver applies, not a green-CI claim. PR #16 records the normal merge transaction and landing evidence.
 - [x] (2026-09-06) Reviewed integration d8cf40d combines R2 code with normal-merged W2 PR #15 (6ead046), E2 PR #14 (a4ae558) and P1 PR #13 (2f3ca7f). Full local build and all five uncached targets passed; 404 tests across 36 files. W2 supplies the actual bridge cockpit, E2 supplies adversarial fixtures, and R2 supplies durable lifecycle and separately tested owned process cleanup. No real provider was launched or watched master adopted.
-- [ ] Separate test-only worker/virtual execution journey: agent-run-runtime-r2-vertical and agent-run-virtual-scenario-e2. P1 supplied no effective-policy attestation; ROOT's separate policy gate remains closed.
+- [ ] (2026-09-06, I1) Separate test-only worker/virtual execution journey underway in agent-integrated-journey from normal merge e443b38; reuse agent-run-runtime-r2-vertical and agent-run-virtual-scenario-e2. Two small native helpers own fixture composition/tests and the fixed desktop driver; I1 owns bootstrap/integration. No policy promotion.
 - [ ] R3/W3/E3: integrate, demonstrate one real read-only run, finish relevant local gates/review and normal-merge the feature PRs.
 - [ ] ROOT deliberately adopts the integrated build if native-main changes require restart; do not silently replace the watched app.
 
@@ -68,6 +68,17 @@ invite replay. Existing workspace and file projections must remain unchanged.
 
 ## Decision Log
 
+
+Decision (2026-09-06, I1): production worker construction remains a fixed entry
+calling startCoreWorker without overrides. A separately compiled test-only entry
+injects E2's deterministic adapter into the real service/store/E1 disk context.
+The actual Electron main/supervisor/preload and renderer are reused. A fixed
+test-build alias observes the exact owned utility process; private harness
+controls never join the six public commands or normal development environment.
+Only the owned virtual-X11 scenario can trigger compiled automation. In-process
+fixture disposal confirms no external process existed, not namespace policy or
+provider cleanup. Crash recovery still blocks on unknown ownership exactly as
+production does; it never upgrades knowledge from the test harness.
 
 Decision (2026-09-06, ROOT delegated overnight): intentional core replacement
 closes admission and waits at most 1000 milliseconds for outstanding agent
@@ -599,3 +610,7 @@ nonlaunchable production scope and smallest independently reviewable continuatio
 Plan revision note (2026-09-06, R2 convergence): record exact final code tests,
 review dispositions, hosted failure, reviewed peer integration and the remaining
 test-worker/policy/adoption gates without claiming a real model run.
+
+Plan revision note (2026-09-06, I1 start): split fixed production composition
+from explicit test bootstrap, retain all runtime state/unknown/no-replay rules,
+and implement one credential-free vertical journey before any live-policy gate.
