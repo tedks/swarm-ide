@@ -1,0 +1,15 @@
+package(default_visibility = ["//visibility:public"])
+
+sh_binary(
+    name = "linux-prerequisites",
+    srcs = ["preflight.sh"],
+    data = ["preflight.mjs", "//tools/policy:sources"],
+    tags = ["manual", "local"],
+)
+
+sh_test(
+    name = "preflight-test",
+    srcs = ["preflight.test.sh"],
+    data = ["preflight.mjs", "preflight.test.mjs", "preflight.sh"],
+    tags = ["local"],
+)
