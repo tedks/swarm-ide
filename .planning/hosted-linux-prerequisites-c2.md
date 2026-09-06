@@ -12,7 +12,8 @@ CI currently reports a policy seed-pipe error before any agent starts, without e
 - [x] (2026-09-06 08:35Z) Added fixed diagnostic command and focused tests; pushed8976956, opened draft PR33. Actual first hosted diagnostic failed with precise UID-map and loopback observations.
 - [x] (2026-09-06 14:16Z) Resumed same child after quota restoration; targeted c8686b1 follow-up34038579174 confirmed enforced post-unshare profile and netlink EPERM. No image/security change attempted.
 - [x] (2026-09-06 14:21Z) Consumed ROOT-reviewed T1c9e9a74/P5 by normal feature merge42ba0d. Native/Google review identified optional LSM metadata bug; fixed with regression. Pinned test Node and separated Node checks from Vitest discovery. Initial full build30targets passed; quality870 cases passed after discovery fix.
-- [ ] Run local full build and all uncached tests, provider-diverse review to fixpoint, normal PR merge, final evidence and cleanup.
+- [x] (2026-09-06 14:28Z) Frozen executable ba3f688/tree76b7f89 full30-target build and all11 uncached tests pass: quality870/63files plus12 focused checks; topology65.5s, journey5.5s, rehearsal27.8s, process3.2s and policy1.3s. No concurrent checkout edits during this gate.
+- [x] (2026-09-06 14:28Z) OpenAI native and Google CLEAN convergence on c8686b1..ba3f688; Anthropic actual480s timeout124/noverdict recorded as missing. PR33 carries the review record. Only accounting changed after this tested executable. Final normal-merge/cleanup identity is recorded in the delivery handoff and Ditz, not presumed from this plan.
 
 ## Surprises & Discoveries
 
@@ -34,7 +35,7 @@ Decision: land a diagnostic stopping boundary, not an older-image security-basel
 
 ## Outcomes & Retrospective
 
-The useful increment is an early stage-specific failure with current-run evidence and a documented operator boundary. The canonical hosted issue and blocked hosted-proof obligations stay open. No hosted-positive claim, new provider capability, host-security change or production model request has been made. Final local/review/merge verification remains pending.
+The delivered increment is an early stage-specific failure with current-run evidence and a documented operator boundary. The canonical hosted issue and blocked hosted-proof obligations stay open. No hosted-positive claim, new provider capability, host-security change or production model request has been made. Executable ba3f688 passed the complete frozen local build/test gate and available-seat review fixpoint. Hosted final-code run34038994909 still fails exactly at required Linux prerequisites; the conditional local waiver is not hosted acceptance. PR33 is the normal-merge delivery record; the ignored executive handoff records its final SHA and owned cleanup after landing.
 
 ## Context and Orientation
 
@@ -72,4 +73,4 @@ Raw original hosted log is `/tmp/swarm-ide-hosted-prereq-c2.5kQVTr/i3-merge-host
 
 No package, lockfile, flake, core, renderer, protocol, existing policy/process helper or shared-plan changes. New `//tools/ci:linux-prerequisites` accepts no caller arguments. New focused tests stay in the new package to avoid root source-tracking edits. All subprocess argv are fixed by the module; Nix executable locations are validated before execution, with no host executable fallback. All diagnostics describe observation rather than inferred security-policy authority.
 
-Initial plan written2026-09-06 after original hosted-log inspection. Updated14:22Z with two deliberate diagnostic results, ROOT-cleared aggregate, review fixes, and invalidated initial rehearsal evidence; next run freezes all checkout edits.
+Initial plan written2026-09-06 after original hosted-log inspection. Updated14:22Z with two deliberate diagnostic results, ROOT-cleared aggregate, review fixes, and invalidated initial rehearsal evidence. Updated14:28Z with the successful frozen full local gate, actual available-seat review fixpoint and explicit hosted stopping boundary; only accounting changed after tested ba3f688.
