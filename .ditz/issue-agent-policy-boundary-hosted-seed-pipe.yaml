@@ -25,3 +25,12 @@ log_events:
     C1 owns no policy repair. Exact sanitized job log archived master/artifacts/overnight-wave/ci-cold/final-ci-failed.log.
     ROOT/P2 should diagnose actual runner isolation boundary; do not silently skip/fake
     availability or infer namespace cause from this code alone.'
+- time: 2026-09-06T05:26:54-00:00
+  who: Ted Smith
+  what: commented
+  comment: 'I1 final executable14d6da7 hosted34013611396 repeats exact inherited policy-boundary
+    failure: UNAVAILABLE / SEED_PIPE_FAILED, codexStarted=false, productionAvailable=false;
+    normal quality/harness/runtime-pinning tests passed and desktop stage skipped.
+    I1 local full24target build/all8uncached tests/474tests passed. Sanitized failed
+    log master/artifacts/overnight-wave/agent-journey/ci-14d6da7-failed.log. No root
+    cause inferred or policy bypass; same ROOT/P2 followup, not another issue.'
