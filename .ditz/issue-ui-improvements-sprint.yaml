@@ -1,0 +1,19 @@
+id: ui-improvements-sprint
+title: Personally steered UI improvements
+desc: 'Personally steered UI sprint. Current increment: conventional expandable repository
+  explorer and quieter map, automatic startup topology; single-line tasks opening
+  full task text in central editor area. Fast HMR iteration; batch local verification
+  and review at checkpoints. Roadmap paused.'
+type: task
+component: default
+release:
+reporter: Ted Smith <tedks@riseup.net>
+status: unstarted
+disposition:
+creation_time: 2026-09-06T19:02:13-00:00
+references: []
+log_events:
+- time: 2026-09-06T19:02:13-00:00
+  who: Ted Smith
+  what: created
+  comment: ""
