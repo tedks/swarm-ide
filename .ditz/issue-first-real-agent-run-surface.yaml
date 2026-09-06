@@ -41,6 +41,13 @@ log_events:
   who: Ted Smith
   what: blocked by agent-run-vertical-proof
   comment: ""
+- time: 2026-09-06T01:29:33-00:00
+  who: Ted Smith
+  what: commented
+  comment: 'Design PR #8 defines the next wave; still unimplemented. First useful
+    real journey is read-only focus analysis with live steering/Stop, then write authority
+    is a later gate. Three departments follow agent-run-contract-base; full vertical
+    proof blocks completion.'
 blocked_by:
 - real-service-topology-provider
 - virtual-x11-desktop-smoke
