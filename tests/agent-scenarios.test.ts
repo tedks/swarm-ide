@@ -134,6 +134,9 @@ describe("shared fixture observations use the frozen R0 contract", () => {
       [3, 2], [3, 5], [3, 3], [3, 5], [2, 999], [4, 1],
     ]);
     expect(deliveries[1]).toEqual(deliveries[3]);
+    expect(deliveries[1]!.event).not.toBe(deliveries[3]!.event);
+    deliveries[1]!.event.snapshot.runs[0]!.taskLabel = "mutated delivery";
+    expect(deliveries[3]!.event.snapshot.runs[0]!.taskLabel).not.toBe("mutated delivery");
     // W2/preload owns accepting/rejecting these. Valid shape is not fresh state.
   });
   it("correlates fixtures through all six actual bridge result kinds", () => {

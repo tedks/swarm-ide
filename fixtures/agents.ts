@@ -176,7 +176,7 @@ export function agentFixtureReordering() {
     { generation: 3, event: frames["steering-unknown"].event },
     { generation: 2, event: { ...frames["completed-cleaned"].event, sequence: 999 } },
     { generation: 4, event: { ...frames["recovered-unknown"].event, sequence: 1 } },
-  ];
+  ].map((envelope) => structuredClone(envelope));
 }
 
 const failure = (code: AgentError["code"], message: string) =>
