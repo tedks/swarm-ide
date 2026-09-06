@@ -68,6 +68,7 @@ cat >"$bin_dir/import" <<'SH'
 #!/usr/bin/env bash
 printf '%s|%s|import %s\n' "${DISPLAY:-unset}" "${XAUTHORITY:-unset}" "$*" >>"$SWARM_FAKE_GUI_LOG"
 [[ "${SWARM_FAKE_CAPTURE_FAIL:-0}" != 1 ]] || exit 31
+[[ "${SWARM_FAKE_CAPTURE_SLEEP:-0}" != 1 ]] || sleep 30
 printf 'synthetic virtual screenshot\n' >"${!#}"
 SH
 cat >"$bin_dir/ps-with-stale-member" <<'SH'
@@ -81,6 +82,17 @@ SH
 cat >"$bin_dir/dev" <<'SH'
 #!/usr/bin/env bash
 [[ "${SWARM_FAKE_APP_EXIT:-0}" != 1 ]] || exit 29
+if [[ -n "${SWARM_FAKE_BAZEL_LOG:-}" ]]; then
+  digest=$(printf '%s' "$BUILD_WORKSPACE_DIRECTORY" | md5sum | cut -d' ' -f1)
+  base="$TEST_TMPDIR/_bazel_$(id -un)/$digest"
+  mkdir -p "$base"
+  case "$SWARM_FAKE_BAZEL_LOG" in
+    fifo) mkfifo "$base/command.log" ;;
+    symlink) ln -s "$SWARM_FAKE_SECRET_FILE" "$base/command.log" ;;
+    progress)
+      printf 'header\nPRIVATE_SOURCE_CANARY\n[1 / 197] Compiling src/google/protobuf/descriptor.cc [for tool]; 2s\nINFO: Elapsed time: 21.0s\n' >"$base/command.log" ;;
+  esac
+fi
 exec -a "fake-electron $SWARM_RENDERER_PROCESS_ARGUMENT" node -e '
   const http = require("node:http");
   const server = http.createServer((_, response) => response.end("ok"));
@@ -184,6 +196,16 @@ next_case=$((next_case - 1))
 run_success teardown-idempotent
 [[ "$case_display" == "$reused_display" && "$case_port" == "$reused_port" ]] || fail "teardown reuse setup drifted"
 
+run_success bounded-build-progress TEST_TMPDIR="$test_root/progress-tmp" SWARM_FAKE_BAZEL_LOG=progress
+grep -q 'toolchain-work-observed' "$case_dir/topology-build.txt" || fail 'lost nested compiler progress'
+grep -q 'INFO: Elapsed time: 21.0s' "$case_dir/topology-build.txt" || fail 'lost build timing'
+if grep -q PRIVATE_SOURCE_CANARY "$case_dir/topology-build.txt"; then fail 'copied compiler source into diagnostics'; fi
+printf 'PRIVATE_SOURCE_CANARY\n' >"$test_root/secret-canary"
+run_success reject-log-symlink TEST_TMPDIR="$test_root/symlink-tmp" SWARM_FAKE_BAZEL_LOG=symlink SWARM_FAKE_SECRET_FILE="$test_root/secret-canary"
+grep -q 'nested_log=unavailable-or-unsafe' "$case_dir/topology-build.txt" || fail 'followed symlink log'
+run_success reject-log-fifo TEST_TMPDIR="$test_root/fifo-tmp" SWARM_FAKE_BAZEL_LOG=fifo
+grep -q 'nested_log=unavailable-or-unsafe' "$case_dir/topology-build.txt" || fail 'accepted FIFO log'
+
 run_failure missing-wm 'SWARM_WM_BIN must name an executable absolute path' SWARM_WM_BIN="$test_root/missing-wm"
 run_failure missing-automation 'SWARM_XDOTOOL_BIN must name an executable absolute path' SWARM_XDOTOOL_BIN="$test_root/missing-xdotool"
 run_failure xserver-exit 'X server exited' SWARM_FAKE_XVFB_EXIT=1
@@ -198,6 +220,8 @@ run_failure scenario-failure 'scenario exited with status' SWARM_FAKE_SCENARIO_F
 grep -q 'cleanup_complete=1' "$case_dir/supervisor.log" || fail 'failure diagnostics disrupted cleanup'
 run_failure scenario-timeout 'scenario timed out' SWARM_FAKE_SCENARIO_SLEEP=1 SWARM_SCENARIO_TIMEOUT_SECONDS=1
 [[ -s "$case_dir/failure.png" ]] || fail 'timeout lost its pre-teardown screenshot'
+run_failure blocked-failure-capture 'failure screenshot unavailable' SWARM_FAKE_CAPTURE_SLEEP=1 SWARM_SCENARIO_TIMEOUT_SECONDS=1
+grep -q 'cleanup_complete=1' "$case_dir/supervisor.log" || fail 'blocked failure capture prevented cleanup'
 
 run_failure cleanup-failure 'cleanup_complete=0' SWARM_FAKE_TAMPER_LOCK=1
 cleanup_failure_lock="$lock_root/.swarm-ide-x11-${case_display#:}.lock"

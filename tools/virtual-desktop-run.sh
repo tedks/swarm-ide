@@ -670,7 +670,9 @@ cat "$artifact_dir/scenario.log"
 if (( scenario_status != 0 )); then
   # Capture before teardown, through the same exact-owned-window checks used
   # by the scenario. Capture failure must never hide the original test result.
-  (swarm_window_capture "$artifact_dir/failure.png") || log "failure screenshot unavailable"
+  "$timeout_bin" --signal=TERM --kill-after=1 3 bash -c \
+    'source "$SWARM_X11_DRIVER_PATH"; swarm_window_capture "$1"' _ \
+    "$artifact_dir/failure.png" || log "failure screenshot unavailable"
   if (( scenario_status == 124 || scenario_status == 137 )); then
     fail "scenario timed out after ${scenario_timeout_seconds}s"
   else
