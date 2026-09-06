@@ -118,6 +118,44 @@ describe("durable private agent store", () => {
     const repaired = await openStore(f.directory); expect(value(await repaired.snapshot()).runs).toEqual([]);
   });
 
+  it("removes only private incomplete snapshots after taking the exclusive lock, preserving retained history", async () => {
+    const f = await fixture(); value(await f.store.update(running(await f.read())));
+    value(await f.store.update(completed(await f.read())));
+    const before = await readFile(join(f.directory, "snapshot.json"), "utf8");
+    const abandoned = `snapshot-${randomUUID()}.tmp`;
+    await writeFile(join(f.directory, abandoned), "{truncated", { mode: 0o600 });
+    await expect(createFileRunStore(f.directory, options)).rejects.toThrow();
+    expect(await readFile(join(f.directory, abandoned), "utf8")).toBe("{truncated");
+    await f.store.close();
+    await writeFile(join(f.directory, "snapshot-not-a-uuid.tmp"), "unrelated", { mode: 0o600 });
+    const reopened = await openStore(f.directory);
+    expect((await readdir(f.directory)).sort()).toEqual(["snapshot-not-a-uuid.tmp", "snapshot.json"]);
+    expect(await readFile(join(f.directory, "snapshot.json"), "utf8")).toBe(before);
+    expect(value(await reopened.read(f.context.runId, 0)).run.state).toBe("completed");
+  });
+
+  it.each(["symlink", "mode", "hardlink", "fifo"])("refuses suspicious %s temporary files without deleting them or history", async (kind) => {
+    const f = await fixture(); await f.store.close();
+    const history = join(f.directory, "snapshot.json"), before = await readFile(history, "utf8");
+    const temporary = join(f.directory, `snapshot-${randomUUID()}.tmp`);
+    if (kind === "symlink") await symlink(history, temporary);
+    if (kind === "mode") await writeFile(temporary, "unexpected mode", { mode: 0o644 });
+    if (kind === "hardlink") await link(history, temporary);
+    if (kind === "fifo") execFileSync("mkfifo", ["-m", "600", temporary]);
+    await expect(createFileRunStore(f.directory, options)).rejects.toThrow();
+    expect(await readdir(f.directory)).toContain(temporary.split("/").at(-1));
+    expect(await readFile(history, "utf8")).toBe(before);
+  });
+
+  it("bounds recovery directory enumeration and does not partially prune when that bound is exceeded", async () => {
+    const directory = join(await root(), "private"); const store = await openStore(directory); await store.close();
+    const names = Array.from({ length: 128 }, () => `snapshot-${randomUUID()}.tmp`);
+    await Promise.all(names.map((name) => writeFile(join(directory, name), "incomplete", { mode: 0o600 })));
+    await expect(createFileRunStore(directory, options)).rejects.toThrow();
+    expect(await readdir(directory)).toHaveLength(129);
+    expect(await readFile(join(directory, "snapshot.json"), "utf8")).toBe(JSON.stringify({ version: 1, entries: [] }));
+  });
+
   it("recovers active state and pending delivery as durable unknown without replay", async () => {
     const f = await fixture(); value(await f.store.update(running(await f.read())));
     value(await f.store.instruction(f.context.runId, instruction()));

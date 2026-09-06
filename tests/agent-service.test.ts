@@ -8,7 +8,7 @@ import { createFileRunStore, type FileRunStore, type FileRunStoreOptions } from 
 import { createAgentService, type AgentService } from "../core/agents/service";
 import type { AdapterEvent, AgentAdapter, AgentHandle, AgentOperation, CleanupEvidence } from "../core/agents/adapter";
 import type { AgentContextProvider } from "../core/agents/context-provider";
-import { AGENT_LIMITS, type AgentCapabilities, type AgentPrepareInput, type AgentRequest, type PreparedAgentContext, type Run } from "../protocol/agents";
+import { AGENT_LIMITS, type AgentCapabilities, type AgentPrepareInput, type AgentRequest, type AgentSnapshot, type PreparedAgentContext, type Run } from "../protocol/agents";
 import { PROTOCOL_VERSION } from "../protocol/schema";
 
 // These capabilities belong only to this deterministic core-side fixture.
@@ -51,7 +51,7 @@ function draft(root: string, request: AgentPrepareInput): PreparedAgentContext {
 async function openStore(directory: string, options: FileRunStoreOptions = {}) {
   const store = await createFileRunStore(directory, { now, ...options }); stores.push(store); return store;
 }
-async function fixture(options: { store?: FileRunStoreOptions; cancelGraceMs?: number; deadlineMs?: number; capabilities?: AgentCapabilities } = {}) {
+async function fixture(options: { store?: FileRunStoreOptions; cancelGraceMs?: number; deadlineMs?: number; capabilities?: AgentCapabilities; emit?(snapshot: AgentSnapshot): void } = {}) {
   const root = await mkdtemp(join(tmpdir(), "swarm-agent-service-")); roots.push(root);
   const sourceRoot = join(root, "repo"); await mkdir(sourceRoot);
   const directory = join(root, "private"); const store = await openStore(directory, options.store);
@@ -74,7 +74,7 @@ async function fixture(options: { store?: FileRunStoreOptions; cancelGraceMs?: n
     revalidate: vi.fn(async (prepared: PreparedAgentContext): Promise<AgentOperation<PreparedAgentContext>> => good(prepared)),
   } satisfies AgentContextProvider;
   const serviceOptions = { store, adapter, context, now, capabilities: async () => options.capabilities ?? capabilities,
-    cancelGraceMs: options.cancelGraceMs ?? 40, deadlineMs: options.deadlineMs };
+    cancelGraceMs: options.cancelGraceMs ?? 40, deadlineMs: options.deadlineMs, emit: options.emit };
   const service = await createAgentService(serviceOptions); services.push(service);
   const prepare = async () => {
     const result = value(await service.request({ ...base(), type: "agent.prepare", ...input }));
@@ -282,6 +282,27 @@ describe("durable agent service", () => {
     fail = false;
     expect(await f.service.request(f.launchRequest(prepared))).toMatchObject({ error: { code: "STORAGE_FULL" } });
     expect(await f.disk()).toEqual([]); expect(f.adapter.start).not.toHaveBeenCalled();
+  });
+
+  it("publishes unknown and unavailable when dispatch persistence fails after durable admission, without a cleanup handle", async () => {
+    const emit = vi.fn<(snapshot: AgentSnapshot) => void>();
+    let writes = 0;
+    const f = await fixture({ emit, store: { beforePersist: (phase) => {
+      // Empty store, admission, then dispatch intent. The third write fails
+      // before adapter.start can provide a handle or cleanup can publish state.
+      if (phase === "write" && ++writes === 3) throw Object.assign(new Error("disk full"), { code: "ENOSPC" });
+    } } });
+    const prepared = await f.launch();
+    await vi.waitFor(() => expect(emit).toHaveBeenLastCalledWith(expect.objectContaining({
+      activeRunId: null, runs: [expect.objectContaining({ runId: prepared.runId, state: "unknown" })],
+      capabilities: expect.objectContaining({ availability: "unavailable", reason: expect.objectContaining({ code: "STORAGE_FULL" }),
+        controls: { launch: false, steer: false, cancel: false } }),
+    })), { interval: 5 });
+    // Observe notifications alone: no snapshot request is allowed to mask a
+    // missing push from the storage failure path.
+    expect(emit.mock.calls.map(([snapshot]) => snapshot.runs[0]?.state)).toEqual(["starting", "unknown"]);
+    expect(writes).toBe(3); expect(f.adapter.start).not.toHaveBeenCalled(); expect(f.handle.dispose).not.toHaveBeenCalled();
+    expect((await f.disk())[0]).toMatchObject({ runId: prepared.runId, state: "starting", processState: "not-started" });
   });
 
   it("does not send steering if durable intent persistence fails", async () => {

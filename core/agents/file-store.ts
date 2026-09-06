@@ -1,6 +1,6 @@
-import { constants } from "node:fs";
+import { constants, type Stats } from "node:fs";
 import { createHash, randomUUID } from "node:crypto";
-import { lstat, mkdir, open, rename, unlink, type FileHandle } from "node:fs/promises";
+import { lstat, mkdir, open, opendir, rename, unlink, type FileHandle } from "node:fs/promises";
 import { dirname, isAbsolute, join, relative, resolve } from "node:path";
 import { createServer, type Server } from "node:net";
 import { z } from "zod";
@@ -150,6 +150,39 @@ async function privateDirectory(directory: string): Promise<FileHandle> {
   if (stat.uid !== process.getuid?.() || (stat.mode & 0o777) !== 0o700) { await handle.close(); throw new StoreFailure(); }
   return handle;
 }
+async function discardIncompleteSnapshots(dir: FileHandle): Promise<void> {
+  const pinned = `/proc/self/fd/${dir.fd}`;
+  const names: string[] = [];
+  // Bound enumeration before removing anything. Unknown names are never ours
+  // to delete; excessive directory contents require explicit operator action.
+  for await (const entry of await opendir(pinned, { bufferSize: 32 })) {
+    names.push(entry.name);
+    if (names.length > 128) throw new StoreFailure();
+  }
+  const temporaryName = /^snapshot-[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\.tmp$/;
+  const candidates: { path: string; ino: number; dev: number }[] = [];
+  const privateFile = (info: Stats) => info.isFile() &&
+    info.uid === process.getuid?.() && (info.mode & 0o777) === 0o600 && info.nlink === 1;
+  for (const name of names.filter((name) => temporaryName.test(name))) {
+    const path = join(pinned, name);
+    const before = await lstat(path);
+    if (!privateFile(before)) throw new StoreFailure();
+    const file = await open(path, constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK);
+    try {
+      const info = await file.stat();
+      if (!privateFile(info) || info.ino !== before.ino || info.dev !== before.dev) throw new StoreFailure();
+      candidates.push({ path, ino: info.ino, dev: info.dev });
+    } finally { await file.close(); }
+  }
+  // Exclusive kernel lock and the private directory exclude cooperating core
+  // writers; inode rechecks also refuse incidental replacement during startup.
+  for (const candidate of candidates) {
+    const current = await lstat(candidate.path);
+    if (!privateFile(current) || current.ino !== candidate.ino || current.dev !== candidate.dev) throw new StoreFailure();
+    await unlink(candidate.path);
+  }
+  if (candidates.length) await dir.sync();
+}
 
 export async function createFileRunStore(directory: string, options: FileRunStoreOptions = {}): Promise<FileRunStore> {
   let dir: FileHandle | undefined;
@@ -166,6 +199,7 @@ export async function createFileRunStore(directory: string, options: FileRunStor
       });
     });
     lock.unref();
+    await discardIncompleteSnapshots(dir);
     return await openStore(directory, dir, lock, options);
   } catch {
     if (lock?.listening) await new Promise<void>((done) => lock!.close(() => done()));

@@ -68,6 +68,7 @@ export class AgentService {
     const service = new AgentService(options, AgentCapabilitiesSchema.parse(await options.capabilities()));
     const snapshot = await options.store.snapshot();
     if (!snapshot.ok) throw new Error("Agent store could not be loaded safely");
+    service.lastSnapshot = snapshot.value;
     for (const summary of snapshot.value.runs) {
       const detail = await options.store.read(summary.runId, 0);
       if (!detail.ok) throw new Error("Agent history could not be loaded safely");
@@ -111,6 +112,9 @@ export class AgentService {
       this.runs.set(run.runId, uncertain);
       void this.dispose(run.runId);
     }
+    // A dispatch-intent write can fail after admission but before any handle
+    // exists. Publication cannot depend on a later cleanup callback occurring.
+    void this.serial(() => this.publish());
   }
   private uncertain(run: Run, reason: string): Run {
     const at = this.at(run);
@@ -142,8 +146,10 @@ export class AgentService {
     const capabilities = blocker ? { ...this.capabilities, availability: "unavailable" as const, reason: blocker,
       controls: { launch: false, steer: false, cancel: false } } : this.capabilities;
     const summaries = snapshot.value.runs.map((summary) => {
-      const run = this.runs.get(summary.runId)!;
-      return { ...summary, state: run.state, updatedAt: run.updatedAt, endedAt: run.endedAt };
+      const run = this.runs.get(summary.runId);
+      const at = new Date(Math.max(this.now(), Date.parse(summary.updatedAt))).toISOString();
+      return run ? { ...summary, state: run.state, updatedAt: run.updatedAt, endedAt: run.endedAt } :
+        { ...summary, state: "unknown" as const, updatedAt: at, endedAt: at };
     });
     const activeRunId = summaries.find((r) => !isTerminalRunState(r.state))?.runId ?? null;
     return good(AgentSnapshotSchema.parse({ ...snapshot.value, runs: summaries, activeRunId,
