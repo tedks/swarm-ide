@@ -37,8 +37,8 @@ afterEach(async () => {
 
 async function fixture() {
   const directory = await mkdtemp(join(tmpdir(), "swarm-admission-audit-")); roots.push(directory);
-  const controls: { fail?: "write" | "directory-sync"; code?: "EIO" | "ENOSPC"; holdLaunch?: (reply: CoreResponse) => Promise<CoreResponse> } = {};
-  const store = await createFileRunStore(directory, { now, beforePersist(phase) {
+  const controls: { storeNow?: number; fail?: "write" | "directory-sync"; code?: "EIO" | "ENOSPC"; holdLaunch?: (reply: CoreResponse) => Promise<CoreResponse> } = {};
+  const store = await createFileRunStore(directory, { now: () => controls.storeNow ?? now(), beforePersist(phase) {
     if (phase === controls.fail) throw Object.assign(new Error("Injected I/O failure"), { code: controls.code ?? "EIO" });
   } }); stores.push(store);
   const prepared = agentFixtureContext();
@@ -113,6 +113,32 @@ describe("admission failure classification through real service and renderer", (
     expect((await f.disk()).entries).toEqual([]);
   });
 
+  it("keeps context expiry at the actual store pre-write check a definite rejection", async () => {
+    const f = await fixture();
+    // Time can cross expiry between the service check and the queued store
+    // check. This is a genuine FileRunStore rejection, not an I/O failure.
+    f.controls.storeNow = Date.parse(f.prepared.expiresAt);
+    await f.client.launch();
+    expect(f.client.getSnapshot().operations[0]).toMatchObject({ status: "rejected", message: expect.stringContaining("STALE_CONTEXT") });
+    expect((await f.disk()).entries).toEqual([]); expect(f.start).not.toHaveBeenCalled();
+    await f.client.refresh();
+    expect(f.client.getSnapshot().snapshot?.capabilities.controls.launch).toBe(true);
+    expect(f.calls.filter((call) => call.type === "agent.launch")).toHaveLength(1);
+  });
+
+  it("preserves a store's definite BUSY rejection without creating a storage latch", async () => {
+    const f = await fixture();
+    // A contract-conforming custom store may reject busy before writing. A
+    // store that writes and then reports BUSY violates that semantic contract.
+    vi.spyOn(f.store, "admit").mockResolvedValue({ ok: false, error: { code: "BUSY", message: "No admission; store is busy." } });
+    await f.client.launch();
+    expect(f.client.getSnapshot().operations[0]?.status).toBe("rejected");
+    expect((await f.disk()).entries).toEqual([]); expect(f.start).not.toHaveBeenCalled();
+    await f.client.refresh();
+    expect(f.client.getSnapshot().snapshot?.capabilities.controls.launch).toBe(true);
+    expect(f.calls.filter((call) => call.type === "agent.launch")).toHaveLength(1);
+  });
+
   it.each([
     ["write", "EIO"], ["directory-sync", "EIO"], ["write", "ENOSPC"], ["directory-sync", "ENOSPC"],
   ] as const)("keeps %s/%s failures unknown without interpreting a storage code as no admission", async (phase, code) => {
@@ -141,10 +167,11 @@ describe("admission failure classification through real service and renderer", (
     }
   });
 
-  it.each(["typed", "thrown"] as const)("retains committed admission across a %s read failure and reconciles only by reading", async (kind) => {
+  it.each(["typed", "typed-busy", "thrown"] as const)("retains committed admission across a %s read failure and reconciles only by reading", async (kind) => {
     const f = await fixture();
     const read = vi.spyOn(f.store, "read");
     if (kind === "typed") read.mockResolvedValue(fault());
+    else if (kind === "typed-busy") read.mockResolvedValue({ ok: false, error: { code: "BUSY", message: "Custom-store read is busy, after admission." } });
     else read.mockRejectedValue(new Error("Injected custom-store read failure"));
     await f.client.launch();
     expect(f.client.getSnapshot().operations[0]?.status).toBe("delivery-unknown");
@@ -156,6 +183,21 @@ describe("admission failure classification through real service and renderer", (
     expect(f.client.getSnapshot().operations[0]).toMatchObject({ status: "accepted", message: "Durable admission observed; not turn completion." });
     expect((await f.disk()).entries[0]!.run).toMatchObject({ state: "starting", processState: "not-started", providerOutcome: { kind: "none" } });
     await f.client.launch(); expect(f.calls.filter((call) => call.type === "agent.launch")).toHaveLength(1);
+    expect(f.start).not.toHaveBeenCalled();
+  });
+
+  it("retains known admission after a publication exception without redispatching or mislabelling it a store admission failure", async () => {
+    const f = await fixture();
+    vi.spyOn(f.store, "snapshot").mockRejectedValueOnce(new Error("Custom-store observation failed"));
+    await f.client.launch();
+    expect(f.client.getSnapshot().operations[0]?.status).toBe("delivery-unknown");
+    expect((await f.disk()).entries[0]!.run).toMatchObject({ state: "starting", processState: "not-started" });
+    expect(await f.service.request(request("agent.launch"))).toMatchObject({ ok: true, value: { receipt: { status: "admitted" } } });
+    await f.client.reconcileOperation(f.client.getSnapshot().operations[0]!.requestId);
+    expect(f.client.getSnapshot().operations[0]?.status).toBe("accepted");
+    await f.client.refresh();
+    expect(f.client.getSnapshot().snapshot?.capabilities.controls.launch).toBe(true);
+    expect(f.client.getSnapshot().snapshot?.activeRunId).toBe(f.prepared.runId);
     expect(f.start).not.toHaveBeenCalled();
   });
 

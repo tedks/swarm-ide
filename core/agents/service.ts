@@ -232,23 +232,30 @@ export class AgentService {
     if (JSON.stringify(context) !== JSON.stringify(this.draft) || context.capabilities.availability !== "available" ||
         context.capabilities.policy !== "verified-read-only" || !context.capabilities.controls.launch ||
         this.now() < Date.parse(context.preparedAt) || this.now() >= Date.parse(context.expiresAt)) return bad("STALE_CONTEXT", "Launch context or capability evidence changed.");
+    let admitted: Awaited<ReturnType<RunStore["admit"]>>;
+    let read: Awaited<ReturnType<RunStore["read"]>>;
     try {
-      const admitted = await this.options.store.admit(context);
-      if (!admitted.ok) return this.admissionFault(admitted.error);
-      const read = await this.options.store.read(context.runId, 0);
-      if (!read.ok) return this.admissionFault(read.error);
-      this.runs.set(context.runId, read.value.run);
-      this.draft = null;
-      await this.publish();
-      if (!admitted.value.existing) {
-        // Yield after durable admission so Stop can prevent dispatch entirely.
-        const timer = setTimeout(() => { this.timers.delete(context.runId); void this.start(context); }, 0);
-        this.timers.set(context.runId, timer);
+      admitted = await this.options.store.admit(context);
+      if (!admitted.ok) {
+        // These are admit's semantic pre-write rejections. In contrast, a
+        // STORAGE_* failure cannot tell us which side of rename was reached.
+        if (admitted.error.code === "STALE_CONTEXT" || admitted.error.code === "BUSY") return admitted;
+        return this.admissionFault(admitted.error);
       }
-      return good({ kind: "launch", receipt: admitted.value.receipt });
+      read = await this.options.store.read(context.runId, 0);
+      if (!read.ok) return this.admissionFault(read.error);
     } catch {
       return this.admissionFault();
     }
+    this.runs.set(context.runId, read.value.run);
+    this.draft = null;
+    await this.publish();
+    if (!admitted.value.existing) {
+      // Yield after durable admission so Stop can prevent dispatch entirely.
+      const timer = setTimeout(() => { this.timers.delete(context.runId); void this.start(context); }, 0);
+      this.timers.set(context.runId, timer);
+    }
+    return good({ kind: "launch", receipt: admitted.value.receipt });
   }
 
   private async start(context: PreparedAgentContext): Promise<void> {
