@@ -10,8 +10,8 @@ type: task
 component: default
 release:
 reporter: Ted Smith <tedks@riseup.net>
-status: unstarted
-disposition:
+status: closed
+disposition: fixed
 creation_time: 2026-09-06T02:07:16-00:00
 references: []
 log_events:
@@ -29,3 +29,8 @@ log_events:
     whole agent tasks or replay commands; actual crashes get no grace. Preserve file-write/dirty-buffer
     protections and native-window identity. Runtime R2 implements/tests and records
     this in ExecPlan.'
+- time: 2026-09-06T03:41:19-00:00
+  who: Ted Smith
+  what: 'closed: fixed'
+  comment: ROOT decision made under explicit user delegation; bounded 1000ms acknowledgement
+    grace, with implementation/verification owned by R2.
