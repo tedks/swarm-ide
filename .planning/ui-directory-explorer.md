@@ -15,7 +15,7 @@ Replace the noisy duplicated directory list and node diagram with a familiar exp
 - [x] User steering: single-line task rows, double-click/Enter task document in central workspace, source kept mounted beneath it.
 - [x] User steering: Directory / Agent runs / Tasks now occupy independently collapsible, resizable thirds of the left sidebar.
 - [x] Refined map into an enclosing directory frame and sibling grid. Folder zoom/double-click descends; zoom-out, Up and root controls ascend. User positively verified the visual and zoom navigation.
-- [x] Made the bottom dock agent-first, with run tabs coordinated with sidebar selection and a secondary Jobs & activity tab. Drafts/output stay mounted; unconfirmed admission remains inspectable. This does not activate real agents.
+- [x] Bottom dock now shows builds/resources, agent messages, and recent activity simultaneously. User corrected the intermediate mutually exclusive Agents/Jobs design; only conversations are tabbed inside the central message panel. Drafts/output stay mounted; unconfirmed admission remains inspectable. This does not activate real agents.
 - [ ] Continue artifact tabs/shared focus and task-linkage presentation under direct steering.
 - [ ] Verify local quality and owned virtual UI; retain HMR window.
 - [x] Pushed initial checkpoints 844d47b and 3787e4c and opened draft PR #38.
@@ -33,9 +33,11 @@ The directory browser currently duplicates a maximum-80px list with a much large
 
 2026-09-06: Superseding the optional map/orthogonal-edge presentation below, the directory tree lives permanently in the sidebar and the central repo projection is a spatial grid. Containment uses an enclosing frame, not connecting lines that appear to link siblings. Genuine service edges are unchanged. One semantic zoom gesture changes at most one directory level and uses the existing bounded canonical navigation request. The bottom surface is primarily agent interaction; jobs remain accessible without destroying unsent instructions or changing selection on background observations.
 
+2026-09-06 personal correction: preserve simultaneous instrument visibility. Restore the old activity/jobs presentation around a central agent-message panel: builds/resources left, tabbed agent conversations middle, recent activity right. Jobs and messages must not be mutually exclusive tabs. Keep source, graph cameras, draft/output identity and existing client permissions unchanged.
+
 ## Outcomes & Retrospective
 
-Live work-in-progress, not reviewed landing. Latest `bazel test --jobs=3 //tools:quality` passed: typechecks, 1123 tests across 80 files, node build and renderer build. New coverage includes the folder tree, 20 startup cases, spatial containment/zoom and agent tab selection/draft retention/unconfirmed admissions. Early local runs exposed a pre-existing owned-process cleanup race (later passed unchanged), a missing repository label (restored), and presentation-sensitive assertions (updated without weakening protected-state or unavailable-policy checks). The namespace-attestation risk remains tracked. This is the quality target, not all Bazel targets; owned-virtual acceptance and council are still pending. User positively verified the live directory map and zoom. Normal roadmap progression remains paused. No filename search, project selection, real agents or generalized service inference added.
+Live work-in-progress, not reviewed landing. Latest `bazel test --jobs=3 //tools:quality` passed: typechecks, 1124 tests across 80 files, node build and renderer build. New coverage includes the folder tree, 20 startup cases, spatial containment/zoom and agent tab selection/draft retention/unconfirmed admissions. Early local runs exposed a pre-existing owned-process cleanup race (later passed unchanged), a missing repository label (restored), and presentation-sensitive assertions (updated without weakening protected-state or unavailable-policy checks). The namespace-attestation risk remains tracked. This is the quality target, not all Bazel targets; owned-virtual acceptance and council are still pending. User positively verified the live directory map and zoom. Normal roadmap progression remains paused. No filename search, project selection, real agents or generalized service inference added.
 
 ## Context and Orientation
 

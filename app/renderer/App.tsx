@@ -979,6 +979,7 @@ export function App() {
       </aside>
 
       <section className="activity-dock panel">
+        <div className="dock-header"><div><span className="eyebrow">activity / jobs</span><strong>Changes entering the world</strong></div><span className="ignored-events">{workspace.ignoredEvents} stale events rejected</span></div>
         <AgentDock state={liveAgents} client={agentClient} selectionVersion={agentDockSelection} fixtureSelectionVersion={fixtureDockSelection}
           onDraft={() => agentClient.openDraft(snapshot.focus)}
           draftContent={<PreparedLaunchDraft state={liveAgents} client={agentClient} dirtyPaths={fileTabs.filter((tab) => protectsBuffer(tab)).map((tab) => tab.path)} />}
@@ -993,11 +994,8 @@ export function App() {
           if (focus.worldId === snapshot.world.id && focus.revisionKind === "working") selectFocus({ ...focus, revisionId: snapshot.revisions.working.id });
           else setError("Launch focus cannot be mapped to this working world.");
         }} onClose={() => setAgents((state) => ({ ...state, selected: false }))} height={agentPaneHeight} onHeight={setAgentPaneHeight} /> : undefined}
-          jobsContent={<>
-          <div className="dock-header"><div><span className="eyebrow">activity / jobs</span><strong>Changes entering the world</strong></div><span className="ignored-events">{workspace.ignoredEvents} stale events rejected</span></div>
-        <div className="job-strip" tabIndex={0} aria-label="Build jobs and recent activity">{snapshot.jobs.length ? snapshot.jobs.map((job) => <article className={`job status-${job.status === "failed" ? "red" : job.status === "succeeded" ? "green" : "yellow"}`} key={job.id}><header><strong>{job.label}</strong><span>{Math.round(job.progress * 100)}%</span></header><div className="job-progress"><i style={{ width: `${job.progress * 100}%` }} /></div><footer><span>{job.message}</span><b>{job.resources.cpuPercent || job.resources.memoryMiB ? `CPU ${job.resources.cpuPercent}% · ${job.resources.memoryMiB} MiB` : "telemetry unavailable"}</b></footer></article>) : <article className="job idle"><strong>No derived work running</strong><span>Build the repository service topology to observe the current world.</span></article>}<div className="activity-list">{snapshot.activity.slice(0, 4).map((activity) => <div key={activity.id}><i className={`status-${activity.status}`} /><span>{activity.summary}</span><small>{activity.kind}</small></div>)}</div></div>
-        {agents.selected || liveAgents.paneOpen ? <div className="agent-job-summary" tabIndex={0} aria-label="Build and activity summary">Build / activity · {snapshot.jobs.length ? snapshot.jobs.map((job) => `${job.label}: ${job.status} · ${job.resources.cpuPercent || job.resources.memoryMiB ? `${job.resources.cpuPercent}% CPU / ${job.resources.memoryMiB} MiB` : "telemetry unavailable"}`).join(" · ") : "no derived work running"} · {snapshot.activity[0]?.summary ?? "no recent events"}</div> : null}
-          </>}
+          jobsContent={<>{snapshot.jobs.length ? snapshot.jobs.map((job) => <article className={`job status-${job.status === "failed" ? "red" : job.status === "succeeded" ? "green" : "yellow"}`} key={job.id}><header><strong>{job.label}</strong><span>{Math.round(job.progress * 100)}%</span></header><div className="job-progress"><i style={{ width: `${job.progress * 100}%` }} /></div><footer><span>{job.message}</span><b>{job.resources.cpuPercent || job.resources.memoryMiB ? `CPU ${job.resources.cpuPercent}% · ${job.resources.memoryMiB} MiB` : "telemetry unavailable"}</b></footer></article>) : <article className="job idle"><strong>No derived work running</strong><span>Build the repository service topology to observe the current world.</span></article>}</>}
+          activityContent={<div className="activity-list">{snapshot.activity.slice(0, 4).map((activity) => <div key={activity.id}><i className={`status-${activity.status}`} /><span>{activity.summary}</span><small>{activity.kind}</small></div>)}</div>}
         />
       </section>
 

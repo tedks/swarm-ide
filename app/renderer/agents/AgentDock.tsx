@@ -3,7 +3,7 @@ import type { AgentBridgeClient } from "./bridge-client";
 import { displayAgentText, type LiveAgentState } from "./live-state";
 import "./agent-dock.css";
 
-type DockTab = "agents" | "jobs" | "fixture" | `run:${string}`;
+type DockTab = "agents" | "fixture" | `run:${string}`;
 export interface AgentDockProps {
   state: LiveAgentState;
   client: AgentBridgeClient;
@@ -11,13 +11,14 @@ export interface AgentDockProps {
   runContent: ReactNode;
   draftContent: ReactNode;
   jobsContent: ReactNode;
+  activityContent: ReactNode;
   fixtureContent?: ReactNode;
   /** Explicit sidebar activation, including a re-click of the selected run. */
   selectionVersion?: number;
   fixtureSelectionVersion?: number;
 }
 
-export function AgentDock({ state, client, onDraft, runContent, draftContent, jobsContent, fixtureContent, selectionVersion = 0, fixtureSelectionVersion = 0 }: AgentDockProps) {
+export function AgentDock({ state, client, onDraft, runContent, draftContent, jobsContent, activityContent, fixtureContent, selectionVersion = 0, fixtureSelectionVersion = 0 }: AgentDockProps) {
   const id = useId();
   const runs = state.snapshot?.runs ?? [];
   const hasSelection = state.selectedRunId !== null;
@@ -40,7 +41,6 @@ export function AgentDock({ state, client, onDraft, runContent, draftContent, jo
     ...runs.map((run) => ({ key: `run:${run.runId}` as const, label: displayAgentText(run.taskLabel), detail: run.state })),
     ...(state.selectedRunId && !runs.some((run) => run.runId === state.selectedRunId) ? [{ key: `run:${state.selectedRunId}` as const, label: "Unconfirmed run", detail: "unknown" }] : []),
     ...(fixtureContent ? [{ key: "fixture" as const, label: "Fixture · no model turn" }] : []),
-    { key: "jobs", label: "Jobs & activity" },
   ];
   const current = tabs.some((tab) => tab.key === active) ? active : "agents";
   const choose = (tab: DockTab) => {
@@ -59,8 +59,10 @@ export function AgentDock({ state, client, onDraft, runContent, draftContent, jo
       : (index + (event.key === "ArrowRight" ? 1 : -1) + buttons.length) % buttons.length;
     buttons[next]?.focus(); // Manual activation: Enter/Space selects the run.
   };
-  return <div className="agent-interaction-dock">
-    <div className="agent-dock-tabs" role="tablist" aria-label="Agent interaction and jobs" onKeyDown={keyboard}>
+  return <div className="activity-instruments">
+    <section className="dock-side-panel dock-builds" aria-label="Build jobs" tabIndex={0}><header className="dock-section-heading">Builds & resources</header>{jobsContent}</section>
+    <section className="agent-interaction-dock" aria-label="Agent messages">
+    <div className="agent-dock-tabs" role="tablist" aria-label="Agent conversations" onKeyDown={keyboard}>
       {tabs.map((tab) => <button key={tab.key} id={tabId(tab.key)} role="tab" aria-selected={current === tab.key}
         aria-controls={panelId(tab.key)} aria-label={tab.detail ? `${tab.label} ${tab.detail}` : tab.label} tabIndex={current === tab.key ? 0 : -1} title={tab.detail ? `${tab.label} · ${tab.detail}` : tab.label}
         onClick={() => choose(tab.key)}><span>{tab.label}</span>{tab.detail ? <small className={`agent-state agent-state-${tab.detail}`}>{tab.detail}</small> : null}</button>)}
@@ -81,6 +83,7 @@ export function AgentDock({ state, client, onDraft, runContent, draftContent, jo
     {fixtureContent ? <div id={panelId("fixture")} role="tabpanel" aria-labelledby={tabId("fixture")} hidden={current !== "fixture"} className="agent-dock-panel agent-dock-run">
       <div className="agent-demo-badge">Fixture preview · not a live agent or model turn</div>{fixtureContent}
     </div> : null}
-    <div id={panelId("jobs")} role="tabpanel" aria-labelledby={tabId("jobs")} hidden={current !== "jobs"} className="agent-dock-panel agent-dock-jobs">{jobsContent}</div>
+    </section>
+    <section className="dock-side-panel dock-activity" aria-label="Recent activity" tabIndex={0}><header className="dock-section-heading">Recent activity</header>{activityContent}</section>
   </div>;
 }
