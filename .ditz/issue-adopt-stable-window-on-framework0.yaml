@@ -10,7 +10,7 @@ type: task
 component: tooling
 release:
 reporter: Ted Smith <tedks@riseup.net>
-status: unstarted
+status: in_progress
 disposition:
 creation_time: 2026-09-05T23:41:45-00:00
 references: []
@@ -27,3 +27,7 @@ log_events:
     physical launcher574939/main575096/core575383 on55173 untouched. Do NOT fast-forward
     watched sources while old launcher runs. Pending user-authorized deliberate save/stop/update/start
     adoption; retained feature worktree and evidence support handoff.
+- time: 2026-09-06T01:03:55-00:00
+  who: Ted Smith
+  what: started
+  comment: ""
