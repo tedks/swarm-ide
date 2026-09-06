@@ -22,5 +22,10 @@ log_events:
   who: Ted Smith
   what: blocks agent-run-effective-policy
   comment: ""
+- time: 2026-09-06T14:12:26-00:00
+  who: Ted Smith
+  what: blocks first-real-agent-run-surface
+  comment: ""
 blocks:
 - agent-run-effective-policy
+- first-real-agent-run-surface
