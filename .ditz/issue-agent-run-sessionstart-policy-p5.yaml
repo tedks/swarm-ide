@@ -22,5 +22,15 @@ log_events:
   who: Ted Smith
   what: blocks agent-run-offline-activation-proof
   comment: ""
+- time: 2026-09-06T07:52:54-00:00
+  who: Ted Smith
+  what: commented
+  comment: 'PR30: actual installed0.153.4 matched ordinary SessionStart controls passed
+    after independent boundary council. One synthetic protocolturn/localHTTPresponse
+    percase, enabled witness1 vs disabled0, all original26+new10/unchangedinputs/cleanclose.
+    Native correlation finding red-green fixed1ca16e4; OpenAI+Google convergence CLEAN.
+    Anthropic sessionlimit then fresh480s timeout missing. Full25/all9 finaltopic
+    passed674tests; P3static6/P4plugin3 regressions passed. No model inference/credentials/productpromotion.
+    Normalmerge/actualaggregateverification pending.'
 blocks:
 - agent-run-offline-activation-proof
