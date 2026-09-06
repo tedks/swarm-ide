@@ -224,6 +224,39 @@ describe("manually gated adapter fixture for deterministic delay and race tests"
     expect(await f.handle.interrupt()).toMatchObject({ error: { code: "RUN_NOT_ACTIVE" } });
     expect(f.events).toHaveLength(1); // Exit zero did not invent a terminal event.
   });
+  it.each(["steer", "interrupt"] as const)("copies %s reply evidence before promise observation", async (method) => {
+    const f = await start();
+    const result = structuredClone(agentFixtureFailures.unknown);
+    const pending = method === "steer" ? f.handle.steer(AGENT_FIXTURE_TURN, "fixture") : f.handle.interrupt();
+    if (method === "steer") f.fixture.settleSteer(result); else f.fixture.settleInterrupt(result);
+    Object.assign(result.error, { message: "mutated before await" });
+    const received = await pending;
+    expect(received).toEqual(agentFixtureFailures.unknown);
+    if (received.ok) throw new Error("Expected fixture failure");
+    received.error.message = "mutated by consumer";
+    expect(result.error.message).toBe("mutated before await");
+    expect(agentFixtureFailures.unknown.error.message).toBe("FIXTURE: delivery unknown; do not replay.");
+    expect(Object.isFrozen(agentFixtureFailures)).toBe(true);
+    expect(Object.isFrozen(agentFixtureFailures.unknown)).toBe(true);
+    expect(Object.isFrozen(agentFixtureFailures.unknown.error)).toBe(true);
+    await dispose(f);
+  });
+  it("exercises all receipt slots and still disposes with a pending control at call-log exhaustion", async () => {
+    const f = await start();
+    for (let index = 0; index < AGENT_LIMITS.receipts; index++) {
+      const steering = f.handle.steer(AGENT_FIXTURE_TURN, `fixture ${index}`);
+      f.fixture.settleSteer({ ok: true, value: { status: "accepted" } });
+      expect(await steering).toMatchObject({ ok: true });
+    }
+    const pending = f.handle.steer(AGENT_FIXTURE_TURN, "pending at log limit");
+    expect(() => f.handle.interrupt()).toThrow("call limit");
+    const disposing = f.handle.dispose();
+    expect(await pending).toMatchObject({ error: { code: "AGENT_OUTCOME_UNKNOWN" } });
+    f.fixture.settleCleanup(cleanup);
+    expect(await disposing).toEqual(cleanup);
+    expect(f.fixture.calls()).toHaveLength(AGENT_LIMITS.receipts + 3);
+    expect(f.fixture.calls().at(-1)!.method).toBe("dispose");
+  });
   it("fails explicit test-driver misuse and copies caller-owned observations", async () => {
     const fixture = createAgentAdapterFixture();
     expect(() => fixture.emit(terminal)).toThrow("Start");

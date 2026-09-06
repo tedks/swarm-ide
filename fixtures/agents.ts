@@ -163,12 +163,14 @@ export function agentFixtureReordering() {
   ].map((envelope) => EventEnvelopeSchema.parse(envelope));
 }
 
-export const agentFixtureFailures = {
-  stale: { ok: false, error: { code: "STALE_CONTEXT", message: "FIXTURE: disk changed; prepare again." } },
-  storage: { ok: false, error: { code: "STORAGE_FULL", message: "FIXTURE: admission refused before any process." } },
-  unavailable: { ok: false, error: { code: "ADAPTER_POLICY_UNAVAILABLE", message: "FIXTURE: effective policy is unverified." } },
-  unknown: { ok: false, error: { code: "AGENT_OUTCOME_UNKNOWN", message: "FIXTURE: delivery unknown; do not replay." } },
-} satisfies Record<string, AgentOperation<never>>;
+const failure = (code: AgentError["code"], message: string) =>
+  Object.freeze({ ok: false as const, error: Object.freeze({ code, message }) });
+export const agentFixtureFailures = Object.freeze({
+  stale: failure("STALE_CONTEXT", "FIXTURE: disk changed; prepare again."),
+  storage: failure("STORAGE_FULL", "FIXTURE: admission refused before any process."),
+  unavailable: failure("ADAPTER_POLICY_UNAVAILABLE", "FIXTURE: effective policy is unverified."),
+  unknown: failure("AGENT_OUTCOME_UNKNOWN", "FIXTURE: delivery unknown; do not replay."),
+}) satisfies Record<string, AgentOperation<never>>;
 
 function deferred<T>() {
   let settle!: (value: T) => void;
@@ -188,7 +190,9 @@ export function createAgentAdapterFixture() {
   let cleanup: ReturnType<typeof deferred<CleanupEvidence>> | undefined;
   const calls: { method: "start" | "steer" | "interrupt" | "dispose"; turnId?: string; text?: string }[] = [];
   function record(call: typeof calls[number]) {
-    if (calls.length >= AGENT_LIMITS.receipts) throw new Error("Fixture call limit exceeded");
+    // Permit setup, all 128 receipts and Stop; reserve one additional slot for
+    // cleanup even after a test intentionally exhausts the ordinary call limit.
+    if (call.method !== "dispose" && calls.length >= AGENT_LIMITS.receipts + 2) throw new Error("Fixture call limit exceeded");
     calls.push(call);
   }
   const denied = (code: AgentError["code"], message: string) => ({ ok: false as const, error: { code, message: `FIXTURE: ${message}` } });
@@ -231,11 +235,11 @@ export function createAgentAdapterFixture() {
     },
     settleSteer(result: AgentOperation<{ status: "accepted" }>) {
       if (!steering) throw new Error("No pending fixture steer");
-      steering.settle(result); steering = undefined;
+      steering.settle(structuredClone(result)); steering = undefined;
     },
     settleInterrupt(result: AgentOperation<{ status: "requested" }>) {
       if (!interrupt) throw new Error("No pending fixture interrupt");
-      interrupt.settle(result); interrupt = undefined;
+      interrupt.settle(structuredClone(result)); interrupt = undefined;
     },
     settleCleanup(evidence: CleanupEvidence) {
       if (!cleanup) throw new Error("Dispose before settling fixture cleanup");
