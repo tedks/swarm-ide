@@ -14,3 +14,13 @@ log_events:
   who: Ted Smith
   what: created
   comment: ""
+- time: 2026-09-06T17:14:10-00:00
+  who: Ted Smith
+  what: commented
+  comment: 'N1 preliminary quality on e870b84 had one existing tests/agent-owned-process.test.ts:152
+    failure: cleanup confirmed but liveMembers(namespace) returned PID3747260. Read-only
+    followup found no surviving PID; next full quality (BOM red run) passed this unchanged
+    test and all1073 other existing/new tests. No safety assertion relaxed or production
+    policy/owner code changed. Investigate attestation/quiescence ordering; preserve
+    /tmp/swarm-ide-repo-navigation-n1.WWgaFp/quality-first-proof.log and bom-red.log.
+    Current N1 final gates must still run without waiver.'
