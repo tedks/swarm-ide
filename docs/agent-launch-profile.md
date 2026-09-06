@@ -392,7 +392,8 @@ static-MCP provider-report/canary comparison above.
 | Ordinary SessionStart hooks disabled | `session/session.rs:1600–1623` queues source; `session/turn.rs:264,504` executes it | No permitted turn trigger | UNPROVED; do not invent a no-model hook control |
 | Legacy notify disabled | `hooks/src/registry.rs:113`, turn completion callback | P2 observes populated callback, no turn completion here | UNPROVED activation |
 | Hook-trust bypass, built-in/executor plugin hooks disabled | `hooks/src/engine/mod.rs:239,255`; executor hooks in `hooks/src/registry.rs:100` | No matched installed activation controls here | UNPROVED independently of ordinary hooks=false |
-| Plugin/per-executor MCP disabled | `core/src/session/mcp_runtime.rs:154` projects executor-owned configuration | Static MCP controls do not exercise this path | UNPROVED |
+| Named local legacy plugin MCP disabled | `core/src/mcp.rs:245`; `core-plugins/src/manager.rs:761` | P4 below: installed-cache enabled/full handshake vs feature-disabled created thread; required-init failure control | Named plugin startup only, not independent attempt exclusion or later turns |
+| Other plugin/per-executor MCP disabled | `core/src/session/mcp_runtime.rs:154` projects executor-owned configuration | Static and P4 legacy-local controls do not exercise these paths | UNPROVED |
 | Persisted remote-control/plugin state disabled | `app-server/src/lib.rs:453`; P1 source inventory | Fresh synthetic state, no seeded enabled-state control | UNPROVED; deferred to avoid writable policy ancestry |
 | Telemetry disabled | Exporter settings at startup, P1 inventory | Network namespace denies outbound traffic | UNPROVED runtime disablement; denied traffic is not a disabled exporter |
 | Credentialed production equivalence | A separately owned, exact admitted process | No host credentials/model turn/product process | UNPROVED; ROOT gate unchanged |
@@ -459,8 +460,8 @@ Coverage advances only the named legacy installed-cache MCP path and its feature
 gate at no-turn startup. AgentPlugin-format overlays, executor MCP, hooks and
 trust bypass, remote/persisted state, telemetry disablement, independently complete
 attempt observation and credentialed process equivalence remain UNPROVED. The
-earlier combined plugin/per-executor ledger row must not be read as universally
-closed. Static six-case acceptance remains separate and unchanged; default
+coverage ledger separates this named case from unproved executor/plugin paths.
+Static six-case acceptance remains separate and unchanged; default
 `//...` starts neither actual-package acceptance target. Production remains
 `ADAPTER_POLICY_UNAVAILABLE`; all broad parent issues stay open. The canonical
 hosted failure issue is `agent-policy-boundary-hosted-seed-pipe` (the earlier
