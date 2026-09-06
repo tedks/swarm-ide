@@ -33,6 +33,14 @@ log_events:
   who: Ted Smith
   what: blocked by agent-run-context-e1
   comment: ""
+- time: 2026-09-06T03:07:25-00:00
+  who: Ted Smith
+  what: commented
+  comment: E1 slice completed/merged PR11; parent remains in_progress for E2/E3. Core
+    context provider, provenance/revalidation and necessary-only policy guard delivered.
+    Effective profile proof remains blocked by agent-run-effective-policy; diagnostics/underlyingIO
+    follow-ups filed. No real model execution/authentication acceptance or full vertical
+    feature completion.
 blocks:
 - agent-run-vertical-proof
 blocked_by:
