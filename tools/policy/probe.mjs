@@ -6,6 +6,7 @@ import { homedir } from 'node:os';
 import { createHash } from 'node:crypto';
 import { buildArgs, boundedProcess, digestFile, digestTree, sameNamespace, validatePackageManifest, validatePackageLayout, verifyAfterProcess, INSTALLATION_SEED } from './boundary.mjs';
 import { summarizeActivationCases } from './activation-contract.mjs';
+import { PLUGIN_CASES, PLUGIN_MANIFEST, PLUGIN_MARKET, pluginFixture, summarizePluginCases } from './plugin-activation-contract.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const runtime = process.argv[2];
@@ -87,7 +88,13 @@ async function makeFixture(root, name, config, packageSource) {
   await writeFile(join(path, 'etc/codex/requirements.toml'), config.managed ?? '');
   await writeFile(join(path, 'etc/profile'), '/runtime/bin/node /fixture/canary.mjs login\n');
   await writeFile(join(path, 'home/probe/.bash_profile'), '/runtime/bin/node /fixture/canary.mjs login\n');
-  for (const name of ['inner.mjs', 'boundary.mjs', 'activation.mjs', 'activation-contract.mjs', 'mcp-canary.mjs']) await cp(join(here, name), join(path, 'fixture', name));
+  for (const name of ['inner.mjs', 'boundary.mjs', 'activation.mjs', 'activation-contract.mjs', 'plugin-activation-contract.mjs', 'mcp-canary.mjs']) await cp(join(here, name), join(path, 'fixture', name));
+  if (config.plugin) {
+    await mkdir(join(path, dirname(PLUGIN_MANIFEST)), { recursive: true });
+    await mkdir(join(path, PLUGIN_MARKET), { recursive: true });
+    await writeFile(join(path, PLUGIN_MANIFEST), config.plugin.manifest);
+    await writeFile(join(path, 'fixture/plugin-proof'), 'plugin-policy-v1');
+  }
   await writeFile(join(path, 'fixture/canary.mjs'),
     `import {writeFileSync} from 'node:fs'; const name=process.argv[2]; if(!/^(positive|login|notify|hooks|plugin|mcp)$/.test(name))process.exit(1);writeFileSync('/state/'+name,'synthetic-canary');`);
   if (packageSource) await cp(packageSource, join(path, 'package'), { recursive: true, force: false, errorOnExist: false });
@@ -152,7 +159,8 @@ async function main() {
     status: 'ISOLATION_UNAVAILABLE', isolation: {}, cases: [], unproved: [] };
   let root, cleanupSafe = true;
   try {
-    if (process.platform !== 'linux' || ![undefined, '--boundary-test', '--trace-startup', '--activation'].includes(mode)) throw new Error('UNSUPPORTED_PLATFORM_OR_MODE');
+    if (process.platform !== 'linux' || ![undefined, '--boundary-test', '--trace-startup', '--activation', '--plugin-activation'].includes(mode)) throw new Error('UNSUPPORTED_PLATFORM_OR_MODE');
+    const activation = mode === '--activation' || mode === '--plugin-activation';
     // Store metadata only, never provider/config execution. The derivation is pinned.
     const closure = execFileSync('nix-store', ['--query', '--requisites', runtime], {
       env: { PATH: process.env.PATH }, encoding: 'utf8', timeout: 10000, maxBuffer: 65536,
@@ -197,15 +205,19 @@ async function main() {
     report.package = { version: manifest.version, sourceDigest: packageBefore,
       executableSha256: await digestFile(join(packagePath, 'bin/codex')),
       companionSha256: await digestFile(join(packagePath, 'bin/codex-code-mode-host')) };
-    for (const config of mode === '--activation' ? ACTIVATION_CASES : mode === '--trace-startup' ? CASES.slice(0, 1) : CASES) {
+    const pluginCases = PLUGIN_CASES.map(entry => {
+      const plugin = pluginFixture(entry.name);
+      return { ...entry, plugin, user: activationConfig.replace('plugins = false', `plugins = ${plugin.enabled}`) + plugin.config, managed: plugin.managed };
+    });
+    for (const config of mode === '--plugin-activation' ? pluginCases : mode === '--activation' ? ACTIVATION_CASES : mode === '--trace-startup' ? CASES.slice(0, 1) : CASES) {
       const path = await makeFixture(root, config.name, config, packagePath);
       if (await digestTree(join(path, 'package')) !== packageBefore || await digestTree(packagePath) !== packageBefore) throw new Error('PACKAGE_CHANGED');
       const digest = await digestTree(path);
       // Same fixture/package identity, full lifetime proof, BEFORE every activation launch.
-      if (mode === '--activation' && !await verifyBoundary(path)) return report;
+      if (activation && !await verifyBoundary(path)) return report;
       const result = await boundedProcess(`${runtime}/bin/bwrap`, buildArgs(runtime, closure, path,
-        ['/runtime/bin/node', '/fixture/inner.mjs', mode === '--activation' ? 'activate' : mode === '--trace-startup' ? 'inspect-trace' : 'inspect',
-          ...(mode === '--activation' ? [config.expected] : [])]), { timeoutMs: mode === '--activation' ? 12000 : 8000, seed: true });
+        ['/runtime/bin/node', '/fixture/inner.mjs', activation ? 'activate' : mode === '--trace-startup' ? 'inspect-trace' : 'inspect',
+          ...(activation ? [config.expected] : [])]), { timeoutMs: activation ? 12000 : 8000, seed: true });
       report.codexStarted = true; // Conservative: inspection may have started before a transport failure.
       const verification = await verifyAfterProcess(result, async () => digest === await digestTree(path) && packageBefore === await digestTree(packagePath));
       cleanupSafe = verification.cleanupSafe;
@@ -214,11 +226,14 @@ async function main() {
       if (!result.ok) observation = { status: result.code, cleanup: result.cleanup, bootstrapDiagnostic: result.bootstrapDiagnostic };
       else { try { observation = JSON.parse(result.stdout); } catch { observation = { status: 'INVALID_PROBE_OUTPUT' }; } }
       report.cases.push({ name: config.name, digest, inputsUnchanged: true,
-        ...(mode === '--activation' ? { isolation: { ...report.isolation } } : {}), ...observation });
+        ...(activation ? { isolation: { ...report.isolation } } : {}), ...observation });
       await rm(path, { recursive: true, force: true });
     }
     report.status = 'OFFLINE_CHECKPOINT';
-    if (mode === '--activation') {
+    if (mode === '--plugin-activation') {
+      report.status = 'OFFLINE_PLUGIN_ACTIVATION_CHECKPOINT';
+      if (!summarizePluginCases(report.cases)) report.failure = 'PLUGIN_ACTIVATION_CONTROL_UNPROVED';
+    } else if (mode === '--activation') {
       report.status = 'OFFLINE_ACTIVATION_CHECKPOINT';
       if (!summarizeActivationCases(report.cases)) report.failure = 'ACTIVATION_CONTROL_UNPROVED';
     } else if (mode === '--trace-startup') {
@@ -237,7 +252,8 @@ async function main() {
       };
       if (Object.values(report.counterexamples).some(value => value !== true)) report.failure = 'COUNTEREXAMPLE_UNPROVED';
     }
-    report.unproved = ['only named static stdio MCP startup is covered by activation mode, not general auxiliary disablement',
+    report.unproved = ['activation modes cover only their named static or local legacy plugin MCP controls, not general auxiliary disablement',
+      'plugins-enabled startup may attempt featured-catalog HTTP; independent network denial is not runtime disablement',
       'SessionStart/notify hooks require a turn in pinned source; hooks/trust bypass/bundled-executor plugins remain unproved',
       'persisted plugin/remote-control and managed-layer interpretation need dedicated fixtures',
       'network denial is not disabled telemetry; offline credentials/config differ from production',
