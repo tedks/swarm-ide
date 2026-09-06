@@ -1,9 +1,10 @@
 import { spawn } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { createReadStream } from 'node:fs';
+import { constants, createReadStream } from 'node:fs';
 import { lstat, readdir, readlink } from 'node:fs/promises';
 
 export const LIMIT = 256 * 1024;
+export const INSTALLATION_SEED = '00000000-0000-4000-8000-000000000001\n';
 export const ENV = Object.freeze({ HOME: '/home/probe', CODEX_HOME: '/home/probe/.codex',
   XDG_CONFIG_HOME: '/home/probe/.config', XDG_DATA_HOME: '/state/data',
   XDG_CACHE_HOME: '/state/cache', XDG_RUNTIME_DIR: '/state/run',
@@ -18,6 +19,22 @@ export const REQUIRED = Object.freeze(['hooks', 'plugin_hooks', 'plugins', 'reco
   'shell_snapshot', 'shell_snapshot_v2', 'shell_zsh_fork', 'unified_exec_zsh_fork', 'deferred_executor',
   'skill_mcp_dependency_install', 'skill_search', 'skill_env_var_dependency_prompt',
   'memories', 'external_agent_memory_import', 'chronicle']);
+
+export function validatePackageManifest(manifest) {
+  if (!manifest || manifest.version !== '0.153.4' || manifest.layoutVersion !== 1 ||
+    manifest.target !== 'x86_64-unknown-linux-musl' || manifest.variant !== 'codex' ||
+    manifest.entrypoint !== 'bin/codex' || manifest.resourcesDir !== 'codex-resources' || manifest.pathDir !== 'codex-path') {
+    throw new Error('UNSUPPORTED_PACKAGE');
+  }
+}
+
+export async function digestFile(path) {
+  const hash = createHash('sha256');
+  const stat = await lstat(path);
+  if (!stat.isFile() || stat.size > 512 * 1024 * 1024) throw new Error('UNSUPPORTED_INPUT_FILE');
+  for await (const chunk of createReadStream(path, { flags: constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK })) hash.update(chunk);
+  return hash.digest('hex');
+}
 
 export function buildArgs(runtime, closure, fixture, command) {
   if (!/^\/nix\/store\/[a-z0-9]{32}-[A-Za-z0-9+._?-]+$/.test(runtime) ||
@@ -37,12 +54,15 @@ export function buildArgs(runtime, closure, fixture, command) {
   args.push('--proc', '/proc', '--dev', '/dev', '--size', '33554432', '--tmpfs', '/state',
     '--size', '16777216', '--tmpfs', '/tmp', '--chdir', '/work');
   for (const [key, value] of Object.entries(ENV)) args.push('--setenv', key, value);
+  // A copy of finite synthetic bytes, not a writable host file. Bubblewrap consumes fd4.
+  // Parent/config paths stay readonly; only this runtime identity inode is mutable.
+  args.push('--perms', '0600', '--bind-data', '4', '/home/probe/.codex/installation_id');
   args.push('--remount-ro', '/', '--', ...command);
   return args;
 }
 
 /** Finite output and wall-clock bounds; failure never returns stdout as evidence. */
-export function boundedProcess(executable, args, { timeoutMs = 10000, input = '', onSpawn } = {}) {
+export function boundedProcess(executable, args, { timeoutMs = 10000, input = '', seed = false, onSpawn } = {}) {
   if (!Number.isInteger(timeoutMs) || timeoutMs < 10 || timeoutMs > 60000 || Buffer.byteLength(input) > LIMIT) {
     return Promise.resolve({ ok: false, code: 'INVALID_LIMIT', cleanup: 'not-started' });
   }
@@ -51,15 +71,17 @@ export function boundedProcess(executable, args, { timeoutMs = 10000, input = ''
     const chunks = [];
     const finish = (value) => { if (!finished) { finished = true; clearTimeout(timer); clearTimeout(killTimer); resolve(value); } };
     const fail = code => {
+      if (finished) return;
       reason ??= code; child?.kill('SIGKILL');
       killTimer ??= setTimeout(() => {
-        child?.stdout.destroy(); child?.stderr.destroy(); child?.stdin.destroy();
+        child?.stdout.destroy(); child?.stderr.destroy(); child?.stdin.destroy(); child?.stdio[4]?.destroy();
         finish({ ok: false, code: reason, cleanup: 'unknown' });
       }, 2000);
     };
     try {
       // No shell, inherited socket/TTY/fds, loader hooks or user environment.
-      child = spawn(executable, args, { env: { LANG: 'C.UTF-8' }, cwd: '/', stdio: ['pipe', 'pipe', 'pipe'] });
+      child = spawn(executable, args, { env: { LANG: 'C.UTF-8' }, cwd: '/', stdio: seed ? ['pipe', 'pipe', 'pipe', 'ignore', 'pipe'] : ['pipe', 'pipe', 'pipe'] });
+      if (seed) { child.stdio[4].on('error', () => fail('SEED_PIPE_FAILED')); child.stdio[4].end(INSTALLATION_SEED); }
       timer = setTimeout(() => fail('DEADLINE'), timeoutMs);
       child.on('error', () => finish({ ok: false, code: 'START_FAILED', cleanup: 'not-started' }));
       for (const stream of [child.stdout, child.stderr]) {
@@ -91,7 +113,7 @@ export async function digestTree(root) {
     } else if (stat.isFile()) {
       if ((total += stat.size) > 512 * 1024 * 1024) throw new Error('INPUT_LIMIT');
       hash.update(`${stat.size}\0`);
-      for await (const chunk of createReadStream(path, { flags: 0x20000 | 0x800 /* Linux O_NOFOLLOW|O_NONBLOCK */ })) hash.update(chunk);
+      for await (const chunk of createReadStream(path, { flags: constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK })) hash.update(chunk);
     } else throw new Error('UNSUPPORTED_INPUT_TREE');
   }
   await walk(root, '');

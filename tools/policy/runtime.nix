@@ -5,5 +5,5 @@ let
   pkgs = import source { };
 in pkgs.buildEnv {
   name = "swarm-offline-policy-runtime";
-  paths = [ pkgs.bubblewrap pkgs.nodejs_22 pkgs.bash pkgs.coreutils ];
+  paths = [ pkgs.bubblewrap pkgs.nodejs_22 pkgs.bash pkgs.coreutils pkgs.strace ];
 }

@@ -2,15 +2,19 @@ import { execFileSync, spawn } from 'node:child_process';
 import { cp, mkdir, mkdtemp, readFile, readlink, rm, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { buildArgs, boundedProcess, digestTree, sameNamespace } from './boundary.mjs';
+import { homedir } from 'node:os';
+import { createHash } from 'node:crypto';
+import { buildArgs, boundedProcess, digestFile, digestTree, sameNamespace, validatePackageManifest, INSTALLATION_SEED } from './boundary.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const runtime = process.argv[2];
 const mode = process.argv[3];
-const packagePath = '/home/tedks/.npm-global/lib/node_modules/@openai/codex/node_modules/@openai/codex-linux-x64/vendor/x86_64-unknown-linux-musl';
+const packagePath = join(homedir(), '.npm-global/lib/node_modules/@openai/codex/node_modules/@openai/codex-linux-x64/vendor/x86_64-unknown-linux-musl');
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 const baseConfig = `allow_login_shell = false
 notify = []
+[projects."/work"]
+trust_level = "trusted"
 [features]
 apps = false
 hooks = false
@@ -26,6 +30,7 @@ recommended_plugins = false
 export const CASES = Object.freeze([
   { name: 'baseline', user: baseConfig },
   { name: 'aliases', user: baseConfig + 'connectors = true\ncodex_hooks = true\ncollab = true\n' },
+  { name: 'project', user: baseConfig, project: '[features]\napps = true\n' },
   { name: 'inherited-mcp', user: baseConfig + '[mcp_servers.sentinel]\ncommand = "/runtime/bin/node"\nargs = ["/fixture/canary.mjs", "mcp"]\n', project: '[mcp_servers]\n' },
   { name: 'notify', user: baseConfig.replace('notify = []', 'notify = ["/runtime/bin/node", "/fixture/canary.mjs", "notify"]') },
   { name: 'managed', user: baseConfig, managed: '[feature_requirements]\napps = true\n' },
@@ -37,6 +42,7 @@ async function makeFixture(root, name, config, packageSource) {
   for (const dir of ['home/probe/.codex', 'home/probe/.config', 'work/.codex', 'etc/codex', 'fixture', ...(packageSource ? [] : ['package'])])
     await mkdir(join(path, dir), { recursive: true, mode: 0o700 });
   await writeFile(join(path, 'home/probe/.codex/config.toml'), config.user);
+  await writeFile(join(path, 'home/probe/.codex/installation_id'), INSTALLATION_SEED);
   await writeFile(join(path, 'work/.codex/config.toml'), config.project ?? '');
   await writeFile(join(path, 'etc/codex/requirements.toml'), config.managed ?? '');
   await writeFile(join(path, 'etc/profile'), '/runtime/bin/node /fixture/canary.mjs login\n');
@@ -51,11 +57,12 @@ async function makeFixture(root, name, config, packageSource) {
 /** A disposable owner; the outer test SIGKILLs it rather than orderly disposal. */
 async function owner(args) {
   const child = spawn(`${runtime}/bin/bwrap`, ['--info-fd', '3', ...args], {
-    env: { LANG: 'C.UTF-8' }, cwd: '/', stdio: ['ignore', 'pipe', 'pipe', 'pipe'],
+    env: { LANG: 'C.UTF-8' }, cwd: '/', stdio: ['ignore', 'pipe', 'pipe', 'pipe', 'pipe'],
   });
   let info = '', output = '', total = 0, reported = false;
   const fail = () => { child.kill('SIGKILL'); process.exitCode = 1; };
   child.on('error', fail);
+  child.stdio[4].on('error', fail); child.stdio[4].end(INSTALLATION_SEED);
   child.stderr.on('data', chunk => { total += chunk.length; if (total > 4096) fail(); });
   function ready() {
     if (reported || !info.includes('}') || !output.includes('\n')) return;
@@ -105,16 +112,17 @@ async function main() {
     status: 'ISOLATION_UNAVAILABLE', isolation: {}, cases: [], unproved: [] };
   let root, cleanupSafe = true;
   try {
-    if (process.platform !== 'linux' || ![undefined, '--boundary-test'].includes(mode)) throw new Error('UNSUPPORTED_PLATFORM_OR_MODE');
+    if (process.platform !== 'linux' || ![undefined, '--boundary-test', '--trace-startup'].includes(mode)) throw new Error('UNSUPPORTED_PLATFORM_OR_MODE');
     // Store metadata only, never provider/config execution. The derivation is pinned.
     const closure = execFileSync('nix-store', ['--query', '--requisites', runtime], {
       env: { PATH: process.env.PATH }, encoding: 'utf8', timeout: 10000, maxBuffer: 65536,
     }).trim().split('\n');
+    report.runtime = { path: runtime, closureDigest: createHash('sha256').update(closure.sort().join('\n')).digest('hex') };
     root = await mkdtemp('/tmp/swarm-policy-');
     const fixture = await makeFixture(root, 'boundary', { user: baseConfig });
     const args = command => buildArgs(runtime, closure, fixture, ['/runtime/bin/node', '/fixture/inner.mjs', command]);
     const before = await digestTree(fixture);
-    const result = await boundedProcess(`${runtime}/bin/bwrap`, args('boundary'));
+    const result = await boundedProcess(`${runtime}/bin/bwrap`, args('boundary'), { seed: true });
     if (!result.ok) { cleanupSafe = result.cleanup !== 'unknown'; report.failure = result.code; return report; }
     const observed = JSON.parse(result.stdout);
     report.isolation = observed.checks;
@@ -122,12 +130,13 @@ async function main() {
       report.failure = 'BOUNDARY_CHECKS_FAILED'; return report;
     }
     report.isolation.freshPidNamespace = observed.namespace !== await readlink('/proc/self/ns/pid');
+    report.isolation.freshNetworkNamespace = observed.networkNamespace !== await readlink('/proc/self/ns/net');
     report.isolation.ownerDeathCleanup = await ownerDeath(args('hold'));
     if (!report.isolation.ownerDeathCleanup) { cleanupSafe = false; report.failure = 'OWNER_CLEANUP_UNPROVED'; return report; }
-    const timed = await boundedProcess(`${runtime}/bin/bwrap`, args('hold'), { timeoutMs: 400 });
+    const timed = await boundedProcess(`${runtime}/bin/bwrap`, args('hold'), { timeoutMs: 400, seed: true });
     report.isolation.deadlineStops = !timed.ok && timed.code === 'DEADLINE' && timed.cleanup === 'reaped';
     if (timed.cleanup === 'unknown') { cleanupSafe = false; report.failure = 'DEADLINE_CLEANUP_UNPROVED'; return report; }
-    const flooded = await boundedProcess(`${runtime}/bin/bwrap`, args('flood'));
+    const flooded = await boundedProcess(`${runtime}/bin/bwrap`, args('flood'), { seed: true });
     report.isolation.outputStops = !flooded.ok && flooded.code === 'OUTPUT_LIMIT' && flooded.cleanup === 'reaped';
     if (flooded.cleanup === 'unknown') { cleanupSafe = false; report.failure = 'OUTPUT_CLEANUP_UNPROVED'; return report; }
     report.isolation.inputsUnchanged = before === await digestTree(fixture);
@@ -138,15 +147,16 @@ async function main() {
     // Inspect and copy ONLY the declared executable/resource package, never auth/config.
     const packageBefore = await digestTree(packagePath);
     const manifest = JSON.parse(await readFile(join(packagePath, 'codex-package.json'), 'utf8'));
-    if (manifest.version !== '0.153.4' || manifest.layoutVersion !== 1 || manifest.entrypoint !== 'bin/codex' ||
-        manifest.resourcesDir !== 'codex-resources' || manifest.pathDir !== 'codex-path') throw new Error('UNSUPPORTED_PACKAGE');
-    report.package = { version: manifest.version, sourceDigest: packageBefore };
-    for (const config of CASES) {
+    validatePackageManifest(manifest);
+    report.package = { version: manifest.version, sourceDigest: packageBefore,
+      executableSha256: await digestFile(join(packagePath, 'bin/codex')),
+      companionSha256: await digestFile(join(packagePath, 'bin/codex-code-mode-host')) };
+    for (const config of mode === '--trace-startup' ? CASES.slice(0, 1) : CASES) {
       const path = await makeFixture(root, config.name, config, packagePath);
       if (await digestTree(join(path, 'package')) !== packageBefore || await digestTree(packagePath) !== packageBefore) throw new Error('PACKAGE_CHANGED');
       const digest = await digestTree(path);
       const result = await boundedProcess(`${runtime}/bin/bwrap`, buildArgs(runtime, closure, path,
-        ['/runtime/bin/node', '/fixture/inner.mjs', 'inspect']), { timeoutMs: 8000 });
+        ['/runtime/bin/node', '/fixture/inner.mjs', mode === '--trace-startup' ? 'inspect-trace' : 'inspect']), { timeoutMs: 8000, seed: true });
       report.codexStarted = true; // Conservative: inspection may have started before a transport failure.
       const unchanged = digest === await digestTree(path) && packageBefore === await digestTree(packagePath);
       if (!unchanged) throw new Error('INPUT_CHANGED');
@@ -155,8 +165,23 @@ async function main() {
       else { try { observation = JSON.parse(result.stdout); } catch { observation = { status: 'INVALID_PROBE_OUTPUT' }; } }
       report.cases.push({ name: config.name, digest, inputsUnchanged: unchanged, ...observation });
       if (result.cleanup === 'unknown') { cleanupSafe = false; report.failure = 'PROBE_CLEANUP_UNPROVED'; return report; }
+      await rm(path, { recursive: true, force: true });
     }
     report.status = 'OFFLINE_CHECKPOINT';
+    if (mode !== '--trace-startup') {
+      const find = name => report.cases.find(item => item.name === name);
+      report.counterexamples = {
+        baselineInspected: find('baseline')?.status === 'OFFLINE_OBSERVED' && find('baseline')?.observations?.features.apps === false,
+        aliasOverridesCanonicalFalse: find('aliases')?.observations?.features.apps === true,
+        projectLayerLoaded: find('project')?.observations?.features.apps === true,
+        emptyProjectTablePreservesMcp: find('inherited-mcp')?.observations?.mcpEntries === 1,
+        legacyNotifyNotEmpty: find('notify')?.observations?.notifyEmpty === false,
+        managedRequirementObserved: find('managed')?.observations?.requirementsPresent === true && find('managed')?.observations?.features.apps === true,
+        malformedStrictlyRejected: find('malformed')?.status === 'SERVER_EXITED' && /TOML parse error/.test(find('malformed')?.diagnostic ?? ''),
+        requiredFeatureCoverage: report.cases.filter(item => item.name !== 'malformed').every(item => item.observations?.missingFeatures?.length === 0),
+      };
+      if (Object.values(report.counterexamples).some(value => value !== true)) report.failure = 'COUNTEREXAMPLE_UNPROVED';
+    }
     report.unproved = ['provider feature disablement is not inferred from missing canary activation',
       'hooks/trust bypass/bundled-executor plugin activation needs a separately bounded no-model trigger',
       'persisted plugin/remote-control and managed-layer interpretation need dedicated fixtures',
