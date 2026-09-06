@@ -107,7 +107,10 @@ describe("task read contract base", () => {
     expect(() => TaskDetailSchema.parse(large)).toThrow();
     const almostFull = taskReadFixture();
     if (!almostFull.result.ok) throw new Error("fixture");
-    almostFull.result.detail.description = "\u0000".repeat(10_700);
+    almostFull.result.detail.description = "";
+    const overhead = Buffer.byteLength(JSON.stringify(almostFull.result.detail));
+    almostFull.result.detail.description = "\u0000".repeat(Math.floor((TASK_LIMITS.detailBytes - overhead - 100) / 6));
+    expect(() => TaskDetailSchema.parse(almostFull.result.ok && almostFull.result.detail)).not.toThrow();
     expect(() => TaskReadResultSchema.parse(almostFull)).toThrow();
   });
   it("reports recorded dependency state and inconsistency without invented readiness", () => {
@@ -156,6 +159,8 @@ describe("task read contract base", () => {
     for (const code of ["CORE_TIMEOUT", "CORE_UNAVAILABLE", "TASK_WORLD_MISMATCH"]) expect(parseCoreResponseForRequest(fail(code, "Unavailable"), snapshotRequest).ok).toBe(false);
     for (const message of ["x\nprivate", "x\u202e", "é".repeat(257)]) expect(() => parseCoreResponseForRequest(fail("TASK_OBSERVATION_FAILED", message), snapshotRequest)).toThrow();
     expect(() => parseCoreResponseForRequest(fail("MADE_UP", "no"), snapshotRequest)).toThrow();
+    expect(() => TaskObservationSchema.parse({ ...taskObservationFixture("limited"), reason: { code: "TASK_NOT_FOUND", message: "Not a limit" } })).toThrow();
+    expect(() => TaskDetailSchema.parse({ ...taskDetailFixture(), description: "\uD800" })).toThrow();
   });
   it("returns honest unavailable data, monotonic sequence and idempotent disposal without reading its root", async () => {
     const provider = createUnavailableTaskProvider({ root: "/never-read-this", worldId: "world:working", repositoryId: "project:swarm-ide" });

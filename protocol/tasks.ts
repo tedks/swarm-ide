@@ -14,7 +14,8 @@ export const TASK_METADATA_REF = "refs/heads/ditz-metadata" as const;
 const encoder = new TextEncoder();
 const bytes = (value: string) => encoder.encode(value).byteLength;
 const text = (max: number, min = 0) => z.string().min(min).max(max)
-  .refine((value) => bytes(value) <= max, "Task UTF-8 byte limit exceeded");
+  .refine((value) => bytes(value) <= max, "Task UTF-8 byte limit exceeded")
+  .refine((value) => !/[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/u.test(value), "Invalid Unicode task text");
 const identity = text(256, 1).refine((value) => !/[\p{White_Space}\p{Cc}\p{Cf}]/u.test(value), "Invalid task world identity");
 const date = z.string().max(32).datetime();
 const sequence = z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER);
@@ -99,10 +100,17 @@ export const TaskObservationSchema = z.object({
   const snapshot = value.snapshot;
   if (snapshot && (snapshot.worldId !== value.worldId || snapshot.repositoryId !== value.repositoryId)) issue("Retained snapshot must belong to the observation world");
   if (snapshot && value.checkedAt && Date.parse(snapshot.observedAt) > Date.parse(value.checkedAt)) issue("Check cannot precede snapshot observation");
+  if (snapshot && value.localRef && snapshot.metadataCommit.algorithm !== value.localRef.algorithm) issue("Checked ref and retained commit must use the same object algorithm");
   if (value.status === "unobserved" && (snapshot || value.checkedAt || value.localRef || value.reason || value.sequence !== 0)) issue("Unobserved is not an observation");
   if (value.status === "observed" && (!snapshot || !value.checkedAt || !value.localRef || value.reason || !sameGitObject(snapshot.metadataCommit, value.localRef))) issue("Observed requires a complete snapshot at the checked local ref");
   if (value.status === "stale" && (!snapshot || !value.checkedAt || !value.reason)) issue("Stale requires retained snapshot and reason");
   if (["unavailable", "malformed", "limited", "error"].includes(value.status) && (!value.reason || !value.checkedAt)) issue("Failed attempt requires a checked time and reason");
+  const allowedReasons: Partial<Record<TaskObservationStatus, readonly TaskError["code"][]>> = {
+    unavailable: ["TASK_PROVIDER_UNAVAILABLE", "TASK_METADATA_UNAVAILABLE"], malformed: ["TASK_METADATA_MALFORMED"],
+    limited: ["TASK_LIMIT_EXCEEDED"], error: ["TASK_OBSERVATION_FAILED"], stale: ["TASK_REF_CHANGED", "TASK_RECONNECT_REQUIRED"],
+  };
+  const allowed = allowedReasons[value.status];
+  if (allowed && value.reason && !allowed.includes(value.reason.code)) issue("Attempt reason must agree with its status");
   if (value.status === "loading" && value.reason !== null) issue("Loading has not failed");
   if (!boundedJson(value, TASK_LIMITS.snapshotBytes)) issue("Task observation byte limit exceeded");
 });
