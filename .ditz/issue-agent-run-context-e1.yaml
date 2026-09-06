@@ -22,5 +22,13 @@ log_events:
   who: Ted Smith
   what: started
   comment: ""
+- time: 2026-09-06T02:55:56-00:00
+  who: Ted Smith
+  what: commented
+  comment: PR11 a2225b5 initial full build + all5 local tests passed, virtual smoke32.8s.
+    Anthropic review now adds bounded callback liveness, precise guard/race coverage
+    and sanitized internal-error observation; tightening before fix-delta convergence.
+    Shared FIFO O_NONBLOCK flag request sent Runtime/ROOT; not independently editing
+    unowned broker. Effective limited profile remains unavailable.
 blocks:
 - agent-run-context-evidence
