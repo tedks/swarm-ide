@@ -1,0 +1,21 @@
+id: agent-run-late-response-evidence
+title: Retain late agent acknowledgement evidence across uncertainty boundaries
+desc: 'R0 council follow-up for runtime R2: late replies to settled requests are discarded;
+  old-generation explicit rejections are conservatively converted to unknown. Design
+  a bounded, sanitized record of late evidence and evaluate preserving definitive
+  non-dispatch rejection only with proven command/generation identity. Do not log
+  raw user transcripts or replay mutations. R0 has no actual agent runtime and intentionally
+  remains conservative.'
+type: task
+component: default
+release:
+reporter: Ted Smith <tedks@riseup.net>
+status: unstarted
+disposition:
+creation_time: 2026-09-06T02:07:16-00:00
+references: []
+log_events:
+- time: 2026-09-06T02:07:16-00:00
+  who: Ted Smith
+  what: created
+  comment: ""
