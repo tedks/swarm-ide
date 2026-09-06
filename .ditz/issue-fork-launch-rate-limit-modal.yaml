@@ -14,3 +14,17 @@ log_events:
   who: Ted Smith
   what: created
   comment: ""
+- time: 2026-09-06T07:58:13-00:00
+  who: Ted Smith
+  what: commented
+  comment: 'ROOT 2026-09-06: true T1/T2 forks compacted successfully but a low-weekly-usage
+    Switch to gpt-5.6-luna suggestion blocked composer readiness; launcher failed
+    closed with generic composer error and no recap cursor/task delivery, startup
+    supervisors later failed. Both original sessions repaired without duplication:
+    inspected exact popup and pinned source empty Keep-current actions, selected option2
+    (no setting persistence/reset/downgrade), proved zero exact task deliveries, wrote
+    safe JSONL cursors and queued unchanged assignments once. Improve specific modal
+    diagnostics and tested recovery honoring explicit operator model choice; never
+    blindly accept defaults, consume resets, or persist global settings. Evidence
+    /tmp/swarm-ide-task-ui-t2.MreE08/startup-repair.md. Shared launcher untouched;
+    follow-up remains open.'
