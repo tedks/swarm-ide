@@ -32,5 +32,14 @@ log_events:
   who: Ted Smith
   what: blocks agent-run-workbench
   comment: ""
+- time: 2026-09-06T04:42:42-00:00
+  who: Ted Smith
+  what: commented
+  comment: PR18 pushed; initial290tests and fix292tests green. Exact owned virtual
+    keyboard proof5.280s/cleanup1 shows draft retained on veto and explicit discard
+    then refresh restores source in same native window. Native council watermark ordering
+    finding fixed with regression; convergence pending, Google initial clean, Anthropic
+    initial still running. Full19target build passed; first suite4/5 due occupied
+    fixed supervisor test port58014; locked retry pending. No real model/adoption.
 blocks:
 - agent-run-workbench
