@@ -15,6 +15,7 @@ const source = resolve(".");
 const provider = resolve("fixtures/agent-owned-process/provider.mjs");
 const roots: string[] = [], children: ChildProcess[] = [];
 const fixtures: Awaited<ReturnType<typeof openProcessFixture>>[] = [];
+const observedNamespaces = new Set<string>();
 const reports: unknown[] = [];
 const hooks = ["NODE_OPTIONS", "NODE_PATH", "LD_PRELOAD", "LD_AUDIT"];
 const cleanEnvironment = { PATH: process.env.PATH, LANG: "C.UTF-8" };
@@ -43,6 +44,8 @@ afterEach(async () => {
   // Keep attempting all owned cleanup even if one assertion/close failed.
   const results = await Promise.allSettled(fixtures.splice(0).map((fixture) => fixture.close()));
   await Promise.all(children.splice(0).map(killOwned));
+  for (const namespace of observedNamespaces) await until(() => liveMembers(namespace).length === 0, "failure-path namespace cleanup");
+  observedNamespaces.clear();
   vi.unstubAllEnvs();
   for (const root of roots.splice(0)) await rm(root, { recursive: true, force: true });
   for (const result of results) if (result.status === "rejected") throw result.reason;
@@ -81,6 +84,12 @@ function liveMembers(namespace: string) {
     } catch { return []; }
   });
 }
+async function ownedNamespace(root: string) {
+  const namespace = (await witness(root)).find((entry) => entry.role === "provider" && entry.phase === "ready")?.namespace;
+  if (!namespace || !/^pid:\[\d+\]$/.test(namespace) || namespace === readlinkSync("/proc/self/ns/pid")) throw new Error("Missing private namespace witness");
+  observedNamespaces.add(namespace);
+  return namespace;
+}
 async function outsideCanary(root: string) {
   const child = spawn(process.execPath, [provider, "canary", "stop-terminal", join(root, "witness.jsonl")],
     { env: cleanEnvironment, stdio: ["ignore", "ignore", "ignore", "ipc"] });
@@ -115,7 +124,7 @@ describe.skipIf(!namespacesAvailable)("joined service/stdio/private namespace fi
     const same = value(await fixture.service.request({ ...base(), type: "agent.launch", runId: fixture.draft.runId, contextHash: fixture.draft.contextHash }));
     expect(same).toMatchObject({ receipt }); expect(fixture.calls.connect).toBe(1);
     const observed = await witness(root);
-    const namespace = observed.find((entry) => entry.role === "provider" && entry.phase === "ready")!.namespace;
+    const namespace = await ownedNamespace(root);
     expect(namespace).not.toBe(readlinkSync("/proc/self/ns/pid"));
     expect(liveMembers(namespace).length).toBeGreaterThanOrEqual(3);
     expect(observed.some((entry) => entry.role === "descendant" && entry.namespace === namespace && entry.phase === "ready")).toBe(true);
@@ -135,6 +144,7 @@ describe.skipIf(!namespacesAvailable)("joined service/stdio/private namespace fi
     const endedWitness = await witness(root);
     expect(endedWitness.some((entry) => entry.role === "provider" && entry.phase === "interrupt-ack")).toBe(true);
     expect(endedWitness.some((entry) => entry.role === "provider" && entry.phase === "terminal")).toBe(true);
+    expect(endedWitness.some((entry) => entry.role === "provider" && entry.phase === "sigterm")).toBe(true);
     expect(endedWitness.some((entry) => entry.role === "descendant" && entry.phase === "sigterm")).toBe(true);
     expect(liveMembers(namespace)).toEqual([]); canarySurvived(canary, namespace);
     expect((await fixture.persisted()).entries[0].run).toEqual(final);
@@ -148,7 +158,7 @@ describe.skipIf(!namespacesAvailable)("joined service/stdio/private namespace fi
     const fixture = await openProcessFixture(root, "unexpected-exit", source); fixtures.push(fixture);
     await fixture.launch();
     await until(async () => (await fixture.read()).run.state === "running", "running");
-    const namespace = (await witness(root)).find((entry) => entry.role === "provider" && entry.phase === "ready")!.namespace;
+    const namespace = await ownedNamespace(root);
     const result = value(await fixture.service.request(fixture.steerRequest));
     expect(result).toMatchObject({ receipt: { status: "delivery-unknown" } });
     await until(async () => (await fixture.read()).run.cleanup.status === "confirmed", "exit cleanup");
@@ -173,7 +183,7 @@ describe.skipIf(!namespacesAvailable)("joined service/stdio/private namespace fi
     const runId = notice!.receipt!.runId;
     const before = JSON.parse(await readFile(join(root, "store/snapshot.json"), "utf8")).entries[0].run as Run;
     expect(before).toMatchObject({ state: "running", cleanup: { status: "pending" }, instructions: [{ status: "pending" }] });
-    const namespace = (await witness(root)).find((entry) => entry.role === "provider" && entry.phase === "ready")!.namespace;
+    const namespace = await ownedNamespace(root);
     expect(liveMembers(namespace).length).toBeGreaterThanOrEqual(3);
     await killOwned(core);
     expect(core.signalCode).toBe("SIGKILL");

@@ -25,7 +25,11 @@ export function executable(name: string): string {
   for (const directory of (process.env.PATH ?? "").split(":")) {
     if (!directory.startsWith("/nix/store/")) continue;
     const candidate = join(directory, name);
-    try { accessSync(candidate, constants.X_OK); return realpathSync(candidate); } catch { /* next Nix dependency */ }
+    try {
+      accessSync(candidate, constants.X_OK);
+      if (realpathSync(candidate).startsWith("/nix/store/")) return candidate;
+      // Preserve the selected basename: Nix coreutils can be one multi-call binary.
+    } catch { /* next Nix dependency */ }
   }
   throw new Error(`Missing pinned Nix fixture dependency: ${name}`);
 }
