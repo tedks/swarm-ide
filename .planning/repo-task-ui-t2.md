@@ -15,8 +15,8 @@ The Work panel gains Tasks instead of a disconnected Dispatch queue. A developer
 - [x] (2026-09-06) Added narrow App composition and safe explicit source/line Reveal with actual CodeMirror tests; initial 800-test run exposed three regressions, now corrected pending rerun.
 - [x] (2026-09-06 quota resume) Preserved pushed4787dc3, consumed ROOT-reviewed readerc9e9a74 into50766f6; actual full29/all10 and1010 tests/67 files passed. Provider remains uncomposed/unavailable.
 - [x] (2026-09-06 quota resume) Fixed new native keyboard-intent race and foreign lifecycle-warning finding; four delayed input cases and three pending lifecycle cases added, corrected quality passed. Final aggregate/virtual proof follows on this candidate.
-- [ ] Run local quality, full build and all tests; prove actual unavailable UI on owned virtual X11.
-- [ ] Reach provider-diverse council fixpoint, normal merge, Ditz sync, cleanup and exact handoff.
+- [x] (2026-09-06) Executable65a25e8 passed quality1018/67, full29 build/all10 uncached tests, and actual owned virtual unavailable/keyboard/retention acceptance79.983s with cleanup1.
+- [x] (2026-09-06) Reached native OpenAI plus warm Google/Anthropic CLEAN fixpoint on the final executable. Prepared PR31 normal-merge handoff; final merge, Ditz and resource cleanup are recorded in the PR and archived handoff after the aggregate landing gate.
 
 ## Surprises & Discoveries
 
@@ -41,6 +41,8 @@ Warm Anthropic convergence also caught stale lifecycle notices surviving ready t
 
 Candidate13943b4 reached actual all-three-provider CLEAN and full29/all10/1017 tests. Its owned virtual run again failed at Show-details keyboard traversal, with cleanup1. The actual Enter gesture differs from fireEvent.click: the palette handler moved focus synchronously to Return without preventing Enter's default activation. Explicitly consume Enter when executing its matched command and add a default-prevention/focus regression. Keep the failed evidence; require a fresh actual desktop proof rather than extrapolating from jsdom.
 
+The next real run confirmed Show/Return works, then caught an acceptance-helper error: unconditional Escape before Ctrl-K cleared a focused native search input. The helper now dismisses only an actual open palette, retaining all assertions; native helper review was CLEAN. Final desktop-acceptance passed on unchanged65a25e8: real unavailable provider, no fake task rows, independently dragged/wheel-zoomed graph cameras and retained graph/editor/draft DOM, unsaved source and draft, search retention, keyboard Show/Return and zero page/task horizontal overflow at100/150%, including1280x800 (816x510 CSS pixels, source206.29px tall). All owned desktop resources cleaned up. Prior failed attempts remain labelled failures, never counted as acceptance.
+
 ## Decision Log
 
 
@@ -57,7 +59,7 @@ Decision: only explicit Show details navigates to compact Information and focuse
 ## Outcomes & Retrospective
 
 
-Implementation and verification are in progress. No real backlog, provider launch or production policy availability is claimed.
+The bounded UI and source Reveal implementation is complete and locally verified at65a25e8, with three-provider CLEAN convergence. Tasks replace disconnected Dispatch content, metadata inspection remains separate from source focus, and explicit Reveal preserves protected buffers and newer keyboard intent. Actual metadata browsing is schema-valid test coverage only: production remains unavailable until T3 composes the landed reader, packages its worker/parser and supplies the task-only12s deadline. No real backlog integration, task mutation, provider launch or production policy availability is claimed. Final PR31 merge/aggregate tests/Ditz/cleanup evidence lives in the PR record and artifacts/overnight-wave/task-ui-t2/handoff.md; watched master/app adoption remains ROOT-owned.
 
 ## Context and Orientation
 
