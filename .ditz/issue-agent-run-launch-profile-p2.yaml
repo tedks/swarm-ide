@@ -51,5 +51,12 @@ log_events:
     Important review issues fixed, OpenAI+Google convergence CLEAN; Anthropic pending.
     Full22targetbuild passed; fulluncached tests under virtual lock underway. Policy
     parent stays unavailable/open.
+- time: 2026-09-06T05:01:53-00:00
+  who: Ted Smith
+  what: commented
+  comment: PR17 normal-merged c52f959 (parentsfa263e7+020df32) at05:00:01Z. Premerge429tests/all7/22build/manualactualofflineproof
+    passed, OpenAI+GoogleCLEAN, Anthropicmissing600s, hostedinprogresswaived. PR18
+    landed concurrently before merge; retained P2 feature branch/worktree fast-forwarded
+    to exactc52f959 and re-running mergedaggregate gates, no master/app adoption.
 blocks:
 - agent-run-effective-policy
