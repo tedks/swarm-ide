@@ -19,3 +19,13 @@ log_events:
   who: Ted Smith
   what: created
   comment: ""
+- time: 2026-09-06T03:41:17-00:00
+  who: Ted Smith
+  what: commented
+  comment: 'User delegated this decision to ROOT for overnight execution. RESOLVED:
+    intentional core replacement closes admission and waits at most 1000ms for pending
+    mutation acknowledgements (or earlier existing deadline), then persists/surfaces
+    unresolved outcomes as unknown and proceeds with owned shutdown. Never wait for
+    whole agent tasks or replay commands; actual crashes get no grace. Preserve file-write/dirty-buffer
+    protections and native-window identity. Runtime R2 implements/tests and records
+    this in ExecPlan.'
