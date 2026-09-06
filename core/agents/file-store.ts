@@ -162,7 +162,7 @@ async function discardIncompleteSnapshots(dir: FileHandle): Promise<void> {
   const temporaryName = /^snapshot-[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\.tmp$/;
   const candidates: { path: string; ino: number; dev: number }[] = [];
   const privateFile = (info: Stats) => info.isFile() &&
-    info.uid === process.getuid?.() && (info.mode & 0o777) === 0o600 && info.nlink === 1;
+    info.uid === process.getuid?.() && typeof info.mode === "number" && (info.mode & 0o777) === 0o600 && info.nlink === 1;
   for (const name of names.filter((name) => temporaryName.test(name))) {
     const path = join(pinned, name);
     const before = await lstat(path);
