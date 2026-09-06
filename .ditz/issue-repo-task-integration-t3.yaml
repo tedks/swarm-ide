@@ -1,0 +1,19 @@
+id: repo-task-integration-t3
+title: Integrate real repository tasks into the packaged cockpit
+desc: Compose real read-only Ditz provider, package bounded YAML worker, task-only
+  request deadline, and prove actual CLI-authored metadata through packaged cockpit
+  on owned virtual X11. No task writes, model turns, draft attachment, policy changes
+  or watched-app adoption.
+type: feature
+component: default
+release:
+reporter: Ted Smith <tedks@riseup.net>
+status: unstarted
+disposition:
+creation_time: 2026-09-06T15:09:01-00:00
+references: []
+log_events:
+- time: 2026-09-06T15:09:01-00:00
+  who: Ted Smith
+  what: created
+  comment: ""
