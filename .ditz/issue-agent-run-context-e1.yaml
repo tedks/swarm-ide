@@ -5,8 +5,8 @@ type: task
 component: default
 release:
 reporter: Ted Smith <tedks@riseup.net>
-status: in_progress
-disposition:
+status: closed
+disposition: fixed
 creation_time: 2026-09-06T02:31:53-00:00
 references: []
 log_events:
@@ -30,5 +30,14 @@ log_events:
     and sanitized internal-error observation; tightening before fix-delta convergence.
     Shared FIFO O_NONBLOCK flag request sent Runtime/ROOT; not independently editing
     unowned broker. Effective limited profile remains unavailable.
+- time: 2026-09-06T03:07:23-00:00
+  who: Ted Smith
+  what: 'closed: fixed'
+  comment: Delivered bounded E1 in normally merged PR11 at023c6e21ab8a8dacd5a2f8df5cc1b197cf45bdf7.
+    Exact tested head8746804 passed full build and all5 local targets,212 tests with
+    W1, owned virtualX11 smoke29.6s. OpenAI/Anthropic/Google fix-delta convergence
+    CLEAN. Hosted CI pending under explicit conditional local-proof waiver. Real effective
+    policy remains ADAPTER_POLICY_UNAVAILABLE; no E2/E3/live model run or watched-master
+    adoption.
 blocks:
 - agent-run-context-evidence
