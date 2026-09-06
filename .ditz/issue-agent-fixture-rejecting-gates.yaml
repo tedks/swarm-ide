@@ -14,3 +14,12 @@ log_events:
   who: Ted Smith
   what: created
   comment: ""
+- time: 2026-09-06T04:09:49-00:00
+  who: Ted Smith
+  what: commented
+  comment: 'PR14 Anthropic nonblocking nit: manual gates currently resolve typed AgentOperation
+    failures; no rejectSteer/rejectInterrupt/rejectCleanup controls. Keep this coherent
+    positive/typed-failure fixture slice small. Add rejecting-promise gates in a future
+    bounded consumer failure-hardening test if production code can throw at these
+    boundaries, with explicit ownership and no real provider turns. This fixture does
+    not claim rejected-promise coverage.'
