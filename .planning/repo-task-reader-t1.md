@@ -13,7 +13,7 @@ This step supplies a real read-only provider behind the existing task contract. 
 - [x] (2026-09-06) Read the approved task design, landed schemas and provider interface; create designated worktree from reviewed `a218277` and materialize frozen dependencies.
 - [x] (2026-09-06) State untrusted-input assumptions and publish `createDitzTaskProvider` consumer seam.
 - [x] (2026-09-06 08:09Z) Implement bounded Git object reads, isolated YAML validation, cache and observation lifecycle. Draft PR32 opened from first plan commit `4ddc938`.
-- [ ] Prove real Git/YAML hostile inputs, correlation, stale/error retention, concurrency and disposal through Bazel-owned tests.
+- [x] (2026-09-06 08:22Z) Prove real Git/YAML hostile inputs, correlation, stale/error retention, concurrency and disposal through Bazel-owned tests. Initial executable `efe9f0b`: quality754/57, full25build/all9uncached passed. Reviewed fix `1e802da`: quality755/57. Reviewed I3 aggregate `76a4da0`: full29build/all10uncached passed; final P5 aggregate verification follows.
 - [ ] Complete local build/all-tests, provider-diverse review to fixpoint, normal reviewed PR landing, Ditz sync and owned cleanup.
 
 ## Surprises & Discoveries
@@ -24,6 +24,8 @@ The existing task interface already separates observation attempt status from th
 The first executable quality run passed 751 tests and failed two disposable Git fixture checks: Git objects are read-only on disk, and fixture auto-maintenance could race recursive cleanup. The fixture now recreates only its owned fault-injection object and disables auto-maintenance. The next run passed 753 tests; one new stderr-bound fixture assumed a huge fatal diagnostic would be emitted, but Git truncates that diagnostic. Its positive control is being corrected rather than declaring the bound proven.
 
 The reader verifies hashes of selected commit, tree and blob bytes rather than assuming an object filename attests immutable content. Commit/tree size preflight adds a conservative 128KiB structural ceiling. Git still reads local configuration, so a blocking include is killed and reaped under the command deadline. Output/time caps are not an OS memory sandbox for Git pack decompression; Ditz `repo-task-git-memory-limits` records that distinct residual.
+
+Native council found that a cheap same-commit ref check could erase a failed full scan, despite the separate attempt-status contract. Two regressions actually failed before correction: remove/restore the cached commit's issue object without moving the ref, and fail initial ref resolution. Commit `1e802da` preserves the failure until a full refresh succeeds; native fix-delta convergence is CLEAN. Cheap checks update check time/ref only, not the evidence of a failed scan. Google initially hit an actual quota limit; Anthropic's first round is still pending. Missing seats are not approval.
 
 ## Decision Log
 
@@ -37,7 +39,9 @@ The main provider owns one complete cache and one in-flight observation. Concurr
 ## Outcomes & Retrospective
 
 
-Implementation and verification are in progress. This document does not claim integrated task browsing or a production provider change.
+The reader is implemented and independently useful through real Git/YAML tests. It handles exact SHA-1/SHA-256 object identities, malformed future revisions, correlated expired/missing details, complete-envelope limits and owned cancellation. No production composition or default behavior changed. Full local verification of the reviewed upstream aggregate and foreign council completion remain landing gates at this revision. The final PR record and ignored handoff record their actual outcomes without rewriting historical test claims.
+
+The initial full suite passed all nine targets, including owned virtual topology66.4s, agent journey5.4s and external-process proof3.1s, with both GUI cleanup attestations. After consuming only ROOT-cleared I3, all ten targets passed, including topology64.4s, agent5.3s, human rehearsal27.6s and external-process proof3.2s. These are regression checks of the combined application, not evidence of task UI integration or real model execution.
 
 ## Context and Orientation
 
@@ -90,3 +94,5 @@ The concrete worker program is a fixed string in `core/tasks/metadata-worker.ts`
 Revision note: initial T1 plan records exact scope, assumptions, proof requirements and consumer seam before implementation.
 
 Revision note: implementation milestone records actual failing fixture checks, hash/structural bounds and the explicit packaging/resource follow-ups before final verification.
+
+Revision note: recorded verified red/green same-revision status correction, native council convergence and successful initial/I3 local gates. P5 is consumed only after ROOT's explicit authority, with fresh aggregate gates required before landing.
