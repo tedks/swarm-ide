@@ -1,0 +1,19 @@
+id: agent-run-model-capabilities
+title: Verify model-specific reasoning controls before exposing effort selection
+desc: R1 rejects non-null effort with UNSUPPORTED_CONTROL because existing AdapterCapabilities
+  has no model/effort evidence. R2+ should probe installed model capabilities, preserve
+  requested versus actual and reject unsupported effort without silent fallback. Do
+  not invent supported values from CLI version.
+type: task
+component: default
+release:
+reporter: Ted Smith <tedks@riseup.net>
+status: unstarted
+disposition:
+creation_time: 2026-09-06T02:47:40-00:00
+references: []
+log_events:
+- time: 2026-09-06T02:47:40-00:00
+  who: Ted Smith
+  what: created
+  comment: ""
