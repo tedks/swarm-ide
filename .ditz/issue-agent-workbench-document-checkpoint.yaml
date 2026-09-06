@@ -28,3 +28,9 @@ log_events:
   who: Ted Smith
   what: started
   comment: ""
+- time: 2026-09-06T04:28:43-00:00
+  who: Ted Smith
+  what: blocks agent-run-workbench
+  comment: ""
+blocks:
+- agent-run-workbench
