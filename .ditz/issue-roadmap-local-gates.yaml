@@ -5,8 +5,8 @@ type: task
 component: default
 release:
 reporter: Ted Smith <tedks@riseup.net>
-status: unstarted
-disposition:
+status: closed
+disposition: fixed
 creation_time: 2026-09-06T15:20:50-00:00
 references: []
 log_events:
@@ -25,3 +25,8 @@ log_events:
     owned virtualX11. Local safety, policy/process/credentials/real-run/runtime-patch
     gates unchanged. Durable operational directive master/artifacts/roadmap-execution-directive.md;
     common instructions/ledger and active T3 updated.'
+- time: 2026-09-06T15:20:51-00:00
+  who: Ted Smith
+  what: 'closed: fixed'
+  comment: Standing directive recorded, propagated to active T3 and future-root control
+    sources; original narrow CI/adoption holds superseded.
