@@ -18,5 +18,16 @@ log_events:
   who: Ted Smith
   what: blocks agent-run-context-evidence
   comment: ""
+- time: 2026-09-06T04:05:09-00:00
+  who: Ted Smith
+  what: commented
+  comment: R2 PR16 confirms no fixture-selected Electron worker in this checkpoint.
+    Next slice needs an explicit privileged TEST-only worker construction using reviewed
+    createAgentService/store/context/adapter seams, plus E2 desktop-agent-scenario
+    and Bazel wrapper/targets against actual W2 labels. Reuse only existing six public
+    requests; no renderer fixture selector or production default/env fallback. Run
+    source/context/stream/steer unknown/Stop/history/recovery under owned virtual
+    harness, single shared lock/port55174. Shared fixtures are PR14/b3c106f. Core-only
+    injection requires exact Runtime ownership agreement. Do not redo W1 demo.
 blocks:
 - agent-run-context-evidence
