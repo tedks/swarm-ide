@@ -17,7 +17,8 @@ and production remains policy-unavailable.
 - [x] (2026-09-06 05:58Z) Durable turn/cleanup ordering, resistant descendants, outside canary and hard-core recovery/no replay proven; full25-target build/all9 uncached tests pass,478 tests/44files.
 - [x] (2026-09-06 05:57Z) OpenAI native and Google council CLEAN; Anthropic actual session-limit unavailable, explicitly missing.
 - [x] (2026-09-06) ROOT-verified A1 c68aa4c integrated without conflicts. Final executable8619da1 and actual integrationb8a4149 share treeaf14e236ec5d559874017c3b035660f062c04e90. Full25 build/all9 uncached targets pass,493tests45files; native+Google final delta CLEAN.
-- [ ] Normal PR merge; P3 has advanced origin/master and its ROOT-verified handoff is awaited before consuming that peer.
+- [x] (2026-09-06 06:31Z) ROOT-cleared A1/P3/W3/D1 included without conflicts. Topic946a6a5 and actual integrationc5ac5f4 share tree0ef6d1e88510dd8549d60532be21d559131a20ee: full25-target build/all9 uncached targets,558tests49files; required external proof3.4s. No later T0/P4/W4 work is consumed.
+- [x] (2026-09-06) Review/local landing gates complete. PR24 records the normal remote merge transaction under the conditional local-proof waiver; the ignored executive handoff records its exact merge/integration heads and cleanup. Real-provider and hosted-positive acceptance remain open.
 
 ## Surprises & Discoveries
 
@@ -39,22 +40,27 @@ provider. A separate harmless canary outside the namespace checks targeting.
 
 ## Outcomes & Retrospective
 
-Code1fd0689 passes all three actual external-process scenarios, the full
-25-target build and all nine uncached local targets (478 tests across44files).
+The final reviewed aggregate includes ROOT-cleared A1/P3/W3/D1. Topic946a6a5
+and actual integrationc5ac5f4 have identical tree
+0ef6d1e88510dd8549d60532be21d559131a20ee, verified by the full25-target build
+and all nine uncached local targets:558 tests across49files, required external
+proof3.4s, owned topology64.4s, agent journey5.3s and supervisor24.9s. Subsequent
+plan-only accounting does not change executable evidence. The manual P3 actual
+Codex activation target was not invoked by I2.
+
 Normal Stop/completion and unexpected exit confirm namespace cleanup; hard-core
 death independently removes live descendants but recovered product cleanup stays
-unknown and blocks another launch. Native OpenAI and Google reviews are CLEAN;
-Anthropic returned its session limit, not a review. Merge/integration remain
-pending. Live provider policy and the credentialed first-run parent stay open.
+unknown and blocks another launch. Native OpenAI and Google council are CLEAN
+through the final executable8619da1 delta; Anthropic returned its session limit,
+not a review. Reviewed peer bytes remain unchanged after conflict-free merges.
+PR24 and the ignored executive handoff retain exact remote landing and cleanup
+records. Live provider policy and the credentialed first-run parent stay open.
 
-The later ROOT-verified A1 merge and final emitted-snapshot assertion delta are
-proven together at integrationb8a4149, identical to executable8619da1. All nine
-uncached targets pass with493tests45files, full25 build, actual external proof
-3.2s, owned topology65.2s and agent journey5.4s. Both available reviewers remain
-CLEAN. Hosted1fd0689 fails inherited policySEED_PIPE_FAILED and the explicit
+Hosted executable8619da1 fails inherited policySEED_PIPE_FAILED and the explicit
 unshare prerequisite before fixture startup; no weaker fallback or green-CI
 claim. `agent-run-owned-process-hosted-proof` tracks actual supported-host
-acceptance without duplicating P3's isolation diagnosis.
+acceptance without duplicating the existing isolation diagnosis. The user's
+conditional waiver applies to remote CI only, after actual combined local gates.
 
 ## Context and Orientation
 
@@ -85,8 +91,8 @@ From `agent-owned-process-proof`, materialize dependencies with
     nix develop --command bazel build //... --jobs=3
     flock --close /tmp/swarm-ide-overnight.UgO2Aw/virtual.lock env SWARM_VIRTUAL_DESKTOP_PORT=55174 nix develop --command bazel test //... --jobs=3 --nocache_test_results --test_output=errors
 
-The focused target requires actual namespace support and took3.2s; full local
-tests took98.9s, including owned topology65.9s and agent journey5.4s. Never use
+The focused target requires actual namespace support and took3.4s; final local
+tests took97.298s, including owned topology64.4s and agent journey5.3s. Never use
 the physical desktop or restart the watched application.
 
 ## Validation and Acceptance
@@ -124,3 +130,5 @@ Revision (2026-09-06 05:58Z): record proven composition and review/local gates;
 landing remains explicit and does not imply a live-provider capability.
 Revision (2026-09-06): record actual ROOT-approved A1 aggregate and final emitted
 state assertions, plus the required hosted-namespace prerequisite failure.
+Revision (2026-09-06 06:31Z): record ROOT-cleared final aggregate and exact local
+gates; keep policy, hosted acceptance and watched-app adoption distinct.
