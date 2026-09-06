@@ -14,3 +14,11 @@ log_events:
   who: Ted Smith
   what: created
   comment: ""
+- time: 2026-09-06T05:10:51-00:00
+  who: Ted Smith
+  what: commented
+  comment: C1 PR19 fixes measured cold budget rather than compiler performance. Hosted
+    first topology232.021s versus incremental629ms; local three-job cold59.567s/hot214ms.
+    Investigate content-addressed toolchain/disk-cache reuse without borrowing the
+    locked outer Bazel output server, warming different inputs, weakening fingerprint
+    checks, or losing cold-path coverage. No cache change in C1.
