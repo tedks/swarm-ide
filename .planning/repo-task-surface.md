@@ -26,12 +26,25 @@ release or weaken agent policy gates.
 - [x] (2026-09-06) D1 drafted `docs/repo-task-surface.md` and this plan; no product files changed.
 - [x] (2026-09-06) D1 light independent OpenAI native design review CLEAN; whitespace, referenced existing files, actual schema/file-opening claims and plan consistency checked locally. PR #25 pushed; landing outcome recorded in its PR and ignored handoff.
 - [ ] T0: shared task read contracts, fail-closed stub and parser dependency base.
+- [x] (2026-09-06 06:45Z) T0 created the designated `repo-task-base` worktree from reviewed `e2f3da7`, started `repo-task-contract-t0`, implemented initial wire/provider base and materialized pinned yaml 2.8.1. Contract and bridge tests/review/landing remain in progress; this is not reviewed consumer authority yet.
 - [ ] T1 and T2 in parallel: pinned local metadata provider; work-panel/detail UI against fixtures.
 - [ ] T3: integrate reviewed T1/T2, real-metadata acceptance and owned virtual desktop proof.
 - [ ] D2: separately review the task-to-draft schema/storage/revalidation extension; only then dispatch its consumers.
 
 ## Surprises & Discoveries
 
+
+T0 inspection found the existing main-process supervisor applies a 5-second
+timeout to every read, while this design permits a 10-second whole metadata
+scan. T0 does not change the shared agent supervisor. Before T1 is integrated,
+ROOT must assign a precise task-read timeout hunk and regression, or reduce the
+scan budget coherently. A timed-out read is not a mutation and must not be
+silently represented as a complete observation. This remains a T3 gate.
+
+The `yaml` 2.8.1 direct dependency causes pnpm to select Vite's existing optional
+YAML peer. The lockfile therefore changes peer-qualified Vite/Vitest keys, not
+their versions. There are no unrelated dependency upgrades. Existing root
+`quality_sources` globs already track new protocol/core/tasks/fixtures/tests.
 
 Installed `ditz --version` reported `0.1.0-ocaml`. `ditz ref --help` describes
 `PATH` with optional `:LINE` and `--note`; list JSON really includes `file_refs`,
@@ -53,6 +66,31 @@ changes to the six agent operations.
 
 ## Decision Log
 
+
+Decision (T0, 2026-09-06): wire protocol 4 adds `task` beside the existing
+success envelope's workspace snapshot, file and agent result. Task requests
+must have exactly the approved fields; task replies cannot also contain file
+or agent results. The incidental workspace snapshot verifies registered world
+and repository only; a task client must never use it to retarget source focus.
+Stateless identity validation is shared by worker, main and preload; existing
+core-generation rejection remains, and T2 owns observation/selection tokens.
+Persisted agent run and launch-context shapes do not include the wire version
+and are unchanged: there is no agent migration in T0.
+
+Decision (T0, 2026-09-06): `GitObjectId` is `{algorithm,hex}` with exact full
+lowercase SHA-1/SHA-256 lengths. Snapshot summaries carry blob IDs of the same
+algorithm. Read results echo world/repository/provider/task/metadata commit,
+including typed domain errors in `result:{ok:false,error}`; transport errors
+retain the existing failure envelope. Observation sequence is independent of
+the core's shared event sequence. Serialized task-result payloads, not the
+unrelated incidental workspace payload, are bounded by 512 KiB/64 KiB.
+
+Decision (T0, 2026-09-06): unsupported literal file paths remain visible data
+with `navigation:"unsupported"`; the shared syntactic classifier cannot claim
+file existence. Ref and dependency counts must match full detail arrays.
+Disposition is a bounded nullable string rather than an invented closed
+enumeration; actual Ditz state/type enums are strict. T1 must validate fields
+and same-snapshot dependency diagnostics before publication.
 
 Decision (D1, 2026-09-06): release task browsing before draft enrichment. This
 separates visible progress from policy activation and from a durable agent
@@ -400,6 +438,35 @@ task descriptions, person records or agent credentials into PR/CI logs.
 ## Interfaces and Dependencies
 
 
+T0's concrete exported schemas are in `protocol/tasks.ts`: `TaskRequestSchema`,
+`TaskObservationSchema`, `TaskSnapshotSchema`, `TaskSummarySchema`,
+`TaskDetailSchema`, `TaskFileRefSchema`, `TaskDependencySchema`,
+`TaskReadResultSchema`, `TaskResultSchema`, `TaskErrorSchema`, and
+`TaskBoundaryErrorSchema`; all TypeScript types are inferred. `TASK_LIMITS`
+shares reader/wire ceilings. `parseTaskResultForRequest` validates the exact
+kind/world/task/revision; `parseCoreResponseForRequest` additionally binds the
+request ID and registered repository. All objects are strict, and text/whole
+payload limits count UTF-8 bytes. This is validation, not permission to launch.
+
+`CreateTaskProvider(context)` receives only core-owned `{root,worldId,repositoryId}`
+and returns a `TaskProvider` or promise. The privileged worker's `createTasks`
+dependency is the only injection point. Its default unavailable provider never
+reads that root. Each unavailable read returns a new observation sequence and
+a sanitized reason rather than an empty task list; `dispose` is idempotent,
+rejects future reads, and worker shutdown prevents late task publication.
+The provider's `read` result includes `kind:"read"`, registered identity,
+requested commit/ID, sequence/check time and either complete detail or typed
+error. Main and preload already call shared request-specific validation, so no
+separate Electron wiring is needed for the base.
+
+Pinned dependency `yaml` 2.8.1 exposes `parseDocument`/`parseAllDocuments`,
+document errors/warnings, node guards and `visit`, and bounded `toJS` options.
+`tests/task-yaml-api.test.ts` proves those exact installed APIs. It is not the
+safe metadata parser: T1 must still inspect forbidden aliases/tags/keys and
+depth/node limits before conversion, enforce one document, and test hostile
+runtime bounds. `fixtures/tasks.ts` covers the eight observation states,
+retention and read errors for tests only and is never imported by production.
+
 The proposed provider interface in `core/tasks/contracts.ts` is:
 
     interface TaskProvider {
@@ -423,3 +490,7 @@ before parallel core/UI work. No existing first-agent plan was edited.
 Review note (2026-09-06, D1): independent light review was CLEAN. Added explicit
 T2 ownership for the current opener's missing line/error presentation, including
 dirty-buffer line ambiguity; all implementation milestones remain unstarted.
+
+Revision note (2026-09-06, T0 in progress): recorded exact task wire/provider
+seams, assumptions, preserved agent compatibility and the observed read-timeout
+integration gate. T1/T2/T3/D2 remain unstarted; no usable task browsing claimed.

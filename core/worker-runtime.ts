@@ -6,6 +6,8 @@ import {
   WorkspaceSnapshotSchema,
   parseCoreRequest,
   isAgentRequest,
+  isTaskRequest,
+  parseCoreResponseForRequest,
   type CoreEvent,
   type CoreResponse,
   type FileEvent,
@@ -21,9 +23,13 @@ import { RealWorkspaceProvider } from "./provider";
 import { BoundedRequestIds } from "./request-ids";
 import { WorkspaceFileWatchers } from "./watchers";
 import { WorkingWorldObserver } from "./working-world-observer";
+import type { CreateTaskProvider, TaskProvider } from "./tasks/contracts";
+import { createUnavailableTaskProvider } from "./tasks/unavailable";
+import { parseTaskResultForRequest, type TaskResult } from "../protocol/tasks";
 
 export interface WorkerDependencies {
   createAgents?: typeof createProductionAgentService;
+  createTasks?: CreateTaskProvider;
   /** Privileged composition hook, never selected by public requests/environment. */
   privateMessage?(input: unknown): boolean;
 }
@@ -36,6 +42,12 @@ const fileReadGenerations = new Map<string, number>();
 const providerPromise = RealWorkspaceProvider.create(workspaceRoot);
 let workingWorldObserver: WorkingWorldObserver | null = null;
 let shuttingDown = false;
+const taskProviderPromise: Promise<TaskProvider> = providerPromise.then(async (provider) => {
+  const snapshot = provider.snapshot();
+  const context = { root: workspaceRoot, worldId: snapshot.world.id, repositoryId: snapshot.project.id };
+  try { return await (dependencies.createTasks ?? createUnavailableTaskProvider)(context); }
+  catch { return createUnavailableTaskProvider(context); }
+});
 const agentServicePromise: Promise<ProductionAgentService | null> = providerPromise.then(async (provider) => {
   // Absence is an explicitly unavailable bridge, useful for legacy/test boot.
   // Production main always supplies its own app-data location, not renderer input.
@@ -75,7 +87,7 @@ function publish(type: CoreEvent["type"], snapshot: WorkspaceSnapshot): void {
   }));
 }
 
-function ok(requestId: string, snapshot: WorkspaceSnapshot, file?: FileResult, agent?: AgentResult): CoreResponse {
+function ok(requestId: string, snapshot: WorkspaceSnapshot, file?: FileResult, agent?: AgentResult, task?: TaskResult): CoreResponse {
   return CoreResponseSchema.parse({
     protocolVersion: PROTOCOL_VERSION,
     requestId,
@@ -84,6 +96,7 @@ function ok(requestId: string, snapshot: WorkspaceSnapshot, file?: FileResult, a
     snapshot: WorkspaceSnapshotSchema.parse(snapshot),
     ...(file ? { file } : {}),
     ...(agent ? { agent } : {}),
+    ...(task ? { task } : {}),
   });
 }
 
@@ -132,7 +145,10 @@ process.parentPort?.on("message", async (event) => {
     if (!shuttingDown) {
       shuttingDown = true;
       try {
-        await (await agentServicePromise)?.shutdown();
+        await Promise.all([
+          agentServicePromise.then((service) => service?.shutdown()),
+          taskProviderPromise.then((tasks) => tasks.dispose()),
+        ]);
         process.parentPort?.postMessage({ type: "core.shutdown.ready" });
       } catch { /* No successful shutdown attestation; supervisor's deadline owns fallback. */ }
     }
@@ -148,6 +164,26 @@ process.parentPort?.on("message", async (event) => {
       return;
     }
     const provider = await providerPromise;
+    if (isTaskRequest(request)) {
+      if (shuttingDown) { post(fail(requestId, "CORE_UNAVAILABLE", "Core is shutting down; no task read was sent.")); return; }
+      if (request.worldId !== provider.snapshot().world.id) {
+        post(fail(requestId, "TASK_WORLD_MISMATCH", "Task read requires the registered working world.")); return;
+      }
+      try {
+        const tasks = await taskProviderPromise;
+        if (shuttingDown) { post(fail(requestId, "CORE_UNAVAILABLE", "Core is shutting down; no task read was sent.")); return; }
+        const result = request.type === "tasks.snapshot"
+          ? { kind: "snapshot" as const, observation: await tasks.snapshot({ refresh: request.refresh }) }
+          : await tasks.read({ metadataCommit: request.metadataCommit, taskId: request.taskId });
+        if (shuttingDown) { post(fail(requestId, "CORE_UNAVAILABLE", "Task read expired during core shutdown.")); return; }
+        const validated = parseTaskResultForRequest(result, request);
+        post(parseCoreResponseForRequest(ok(requestId, provider.snapshot(), undefined, undefined, validated), request));
+      } catch {
+        post(fail(requestId, shuttingDown ? "CORE_UNAVAILABLE" : "TASK_OBSERVATION_FAILED",
+          "Task read could not be validated in the current core lifetime. No mutation was sent."));
+      }
+      return;
+    }
     if (isAgentRequest(request)) {
       const service = await agentServicePromise;
       const result = service ? await service.request(request) : unavailableAgentRequest(request);
@@ -229,4 +265,3 @@ process.on("exit", () => {
   fileWatchers.closeAll();
 });
 }
-
