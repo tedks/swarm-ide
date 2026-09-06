@@ -12,7 +12,7 @@ export function summarizePages(pages: unknown, required?: readonly string[]): { 
 export function summarizeConfig(response: unknown, requirements: unknown): { notifyEmpty: boolean; mcpEntries: number; layerCount: number; requirementsPresent: boolean; loginShellFalse: boolean; sqlitePathMatches: boolean; logPathMatches: boolean };
 export function sameNamespace(pid: number, namespace: string): Promise<boolean>;
 export interface BootstrapDiagnostic {
-  observation: 'NAMESPACE_OPERATION_NOT_PERMITTED' | 'NAMESPACE_PERMISSION_DENIED' | 'UNRECOGNIZED_STDERR' | 'NO_STDERR';
+  observation: 'NAMESPACE_OPERATION_NOT_PERMITTED' | 'NAMESPACE_PERMISSION_DENIED' | 'NAMESPACE_CREATION_DENIED' | 'NAMESPACE_SUPPORT_UNAVAILABLE' | 'UNRECOGNIZED_STDERR' | 'NO_STDERR';
   truncated: boolean;
 }
 export function boundedProcess(executable: string, args: string[], options?: { timeoutMs?: number; input?: string; seed?: boolean; onSpawn?: (child: ChildProcess) => void }): Promise<

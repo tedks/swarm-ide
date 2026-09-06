@@ -105,6 +105,14 @@ export function boundedProcess(executable, args, { timeoutMs = 10000, input = ''
         if (line === 'bwrap: Creating new namespace failed: Permission denied') {
           observation = 'NAMESPACE_PERMISSION_DENIED'; break;
         }
+        // Exact alternative strings embedded in this pinned bwrap runtime. The
+        // tool's explanatory guess is not promoted to a proven kernel cause.
+        if (line === "bwrap: No permissions to create a new namespace, likely because the kernel does not allow non-privileged user namespaces. On e.g. debian this can be enabled with 'sysctl kernel.unprivileged_userns_clone=1'.") {
+          observation = 'NAMESPACE_CREATION_DENIED'; break;
+        }
+        if (line === 'bwrap: Creating new namespace failed, likely because the kernel does not support user namespaces.  bwrap must be installed setuid on such systems.') {
+          observation = 'NAMESPACE_SUPPORT_UNAVAILABLE'; break;
+        }
       }
       return { observation, truncated: stderrBytes > 4096 };
     };

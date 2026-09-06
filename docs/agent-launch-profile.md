@@ -308,14 +308,14 @@ The explicit manual target exercises real installed 0.153.4 startup, not a mock
 adapter. It does not belong to the ordinary hosted test suite, where this local
 package is not assumed installed. It never enables product execution:
 
-    nix develop --command bazel test //tools/policy:activation-test --jobs=3 --nocache_test_results --test_output=all
+    nix develop --command bazel test //tools/policy:activation-test --jobs=3 --test_tag_filters= --nocache_test_results --test_output=all
     nix develop --command bazel run //tools/policy:probe --jobs=3 -- --activation
 
 Every case first repeats all 26 independent P2 boundary/lifetime checks using
 that exact fixture/package tree. The inner process rechecks the immediate
 boundary before actual Codex launch. Complete copied package and input hashes
 remain stable; no new mount or writable configuration directory was added.
-State and execution trace remain in the existing finite private `/state` tmpfs.
+State and canary records remain in the existing finite private `/state` tmpfs.
 Output, RPC time, observation-file reads and namespace cleanup are bounded. Any
 unsupported check fails closed before launch; uncertain cleanup retains scratch.
 
@@ -344,36 +344,51 @@ Required stdio MCP startup is actually awaited by
 at `codex-mcp/src/connection_manager.rs:249,291`. The fixed canary implements only
 MCP initialization, an empty tools list and ping; it cannot execute arbitrary
 commands or connect to a network. It records boot and incoming handshake stages
-inside private state. File-only `strace` of `execve` observes the executable
-attempt before it can run, including failed execution attempts. The successful
-Codex exec trace is required too; a missing observer cannot masquerade as zero
-canary attempts. Raw traces are not exported.
+inside private state. Positives await Codex's named `starting` and `ready`
+notifications and the exact complete canary handshake before closing stdin.
+Every observation requires clean process close and drained stdio under the
+original deadline; delayed or missing notifications are not manufactured.
+Rejected thread creation may have no startup notifications because the pinned
+app-server installs that listener only after successful creation. Those controls
+instead require the named `policy_canary` required-initialization rejection;
+the missing-executable control additionally requires the observed ENOENT class.
+These are provider-reported attempts and actual canary records, not independent
+OS execution counts. Missing binary/failed handshake cannot count as disabled.
 
 The first installed-process observations were:
 
-| Fixture | Thread result | Canary exec attempts | Actual canary record |
+| Fixture | Thread result | Provider-reported startup/attempt | Actual canary record |
 | --- | --- | --- | --- |
-| Required enabled server | Created | 1 | boot, initialize, initialized, tools/list |
-| Same config, only enabled=false | Created | 0 | None |
-| Enabled user server + empty project MCP table | Created | 1 | Full handshake |
-| Full project server definition with enabled=false | Created | 0 | None |
-| Required canary deliberately exits during initialize | Required-MCP rejection | 1 | boot, initialize |
+| Required enabled server | Created | starting, ready | boot, initialize, initialized, tools/list |
+| Same config, only enabled=false | Created | None | None |
+| Enabled user server + empty project MCP table | Created | starting, ready | Full handshake |
+| Full project server definition with enabled=false | Created | None | None |
+| Required canary deliberately exits during initialize | Required-MCP rejection | Named initialization failure | boot, initialize |
+| Required fixed executable absent | Required-MCP rejection | Named executable-not-found failure | None |
 
 Thus absence is compared against a genuine matched positive opportunity and a
 successful thread-creation barrier. Failed canary startup is explicitly different
 from disablement. These observations end at thread initialization and namespace
-teardown, not lifetime exclusion for a future model turn. Startup notifications
-were not observed before the thread response in this run, so they are not claimed
-as proof; exec attempts and the actual canary handshake carry the observation.
+teardown, not lifetime exclusion for a future model turn. Provider reports are
+not an independent syscall monitor; the independently enforced OS boundary is
+still P2's namespace/immutable-input/lifetime acceptance, repeated for every case.
 An attempted partial project server definition failed startup; the valid deeper
 override fixture supplies the complete fixed server declaration. No fallback
 interprets that startup error as disabled MCP.
+
+Review found an unsound early trace snapshot in the first implementation. A
+proper tracer-completion barrier revealed real `???( <detached ...>` and
+unfinished capture during Codex teardown. Pinned process hardening disables
+dumpability, but the exact cause of each gap was not established. P3 removed
+that observer and its independent-exec claim instead of accepting incomplete
+traces or patching hardening. The delivered proof is explicitly the narrower
+static-MCP provider-report/canary comparison above.
 
 ### Coverage ledger, not production certification
 
 | Requested restriction | Pinned trigger/source | Positive opportunity and observation | Remaining limit |
 | --- | --- | --- | --- |
-| Named static stdio MCP disabled | Required initialization, sources above | Actual enabled handshake vs disabled zero-attempt thread creation, plus required-failure control | Only these immutable static definitions; not plugin/executor MCP or a later turn |
+| Named static stdio MCP disabled | Required initialization, sources above | Actual enabled startup+handshake vs disabled created thread without reported startup or canary; reached-failure and missing-executable controls | Provider-reported/static definitions only; not independent syscall exclusion, plugin/executor MCP or a later turn |
 | Ordinary SessionStart hooks disabled | `session/session.rs:1600–1623` queues source; `session/turn.rs:264,504` executes it | No permitted turn trigger | UNPROVED; do not invent a no-model hook control |
 | Legacy notify disabled | `hooks/src/registry.rs:113`, turn completion callback | P2 observes populated callback, no turn completion here | UNPROVED activation |
 | Hook-trust bypass, built-in/executor plugin hooks disabled | `hooks/src/engine/mod.rs:239,255`; executor hooks in `hooks/src/registry.rs:100` | No matched installed activation controls here | UNPROVED independently of ordinary hooks=false |

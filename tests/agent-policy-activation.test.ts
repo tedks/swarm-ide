@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { ACTIVATION_BOUNDARY, activationEnvelope, activationVerdict, summarizeActivationCases } from '../tools/policy/activation-contract.mjs';
 
-const positive = { thread: 'created', traceComplete: true, generationObserved: false, execAttempts: 1,
-  canary: ['boot', 'initialize', 'initialized', 'tools/list'], startup: ['starting', 'ready'],
+const positive = { thread: 'created', processClosed: true, generationObserved: false, rejectionReason: null,
+  canaryRecords: ['boot', 'initialize', 'initialized', 'tools/list'], providerReportedStartup: ['starting', 'ready'],
   requests: ['initialize', 'initialized', 'thread/start'] };
-const negative = { ...positive, execAttempts: 0, canary: [], startup: [] };
+const negative = { ...positive, canaryRecords: [], providerReportedStartup: [] };
 describe('offline auxiliary activation proof, never production authority', () => {
   it('allows only fixed initialization and ephemeral synthetic no-model thread creation', () => {
     expect(activationEnvelope('initialize').method).toBe('initialize');
@@ -27,31 +27,32 @@ describe('offline auxiliary activation proof, never production authority', () =>
     expect(activationVerdict(positive, 'enabled')).toBe(true);
     expect(activationVerdict(negative, 'disabled')).toBe(true);
     for (const canary of [[], ['boot'], ['boot', 'initialize']]) {
-      expect(activationVerdict({ ...positive, canary }, 'enabled')).toBe(false);
+      expect(activationVerdict({ ...positive, canaryRecords: canary }, 'enabled')).toBe(false);
     }
-    expect(activationVerdict({ ...negative, execAttempts: 1 }, 'disabled')).toBe(false);
-    expect(activationVerdict({ ...negative, startup: ['failed'] }, 'disabled')).toBe(false);
+    expect(activationVerdict({ ...negative, canaryRecords: ['boot'] }, 'disabled')).toBe(false);
+    expect(activationVerdict({ ...negative, providerReportedStartup: ['failed'] }, 'disabled')).toBe(false);
     expect(activationVerdict({ ...negative, thread: 'required-mcp-rejected' }, 'disabled')).toBe(false);
   });
-  it('rejects missing trace, model activity, missing or ambiguous observation', () => {
-    for (const change of [{ traceComplete: false }, { generationObserved: true }, { execAttempts: -1 },
-      { execAttempts: 1.5 }, { execAttempts: 2 }, { requests: ['turn/start'] }, { canary: null }, { startup: null }]) {
+  it('rejects unknown process close, model activity, missing or ambiguous observation', () => {
+    for (const change of [{ processClosed: false }, { generationObserved: true }, { providerReportedStartup: [] },
+      { providerReportedStartup: ['ready', 'starting'] }, { requests: ['turn/start'] }, { canaryRecords: null }, { providerReportedStartup: null }]) {
       expect(activationVerdict({ ...positive, ...change }, 'enabled')).toBe(false);
     }
     expect(activationVerdict(null, 'enabled')).toBe(false);
     expect(activationVerdict(positive, 'unknown')).toBe(false);
   });
   it('requires genuine reached initialization for the required-failure control', () => {
-    const failure = { ...positive, thread: 'required-mcp-rejected', canary: ['boot', 'initialize'] };
+    const failure = { ...positive, thread: 'required-mcp-rejected', rejectionReason: 'initialization-failed', canaryRecords: ['boot', 'initialize'] };
     expect(activationVerdict(failure, 'fails')).toBe(true);
-    expect(activationVerdict({ ...failure, canary: [] }, 'fails')).toBe(false);
+    expect(activationVerdict({ ...failure, canaryRecords: [] }, 'fails')).toBe(false);
     expect(activationVerdict({ ...failure, thread: 'auth-rejected' }, 'fails')).toBe(false);
   });
   it('requires all unique matched cases, unchanged inputs and successful observations', () => {
-    const cases = ['mcp-enabled', 'mcp-disabled', 'mcp-inherited', 'mcp-project-disabled', 'mcp-required-fails'].map(name => ({
+    const cases = ['mcp-enabled', 'mcp-disabled', 'mcp-inherited', 'mcp-project-disabled', 'mcp-required-fails', 'mcp-missing-executable'].map(name => ({
       name, inputsUnchanged: true, isolation: Object.fromEntries(ACTIVATION_BOUNDARY.map(key => [key, true])),
       status: 'ACTIVATION_OBSERVED', observation: name.endsWith('disabled') ? negative :
-        name.endsWith('fails') ? { ...positive, thread: 'required-mcp-rejected', canary: ['boot', 'initialize'] } : positive,
+        name.endsWith('fails') ? { ...positive, thread: 'required-mcp-rejected', rejectionReason: 'initialization-failed', canaryRecords: ['boot', 'initialize'] } :
+          name.endsWith('executable') ? { ...negative, thread: 'required-mcp-rejected', rejectionReason: 'executable-not-found' } : positive,
     }));
     expect(summarizeActivationCases(cases)).toBe(true);
     expect(summarizeActivationCases(cases.slice(0, 4))).toBe(false);

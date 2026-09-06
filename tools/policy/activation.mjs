@@ -17,25 +17,33 @@ function readBounded(path, limit) {
   } finally { closeSync(fd); }
 }
 
-export async function activate() {
+export async function activate(expected) {
+  if (!['enabled', 'disabled', 'fails', 'missing'].includes(expected)) return { status: 'ACTIVATION_CASE_INVALID', observation: {} };
   const args = ['-c', 'sqlite_home="/state/sqlite"', '-c', 'log_dir="/state/logs"',
     '-c', 'otel.exporter="none"', '-c', 'otel.trace_exporter="none"', '-c', 'otel.metrics_exporter="none"',
     '-c', 'otel.log_user_prompt=false', '-c', 'analytics.enabled=false',
     'app-server', '--listen', 'stdio://', '--strict-config'];
-  const trace = '/state/activation-exec.trace';
-  const server = spawn('/runtime/bin/strace', ['-f', '-qq', '-e', 'trace=execve', '-s', '256', '-o', trace,
-    '/package/bin/codex', ...args], { env: ENV, cwd: '/work', stdio: ['pipe', 'pipe', 'pipe'] });
-  let fault = null, bytes = 0, buffer = '', nextId = null, current = null;
-  let generationObserved = false, thread = 'not-created';
-  const startup = [], requests = [], decoder = new StringDecoder('utf8');
+  const server = spawn('/package/bin/codex', args, { env: ENV, cwd: '/work', stdio: ['pipe', 'pipe', 'pipe'] });
+  let fault = null, bytes = 0, buffer = '', nextId = null, current = null, closing = false;
+  let resolveClosed, resolveStartup;
+  const closed = new Promise(resolve => { resolveClosed = resolve; });
+  const started = new Promise(resolve => { resolveStartup = resolve; });
+  let generationObserved = false, thread = 'not-created', rejectionReason = null, threadId = null;
+  const startup = [], startupThreads = [], requests = [], decoder = new StringDecoder('utf8');
   function fail(code) {
     fault ??= code; server.kill('SIGKILL');
     current?.reject(new Error(fault)); current = null;
+    resolveClosed(false);
+    resolveStartup(false);
   }
   server.on('error', () => fail('SERVER_START_FAILED'));
-  server.on('exit', () => fail('SERVER_EXITED'));
+  server.on('exit', () => { if (!closing) fail('SERVER_EXITED'); });
+  // `close`, unlike exit, also drains all observer stdout/stderr pipes.
+  server.on('close', (code, signal) => resolveClosed(closing && code === 0 && signal === null && !fault));
   server.stdin.on('error', () => fail('SERVER_PIPE_FAILED'));
-  server.stderr.on('data', chunk => { if ((bytes += chunk.length) > LIMIT) fail('SERVER_OUTPUT_LIMIT'); });
+  server.stderr.on('data', chunk => {
+    if ((bytes += chunk.length) > LIMIT) { fail('SERVER_OUTPUT_LIMIT'); return; }
+  });
   server.stdout.on('data', chunk => {
     if ((bytes += chunk.length) > LIMIT) { fail('SERVER_OUTPUT_LIMIT'); return; }
     buffer += decoder.write(chunk);
@@ -50,7 +58,12 @@ export async function activate() {
       }
       if (value.method === 'mcpServer/startupStatus/updated' && value.params?.name === 'policy_canary') {
         if (startup.length >= 16) { fail('MCP_STATUS_LIMIT'); return; }
+        if (!['starting', 'ready', 'failed', 'cancelled'].includes(value.params.status) || typeof value.params.threadId !== 'string') {
+          fail('MCP_STATUS_INVALID'); return;
+        }
         startup.push(value.params.status);
+        startupThreads.push(value.params.threadId);
+        if (startup.includes('starting') && startup.includes('ready')) resolveStartup(true);
       }
       if (Object.hasOwn(value, 'id')) {
         if (!current || value.id !== nextId || Object.hasOwn(value, 'result') === Object.hasOwn(value, 'error')) {
@@ -79,25 +92,31 @@ export async function activate() {
     const response = await send('thread');
     if (response.error) {
       // Exact pinned-source error class, not arbitrary missing-auth/config failure.
-      if (!/required MCP servers? failed to initialize/i.test(response.error.message ?? '')) throw new Error('THREAD_REJECTED_OTHER');
+      if (!/required MCP servers failed to initialize: policy_canary: /.test(response.error.message ?? '')) throw new Error('THREAD_REJECTED_OTHER');
       thread = 'required-mcp-rejected';
+      rejectionReason = response.error.message.includes('No such file or directory (os error 2)') ? 'executable-not-found' : 'initialization-failed';
     } else {
       const result = response.result;
       if (!result?.thread?.id || result.thread.ephemeral !== true || result.cwd !== '/work' ||
           result.modelProvider !== 'policy_offline' || result.approvalPolicy !== 'never' ||
           result.sandbox?.type !== 'readOnly') throw new Error('THREAD_POLICY_MISMATCH');
       thread = 'created';
+      threadId = result.thread.id;
+      if (expected === 'enabled') {
+        if (!await started || fault) throw new Error(fault ?? 'MCP_STARTUP_UNPROVED');
+        if (readBounded('/state/mcp-canary', 512) !== 'boot\ninitialize\ninitialized\ntools/list\n') throw new Error('CANARY_INCOMPLETE');
+      }
     }
     if (fault) throw new Error(fault);
-    // strace writes execve entry before the canary can execute; file reads avoid
-    // independent stdout/stderr delivery ordering being mistaken for absence.
-    const lines = readBounded(trace, LIMIT).split('\n').filter(Boolean);
-    if (!lines.some(line => line.includes('execve("/package/bin/codex"') && line.endsWith('= 0'))) throw new Error('TRACE_INCOMPLETE');
-    const execAttempts = lines.filter(line => line.includes('execve(') && line.includes('"/fixture/mcp-canary.mjs"')).length;
+    closing = true;
+    server.stdin.end();
+    if (!await closed || fault) throw new Error(fault ?? 'SERVER_CLOSE_UNPROVED');
+    if ((buffer + decoder.end()).length) throw new Error('SERVER_INCOMPLETE_JSON');
+    if (threadId !== null && startupThreads.some(id => id !== threadId)) throw new Error('MCP_THREAD_MISMATCH');
     const canary = existsSync('/state/mcp-canary') ? readBounded('/state/mcp-canary', 512).trim().split('\n') : [];
     if (canary.length > 16 || canary.some(item => !['boot', 'initialize', 'initialized', 'tools/list'].includes(item))) throw new Error('CANARY_INVALID');
-    return { status: 'ACTIVATION_OBSERVED', observation: { thread, execAttempts, canary, startup,
-      traceComplete: true, generationObserved, requests } };
+    return { status: 'ACTIVATION_OBSERVED', observation: { thread, canaryRecords: canary, providerReportedStartup: startup,
+      rejectionReason, processClosed: true, generationObserved, requests } };
   } catch (error) {
     return { status: /^[A-Z_]+$/.test(error.message) ? error.message : 'ACTIVATION_UNAVAILABLE',
       observation: { thread, generationObserved, requests } };

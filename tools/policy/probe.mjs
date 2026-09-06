@@ -42,6 +42,10 @@ export const CASES = Object.freeze([
 // removed features.responses_websockets flags would not do so in pinned 0.153.4.
 const activationConfig = 'model = "gpt-5.2"\nmodel_provider = "policy_offline"\n' + baseConfig + `
 code_mode_prewarm = false
+shell_snapshot = false
+shell_snapshot_v2 = false
+shell_tool = false
+unified_exec = false
 memories = false
 memory_tool = false
 use_agent_identity = false
@@ -65,11 +69,12 @@ startup_timeout_sec = 2
 tool_timeout_sec = 2
 `;
 const ACTIVATION_CASES = [
-  { name: 'mcp-enabled', user: activationConfig + mcpConfig(true) },
-  { name: 'mcp-disabled', user: activationConfig + mcpConfig(false) },
-  { name: 'mcp-inherited', user: activationConfig + mcpConfig(true), project: '[mcp_servers]\n' },
-  { name: 'mcp-project-disabled', user: activationConfig + mcpConfig(true), project: mcpConfig(false) },
-  { name: 'mcp-required-fails', user: activationConfig + mcpConfig(true).replace('"/fixture/mcp-canary.mjs"]', '"/fixture/mcp-canary.mjs", "fail"]') },
+  { name: 'mcp-enabled', expected: 'enabled', user: activationConfig + mcpConfig(true) },
+  { name: 'mcp-disabled', expected: 'disabled', user: activationConfig + mcpConfig(false) },
+  { name: 'mcp-inherited', expected: 'enabled', user: activationConfig + mcpConfig(true), project: '[mcp_servers]\n' },
+  { name: 'mcp-project-disabled', expected: 'disabled', user: activationConfig + mcpConfig(true), project: mcpConfig(false) },
+  { name: 'mcp-required-fails', expected: 'fails', user: activationConfig + mcpConfig(true).replace('"/fixture/mcp-canary.mjs"]', '"/fixture/mcp-canary.mjs", "fail"]') },
+  { name: 'mcp-missing-executable', expected: 'missing', user: activationConfig + mcpConfig(true).replace('command = "/runtime/bin/node"', 'command = "/runtime/bin/nonexistent-policy-node"') },
 ];
 
 async function makeFixture(root, name, config, packageSource) {
@@ -199,7 +204,8 @@ async function main() {
       // Same fixture/package identity, full lifetime proof, BEFORE every activation launch.
       if (mode === '--activation' && !await verifyBoundary(path)) return report;
       const result = await boundedProcess(`${runtime}/bin/bwrap`, buildArgs(runtime, closure, path,
-        ['/runtime/bin/node', '/fixture/inner.mjs', mode === '--activation' ? 'activate' : mode === '--trace-startup' ? 'inspect-trace' : 'inspect']), { timeoutMs: mode === '--activation' ? 12000 : 8000, seed: true });
+        ['/runtime/bin/node', '/fixture/inner.mjs', mode === '--activation' ? 'activate' : mode === '--trace-startup' ? 'inspect-trace' : 'inspect',
+          ...(mode === '--activation' ? [config.expected] : [])]), { timeoutMs: mode === '--activation' ? 12000 : 8000, seed: true });
       report.codexStarted = true; // Conservative: inspection may have started before a transport failure.
       const verification = await verifyAfterProcess(result, async () => digest === await digestTree(path) && packageBefore === await digestTree(packagePath));
       cleanupSafe = verification.cleanupSafe;

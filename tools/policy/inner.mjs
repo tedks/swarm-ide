@@ -157,9 +157,9 @@ try {
     if (Object.values(checks).some(value => value !== true)) emit({ status: 'BOUNDARY_UNAVAILABLE', checks, codexStarted: false });
     else {
       const { activate } = await import('./activation.mjs');
-      emit({ ...await activate(), checks, codexStarted: true });
+      emit({ ...await activate(process.argv[3]), checks, codexStarted: true });
     }
-    // Namespace init exits too: it owns all traced Codex/canary descendants.
+    // Namespace init exits too: it owns every Codex/canary descendant.
     process.exit(0);
   }
   else if (mode === 'inspect' || mode === 'inspect-trace') await inspect();

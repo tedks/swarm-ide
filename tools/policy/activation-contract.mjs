@@ -19,22 +19,24 @@ export function activationEnvelope(operation) {
 }
 
 export function activationVerdict(observation, expected) {
-  if (!observation || !['enabled', 'disabled', 'fails'].includes(expected) ||
-      observation.traceComplete !== true || observation.generationObserved !== false ||
-      !Number.isInteger(observation.execAttempts) || observation.execAttempts < 0 ||
-      !Array.isArray(observation.canary) || !Array.isArray(observation.startup) ||
+  if (!observation || !['enabled', 'disabled', 'fails', 'missing'].includes(expected) ||
+      observation.processClosed !== true || observation.generationObserved !== false ||
+      !Array.isArray(observation.canaryRecords) || !Array.isArray(observation.providerReportedStartup) ||
       JSON.stringify(observation.requests) !== '["initialize","initialized","thread/start"]') return false;
-  const { canary, startup } = observation;
+  const { canaryRecords: canary, providerReportedStartup: startup, rejectionReason } = observation;
   if (expected === 'disabled') return observation.thread === 'created' &&
-    observation.execAttempts === 0 && canary.length === 0 && startup.length === 0;
-  if (observation.execAttempts !== 1) return false;
-  if (expected === 'fails') return observation.thread === 'required-mcp-rejected' && JSON.stringify(canary) === '["boot","initialize"]';
-  return observation.thread === 'created' && JSON.stringify(canary) === '["boot","initialize","initialized","tools/list"]';
+    rejectionReason === null && canary.length === 0 && startup.length === 0;
+  if (expected === 'missing') return observation.thread === 'required-mcp-rejected' &&
+    rejectionReason === 'executable-not-found' && canary.length === 0;
+  if (expected === 'fails') return observation.thread === 'required-mcp-rejected' &&
+    rejectionReason === 'initialization-failed' && JSON.stringify(canary) === '["boot","initialize"]';
+  return observation.thread === 'created' && rejectionReason === null &&
+    JSON.stringify(startup) === '["starting","ready"]' && JSON.stringify(canary) === '["boot","initialize","initialized","tools/list"]';
 }
 
 export function summarizeActivationCases(cases) {
   const expected = new Map([['mcp-enabled', 'enabled'], ['mcp-disabled', 'disabled'],
-    ['mcp-inherited', 'enabled'], ['mcp-project-disabled', 'disabled'], ['mcp-required-fails', 'fails']]);
+    ['mcp-inherited', 'enabled'], ['mcp-project-disabled', 'disabled'], ['mcp-required-fails', 'fails'], ['mcp-missing-executable', 'missing']]);
   if (!Array.isArray(cases) || cases.length !== expected.size) return false;
   for (const entry of cases) {
     if (!expected.has(entry?.name) || entry.status !== 'ACTIVATION_OBSERVED' || entry.inputsUnchanged !== true ||

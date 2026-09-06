@@ -19,6 +19,18 @@ afterEach(() => { vi.useRealTimers(); vi.clearAllMocks(); });
 
 describe('bounded bootstrap diagnostics, never isolation acceptance', () => {
   it.each([
+    ["bwrap: No permissions to create a new namespace, likely because the kernel does not allow non-privileged user namespaces. On e.g. debian this can be enabled with 'sysctl kernel.unprivileged_userns_clone=1'.", 'NAMESPACE_CREATION_DENIED'],
+    ['bwrap: Creating new namespace failed, likely because the kernel does not support user namespaces.  bwrap must be installed setuid on such systems.', 'NAMESPACE_SUPPORT_UNAVAILABLE'],
+  ])('recognizes a pinned alternative error without recommending global changes', async (message, observation) => {
+    const child = bootstrap();
+    const result = boundedProcess('/synthetic/bwrap', [], { seed: true });
+    child.stdio[4]!.emit('error', new Error('synthetic closed pipe'));
+    child.stderr.emit('data', Buffer.from(message + '\n'));
+    child.emit('close', 1, null);
+    expect(await result).toMatchObject({ ok: false, code: 'SEED_PIPE_FAILED', bootstrapDiagnostic: { observation, truncated: false } });
+    expect(JSON.stringify(await result)).not.toContain('sysctl');
+  });
+  it.each([
     ['Operation not permitted', 'NAMESPACE_OPERATION_NOT_PERMITTED'],
     ['Permission denied', 'NAMESPACE_PERMISSION_DENIED'],
   ])('drains an observed namespace stderr message after seed failure: %s', async (message, observation) => {
