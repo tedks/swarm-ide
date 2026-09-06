@@ -1,0 +1,16 @@
+id: agent-run-sessionstart-policy-p5
+title: 'P5: bound one ordinary SessionStart hook exclusion proof'
+desc: ""
+type: task
+component: agents
+release:
+reporter: Ted Smith <tedks@riseup.net>
+status: unstarted
+disposition:
+creation_time: 2026-09-06T07:18:07-00:00
+references: []
+log_events:
+- time: 2026-09-06T07:18:07-00:00
+  who: Ted Smith
+  what: created
+  comment: ""
