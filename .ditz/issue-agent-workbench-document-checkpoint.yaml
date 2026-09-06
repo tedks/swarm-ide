@@ -14,3 +14,13 @@ log_events:
   who: Ted Smith
   what: created
   comment: ""
+- time: 2026-09-06T04:11:35-00:00
+  who: Ted Smith
+  what: commented
+  comment: 'W2 uses owner-guarded memory-only HMR checkpoints and never stores private
+    prompts/transcripts in browser storage. Renderer HMR is verified, including StrictMode
+    and stale old-client continuations. Full document/preload reload is distinct:
+    it re-reads core history, but unsent local draft/text are not durably checkpointed.
+    Next W3 should coordinate a safe document reload guard or explicit approved persistence/discard
+    flow, preserving unknown operation evidence without accidental replay or a permanent
+    trapped reload. Not implemented in this bounded HMR slice.'
