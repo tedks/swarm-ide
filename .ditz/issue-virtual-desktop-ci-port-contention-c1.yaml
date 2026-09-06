@@ -1,0 +1,16 @@
+id: virtual-desktop-ci-port-contention-c1
+title: Diagnose occupied virtual test port on isolated hosted runner
+desc: ""
+type: bugfix
+component: testing
+release:
+reporter: Ted Smith <tedks@riseup.net>
+status: unstarted
+disposition:
+creation_time: 2026-09-06T04:53:41-00:00
+references: []
+log_events:
+- time: 2026-09-06T04:53:41-00:00
+  who: Ted Smith
+  what: created
+  comment: ""
