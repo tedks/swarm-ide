@@ -27,7 +27,7 @@ by the human and future bounded read tools remain on the roadmap.
 - [x] (2026-09-06 14:30Z) Native OpenAI and Google identified bootstrap accounting; native also found initialize/auth ordering and normal-turn HTTP-only gaps. Fixed f39cc2f.
 - [x] (2026-09-06 14:38Z) Native steering fix-delta finding resolved in bbb82fe. OpenAI and Google convergence CLEAN; Anthropic actual usage-credit exhaustion is MISSING, not approval.
 - [x] (2026-09-06 14:38Z) Local only-two-document, whitespace, relative-link, cited-symbol and evidence-identity checks pass; no new product tests/GUI/probes performed.
-- [ ] Normal merge and Ditz design closure: held for ROOT clearance of C2 merge dbe457d, now on remote master. Do not consume uncleared aggregate; independent design work is complete.
+- [x] (2026-09-06 14:46Z) ROOT explicitly cleared C2 normal dbe457d for this landing continuation; merged that exact aggregate into the own feature branch. Final aggregate has only two added P6 docs, unchanged cited agent seams and passing local documentation checks. The normal-merge/Ditz receipt is recorded in the ignored handoff after the operation.
 - [x] (2026-09-06 14:40Z) Publish reviewed/pushed design handoff, exact landing hold and retained resources; no successor dispatched.
 
 
@@ -88,11 +88,14 @@ unaccounted login lifetime and transport-ordering gaps. Date/author:
 Delivered outcome: two reviewed documents in PR34, substantive head bbb82fe;
 native OpenAI and Google CLEAN after fix-delta rounds, Anthropic unavailable
 because of actual usage-credit exhaustion. Local documentation checks pass.
-Normal merge is deliberately held: remote master now includes C2 normal
-dbe457d77c44ef944c9af9fcd2663044bcc602ec, but ROOT's authority ledger currently
-clears only c9e9a74/P5. An ownership request records the exact remaining gate.
-The design Ditz slice remains in progress until landing; broad policy/first-run
-parents remain open. Nothing is activated and no successor is dispatched.
+The original aggregate hold was resolved by ROOT's explicit C2 clearance for
+this existing P6 landing continuation. The feature consumes exactly approved
+dbe457d77c44ef944c9af9fcd2663044bcc602ec; no independent T2 work is consumed.
+Final normal-merge identity, Ditz design closure and actual CI status are recorded
+in the ignored handoff after landing. Broad policy/first-run parents remain open.
+Aggregate clearance and publication are NOT ROOT approval of this proposed
+design or authority for its implementation. Nothing is activated and no
+successor is dispatched.
 
 Google's source-table wording nit was fixed. Its dense comparison-table nit is
 tracked in `live-agent-gate-ledger-readability`: retain the finite comparative
@@ -364,4 +367,10 @@ close a finite dependency rather than accumulate disconnected auxiliary cases.
 Revision note after review, 2026-09-06: durable bootstrap/claim accounting,
 initialize-before-auth, HTTP-only normal turns and bounded steering continuation
 permits close all review findings. This final accounting records the actual
-ROOT aggregate landing hold rather than claiming an unperformed normal merge.
+original ROOT aggregate landing hold rather than claiming an unperformed merge.
+
+Landing revision, 2026-09-06: ROOT resolved that hold by independently verifying
+C2 and authorizing only this existing design's normal landing. Repeated
+proportionate documentation checks on the exact approved aggregate; no
+substantive design change or repeated product build/probe/review was needed.
+The immutable final merge receipt and post-merge checks live in the handoff.
