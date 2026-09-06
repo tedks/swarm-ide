@@ -160,7 +160,7 @@ describe("run-specific presentation", () => {
     expect((source as HTMLTextAreaElement).value).toBe("UNSAVED PRIVATE BUFFER");
     expect(screen.getAllByTestId("agent-test-graph")[0]).toBe(graph);
     expect(request.mock.calls.filter(([r]) => r.type === "focus.select")).toHaveLength(focusesBefore);
-    expect(request.mock.calls.some(([r]) => r.type.startsWith("agent."))).toBe(false);
+    expect(request.mock.calls.some(([r]) => ["agent.prepare", "agent.launch", "agent.steer", "agent.cancel"].includes(r.type))).toBe(false);
     expect(screen.getByRole("log").textContent).not.toContain("UNSAVED PRIVATE BUFFER");
     fireEvent.change(screen.getByLabelText("Instruction to this run"), { target: { value: "OLD RUN INSTRUCTION" } });
     for (let i = 0; i < 3; i++) fireEvent.click(screen.getByRole("button", { name: "Next fixture event" }));

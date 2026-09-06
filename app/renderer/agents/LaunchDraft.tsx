@@ -25,7 +25,7 @@ export function LaunchDraft({ focus, onLaunch, onClose }: { focus: FocusRef; onL
     <label>Task<textarea autoFocus value={task} onChange={(event) => setTask(event.target.value)} rows={3} maxLength={AGENT_LIMITS.taskBytes} /></label>
     <label>Requested model<input placeholder="Provider default (unresolved)" value={model} maxLength={256} onChange={(event) => setModel(event.target.value)} /></label>
     <label>Requested reasoning<input placeholder="Provider default (unresolved)" value={effort} maxLength={64} onChange={(event) => setEffort(event.target.value)} /></label>
-    <p>Disk version only; unsaved edits are not included. This fixture attaches <strong>no file bytes</strong>; disk preparation and revalidation arrive in W2.</p>
+    <p>Disk version only; unsaved edits are not included. This fixture attaches <strong>no file bytes</strong>. Use the separate live launch draft for core-prepared disk context.</p>
     <details><summary>Context, provenance &amp; read scope</summary><p>Captured focus: {launchFocus.revisionKind} / {launchFocus.revisionId}. Fixture hashes and root are synthetic. Instructions and configuration: unobserved.</p><p>Real launch will send selected content to the configured model service. Requested read-only / no tool network / never approve is not yet verified. Read-only is not host confidentiality: the harness may read files accessible to your account.</p></details>
     {!context ? <p role="alert">Use a working-world focus, nonempty task and requested settings within the UTF-8 and total serialized context limits.</p> : null}
     <button className="agent-primary" title="Launch fixture (Ctrl+Enter)" disabled={!context}>Launch fixture — no provider</button>
