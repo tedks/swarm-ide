@@ -1,0 +1,21 @@
+id: agent-workbench-compact-layout
+title: Refine compact run-dock layout and shared display-limit constants
+desc: 'W1 council nits: validate compact Linux window and maximum dock size at high
+  interface zoom; current grid retains a graph minimum and outer page may scroll.
+  Refine responsive fit during W2 without remounting graphs. Also coordinate exported
+  model/effort/summary display bounds with Runtime; W1 uses conservative local limits
+  but full LaunchContext validation prevents mismatches from throwing. No shared-schema
+  edits authorized in W1.'
+type: task
+component: default
+release:
+reporter: Ted Smith <tedks@riseup.net>
+status: unstarted
+disposition:
+creation_time: 2026-09-06T02:49:00-00:00
+references: []
+log_events:
+- time: 2026-09-06T02:49:00-00:00
+  who: Ted Smith
+  what: created
+  comment: ""
