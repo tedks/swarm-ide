@@ -31,5 +31,14 @@ log_events:
     pass, actual integration full gates underway. Native+Google CLEAN, Anthropic session
     limit missing. No installed Codex/model/policy claim or app adoption; parent remains
     open.
+- time: 2026-09-06T06:21:32-00:00
+  who: Ted Smith
+  what: commented
+  comment: ROOT cleared P3 exact491a6d6; topic6c408dd and integration71f931d identical4840cef9
+    tree. No conflicts; peer policy subtree and all I2/core adapter modules byte-identical
+    to their separately reviewed heads. Final25 build passed, all9 default gates underway.
+    Manual actual-Codex activation is excluded from default targets and was not invoked
+    by I2. Prior actual final I2+A1 integration493tests/all9 passed; no re-use of
+    that count for new P3 aggregate.
 blocks:
 - agent-run-vertical-proof
