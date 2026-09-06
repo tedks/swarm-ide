@@ -45,7 +45,8 @@ export interface CodexTransport {
 export interface CodexAdapterOptions {
   root: string;
   executable: string;
-  /** E1/R2 owns effective-profile inspection. Missing evidence is unavailable. */
+  /** Capability probe only. E1/R2 must separately verify/revalidate the complete
+   * limited profile represented by the core-created prepared context. */
   probe?: () => Promise<AdapterCapabilities>;
   connect?: (sink: CodexTransportSink) => CodexTransport;
   requestTimeoutMs?: number;
@@ -117,9 +118,15 @@ export function createCodexAppServerAdapter(options: CodexAdapterOptions): Agent
   return { probe, async start(input, emit) {
     const context = PreparedAgentContextSchema.parse(input);
     if (context.launchContext.root !== root) throw new Fault(errorFor("STALE_CONTEXT", "Launch root differs from the registered world."));
+    if (context.capabilities.availability !== "available" || context.capabilities.policy !== "verified-read-only" || !context.capabilities.controls.launch) {
+      throw new Fault(errorFor("ADAPTER_POLICY_UNAVAILABLE", "Prepared context has no verified limited-profile launch capability."));
+    }
     if (context.launchContext.requested.effort !== null) throw new Fault(errorFor("UNSUPPORTED_CONTROL", "Reasoning effort requires model-specific capability evidence, not yet available in R1."));
     const capabilities = await probe();
     if (!capabilities.available) throw new Fault(capabilities.reason ?? errorFor("ADAPTER_UNAVAILABLE", "Adapter unavailable."));
+    if (context.capabilities.provider !== capabilities.provider || context.capabilities.version !== capabilities.version) {
+      throw new Fault(errorFor("STALE_CONTEXT", "Prepared provider identity differs from the current adapter capability."));
+    }
     const session = new CodexSession(root, context, capabilities, timeout, emit);
     session.connect(options.connect ?? ((sink) => stdio(executable, root, sink)));
     return session;
@@ -190,7 +197,7 @@ class CodexSession implements AgentHandle {
         error: () => this.fail(unknownError()),
       });
       // A test transport (or a future owner) can report synchronous open failure.
-      if (this.stopped) { this.cleanup = undefined; void this.close(); return; }
+      if (this.stopped) { void this.close(); return; }
       this.deadline = setTimeout(() => this.fail(errorFor("AGENT_OUTCOME_UNKNOWN", "Run deadline reached without complete outcome evidence.")), AGENT_LIMITS.deadlineMs);
       void this.initialize().catch((error: unknown) => this.fail(error instanceof Fault ? error.error : unknownError()));
     } catch { this.fail(errorFor("ADAPTER_UNAVAILABLE", "Could not establish provider transport.")); }
@@ -219,13 +226,17 @@ class CodexSession implements AgentHandle {
   }
   private request(method: string, params: unknown): Promise<unknown> {
     return new Promise((resolve, reject) => {
+      if (this.exitEvidence) { reject(new Fault(errorFor("RUN_NOT_ACTIVE", "Provider has exited; only draining prior evidence."))); return; }
       if (this.stopped || this.pending.size >= 3 || this.nextId >= AGENT_LIMITS.receipts + 8) {
         reject(new Fault(errorFor("INSTRUCTION_LIMIT", "Adapter control limit reached or connection stopped."))); return;
       }
       const id = ++this.nextId;
       const timer = setTimeout(() => this.fail(unknownError()), this.timeout);
       this.pending.set(id, { resolve, reject, timer });
-      try { this.send({ id, method, params }); } catch { this.fail(unknownError()); }
+      try {
+        if (method === "turn/start") this.turnSent = true;
+        this.send({ id, method, params });
+      } catch { this.fail(unknownError()); }
     });
   }
   private rejectPending(): void {
@@ -270,7 +281,6 @@ class CodexSession implements AgentHandle {
     this.publish({ type: "started", threadId: this.threadId, model: thread.model, cwd: thread.cwd,
       policy: "read-only", instructionPaths: thread.instructionSources, at: this.at() });
     if (this.stopped) return;
-    this.turnSent = true;
     const response = await this.request("turn/start", { threadId: this.threadId,
       input: [{ type: "text", text: this.context.launchContext.submittedPrompt, text_elements: [] }],
       ...(requested.effort === null ? {} : { effort: requested.effort }) });
@@ -411,7 +421,7 @@ class CodexSession implements AgentHandle {
   async steer(expectedTurnId: string, text: string): Promise<AgentOperation<{ status: "accepted" }>> {
     if (!this.capabilities.supports.steer) return { ok: false, error: errorFor("UNSUPPORTED_CONTROL", "Steering is unavailable.") };
     if (!identity.safeParse(expectedTurnId).success || !bound(AGENT_LIMITS.taskBytes).min(1).safeParse(text).success) return { ok: false, error: errorFor("UNSUPPORTED_CONTROL", "Invalid steering input.") };
-    if (this.ended || this.stopped || !this.turnId) return { ok: false, error: errorFor("RUN_NOT_ACTIVE", "No confirmed active turn.") };
+    if (this.ended || this.stopped || this.exitEvidence || !this.turnId) return { ok: false, error: errorFor("RUN_NOT_ACTIVE", "No confirmed live active turn.") };
     if (expectedTurnId !== this.turnId) return { ok: false, error: errorFor("STALE_TURN", "Steering targets a different turn.") };
     if (this.steering) return { ok: false, error: errorFor("BUSY", "One steering acknowledgement is already pending.") };
     this.steering = true;
@@ -428,7 +438,7 @@ class CodexSession implements AgentHandle {
   }
   async interrupt(): Promise<AgentOperation<{ status: "requested" }>> {
     if (!this.capabilities.supports.interrupt) return { ok: false, error: errorFor("UNSUPPORTED_CONTROL", "Interruption is unavailable.") };
-    if (this.ended || this.stopped || !this.turnId) return { ok: false, error: errorFor("RUN_NOT_ACTIVE", "No confirmed active turn; use disposal to prevent setup dispatch.") };
+    if (this.ended || this.stopped || this.exitEvidence || !this.turnId) return { ok: false, error: errorFor("RUN_NOT_ACTIVE", "No confirmed live active turn; use disposal to prevent setup dispatch.") };
     if (this.interrupting) return { ok: false, error: errorFor("BUSY", "An interrupt acknowledgement is already pending.") };
     this.interrupting = true;
     try {

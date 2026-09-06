@@ -1,4 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { createCodexAppServerAdapter, CODEX_ADAPTER_VERSION, type CodexTransportSink } from "../core/agents/codex-app-server";
 import { ProviderJsonl, ProviderLineLimit } from "../core/agents/jsonl";
 import type { AdapterCapabilities, AdapterEvent, AgentHandle } from "../core/agents/adapter";
@@ -92,7 +95,10 @@ describe("Codex stable 0.153.4 adapter conformance", () => {
     const adapter = createCodexAppServerAdapter({ root, executable, probe: async () => caps, connect });
     const badRoot = draft(); badRoot.launchContext.root = "/elsewhere";
     const effort = draft(); effort.launchContext.requested.effort = "ultra";
-    for (const input of [badRoot, effort, { ...draft(), executable: "/bad" }]) await expect(adapter.start(input, () => {})).rejects.toThrow();
+    const unavailable = draft(); unavailable.capabilities = { availability: "unavailable", reason: { code: "ADAPTER_POLICY_UNAVAILABLE", message: "Unverified policy" },
+      provider: "codex", version: CODEX_ADAPTER_VERSION, controls: { launch: false, steer: false, cancel: false }, policy: "unverified" };
+    const changedVersion = draft(); changedVersion.capabilities.version = "old";
+    for (const input of [badRoot, effort, unavailable, changedVersion, { ...draft(), executable: "/bad" }]) await expect(adapter.start(input, () => {})).rejects.toThrow();
     expect(connect).not.toHaveBeenCalled();
     expect(() => createCodexAppServerAdapter({ root, executable: "codex" })).toThrow();
   });
@@ -233,6 +239,59 @@ describe("Codex stable 0.153.4 adapter conformance", () => {
     expect(f.events).toContainEqual(expect.objectContaining({ type: "process-exit" }));
     expect(f.events.at(-1)).toMatchObject({ type: "error", dispatch: "unknown" });
     f.complete(); expect(f.events.some((e) => e.type === "terminal")).toBe(false);
+  });
+  it("closes once when the transport reports synchronous failure before open returns", async () => {
+    const close = vi.fn(async () => ({ status: "unknown" as const, observedAt: at, detail: "fixture cleanup" }));
+    const write = vi.fn();
+    const adapter = createCodexAppServerAdapter({ root, executable, probe: async () => caps,
+      connect(sink) { sink.error(); return { close, write }; } });
+    const handle = await adapter.start(draft(), () => {}); handles.push(handle);
+    await handle.dispose(); await handle.dispose();
+    expect(close).toHaveBeenCalledOnce(); expect(write).not.toHaveBeenCalled();
+  });
+  it("rejects new controls during exit drain without discarding buffered terminal evidence", async () => {
+    const f = await fixture(); await f.running(); f.sink.exit(0);
+    expect(await f.handle.steer("turn-a", "too late")).toMatchObject({ error: { code: "RUN_NOT_ACTIVE" } });
+    expect(await f.handle.interrupt()).toMatchObject({ error: { code: "RUN_NOT_ACTIVE" } });
+    expect(f.requests).toHaveLength(4);
+    f.delta("buffered final"); f.complete(); f.sink.end();
+    expect(f.events.some((e) => e.type === "error")).toBe(false);
+    expect(f.events).toContainEqual(expect.objectContaining({ type: "terminal", outcome: expect.objectContaining({ status: "completed" }) }));
+  });
+  it("uses the fixed stdio argv with a real deterministic child, never a model", async () => {
+    const directory = await mkdtemp(join(tmpdir(), "swarm-adapter-fixture-"));
+    const program = join(directory, "fixture-codex");
+    const events: AdapterEvent[] = [];
+    let handle: AgentHandle | undefined;
+    try {
+      await writeFile(program, `#!${process.execPath}
+const readline = require('node:readline');
+if (JSON.stringify(process.argv.slice(2)) !== JSON.stringify(['app-server', '--listen', 'stdio://'])) process.exit(2);
+const reply = (id, result) => process.stdout.write(JSON.stringify({id, result}) + '\\n');
+readline.createInterface({input: process.stdin}).on('line', line => {
+  const message = JSON.parse(line);
+  if (message.method === 'initialize') reply(message.id, ${JSON.stringify(hello)});
+  if (message.method === 'thread/start') reply(message.id, {...${JSON.stringify(thread)}, cwd: process.cwd()});
+  if (message.method === 'turn/start') {
+    reply(message.id, {turn: ${JSON.stringify(turn())}});
+    process.stderr.write('PRIVATE STDERR NEVER PUBLISH');
+    process.stdout.write(JSON.stringify({method: 'turn/completed', params: {threadId: 'thread-a', turn: ${JSON.stringify(turn('turn-a', 'completed'))}}}) + '\\n', () => process.exit(0));
+  }
+});
+`, { mode: 0o700 });
+      const input = draft(); input.launchContext.root = directory;
+      const adapter = createCodexAppServerAdapter({ root: directory, executable: program, probe: async () => ({ ...caps, executable: program }) });
+      handle = await adapter.start(input, (event) => events.push(event));
+      await vi.waitFor(() => expect(events.some((e) => e.type === "process-exit")).toBe(true));
+      expect(events).toContainEqual(expect.objectContaining({ type: "terminal", outcome: expect.objectContaining({ status: "completed" }) }));
+      expect(events.at(-1)).toMatchObject({ type: "process-exit", exitCode: 0 });
+      expect(events.some((e) => e.type === "error")).toBe(false);
+      expect(JSON.stringify(events)).not.toContain("PRIVATE STDERR");
+      expect(await handle.dispose()).toMatchObject({ status: "unknown" });
+    } finally {
+      await handle?.dispose();
+      await rm(directory, { recursive: true, force: true });
+    }
   });
   it("escapes invisible output controls and bounds aggregate output, IDs and malformed envelopes", async () => {
     const f = await fixture(); await f.running(); f.delta("visible\u202e\u001b\n\t");
