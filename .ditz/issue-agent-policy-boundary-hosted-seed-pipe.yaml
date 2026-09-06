@@ -115,6 +115,15 @@ log_events:
     from reviewed I3 6527495. Fixed bounded nonsecret diagnostics first; no AppArmor/sysctl/security
     relaxations, skipped proofs, model turns, or watched application changes. Namespace
     versus seed-pipe linkage remains hypothesis until observed.
+- time: 2026-09-06T14:21:51-00:00
+  who: Ted Smith
+  what: commented
+  comment: 'C2 PR33 actual hosted34038579174: userns creation succeeds and child profile
+    is unprivileged_userns (enforce); UID-map write EPERM; pinned bwrap private RTM_NEWADDR
+    netlink error=-EPERM. Host24.04.4/kernel6.17.0-1022-azure/restrictUserns1/Seccomp0.
+    No security changes or old-image downgrade: operator environment accommodation
+    remains required. Independent proofs remain mandatory; historical seed-pipe stderr
+    not retrospectively recovered. Local gates/review underway; parent stays open.'
 blocks:
 - agent-run-owned-process-hosted-proof
 - agent-run-policy-harness-diagnostics
