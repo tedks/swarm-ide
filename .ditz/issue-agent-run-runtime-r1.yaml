@@ -23,5 +23,12 @@ log_events:
   who: Ted Smith
   what: started
   comment: ""
+- time: 2026-09-06T02:47:40-00:00
+  who: Ted Smith
+  what: commented
+  comment: 'PR12 head51da201 passed full local build and all5 uncached Bazel targets
+    (182 tests, virtual smoke31.7s). Council: Google CLEAN; native identified stdout-drain
+    ordering and version-reporting nit, both fixed with regressions pending recheck;
+    Anthropic still running. No real model turn or master adoption.'
 blocks:
 - agent-run-runtime
