@@ -5,7 +5,7 @@ type: task
 component: default
 release:
 reporter: Ted Smith <tedks@riseup.net>
-status: unstarted
+status: in_progress
 disposition:
 creation_time: 2026-09-06T02:41:35-00:00
 references: []
@@ -43,6 +43,10 @@ log_events:
 - time: 2026-09-06T03:55:09-00:00
   who: Ted Smith
   what: blocked by agent-run-launch-profile-p2
+  comment: ""
+- time: 2026-09-06T04:20:25-00:00
+  who: Ted Smith
+  what: started
   comment: ""
 blocks:
 - agent-run-vertical-proof
