@@ -25,6 +25,4 @@
 .repository-empty { padding: 4px; color: #7b918b; }
 .topology-node.is-ignored { opacity: .5; }
 .topology-node.is-unavailable { border-style: dotted; }
-.topology-node.repository-card { width: 100%; height: 100%; }
-.topology-node.repository-card small { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
 .repository-recipes { display: flex; flex-direction: column; gap: 4px; }

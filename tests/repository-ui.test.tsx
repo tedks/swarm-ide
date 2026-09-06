@@ -17,23 +17,27 @@ vi.mock("@xyflow/react", async () => {
   return {
     Background: () => null, Controls: () => null, Handle: () => null,
     Position: { Left: "left", Right: "right" }, MarkerType: { ArrowClosed: "arrow" },
-    ReactFlow: ({ nodes, onInit, onNodeClick, onMoveStart, onMoveEnd, children }: {
-      nodes: Array<{ id: string; data: { label: string; focus: FocusRef } }>;
+    ReactFlow: ({ nodes, defaultNodes, onInit, onNodeClick, onMoveStart, onMoveEnd, children }: {
+      nodes?: Array<{ id: string; data: { label: string; focus: FocusRef } }>;
+      defaultNodes?: Array<{ id: string; data: { label: string; focus: FocusRef } }>;
       onInit: (value: unknown) => void; onNodeClick: (event: unknown, node: unknown) => void;
       onMoveStart: (event: unknown) => void; onMoveEnd: (event: unknown, camera: unknown) => void; children: ReactNode;
     }) => {
       const viewport = React.useRef({ x: 0, y: 0, zoom: 1 });
       const [camera, setCamera] = React.useState(viewport.current);
       const [fits, setFits] = React.useState(0);
+      const [storedNodes, setStoredNodes] = React.useState(defaultNodes ?? []);
       const [instance] = React.useState(() => ({
         getViewport: () => viewport.current,
         fitView: async () => { viewport.current = { x: 0, y: 0, zoom: 1 }; setCamera(viewport.current); setFits((n) => n + 1); return true; },
         setViewport: async (value: typeof viewport.current) => { viewport.current = value; setCamera(value); return true; },
+        setNodes: setStoredNodes,
+        setEdges: () => undefined,
       }));
       React.useEffect(() => { onInit(instance); }, [instance]);
       return <div data-testid="repository-flow" data-camera={JSON.stringify(camera)} data-fits={fits}>
         <button aria-label="Pan graph" onClick={() => { onMoveStart({}); viewport.current = { x: 73, y: -29, zoom: 1.7 }; setCamera(viewport.current); onMoveEnd({}, viewport.current); }}>Pan</button>
-        {nodes.map((node) => <button key={node.id} aria-label={`Graph node ${node.data.label}`} onClick={() => onNodeClick({}, node)}>{node.data.label}</button>)}{children}
+        {(nodes ?? storedNodes).map((node) => <button key={node.id} aria-label={`Graph node ${node.data.label}`} onClick={() => onNodeClick({}, node)}>{node.data.label}</button>)}{children}
       </div>;
     },
   };
@@ -174,12 +178,21 @@ describe("repository controls and coordinated cameras", () => {
     expect(mapped.nodes.filter((node) => node.data.focused).map((node) => node.id)).toEqual([repo.nodes[0]!.id]);
     expect(mapped.nodes[0]!.data.ambiguous).toBe(true);
   });
-  it("gives each repository card known geometry before its first measurement without changing service sizing", () => {
-    const snapshot = initialSnapshot(), repo = graph(observation("core"), snapshot);
-    const cards = adaptGraph(repo, snapshot.focus, []).nodes;
-    expect(cards).toHaveLength(repo.directory!.entries.length + 1);
-    expect(cards.every((node) => node.width === 148 && node.height === 64 && node.data.repositoryCard)).toBe(true);
-    expect(adaptGraph(snapshot.graphs[1]!, snapshot.focus, []).nodes.every((node) => node.width === undefined && node.height === undefined && !node.data.repositoryCard)).toBe(true);
+  it("commits directory nodes before paint with their observation and retains the instance through fast pages", () => {
+    const snapshot = initialSnapshot(), onFocus = vi.fn();
+    const props = { focus: snapshot.focus, mappings: [], onFocus, onConnectionFocus: vi.fn(), onReconcile: vi.fn(), reconciliationRunning: false, interfaceZoom: 100 };
+    // Legacy/mock repository graphs have no directory observation. Switching
+    // to the real reader must not switch ReactFlow mode or remount its camera.
+    const view = render(<GraphPane {...props} graph={snapshot.graphs[0]!} />);
+    const flow = screen.getByTestId("repository-flow");
+    for (const directory of ["one", "two", "three"]) {
+      const next = graph(observation(directory));
+      view.rerender(<GraphPane {...props} graph={next} />);
+      expect(flow.closest("[data-directory]")?.getAttribute("data-directory")).toBe(directory);
+      const file = screen.getByRole("button", { name: "Graph node files.ts" });
+      fireEvent.click(file); expect(onFocus).toHaveBeenLastCalledWith(next.nodes[0]!.focus);
+      expect(screen.getByTestId("repository-flow")).toBe(flow);
+    }
   });
 });
 

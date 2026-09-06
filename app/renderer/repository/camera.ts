@@ -40,5 +40,5 @@ export function useDirectoryCamera(observation: RepositoryObservation | undefine
   const onMoveEnd = useCallback((_event: MouseEvent | TouchEvent | null, viewport: Viewport) => {
     if (displayed.current?.loaded) remember(displayed.current.key, viewport);
   }, [remember]);
-  return { onInit: setInstance, onMoveStart, onMoveEnd };
+  return { instance, onInit: setInstance, onMoveStart, onMoveEnd };
 }

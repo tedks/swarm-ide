@@ -13,7 +13,6 @@ export interface TopologyNodeData extends Record<string, unknown> {
   focus: FocusRef;
   ignored?: boolean;
   unavailable?: boolean;
-  repositoryCard?: boolean;
 }
 
 export interface GraphConnectionFocus {
@@ -95,10 +94,6 @@ export function adaptGraph(
       position: node.position,
       draggable: false,
       selectable: true,
-      // Directory pages can replace 200 cards at once. Supply their actual
-      // geometry before ReactFlow's initial node observation, rather than
-      // making every new card enter a measure → visible → measure cycle.
-      ...(graph.directory ? { width: 148, height: 64 } : {}),
       data: {
         label: node.label,
         kind: node.kind,
@@ -111,7 +106,6 @@ export function adaptGraph(
         focus: node.focus,
         ignored: entries.get(node.id)?.git === "ignored",
         unavailable: entries.get(node.id)?.actionable === false,
-        repositoryCard: Boolean(graph.directory),
       },
     })),
     edges: graph.edges.map((edge) => ({

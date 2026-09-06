@@ -1,4 +1,4 @@
-import { useMemo, type ReactNode } from "react";
+import { useLayoutEffect, useMemo, useRef, type ReactNode } from "react";
 import { Background, Controls, Handle, Position, ReactFlow, type NodeProps } from "@xyflow/react";
 import type { FocusRef, GraphSlice, NavigationMapping } from "../../protocol/schema";
 import { adaptGraph, describeGraphConnection, type GraphConnectionFocus, type TopologyNodeData } from "./graph-adapter";
@@ -9,7 +9,7 @@ export type { GraphConnectionFocus } from "./graph-adapter";
 function TopologyNode({ data }: NodeProps) {
   const node = data as TopologyNodeData;
   return (
-    <div className={`topology-node status-${node.status} ${node.focused ? "is-focused" : ""} ${node.ambiguous ? "is-ambiguous" : ""} ${node.ignored ? "is-ignored" : ""} ${node.unavailable ? "is-unavailable" : ""} ${node.repositoryCard ? "repository-card" : ""}`} title={node.mappingReason ?? node.detail}>
+    <div className={`topology-node status-${node.status} ${node.focused ? "is-focused" : ""} ${node.ambiguous ? "is-ambiguous" : ""} ${node.ignored ? "is-ignored" : ""} ${node.unavailable ? "is-unavailable" : ""}`} title={node.mappingReason ?? node.detail}>
       <Handle type="target" position={Position.Left} />
       <span className="node-kind">{node.kind}</span>
       <strong>{node.label}</strong>
@@ -35,7 +35,18 @@ export function GraphPane({ graph, focus, mappings, onFocus, onConnectionFocus, 
   repositoryCameraIntent?: RepositoryCameraIntent | null;
 }) {
   const adapted = useMemo(() => adaptGraph(graph, focus, mappings), [graph, focus, mappings]);
+  const initial = useRef(adapted);
   const camera = useDirectoryCamera(graph.directory, repositoryCameraIntent);
+  useLayoutEffect(() => {
+    if (graph.topologyId !== "repo" || !camera.instance) return;
+    // Controlled ReactFlow props are copied into its store in a passive
+    // effect. A node ResizeObserver can flush that pending effect while it is
+    // still delivering the previous page's measurements. The public instance
+    // queues instead commit in ReactFlow's layout phase, before paint: controls,
+    // node actions, edges and the current observation change together.
+    camera.instance.setNodes(adapted.nodes);
+    camera.instance.setEdges(adapted.edges);
+  }, [graph.topologyId, camera.instance, adapted]);
   // Interface zoom resizes CSS presentation, not the user's graph camera.
   // Let each mounted ReactFlow retain its own viewport through zoom/resize;
   // only initial fit and the explicit Fit control should frame the graph.
@@ -51,8 +62,8 @@ export function GraphPane({ graph, focus, mappings, onFocus, onConnectionFocus, 
       {repositoryNavigation}
       <div className="graph-canvas">
         <ReactFlow
-          nodes={adapted.nodes}
-          edges={adapted.edges}
+          {...(graph.topologyId === "repo" ? { defaultNodes: initial.current.nodes, defaultEdges: initial.current.edges }
+            : { nodes: adapted.nodes, edges: adapted.edges })}
           onInit={camera.onInit}
           onMoveStart={camera.onMoveStart}
           onMoveEnd={camera.onMoveEnd}
