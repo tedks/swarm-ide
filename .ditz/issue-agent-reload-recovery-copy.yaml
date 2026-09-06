@@ -1,0 +1,25 @@
+id: agent-reload-recovery-copy
+title: Polish local agent reload recovery notices and empty actions
+desc: 'Nonblocking Anthropic W2B final nits at63def45: clear-text control can be no-op
+  when only unresolved receipts remain and its loss-decision copy is broad; stale
+  observed clear may say newer intent when draft was closed/text emptied; obsolete
+  read notice can replace newer pending-read notice; loading-screen veto notice is
+  not displayed and work-rail wording is location-specific; all read failures use
+  absence wording even transport/storage errors. Safety predicates, no-replay/status
+  and explicit discard remain independent and tested. Polish in a bounded presentation
+  pass with renderer-reload-notice-reasons; avoid expanding W2B into lifecycle/source
+  persistence. Stale selected detail intentionally stays stale after dropped snapshot
+  until explicit Refresh agent state or event; guard discard still works.'
+type: task
+component: default
+release:
+reporter: Ted Smith <tedks@riseup.net>
+status: unstarted
+disposition:
+creation_time: 2026-09-06T04:57:29-00:00
+references: []
+log_events:
+- time: 2026-09-06T04:57:29-00:00
+  who: Ted Smith
+  what: created
+  comment: ""
