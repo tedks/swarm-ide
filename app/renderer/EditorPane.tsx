@@ -15,6 +15,10 @@ import type { SourceFlash } from "./source-diff";
 
 const setSourceFlash = StateEffect.define<SourceFlash | null>();
 
+/** Tab-local memory, not persisted text or filesystem authority. */
+export interface EditorMemory { state: EditorState | null }
+export interface SourceLineNavigation { nonce: number; line: number; content: string }
+
 class RemovedTextWidget extends WidgetType {
   constructor(private readonly removed: string) { super(); }
   toDOM(): HTMLElement {
@@ -63,19 +67,24 @@ function minimalReplacement(previous: string, next: string): { from: number; to:
   return { from, to: previous.length - suffix, insert: next.slice(from, next.length - suffix) };
 }
 
-export function EditorPane({ content, flash, onChange, onSave }: {
+export function EditorPane({ content, flash, onChange, onSave, memory, navigation, onNavigation }: {
   content: string;
   flash: SourceFlash | null;
   onChange: (content: string) => void;
   onSave: () => void;
+  memory?: EditorMemory;
+  navigation?: SourceLineNavigation | null;
+  onNavigation?: (nonce: number, applied: boolean) => void;
 }) {
   const container = useRef<HTMLDivElement>(null);
   const view = useRef<EditorView | null>(null);
   const suppressChange = useRef(false);
   const onChangeRef = useRef(onChange);
   const onSaveRef = useRef(onSave);
+  const onNavigationRef = useRef(onNavigation);
   onChangeRef.current = onChange;
   onSaveRef.current = onSave;
+  onNavigationRef.current = onNavigation;
 
   useEffect(() => {
     if (!container.current) return;
@@ -104,19 +113,36 @@ export function EditorPane({ content, flash, onChange, onSave }: {
         }),
       ],
     });
-    view.current = new EditorView({ state, parent: container.current });
-    return () => { view.current?.destroy(); view.current = null; };
+    // Rebuild extensions so callbacks belong to this component lifetime, while
+    // restoring a tab's selection. Never reuse extensions closing over an old
+    // component's change/save handlers.
+    const prior = memory?.state;
+    const selection = prior?.doc.toString() === content.replace(/\r\n?/g, "\n") ? prior.selection : undefined;
+    view.current = new EditorView({ state: selection ? state.update({ selection }).state : state, parent: container.current });
+    return () => { if (memory) memory.state = view.current?.state ?? null; view.current?.destroy(); view.current = null; };
     // A source tab owns one editor instance; content changes are synchronized below.
   }, []);
 
   useEffect(() => {
     const current = view.current;
-    if (!current || current.state.doc.toString() === content) return;
-    const change = minimalReplacement(current.state.doc.toString(), content);
+    const normalized = content.replace(/\r\n?/g, "\n");
+    if (!current || current.state.doc.toString() === normalized) return;
+    const change = minimalReplacement(current.state.doc.toString(), normalized);
     suppressChange.current = true;
     current.dispatch({ changes: change, effects: setSourceFlash.of(flash) });
     suppressChange.current = false;
   }, [content, flash]);
+
+  useEffect(() => {
+    const current = view.current;
+    if (!current || !navigation) return;
+    if (current.state.doc.toString() !== navigation.content.replace(/\r\n?/g, "\n") ||
+        !Number.isSafeInteger(navigation.line) || navigation.line < 1 || navigation.line > current.state.doc.lines) {
+      onNavigationRef.current?.(navigation.nonce, false); return;
+    }
+    current.dispatch({ selection: { anchor: current.state.doc.line(navigation.line).from }, scrollIntoView: true });
+    onNavigationRef.current?.(navigation.nonce, true);
+  }, [navigation]);
 
   useEffect(() => {
     const current = view.current;

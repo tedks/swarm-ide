@@ -11,8 +11,8 @@ The Work panel gains Tasks instead of a disconnected Dispatch queue. A developer
 
 
 - [x] (2026-09-06) Created designated worktree at reviewed a218277; read instructions, full task design and source lifecycle; started bounded client and pure component helpers.
-- [ ] Implement independent task client and metadata instruments with adversarial tests.
-- [ ] Add narrow App composition and safe explicit source/line Reveal with real CodeMirror retention tests.
+- [x] (2026-09-06) Implemented independent task client and metadata instruments with adversarial tests; small helpers stayed within new files.
+- [x] (2026-09-06) Added narrow App composition and safe explicit source/line Reveal with actual CodeMirror tests; initial 800-test run exposed three regressions, now corrected pending rerun.
 - [ ] Run local quality, full build and all tests; prove actual unavailable UI on owned virtual X11.
 - [ ] Reach provider-diverse council fixpoint, normal merge, Ditz sync, cleanup and exact handoff.
 
@@ -23,6 +23,8 @@ The existing source opener activates the target before observation and hides typ
 
 The default task provider is intentionally unavailable and the outer task-read deadline is still five seconds. ROOT settled a later T3 task-only twelve-second outer deadline; T2 must display timeout failure, not install an incompatible five-second client timer or change agent acknowledgement timing.
 
+Initial combined tests passed 797 and failed three: wide compact-panel toggles incorrectly called visible reopen despite no actual visibility change, and raw CRLF synchronization introduced synthetic editor changes that moved normalized cursors. Removed effect-cleanup visibility toggling and normalized line endings before comparing/synchronizing CodeMirror content. Regression tests retain these concrete cases.
+
 ## Decision Log
 
 
@@ -31,6 +33,8 @@ Decision: task observation and selection live in a dedicated external-store clie
 Decision: native task buttons, filters and scoped CSS compose into existing Work and Information panels. Selection does not open hidden compact panels or steal focus. Explicit palette actions can open panels. Rationale: preserve the existing cockpit and keyboard semantics rather than introduce an overlay. Date/author: 2026-09-06, T2.
 
 Decision: only literal canonical `file_refs` pass to the existing broker. Unsaved, uncertain, loading or conflicting buffers do not receive metadata line navigation. Clean saved files validate line existence before a unique navigation request reaches CodeMirror. Rationale: metadata line numbers are not offsets into arbitrary unsaved content. Date/author: 2026-09-06, T2.
+
+Decision: per-file in-memory editor checkpoints restore selection across an explicit tab switch, rebuilding extensions with current callbacks. Same-file Reveal only dispatches a consumed nonce selection transaction. Rationale: task inspection preserves the existing mounted editor; documentation navigation may switch tabs but must preserve the previous dirty text/cursor. No source or draft text is persisted by this checkpoint, and no cross-tab undo guarantee is introduced. Date/author: 2026-09-06, T2.
 
 ## Outcomes & Retrospective
 
