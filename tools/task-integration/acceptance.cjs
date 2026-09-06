@@ -27,6 +27,7 @@ async function main() {
   const wc = win.webContents;
   wc.on("console-message", (event) => { if (event.level === "error") console.error(`Owned fixture renderer: ${event.message}`); });
   const run = (fn, ...args) => wc.executeJavaScript(`(${fn.toString()})(...${JSON.stringify(args)})`, true);
+  await run(() => addEventListener("error", (event) => console.error(event.error?.stack ?? event.message)));
   const has = (selector) => run((s) => Boolean(document.querySelector(s)), selector);
   const click = (selector) => run((s) => {
     const target = document.querySelector(s);
@@ -70,10 +71,12 @@ async function main() {
   const preserved = async () => {
     assert.equal(await run(() => {
       const saved = globalThis.__taskProof;
+      const state = document.querySelector(".cm-content").cmView.rootView.view.state;
       return saved.editor === document.querySelector(".cm-content") && saved.draft === document.querySelector(".agent-draft textarea") &&
         saved.graphs.every((node, index) => node === document.querySelectorAll(".react-flow")[index]) &&
         saved.transforms.every((value, index) => value === document.querySelectorAll(".react-flow__viewport")[index].style.transform) &&
-        saved.source === document.querySelector(".cm-content").textContent && saved.draftValue === document.querySelector(".agent-draft textarea").value;
+        saved.source === state.doc.toString() && saved.anchor === state.selection.main.anchor && saved.head === state.selection.main.head &&
+        saved.draftValue === document.querySelector(".agent-draft textarea").value;
     }), true, "source/draft/graph DOM and cameras retained");
   };
   await until(() => has("[data-task-status='observed']"), "actual task data from packaged core");
@@ -115,19 +118,23 @@ async function main() {
     await until(async () => (await run((s) => document.querySelector(s).parentElement.querySelector(".react-flow__viewport").style.transform, selector)) !== before, `deliberately move ${topology} camera`);
   }
   await focus(".cm-content"); key("End", ["control"]); await wc.insertText("\n// unsaved T3 intent"); key("Home", ["control"]); key("Right");
+  await until(() => run(() => document.querySelector(".cm-content").cmView.rootView.view.state.selection.main.anchor === 1), "exact dirty editor cursor");
+  assert.equal(await run(() => document.querySelector(".cm-content").cmView.rootView.view.state.doc.toString()), fixture.sourceText + "\n// unsaved T3 intent");
   await focus(".agent-rail .agent-primary"); key("Return");
   await until(() => has(".agent-draft textarea"), "fixed-focus draft");
   await fill(".agent-draft textarea", "Retain this independent user draft; task text is not instructions.");
   await fill(".task-search input", fixture.taskId);
   await run(() => {
+    const state = document.querySelector(".cm-content").cmView.rootView.view.state;
     globalThis.__taskProof = { editor: document.querySelector(".cm-content"), draft: document.querySelector(".agent-draft textarea"),
       graphs: [...document.querySelectorAll(".react-flow")], transforms: [...document.querySelectorAll(".react-flow__viewport")].map((n) => n.style.transform),
-      source: document.querySelector(".cm-content").textContent, draftValue: document.querySelector(".agent-draft textarea").value };
+      source: state.doc.toString(), anchor: state.selection.main.anchor, head: state.selection.main.head,
+      draftValue: document.querySelector(".agent-draft textarea").value };
   });
   await click(button(`Select task ${fixture.taskId}`)); await showDetails(); await preserved();
   await click(reveal);
   await until(async () => (await text(".tasks-reveal-notice")).includes("unsaved"), "dirty cursor protection notice");
-  assert.equal(await run(() => getSelection()?.anchorOffset), 1, "dirty Reveal preserves cursor");
+  assert.deepEqual(await run(() => { const { anchor, head } = document.querySelector(".cm-content").cmView.rootView.view.state.selection.main; return { anchor, head }; }), { anchor: 1, head: 1 }, "dirty Reveal preserves logical cursor");
   await preserved();
   await showDetails();
   await click(button(`Reveal working file ${fixture.missingPath} at line 2`));
@@ -154,6 +161,8 @@ async function main() {
       editorWidth: document.querySelector(".cm-editor").getBoundingClientRect().width,
       taskOverflow: Math.max(0, document.querySelector(".task-detail").scrollWidth - document.querySelector(".task-detail").clientWidth),
       transforms: globalThis.__taskProof.transforms,
+      cursor: { anchor: globalThis.__taskProof.anchor, head: globalThis.__taskProof.head },
+      textLength: globalThis.__taskProof.source.length,
       focus: document.activeElement.textContent,
     }));
     assert(measure.documentOverflow <= 1 && measure.taskOverflow <= 1 && measure.editorWidth > 100);

@@ -36,8 +36,10 @@ For the actual self-contained production archive, first build
 shell, extract `bazel-bin/swarm-ide-foundation.tar.gz` to a new private temporary
 directory, and run `$SWARM_ELECTRON_BIN <extracted>/app/electron/main.js
 --user-data-dir=<new-private-profile>` from the intended repository. Respect
-the existing Nix runtime's explicit `SWARM_ELECTRON_NO_SANDBOX` choice; this
-feature does not change it. The archive contains its parser and relative
+the existing Nix runtime's explicit `SWARM_ELECTRON_NO_SANDBOX` choice: if it is
+exactly `1`, add `--no-sandbox` before the main.js argument; when unset, omit
+that flag (other values are invalid). This feature does not change that choice.
+The archive contains its parser and relative
 `file://` renderer assets; it does not need source `node_modules` at runtime.
 
 ## Automated acceptance
