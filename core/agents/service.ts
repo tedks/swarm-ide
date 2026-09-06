@@ -116,6 +116,15 @@ export class AgentService {
     // exists. Publication cannot depend on a later cleanup callback occurring.
     void this.serial(() => this.publish());
   }
+  private admissionFault(cause?: AgentError): AgentOperation<never> {
+    // A failed admit may have replaced the snapshot before directory sync
+    // failed. Storage codes do not establish absence of admission. Keep the
+    // command unknown and admission latched closed even if the store throws.
+    const error: AgentError = { code: "AGENT_OUTCOME_UNKNOWN",
+      message: `Admission could not be established safely (${cause?.code ?? "STORAGE_UNAVAILABLE"}); inspect run history. Do not replay.` };
+    this.storageFault(error);
+    return { ok: false, error };
+  }
   private uncertain(run: Run, reason: string): Run {
     const at = this.at(run);
     return { ...run, updatedAt: at,
@@ -223,19 +232,23 @@ export class AgentService {
     if (JSON.stringify(context) !== JSON.stringify(this.draft) || context.capabilities.availability !== "available" ||
         context.capabilities.policy !== "verified-read-only" || !context.capabilities.controls.launch ||
         this.now() < Date.parse(context.preparedAt) || this.now() >= Date.parse(context.expiresAt)) return bad("STALE_CONTEXT", "Launch context or capability evidence changed.");
-    const admitted = await this.options.store.admit(context);
-    if (!admitted.ok) { this.storageFault(admitted.error); return admitted; }
-    const read = await this.options.store.read(context.runId, 0);
-    if (!read.ok) { this.storageFault(read.error); return read; }
-    this.runs.set(context.runId, read.value.run);
-    this.draft = null;
-    await this.publish();
-    if (!admitted.value.existing) {
-      // Yield after durable admission so Stop can prevent dispatch entirely.
-      const timer = setTimeout(() => { this.timers.delete(context.runId); void this.start(context); }, 0);
-      this.timers.set(context.runId, timer);
+    try {
+      const admitted = await this.options.store.admit(context);
+      if (!admitted.ok) return this.admissionFault(admitted.error);
+      const read = await this.options.store.read(context.runId, 0);
+      if (!read.ok) return this.admissionFault(read.error);
+      this.runs.set(context.runId, read.value.run);
+      this.draft = null;
+      await this.publish();
+      if (!admitted.value.existing) {
+        // Yield after durable admission so Stop can prevent dispatch entirely.
+        const timer = setTimeout(() => { this.timers.delete(context.runId); void this.start(context); }, 0);
+        this.timers.set(context.runId, timer);
+      }
+      return good({ kind: "launch", receipt: admitted.value.receipt });
+    } catch {
+      return this.admissionFault();
     }
-    return good({ kind: "launch", receipt: admitted.value.receipt });
   }
 
   private async start(context: PreparedAgentContext): Promise<void> {
