@@ -32,10 +32,16 @@ export interface SwarmBridge {
 const bridge: SwarmBridge = {
   async request(input) {
     const request = parseCoreRequest(input);
-    const envelope = ResponseEnvelopeSchema.parse(await ipcRenderer.invoke(REQUEST_CHANNEL, request));
-    if (envelope.generation < generation) return { protocolVersion: request.protocolVersion, requestId: request.requestId, ok: false, error: { code: uncertainMutationCode(request) ?? "CORE_GENERATION_CHANGED", message: "Core generation changed during the operation" } };
-    generation = envelope.generation;
-    return parseCoreResponseForRequest(envelope.response, request);
+    try {
+      const envelope = ResponseEnvelopeSchema.parse(await ipcRenderer.invoke(REQUEST_CHANNEL, request));
+      if (envelope.generation < generation) return { protocolVersion: request.protocolVersion, requestId: request.requestId, ok: false, error: { code: uncertainMutationCode(request) ?? "CORE_GENERATION_CHANGED", message: "Core generation changed during the operation" } };
+      generation = envelope.generation;
+      return parseCoreResponseForRequest(envelope.response, request);
+    } catch {
+      return { protocolVersion: request.protocolVersion, requestId: request.requestId, ok: false,
+        error: { code: uncertainMutationCode(request) ?? "INVALID_CORE_MESSAGE",
+          message: "Core transport or response validation failed; do not replay uncertain mutations" } };
+    }
   },
   onEvent(listener) {
     const handler = (_event: Electron.IpcRendererEvent, input: unknown) => {

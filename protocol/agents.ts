@@ -17,7 +17,7 @@ const path = text(4096).refine((value) =>
   !/[\\\x00-\x1f\x7f:]/.test(value) &&
   value.split("/").every((part) => part !== "" && part !== "." && part !== ".."),
   "Expected normalized repository-relative path");
-const date = z.string().datetime();
+const date = z.string().max(32).datetime();
 const cursor = z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER);
 const hash = z.string().regex(/^[a-f0-9]{64}$/);
 export const RunIdSchema = z.string().uuid();
@@ -25,9 +25,16 @@ export const AgentErrorSchema = z.object({
   code: z.enum(["STALE_CONTEXT", "BUSY", "ADAPTER_UNAVAILABLE", "ADAPTER_POLICY_UNAVAILABLE",
     "UNSUPPORTED_CONTROL", "RUN_NOT_ACTIVE", "STALE_TURN", "OUTPUT_LIMIT",
     "STORAGE_UNAVAILABLE", "STORAGE_FULL", "AGENT_OUTCOME_UNKNOWN"]),
-  message: text(512),
+  message: text(512).refine((value) => !/[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]/.test(value), "Unsanitized error message"),
 }).strict();
 export type AgentError = z.infer<typeof AgentErrorSchema>;
+// The shared transport may fail before the agent service has handled a command.
+export const AgentBoundaryErrorSchema = AgentErrorSchema.extend({
+  code: z.union([AgentErrorSchema.shape.code, z.enum([
+    "CORE_UNAVAILABLE", "CORE_TIMEOUT", "CORE_GENERATION_CHANGED", "INVALID_CORE_MESSAGE",
+    "INVALID_REQUEST", "DUPLICATE_REQUEST", "UNTRUSTED_RENDERER",
+  ])]),
+});
 
 export const AgentFocusSchema = FocusRefSchema.extend({
   worldId: id, revisionId: id, key: text(4096), path: path.optional(), symbol: text(4096).optional(),
@@ -80,7 +87,7 @@ const instructionSource = z.object({
 }).strict().refine((source) => source.observation !== "observed" || source.digest !== null,
   "Observed instructions require a digest");
 export const LaunchContextSchema = z.object({
-  worldId: id, repositoryId: id, root: text(4096), head: z.string().regex(/^[a-f0-9]{40,64}$/).nullable(),
+  worldId: id, repositoryId: id, root: text(4096), head: z.string().regex(/^(?:[a-f0-9]{40}|[a-f0-9]{64})$/).nullable(),
   workingFingerprint: hash, focus: AgentFocusSchema, taskText: text(AGENT_LIMITS.taskBytes),
   links: AgentLinksSchema,
   requested: z.object({ model: text(256).nullable(), effort: text(64).nullable() }).strict(),
@@ -193,7 +200,10 @@ export const RunSchema = z.object({
   if (run.providerTurnId && !run.providerThreadId) issue("A turn requires its thread");
   if (run.state === "running" && (!run.providerThreadId || !run.providerTurnId || !run.startedAt || run.processState !== "live")) issue("Running requires a confirmed live turn");
   if (run.exitCode !== null && run.processState !== "exited") issue("Exit code requires observed exit");
-  if (run.processState === "not-started" && (run.providerThreadId !== null || run.providerTurnId !== null)) issue("Unstarted process cannot have provider identity");
+  if (run.processState === "not-started" && (run.providerThreadId !== null || run.providerTurnId !== null || run.providerObservation !== null)) issue("Unstarted process cannot have provider identity");
+  if ((run.cleanup.status === "confirmed" && run.processState !== "exited") ||
+      (run.cleanup.status === "not-needed" && run.processState !== "not-started") ||
+      (run.processState === "not-started" && run.cleanup.status !== "not-needed")) issue("Cleanup must agree with observed process state");
   if (run.providerOutcome.kind === "turn" &&
       (run.providerOutcome.threadId !== run.providerThreadId || run.providerOutcome.turnId !== run.providerTurnId)) issue("Terminal evidence must match the run's turn");
   const outcome = run.providerOutcome;

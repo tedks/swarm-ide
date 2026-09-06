@@ -25,6 +25,7 @@ application of intelligence before queues, swarm coordination or write authority
 - [x] (2026-09-06) ROOT accepted PR #8 and dispatched only R0 in its designated worktree.
 - [ ] R0: publish validated contracts, typed unavailable behavior and module interfaces; merge the small base PR.
 - [x] (2026-09-06) R0: strict six-command schemas, interface-only adapter/context/store modules and production unavailable dispatch; initial and contract/bridge quality passes succeeded.
+- [x] (2026-09-06) R0: first full build and five uncached Bazel tests passed, including owned virtual desktop smoke (31.6 seconds); 151 focused tests passed at a6d8f4f.
 - [ ] R0: final local build/test, council fixpoint, normal merge and executive handoff without adopting watched master.
 - [ ] R1 and E1: establish installed-adapter conformance and bounded launch context/profile preflight; W1: show fixture-driven cockpit run surface in parallel.
 - [ ] R2: durable lifecycle, process ownership, cancellation and recovery; E2: adversarial fixtures and virtual scenario; W2: wire live state, steering and uncertainty.
@@ -100,6 +101,14 @@ renderer line ignores agent events in the workspace reducer; no product UI is
 added. Dedicated tests/agent-bridge.test.ts exercises the real worker dispatcher
 and preload with explicit injected workspace/Electron test doubles; production
 has no fixture selection mechanism.
+
+Decision (2026-09-06, R0 council fixes): bound timestamps to 32 characters, bind
+prepared results back to all request-derived fields, reject contradictory
+cleanup evidence and strictly validate agent failures including known transport
+codes. Preserve legacy workspace error text but reject extra error fields before
+envelope parsing can hide them. IPC/validation failures after a mutation dispatch
+return unknown rather than a rejected promise that callers might treat as safe
+retry. No persistence, process owner or provider work is introduced.
 
 ## Outcomes & Retrospective
 

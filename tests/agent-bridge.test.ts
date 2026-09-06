@@ -75,7 +75,9 @@ describe("agent unavailable bridge integration", () => {
     expect(await bridge.request(request)).toMatchObject({ error: { code: "AGENT_OUTCOME_UNKNOWN" } });
     electron.invoke.mockResolvedValue({ generation: 3, response: { protocolVersion: PROTOCOL_VERSION, requestId: "launch",
       ok: true, sequence: 0, snapshot: initialSnapshot() } });
-    await expect(bridge.request(request)).rejects.toThrow("Missing or mismatched agent result");
-    expect(electron.invoke).toHaveBeenCalledTimes(2); // no replay
+    expect(await bridge.request(request)).toMatchObject({ error: { code: "AGENT_OUTCOME_UNKNOWN" } });
+    electron.invoke.mockRejectedValue(new Error("IPC vanished"));
+    expect(await bridge.request(request)).toMatchObject({ error: { code: "AGENT_OUTCOME_UNKNOWN" } });
+    expect(electron.invoke).toHaveBeenCalledTimes(3); // no replay
   });
 });

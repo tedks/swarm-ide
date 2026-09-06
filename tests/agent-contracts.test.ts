@@ -95,7 +95,8 @@ describe("strict agent contract v3", () => {
     expect(() => RunSchema.parse(ended)).toThrow("terminal provider evidence");
     const completed = { ...ended, providerThreadId: "thread", providerTurnId: "turn",
       providerOutcome: { kind: "turn", threadId: "thread", turnId: "turn", status: "completed", observedAt: at } };
-    expect(RunSchema.parse({ ...completed, processState: "live", exitCode: null }).state).toBe("completed");
+    expect(RunSchema.parse({ ...completed, processState: "live", exitCode: null,
+      cleanup: { status: "pending", observedAt: at, detail: "Awaiting disposal" } }).state).toBe("completed");
     expect(() => RunSchema.parse({ ...completed, providerTurnId: "other" })).toThrow();
     expect(() => RunSchema.parse({ ...run(), state: "running" })).toThrow();
     expect(() => RunSchema.parse({ ...run(), exitCode: 0 })).toThrow();
@@ -115,6 +116,18 @@ describe("strict agent contract v3", () => {
     }
     expect(canTransitionRun("starting", "completed")).toBe(false);
     expect(canTransitionRun("cancelling", "completed")).toBe(true);
+  });
+  it("rejects contradictory cleanup and oversized timestamps/invalid HEAD lengths", () => {
+    for (const cleanup of ["confirmed", "not-needed"]) {
+      expect(() => RunSchema.parse({ ...run(), processState: "live", cleanup: { status: cleanup, observedAt: at, detail: "invalid" } })).toThrow();
+    }
+    const oversizedDate = "2026-09-06T01:00:00." + "0".repeat(5000) + "Z";
+    expect(() => AgentEventSchema.parse({ protocolVersion: PROTOCOL_VERSION, type: "agent.changed",
+      sequence: 1, emittedAt: oversizedDate, snapshot: unavailableAgentSnapshot() })).toThrow();
+    expect(() => PreparedAgentContextSchema.parse({ ...draft, preparedAt: oversizedDate })).toThrow();
+    expect(() => InstructionReceiptSchema.parse({ ...receipt, submittedAt: oversizedDate })).toThrow();
+    expect(() => LaunchContextSchema.parse({ ...launchContext, head: "a".repeat(41) })).toThrow();
+    expect(LaunchContextSchema.parse({ ...launchContext, head: "a".repeat(64) }).head).toHaveLength(64);
   });
   it("distinguishes persisted steering pending/accepted/rejected/unknown receipts", () => {
     expect(InstructionReceiptSchema.parse(receipt)).toEqual(receipt);
@@ -181,5 +194,49 @@ describe("strict agent contract v3", () => {
     expect(EventEnvelopeSchema.parse({ generation: 3, event }).event.type).toBe("agent.changed");
     expect(() => AgentEventSchema.parse({ ...event, epoch: 1 })).toThrow();
     expect(() => EventEnvelopeSchema.parse({ generation: 3, event: { ...event, protocolVersion: 2 } })).toThrow();
+  });
+  it("rejects foreign prepare context and malformed agent failures before envelope stripping", () => {
+    const response = { protocolVersion: PROTOCOL_VERSION, requestId: "prepare", ok: true, sequence: 1,
+      snapshot: initialSnapshot(), agent: { kind: "prepare", draft } };
+    const reordered = { ...prepare, focus: { path: focus.path, key: focus.key, domain: focus.domain,
+      revisionId: focus.revisionId, revisionKind: focus.revisionKind, worldId: focus.worldId },
+      links: { spec: links.spec, task: links.task, parentRunId: links.parentRunId } };
+    expect(parseCoreResponseForRequest(response, reordered).ok).toBe(true);
+    for (const changed of [
+      { taskText: "other task" }, { focus: { ...focus, key: "other" } },
+      { requested: { model: "other", effort: null } }, { links: { ...links, spec: "other.md" } },
+    ]) expect(() => parseCoreResponseForRequest({ ...response, agent: { kind: "prepare",
+      draft: { ...draft, launchContext: { ...launchContext, ...changed } } } }, prepare)).toThrow();
+    for (const error of [
+      { code: "ADAPTER_UNAVAILABLE", message: "é".repeat(257) },
+      { code: "ADAPTER_UNAVAILABLE", message: "bad\u001bcontrol" },
+      { code: "ADAPTER_UNAVAILABLE", message: "no", hidden: "authority" },
+      { code: "UNRECOGNIZED_AGENT_CODE", message: "unknown error" },
+    ]) {
+      const failure = { protocolVersion: PROTOCOL_VERSION, requestId: "prepare", ok: false, error };
+      expect(() => {
+        const envelope = ResponseEnvelopeSchema.parse({ generation: 1, response: failure });
+        parseCoreResponseForRequest(envelope.response, prepare);
+      }).toThrow();
+    }
+    expect(parseCoreResponseForRequest({ protocolVersion: PROTOCOL_VERSION, requestId: "prepare", ok: false,
+      error: { code: "CORE_UNAVAILABLE", message: "No operation was sent" } }, prepare).ok).toBe(false);
+  });
+  it("correlates admission, steering, cancellation and read cursors with their command", () => {
+    const wrong = [
+      { kind: "launch", receipt: { runId: anotherRun, contextHash: digest, admittedAt: at, status: "admitted" } },
+      { kind: "steer", runId, receipt: { ...receipt, expectedTurnId: "wrong-turn" } },
+      { kind: "cancel", receipt: { runId, requestId: "wrong-command", requestedAt: at, status: "requested" } },
+      { kind: "read", run: { ...run(), runId: anotherRun }, page: { records: [record], nextCursor: 1, truncated: false } },
+    ];
+    const inputs = [requests[1]!, requests[2]!, requests[3]!, requests[5]!];
+    wrong.forEach((agent, i) => {
+      expect(() => parseCoreResponseForRequest({ protocolVersion: PROTOCOL_VERSION,
+        requestId: inputs[i]!.requestId, ok: true, sequence: 1, snapshot: initialSnapshot(), agent }, inputs[i]!)).toThrow();
+    });
+    expect(() => parseCoreResponseForRequest({ protocolVersion: PROTOCOL_VERSION,
+      requestId: "read", ok: true, sequence: 1, snapshot: initialSnapshot(),
+      agent: { kind: "read", run: run(), page: { records: [record], nextCursor: 1, truncated: false } } },
+      { ...requests[5]!, type: "agent.read", runId, afterRecord: 1 })).toThrow();
   });
 });

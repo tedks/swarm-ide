@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { PROTOCOL_VERSION, FocusRefSchema } from "./common";
-import { AgentRequestSchema, AgentResultSchema, type AgentRequest } from "./agents";
+import { AgentRequestSchema, AgentResultSchema, AgentFocusSchema, AgentLinksSchema, AgentBoundaryErrorSchema, type AgentRequest } from "./agents";
 export { PROTOCOL_VERSION, FocusRefSchema, RevisionKindSchema, type FocusRef, type RevisionKind } from "./common";
 
 export const MAX_EDITABLE_FILE_BYTES = 2 * 1024 * 1024;
@@ -289,8 +289,9 @@ export const CoreResponseSchema = z.discriminatedUnion("ok", [
     protocolVersion: z.literal(PROTOCOL_VERSION),
     requestId: z.string().min(1),
     ok: z.literal(false),
-    error: z.object({ code: z.string().min(1), message: z.string().min(1) }),
-  }),
+    // Do not strip invalid fields before request-specific agent validation.
+    error: z.object({ code: z.string().min(1), message: z.string().min(1) }).strict(),
+  }).strict(),
 ]);
 export type CoreResponse = z.infer<typeof CoreResponseSchema>;
 
@@ -338,12 +339,20 @@ export function parseCoreResponse(input: unknown): CoreResponse {
 export function parseCoreResponseForRequest(input: unknown, request: CoreRequest): CoreResponse {
   const response = parseCoreResponse(input);
   if (response.requestId !== request.requestId) throw new Error("Response request ID mismatch");
+  if (!response.ok && isAgentRequest(request)) AgentBoundaryErrorSchema.parse(response.error);
   if (response.ok && isAgentRequest(request)) {
     if (!response.agent || response.agent.kind !== request.type.slice(6)) {
       throw new Error("Missing or mismatched agent result");
     }
     const result = response.agent;
-    if ((request.type === "agent.launch" && result.kind === "launch" &&
+    if ((request.type === "agent.prepare" && result.kind === "prepare" &&
+         (request.worldId !== result.draft.launchContext.worldId ||
+          request.taskText !== result.draft.launchContext.taskText ||
+          request.model !== result.draft.launchContext.requested.model ||
+          request.effort !== result.draft.launchContext.requested.effort ||
+          JSON.stringify(AgentFocusSchema.parse(request.focus)) !== JSON.stringify(result.draft.launchContext.focus) ||
+          JSON.stringify(AgentLinksSchema.parse(request.links)) !== JSON.stringify(result.draft.launchContext.links))) ||
+        (request.type === "agent.launch" && result.kind === "launch" &&
          (request.runId !== result.receipt.runId || request.contextHash !== result.receipt.contextHash)) ||
         (request.type === "agent.steer" && result.kind === "steer" &&
          (request.runId !== result.runId || request.requestId !== result.receipt.requestId ||
