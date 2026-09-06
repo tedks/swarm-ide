@@ -1,4 +1,4 @@
-import { AGENT_LIMITS, AgentSnapshotSchema, RunSchema, TranscriptRecordSchema, isTerminalRunState, type AgentSnapshot, type LaunchContext, type Run, type TranscriptRecord } from "../../../protocol/agents";
+import { AGENT_LIMITS, AgentSnapshotSchema, RunSchema, TranscriptRecordSchema, isTerminalRunState, utf8Bytes, type AgentSnapshot, type LaunchContext, type Run, type TranscriptRecord } from "../../../protocol/agents";
 
 export interface AgentWorkbenchState {
   snapshot: AgentSnapshot;
@@ -20,8 +20,8 @@ export const emptyAgentWorkbench = (): AgentWorkbenchState => ({
 
 const label = (value: string): string => {
   let result = "";
-  for (const char of value) {
-    if (new TextEncoder().encode(result + char).length > 240) break;
+  for (const char of value.trim()) {
+    if (utf8Bytes(result + char) > 240) break;
     result += char;
   }
   return result;
@@ -73,7 +73,7 @@ export function fixtureReducer(state: AgentWorkbenchState, action: FixtureAction
   if (action.type === "steer") {
     if (run.state !== "running" || !run.providerTurnId || run.instructions.length >= AGENT_LIMITS.receipts) return state;
     const text = action.text.trim();
-    if (!text || new TextEncoder().encode(text).length > AGENT_LIMITS.taskBytes) return state;
+    if (!text || utf8Bytes(text) > AGENT_LIMITS.taskBytes) return state;
     run.instructions.push({ requestId: `fixture-instruction-${step}`, expectedTurnId: run.providerTurnId, text, textHash: zeroHash,
       submittedAt: now, settledAt: now, status: action.outcome,
       error: action.outcome === "rejected" ? { code: "STALE_TURN", message: "Fixture rejection: turn no longer accepts this instruction." }
@@ -109,7 +109,7 @@ export function fixtureReducer(state: AgentWorkbenchState, action: FixtureAction
     kind: run.state === "completed" && run.processState === "live" ? "recap" : "message",
     providerItemId: message.startsWith("FIXTURE stream 2") ? "fixture-commentary-2" : null, text: message };
   run.transcript.lastRecord = record.recordId;
-  run.transcript.bytes += new TextEncoder().encode(JSON.stringify(record)).length;
+  run.transcript.bytes += utf8Bytes(JSON.stringify(record));
   run.transcript.truncated ||= state.records.length >= AGENT_LIMITS.tailRecords;
   return projectFixture({ ...state, step, streamedSecond: state.streamedSecond || record.providerItemId === "fixture-commentary-2" }, run, [...state.records, record]);
 }

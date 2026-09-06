@@ -81,9 +81,18 @@ describe("bounded schema-valid fixture playback", () => {
     const state = advance(started());
     for (const text of ["   ", "🌳".repeat(5000)]) expect(fixtureReducer(state, { type: "steer", text, outcome: "accepted" })).toBe(state);
   });
+  it("does not replace an active fixture even through direct reducer launch", () => {
+    const state = advance(started());
+    expect(fixtureReducer(state, { type: "launch", context: context() })).toBe(state);
+  });
 });
 
 describe("run-specific presentation", () => {
+  it("requires explicit working-world mapping before launch", () => {
+    render(<LaunchDraft focus={{ ...paymentsFileFocus, revisionKind: "built" }} onLaunch={() => undefined} onClose={() => undefined} />);
+    expect((screen.getByRole("button", { name: "Launch fixture — no provider" }) as HTMLButtonElement).disabled).toBe(true);
+    expect(screen.getByRole("alert").textContent).toContain("working-world");
+  });
   it("refuses aggregate JSON escaping overflow without throwing on submit", () => {
     const onLaunch = vi.fn();
     render(<LaunchDraft focus={paymentsFileFocus} onLaunch={onLaunch} onClose={() => undefined} />);
