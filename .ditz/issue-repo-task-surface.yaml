@@ -44,6 +44,13 @@ log_events:
   who: Ted Smith
   what: blocked by repo-task-browser-followups
   comment: ""
+- time: 2026-09-06T15:57:49-00:00
+  who: Ted Smith
+  what: commented
+  comment: 'T3 actual read-only browser landed PR35 normal2270922. Tasks now use registered
+    local Ditz metadata through real packaged core. Parent remains open: D2 task-to-draft
+    provenance, broader navigation and reader limits/followups are separate; no agent
+    dispatch/model capability claimed.'
 blocks:
 - repo-task-draft-provenance
 blocked_by:
