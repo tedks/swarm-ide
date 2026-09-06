@@ -1,16 +1,22 @@
 # Prove an offline boundary before probing configuration
 
 This ExecPlan follows `.planning/PLANS.md`. The living sections below record the
-bounded P2 implementation, not production authorization.
+bounded P2 boundary and P3 auxiliary activation implementation, not production authorization.
 
 ## Purpose / Big Picture
 
 Developers can run `nix develop --command bazel run //tools/policy:probe` and get
 bounded JSON identifying independently tested isolation and exactly which Codex
 configuration observations remain unavailable. No provider thread or model turn
-is created. This is a development acceptance harness, never a product adapter.
+is created by that metadata mode. P3 adds an explicit `--activation` mode for
+synthetic, ephemeral thread initialization only. No model turn is allowed in any
+mode. This is a development acceptance harness, never a product adapter.
 
 ## Progress
+
+- [x] (2026-09-06 05:34Z) P3: read inherited gates, official app-server documentation and pinned source; designated feature worktree starts from verified normal merge c52f959.
+- [ ] P3: executable required-stdio-MCP positive/negative activation controls with an explicit no-generation RPC allowlist.
+- [ ] P3: bounded seed-pipe bootstrap diagnostics and regressions; full local gates, council, normal PR merge and handoff.
 
 - [x] (2026-09-06 04:21Z) Read P1 evidence/contracts and establish basic unprivileged user/network/mount/PID namespace support.
 - [x] (2026-09-06 04:38Z) Implement pinned isolated runtime, frozen synthetic inputs and independent boundary canaries; owner-SIGKILL/deadline/output checks pass.
@@ -19,6 +25,12 @@ is created. This is a development acceptance harness, never a product adapter.
 - [x] (2026-09-06 04:53Z) Added negative tests; full build22 targets and all7 uncached Bazel tests passed at83da50f (272 unit tests). OpenAI native and Google fix-delta CLEAN; Anthropic full-seat timed out600s with no review, explicitly missing. Remaining nits filed. PR17 records the eventual normal-merge transaction; final aggregate evidence is archived in the handoff.
 
 ## Surprises & Discoveries
+
+Pinned 0.153.4 queues SessionStart hooks at thread creation but executes them
+inside the turn path. It is not a no-model positive control. Thread startup can
+also schedule websocket prewarm; both matched fixtures must source-verify and
+disable that path before invoking thread/start. Source is a research lead;
+installed process observations remain separately required.
 
 P1 found startup work occurs before inspection. Therefore even `config/read`
 requires a separate operating-system boundary. Raw config is not complete
@@ -32,6 +44,19 @@ directories. Apps alias collisions, project/managed overrides and inherited MCP
 table merging are now observed from the installed package, not inferred source.
 
 ## Decision Log
+
+Decision (2026-09-06, P3): prove the smallest actual startup-triggered path,
+required stdio MCP, with an executable fixed canary, attempted-exec observation,
+successful initialization and matched disabled-server configuration. An absent
+marker alone is never suppression proof. A required-server failure control must
+reject thread creation. Broader hooks, executor plugins and persisted remote
+control remain explicitly unproved; do not make policy ancestors writable or
+invent a trigger to expand this slice. The trusted host/kernel/operator and
+immutable package assumptions are unchanged. All 26 independent boundary and
+lifetime checks must pass before each actual activation launch; immediate inner
+checks also run before Codex. Deadline/output/unknown-cleanup or missing evidence
+fail closed. Only initialize, initialized and fixed thread/start are permitted;
+no externally supplied params, shell commands, inference, auth or real history.
 
 Decision (2026-09-06, P2): use pinned Bubblewrap and Node through a new package
 expression consuming the existing Nix lock; no shared flake dependency change.
@@ -121,3 +146,5 @@ Revision (2026-09-06 04:49Z): record observed runtime-state exception, actual of
 counterexamples, exact ownership approval and first review corrections.
 Revision (2026-09-06 04:53Z): record converged available council seats, actual local
 gates and clean normal integration of reviewed peer work before final landing.
+Revision (2026-09-06 05:34Z): begin P3's bounded executable activation increment,
+state assumptions and missing-trigger failure mode before implementation.
