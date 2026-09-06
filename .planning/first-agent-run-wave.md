@@ -43,10 +43,17 @@ application of intelligence before queues, swarm coordination or write authority
 - [x] (2026-09-06, I1 checkpoint b9782ea) Actual fixed-focus disk draft, admission, literal stream, accepted/stale steering, Stop/completion versus cleanup, history paging/Reveal and real core crash/unknown/no-replay journey passed on owned virtual X11. Reviewed W2B fa263e7 is included. Full21-target build,435 tests and all6 uncached local targets passed. Deliberate failure after active streaming also retained diagnostics and confirmed owned cleanup. Review fixes/final aggregate landing remain pending, not live-provider proof.
 - [x] (2026-09-06, I1 final code14d6da7) Reviewed W2B/P2/C1 normal merges included; full24-target build and all8 uncached local targets passed,474 tests across43 files. Virtual agent journey3.189s automation/4.936s total, cleanup_complete=1; same-head admitted/streaming failure probe returned expected nonzero and cleanup1. OpenAI native and Google CLEAN fixpoint; Anthropic600s timeout without verdict, explicitly missing. Hosted34013611396 was in progress under conditional local-proof waiver, not green. PR20 records the normal-merge transaction; watched master/app unadopted.
 - [ ] R3/W3/E3: integrate, demonstrate one real read-only run, finish relevant local gates/review and normal-merge the feature PRs.
+- [x] (2026-09-06, I2 code1fd0689) Actual R1 JSONL adapter, R2 durable service/store and namespace owner joined with fixed external protocol fixture. Stop/completion/cleanup sequencing, unexpected exit17 and hard test-core SIGKILL/reopen/no replay pass; full25-target build/all9 uncached local targets,478tests/44files. OpenAI native and Google CLEAN; Anthropic session-limit unavailable. PR24 landing/integration tracked in its dedicated plan; no installed Codex/model/policy proof or watched-app adoption.
 - [ ] ROOT deliberately adopts the integrated build if native-main changes require restart; do not silently replace the watched app.
 
 ## Surprises & Discoveries
 
+
+I2 needed no production change to compose the real stdio adapter and namespace
+owner. Its first namespace prerequisite check falsely failed because resolving
+the Nix `true` symlink selected the multi-call `coreutils` binary without its
+required basename. Retaining the immutable Nix executable path fixes that test
+setup issue; missing namespaces still fail the dedicated positive proof.
 
 I1's native reviewer identified a test-only timing hazard: screenshot capture,
 PNG encoding and disk I/O were inside R2's two-second disposal deadline. The
@@ -76,6 +83,13 @@ invite replay. Existing workspace and file projections must remain unchanged.
 
 ## Decision Log
 
+
+Decision (2026-09-06, I2): ROOT reassigned integration and this shared plan from
+completed I1 to the bounded external-process proof. Observe successful durable
+store updates rather than sampling a short pending-cleanup interval. Fixed
+test-only capabilities are not installed-provider policy; after hard core death
+the test can observe namespace teardown without promoting recovered product
+cleanup from unknown. No production entry imports the new fixture modules.
 
 Decision (2026-09-06, I1): production worker construction remains a fixed entry
 calling startCoreWorker without overrides. A separately compiled test-only entry
