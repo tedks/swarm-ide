@@ -22,7 +22,7 @@ This is read-only browsing, not task dispatch or attachment to an agent draft.
 - [x] (2026-09-06 15:38Z) Compose real task provider, package pinned parser and relative file-URL assets; task-only deadline/CLI pinned/cache/disposal tests pass.
 - [x] (2026-09-06 15:38Z) Actual packaged CLI-to-UI path exercises Reveal, dirty source/draft/cameras,100/150, stale/adopt/malformed/missing/recovery and absent-parser negative. Initial32build/all12uncached pass; this is not final error-free acceptance.
 - [x] (2026-09-06 15:43Z) ROOT approved exact dependency exception. Runtime regression RED with undefined anchor; direct state/override unified on compatible6.7.4 via offline lock materialization and frozen install. Fixed runtime/GUI gates pending below.
-- [ ] Repeat error-free packaged UI proof with exact source/selection and visible painted detail measurements.
+- [x] (2026-09-06 15:52Z) Fixed dependency regression GREEN (quality1030/70); strict actual packaged UI PASS9.6s, scenario6.636s, rendererErrors empty, cleanup1. Native pointer activation after graph drag replaces unreliable draft Enter/programmatic-click test sequence; actual keyboard Show/Return and source/input assertions retained. Inspected painted150% screenshot.
 - [ ] Complete full local gates, provider-diverse review to fixpoint, normal merge, reviewed integration, Ditz sync and owned cleanup.
 
 ## Surprises & Discoveries
@@ -119,8 +119,8 @@ Work in `/home/tedks/Projects/swarm-ide/repo-task-integration`:
     nix develop --command bazel build //... --jobs=3
     flock --close /tmp/swarm-ide-overnight.UgO2Aw/virtual.lock nix develop --command bazel test //... --jobs=3 --nocache_test_results
 
-The new task acceptance target and human launch command will be recorded here
-when their executable entry points exist. All automated GUI commands must use
+The actual package target is `//tools/task-integration:packaged-task-test`;
+human launch and limits are in `docs/repo-task-browser.md`. All automated GUI commands must use
 the existing owned Xvfb/Openbox harness, never inherited DISPLAY or user ports.
 
 ## Validation and Acceptance
@@ -174,3 +174,8 @@ keyboard corruption and genuine red regression without claiming final acceptance
 
 Revision note (15:43Z): record ROOT-authorized dependency identity correction and
 offline-only materialization; the new fixed-package gates have not yet run.
+
+Revision note (15:52Z): exact command regression and strict packaged desktop proof
+now pass. Fixed full suite68370e3 passed11 targets and failed only the old draft
+test gesture; final aggregate on the corrected gesture remains required. This
+does not relabel earlier console-error runs as final acceptance.

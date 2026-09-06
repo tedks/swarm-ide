@@ -670,3 +670,14 @@ and implement one credential-free vertical journey before any live-policy gate.
 
 Plan revision note (2026-09-06, I2 final): record actual external fixture lifetime
 proof and reviewed combined local gates, without closing real-provider acceptance.
+
+Plan revision note (2026-09-06, T3 integration): the reviewed T1 reader and T2
+browser now join through fixed production createTasks composition, a packaged
+pinned YAML parser and task-only12s bridge deadline. Actual Ditz CLI-authored
+owned repository reaches the unchanged packaged UI; explicit Reveal, literal
+details, stale/refresh/last-good recovery and editor/draft/graph-camera continuity
+have strict owned-virtual proof with no renderer errors. ROOT-authorized exact
+CodeMirror state unification fixes a separately RED-proved cursor corruption.
+Final local aggregate/review/normal-merge/integration evidence belongs to T3's
+handoff; this accounting does not claim an agent turn. Task-to-draft provenance,
+live agent policy/credentials and broader repo navigation remain separate gates.

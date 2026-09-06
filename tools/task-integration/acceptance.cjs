@@ -131,7 +131,18 @@ async function main() {
   await wc.insertText("// unsaved T3 intent"); key("Home", ["control"]); key("Right");
   await until(() => run(() => document.querySelector(".cm-content").cmView.rootView.view.state.selection.main.anchor === 1), "exact dirty editor cursor");
   assert.equal(await run(() => document.querySelector(".cm-content").cmView.rootView.view.state.doc.toString()), fixture.sourceText + "// unsaved T3 intent");
-  await focus(".agent-rail .agent-primary"); key("Return");
+  // Use native pointer activation after graph panning and source editing so
+  // browser drag/focus bookkeeping receives a complete next gesture.
+  const draftPoint = await run(() => {
+    const target = document.querySelector(".agent-rail .agent-primary");
+    target.scrollIntoView({ block: "center" });
+    const rect = target.getBoundingClientRect();
+    return { x: Math.round(rect.x + rect.width / 2), y: Math.round(rect.y + rect.height / 2) };
+  });
+  await paint();
+  wc.sendInputEvent({ type: "mouseMove", ...draftPoint });
+  wc.sendInputEvent({ type: "mouseDown", ...draftPoint, button: "left", clickCount: 1 });
+  wc.sendInputEvent({ type: "mouseUp", ...draftPoint, button: "left", clickCount: 1 });
   await until(() => has(".agent-draft textarea"), "fixed-focus draft");
   await fill(".agent-draft textarea", "Retain this independent user draft; task text is not instructions.");
   await fill(".task-search input", fixture.taskId);
