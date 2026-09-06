@@ -5,7 +5,7 @@ type: task
 component: testing
 release:
 reporter: Ted Smith <tedks@riseup.net>
-status: unstarted
+status: in_progress
 disposition:
 creation_time: 2026-09-06T03:56:24-00:00
 references: []
@@ -37,5 +37,9 @@ log_events:
     R2 PR16 still owns missing explicit test-only Electron worker entry. E2 merge
     parents6ead046+5e26e78 include P1/W2 upstream;286-test local evidence was the
     isolated E2 topic, combined wave verification remains Runtime-owned.'
+- time: 2026-09-06T04:57:42-00:00
+  who: Ted Smith
+  what: started
+  comment: ""
 blocks:
 - agent-run-context-evidence
