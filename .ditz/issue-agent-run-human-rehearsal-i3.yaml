@@ -52,5 +52,13 @@ log_events:
     limits then600s timeout missing. ROOT-cleared T0/W4/P4 integrated; no watched
     app or production-policy readiness. Exact merged tree matches tested code with
     only accounting docs.
+- time: 2026-09-06T07:59:50-00:00
+  who: Ted Smith
+  what: commented
+  comment: Final exact integration814c691 (same tree as normal PR29 merge6527495/topic0eb066f)
+    repeated full29/all10uncached/716tests57files; rehearsal27.5s, real retained4runs/zero
+    timers/cleanup1. Both owned Bazel servers/reviews/GUI stopped; branches clean
+    and pushed. Hosted final topic/merge still in progress, not green. Evidence master/artifacts/overnight-wave/agent-rehearsal-i3/handoff.md;
+    no model/adoption or next slice.
 blocks:
 - first-real-agent-run-surface
