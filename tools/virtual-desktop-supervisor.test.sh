@@ -90,7 +90,7 @@ if [[ -n "${SWARM_FAKE_BAZEL_LOG:-}" ]]; then
     fifo) mkfifo "$base/command.log" ;;
     symlink) ln -s "$SWARM_FAKE_SECRET_FILE" "$base/command.log" ;;
     progress)
-      printf 'header\nPRIVATE_SOURCE_CANARY\n[1 / 197] Compiling src/google/protobuf/descriptor.cc [for tool]; 2s\nINFO: Elapsed time: 21.0s\n' >"$base/command.log" ;;
+      printf '[1 / 197] Compiling src/google/protobuf/descriptor.cc [for tool]; 2s\nPRIVATE_SOURCE_CANARY\nINFO: Elapsed time: 21.0s\n' >"$base/command.log" ;;
   esac
 fi
 exec -a "fake-electron $SWARM_RENDERER_PROCESS_ARGUMENT" node -e '
@@ -177,6 +177,8 @@ run_failure() {
     SWARM_VIRTUAL_DISPLAY="$case_display" SWARM_VIRTUAL_DESKTOP_PORT="$case_port" "$@" \
     "$runner" "$bin_dir/scenario" "$bin_dir/dev" "$name" >"$case_dir/output" 2>&1; then
     fail "$name unexpectedly succeeded"
+  else
+    failure_status=$?
   fi
   grep -q "$expected" "$case_dir/output" || {
     cat "$case_dir/output" >&2
@@ -215,12 +217,15 @@ run_failure app-exit 'app exited' SWARM_FAKE_APP_EXIT=1
 run_failure input-failure 'key input failed' SWARM_FAKE_INPUT_FAIL=1
 run_failure capture-failure 'screenshot capture failed' SWARM_FAKE_CAPTURE_FAIL=1
 run_failure scenario-failure 'scenario exited with status' SWARM_FAKE_SCENARIO_FAIL=1
+[[ "$failure_status" == 1 ]] || fail 'diagnostics replaced scenario exit 1'
 [[ -s "$case_dir/failure.png" ]] || fail 'scenario failure lost its pre-teardown screenshot'
 [[ -s "$case_dir/topology-build.txt" ]] || fail 'scenario failure lost bounded build diagnostics'
 grep -q 'cleanup_complete=1' "$case_dir/supervisor.log" || fail 'failure diagnostics disrupted cleanup'
 run_failure scenario-timeout 'scenario timed out' SWARM_FAKE_SCENARIO_SLEEP=1 SWARM_SCENARIO_TIMEOUT_SECONDS=1
+[[ "$failure_status" == 124 ]] || fail 'diagnostics replaced timeout exit 124'
 [[ -s "$case_dir/failure.png" ]] || fail 'timeout lost its pre-teardown screenshot'
 run_failure blocked-failure-capture 'failure screenshot unavailable' SWARM_FAKE_CAPTURE_SLEEP=1 SWARM_SCENARIO_TIMEOUT_SECONDS=1
+[[ "$failure_status" == 124 ]] || fail 'blocked failure capture replaced timeout exit 124'
 grep -q 'cleanup_complete=1' "$case_dir/supervisor.log" || fail 'blocked failure capture prevented cleanup'
 
 run_failure cleanup-failure 'cleanup_complete=0' SWARM_FAKE_TAMPER_LOCK=1

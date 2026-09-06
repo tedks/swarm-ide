@@ -594,7 +594,10 @@ const read = (name, limit, tail = false) => {
     if (!stat.isFile()) throw Error('not regular');
     const bytes = Buffer.alloc(Math.min(limit, stat.size));
     const count = fs.readSync(fd, bytes, 0, bytes.length, tail ? Math.max(0, stat.size - limit) : 0);
-    return bytes.subarray(0, count).toString('utf8');
+    const text = bytes.subarray(0, count).toString('utf8');
+    // Only a tail starting after byte zero may begin mid-line.
+    if (tail && stat.size > limit) return text.includes('\n') ? text.slice(text.indexOf('\n') + 1) : '';
+    return text;
   } finally { fs.closeSync(fd); }
 };
 const target = '//examples/checkout-world/services/fraudcheck:service_topology';
@@ -625,7 +628,7 @@ try {
   }
   console.log(`nested_output_base=${safe(base)}`);
   const text = read(path.join(base, 'command.log'), 16384, true);
-  const lines = text.split('\n').slice(1); // discard possible partial first line
+  const lines = text.split('\n');
   const progress = lines.filter(line => /^\[[\d,]+ \/ [\d,]+\] (Compiling|Linking|Generating|Extracting|\[Prepa\])/.test(line)
     || /^INFO: (Elapsed time:|[0-9]+ processes:|Build completed|Found [0-9]+ target)/.test(line));
   console.log(`phase=${/Compiling|Linking/.test(progress.join('\n')) ? 'toolchain-work-observed' : 'unclassified'}`);
