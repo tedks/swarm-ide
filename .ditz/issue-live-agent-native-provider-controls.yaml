@@ -26,3 +26,9 @@ log_events:
     New identity re-enters boundary gates. Source unsupported => exact unavailable
     stop, not socket-denial-as-disablement. Full steering/cloud/auth/telemetry remain
     separate gates.'
+- time: 2026-09-06T14:36:44-00:00
+  who: Ted Smith
+  what: blocks agent-run-effective-policy
+  comment: ""
+blocks:
+- agent-run-effective-policy
