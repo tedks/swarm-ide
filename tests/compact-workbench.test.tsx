@@ -83,6 +83,10 @@ describe("compact workbench presentation boundaries", () => {
     expect(selectedPanel()).toBe("none");
     expect(work.getAttribute("aria-expanded")).toBe("false");
     expect(information.getAttribute("aria-expanded")).toBe("false");
+    const activity = screen.getByLabelText("Build jobs and recent activity");
+    expect(activity.tabIndex).toBe(0);
+    activity.focus();
+    expect(document.activeElement).toBe(activity);
     work.focus();
     expect(document.activeElement).toBe(work);
     toggle("work");
