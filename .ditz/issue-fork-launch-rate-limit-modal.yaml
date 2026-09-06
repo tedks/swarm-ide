@@ -28,3 +28,15 @@ log_events:
     blindly accept defaults, consume resets, or persist global settings. Evidence
     /tmp/swarm-ide-task-ui-t2.MreE08/startup-repair.md. Shared launcher untouched;
     follow-up remains open.'
+- time: 2026-09-06T08:26:47-00:00
+  who: Ted Smith
+  what: commented
+  comment: 'C2 recurrence: source-derived process override notices.hide_rate_limit_model_nudge=true
+    did NOT prevent modal in actual complete0.153.4 fork; do not advertise it as solved.
+    Original C2 child retained, zero task count verified, explicit nonpersistent Keep-current
+    selected, original task queued once and watcher replaced. P6 uses a bounded one-shot
+    exact-modal/pane/ROOT-child guard selecting only the already-authorized Keep-current
+    option; no task queue/reset/global setting/trust/update actions, then original
+    launcher owns task delivery. Need installed-build tests for real fork config precedence/modal-specific
+    readiness. Evidence /tmp/swarm-ide-hosted-prereq-c2.5kQVTr/startup-repair.md and
+    /tmp/swarm-ide-live-contract-p6.7klaR5/model-choice-guard.sh.'
