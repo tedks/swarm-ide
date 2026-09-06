@@ -5,8 +5,8 @@ type: task
 component: default
 release:
 reporter: Ted Smith <tedks@riseup.net>
-status: in_progress
-disposition:
+status: closed
+disposition: fixed
 creation_time: 2026-09-06T05:47:03-00:00
 references: []
 log_events:
@@ -40,5 +40,19 @@ log_events:
     Manual actual-Codex activation is excluded from default targets and was not invoked
     by I2. Prior actual final I2+A1 integration493tests/all9 passed; no re-use of
     that count for new P3 aggregate.
+- time: 2026-09-06T06:36:55-00:00
+  who: Ted Smith
+  what: 'closed: fixed'
+  comment: PR24 normal6e054e5, topicf8e9fb3 and pushed integration746644c share treecee00e5f.
+    Actual R1 adapter/R2 durable service-store/namespace-owner joined around fixed
+    external protocol fixture; Stop-terminal-cleanup separation, resistant descendant/outside
+    canary, unexpected exit17 and owning-core SIGKILL/reopen unknown/no replay proved.
+    Reviewed A1/P3/W3/D1 aggregate558tests49files/full25/all9uncached; final plan-only
+    tree repeated full build/quality/required process proof after normal merge. Native+Google
+    CLEAN fixpoint; Anthropic session limit missing. Hosted final topic34016825636
+    in progress, earlier executable CI fails required namespace and policyseedpipe;
+    conditional remote waiver, not hostedgreen. No actual Codex/model/policy availability
+    or watched-app adoption. Hostedpositive and realvertical/effectivepolicy parents
+    remain open.
 blocks:
 - agent-run-vertical-proof
