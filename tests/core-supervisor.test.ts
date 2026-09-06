@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { CoreSupervisor } from "../app/electron/core-supervisor";
 import { PROTOCOL_VERSION, type CoreRequest } from "../protocol/schema";
 import { initialSnapshot } from "../fixtures/world";
+import { unavailableAgentSnapshot } from "../core/agents/unavailable";
 
 class FakeCore extends EventEmitter {
   postMessage = vi.fn();
@@ -23,6 +24,42 @@ function setup() {
 beforeEach(() => vi.useFakeTimers());
 afterEach(() => vi.useRealTimers());
 describe("utility-process supervision", () => {
+  const agent = (type: "agent.launch" | "agent.steer" | "agent.cancel"): CoreRequest => ({
+    protocolVersion: PROTOCOL_VERSION, requestId: type, type,
+    runId: "11111111-1111-4111-8111-111111111111",
+    ...(type === "agent.launch" ? { contextHash: "a".repeat(64) } : {}),
+    ...(type === "agent.steer" ? { expectedTurnId: "turn", text: "Focus on failures" } : {}),
+  } as CoreRequest);
+  it.each(["agent.launch", "agent.steer", "agent.cancel"] as const)("settles %s as unknown on crash/restart/timeout/transport without replay", async (type) => {
+    for (const failure of ["crash", "restart", "timeout", "transport", "invalid"] as const) {
+      const { supervisor, first, children } = setup(); first.ready();
+      if (failure === "transport") first.postMessage.mockImplementation(() => { throw new Error("pipe lost"); });
+      const pending = supervisor.request(agent(type));
+      if (failure === "crash") first.exit();
+      if (failure === "restart") { supervisor.restart(); first.exit(); }
+      if (failure === "timeout") await vi.advanceTimersByTimeAsync(5_000);
+      if (failure === "invalid") first.emit("message", ok(type)); // workspace success cannot acknowledge an agent command
+      expect(await pending).toMatchObject({ ok: false, error: { code: "AGENT_OUTCOME_UNKNOWN" } });
+      await vi.advanceTimersByTimeAsync(100);
+      if (children[1]) { children[1].ready(); expect(children[1].postMessage).not.toHaveBeenCalled(); }
+      supervisor.stop();
+    }
+  });
+  it("forwards agent snapshots with the same generation and rejects old-core events", async () => {
+    const { supervisor, first, children, hooks } = setup(); first.ready();
+    const event = { protocolVersion: PROTOCOL_VERSION, type: "agent.changed", sequence: 9,
+      emittedAt: "2026-09-06T01:00:00.000Z", snapshot: unavailableAgentSnapshot() };
+    first.emit("message", event);
+    expect(hooks.event).toHaveBeenCalledWith(1, event);
+    supervisor.restart(); first.exit(); children[1]!.ready();
+    first.emit("message", { ...event, sequence: 99 });
+    expect(hooks.event).toHaveBeenCalledTimes(1);
+    const input: CoreRequest = { protocolVersion: PROTOCOL_VERSION, requestId: "agents", type: "agent.snapshot" };
+    const pending = supervisor.request(input);
+    children[1]!.emit("message", { ...ok("agents"), agent: { kind: "snapshot", snapshot: unavailableAgentSnapshot() } });
+    expect(await pending).toMatchObject({ ok: true, agent: { kind: "snapshot" } });
+    supervisor.stop();
+  });
   it("waits for readiness and bounds read deadlines", async () => {
     const { supervisor, first } = setup();
     expect(await supervisor.request(read())).toMatchObject({ ok: false, error: { code: "CORE_UNAVAILABLE" } });

@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { CoreEventSchema, CoreResponseSchema, FileEventSchema } from "../protocol/schema";
+import { AgentEventSchema } from "../protocol/agents";
 
 export const LIFECYCLE_CHANNEL = "swarm:lifecycle";
 export const LIFECYCLE_REQUEST_CHANNEL = "swarm:lifecycle-request";
@@ -21,7 +22,7 @@ export const LifecycleRequestSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal("reload"), revision: z.number().int().nonnegative() }).strict(),
 ]);
 export const ResponseEnvelopeSchema = z.object({ generation: z.number().int().nonnegative(), response: CoreResponseSchema });
-export const EventEnvelopeSchema = z.object({ generation: z.number().int().nonnegative(), event: z.union([CoreEventSchema, FileEventSchema]) });
+export const EventEnvelopeSchema = z.object({ generation: z.number().int().nonnegative(), event: z.union([CoreEventSchema, FileEventSchema, AgentEventSchema]) });
 export const DevUpdateSchema = z.object({
   serial: z.number().int().positive(),
   coreRevision: z.number().int().nonnegative(),

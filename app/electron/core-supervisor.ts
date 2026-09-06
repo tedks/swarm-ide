@@ -1,4 +1,5 @@
-import { PROTOCOL_VERSION, parseCoreRequest, parseCoreResponse, parseCoreEvent, parseFileEvent, type CoreRequest, type CoreResponse, type CoreEvent, type FileEvent } from "../../protocol/schema";
+import { PROTOCOL_VERSION, parseCoreRequest, parseCoreResponse, parseCoreResponseForRequest, uncertainMutationCode, parseCoreEvent, parseFileEvent, type CoreRequest, type CoreResponse, type CoreEvent, type FileEvent } from "../../protocol/schema";
+import { parseAgentEvent, type AgentEvent } from "../../protocol/agents";
 import type { CoreState } from "../lifecycle";
 
 export interface CoreProcess {
@@ -29,7 +30,7 @@ export class CoreSupervisor {
   constructor(private readonly hooks: {
     launch(): CoreProcess;
     status(state: CoreState): void;
-    event(generation: number, event: CoreEvent | FileEvent): void;
+    event(generation: number, event: CoreEvent | FileEvent | AgentEvent): void;
   }) {}
 
   private publish(phase: CoreState["phase"], message: string) {
@@ -81,7 +82,8 @@ export class CoreSupervisor {
     this.replace = true;
     this.publish("draining", "Core update pending; draining saves before replacement. Previous information is stale.");
     for (const [id, item] of this.pending) {
-      if (item.request.type !== "file.write") this.settle(id, failure(id, "CORE_UNAVAILABLE", "Core is updating; retry the read after recovery"));
+      if (item.request.type !== "file.write") this.settle(id, failure(id, uncertainMutationCode(item.request) ?? "CORE_UNAVAILABLE",
+        uncertainMutationCode(item.request) ? "Core is updating; command outcome is unknown. Do not replay." : "Core is updating; retry the read after recovery"));
     }
     this.finishDrain();
   }
@@ -99,7 +101,7 @@ export class CoreSupervisor {
     item.resolve(response);
   }
   private settleAll(message: string) {
-    for (const [id, item] of this.pending) this.settle(id, failure(id, item.request.type === "file.write" ? "WRITE_OUTCOME_UNKNOWN" : "CORE_UNAVAILABLE", message));
+    for (const [id, item] of this.pending) this.settle(id, failure(id, uncertainMutationCode(item.request) ?? "CORE_UNAVAILABLE", message));
   }
   private message(message: unknown) {
     if (typeof message === "object" && message !== null && "type" in message) {
@@ -114,17 +116,19 @@ export class CoreSupervisor {
     }
     try {
       const response = parseCoreResponse(message);
-      this.settle(response.requestId, response);
+      const pending = this.pending.get(response.requestId);
+      if (pending) this.settle(response.requestId, parseCoreResponseForRequest(message, pending.request));
       this.finishDrain();
       return;
     } catch { /* It may be an event. */ }
     if (this.state.phase === "ready") {
       try { this.hooks.event(this.state.generation, parseCoreEvent(message)); return; } catch { /* Try file event. */ }
-      try { this.hooks.event(this.state.generation, parseFileEvent(message)); return; } catch { /* Invalid response is terminal for its pending request. */ }
+      try { this.hooks.event(this.state.generation, parseFileEvent(message)); return; } catch { /* Try agent event. */ }
+      try { this.hooks.event(this.state.generation, parseAgentEvent(message)); return; } catch { /* Invalid response is terminal for its pending request. */ }
     }
     if (typeof message === "object" && message !== null && "requestId" in message && typeof message.requestId === "string") {
       const item = this.pending.get(message.requestId);
-      this.settle(message.requestId, failure(message.requestId, item?.request.type === "file.write" ? "WRITE_OUTCOME_UNKNOWN" : "INVALID_CORE_MESSAGE", "Local core returned an invalid message"));
+      this.settle(message.requestId, failure(message.requestId, (item && uncertainMutationCode(item.request)) ?? "INVALID_CORE_MESSAGE", "Local core returned an invalid message"));
       this.finishDrain();
     }
   }
@@ -133,10 +137,13 @@ export class CoreSupervisor {
     if (this.state.phase !== "ready" || !this.process || this.closing) return Promise.resolve(failure(request.requestId, "CORE_UNAVAILABLE", "Local core is unavailable; no operation was sent"));
     if (this.pending.has(request.requestId)) return Promise.resolve(failure(request.requestId, "DUPLICATE_REQUEST", "Request is already pending"));
     return new Promise((resolve) => {
-      const timer = request.type === "file.write" ? null : setTimeout(() => this.settle(request.requestId, failure(request.requestId, "CORE_TIMEOUT", "Local core did not respond in time")), 5_000);
+      const timer = request.type === "file.write" ? null : setTimeout(() => this.settle(request.requestId, failure(request.requestId,
+        uncertainMutationCode(request) ?? "CORE_TIMEOUT", uncertainMutationCode(request)
+          ? "Local core did not respond in time; do not replay uncertain mutations"
+          : "Local core did not respond in time; retry the read after recovery")), 5_000);
       this.pending.set(request.requestId, { request, resolve, timer });
       try { this.process!.postMessage(request); } catch {
-        this.settle(request.requestId, failure(request.requestId, request.type === "file.write" ? "WRITE_OUTCOME_UNKNOWN" : "CORE_UNAVAILABLE", "Local core transport failed"));
+        this.settle(request.requestId, failure(request.requestId, uncertainMutationCode(request) ?? "CORE_UNAVAILABLE", "Local core transport failed"));
       }
     });
   }

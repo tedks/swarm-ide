@@ -22,8 +22,13 @@ application of intelligence before queues, swarm coordination or write authority
 
 - [x] (2026-09-06) Design: read existing cockpit, source bridge, core supervisor and prior topology/reload plans; verify local CLI schema capabilities without running a model.
 - [x] (2026-09-06) Design: choose the adapter, freeze the bridge/lifecycle/context contract, and define three isolated departments.
-- [ ] ROOT approves this design recap and launches the implementation wave.
-- [ ] R0: publish validated contracts, typed unavailable behavior and module interfaces; merge the small base PR.
+- [x] (2026-09-06) ROOT accepted PR #8 and dispatched only R0 in its designated worktree.
+- [x] (2026-09-06) R0: publish validated contracts, typed unavailable behavior and module interfaces in PR #9; remote landing is recorded by that PR's normal merge transaction.
+- [x] (2026-09-06) R0: strict six-command schemas, interface-only adapter/context/store modules and production unavailable dispatch; initial and contract/bridge quality passes succeeded.
+- [x] (2026-09-06) R0: first full build and five uncached Bazel tests passed, including owned virtual desktop smoke (31.6 seconds); 151 focused tests passed at a6d8f4f.
+- [x] (2026-09-06) R0: first fix delta d57de1c passed the full local build/test again (154 focused tests; five Bazel targets, virtual smoke 30.4 seconds). Native and Google convergence clean.
+- [x] (2026-09-06) R0: final code bb3ab3b passed full build and all five uncached Bazel tests (154 focused tests; owned virtual smoke 32.2 seconds). Test-only correction 01fc34c reran quality successfully; unchanged harness tests reused that local evidence.
+- [ ] R0: final council receipt, normal merge and executive handoff without adopting watched master; see PR #9 and master/artifacts/agent-run-contract-base-final for transaction evidence.
 - [ ] R1 and E1: establish installed-adapter conformance and bounded launch context/profile preflight; W1: show fixture-driven cockpit run surface in parallel.
 - [ ] R2: durable lifecycle, process ownership, cancellation and recovery; E2: adversarial fixtures and virtual scenario; W2: wire live state, steering and uncertainty.
 - [ ] R3/W3/E3: integrate, demonstrate one real read-only run, finish relevant local gates/review and normal-merge the feature PRs.
@@ -44,6 +49,13 @@ The current `CoreSupervisor` treats only `file.write` as an uncertain mutation
 and tells other interrupted requests to retry. Agent launch/steer/cancel must
 extend that classification. Existing `Job` requires percentage and resource
 numbers; agent observations must not fill them with invented zeros.
+
+R0 implementation assumptions: the six public agent commands cannot execute a
+provider yet. Command acceptance, terminal turn evidence and process cleanup
+are separate facts. Agent payloads reject unknown fields and measure UTF-8
+bytes. Repository-relative links carry no filesystem authority; the local core
+alone selects a registered root. Late or lost mutation replies must never
+invite replay. Existing workspace and file projections must remain unchanged.
 
 ## Decision Log
 
@@ -68,13 +80,89 @@ Decision (2026-09-06, design department): no provider resume after core death.
 Persist known history, stop the owned process tree and expose uncertain outcomes.
 Renderer reconnect to the same core is supported. Never replay mutations.
 
+Decision (2026-09-06, R0): share protocol version and focus primitives in a small
+common module to avoid a schema/agent import cycle. Keep existing workspace
+focus behavior unchanged and use a strict, bounded focus at the agent boundary.
+Production can report explicit unavailable capabilities through agent.snapshot;
+all other agent methods return ADAPTER_UNAVAILABLE. No fake run is created.
+
+Decision (2026-09-06, R0): concrete named results use kind prepare/launch/steer/
+cancel/snapshot/read. The context and transcript bounds count serialized UTF-8
+bytes (including metadata), conservatively below their ceiling. Instruction
+receipts are capped at 128 per run; future admission/steering must report limits
+rather than evicting them silently. This fills an unspecified collection bound.
+Provider observations live separately on Run, never rewrite submitted context.
+The dispatch-prevented outcome describes cancellation before any process exists;
+it requires not-started/not-needed process/cleanup evidence. It is not a claimed
+provider interruption. These concretize the design's stated pre-dispatch stop.
+
+Decision (2026-09-06, R0): agent mutation uncertainty classification is wired now
+through supervisor/preload, because exposing new methods with the old automatic
+read-retry wording would be unsafe. Durable recovery remains R2's work. One
+renderer line ignores agent events in the workspace reducer; no product UI is
+added. Dedicated tests/agent-bridge.test.ts exercises the real worker dispatcher
+and preload with explicit injected workspace/Electron test doubles; production
+has no fixture selection mechanism.
+
+Decision (2026-09-06, R0 council fixes): bound timestamps to 32 characters, bind
+prepared results back to all request-derived fields, reject contradictory
+cleanup evidence and strictly validate agent failures including known transport
+codes. Preserve legacy workspace error text but reject extra error fields before
+envelope parsing can hide them. IPC/validation failures after a mutation dispatch
+return unknown rather than a rejected promise that callers might treat as safe
+retry. No persistence, process owner or provider work is introduced.
+
+Decision (2026-09-06, Anthropic R0 triage): add INVALID_CURSOR and
+INSTRUCTION_LIMIT errors for invalid history cursors and the explicit receipt
+cap; name the page-record cap. Tighten time ordering, confirmed-turn start time,
+pending receipt errors and identifier control characters. Only setup rejection
+and provider turn evidence are adapter terminal events; the service owns
+prevented dispatch and owned termination. Unavailable capabilities may retain a
+verified policy observation when another capability (for example authentication)
+is unavailable; availability and policy evidence deliberately stay separate.
+ROOT/R2 must consider acknowledgement draining in
+agent-run-restart-drain-policy; bounded late-acknowledgement evidence and
+old-generation definitive rejections are tracked in
+agent-run-late-response-evidence. Neither authorizes replay nor blocks the
+independent R1/W1/E1 fixture slices. Existing conservative behavior is retained.
+
+Decision (2026-09-06, final R0 triage): agent-run-boundary-diagnostics tracks
+non-blocking read-error wording/classification, bounded sanitized validation
+diagnostics and visible Unicode-control handling for operator-facing provider
+summaries. R1/W2 own those concerns; never log raw context/transcript secrets.
+The final test-only correction starts timing rejection tests from a valid
+completed/cleaned-up baseline, so each assertion isolates its intended rule.
+
 ## Outcomes & Retrospective
 
 
-Design only so far. No agent runtime, UI, process-control fixture or credentialed
-run has been built/tested by this gate. Schema generation is evidence of API
-shapes, not a claim of authentication, permission enforcement or successful
-model execution. Keep that distinction in the implementation recaps.
+R0 now supplies the protocol v3 base: protocol/common.ts holds shared version
+and focus primitives; protocol/agents.ts validates six methods, named results,
+immutable prepared context, run summaries/detail, terminal/process/cleanup
+evidence and bounded transcript pages. core/agents/adapter.ts,
+context-provider.ts and store.ts are interfaces only. core/agents/unavailable.ts
+is the only production agent handler: snapshot explicitly reports unavailable,
+and every other agent method returns ADAPTER_UNAVAILABLE. No fake run fallback
+exists. core/worker.ts, app/lifecycle.ts, preload and supervisor carry separate
+agent events/results through the existing generation envelope. App.tsx merely
+ignores agent events in the workspace reducer; there are no new UI controls.
+
+Tests exercise the actual worker dispatcher and preload with explicitly injected
+test doubles, mutation uncertainty, invalid generations/results, bounded Unicode
+payloads, identity/cursor correlation and lifecycle evidence. Full local build
+and five tests, including owned virtual X11, passed for the final production
+code. Exact counts/head-specific logs and review receipts live under the ignored
+master/artifacts/agent-run-contract-base-final directory; PR #9 is the authority
+for normal-merge state, since a commit cannot name its future merge commit.
+
+R1/W1/E1 can build independently from the merged base. R1 owns normalized adapter
+events and shared seams; W1 consumes named results/snapshots with explicit
+fixtures; E1 implements AgentContextProvider and policy evidence. Actual provider
+execution, authentication/policy enforcement, durable storage, process ownership,
+recovery, cockpit controls and real vertical proof remain unimplemented. No
+credentialed run or physical-desktop automation occurred in R0. The existing
+master checkout and app are deliberately not adopted by this child. Keep these
+distinctions in subsequent recaps.
 
 ## Context and Orientation
 
@@ -383,3 +471,11 @@ architecture without implementing it in this first run.
 Plan revision note (2026-09-06): initial design-only wave after stable-window
 adoption. Splits runtime, cockpit and context/evidence behind one small contract
 base; deliberately limits the first real demonstration to read-only analysis.
+
+Plan revision note (2026-09-06, R0 start): record accepted gate, assumptions and
+the minimal shared-schema/unavailable seam before implementation. Later slices
+remain unstarted; watched master/runtime adoption belongs to ROOT.
+
+Plan revision note (2026-09-06, R0 handoff): record delivered module seams,
+local verification and scoped review dispositions. Merge/cleanup is a separate
+recorded transaction; no later department or runtime adoption is claimed.

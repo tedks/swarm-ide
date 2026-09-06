@@ -1,15 +1,15 @@
 import { contextBridge, ipcRenderer } from "electron";
 import { EventEnvelopeSchema, ResponseEnvelopeSchema, LifecycleSchema, LIFECYCLE_CHANNEL, LIFECYCLE_REQUEST_CHANNEL, type LifecycleBridge } from "../lifecycle";
 import {
-  parseCoreEvent,
-  parseFileEvent,
   parseCoreRequest,
-  parseCoreResponse,
+  parseCoreResponseForRequest,
+  uncertainMutationCode,
   type CoreEvent,
   type CoreRequest,
   type CoreResponse,
   type FileEvent,
 } from "../../protocol/schema";
+import type { AgentEvent } from "../../protocol/agents";
 import {
   VIEW_SHELL_ZOOM_CHANNEL,
   parseViewShellResult,
@@ -26,16 +26,22 @@ ipcRenderer.on(LIFECYCLE_CHANNEL, (_event, input: unknown) => {
 
 export interface SwarmBridge {
   request(input: CoreRequest): Promise<CoreResponse>;
-  onEvent(listener: (event: CoreEvent | FileEvent) => void): () => void;
+  onEvent(listener: (event: CoreEvent | FileEvent | AgentEvent) => void): () => void;
 }
 
 const bridge: SwarmBridge = {
   async request(input) {
     const request = parseCoreRequest(input);
-    const envelope = ResponseEnvelopeSchema.parse(await ipcRenderer.invoke(REQUEST_CHANNEL, request));
-    if (envelope.generation < generation) return { protocolVersion: request.protocolVersion, requestId: request.requestId, ok: false, error: { code: request.type === "file.write" ? "WRITE_OUTCOME_UNKNOWN" : "CORE_GENERATION_CHANGED", message: "Core generation changed during the operation" } };
-    generation = envelope.generation;
-    return parseCoreResponse(envelope.response);
+    try {
+      const envelope = ResponseEnvelopeSchema.parse(await ipcRenderer.invoke(REQUEST_CHANNEL, request));
+      if (envelope.generation < generation) return { protocolVersion: request.protocolVersion, requestId: request.requestId, ok: false, error: { code: uncertainMutationCode(request) ?? "CORE_GENERATION_CHANGED", message: "Core generation changed during the operation" } };
+      generation = envelope.generation;
+      return parseCoreResponseForRequest(envelope.response, request);
+    } catch {
+      return { protocolVersion: request.protocolVersion, requestId: request.requestId, ok: false,
+        error: { code: uncertainMutationCode(request) ?? "INVALID_CORE_MESSAGE",
+          message: "Core transport or response validation failed; do not replay uncertain mutations" } };
+    }
   },
   onEvent(listener) {
     const handler = (_event: Electron.IpcRendererEvent, input: unknown) => {
