@@ -30,6 +30,8 @@ import { useAgentWorkbench } from "./agents/use-agent-workbench";
 import { LiveRunRail } from "./agents/LiveRunRail";
 import { LiveRunPane } from "./agents/LiveRunPane";
 import { PreparedLaunchDraft } from "./agents/PreparedLaunchDraft";
+import { AgentReloadGuard } from "./agents/AgentReloadGuard";
+import { protectsAgentIntent } from "./agents/live-state";
 import "./agents/agents.css";
 
 const lensTabs = ["System", "Plan", "Performance", "Refactor"] as const;
@@ -81,6 +83,7 @@ interface ZoomRequest {
 
 export function App() {
   const { client: agentClient, state: liveAgents } = useAgentWorkbench();
+  const agentIntentProtected = protectsAgentIntent(liveAgents);
   const [agents, setAgents] = useState(emptyAgentWorkbench);
   const [agentPaneHeight, setAgentPaneHeight] = useState(290);
   const agentFixtureEnabled = fixturePreviewEnabled(import.meta.env.DEV, import.meta.env.VITE_SWARM_AGENT_DEMO);
@@ -527,24 +530,40 @@ export function App() {
   }, [workspace.snapshot, restoredNavigation, openFile, showSurface, invoke, hotCheckpoint, lifecycle?.core.phase, lifecycle?.core.generation, observedCoreGeneration]);
 
   const checkpointDocument = useCallback(() => {
+    // Read the controller at the actual attempt, including intent entered
+    // after preload preflight but before beforeunload. Never store agent text.
+    if (protectsAgentIntent(agentClient.getSnapshot())) throw new Error("Local agent intent requires a decision before refresh.");
     if (fileTabsRef.current.some(protectsBuffer) || savesInFlightRef.current.size) throw new Error("Save or reconcile buffers before reloading.");
     window.sessionStorage.setItem(NAVIGATION_KEY, JSON.stringify({ paths: [...desiredFilesRef.current], activeSurface: activeSurfaceRef.current, lens: activeLens, focus: workspaceRef.current.snapshot?.focus ?? null, snapshot: workspaceRef.current.snapshot ?? undefined }));
-  }, [activeLens]);
+  }, [activeLens, agentClient]);
   useEffect(() => {
     const unload = (event: BeforeUnloadEvent) => {
       try { checkpointDocument(); } catch {
         event.preventDefault();
         event.returnValue = "";
-        setReloadNotice("Reload deferred: preserve or reconcile your buffers first (navigation storage must also be available).");
+        setReloadNotice(protectsAgentIntent(agentClient.getSnapshot())
+          ? "Reload deferred: inspect local agent intent in the work rail. Nothing was discarded or resent."
+          : "Reload deferred: preserve or reconcile your buffers first (navigation storage must also be available).");
       }
     };
     window.addEventListener("beforeunload", unload);
     return () => window.removeEventListener("beforeunload", unload);
-  }, [checkpointDocument]);
+  }, [checkpointDocument, agentClient]);
+
+  useEffect(() => {
+    if (!agentIntentProtected) setReloadNotice((notice) => notice.includes("inspect local agent intent") ? "Local agent intent resolved. File buffers and navigation storage must still be safe; retry manual refresh if needed." : notice);
+  }, [agentIntentProtected]);
 
   useEffect(() => {
     if (lifecycle?.reload !== "pending" || lifecycle.core.phase !== "ready") return;
-    if (fileTabs.some(protectsBuffer) || savesInFlightRef.current.size) return;
+    if (protectsAgentIntent(agentClient.getSnapshot())) {
+      setReloadNotice("Preload refresh deferred: inspect local agent intent in the work rail. Nothing was discarded or resent.");
+      return;
+    }
+    if (fileTabs.some(protectsBuffer) || savesInFlightRef.current.size) {
+      setReloadNotice("Preload refresh deferred: save or reconcile file buffers first.");
+      return;
+    }
     // Preflight storage before acknowledging. Otherwise a quota failure in
     // beforeunload would repeatedly veto and re-trigger automatic reload.
     try { checkpointDocument(); } catch {
@@ -553,7 +572,7 @@ export function App() {
     }
     setReloadNotice("");
     void window.swarmLifecycle?.reload(lifecycle.revision).catch(() => setReloadNotice("Preload refresh could not be applied; current document retained."));
-  }, [lifecycle, fileTabs, checkpointDocument, pendingWriteRevision]);
+  }, [lifecycle, fileTabs, checkpointDocument, pendingWriteRevision, agentIntentProtected, agentClient]);
 
   useEffect(() => {
     const listener = (event: KeyboardEvent) => {
@@ -594,7 +613,7 @@ export function App() {
   const reconciliationRunning = snapshot?.jobs.some((job) => job.kind === "build" && job.status === "running") ?? false;
   const title = snapshot ? statusLabel(snapshot.reconciliation.status) : "Loading";
   const coreUnavailable = Boolean(window.swarmLifecycle && lifecycle?.core.phase !== "ready");
-  const lifecycleNotice = lifecycle?.reload === "pending" ? "Preload refresh pending — save or reconcile buffers to apply it." : lifecycle?.core.phase !== "ready" ? lifecycle?.core.message : lifecycle?.notice;
+  const lifecycleNotice = lifecycle?.reload === "pending" ? "Preload refresh pending — resolve protected file buffers and local agent intent to apply it." : lifecycle?.core.phase !== "ready" ? lifecycle?.core.message : lifecycle?.notice;
   const lifecycleTitle = import.meta.env.DEV && lifecycle ? ` — Core ${lifecycle.core.generation}:${lifecycle.core.phase} — Doc ${Math.round(performance.timeOrigin)} — Reload ${lifecycle.reload}${lifecycle.notice.includes("Build failed") ? " — Build failed" : ""}${lifecycle.notice.includes("restart required") ? " — Restart required" : ""}` : "";
   const zoomTitle = zoomPending ? "Zoom applying" : zoomPercent === null ? "Zoom unknown" : `Zoom ${zoomPercent}%${import.meta.env.DEV ? `@${zoomOperation}` : ""}`;
   useEffect(() => {
@@ -640,7 +659,7 @@ export function App() {
     ...(agentFixtureEnabled ? [{ label: "Preview agent fixture", detail: "DEMO only · no provider or file bytes · explicit launch", run: () => { setPaletteOpen(false); openAgentDraft(); } }] : []),
   ].filter((command) => command.label.toLowerCase().includes(commandQuery.toLowerCase())), [agentClient, agentFixtureEnabled, openAgentDraft, commandQuery, openFile, reconcile, showSurface]);
 
-  if (!snapshot) return <main className="loading-screen"><div className="loading-mark hmr-probe" />Opening the working world…{error ? <strong>{error}</strong> : null}<small>{lifecycleNotice}</small></main>;
+  if (!snapshot) return <main className="loading-screen"><div className="loading-mark hmr-probe" />Opening the working world…{error ? <strong>{error}</strong> : null}<small>{lifecycleNotice}</small><AgentReloadGuard state={liveAgents} client={agentClient} /></main>;
   return (
     <main className="workbench" style={agents.selected || liveAgents.paneOpen ? { gridTemplateRows: `52px minmax(150px, 1fr) min(${(liveAgents.paneOpen ? liveAgents.height : agentPaneHeight) + 28}px, 48vh)` } : undefined}>
       <header className="topbar">
@@ -658,6 +677,7 @@ export function App() {
       <aside className="work-rail panel">
         <div className="rail-section"><span className="eyebrow">working world</span><h1>swarm-ide</h1><p className="muted">real local repository</p></div>
         <LiveRunRail state={liveAgents} client={agentClient} onDraft={() => agentClient.openDraft(snapshot.focus)} />
+        <AgentReloadGuard state={liveAgents} client={agentClient} />
         <PreparedLaunchDraft state={liveAgents} client={agentClient} dirtyPaths={fileTabs.filter((tab) => protectsBuffer(tab)).map((tab) => tab.path)} />
         {agentFixtureEnabled ? <RunRail state={agents} fixtureEnabled={agentFixtureEnabled} onDraft={openAgentDraft} onSelect={() => { agentClient.closePane(); setAgents((state) => ({ ...state, selected: true })); }} /> : null}
         {agents.draftOpen && agentFixtureEnabled ? <LaunchDraft focus={snapshot.focus} onClose={() => setAgents((state) => ({ ...state, draftOpen: false }))} onLaunch={(context) => { agentClient.closePane(); setAgents((state) => fixtureReducer(state, { type: "launch", context })); }} /> : null}
