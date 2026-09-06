@@ -46,6 +46,16 @@ log_events:
     recovery defect; fixing with exact regressions. Actual BOM red:3failures1073pass.
     Google initial CLEAN; Anthropic actual credit unavailable. No hosted checks or
     master/app adoption.'
+- time: 2026-09-06T18:10:49-00:00
+  who: Ted Smith
+  what: commented
+  comment: 'PR37 implements accepted N0 vertical. Actual four-case packaged proof
+    passes: Swarm root/core/files.ts, unfamiliar committed repo, invalid UTF-8 filename
+    and fingerprint-budget startup; zero renderer errors, exact editor/draft/camera
+    retention, all cleanup complete. Native OpenAI/Google converged; Anthropic credit-unavailable.
+    Full 34-target build passed; final all-local rerun follows narrow compatibility
+    correction in two older palette drivers. No model turn or watched app adoption;
+    search and other foundation gates remain open.'
 blocks:
 - repository-file-search
 blocked_by:
