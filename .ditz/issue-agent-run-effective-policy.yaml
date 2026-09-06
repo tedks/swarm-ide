@@ -28,5 +28,13 @@ log_events:
   who: Ted Smith
   what: blocks agent-run-vertical-proof
   comment: ""
+- time: 2026-09-06T02:55:55-00:00
+  who: Ted Smith
+  what: commented
+  comment: 'E1 council notes: future real-run proof should retain a sanitized actual0.153.4
+    thread/start payload/schema-version evidence, not mistake hand-written deterministic
+    policy fixtures for a live session. Unknown/omitted network evidence currently
+    fails closed even though schema defaults false. E1 does not need credentials or
+    app-server startup.'
 blocks:
 - agent-run-vertical-proof
