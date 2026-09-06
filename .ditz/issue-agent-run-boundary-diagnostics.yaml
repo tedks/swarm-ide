@@ -21,3 +21,10 @@ log_events:
   who: Ted Smith
   what: created
   comment: ""
+- time: 2026-09-06T03:18:07-00:00
+  who: Ted Smith
+  what: commented
+  comment: R1 normalizes invisible Cc/Cf output as visible U+ markers (preserving
+    LF/TAB), with Unicode-safe byte splitting and fixed sanitized provider diagnostics.
+    Raw provider error/stderr/reasoning not published. Remaining read-boundary and
+    W2 diagnostics stay open.
