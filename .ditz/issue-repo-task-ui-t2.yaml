@@ -5,8 +5,8 @@ type: task
 component: default
 release:
 reporter: Ted Smith <tedks@riseup.net>
-status: in_progress
-disposition:
+status: closed
+disposition: fixed
 creation_time: 2026-09-06T07:59:30-00:00
 references: []
 log_events:
@@ -22,5 +22,13 @@ log_events:
   who: Ted Smith
   what: blocks repo-task-surface
   comment: ""
+- time: 2026-09-06T14:47:05-00:00
+  who: Ted Smith
+  what: 'closed: fixed'
+  comment: 'PR31 normal7642eb6, exact tested tree88920d6: bounded Tasks/detail/explicit
+    Reveal UI verified; full30/all11/1018 tests and owned virtual100/150 retention
+    proof passed; all3 provider council CLEAN. Production unavailable intentionally;
+    T3 reader composition/worker packaging/12s deadline and actual metadata proof
+    remain separate.'
 blocks:
 - repo-task-surface
