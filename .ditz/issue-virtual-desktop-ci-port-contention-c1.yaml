@@ -14,3 +14,12 @@ log_events:
   who: Ted Smith
   what: created
   comment: ""
+- time: 2026-09-06T04:53:42-00:00
+  who: Ted Smith
+  what: commented
+  comment: 'C1 PR19 diagnostics head8706993 hosted34012252338 passed Build/Test but
+    dedicated virtual failed before app launch: loopback55174 already occupied, cleanup_complete=1.
+    Artifact9982898784. No topology/X11 inference from this run; no unrelated listener
+    killed or silent port fallback. Preserve explicit occupied-port refusal; next
+    diagnostic should distinguish bind error code/owned listener without dumping unrelated
+    process/env data.'
