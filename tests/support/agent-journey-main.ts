@@ -51,9 +51,11 @@ async function install() {
           await writeFile(join(artifacts, "journey.json"), JSON.stringify(result, null, 2), { mode: 0o600 });
           socket.end(JSON.stringify(result) + "\n");
         } catch (error) {
-          if (window && !window.isDestroyed()) {
-            await writeFile(join(artifacts, "journey-failure.png"), (await window.webContents.capturePage()).toPNG(), { mode: 0o600 }).catch(() => {});
-          }
+          try {
+            if (window && !window.isDestroyed()) {
+              await writeFile(join(artifacts, "journey-failure.png"), (await window.webContents.capturePage()).toPNG(), { mode: 0o600 });
+            }
+          } catch { /* Optional capture must not suppress JSON/socket failure evidence. */ }
           const result = { ok: false, fixtureOnly: true, error: error instanceof Error ? error.message.slice(0, 2000) : "Scenario failed" };
           await writeFile(join(artifacts, "journey.json"), JSON.stringify(result, null, 2), { mode: 0o600 }).catch(() => {});
           socket.end(JSON.stringify(result) + "\n");

@@ -262,12 +262,14 @@ export async function runJourney(options: {
     const completedLive = await read(first);
     assert.equal(completedLive.run.processState, "live");
     assert.equal(completedLive.run.exitCode, null);
-    await screenshot("04-completed-cleanup-pending");
     await control({ action: "cleanup-confirmed", runId: first });
     const completed = await until("durable cleanup", () => read(first), (value) => value.run.cleanup.status === "confirmed");
     assert.equal(completed.run.state, "completed"); assert.equal(completed.run.exitCode, null);
     assert.match(completed.run.cleanup.detail, /fixture|in-process/i);
     await ui("UI cleanup agrees", (value) => value.state === "completed" && value.evidence.includes("cleanup: confirmed"));
+    // PNG capture/encoding/disk I/O must not compete with R2's 2000ms cleanup
+    // deadline. Pending cleanup is asserted above, not held open for a picture.
+    await screenshot("04-completed-cleaned");
     checkpoints.push({ stage, state: completed.run.state, providerOutcome: completed.run.providerOutcome.kind,
       beforeCleanup: completedLive.run.cleanup.status, afterCleanup: completed.run.cleanup.status,
       exitCode: completed.run.exitCode, cleanupDetail: completed.run.cleanup.detail });

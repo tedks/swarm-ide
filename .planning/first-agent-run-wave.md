@@ -40,11 +40,18 @@ application of intelligence before queues, swarm coordination or write authority
 - [x] (2026-09-06) R2 council converged CLEAN in OpenAI native and Google seats after fixing missing push-only storage-failure publication and safely recovering abandoned private snapshot temporaries. Anthropic timed out without a verdict and is explicitly missing, not approval. Hosted run 34011115120 failed its dedicated virtual smoke's known 90-second Reconciling wait; the conditional local-verification waiver applies, not a green-CI claim. PR #16 records the normal merge transaction and landing evidence.
 - [x] (2026-09-06) Reviewed integration d8cf40d combines R2 code with normal-merged W2 PR #15 (6ead046), E2 PR #14 (a4ae558) and P1 PR #13 (2f3ca7f). Full local build and all five uncached targets passed; 404 tests across 36 files. W2 supplies the actual bridge cockpit, E2 supplies adversarial fixtures, and R2 supplies durable lifecycle and separately tested owned process cleanup. No real provider was launched or watched master adopted.
 - [ ] (2026-09-06, I1) Separate test-only worker/virtual execution journey underway in agent-integrated-journey from normal merge e443b38; reuse agent-run-runtime-r2-vertical and agent-run-virtual-scenario-e2. Two small native helpers own fixture composition/tests and the fixed desktop driver; I1 owns bootstrap/integration. No policy promotion.
+- [x] (2026-09-06, I1 checkpoint b9782ea) Actual fixed-focus disk draft, admission, literal stream, accepted/stale steering, Stop/completion versus cleanup, history paging/Reveal and real core crash/unknown/no-replay journey passed on owned virtual X11. Reviewed W2B fa263e7 is included. Full21-target build,435 tests and all6 uncached local targets passed. Deliberate failure after active streaming also retained diagnostics and confirmed owned cleanup. Review fixes/final aggregate landing remain pending, not live-provider proof.
 - [ ] R3/W3/E3: integrate, demonstrate one real read-only run, finish relevant local gates/review and normal-merge the feature PRs.
 - [ ] ROOT deliberately adopts the integrated build if native-main changes require restart; do not silently replace the watched app.
 
 ## Surprises & Discoveries
 
+
+I1's native reviewer identified a test-only timing hazard: screenshot capture,
+PNG encoding and disk I/O were inside R2's two-second disposal deadline. The
+journey now asserts pending cleanup, releases the manual fixture gate, and only
+then captures the completed/cleaned view. The production deadline is unchanged.
+Optional failure screenshots cannot suppress the independent JSON/socket error.
 
 The installed CLI is 0.146.0 while ROOT uses a complete pinned 0.153.4 bundle.
 Both locally generated stable schemas support app-server steering and interrupt;
@@ -209,6 +216,15 @@ completed/cleaned-up baseline, so each assertion isolates its intended rule.
 
 ## Outcomes & Retrospective
 
+
+I1 joins the previously separate seams through an actual owned desktop: the
+test provider is deterministic, but admission/storage, public requests, live
+events, renderer controls and crash recovery are real. The first complete
+journey took roughly3 seconds of fixed automation; this is not model latency.
+`docs/agent-journey.md` explains exact targets, evidence and failure mode. The
+provider and process-owner proof remain deliberately separate; production is
+still unavailable. Final local/council/merge evidence is recorded by I1's PR20
+and its executive handoff, not implied by this checkpoint.
 
 R2 final code c6aa292 joins durable admission, bounded event/command queues,
 steering intent/outcomes, Stop races and recovery against the actual file store.
