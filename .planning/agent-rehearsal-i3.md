@@ -39,7 +39,7 @@ allowed ready to fire first. Bootstrap now synchronously validates its small
 fixed launch envelope before importing main. Later actual GUI proof passed
 navigation/steering/Stop/history and dirty-buffer protection, but DOM click()
 did not establish browser sticky activation after reload. Ordinary controls now
-use actual trusted pointer input and wait for click delivery before another UI
+use actual trusted keyboard activation and wait for click delivery before another UI
 action. These are test-bootstrap/input corrections, not product guard changes.
 
 Native council identified stale success-file reuse and unasserted shutdown

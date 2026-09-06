@@ -360,7 +360,7 @@ export async function runRehearsalProof(options: {
     const raced = await until("terminal disposal retains delivery uncertainty", () => read(third), (value) => value.run.state === "cancelled" &&
       value.run.cleanup.status === "confirmed" && value.run.instructions[0]?.status === "delivery-unknown");
     await ui("honest unknown instruction and reload protection", (value) => value.receipts.includes("Instruction · delivery-unknown") && value.guarded);
-    assert((await observe()).userActivated, "actual pointer input activated this reloaded document before testing its veto");
+    assert((await observe()).userActivated, "trusted keyboard input activated this reloaded document before testing its veto");
     const beforeUnknownVeto = prevented; const beforeUnknownLoads = loads; const beforeAcknowledgment = mutations();
     ownedWindow.webContents.reload();
     await until("unknown intent prevents document reload", async () => prevented, (value) => value > beforeUnknownVeto);
@@ -381,7 +381,7 @@ export async function runRehearsalProof(options: {
     assert.deepEqual(mutations(), beforeAcknowledgment, "no replay after acknowledged refresh");
     checkpoints.push({ stage, state: raced.run.state, cleanup: raced.run.cleanup.status, instruction: raced.run.instructions[0]?.status,
       reloadVetoObserved: true, explicitAction: "Discard local agent intent and allow refresh", acknowledgedLocalReceiptLossOnly: true,
-      durableReceiptUnchanged: true, replayedMutations: 0, realPointerActivationBeforeVeto: true });
+      durableReceiptUnchanged: true, replayedMutations: 0, trustedKeyboardActivationBeforeVeto: true });
     stage = "ordinary window close during active output";
     const fourth = await launch(CLOSE_TASK, 4);
     await ui("fourth active output before caller closes owned window", (value) => value.state === "running" && value.transcriptRecords > 0 && !value.guarded);
