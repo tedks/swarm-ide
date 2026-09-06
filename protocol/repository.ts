@@ -51,6 +51,7 @@ export const RepositoryObservationSchema = z.object({
   const prefix = observation.directory ? `${observation.directory}/` : "";
   if (observation.page >= observation.pageCount || observation.filteredCount > observation.capturedCount ||
       observation.pageCount !== Math.max(1, Math.ceil(observation.filteredCount / REPOSITORY_PAGE_SIZE)) ||
+      observation.entries.length !== Math.min(REPOSITORY_PAGE_SIZE, Math.max(0, observation.filteredCount - observation.page * REPOSITORY_PAGE_SIZE)) ||
       new Set(observation.entries.map((entry) => entry.id)).size !== observation.entries.length)
     context.addIssue({ code: "custom", message: "Invalid directory page or duplicate identities" });
   if (observation.entries.some((entry) => entry.path !== null &&
@@ -58,6 +59,9 @@ export const RepositoryObservationSchema = z.object({
     context.addIssue({ code: "custom", message: "Only immediate directory children belong to an observation" });
   if (observation.reveal?.status === "selected" && !observation.entries.some((entry) => entry.path === observation.reveal!.path && entry.actionable && entry.kind === "file"))
     context.addIssue({ code: "custom", message: "Selected reveal must identify a loaded eligible file" });
+  if (observation.reveal && (!observation.reveal.path.startsWith(prefix) || observation.reveal.path.slice(prefix.length).includes("/") ||
+      (observation.reveal.status === "outside-capture" && observation.complete)))
+    context.addIssue({ code: "custom", message: "Reveal coverage must match its parent observation" });
 });
 export type RepositoryObservation = z.infer<typeof RepositoryObservationSchema>;
 

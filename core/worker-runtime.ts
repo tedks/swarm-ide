@@ -26,6 +26,8 @@ import { WorkingWorldObserver } from "./working-world-observer";
 import type { CreateTaskProvider, TaskProvider } from "./tasks/contracts";
 import { createUnavailableTaskProvider } from "./tasks/unavailable";
 import { parseTaskResultForRequest, type TaskResult } from "../protocol/tasks";
+import { RepositoryError } from "./repository";
+import { type RepositoryResult } from "../protocol/repository";
 
 export interface WorkerDependencies {
   createAgents?: typeof createProductionAgentService;
@@ -87,7 +89,7 @@ function publish(type: CoreEvent["type"], snapshot: WorkspaceSnapshot): void {
   }));
 }
 
-function ok(requestId: string, snapshot: WorkspaceSnapshot, file?: FileResult, agent?: AgentResult, task?: TaskResult): CoreResponse {
+function ok(requestId: string, snapshot: WorkspaceSnapshot, file?: FileResult, agent?: AgentResult, task?: TaskResult, repo?: RepositoryResult): CoreResponse {
   return CoreResponseSchema.parse({
     protocolVersion: PROTOCOL_VERSION,
     requestId,
@@ -97,6 +99,7 @@ function ok(requestId: string, snapshot: WorkspaceSnapshot, file?: FileResult, a
     ...(file ? { file } : {}),
     ...(agent ? { agent } : {}),
     ...(task ? { task } : {}),
+    ...(repo ? { repo } : {}),
   });
 }
 
@@ -119,6 +122,7 @@ async function emitFileChange(path: string): Promise<void> {
     }
   }
   if (fileReadGenerations.get(path) !== generation) return;
+  (await providerPromise).markDirectoryStale(publish);
   post(FileEventSchema.parse({ protocolVersion: PROTOCOL_VERSION, type: "file.changed", sequence: ++sequence, emittedAt: new Date().toISOString(), ...event }));
   workingWorldObserver?.request();
 }
@@ -144,6 +148,7 @@ process.parentPort?.on("message", async (event) => {
   if (event.data?.type === "core.shutdown") {
     if (!shuttingDown) {
       shuttingDown = true;
+      void providerPromise.then((provider) => provider.dispose());
       try {
         await Promise.all([
           agentServicePromise.then((service) => service?.shutdown()),
@@ -192,6 +197,11 @@ process.parentPort?.on("message", async (event) => {
       return;
     }
     switch (request.type) {
+      case "repo.list": {
+        const observation = await provider.listRepository(request, publish);
+        post(parseCoreResponseForRequest(ok(requestId, provider.snapshot(), undefined, undefined, undefined, { kind: "list", observation }), request));
+        return;
+      }
       case "workspace.snapshot":
         post(ok(requestId, provider.snapshot()));
         return;
@@ -237,7 +247,7 @@ process.parentPort?.on("message", async (event) => {
         return;
     }
   } catch (error) {
-    const code = error instanceof WorkspaceFileError ? error.code : "INVALID_REQUEST";
+    const code = error instanceof WorkspaceFileError || error instanceof RepositoryError ? error.code : "INVALID_REQUEST";
     const message = error instanceof Error ? error.message : "Unknown protocol error";
     post(fail(requestId, code, message.slice(0, 512)));
   }
@@ -251,6 +261,10 @@ void providerPromise.then(async (provider) => {
     (error) => provider.markWorkingWorldUnknown(error.message, publish),
   );
   workingWorldObserver.start();
+  workingWorldObserver.request();
+  // Registration is ready before either source fingerprinting or enumeration.
+  // A failed initial directory gets an explicit error observation with Refresh.
+  void provider.listRepository({ protocolVersion: PROTOCOL_VERSION, requestId: "initial-repository", type: "repo.list", directory: "", page: 0, filter: "", refresh: true }, publish).catch(() => undefined);
   const service = await agentServicePromise;
   process.parentPort?.postMessage({ type: "core.ready" });
   const initial = await service?.request({ protocolVersion: PROTOCOL_VERSION, requestId: "initial-agent-snapshot", type: "agent.snapshot" });
@@ -261,6 +275,7 @@ void providerPromise.then(async (provider) => {
 });
 
 process.on("exit", () => {
+  void providerPromise.then((provider) => provider.dispose());
   workingWorldObserver?.close();
   fileWatchers.closeAll();
 });

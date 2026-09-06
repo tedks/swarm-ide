@@ -61,6 +61,10 @@ export const GraphSliceSchema = z.object({
   if (graph.directory && (graph.topologyId !== "repo" || graph.reconciliation !== "gray" ||
       !graph.provenance.some((item) => item.sourceKind === "repo" && item.version === graph.directory!.observationId)))
     context.addIssue({ code: "custom", message: "Directory slices require neutral repository observation provenance" });
+  if (graph.directory && (graph.nodes.length !== graph.directory.entries.length + 1 ||
+      graph.nodes.some((node) => node.status !== "gray") || graph.edges.some((edge) => edge.status !== "gray" || edge.kind !== "contains") ||
+      graph.directory.entries.some((entry) => !graph.nodes.some((node) => node.id === entry.id && node.kind === entry.kind && (node.focus.path ?? null) === entry.path))))
+    context.addIssue({ code: "custom", message: "Directory graph nodes must match their neutral captured page" });
 });
 export type GraphSlice = z.infer<typeof GraphSliceSchema>;
 
