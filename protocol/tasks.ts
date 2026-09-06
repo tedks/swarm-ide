@@ -37,14 +37,17 @@ export const TaskErrorSchema = z.object({
 }).strict();
 export type TaskError = z.infer<typeof TaskErrorSchema>;
 export const TaskBoundaryErrorSchema = TaskErrorSchema.extend({
-  code: z.union([TaskErrorSchema.shape.code, z.enum(["CORE_UNAVAILABLE", "CORE_TIMEOUT", "CORE_GENERATION_CHANGED",
-    "INVALID_CORE_MESSAGE", "INVALID_REQUEST", "DUPLICATE_REQUEST", "UNTRUSTED_RENDERER"])]),
+  // Only failures before a validated provider result use the outer envelope.
+  // Revision/not-found and all observation errors require their correlated task payload.
+  code: z.enum(["TASK_WORLD_MISMATCH", "TASK_OBSERVATION_FAILED", "CORE_UNAVAILABLE", "CORE_TIMEOUT", "CORE_GENERATION_CHANGED",
+    "INVALID_CORE_MESSAGE", "INVALID_REQUEST", "DUPLICATE_REQUEST", "UNTRUSTED_RENDERER"]),
 });
 const count = z.number().int().nonnegative().max(TASK_LIMITS.dependencies);
 export const TaskSummarySchema = z.object({
   id: TaskIdSchema, blob: GitObjectIdSchema, title: text(TASK_LIMITS.titleBytes, 1),
   type: TaskTypeSchema, component: text(TASK_LIMITS.componentBytes), status: TaskStatusSchema,
-  counts: z.object({ blocks: count, blockedBy: count, fileRefs: count }).strict(),
+  counts: z.object({ blocks: count, blockedBy: count,
+    fileRefs: z.number().int().nonnegative().max(TASK_LIMITS.fileRefs) }).strict(),
 }).strict();
 export type TaskSummary = z.infer<typeof TaskSummarySchema>;
 

@@ -159,6 +159,11 @@ describe("task read contract base", () => {
     for (const code of ["CORE_TIMEOUT", "CORE_UNAVAILABLE", "TASK_WORLD_MISMATCH"]) expect(parseCoreResponseForRequest(fail(code, "Unavailable"), snapshotRequest).ok).toBe(false);
     for (const message of ["x\nprivate", "x\u202e", "é".repeat(257)]) expect(() => parseCoreResponseForRequest(fail("TASK_OBSERVATION_FAILED", message), snapshotRequest)).toThrow();
     expect(() => parseCoreResponseForRequest(fail("MADE_UP", "no"), snapshotRequest)).toThrow();
+    for (const request of [snapshotRequest, readRequest]) {
+      for (const code of ["TASK_NOT_FOUND", "TASK_REVISION_EXPIRED", "TASK_METADATA_UNAVAILABLE", "TASK_METADATA_MALFORMED", "TASK_LIMIT_EXCEEDED", "TASK_PROVIDER_UNAVAILABLE", "TASK_REF_CHANGED", "TASK_RECONNECT_REQUIRED"]) {
+        expect(() => parseCoreResponseForRequest({ ...fail(code, "Domain result needs correlated identity"), requestId: request.requestId }, request)).toThrow();
+      }
+    }
     expect(() => TaskObservationSchema.parse({ ...taskObservationFixture("limited"), reason: { code: "TASK_NOT_FOUND", message: "Not a limit" } })).toThrow();
     expect(() => TaskDetailSchema.parse({ ...taskDetailFixture(), description: "\uD800" })).toThrow();
   });
