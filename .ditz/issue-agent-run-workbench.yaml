@@ -32,6 +32,15 @@ log_events:
   who: Ted Smith
   what: blocked by agent-run-workbench-w1
   comment: ""
+- time: 2026-09-06T02:49:51-00:00
+  who: Ted Smith
+  what: commented
+  comment: 'W1 fixture cockpit visible proof: PR10, pushed5d44d98; owned X11 screenshot
+    in master/artifacts/first-agent-wave-final/workbench/streaming.png,29.9s full
+    scripted journey at083119c,cleanup confirmed. Renderer-only opt-in fixture, no
+    provider requests or file attachments. Source/graphs mounted and no implicit focus
+    changes. W2 remains live subscription/history/recovery/real prepare+controls.
+    Final council/local landing underway.'
 blocks:
 - agent-run-vertical-proof
 blocked_by:
