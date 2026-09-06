@@ -133,7 +133,7 @@ describe("document-loss guard local client intent", () => {
     expect(protectsAgentIntent(client.getSnapshot())).toBe(false);
   });
 
-  it("keeps pending launch identity across discard and a late acknowledgement cannot clear replacement intent", async () => {
+  it.each(["accepted", "rejected"] as const)("keeps pending launch identity across discard and late %s cannot clear replacement intent", async (outcome) => {
     const { h, client } = await connected(); client.openDraft(paymentsFileFocus);
     const preparing = client.prepare(); const preparation = h.latest("agent.prepare");
     if (preparation.input.type !== "agent.prepare") throw new Error("Expected preparation");
@@ -145,8 +145,11 @@ describe("document-loss guard local client intent", () => {
     expect(client.getSnapshot().operations[0]?.status).toBe("pending");
     client.clearLocalIntent(client.getSnapshot(), true); client.openDraft(paymentsFileFocus); client.editDraft({ task: "replacement task" });
     await client.launch();
-    h.reply(pending, { kind: "launch", receipt: { runId: draft.runId, contextHash: draft.contextHash, admittedAt: FIXTURE_TIME, status: "admitted" } }); await launching;
-    expect(client.getSnapshot().operations[0]).toMatchObject({ requestId: pending.input.requestId, status: "accepted", text: null, documentLossAcknowledged: true });
+    if (outcome === "accepted") h.reply(pending, { kind: "launch", receipt: { runId: draft.runId, contextHash: draft.contextHash, admittedAt: FIXTURE_TIME, status: "admitted" } });
+    else pending.resolve(CoreResponseSchema.parse({ protocolVersion: PROTOCOL_VERSION, requestId: pending.input.requestId,
+      ok: false, error: { code: "RUN_NOT_ACTIVE", message: "Launch definitively rejected" } }));
+    await launching;
+    expect(client.getSnapshot().operations[0]).toMatchObject({ requestId: pending.input.requestId, status: outcome, text: null, documentLossAcknowledged: true });
     expect(client.getSnapshot().draft?.task).toBe("replacement task");
     expect(h.calls.filter((call) => call.input.type === "agent.launch")).toHaveLength(1);
     expect(protectsAgentIntent(client.getSnapshot())).toBe(true);
@@ -158,10 +161,41 @@ describe("document-loss guard local client intent", () => {
       submittedAt: FIXTURE_TIME, settledAt: FIXTURE_TIME, status: "accepted" as const, error: null };
     const steering = client.reconcileOperation("instruction"); h.read(h.latest("agent.read"), { ...run, instructions: [receipt] }); await steering;
     expect(client.getSnapshot().operations[0]?.status).toBe("accepted");
-    const stop = client.reconcileOperation("stop"); h.read(h.latest("agent.read")); await stop;
+    const callsBeforeStop = h.calls.length; await client.reconcileOperation("stop");
+    expect(h.calls).toHaveLength(callsBeforeStop);
     expect(client.getSnapshot().operations[1]?.status).toBe("delivery-unknown");
-    expect(client.getSnapshot().notice).toContain("absence is not rejection");
+    expect(client.getSnapshot().notice).toContain("Stop delivery cannot be reconciled by this protocol");
     expect(h.calls.every((call) => call.input.type === "agent.read" || call.input.type === "agent.snapshot")).toBe(true);
+  });
+
+  it("retains unknown launch evidence when the core cannot find its run", async () => {
+    const { h, client } = await connected([operation()]);
+    const reading = client.reconcileOperation("local-command"); const pending = h.latest("agent.read");
+    pending.resolve(CoreResponseSchema.parse({ protocolVersion: PROTOCOL_VERSION, requestId: pending.input.requestId,
+      ok: false, error: { code: "RUN_NOT_ACTIVE", message: "No retained run found" } })); await reading;
+    expect(client.getSnapshot().operations[0]).toMatchObject({ requestId: "local-command", status: "delivery-unknown", text: "Private local command" });
+    expect(client.getSnapshot().notice).toContain("absence is not rejection");
+    expect(protectsAgentIntent(client.getSnapshot())).toBe(true);
+    expect(h.calls.map((call) => call.input.type)).toEqual(["agent.snapshot", "agent.read"]);
+  });
+
+  it("reconnect permits a new receipt read and the old finally cannot unlock its duplicate gate", async () => {
+    const { h, client, disconnect } = await connected([operation()]);
+    const oldReading = client.reconcileOperation("local-command"); const oldRead = h.latest("agent.read");
+    disconnect(); client.connect(h.bridge);
+    h.reply(h.latest("agent.snapshot"), { kind: "snapshot", snapshot: h.snapshot }, 2); await drain();
+    const newReading = client.reconcileOperation("local-command"); const newRead = h.latest("agent.read");
+    expect(newRead).not.toBe(oldRead);
+    expect(h.calls.filter((call) => call.input.type === "agent.read")).toHaveLength(2);
+    h.read(oldRead, run, 3); await oldReading;
+    expect(client.getSnapshot().operations[0]?.status).toBe("delivery-unknown");
+    await client.reconcileOperation("local-command");
+    expect(h.calls.filter((call) => call.input.type === "agent.read")).toHaveLength(2);
+    expect(client.getSnapshot().notice).toContain("already pending");
+    h.read(newRead, run, 4); await newReading;
+    expect(client.getSnapshot().operations[0]?.status).toBe("accepted");
+    expect(protectsAgentIntent(client.getSnapshot())).toBe(false);
+    expect(h.calls.every((call) => call.input.type === "agent.snapshot" || call.input.type === "agent.read")).toBe(true);
   });
 
   it("ignores stale and disconnected reconciliation replies and deduplicates overlapping reads", async () => {
