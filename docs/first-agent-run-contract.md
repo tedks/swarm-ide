@@ -135,7 +135,7 @@ All requests retain `{protocolVersion, requestId, type}`. New bounded payloads:
 | `agent.steer` | `{runId, expectedTurnId, text}` → instruction receipt with its request ID; accepted only after the matching provider reply |
 | `agent.cancel` | `{runId}` → cancellation request receipt, **not** proof of interruption |
 | `agent.snapshot` | `{}` → bounded `AgentSnapshot` |
-| `agent.read` | `{runId, afterRecord: integer}` → bounded transcript page with next cursor and truncation indicator |
+| `agent.read` | `{runId, afterRecord: integer}` → bounded run detail (immutable launch context and instruction receipts) plus transcript page, next cursor and truncation indicator |
 
 `CoreResponse` gains an optional discriminated `agent` result; validators require
 the appropriate result at the agent client boundary. `AgentEvent` is
@@ -144,7 +144,10 @@ the existing generation envelope. Use the core's single emission sequence; agent
 state has its own reducer watermark, so a file event is not a missing agent
 record. A snapshot contains at most 20 run summaries, active `runId|null`,
 capabilities/unavailability reason and the most recent 32 transcript records for
-the selected/active run. Full bounded history is paged through `agent.read`, not
+the active run only. Run summaries contain identity, state, times and a short
+task/focus label, not full launch context or receipts. Selection stays in React;
+historical detail is requested with `agent.read`. Full bounded history is paged
+through `agent.read`, not
 copied into every workspace event. Responses carry the same sequence watermark;
 subscribe before initial read, reject old generation/sequence results.
 
@@ -163,8 +166,11 @@ Firm errors include `STALE_CONTEXT`, `BUSY`, `ADAPTER_UNAVAILABLE`,
 `AGENT_OUTCOME_UNKNOWN`. Messages are bounded and sanitized. Invalid requests
 fail before process work. `requestId` identifies transport commands; durable
 `runId` prevents a lost launch acknowledgement from becoming a second launch.
-Steering deduplication is by request ID within its run; payload reuse with
-different text is rejected. Never automatically resend an ambiguous steering
+Before steering dispatch, persist a pending instruction record with request ID,
+bounded text/hash and expected turn. Deduplication is by request ID within its
+run; payload reuse with different text is rejected. Recovery marks unresolved
+pending records delivery-unknown, retaining what was sent. Never automatically
+resend an ambiguous steering
 instruction, cancellation or launch after timeout/reconnect.
 
 ## Lifecycle, cancellation and recovery
