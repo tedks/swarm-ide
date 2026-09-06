@@ -22,5 +22,14 @@ log_events:
   who: Ted Smith
   what: blocks agent-run-vertical-proof
   comment: ""
+- time: 2026-09-06T06:03:04-00:00
+  who: Ted Smith
+  what: commented
+  comment: I2 PR24 code1fd0689 actual joined adapter/service/store/namespace-owner
+    proof passes three fixed external scenarios; all9 local targets/25build/478 tests.
+    ROOT-verified A1 merged077e245, combined493 quality and required process proof
+    pass, actual integration full gates underway. Native+Google CLEAN, Anthropic session
+    limit missing. No installed Codex/model/policy claim or app adoption; parent remains
+    open.
 blocks:
 - agent-run-vertical-proof
