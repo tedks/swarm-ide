@@ -19,6 +19,9 @@
 .build-target-node { position: relative; width: 210px; min-height: 56px; padding: 9px; background: #1b2c21; border: 1px solid #6c7853; border-radius: 5px; }
 .build-target-node small { color: #ad9f73; font: 7px monospace; display: block; margin-bottom: 5px; }
 .build-target-node strong { display: block; overflow-wrap: anywhere; color: #d0d6bb; font: 10px monospace; }
+.build-target-file-owner { border-color: #a3d6a1; background: #2a4230; box-shadow: 0 0 0 1px #709972; }
+.build-file-focus { display: grid; gap: 3px; padding: 4px 8px; font: 9px monospace; color: #9fb6a3; overflow-wrap: anywhere; }
+.build-file-focus strong { color: #d2dfcf; }
 .build-selection { position: absolute; left: 8px; right: 8px; bottom: 8px; display: flex; align-items: center; gap: 6px; padding: 6px; background: #14271feF; border: 1px solid #6d7551; color: #c3caaa; font: 9px monospace; }
 .build-selection strong { flex: 1; min-width: 0; overflow-wrap: anywhere; }
 .build-view-empty, .build-empty-hint { padding: 15px; color: #b2ad8b; font: 11px/1.6 monospace; }

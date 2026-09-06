@@ -54,6 +54,41 @@ export function selectBuildView(snapshot: BuildLinkSnapshot, roots: string[], tr
   return { depths, truncated, links: links.filter((link) => depths.has(link.from) && depths.has(link.to)) };
 }
 
+/** Exact captured file references; package proximity is not ownership evidence. */
+export function fileBuildTargets(snapshot: BuildLinkSnapshot, path: string): string[] {
+  const targets = new Set(buildTargets(snapshot));
+  return [...new Set(snapshot.links.filter((link) => link.toPath === path && targets.has(link.from) && !targets.has(link.to)).map((link) => link.from))].sort();
+}
+
+/** Dependents → file targets → dependencies, without flooding sibling branches. */
+export function selectFileBuildView(snapshot: BuildLinkSnapshot, path: string, transitive: boolean) {
+  const owners = fileBuildTargets(snapshot, path);
+  const targets = new Set(buildTargets(snapshot));
+  const links = snapshot.links.filter((link) => targets.has(link.from) && targets.has(link.to));
+  const depths = new Map(owners.slice(0, BUILD_VIEW_LIMIT).map((label) => [label, 0]));
+  let truncated = owners.length > BUILD_VIEW_LIMIT;
+  const visited = { dependencies: new Set(depths.keys()), dependents: new Set(depths.keys()) };
+  const queue = [...depths.keys()].flatMap((label) => [
+    { label, depth: 0, direction: "dependents" as const }, { label, depth: 0, direction: "dependencies" as const },
+  ]);
+  for (let index = 0; index < queue.length; index++) {
+    const { label, depth, direction } = queue[index]!;
+    if (!transitive && Math.abs(depth) >= 1) continue;
+    const forward = direction === "dependencies";
+    for (const link of links) {
+      if ((forward ? link.from : link.to) !== label) continue;
+      const neighbor = forward ? link.to : link.from;
+      if (visited[direction].has(neighbor)) continue;
+      visited[direction].add(neighbor);
+      if (!depths.has(neighbor) && depths.size >= BUILD_VIEW_LIMIT) { truncated = true; continue; }
+      const nextDepth = depth + (forward ? 1 : -1);
+      if (!depths.has(neighbor)) depths.set(neighbor, nextDepth);
+      queue.push({ label: neighbor, depth: nextDepth, direction });
+    }
+  }
+  return { owners, depths, truncated, links: links.filter((link) => depths.has(link.from) && depths.has(link.to)) };
+}
+
 /** Broad patterns must not produce one unreadably tall column. */
 export function layoutBuildTargets(depths: ReadonlyMap<string, number>) {
   const positions = new Map<string, { x: number; y: number }>();

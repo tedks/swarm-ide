@@ -1,5 +1,5 @@
 import { expect, it } from "vitest";
-import { BUILD_VIEW_LIMIT, buildTargets, layoutBuildTargets, matchBuildTargets, selectBuildView } from "../app/renderer/repository/build-view";
+import { BUILD_VIEW_LIMIT, buildTargets, fileBuildTargets, layoutBuildTargets, matchBuildTargets, selectBuildView, selectFileBuildView } from "../app/renderer/repository/build-view";
 import type { BuildLinkSnapshot } from "../app/renderer/repository/layers";
 
 const labels = ["//:root", "//app:ui", "//app/ui:view", "//apple:other", "//core:api", "//core/agents:runtime"];
@@ -60,4 +60,50 @@ it("packs broad selections without overlaps between root and dependency bands", 
   expect(new Set([...positions.values()].map(({ x, y }) => `${x}:${y}`)).size).toBe(50);
   expect(Math.max(...[...positions.values()].map(({ y }) => y))).toBe(770);
   expect(positions.get("//pkg:t40")!.x).toBeGreaterThan(positions.get("//pkg:t39")!.x);
+});
+
+it("uses exact source links rather than guessing targets from a file's directory", () => {
+  const snapshot = capture();
+  snapshot.links.push({ from: "//core:api", to: "//app:source.ts", fromPath: "core", toPath: "app/source.ts" });
+  expect(fileBuildTargets(snapshot, "app/source.ts")).toEqual(["//app:ui", "//core:api"]);
+  for (const path of ["app/new.ts", "app/source.ts.backup", "app", "source.ts/more"])
+    expect(fileBuildTargets(snapshot, path)).toEqual([]);
+  expect(selectFileBuildView(snapshot, "app/new.ts", true).depths.size).toBe(0);
+});
+
+it("includes upstream consumers and downstream dependencies, but not unrelated siblings of consumers", () => {
+  const snapshot = capture(["//app:ui", "//lib:base", "//leaf:data", "//consumer:app", "//parent:app", "//unrelated:other"]);
+  snapshot.links.push(
+    { from: "//app:ui", to: "//lib:base", fromPath: "app", toPath: "lib" },
+    { from: "//lib:base", to: "//leaf:data", fromPath: "lib", toPath: "leaf" },
+    { from: "//consumer:app", to: "//app:ui", fromPath: "consumer", toPath: "app" },
+    { from: "//consumer:app", to: "//unrelated:other", fromPath: "consumer", toPath: "unrelated" },
+    { from: "//parent:app", to: "//consumer:app", fromPath: "parent", toPath: "consumer" },
+  );
+  const direct = selectFileBuildView(snapshot, "app/source.ts", false);
+  expect([...direct.depths]).toEqual([["//app:ui", 0], ["//consumer:app", -1], ["//lib:base", 1]]);
+  const all = selectFileBuildView(snapshot, "app/source.ts", true);
+  expect(all.depths.get("//parent:app")).toBe(-2);
+  expect(all.depths.get("//leaf:data")).toBe(2);
+  expect(all.depths.has("//unrelated:other")).toBe(false);
+  expect(all.links).toHaveLength(4);
+});
+
+it("bounds multi-owner expansion and cyclic forward/reverse traversal without dangling links", () => {
+  const names = Array.from({ length: BUILD_VIEW_LIMIT + 20 }, (_, index) => `//pkg${index}:rule`);
+  const snapshot = capture(names);
+  for (const label of names) snapshot.links.push({ from: label, to: "//:shared.ts", fromPath: label.slice(2).split(":")[0]!, toPath: "shared.ts" });
+  const many = selectFileBuildView(snapshot, "shared.ts", false);
+  expect(many.owners).toHaveLength(100);
+  expect(many.depths.size).toBe(BUILD_VIEW_LIMIT);
+  expect(many.truncated).toBe(true);
+  for (let index = 0; index < names.length; index++) {
+    const next = (index + 1) % names.length;
+    snapshot.links.push({ from: names[index]!, to: names[next]!, fromPath: `pkg${index}`, toPath: `pkg${next}` });
+  }
+  const cycle = selectFileBuildView(snapshot, "pkg0/source.ts", true);
+  expect(cycle.depths.size).toBe(BUILD_VIEW_LIMIT);
+  expect(cycle.depths.get(names[0]!)).toBe(0);
+  expect(cycle.truncated).toBe(true);
+  expect(cycle.links.every((link) => cycle.depths.has(link.from) && cycle.depths.has(link.to))).toBe(true);
 });
