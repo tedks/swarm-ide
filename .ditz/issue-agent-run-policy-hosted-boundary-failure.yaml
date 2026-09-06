@@ -22,3 +22,9 @@ log_events:
     all7 tests passed. Underlying hosted namespace cause not logged and not established;
     P3 will improve bounded diagnostic only, no test skip or runner/sysctl/AppArmor
     policy changes.
+- time: 2026-09-06T05:21:50-00:00
+  who: Ted Smith
+  what: blocks agent-run-policy-harness-diagnostics
+  comment: ""
+blocks:
+- agent-run-policy-harness-diagnostics
