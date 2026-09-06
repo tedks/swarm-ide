@@ -54,3 +54,11 @@ log_events:
     button and conservatively cancel a pending read. Not reproduced; honest cancellation/re-click
     is safer than stealing newer focus. Future refinement could compare initiating
     active element with a real activation regression. No change to bounded T2.'
+- time: 2026-09-06T14:28:59-00:00
+  who: Ted Smith
+  what: commented
+  comment: 'Final Enter correction received native/Google/Anthropic CLEAN. Anthropic
+    speculative nonblocking note: intentionally holding Enter could auto-repeat onto
+    the newly focused Return button; not reproduced and outside normal single-command
+    keypress, retain as future real-input test rather than changing keyboard conventions
+    now.'
