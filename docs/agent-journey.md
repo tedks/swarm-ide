@@ -30,6 +30,9 @@ agent waiting for a human. For inspection afterwards, the wrapper prints the
 artifact directory. `SWARM_ARTIFACT_DIR` can select an absolute evidence directory
 for the manual target. Screenshots and `journey.json` are the durable handoff.
 The test target puts them in its Bazel undeclared-output directory.
+Hosted CI explicitly includes the new agent test beside the topology test and
+uploads its evidence separately; the ordinary non-desktop test filter alone
+would skip it. A pending/skipped hosted run is not validation evidence.
 
 ## What the proof means
 
