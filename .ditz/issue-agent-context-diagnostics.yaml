@@ -14,3 +14,12 @@ log_events:
   who: Ted Smith
   what: created
   comment: ""
+- time: 2026-09-06T02:55:53-00:00
+  who: Ted Smith
+  what: commented
+  comment: 'E1 council follow-up, non-blocking: distinguish oversized/unreadable provenance
+    in preview rather than only unobserved; consider shared named provenance/source-link
+    bounds and reusable normalized-path schema under Runtime ownership; improve invalid-input
+    vs output-size diagnostics if AgentError union evolves. Current broker independently
+    enforces canonical containment, protocol bounds remain strict, reserved31+1 provenance
+    marker respects max32, and failures are sanitized. No raw error/config logging.'
