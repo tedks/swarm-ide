@@ -32,7 +32,11 @@ application of intelligence before queues, swarm coordination or write authority
 - [x] (2026-09-06) W1: renderer fixture cockpit normal-merged as 6b171b9 (PR #10, topic 28669ba); local full build, all five Bazel targets and owned virtual preview passed, three-provider council CLEAN. Hosted virtual smoke subsequently failed under the recorded local-proof waiver, not green. No watched-app adoption.
 - [x] (2026-09-06) E1: context/preflight normal-merged as 023c6e2 (PR #11, topic 8746804); its Ditz delivery records 212 tests with W1, full build/all five targets and three-provider CLEAN convergence. Effective limited policy remains unavailable. ROOT authorized its narrow nonblocking file-open/FIFO regression.
 - [x] (2026-09-06) R1: bounded adapter, deterministic conformance fixtures and actual fixed-argv fixture subprocess implemented. Shared public contracts unchanged; no live model turn or production wiring.
-- [ ] R1: final integrated local gates, council receipt and normal merge; see PR #12 and the runtime handoff for exact head/transaction evidence.
+- [x] (2026-09-06) R1: PR #12 normal-merged as f547e05, tested topic a1d15b0; 248 unit tests, full build/all five local targets passed. OpenAI native and Google CLEAN; Anthropic timed out without a verdict. Hosted virtual timeout failed under the user's conditional local-verification waiver. Clean pushed integration/first-agent-run includes W1/E1/R1; watched master remains deliberately unadopted.
+- [x] (2026-09-06) ROOT authorized overnight R2/W2/E2 plus independent P1 policy investigation, each isolated from f547e05; small native helpers allowed within explicit owned modules. R2 service/store/namespace owner and private shutdown handshake underway; W2 bridge/recovery cockpit and E2 shared adversarial fixtures underway. No real model turn is authorized in these four slices.
+- [x] (2026-09-06) R2 checkpoint355d40f: durable service/private store, real production disk preparation/history, typed policy-unavailable launch, private shutdown handshake and separately tested namespace-owned transport implemented. No real-provider transport is constructed in production.
+- [x] (2026-09-06) R2 local gates at355d40f:333 tests across33 files (20 service,38 store,12 owner,23 supervisor), full19-target build and all5 uncached Bazel targets passed. Owned virtual topology smoke26.3s; dedicated virtual selective-reload scenario31.7s, cleanup_complete=1. Native window/workspace/focus retained, dirty preload deferred; renderer176ms/core504ms/crash363ms. These are local fixture evidence, not hosted CI or live-agent execution.
+- [ ] R2 checkpoint: provider-diverse council convergence, normal merge and pushed integration handoff pending; watched master/app adoption remains ROOT-owned.
 - [ ] R2: durable lifecycle, process ownership, cancellation and recovery; E2: adversarial fixtures and virtual scenario; W2: wire live state, steering and uncertainty.
 - [ ] R3/W3/E3: integrate, demonstrate one real read-only run, finish relevant local gates/review and normal-merge the feature PRs.
 - [ ] ROOT deliberately adopts the integrated build if native-main changes require restart; do not silently replace the watched app.
@@ -62,6 +66,26 @@ invite replay. Existing workspace and file projections must remain unchanged.
 
 ## Decision Log
 
+
+Decision (2026-09-06, ROOT delegated overnight): intentional core replacement
+closes admission and waits at most 1000 milliseconds for outstanding agent
+mutation acknowledgements, or their earlier existing deadlines. It does not wait
+for an entire turn. Unresolved commands become unknown and are never replayed.
+File saves retain their existing protection. After drain, a private
+core.shutdown/core.shutdown.ready handshake gives the service up to 2000
+milliseconds to persist unknown receipts/outcomes and dispose owned work before
+supervisor fallback termination. A real crash has no acknowledgement grace;
+durable recovery stays conservative. This resolves agent-run-restart-drain-policy.
+
+Decision (2026-09-06, R2 assumptions): a single Linux core owns a private
+per-canonical-workspace store under Electron application data, not in Git.
+Atomic bounded snapshots and an abstract Unix-socket writer lock avoid stale PID
+lock reclamation. The store validates hashes and lifecycle relationships, not
+only JSON shapes. Persisted process IDs never authorize a signal. A namespace
+owner is a Linux lifetime boundary, not evidence of disabled tools or provider
+policy; unavailable user namespaces fail closed. Production constructs no CLI
+transport until ROOT separately accepts P1 and the integration gate. Disk context
+preparation and history are useful without pretending execution is available.
 
 Decision (2026-09-06, R1): the complete installed npm package now reports
 0.153.4, so this slice pins its locally generated stable protocol shapes rather
@@ -172,6 +196,25 @@ completed/cleaned-up baseline, so each assertion isolates its intended rule.
 
 ## Outcomes & Retrospective
 
+
+R2 checkpoint355d40f now joins durable admission, bounded event/command queues,
+steering intent/outcomes, Stop races and recovery against the actual file store.
+Linux namespace fixtures demonstrate hard core-control loss stopping detached
+descendants without touching an unrelated canary. Store and service tests also
+exercise disk-full, corrupted/hostile snapshots, exclusive writers, unknown
+cleanup, old/duplicate events and shutdown during steering-intent persistence.
+Actual production worker construction supplies disk context and private history
+while returning ADAPTER_POLICY_UNAVAILABLE for launch. Full local and owned
+virtual reload gates passed; exact evidence is archived under
+master/artifacts/overnight-wave/runtime. PR #16 records future review/merge state.
+
+This remains a coherent nonlaunchable checkpoint. The separate core-owned test
+worker journey with W2/E2 is agent-run-runtime-r2-vertical (coordinated with E2's
+agent-run-virtual-scenario-e2). P1's investigation supplies no effective-policy
+attestation; it must not silently unlock the adapter. Snapshot-write amplification
+is tracked in agent-run-store-throughput, and explicit proof-based unknown-cleanup
+resolution in agent-run-cleanup-resolution. The runtime parent and vertical proof
+issues remain open; the broader swarm roadmap is not claimed complete.
 
 First parallel wave: W1 supplies an explicitly labeled renderer-only rehearsal;
 E1 supplies bounded disk-context capture/revalidation and truthful unavailable
@@ -540,3 +583,7 @@ real-run acceptance is implied.
 Plan revision note (2026-09-06, R1 convergence): preserve verified peer landings,
 adapter ordering fixes, reused policy seam and exact next-slice dependencies.
 Master/app adoption and the R2 gate stay with ROOT.
+
+Plan revision note (2026-09-06, R2 checkpoint): record the delegated restart
+decision, bounded durable/runtime ownership implementation, exact local evidence,
+nonlaunchable production scope and smallest independently reviewable continuation.

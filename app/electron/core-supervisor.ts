@@ -3,7 +3,8 @@ import { parseAgentEvent, type AgentEvent } from "../../protocol/agents";
 import type { CoreState } from "../lifecycle";
 
 export interface CoreProcess {
-  postMessage(message: CoreRequest): void;
+  // Private main-to-core control; never accepted from the renderer bridge.
+  postMessage(message: CoreRequest | { type: "core.shutdown" }): void;
   kill(): boolean;
   on(event: "message", listener: (message: unknown) => void): unknown;
   on(event: "exit", listener: (code: number) => void): unknown;
@@ -27,6 +28,10 @@ export class CoreSupervisor {
   private timer: ReturnType<typeof setTimeout> | null = null;
   private stableTimer: ReturnType<typeof setTimeout> | null = null;
   private readinessTimer: ReturnType<typeof setTimeout> | null = null;
+  private agentDrainTimer: ReturnType<typeof setTimeout> | null = null;
+  private shutdownTimer: ReturnType<typeof setTimeout> | null = null;
+  private shutdownRequested = false;
+  private replacementKillRequested = false;
   constructor(private readonly hooks: {
     launch(): CoreProcess;
     status(state: CoreState): void;
@@ -49,6 +54,9 @@ export class CoreSupervisor {
       if (this.process !== child) return;
       this.process = null;
       this.clearReadiness();
+      this.clearReplacementTimers();
+      this.shutdownRequested = false;
+      this.replacementKillRequested = false;
       if (this.stableTimer) clearTimeout(this.stableTimer);
       this.settleAll(`Local core exited (${code}); save outcome may be unknown`);
       if (this.closing) return;
@@ -61,6 +69,12 @@ export class CoreSupervisor {
     if (this.readinessTimer) clearTimeout(this.readinessTimer);
     this.readinessTimer = null;
   }
+  private clearReplacementTimers() {
+    if (this.agentDrainTimer) clearTimeout(this.agentDrainTimer);
+    if (this.shutdownTimer) clearTimeout(this.shutdownTimer);
+    this.agentDrainTimer = null;
+    this.shutdownTimer = null;
+  }
   private retry(message: string) {
     if (this.closing) return;
     const delay = [100, 500, 1_500][this.attempts++];
@@ -70,27 +84,64 @@ export class CoreSupervisor {
   }
   private failProcess(message: string) {
     this.clearReadiness();
+    this.clearReplacementTimers();
     this.publish("unavailable", message);
     this.settleAll(message);
     this.process?.kill();
   }
   restart() {
-    if (this.closing) return;
+    // A second rebuild must not extend the first acknowledgement deadline.
+    if (this.closing || this.replace) return;
     this.attempts = 0;
     if (this.timer) { clearTimeout(this.timer); this.timer = null; }
     if (!this.process) { this.start(); return; }
     this.replace = true;
-    this.publish("draining", "Core update pending; draining saves before replacement. Previous information is stale.");
+    this.publish("draining", "Core update pending; draining saves and briefly waiting for agent acknowledgements. Previous information is stale.");
     for (const [id, item] of this.pending) {
-      if (item.request.type !== "file.write") this.settle(id, failure(id, uncertainMutationCode(item.request) ?? "CORE_UNAVAILABLE",
-        uncertainMutationCode(item.request) ? "Core is updating; command outcome is unknown. Do not replay." : "Core is updating; retry the read after recovery"));
+      if (uncertainMutationCode(item.request) === null) {
+        this.settle(id, failure(id, "CORE_UNAVAILABLE", "Core is updating; retry the read after recovery"));
+      }
+    }
+    if (this.hasAgentMutations()) {
+      this.agentDrainTimer = setTimeout(() => {
+        this.agentDrainTimer = null;
+        for (const [id, item] of this.pending) {
+          if (uncertainMutationCode(item.request) === "AGENT_OUTCOME_UNKNOWN") {
+            this.settle(id, failure(id, "AGENT_OUTCOME_UNKNOWN", "Core update acknowledgement deadline expired; command outcome is unknown. Do not replay."));
+          }
+        }
+        this.finishDrain();
+      }, 1_000);
     }
     this.finishDrain();
   }
+  private hasAgentMutations() {
+    return [...this.pending.values()].some((item) => uncertainMutationCode(item.request) === "AGENT_OUTCOME_UNKNOWN");
+  }
   private finishDrain() {
-    if (this.replace && !this.closing && ![...this.pending.values()].some((item) => item.request.type === "file.write")) {
-      this.clearReadiness();
-      this.process?.kill();
+    if (!this.replace || this.closing || this.hasAgentMutations()) return;
+    if (this.agentDrainTimer) clearTimeout(this.agentDrainTimer);
+    this.agentDrainTimer = null;
+    // File writes keep their existing protection; the agent grace never caps a save.
+    if ([...this.pending.values()].some((item) => item.request.type === "file.write") || !this.process || this.shutdownRequested) return;
+    this.clearReadiness();
+    this.shutdownRequested = true;
+    // Acknowledgement drain is not a whole-turn wait. The core now persists
+    // uncertain run state and closes its owned lifetime before confirming ready.
+    this.shutdownTimer = setTimeout(() => {
+      this.publish("unavailable", "Core shutdown was not confirmed; unfinished agent outcomes and cleanup remain unknown.");
+      this.killReplacement();
+    }, 2_000);
+    try { this.process.postMessage({ type: "core.shutdown" }); } catch {
+      this.publish("unavailable", "Core shutdown transport failed; unfinished agent outcomes and cleanup remain unknown.");
+      this.killReplacement();
+    }
+  }
+  private killReplacement() {
+    this.clearReplacementTimers();
+    if (this.process && !this.replacementKillRequested) {
+      this.replacementKillRequested = true;
+      this.process.kill();
     }
   }
   private settle(id: string, response: CoreResponse) {
@@ -105,6 +156,10 @@ export class CoreSupervisor {
   }
   private message(message: unknown) {
     if (typeof message === "object" && message !== null && "type" in message) {
+      if (message.type === "core.shutdown.ready") {
+        if (this.replace && this.shutdownRequested) this.killReplacement();
+        return;
+      }
       if (message.type === "core.ready") {
         if (this.state.phase !== "starting") return;
         this.clearReadiness();
@@ -137,10 +192,13 @@ export class CoreSupervisor {
     if (this.state.phase !== "ready" || !this.process || this.closing) return Promise.resolve(failure(request.requestId, "CORE_UNAVAILABLE", "Local core is unavailable; no operation was sent"));
     if (this.pending.has(request.requestId)) return Promise.resolve(failure(request.requestId, "DUPLICATE_REQUEST", "Request is already pending"));
     return new Promise((resolve) => {
-      const timer = request.type === "file.write" ? null : setTimeout(() => this.settle(request.requestId, failure(request.requestId,
-        uncertainMutationCode(request) ?? "CORE_TIMEOUT", uncertainMutationCode(request)
-          ? "Local core did not respond in time; do not replay uncertain mutations"
-          : "Local core did not respond in time; retry the read after recovery")), 5_000);
+      const timer = request.type === "file.write" ? null : setTimeout(() => {
+        this.settle(request.requestId, failure(request.requestId,
+          uncertainMutationCode(request) ?? "CORE_TIMEOUT", uncertainMutationCode(request)
+            ? "Local core did not respond in time; do not replay uncertain mutations"
+            : "Local core did not respond in time; retry the read after recovery"));
+        this.finishDrain();
+      }, 5_000);
       this.pending.set(request.requestId, { request, resolve, timer });
       try { this.process!.postMessage(request); } catch {
         this.settle(request.requestId, failure(request.requestId, uncertainMutationCode(request) ?? "CORE_UNAVAILABLE", "Local core transport failed"));
@@ -153,6 +211,7 @@ export class CoreSupervisor {
     if (this.timer) clearTimeout(this.timer);
     if (this.stableTimer) clearTimeout(this.stableTimer);
     this.clearReadiness();
+    this.clearReplacementTimers();
     this.settleAll("Application is shutting down");
     this.publish("stopped", "Application is shutting down");
     this.process?.kill();

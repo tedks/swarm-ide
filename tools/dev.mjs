@@ -91,7 +91,7 @@ const common = {
 
 const build = await context({
   ...common,
-  entryPoints: ["app/electron/main.ts", "app/electron/preload.ts", "core/worker.ts"].map((path) => resolve(workspace, path)),
+  entryPoints: ["app/electron/main.ts", "app/electron/preload.ts", "core/worker.ts", "core/agents/owner-process.mjs"].map((path) => resolve(workspace, path)),
   outbase: workspace,
   outdir: outputRoot,
   write: false,

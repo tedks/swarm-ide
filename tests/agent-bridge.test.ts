@@ -48,6 +48,10 @@ describe("agent unavailable bridge integration", () => {
       expect(parent.postMessage).toHaveBeenCalledWith(expect.objectContaining({ requestId: "workspace", ok: true, snapshot: initialSnapshot() }));
       const agentEvent = parent.postMessage.mock.calls.find(([value]) => value.type === "agent.changed")![0];
       expect(agentEvent).toMatchObject({ sequence: 1, snapshot: unavailableAgentSnapshot() });
+      await (dispatch as unknown as (message: { data: { type: string } }) => Promise<void>)({ data: { type: "core.shutdown" } });
+      expect(parent.postMessage).toHaveBeenCalledWith({ type: "core.shutdown.ready" });
+      await dispatch({ data: { protocolVersion: PROTOCOL_VERSION, requestId: "after-shutdown", type: "agent.snapshot" } });
+      expect(parent.postMessage).toHaveBeenCalledWith(expect.objectContaining({ requestId: "after-shutdown", ok: false, error: expect.objectContaining({ code: "CORE_UNAVAILABLE" }) }));
     } finally {
       for (const listener of process.listeners("exit")) if (!exitListeners.includes(listener)) process.removeListener("exit", listener);
       if (previous) Object.defineProperty(process, "parentPort", previous);
