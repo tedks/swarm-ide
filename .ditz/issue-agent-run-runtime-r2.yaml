@@ -5,8 +5,8 @@ type: feature
 component: default
 release:
 reporter: Ted Smith <tedks@riseup.net>
-status: in_progress
-disposition:
+status: closed
+disposition: fixed
 creation_time: 2026-09-06T03:46:39-00:00
 references: []
 log_events:
@@ -22,5 +22,13 @@ log_events:
   who: Ted Smith
   what: blocks agent-run-runtime
   comment: ""
+- time: 2026-09-06T04:29:45-00:00
+  who: Ted Smith
+  what: 'closed: fixed'
+  comment: 'R2 PR #16 normal-merged after CLEAN OpenAI/Google convergence (Anthropic
+    timed out), 340 runtime and 404 integrated local tests/all five targets/build,
+    owned reload and real preparation screenshots. Durable core service/store/lifetime
+    delivered; production policy-unavailable. Parent and explicit test-worker vertical/policy
+    gates remain open.'
 blocks:
 - agent-run-runtime
