@@ -22,7 +22,8 @@ desktop without an explicit human launch choice.
 - [x] (2026-09-06 07:10Z) Implement fixed test-only responder/service, main/worker and compiled launch target; PR29 published at2f6c348.
 - [x] (2026-09-06) Real context/service tests and packaging/argument boundary quality passed; initial eight new service tests included566 tests across50 files.
 - [x] (2026-09-06) Integrate ROOT-cleared P4 normal3c50d7f without production changes.
-- [ ] Prove ordinary UI operation and reload/close behavior on owned virtual X11.
+- [x] (2026-09-06 07:24Z) Actual ordinary-UI four-run proof passed26.058s on owned virtual X11, cleanup_complete=1; final disk/zero-timer validator passed after ordinary active close.
+- [x] (2026-09-06) Native OpenAI and foreign Google convergence CLEAN; Anthropic actual session-limit unavailable, not approval. Final evidence-label nit independently verified at657c4d6.
 - [ ] Complete local gates, provider-diverse review, Ditz, normal merge and reviewed integration.
 
 ## Surprises & Discoveries
@@ -69,8 +70,24 @@ shutdown code and native window behavior are not changed.
 ## Outcomes & Retrospective
 
 
-Implementation and acceptance are underway. No model readiness, hosted success,
-watched-master adoption or completed user-facing delivery is claimed yet.
+The compiled human target now remains open between ordinary actions without
+I1's private settlement driver. Actual virtual acceptance exercised fixed-focus
+disk preparation, literal multibyte/HTML-shaped output, accepted and delayed-race
+steering, Stop versus terminal/cleanup, paged history, source/graph retention,
+unsaved-buffer veto, clean reload with zero replay, and closing during active
+output. After core exit a read-only validator found all four actual retained
+runs, including conservative unknown/delivery-unknown state, four disposals and
+zero pending timers/operations. The passing journey took26.058 seconds; total
+owned harness time27.002 seconds with cleanup_complete=1. Both modes use the
+same compiled file renderer. Human desktop access remains deliberately uninvoked.
+
+At657c4d6 the own code's review is CLEAN in native OpenAI and foreign Google;
+Anthropic hit its session limit and is missing, not approval. The quality gate
+passed640 tests across53 files; final full build/all-target checks and reviewed
+aggregate landing are recorded below when complete. Root integration is held
+at reviewed746644c until ordinary peer clearances are appended, not inferred
+from unreviewed remote-master movement. No model readiness, hosted success,
+watched-master adoption or remote merge is claimed at this checkpoint.
 
 ## Context and Orientation
 
