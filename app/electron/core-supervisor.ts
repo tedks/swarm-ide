@@ -123,7 +123,7 @@ export class CoreSupervisor {
     } catch { /* It may be an event. */ }
     if (this.state.phase === "ready") {
       try { this.hooks.event(this.state.generation, parseCoreEvent(message)); return; } catch { /* Try file event. */ }
-      try { this.hooks.event(this.state.generation, parseFileEvent(message)); return; } catch { /* Invalid response is terminal for its pending request. */ }
+      try { this.hooks.event(this.state.generation, parseFileEvent(message)); return; } catch { /* Try agent event. */ }
       try { this.hooks.event(this.state.generation, parseAgentEvent(message)); return; } catch { /* Invalid response is terminal for its pending request. */ }
     }
     if (typeof message === "object" && message !== null && "requestId" in message && typeof message.requestId === "string") {
@@ -138,7 +138,9 @@ export class CoreSupervisor {
     if (this.pending.has(request.requestId)) return Promise.resolve(failure(request.requestId, "DUPLICATE_REQUEST", "Request is already pending"));
     return new Promise((resolve) => {
       const timer = request.type === "file.write" ? null : setTimeout(() => this.settle(request.requestId, failure(request.requestId,
-        uncertainMutationCode(request) ?? "CORE_TIMEOUT", "Local core did not respond in time; do not replay uncertain mutations")), 5_000);
+        uncertainMutationCode(request) ?? "CORE_TIMEOUT", uncertainMutationCode(request)
+          ? "Local core did not respond in time; do not replay uncertain mutations"
+          : "Local core did not respond in time; retry the read after recovery")), 5_000);
       this.pending.set(request.requestId, { request, resolve, timer });
       try { this.process!.postMessage(request); } catch {
         this.settle(request.requestId, failure(request.requestId, uncertainMutationCode(request) ?? "CORE_UNAVAILABLE", "Local core transport failed"));

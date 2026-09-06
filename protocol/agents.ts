@@ -6,13 +6,13 @@ export const AGENT_LIMITS = {
   taskBytes: 16 * 1024, attachmentBytes: 64 * 1024, contextBytes: 128 * 1024,
   providerLineBytes: 1024 * 1024, recordBytes: 64 * 1024, pageBytes: 256 * 1024,
   tailBytes: 512 * 1024, transcriptBytes: 8 * 1024 * 1024, storeBytes: 64 * 1024 * 1024,
-  history: 20, tailRecords: 32, receipts: 128, draftMs: 5 * 60_000, deadlineMs: 10 * 60_000,
+  history: 20, tailRecords: 32, pageRecords: 2048, receipts: 128, draftMs: 5 * 60_000, deadlineMs: 10 * 60_000,
 } as const;
 const encoder = new TextEncoder();
 export const utf8Bytes = (text: string): number => encoder.encode(text).byteLength;
 const text = (max: number, min = 1) => z.string().min(min).max(max)
   .refine((value) => utf8Bytes(value) <= max, "UTF-8 byte limit exceeded");
-const id = text(256).refine((value) => !/[\x00-\x20\x7f]/.test(value), "Invalid identifier");
+const id = text(256).refine((value) => !/[\p{White_Space}\p{Cc}\p{Cf}]/u.test(value), "Invalid identifier");
 const path = text(4096).refine((value) =>
   !/[\\\x00-\x1f\x7f:]/.test(value) &&
   value.split("/").every((part) => part !== "" && part !== "." && part !== ".."),
@@ -24,7 +24,7 @@ export const RunIdSchema = z.string().uuid();
 export const AgentErrorSchema = z.object({
   code: z.enum(["STALE_CONTEXT", "BUSY", "ADAPTER_UNAVAILABLE", "ADAPTER_POLICY_UNAVAILABLE",
     "UNSUPPORTED_CONTROL", "RUN_NOT_ACTIVE", "STALE_TURN", "OUTPUT_LIMIT",
-    "STORAGE_UNAVAILABLE", "STORAGE_FULL", "AGENT_OUTCOME_UNKNOWN"]),
+    "STORAGE_UNAVAILABLE", "STORAGE_FULL", "AGENT_OUTCOME_UNKNOWN", "INVALID_CURSOR", "INSTRUCTION_LIMIT"]),
   message: text(512).refine((value) => !/[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]/.test(value), "Unsanitized error message"),
 }).strict();
 export type AgentError = z.infer<typeof AgentErrorSchema>;
@@ -131,7 +131,7 @@ export const InstructionReceiptSchema = z.object({
   if ((value.status === "pending") !== (value.settledAt === null) ||
       (value.settledAt !== null && Date.parse(value.settledAt) < Date.parse(value.submittedAt)) ||
       (value.status === "rejected" && value.error === null) ||
-      (value.status === "accepted" && value.error !== null)) {
+      ((value.status === "accepted" || value.status === "pending") && value.error !== null)) {
     ctx.addIssue({ code: "custom", message: "Inconsistent instruction receipt" });
   }
 });
@@ -195,6 +195,7 @@ export const RunSchema = z.object({
   const terminal = isTerminalRunState(run.state);
   if (terminal !== (run.endedAt !== null) || terminal !== (run.terminalReason !== null)) issue("Terminal states require end time and reason");
   if (Date.parse(run.updatedAt) < Date.parse(run.createdAt) ||
+      (run.startedAt !== null && run.endedAt !== null && Date.parse(run.endedAt) < Date.parse(run.startedAt)) ||
       [run.startedAt, run.endedAt].some((at) => at !== null &&
         (Date.parse(at) < Date.parse(run.createdAt) || Date.parse(at) > Date.parse(run.updatedAt)))) issue("Invalid run timestamps");
   if (run.providerTurnId && !run.providerThreadId) issue("A turn requires its thread");
@@ -205,7 +206,7 @@ export const RunSchema = z.object({
       (run.cleanup.status === "not-needed" && run.processState !== "not-started") ||
       (run.processState === "not-started" && run.cleanup.status !== "not-needed")) issue("Cleanup must agree with observed process state");
   if (run.providerOutcome.kind === "turn" &&
-      (run.providerOutcome.threadId !== run.providerThreadId || run.providerOutcome.turnId !== run.providerTurnId)) issue("Terminal evidence must match the run's turn");
+      (run.providerOutcome.threadId !== run.providerThreadId || run.providerOutcome.turnId !== run.providerTurnId || run.startedAt === null)) issue("Terminal evidence must match the run's confirmed turn");
   const outcome = run.providerOutcome;
   if (run.state === "completed" && !(outcome.kind === "turn" && outcome.status === "completed")) issue("Completion requires terminal provider evidence");
   if (run.state === "failed" && !(outcome.kind === "setup-rejected" || (outcome.kind === "turn" && outcome.status === "failed"))) issue("Failure requires setup or terminal provider evidence");
@@ -248,7 +249,7 @@ export const CancellationReceiptSchema = z.object({
 }).strict();
 export type CancellationReceipt = z.infer<typeof CancellationReceiptSchema>;
 export const TranscriptPageSchema = z.object({
-  records: records(2048, AGENT_LIMITS.pageBytes), nextCursor: cursor, truncated: z.boolean(),
+  records: records(AGENT_LIMITS.pageRecords, AGENT_LIMITS.pageBytes), nextCursor: cursor, truncated: z.boolean(),
 }).strict().refine((page) => page.records.length === 0 || page.nextCursor === page.records.at(-1)!.recordId,
   "Cursor must identify last returned record");
 export type TranscriptPage = z.infer<typeof TranscriptPageSchema>;

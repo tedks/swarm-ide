@@ -69,6 +69,7 @@ describe("strict agent contract v3", () => {
     for (const bad of [
       { ...prepare, taskText: "é".repeat(8193) },
       { ...prepare, requestId: "x".repeat(257) },
+      ...["a\u0085b", "a\u202eb", "a\u00a0b"].map((requestId) => ({ ...prepare, requestId })),
       { ...prepare, model: "🚀".repeat(100) },
       { ...requests[1], runId: "not-uuid" },
       { ...requests[2], text: "🚀".repeat(4097) },
@@ -93,11 +94,14 @@ describe("strict agent contract v3", () => {
     expect(RunSchema.parse(run())).toBeDefined();
     const ended = { ...run(), state: "completed", endedAt: at, terminalReason: "No final answer supplied", processState: "exited", exitCode: 0 };
     expect(() => RunSchema.parse(ended)).toThrow("terminal provider evidence");
-    const completed = { ...ended, providerThreadId: "thread", providerTurnId: "turn",
+    const completed = { ...ended, startedAt: at, providerThreadId: "thread", providerTurnId: "turn",
       providerOutcome: { kind: "turn", threadId: "thread", turnId: "turn", status: "completed", observedAt: at } };
     expect(RunSchema.parse({ ...completed, processState: "live", exitCode: null,
       cleanup: { status: "pending", observedAt: at, detail: "Awaiting disposal" } }).state).toBe("completed");
     expect(() => RunSchema.parse({ ...completed, providerTurnId: "other" })).toThrow();
+    expect(() => RunSchema.parse({ ...completed, startedAt: null })).toThrow();
+    expect(() => RunSchema.parse({ ...completed, startedAt: "2026-09-06T01:00:02.000Z",
+      endedAt: "2026-09-06T01:00:01.000Z", updatedAt: "2026-09-06T01:00:03.000Z" })).toThrow();
     expect(() => RunSchema.parse({ ...run(), state: "running" })).toThrow();
     expect(() => RunSchema.parse({ ...run(), exitCode: 0 })).toThrow();
     expect(() => RunSchema.parse({ ...completed, state: "unknown" })).toThrow();
@@ -131,6 +135,7 @@ describe("strict agent contract v3", () => {
   });
   it("distinguishes persisted steering pending/accepted/rejected/unknown receipts", () => {
     expect(InstructionReceiptSchema.parse(receipt)).toEqual(receipt);
+    expect(() => InstructionReceiptSchema.parse({ ...receipt, error: { code: "STALE_TURN", message: "already failed" } })).toThrow();
     expect(() => InstructionReceiptSchema.parse({ ...receipt, status: "accepted" })).toThrow();
     expect(InstructionReceiptSchema.parse({ ...receipt, status: "accepted", settledAt: at }).status).toBe("accepted");
     expect(() => InstructionReceiptSchema.parse({ ...receipt, status: "rejected", settledAt: at })).toThrow();
@@ -234,6 +239,18 @@ describe("strict agent contract v3", () => {
       expect(() => parseCoreResponseForRequest({ protocolVersion: PROTOCOL_VERSION,
         requestId: inputs[i]!.requestId, ok: true, sequence: 1, snapshot: initialSnapshot(), agent }, inputs[i]!)).toThrow();
     });
+    const moreMismatches = [
+      { request: requests[1]!, agent: { kind: "launch", receipt: { runId, contextHash: "b".repeat(64), admittedAt: at, status: "admitted" } } },
+      { request: requests[2]!, agent: { kind: "steer", runId: anotherRun, receipt } },
+      { request: requests[2]!, agent: { kind: "steer", runId, receipt: { ...receipt, text: "different text" } } },
+      { request: requests[2]!, agent: { kind: "steer", runId, receipt: { ...receipt, requestId: "different-command" } } },
+      { request: requests[3]!, agent: { kind: "cancel", receipt: { runId: anotherRun, requestId: "cancel", requestedAt: at, status: "requested" } } },
+      { request: { ...requests[5]!, type: "agent.read" as const, runId, afterRecord: 1 },
+        agent: { kind: "read", run: run(), page: { records: [], nextCursor: 0, truncated: false } } },
+    ];
+    for (const { request, agent } of moreMismatches) expect(() => parseCoreResponseForRequest({
+      protocolVersion: PROTOCOL_VERSION, requestId: request.requestId, ok: true, sequence: 1,
+      snapshot: initialSnapshot(), agent }, request)).toThrow();
     expect(() => parseCoreResponseForRequest({ protocolVersion: PROTOCOL_VERSION,
       requestId: "read", ok: true, sequence: 1, snapshot: initialSnapshot(),
       agent: { kind: "read", run: run(), page: { records: [record], nextCursor: 1, truncated: false } } },

@@ -26,6 +26,7 @@ application of intelligence before queues, swarm coordination or write authority
 - [ ] R0: publish validated contracts, typed unavailable behavior and module interfaces; merge the small base PR.
 - [x] (2026-09-06) R0: strict six-command schemas, interface-only adapter/context/store modules and production unavailable dispatch; initial and contract/bridge quality passes succeeded.
 - [x] (2026-09-06) R0: first full build and five uncached Bazel tests passed, including owned virtual desktop smoke (31.6 seconds); 151 focused tests passed at a6d8f4f.
+- [x] (2026-09-06) R0: first fix delta d57de1c passed the full local build/test again (154 focused tests; five Bazel targets, virtual smoke 30.4 seconds). Native and Google convergence clean.
 - [ ] R0: final local build/test, council fixpoint, normal merge and executive handoff without adopting watched master.
 - [ ] R1 and E1: establish installed-adapter conformance and bounded launch context/profile preflight; W1: show fixture-driven cockpit run surface in parallel.
 - [ ] R2: durable lifecycle, process ownership, cancellation and recovery; E2: adversarial fixtures and virtual scenario; W2: wire live state, steering and uncertainty.
@@ -109,6 +110,20 @@ codes. Preserve legacy workspace error text but reject extra error fields before
 envelope parsing can hide them. IPC/validation failures after a mutation dispatch
 return unknown rather than a rejected promise that callers might treat as safe
 retry. No persistence, process owner or provider work is introduced.
+
+Decision (2026-09-06, Anthropic R0 triage): add INVALID_CURSOR and
+INSTRUCTION_LIMIT errors for invalid history cursors and the explicit receipt
+cap; name the page-record cap. Tighten time ordering, confirmed-turn start time,
+pending receipt errors and identifier control characters. Only setup rejection
+and provider turn evidence are adapter terminal events; the service owns
+prevented dispatch and owned termination. Unavailable capabilities may retain a
+verified policy observation when another capability (for example authentication)
+is unavailable; availability and policy evidence deliberately stay separate.
+ROOT/R2 must consider acknowledgement draining in
+agent-run-restart-drain-policy; bounded late-acknowledgement evidence and
+old-generation definitive rejections are tracked in
+agent-run-late-response-evidence. Neither authorizes replay nor blocks the
+independent R1/W1/E1 fixture slices. Existing conservative behavior is retained.
 
 ## Outcomes & Retrospective
 

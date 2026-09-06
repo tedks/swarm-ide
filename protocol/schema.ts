@@ -336,12 +336,16 @@ export function parseCoreResponse(input: unknown): CoreResponse {
 }
 
 /** Successful agent replies must identify the exact command, never empty success. */
+const agentResultKind = {
+  "agent.prepare": "prepare", "agent.launch": "launch", "agent.steer": "steer",
+  "agent.cancel": "cancel", "agent.snapshot": "snapshot", "agent.read": "read",
+} as const;
 export function parseCoreResponseForRequest(input: unknown, request: CoreRequest): CoreResponse {
   const response = parseCoreResponse(input);
   if (response.requestId !== request.requestId) throw new Error("Response request ID mismatch");
   if (!response.ok && isAgentRequest(request)) AgentBoundaryErrorSchema.parse(response.error);
   if (response.ok && isAgentRequest(request)) {
-    if (!response.agent || response.agent.kind !== request.type.slice(6)) {
+    if (!response.agent || response.agent.kind !== agentResultKind[request.type]) {
       throw new Error("Missing or mismatched agent result");
     }
     const result = response.agent;
@@ -372,7 +376,7 @@ export function isAgentRequest(request: CoreRequest): request is AgentRequest {
   return request.type.startsWith("agent.");
 }
 
-export function uncertainMutationCode(request: CoreRequest): string | null {
+export function uncertainMutationCode(request: CoreRequest): "WRITE_OUTCOME_UNKNOWN" | "AGENT_OUTCOME_UNKNOWN" | null {
   if (request.type === "file.write") return "WRITE_OUTCOME_UNKNOWN";
   return ["agent.launch", "agent.steer", "agent.cancel"].includes(request.type)
     ? "AGENT_OUTCOME_UNKNOWN" : null;

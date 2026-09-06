@@ -17,7 +17,7 @@ export type AdapterEvent =
       policy: "read-only"; instructionPaths: readonly string[]; at: string }
   | { type: "turn-started"; threadId: string; turnId: string; at: string }
   | { type: "item"; itemId: string | null; kind: "message" | "tool" | "status"; text: string; at: string }
-  | { type: "terminal"; outcome: Exclude<Run["providerOutcome"], { kind: "none" }>; at: string }
+  | { type: "terminal"; outcome: Extract<Run["providerOutcome"], { kind: "setup-rejected" | "turn" }>; at: string }
   | { type: "process-exit"; exitCode: number | null; at: string }
   | { type: "error"; error: AgentError; dispatch: "not-sent" | "unknown"; at: string };
 
