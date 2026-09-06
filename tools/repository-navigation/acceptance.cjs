@@ -122,9 +122,11 @@ async function main() {
     }
     await focus(".cm-content"); key("End", ["control"]);
     await until(() => run(() => { const state = document.querySelector(".cm-content").cmView.rootView.view.state; return state.selection.main.anchor === state.doc.length; }), "source end");
-    await wc.insertText("\n// unsaved navigation intent"); key("Home", ["control"]); key("Right");
+    // Source already ends in a newline. Use the proven plain-text native append
+    // gesture; Chromium's insertText API does not promise newline key semantics.
+    await wc.insertText("// unsaved navigation intent"); key("Home", ["control"]); key("Right");
     await until(() => run(() => document.querySelector(".cm-content").cmView.rootView.view.state.selection.main.anchor === 1), "exact logical cursor");
-    const dirtySource = `${fixture.sourceText}\n// unsaved navigation intent`;
+    const dirtySource = `${fixture.sourceText}// unsaved navigation intent`;
     const draftPoint = await run(() => { const node = document.querySelector(".agent-rail .agent-primary"); node.scrollIntoView({ block: "nearest" }); const rect = node.getBoundingClientRect(); return { x: Math.round(rect.x + rect.width / 2), y: Math.round(rect.y + rect.height / 2) }; });
     wc.sendInputEvent({ type: "mouseMove", ...draftPoint });
     wc.sendInputEvent({ type: "mouseDown", ...draftPoint, button: "left", clickCount: 1 });

@@ -8,6 +8,7 @@ import { PROTOCOL_VERSION } from "../protocol/common";
 import { RepositoryObservationSchema, type RepositoryRequest } from "../protocol/repository";
 import { RepositoryReader } from "../core/repository";
 import { queryRepositoryGit } from "../core/repository-boundary";
+import { readWorkspaceFile } from "../core/files";
 
 const roots: string[] = [];
 const readers: RepositoryReader[] = [];
@@ -78,6 +79,60 @@ describe("bounded real repository directory observations", () => {
     expect(unsupported.every((entry) => entry.path === null && !entry.actionable && !entry.label.includes("\n"))).toBe(true);
     expect(unsupported.some((entry) => entry.label === "\\xffa")).toBe(true);
     expect(observation.entries.find((entry) => entry.path === "valid.ts")?.actionable).toBe(true);
+    expect(RepositoryObservationSchema.safeParse(observation).success).toBe(true);
+  });
+
+  it("preserves BOM-prefixed filenames without aliasing their plain counterparts", async () => {
+    const root = await repository();
+    const plainName = "safe.ts";
+    const bomName = "\uFEFFsafe.ts";
+    await writeFile(join(root, plainName), "plain file bytes\n");
+    await writeFile(join(root, bomName), "BOM-named file bytes\n");
+    execFileSync("git", ["add", "--", plainName], { cwd: root });
+    const value = reader(root);
+    const observation = await value.list(request());
+    expect(observation.entries.map((entry) => entry.path)).toEqual([plainName, bomName]);
+    expect(new Set(observation.entries.map((entry) => entry.id)).size).toBe(2);
+    expect(observation.entries.find((entry) => entry.path === plainName)?.git).toBe("tracked");
+    expect(observation.entries.find((entry) => entry.path === bomName)).toMatchObject({ label: bomName, git: "untracked", actionable: true });
+    expect(RepositoryObservationSchema.safeParse(observation).success).toBe(true);
+    const selected = await value.list(request("", { refresh: false, observationId: observation.observationId, revealPath: bomName }));
+    expect(selected.reveal).toEqual({ path: bomName, status: "selected" });
+    expect((await readWorkspaceFile(root, selected.reveal!.path)).content).toBe("BOM-named file bytes\n");
+    expect((await readWorkspaceFile(root, plainName)).content).toBe("plain file bytes\n");
+    expect((await value.list(request())).entries.map((entry) => entry.id)).toEqual(observation.entries.map((entry) => entry.id));
+  });
+
+  it("preserves BOM-prefixed directory paths through actual descent and file activation", async () => {
+    const root = await repository();
+    const plainName = "directory";
+    const bomName = "\uFEFFdirectory";
+    await mkdir(join(root, plainName));
+    await mkdir(join(root, bomName));
+    await writeFile(join(root, plainName, "child.ts"), "plain directory child\n");
+    await writeFile(join(root, bomName, "child.ts"), "BOM directory child\n");
+    const value = reader(root);
+    const observation = await value.list(request());
+    expect(observation.entries.map((entry) => entry.path)).toEqual([plainName, bomName]);
+    const bomDirectory = observation.entries.find((entry) => entry.path === bomName)!;
+    expect(bomDirectory).toMatchObject({ label: bomName, kind: "directory", actionable: true });
+    const child = await value.list(request(bomDirectory.path!));
+    expect(child.entries.map((entry) => entry.path)).toEqual([`${bomName}/child.ts`]);
+    expect((await readWorkspaceFile(root, child.entries[0]!.path!)).content).toBe("BOM directory child\n");
+    expect(RepositoryObservationSchema.safeParse(child).success).toBe(true);
+  });
+
+  it("checks a BOM-prefixed nested repository's own marker instead of a plain-name alias", async () => {
+    const root = await repository();
+    const plainName = "nested";
+    const bomName = "\uFEFFnested";
+    await mkdir(join(root, plainName));
+    await mkdir(join(root, bomName));
+    await writeFile(join(root, bomName, ".git"), "gitdir: /not-executed\n");
+    const observation = await reader(root).list(request());
+    expect(observation.entries.find((entry) => entry.path === bomName)).toMatchObject({ label: bomName, kind: "repository", actionable: false });
+    expect(observation.entries.find((entry) => entry.path === plainName)).toMatchObject({ kind: "directory", actionable: true });
+    expect(new Set(observation.entries.map((entry) => entry.id)).size).toBe(2);
     expect(RepositoryObservationSchema.safeParse(observation).success).toBe(true);
   });
 

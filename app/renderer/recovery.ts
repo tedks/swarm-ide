@@ -28,7 +28,8 @@ export function staleSnapshot(snapshot: WorkspaceSnapshot, message: string): Wor
 // A restarted provider has not observed the old derived topology yet. Keep the
 // coherent old slice explicitly stale until the new core actually builds one.
 export function retainDerived(previous: WorkspaceSnapshot | null, incoming: WorkspaceSnapshot): WorkspaceSnapshot {
-  if (!previous || previous.project.id !== incoming.project.id || incoming.reconciliation.lastConsistentFingerprint !== "unobserved" || previous.reconciliation.lastConsistentFingerprint === "unobserved") return incoming;
+  if (!previous || previous.project.id !== incoming.project.id || incoming.reconciliation.lastConsistentFingerprint !== "unobserved" ||
+      (previous.reconciliation.lastConsistentFingerprint === "unobserved" && !previous.revisions.built.id)) return incoming;
   const old = staleSnapshot(previous, "Core replaced; last observed topology retained as stale. Build to reconcile.");
   const retag = (focus: FocusRef): FocusRef => focus.revisionKind === "working" ? { ...focus, revisionId: incoming.revisions.working.id } : focus;
   return {
@@ -46,6 +47,6 @@ export function retainDerived(previous: WorkspaceSnapshot | null, incoming: Work
       }
       return { ...candidate, focus: retag(candidate.focus) };
     }) })),
-    reconciliation: { ...incoming.reconciliation, status: incoming.reconciliation.status === "red" ? "red" : "yellow", lastConsistentFingerprint: incoming.revisions.working.id.startsWith("unobserved:") ? "unobserved" : old.reconciliation.lastConsistentFingerprint, message: old.reconciliation.message },
+    reconciliation: { ...incoming.reconciliation, status: incoming.reconciliation.status === "red" ? "red" : "yellow", lastConsistentFingerprint: incoming.revisions.working.id.startsWith("unobserved:") ? "unobserved" : old.revisions.built.sourceFingerprint || old.reconciliation.lastConsistentFingerprint, message: old.reconciliation.message },
   };
 }

@@ -79,6 +79,7 @@ function post(message: CoreResponse | CoreEvent | FileEvent | AgentEvent): void 
 
 function publish(type: CoreEvent["type"], snapshot: WorkspaceSnapshot): void {
   const validatedSnapshot = WorkspaceSnapshotSchema.parse(snapshot);
+  if (validatedSnapshot.revisions.working.evidence === "unavailable") workingWorldObserver?.invalidate();
   post(CoreEventSchema.parse({
     protocolVersion: PROTOCOL_VERSION,
     type,

@@ -1,7 +1,7 @@
 // @vitest-environment node
 import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { mkdir, mkdtemp, rm, truncate, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, rename, rm, truncate, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -12,6 +12,8 @@ import { RealWorkspaceProvider, type ProviderDependencies } from "../core/provid
 import type { ServiceTopologyArtifact } from "../core/service-topology";
 import { PROTOCOL_VERSION, type WorkspaceSnapshot } from "../protocol/schema";
 import { repositoryEntryId, type RepositoryObservation, type RepositoryRequest } from "../protocol/repository";
+import { WorkingWorldObserver } from "../core/working-world-observer";
+import { registerRepository } from "../core/repository-registration";
 
 const roots: string[] = [], providers: RealWorkspaceProvider[] = [], services: ProductionAgentService[] = [];
 afterEach(async () => {
@@ -83,6 +85,37 @@ async function actualRepository() {
 }
 
 describe("repository navigation independent of working and service evidence", () => {
+  it("registers a canonical committed root whose actual name ends in whitespace", async () => {
+    const fixture = await actualRepository();
+    const root = `${fixture.root} `;
+    await rename(fixture.root, root);
+    expect(await registerRepository(root)).toMatchObject({ root, name: "unfamiliar-repository " });
+  });
+  it("recovers unchanged observer evidence after a reconciliation-only fingerprint failure", async () => {
+    let failPreflight = false;
+    const subject = await provider(fixtureDependencies({ fingerprint: async () => {
+      if (failPreflight) throw new Error("Build preflight temporarily unavailable");
+      return fingerprint;
+    } }));
+    await subject.observeWorkingWorld(ignorePublish);
+    const published: WorkspaceSnapshot[] = [];
+    let observer!: WorkingWorldObserver;
+    const publish = (_type: string, snapshot: WorkspaceSnapshot) => {
+      if (snapshot.revisions.working.evidence === "unavailable") observer.invalidate();
+      published.push(snapshot);
+    };
+    observer = new WorkingWorldObserver(fingerprint, async () => fingerprint,
+      (value) => subject.markWorkingWorldChanged(value, publish), (error) => subject.markWorkingWorldUnknown(error.message, publish));
+    try {
+      failPreflight = true;
+      await subject.startReconciliation(publish);
+      expect(subject.snapshot().revisions.working).toMatchObject({ fingerprint, evidence: "unavailable" });
+      observer.request();
+      await vi.waitFor(() => expect(subject.snapshot().revisions.working.evidence).toBe("observed"));
+      expect(subject.snapshot().reconciliation.status).toBe("yellow");
+      expect(published.map((snapshot) => snapshot.reconciliation.status)).toEqual(["red", "yellow"]);
+    } finally { observer.close(); }
+  });
   it("registers and lists actual supported paths without awaiting a pending whole-world fingerprint", async () => {
     const fixture = await actualRepository();
     const pending = deferred<string>();

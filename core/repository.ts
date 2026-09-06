@@ -158,10 +158,11 @@ export class RepositoryReader {
         if (name.equals(Buffer.from(".git"))) continue;
         if (entries.length >= REPOSITORY_CAPTURE_ENTRIES) { complete = false; break; }
         let label: string;
-        try { label = new TextDecoder("utf8", { fatal: true }).decode(name); }
+        // A filename's leading U+FEFF is data, not a text-file byte-order signature.
+        try { label = new TextDecoder("utf8", { fatal: true, ignoreBOM: true }).decode(name); }
         catch { label = ""; }
         const path = directory ? `${directory}/${label}` : label;
-        const supported = isRepositoryPath(path) && label.length > 0;
+        const supported = isRepositoryPath(path) && label.length > 0 && Buffer.from(label, "utf8").equals(name);
         let entry: RepositoryEntry;
         if (!supported) {
           const escaped = Array.from(name, (byte) => byte >= 32 && byte < 127 && byte !== 92 ? String.fromCharCode(byte) : `\\x${byte.toString(16).padStart(2, "0")}`).join("").slice(0, 1_024);

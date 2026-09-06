@@ -55,6 +55,11 @@ export class WorkingWorldObserver {
     if (!this.running) void this.drain();
   }
 
+  /** Another observer (e.g. build preflight) revoked current evidence. A later
+   * successful sample must be published even if its digest equals the last one.
+   * This changes no digest and schedules no extra scan; existing hints own work. */
+  invalidate(): void { this.observationFailed = true; }
+
   observeKnown(fingerprint: string): void {
     this.lastFingerprint = fingerprint;
     this.observationFailed = false;
