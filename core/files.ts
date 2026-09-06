@@ -97,7 +97,7 @@ async function openWorkspaceFile(
   if (!contained(root, requested)) throw new WorkspaceFileError("PATH_ESCAPE", "The file path escapes the opened workspace");
   let handle: FileHandle;
   try {
-    handle = await open(requested, constants.O_RDONLY | constants.O_NOFOLLOW);
+    handle = await open(requested, constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK);
   } catch (error) {
     missingFile(path, error);
   }
