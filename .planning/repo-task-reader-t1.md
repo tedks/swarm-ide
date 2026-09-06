@@ -12,7 +12,7 @@ This step supplies a real read-only provider behind the existing task contract. 
 
 - [x] (2026-09-06) Read the approved task design, landed schemas and provider interface; create designated worktree from reviewed `a218277` and materialize frozen dependencies.
 - [x] (2026-09-06) State untrusted-input assumptions and publish `createDitzTaskProvider` consumer seam.
-- [ ] Implement bounded Git object reads, isolated YAML validation, cache and observation lifecycle.
+- [x] (2026-09-06 08:09Z) Implement bounded Git object reads, isolated YAML validation, cache and observation lifecycle. Draft PR32 opened from first plan commit `4ddc938`.
 - [ ] Prove real Git/YAML hostile inputs, correlation, stale/error retention, concurrency and disposal through Bazel-owned tests.
 - [ ] Complete local build/all-tests, provider-diverse review to fixpoint, normal reviewed PR landing, Ditz sync and owned cleanup.
 
@@ -20,6 +20,10 @@ This step supplies a real read-only provider behind the existing task contract. 
 
 
 The existing task interface already separates observation attempt status from the retained complete snapshot. Wire schemas bound whole serialized results, so validating an individual detail or snapshot alone is insufficient near a byte limit. The provider must validate full result envelopes before publication.
+
+The first executable quality run passed 751 tests and failed two disposable Git fixture checks: Git objects are read-only on disk, and fixture auto-maintenance could race recursive cleanup. The fixture now recreates only its owned fault-injection object and disables auto-maintenance. The next run passed 753 tests; one new stderr-bound fixture assumed a huge fatal diagnostic would be emitted, but Git truncates that diagnostic. Its positive control is being corrected rather than declaring the bound proven.
+
+The reader verifies hashes of selected commit, tree and blob bytes rather than assuming an object filename attests immutable content. Commit/tree size preflight adds a conservative 128KiB structural ceiling. Git still reads local configuration, so a blocking include is killed and reaped under the command deadline. Output/time caps are not an OS memory sandbox for Git pack decompression; Ditz `repo-task-git-memory-limits` records that distinct residual.
 
 ## Decision Log
 
@@ -81,4 +85,8 @@ The live integration seam is `/tmp/swarm-ide-task-reader-t1.gcYI0r/seam.md`. San
 
 Export `createDitzTaskProvider: CreateTaskProvider` from `core/tasks/provider.ts`. Its context contains the registered root, world and repository ID. `snapshot({refresh:true})` performs one complete bounded scan; `false` only checks the local ref. `read({metadataCommit,taskId})` reads the retained complete cache. `dispose()` is idempotent and awaits cancellation. Preserve existing protocol shapes and unavailable default. A parser worker packaging requirement, if needed, must be explicit in the T3 handoff rather than hidden behind passing source tests.
 
+The concrete worker program is a fixed string in `core/tasks/metadata-worker.ts`, run once per complete scan and terminated/reaped on every outcome. Its YAML module is resolved relative to the compiled local-core package. Source/development installs include pinned `yaml` 2.8.1; the current esbuild application tar does not package that external module. T3 must explicitly package/bundle the worker or pinned YAML dependency, then verify the actual artifact before enabling this provider. No new standalone worker file is discovered from metadata and no metadata bytes become executable source.
+
 Revision note: initial T1 plan records exact scope, assumptions, proof requirements and consumer seam before implementation.
+
+Revision note: implementation milestone records actual failing fixture checks, hash/structural bounds and the explicit packaging/resource follow-ups before final verification.
