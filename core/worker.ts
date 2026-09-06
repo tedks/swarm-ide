@@ -5,12 +5,15 @@ import {
   FileEventSchema,
   WorkspaceSnapshotSchema,
   parseCoreRequest,
+  isAgentRequest,
   type CoreEvent,
   type CoreResponse,
   type FileEvent,
   type FileResult,
   type WorkspaceSnapshot,
 } from "../protocol/schema";
+import { AgentEventSchema, type AgentEvent, type AgentResult } from "../protocol/agents";
+import { unavailableAgentRequest, unavailableAgentSnapshot } from "./agents/unavailable";
 import { readWorkspaceFile, WorkspaceFileError, writeWorkspaceFile } from "./files";
 import { computeWorkingWorldFingerprint } from "./fingerprint";
 import { RealWorkspaceProvider } from "./provider";
@@ -25,7 +28,7 @@ const fileReadGenerations = new Map<string, number>();
 const providerPromise = RealWorkspaceProvider.create(workspaceRoot);
 let workingWorldObserver: WorkingWorldObserver | null = null;
 
-function post(message: CoreResponse | CoreEvent | FileEvent): void {
+function post(message: CoreResponse | CoreEvent | FileEvent | AgentEvent): void {
   process.parentPort?.postMessage(message);
 }
 
@@ -41,7 +44,7 @@ function publish(type: CoreEvent["type"], snapshot: WorkspaceSnapshot): void {
   }));
 }
 
-function ok(requestId: string, snapshot: WorkspaceSnapshot, file?: FileResult): CoreResponse {
+function ok(requestId: string, snapshot: WorkspaceSnapshot, file?: FileResult, agent?: AgentResult): CoreResponse {
   return CoreResponseSchema.parse({
     protocolVersion: PROTOCOL_VERSION,
     requestId,
@@ -49,6 +52,7 @@ function ok(requestId: string, snapshot: WorkspaceSnapshot, file?: FileResult): 
     sequence,
     snapshot: WorkspaceSnapshotSchema.parse(snapshot),
     ...(file ? { file } : {}),
+    ...(agent ? { agent } : {}),
   });
 }
 
@@ -100,6 +104,12 @@ process.parentPort?.on("message", async (event) => {
       return;
     }
     const provider = await providerPromise;
+    if (isAgentRequest(request)) {
+      const result = unavailableAgentRequest(request);
+      post(result.ok ? ok(requestId, provider.snapshot(), undefined, result.value)
+        : fail(requestId, result.error.code, result.error.message));
+      return;
+    }
     switch (request.type) {
       case "workspace.snapshot":
         post(ok(requestId, provider.snapshot()));
@@ -161,6 +171,10 @@ void providerPromise.then((provider) => {
   );
   workingWorldObserver.start();
   process.parentPort?.postMessage({ type: "core.ready" });
+  post(AgentEventSchema.parse({
+    protocolVersion: PROTOCOL_VERSION, type: "agent.changed", sequence: ++sequence,
+    emittedAt: new Date().toISOString(), snapshot: unavailableAgentSnapshot(),
+  }));
 }).catch((error) => {
   console.error("Local core failed to open the workspace", error);
   process.parentPort?.postMessage({ type: "core.failed" });

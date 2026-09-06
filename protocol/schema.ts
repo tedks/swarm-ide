@@ -1,11 +1,9 @@
 import { z } from "zod";
-
-export const PROTOCOL_VERSION = 2 as const;
+import { PROTOCOL_VERSION, FocusRefSchema } from "./common";
+import { AgentRequestSchema, AgentResultSchema, type AgentRequest } from "./agents";
+export { PROTOCOL_VERSION, FocusRefSchema, RevisionKindSchema, type FocusRef, type RevisionKind } from "./common";
 
 export const MAX_EDITABLE_FILE_BYTES = 2 * 1024 * 1024;
-
-export const RevisionKindSchema = z.enum(["working", "built", "deployed"]);
-export type RevisionKind = z.infer<typeof RevisionKindSchema>;
 
 export const ReconciliationStatusSchema = z.enum([
   "gray",
@@ -14,26 +12,6 @@ export const ReconciliationStatusSchema = z.enum([
   "red",
 ]);
 export type ReconciliationStatus = z.infer<typeof ReconciliationStatusSchema>;
-
-export const FocusRefSchema = z.object({
-  worldId: z.string().min(1),
-  revisionKind: RevisionKindSchema,
-  revisionId: z.string().min(1),
-  domain: z.enum(["repo", "service", "interface", "symbol", "design"]),
-  key: z.string().min(1),
-  path: z.string().min(1).optional(),
-  symbol: z.string().min(1).optional(),
-  range: z
-    .object({
-      startLine: z.number().int().positive(),
-      endLine: z.number().int().positive(),
-    })
-    .refine((range) => range.endLine >= range.startLine, {
-      message: "endLine must not precede startLine",
-    })
-    .optional(),
-});
-export type FocusRef = z.infer<typeof FocusRefSchema>;
 
 export const ProvenanceSchema = z.object({
   sourceKind: z.enum(["repo", "build", "runtime", "mock"]),
@@ -242,7 +220,7 @@ const RequestBaseSchema = z.object({
   protocolVersion: z.literal(PROTOCOL_VERSION),
 });
 
-export const CoreRequestSchema = z.discriminatedUnion("type", [
+const WorkspaceRequestSchema = z.discriminatedUnion("type", [
   RequestBaseSchema.extend({ type: z.literal("workspace.snapshot") }),
   RequestBaseSchema.extend({
     type: z.literal("focus.select"),
@@ -272,6 +250,7 @@ export const CoreRequestSchema = z.discriminatedUnion("type", [
     path: z.string().min(1).max(4_096),
   }),
 ]);
+export const CoreRequestSchema = z.union([WorkspaceRequestSchema, AgentRequestSchema]);
 export type CoreRequest = z.infer<typeof CoreRequestSchema>;
 
 export const FileResultSchema = z.discriminatedUnion("kind", [
@@ -304,6 +283,7 @@ export const CoreResponseSchema = z.discriminatedUnion("ok", [
     sequence: z.number().int().nonnegative(),
     snapshot: WorkspaceSnapshotSchema,
     file: FileResultSchema.optional(),
+    agent: AgentResultSchema.optional(),
   }),
   z.object({
     protocolVersion: z.literal(PROTOCOL_VERSION),
@@ -352,6 +332,41 @@ export function parseCoreRequest(input: unknown): CoreRequest {
 
 export function parseCoreResponse(input: unknown): CoreResponse {
   return CoreResponseSchema.parse(input);
+}
+
+/** Successful agent replies must identify the exact command, never empty success. */
+export function parseCoreResponseForRequest(input: unknown, request: CoreRequest): CoreResponse {
+  const response = parseCoreResponse(input);
+  if (response.requestId !== request.requestId) throw new Error("Response request ID mismatch");
+  if (response.ok && isAgentRequest(request)) {
+    if (!response.agent || response.agent.kind !== request.type.slice(6)) {
+      throw new Error("Missing or mismatched agent result");
+    }
+    const result = response.agent;
+    if ((request.type === "agent.launch" && result.kind === "launch" &&
+         (request.runId !== result.receipt.runId || request.contextHash !== result.receipt.contextHash)) ||
+        (request.type === "agent.steer" && result.kind === "steer" &&
+         (request.runId !== result.runId || request.requestId !== result.receipt.requestId ||
+          request.expectedTurnId !== result.receipt.expectedTurnId || request.text !== result.receipt.text)) ||
+        (request.type === "agent.cancel" && result.kind === "cancel" &&
+         (request.runId !== result.receipt.runId || request.requestId !== result.receipt.requestId)) ||
+        (request.type === "agent.read" && result.kind === "read" &&
+         (request.runId !== result.run.runId || result.page.nextCursor < request.afterRecord ||
+          result.page.records.some((record) => record.recordId <= request.afterRecord)))) {
+      throw new Error("Agent result does not match the command identity or cursor");
+    }
+  }
+  return response;
+}
+
+export function isAgentRequest(request: CoreRequest): request is AgentRequest {
+  return request.type.startsWith("agent.");
+}
+
+export function uncertainMutationCode(request: CoreRequest): string | null {
+  if (request.type === "file.write") return "WRITE_OUTCOME_UNKNOWN";
+  return ["agent.launch", "agent.steer", "agent.cancel"].includes(request.type)
+    ? "AGENT_OUTCOME_UNKNOWN" : null;
 }
 
 export function parseCoreEvent(input: unknown): CoreEvent {

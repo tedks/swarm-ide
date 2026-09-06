@@ -24,6 +24,8 @@ application of intelligence before queues, swarm coordination or write authority
 - [x] (2026-09-06) Design: choose the adapter, freeze the bridge/lifecycle/context contract, and define three isolated departments.
 - [x] (2026-09-06) ROOT accepted PR #8 and dispatched only R0 in its designated worktree.
 - [ ] R0: publish validated contracts, typed unavailable behavior and module interfaces; merge the small base PR.
+- [x] (2026-09-06) R0: strict six-command schemas, interface-only adapter/context/store modules and production unavailable dispatch; initial and contract/bridge quality passes succeeded.
+- [ ] R0: final local build/test, council fixpoint, normal merge and executive handoff without adopting watched master.
 - [ ] R1 and E1: establish installed-adapter conformance and bounded launch context/profile preflight; W1: show fixture-driven cockpit run surface in parallel.
 - [ ] R2: durable lifecycle, process ownership, cancellation and recovery; E2: adversarial fixtures and virtual scenario; W2: wire live state, steering and uncertainty.
 - [ ] R3/W3/E3: integrate, demonstrate one real read-only run, finish relevant local gates/review and normal-merge the feature PRs.
@@ -80,6 +82,24 @@ common module to avoid a schema/agent import cycle. Keep existing workspace
 focus behavior unchanged and use a strict, bounded focus at the agent boundary.
 Production can report explicit unavailable capabilities through agent.snapshot;
 all other agent methods return ADAPTER_UNAVAILABLE. No fake run is created.
+
+Decision (2026-09-06, R0): concrete named results use kind prepare/launch/steer/
+cancel/snapshot/read. The context and transcript bounds count serialized UTF-8
+bytes (including metadata), conservatively below their ceiling. Instruction
+receipts are capped at 128 per run; future admission/steering must report limits
+rather than evicting them silently. This fills an unspecified collection bound.
+Provider observations live separately on Run, never rewrite submitted context.
+The dispatch-prevented outcome describes cancellation before any process exists;
+it requires not-started/not-needed process/cleanup evidence. It is not a claimed
+provider interruption. These concretize the design's stated pre-dispatch stop.
+
+Decision (2026-09-06, R0): agent mutation uncertainty classification is wired now
+through supervisor/preload, because exposing new methods with the old automatic
+read-retry wording would be unsafe. Durable recovery remains R2's work. One
+renderer line ignores agent events in the workspace reducer; no product UI is
+added. Dedicated tests/agent-bridge.test.ts exercises the real worker dispatcher
+and preload with explicit injected workspace/Electron test doubles; production
+has no fixture selection mechanism.
 
 ## Outcomes & Retrospective
 

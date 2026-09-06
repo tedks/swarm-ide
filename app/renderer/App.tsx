@@ -302,6 +302,7 @@ export function App() {
       return;
     }
     const unsubscribe = bridge.onEvent((event) => {
+      if (event.type === "agent.changed") return;
       if (window.swarmLifecycle && lifecycleRef.current?.core.phase !== "ready") return;
       if (event.type === "file.changed") {
         void reloadObservedFile(event);
