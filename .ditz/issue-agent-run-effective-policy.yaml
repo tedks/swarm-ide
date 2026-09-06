@@ -56,6 +56,14 @@ log_events:
   who: Ted Smith
   what: blocked by live-agent-admission-contract-p6
   comment: ""
+- time: 2026-09-06T14:33:12-00:00
+  who: Ted Smith
+  what: commented
+  comment: P6 PR34 proposed sealed-context-v1 remains blocked. Finite G0-G6 design
+    separates disablement, independent containment, per-process/bootstrap ownership
+    and credentialed acceptance. Next proposed native-provider controls require no
+    prewarm, HTTP-only normal turn and zero generation retries; auth/cloud freeze/telemetry/tools
+    remain separate gates. No product activation authorized.
 blocks:
 - agent-run-vertical-proof
 blocked_by:
