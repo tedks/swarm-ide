@@ -15,8 +15,9 @@ and changes only the measured failing boundary. No agent or watched-app work.
 
 
 - [x] (2026-09-06 04:40Z) Read prior evidence, harness and provider; created the designated C1 worktree and Ditz slice.
-- [ ] Observe a controlled cold nested build and preserve bounded diagnostics.
-- [ ] Implement and test the smallest justified improvement.
+- [x] (2026-09-06 04:56Z) Direct hosted evidence: at90s, nested protobuf compilation progressed50→80/197 actions with3 jobs; no observed lock wait/error. Owned failure screenshot retained.
+- [x] (2026-09-06 04:57Z) Add bounded progress/owned-process diagnostics, failure screenshot and original exit-code preservation; fix nested concurrency to3. Separate360s cold preparation from30s incremental proof, topology-only420s outer deadline.
+- [ ] Verify the cold/hot scenario change and complete local gates.
 - [ ] Run local gates, provider-diverse council and normal PR landing; retain actual hosted status.
 
 ## Surprises & Discoveries
@@ -27,7 +28,17 @@ stays Reconciling beyond 90 seconds. An earlier outer build spent 263.913 second
 compiling protobuf. The real builder is `core/provider.ts`, not
 `core/service-topology.ts`; the latter validates/adapts artifacts. The provider
 buffers child stderr until exit. Neither duplicate compilation nor deadlock is
-yet directly proven for the nested build.
+yet directly proven for the nested build at investigation start.
+
+Run34012409625 now directly shows nested protobuf progress50→80/197 at the90s
+deadline, with3 concurrent actions, no observed lock wait/error and the correctly
+owned window still yellow. This supports productive cold work, not a deadlock.
+Local32-job cold build took20.263s; bounding it to3 produced59.182s. One local
+test invalidated its own fingerprint by committing during the build and stayed
+yellow; the subsequent frozen-head virtual test passed75.4s. The new exact-exit
+test exposed preexisting error logging under errexit replacing124 with1; fixed.
+One hosted run failed earlier at occupied55174, separately tracked, not evidence
+about topology. Native/Google initially clean; Anthropic pending.
 
 ## Decision Log
 
@@ -36,6 +47,13 @@ Decision (2026-09-06, C1): investigate within the existing owned virtual harness
 do not edit the shared provider without exact ownership agreement. Diagnostics
 must not read arbitrary user logs, environments or credentials. Do not globally
 increase deadlines or borrow an outer Bazel server locked by the running test.
+
+Decision (2026-09-06, C1): use360s only for initial topology preparation, based
+on the observed264s outer cold compiler build and directly observed productive
+nested compilation. Keep30s for a second UI build of the same working world and
+publish both timings. Only desktop-smoke gets420s total; other scenarios retain
+120s. This is bounded cold-start allowance, not a performance improvement or
+hosted acceptance claim. ROOT approved only --jobs=3 in core/provider.ts.
 
 ## Outcomes & Retrospective
 
@@ -109,3 +127,7 @@ the seam and preserve exact-owned-window selection and teardown.
 
 Revision (2026-09-06): initial bounded diagnostic plan; preserves uncertainty
 about the cold-compilation hypothesis before making a timing change.
+
+Revision (2026-09-06 04:57Z): record direct hosted compiler evidence, distinguish
+the separate occupied-port failure and local fingerprint-invalidated trial,
+then calibrate only initial preparation while adding a real incremental check.
