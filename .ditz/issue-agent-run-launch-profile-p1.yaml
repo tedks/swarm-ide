@@ -5,8 +5,8 @@ type: task
 component: default
 release:
 reporter: Ted Smith <tedks@riseup.net>
-status: in_progress
-disposition:
+status: closed
+disposition: fixed
 creation_time: 2026-09-06T03:46:05-00:00
 references: []
 log_events:
@@ -49,5 +49,11 @@ log_events:
     No helper/real run/policy availability. Source archived recoverably; owned Bazel/virtual
     resources cleaned. Runtime owns integration; P2 remains unstarted; effective-policy
     parent stays open.
+- time: 2026-09-06T04:08:22-00:00
+  who: Ted Smith
+  what: 'closed: fixed'
+  comment: Bounded source investigation delivered/reviewed/locally verified and normal-merged
+    as PR13; effective policy itself remains unavailable and blocked by separately
+    scoped P2.
 blocks:
 - agent-run-effective-policy
