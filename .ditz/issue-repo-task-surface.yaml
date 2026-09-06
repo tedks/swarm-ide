@@ -28,8 +28,13 @@ log_events:
   who: Ted Smith
   what: blocked by repo-task-read-deadline
   comment: ""
+- time: 2026-09-06T08:00:50-00:00
+  who: Ted Smith
+  what: blocked by repo-task-reader-t1
+  comment: ""
 blocks:
 - repo-task-draft-provenance
 blocked_by:
 - repo-task-contract-t0
 - repo-task-read-deadline
+- repo-task-reader-t1
