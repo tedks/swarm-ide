@@ -1,0 +1,18 @@
+id: agent-run-workbench
+title: Add the inspectable steerable run surface beside source and graphs
+desc: 'W1/W2/W3: fixture-first rail/draft/run dock; source and graph persistence;
+  actual provider activity; run-specific steering/Stop, context and uncertainty; integrate
+  existing bridge without generic chat replacement. See first-agent-run-wave plan.'
+type: feature
+component: default
+release:
+reporter: Ted Smith <tedks@riseup.net>
+status: unstarted
+disposition:
+creation_time: 2026-09-06T01:28:54-00:00
+references: []
+log_events:
+- time: 2026-09-06T01:28:54-00:00
+  who: Ted Smith
+  what: created
+  comment: ""
