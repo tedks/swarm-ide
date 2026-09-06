@@ -10,6 +10,7 @@ import { emptyAgentWorkbench } from "../app/renderer/agents/state";
 import { directoryCameraKey, parentDirectory, repositoryBreadcrumbs, useRepositoryNavigation } from "../app/renderer/repository/navigation";
 import { RepositoryNavigation } from "../app/renderer/repository/RepositoryNavigation";
 import { adaptGraph } from "../app/renderer/graph-adapter";
+import { validTaskReference } from "../app/renderer/tasks/reveal";
 
 vi.mock("@xyflow/react", async () => {
   const React = await import("react");
@@ -55,7 +56,9 @@ function result(input: RepositoryRequest, value = observation(input.directory, {
 function graph(value: RepositoryObservation, snapshot = initialSnapshot()): GraphSlice {
   const fileFocus = (path: string, kind: string): FocusRef => ({ ...snapshot.focus, domain: "repo", key: `${kind === "directory" ? "dir" : "file"}:${path}`, path });
   return { ...snapshot.graphs[0]!, topologyId: "repo", title: "Repository", reconciliation: "gray", directory: value,
-    nodes: value.entries.filter((entry) => entry.path).map((entry, index) => ({ id: entry.id, label: entry.label, kind: entry.kind, status: "gray", position: { x: index * 100, y: 0 }, focus: fileFocus(entry.path!, entry.kind) })),
+    nodes: [...value.entries.filter((entry) => entry.path).map((entry, index) => ({ id: entry.id, label: entry.label, kind: entry.kind, status: "gray" as const, position: { x: index * 100, y: 0 }, focus: fileFocus(entry.path!, entry.kind) })),
+      { id: `directory:${value.directory}`, label: value.directory || "/", kind: "directory", status: "gray", position: { x: -100, y: 0 },
+        focus: { ...snapshot.focus, domain: "repo", key: `dir:${value.directory}`, path: value.directory || undefined } }],
     edges: [], provenance: [{ sourceKind: "repo", version: value.observationId, uri: "repo://test/", observedAt: date }] };
 }
 beforeAll(() => {
@@ -69,7 +72,7 @@ afterEach(() => {
 
 describe("bounded repository navigation intent controller", () => {
   it("acknowledges without replacing the event-owned observation and preserves current page on Refresh", async () => {
-    const observed = observation("core", { capturedCount: 201, filteredCount: 201, page: 1, pageCount: 2 });
+    const observed = observation("core", { capturedCount: 201, filteredCount: 201, page: 1, pageCount: 2, entries: observation("core").entries.slice(0, 1) });
     const request = vi.fn(async (input: RepositoryRequest) => result(input, { ...observed, observationId: "refresh", page: input.page }));
     const view = renderHook(() => useRepositoryNavigation(observed, 1, true, request));
     await act(() => view.result.current.refresh());
@@ -182,7 +185,8 @@ describe("actual App repository navigation wiring", () => {
     const publish = () => { const event: CoreEvent = { protocolVersion: PROTOCOL_VERSION, type: "workspace.changed", sequence: ++sequence, epoch: snapshot.reconciliation.epoch, emittedAt: date, snapshot }; for (const listener of listeners) listener(event); };
     const request = vi.fn(async (input: CoreRequest): Promise<CoreResponse> => {
       if (input.type === "repo.list") {
-        const observed = observation(input.directory, { ...(input.revealPath ? { reveal: { path: input.revealPath, status: "selected" as const } } : {}) });
+        const observed = observation(input.directory, { ...(input.revealPath ? { reveal: { path: input.revealPath,
+          status: observation(input.directory).entries.some((entry) => entry.path === input.revealPath) ? "selected" as const : "absent" as const } } : {}) });
         snapshot = WorkspaceSnapshotSchema.parse({ ...snapshot, graphs: [graph(observed, snapshot), snapshot.graphs[1]!] }); publish();
         return { ...result(input, observed), snapshot, sequence };
       }
@@ -214,6 +218,13 @@ describe("actual App repository navigation wiring", () => {
     await screen.findByRole("button", { name: "Open file core/files.ts" });
     expect(editor.state.doc.toString()).toBe("UNSAVED\none\ntwo\nthree\n"); expect(editor.state.selection.main.anchor).toBe(4);
     expect(screen.getByLabelText("Task")).toBe(draft); expect((draft as HTMLTextAreaElement).value).toBe("Retained draft");
+    // These are literal Unix repository filenames, not task metadata or URLs.
+    for (const path of ["core/https:reference.ts", "core/naïve.ts"]) {
+      fireEvent.change(pathInput, { target: { value: path } }); fireEvent.submit(pathInput.closest("form")!);
+      await waitFor(() => expect(request.mock.calls.some(([input]) => input.type === "file.read" && input.path === path)).toBe(true));
+      await waitFor(() => expect(document.querySelector(".source-surface header strong")?.textContent).toBe(path));
+    }
+    expect(validTaskReference({ path: "core/https:reference.ts", navigation: "candidate", line: null, note: null })).toBe(false);
     expect(request.mock.calls.some(([input]) => input.type === "file.write" || input.type === "agent.launch")).toBe(false);
   });
 });

@@ -543,8 +543,10 @@ export function App() {
     return fileTabsRef.current.find((tab) => tab.path === path) ?? null;
   }, [activateFile, invoke, showSurface]);
 
-  const revealTaskReference = useCallback(async (ref: TaskFileRef) => {
-    if (!validTaskReference(ref)) { reportRevealFailure("Unsupported reference: only canonical relative working-file paths can be revealed."); return; }
+  const revealTaskReference = useCallback(async (ref: TaskFileRef, origin: "task" | "repository" = "task") => {
+    // Task metadata has a deliberately narrower display/link policy. An exact
+    // repository path is not metadata or a URL; the file broker owns access.
+    if (origin === "repository" ? !isRepositoryPath(ref.path) : !validTaskReference(ref)) { reportRevealFailure("Unsupported reference: only canonical relative working-file paths can be revealed."); return; }
     const intent = ++navigationIntent.current;
     pendingRevealIntent.current = intent;
     try {
@@ -613,7 +615,7 @@ export function App() {
   const openLinkedFile = useCallback((path: string) => {
     if (!isRepositoryPath(path)) { reportRevealFailure("Use an exact canonical repository-relative file path, without .git or parent segments."); return; }
     if (workspaceRef.current.snapshot?.graphs.some((graph) => graph.directory))
-      void revealTaskReference({ path, line: null, note: null, navigation: "candidate" });
+      void revealTaskReference({ path, line: null, note: null, navigation: "candidate" }, "repository");
     else void openFile(path);
   }, [openFile, revealTaskReference, reportRevealFailure]);
 

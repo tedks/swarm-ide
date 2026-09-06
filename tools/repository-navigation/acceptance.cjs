@@ -74,6 +74,11 @@ async function main() {
   let world = await snapshot();
   assert.equal(world.project.name, path.basename(fixture.root), "project name comes from registered root");
   assert(!observe(world).entries.some((entry) => entry.path === ".git"), "Git administration omitted");
+  const entryButtons = await run(() => [...document.querySelectorAll("[aria-label='Directory entries'] button")].map((node) => node.getAttribute("aria-label")));
+  if (entryButtons.length > 1) {
+    await focus(label(entryButtons[0])); key("Down");
+    await until(() => run((expected) => document.activeElement?.getAttribute("aria-label") === expected, entryButtons[1]), "native entry-list arrow navigation");
+  }
   await focus(label(`Enter directory ${fixture.directory}`)); key("Enter"); await directory(fixture.directory);
   await focus(label(`Open file ${fixture.sourcePath}`)); key("Enter");
   await until(() => has(".cm-content"), "actual source editor");
@@ -148,8 +153,10 @@ async function main() {
     await focus(label("Repository Up")); key("Up", ["alt"]); await directory(""); await preserved();
     await focus(label("Repository Back")); key("Left", ["alt"]); await directory(fixture.directory); await paint(); await preserved(true);
     const beforeRefresh = observe(await snapshot()).observationId;
+    const beforePositions = (await snapshot()).graphs.find((graph) => graph.topologyId === "repo").nodes.map(({ id, position }) => ({ id, position }));
     await click(label("Refresh directory"));
     await until(async () => observe(await snapshot()).observationId !== beforeRefresh, "refresh observation");
+    assert.deepEqual((await snapshot()).graphs.find((graph) => graph.topologyId === "repo").nodes.map(({ id, position }) => ({ id, position })), beforePositions, "refresh retains surviving node positions");
     await preserved(true);
     for (const percent of [150, 100]) {
       if (percent === 150) { await click(label("Zoom in")); await until(() => wc.getZoomFactor() === 1.25, "zoom125"); await click(label("Zoom in")); }
@@ -202,6 +209,7 @@ async function main() {
       assert(outside, "outside-capture path established from actual full capture, not assumed filesystem order");
       await openPath(outside); await directory("large");
       await until(async () => (await navText()).includes("outside this partial directory capture"), "honest exact outside-capture notice");
+      await until(() => run((expected) => document.querySelector(".source-surface header strong")?.textContent === expected, outside), "exact uncaptured path is actually active in editor");
       assert.equal((await request({ type: "file.read", path: outside })).ok, true);
       assert(!observe(await snapshot()).entries.some((entry) => entry.path === outside), "no invented graph node");
       // Re-open retained dirty source, then inspect task details while off-slice.
