@@ -47,3 +47,16 @@ log_events:
     (90s topology wait); no success claim and issue remains unresolved. See PR comment5555681438
     for exact evidence/clearance. This landing continuation does not diagnose or close
     CI debt.
+- time: 2026-09-06T03:56:23-00:00
+  who: Ted Smith
+  what: commented
+  comment: 'E2 read-only hosted diagnosis: run34008614762 reached exact owned window
+    and Core1:ready/Reconciling, expired90s; artifact9981847009 still has live Bazel
+    client, cleanup_complete=1. Same run initial build263.913s (235 actions), substantial
+    protobuf C++ compilation/linking protoc; topology consumes proto descriptors.
+    Fresh XDG cache and Bazel7.6 inherited TEST_TMPDIR yield cold nested output root.
+    Strong cold-compilation hypothesis, not yet direct proof because core provider
+    buffers inner Bazel stderr. Smallest next diagnostic: bounded nested command.log/startup
+    capture plus failure screenshot, before any calibrated deadline change. Do not
+    call hosted green or blindly lengthen all waits. No harness changes made by this
+    fixtures checkpoint.'
