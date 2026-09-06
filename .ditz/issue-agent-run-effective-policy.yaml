@@ -64,6 +64,10 @@ log_events:
     and credentialed acceptance. Next proposed native-provider controls require no
     prewarm, HTTP-only normal turn and zero generation retries; auth/cloud freeze/telemetry/tools
     remain separate gates. No product activation authorized.
+- time: 2026-09-06T14:36:44-00:00
+  who: Ted Smith
+  what: blocked by live-agent-native-provider-controls
+  comment: ""
 blocks:
 - agent-run-vertical-proof
 blocked_by:
@@ -71,3 +75,4 @@ blocked_by:
 - agent-run-launch-profile-p2
 - agent-run-offline-activation-proof
 - live-agent-admission-contract-p6
+- live-agent-native-provider-controls
