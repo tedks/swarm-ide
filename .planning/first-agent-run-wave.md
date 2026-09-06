@@ -22,7 +22,7 @@ application of intelligence before queues, swarm coordination or write authority
 
 - [x] (2026-09-06) Design: read existing cockpit, source bridge, core supervisor and prior topology/reload plans; verify local CLI schema capabilities without running a model.
 - [x] (2026-09-06) Design: choose the adapter, freeze the bridge/lifecycle/context contract, and define three isolated departments.
-- [ ] ROOT approves this design recap and launches the implementation wave.
+- [x] (2026-09-06) ROOT accepted PR #8 and dispatched only R0 in its designated worktree.
 - [ ] R0: publish validated contracts, typed unavailable behavior and module interfaces; merge the small base PR.
 - [ ] R1 and E1: establish installed-adapter conformance and bounded launch context/profile preflight; W1: show fixture-driven cockpit run surface in parallel.
 - [ ] R2: durable lifecycle, process ownership, cancellation and recovery; E2: adversarial fixtures and virtual scenario; W2: wire live state, steering and uncertainty.
@@ -44,6 +44,13 @@ The current `CoreSupervisor` treats only `file.write` as an uncertain mutation
 and tells other interrupted requests to retry. Agent launch/steer/cancel must
 extend that classification. Existing `Job` requires percentage and resource
 numbers; agent observations must not fill them with invented zeros.
+
+R0 implementation assumptions: the six public agent commands cannot execute a
+provider yet. Command acceptance, terminal turn evidence and process cleanup
+are separate facts. Agent payloads reject unknown fields and measure UTF-8
+bytes. Repository-relative links carry no filesystem authority; the local core
+alone selects a registered root. Late or lost mutation replies must never
+invite replay. Existing workspace and file projections must remain unchanged.
 
 ## Decision Log
 
@@ -67,6 +74,12 @@ separate modules and tests. One small schema base precedes actual parallel work.
 Decision (2026-09-06, design department): no provider resume after core death.
 Persist known history, stop the owned process tree and expose uncertain outcomes.
 Renderer reconnect to the same core is supported. Never replay mutations.
+
+Decision (2026-09-06, R0): share protocol version and focus primitives in a small
+common module to avoid a schema/agent import cycle. Keep existing workspace
+focus behavior unchanged and use a strict, bounded focus at the agent boundary.
+Production can report explicit unavailable capabilities through agent.snapshot;
+all other agent methods return ADAPTER_UNAVAILABLE. No fake run is created.
 
 ## Outcomes & Retrospective
 
@@ -383,3 +396,7 @@ architecture without implementing it in this first run.
 Plan revision note (2026-09-06): initial design-only wave after stable-window
 adoption. Splits runtime, cockpit and context/evidence behind one small contract
 base; deliberately limits the first real demonstration to read-only analysis.
+
+Plan revision note (2026-09-06, R0 start): record accepted gate, assumptions and
+the minimal shared-schema/unavailable seam before implementation. Later slices
+remain unstarted; watched master/runtime adoption belongs to ROOT.
