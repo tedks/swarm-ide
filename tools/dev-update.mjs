@@ -4,7 +4,7 @@ export function classifyUpdate(previous, next) {
   if (!previous) return "initial";
   const changed = (name) => previous.get(name) !== next.get(name);
   if (changed("app/electron/main.js")) return "restart-required";
-  const core = changed("core/worker.js");
+  const core = changed("core/worker.js") || changed("core/agents/owner-process.js");
   const preload = changed("app/electron/preload.js");
   return core && preload ? "core-preload" : core ? "core" : preload ? "preload" : "unchanged";
 }

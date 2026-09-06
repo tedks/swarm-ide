@@ -4,7 +4,7 @@ const baseline = new Map([["app/electron/main.js", "shell"], ["app/electron/prel
 describe("minimal executable invalidation", () => {
   it("ignores builds with identical executable output", () => expect(classifyUpdate(baseline, new Map(baseline))).toBe("unchanged"));
   it.each([
-    ["core/worker.js", "core"], ["app/electron/preload.js", "preload"], ["app/electron/main.js", "restart-required"],
+    ["core/worker.js", "core"], ["core/agents/owner-process.js", "core"], ["app/electron/preload.js", "preload"], ["app/electron/main.js", "restart-required"],
   ])("invalidates only %s", (path, action) => expect(classifyUpdate(baseline, new Map(baseline).set(path, "new"))).toBe(action));
   it("coalesces shared changes, with shell restart taking precedence", () => {
     const next = new Map(baseline).set("core/worker.js", "new").set("app/electron/preload.js", "new");
