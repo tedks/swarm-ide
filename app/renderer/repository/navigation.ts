@@ -49,12 +49,14 @@ export function useRepositoryNavigation(observation: RepositoryObservation | und
       ...(intent.revealPath ? { revealPath: intent.revealPath } : {}),
     };
     setPending(true); setNotice(""); failed.current = null;
-    setCameraIntent({ directory: intent.directory, page: intent.page, restore: intent.backIndex !== undefined, serial });
+    setCameraIntent(null);
     try {
       const response = await before.request(input);
       if (serial !== intentSerial.current || before.generation !== current.current.generation) return false;
       if (!response?.ok || !response.repo) throw new Error(response && !response.ok ? response.error.message : "Local-core directory observation was interrupted.");
       const result = parseRepositoryResultForRequest(response.repo, input).observation;
+      if (prior.directory !== result.directory || prior.page !== result.page || intent.backIndex !== undefined)
+        setCameraIntent({ directory: result.directory, page: result.page, restore: intent.backIndex !== undefined, serial });
       if (intent.backIndex !== undefined) history.current = history.current.slice(0, intent.backIndex);
       else if (prior.directory !== result.directory || prior.page !== result.page) {
         history.current = [...history.current, { directory: prior.directory, page: prior.page, filter: prior.filter }].slice(-DIRECTORY_HISTORY_LIMIT);

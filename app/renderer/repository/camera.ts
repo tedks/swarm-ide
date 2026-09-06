@@ -9,6 +9,7 @@ export function useDirectoryCamera(observation: RepositoryObservation | undefine
   const [instance, setInstance] = useState<ReactFlowInstance | null>(null);
   const cameras = useRef(new Map<string, Viewport>());
   const displayed = useRef<{ key: string; loaded: boolean } | null>(null);
+  const consumedIntent = useRef<number | null>(null);
   const frame = useRef<number | null>(null);
   const key = observation ? directoryCameraKey(observation) : null;
   const loaded = Boolean(observation && observation.state !== "loading");
@@ -20,12 +21,19 @@ export function useDirectoryCamera(observation: RepositoryObservation | undefine
   useEffect(() => {
     if (!instance || !key) return;
     const before = displayed.current;
-    if (before?.key === key && (before.loaded || !loaded)) return;
+    const explicit = Boolean(loaded && intent && intent.serial !== consumedIntent.current &&
+      intent.directory === observation!.directory && intent.page === observation!.page);
+    if (explicit) consumedIntent.current = intent!.serial;
+    if (before?.key === key && !explicit && (before.loaded || !loaded)) return;
     // The normal ReactFlow mount fit owns the first already-populated slice.
     if (!before) { displayed.current = { key, loaded }; if (loaded) return; }
     if (!loaded) return;
-    if (before?.loaded && typeof instance.getViewport === "function") remember(before.key, instance.getViewport());
+    if (before?.loaded && before.key !== key && typeof instance.getViewport === "function") remember(before.key, instance.getViewport());
     displayed.current = { key, loaded };
+    // Core replacement may publish its default root without user navigation.
+    // Only the first loading observation or a fresh matching intent may frame;
+    // recording an automatic publication must not move the retained camera.
+    if (before?.loaded && !explicit) return;
     const saved = intent?.restore && intent.directory === observation!.directory && intent.page === observation!.page ? cameras.current.get(key) : undefined;
     frame.current = requestAnimationFrame(() => {
       frame.current = requestAnimationFrame(() => {
