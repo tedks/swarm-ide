@@ -146,6 +146,11 @@ async function main() {
     await wc.insertText("// unsaved navigation intent"); key("Home", ["control"]); key("Right");
     await until(() => run(() => document.querySelector(".cm-content").cmView.rootView.view.state.selection.main.anchor === 1), "exact logical cursor");
     const dirtySource = `${fixture.sourceText}// unsaved navigation intent`;
+    // d3 installs a temporary window-capture click blocker after native pan.
+    // A recorded failure showed Ask stopped before document dispatch. Observe
+    // the actual gesture's completion; do not remove listeners or retry a click.
+    await until(() => run(() => !(window.__on ?? []).some(({ type, name }) =>
+      (type === "click" && name === "drag") || (type === "mouseup" && name === "zoom"))), "native graph drag completion", 2000);
     // This setup button uses the same ordinary DOM click as Refresh/zoom. The
     // keyboard acceptance belongs to repository entry/Up/Back and source edits;
     // no provider, draft store or renderer state is injected here.
@@ -287,7 +292,8 @@ main().catch(async (error) => {
       const result = await window.swarm.request({protocolVersion:5,requestId:'failure-focus:'+crypto.randomUUID(),type:'workspace.snapshot'});
       return {focus:result.ok?result.snapshot.focus:null,agentNotice:document.querySelector('.agent-rail')?.textContent,
         draft:document.querySelector('.agent-draft')?.textContent,askDisabled:document.querySelector('.agent-rail .agent-primary')?.disabled,
-        clickTrace:globalThis.__navigationClickTrace};
+        clickTrace:globalThis.__navigationClickTrace,
+        graphGestureBindings:(window.__on??[]).map(({type,name})=>({type,name}))};
     })()`)));
     await fs.writeFile(path.join(evidence, "failure-window.png"), (await win.webContents.capturePage()).toPNG());
     console.error(await win.webContents.executeJavaScript(`JSON.stringify({active:document.activeElement?.outerHTML,body:document.querySelector('#root')?.textContent?.slice(0,3000)})`));
