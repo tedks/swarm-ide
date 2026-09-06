@@ -14,3 +14,11 @@ log_events:
   who: Ted Smith
   what: created
   comment: ""
+- time: 2026-09-06T05:21:49-00:00
+  who: Ted Smith
+  what: commented
+  comment: Observed P2 hosted run34012740498 failed //tools/policy:boundary-test with
+    UNAVAILABLE/codexStarted:false/SEED_PIPE_FAILED. Framework0 exact merged local
+    all7 tests passed. Underlying hosted namespace cause not logged and not established;
+    P3 will improve bounded diagnostic only, no test skip or runner/sysctl/AppArmor
+    policy changes.
