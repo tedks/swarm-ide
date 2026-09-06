@@ -17,7 +17,7 @@ mode. This is a development acceptance harness, never a product adapter.
 - [x] (2026-09-06 05:20Z) P3: read inherited gates, official app-server documentation and pinned source; designated feature worktree starts from verified normal merge c52f959.
 - [x] (2026-09-06 05:30Z) P3: actual installed required-stdio-MCP positive/negative controls pass across five fixtures; explicit fixed RPC allowlist rejects generation paths. Initial quality passes. Commit153b12b/PR22 enters council and complete local gates.
 - [x] (2026-09-06 05:53Z) P3: bounded seed-pipe diagnostics and deterministic regressions; full first local7 targets passed476tests. Native Important found incomplete trace observation; actual teardown gap confirmed and unsupported observer removed. Six provider-reported/canary controls now pass, no independent syscall claim. Strengthened regression/full rerun and council convergence pending.
-- [ ] P3: final local gates, council convergence, normal PR merge and handoff.
+- [x] (2026-09-06 05:59Z) P3 code0f0a3b1: full22-target build, all7 uncached local targets and511 tests/42 files pass; owned virtual26.0s/cleanup1. Actual manual activation passes all6 cases and three repeated complete runs. Native and Google convergence CLEAN; Anthropic session limit explicitly MISSING. Duplicate-case test nit corrected and rerun next; PR22 records normal merge/actual aggregate handoff.
 
 - [x] (2026-09-06 04:21Z) Read P1 evidence/contracts and establish basic unprivileged user/network/mount/PID namespace support.
 - [x] (2026-09-06 04:38Z) Implement pinned isolated runtime, frozen synthetic inputs and independent boundary canaries; owner-SIGKILL/deadline/output checks pass.
@@ -98,8 +98,11 @@ P3's final proof is deliberately narrower than independent syscall exclusion:
 six actual static-MCP fixtures now distinguish reported startup plus full canary
 handshake, successful disabled-thread creation, reached initialization failure,
 and an absent executable. All26 independent boundary checks run before each
-case. Focused final quality passed511 tests/42 files and actual activation target
-passed after observer correction; complete final gates/council are pending.
+case. Final code quality passed511 tests/42 files, all7 uncached local tests,
+full22-target build and owned virtual26.0s. The actual activation target passed
+all6 controls and three complete repeated runs. Native and Google convergence
+are CLEAN; Anthropic session-limited without verdict. PR22 records actual normal
+merge state and the final merged-tree handoff; no future commit ID is invented.
 The broad policy parent, credentialed process binding, persisted-state and
 independent observer proof remain open. No product adoption or model turn.
 

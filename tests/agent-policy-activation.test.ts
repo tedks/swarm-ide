@@ -56,7 +56,7 @@ describe('offline auxiliary activation proof, never production authority', () =>
     }));
     expect(summarizeActivationCases(cases)).toBe(true);
     expect(summarizeActivationCases(cases.slice(0, 4))).toBe(false);
-    expect(summarizeActivationCases([...cases.slice(0, 4), cases[0]])).toBe(false);
+    expect(summarizeActivationCases([...cases.slice(0, -1), cases[0]])).toBe(false);
     expect(summarizeActivationCases(cases.map(entry => ({ ...entry, inputsUnchanged: false })))).toBe(false);
     expect(summarizeActivationCases(cases.map(entry => ({ ...entry, status: 'SERVER_EXITED' })))).toBe(false);
     for (const key of ACTIVATION_BOUNDARY) {
