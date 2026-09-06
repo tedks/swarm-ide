@@ -49,6 +49,10 @@
 .agent-launch-context pre { white-space: pre-wrap; overflow-wrap: anywhere; max-height: 200px; overflow: auto; }
 .agent-pane .agent-pagination { display: flex; flex-wrap: wrap; gap: 5px; padding: 4px 12px; }
 .work-rail:has(.agent-rail) { overflow: auto; }
+.workbench:has(.agent-draft) { grid-template-columns: 300px minmax(420px, 1fr) 280px; }
+.work-rail:has(.agent-draft) > * { flex-shrink: 0; }
+.work-rail .agent-draft { overflow: visible; }
+.work-rail:has(.agent-draft) .agent-rail { overflow: visible; }
 .workbench:has(.agent-dock-open) { min-height: 480px; }
 @media (max-width: 1000px) {
   .workbench:has(.agent-dock-open) { min-width: 800px; grid-template-columns: 190px minmax(380px, 1fr) 230px; }

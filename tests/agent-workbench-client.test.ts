@@ -291,7 +291,7 @@ describe("agent bridge observation and recovery (injected transport, never a pro
     h.reply(h.latest("agent.snapshot"), { kind: "snapshot", snapshot: state.snapshot }); await drain();
     oldClient.select(state.run!.runId); h.read(h.latest("agent.read"), state.run!, state.records); await drain();
     oldClient.instruction("Previously dispatched instruction"); const sending = oldClient.steer(); const pending = h.latest("agent.steer");
-    disconnect(); const replacement = createAgentClient(memory); replacement.instruction("New unsent text after renderer replacement");
+    disconnect(); const replacement = createAgentClient(memory); replacement.connect(harness().bridge); replacement.instruction("New unsent text after renderer replacement");
     expect(memory.state?.instructions[state.run!.runId]).toBe("New unsent text after renderer replacement");
     pending.resolve({ protocolVersion: PROTOCOL_VERSION, requestId: pending.input.requestId, ok: false,
       error: { code: "AGENT_OUTCOME_UNKNOWN", message: "Old acknowledgement did not arrive" } }); await sending;

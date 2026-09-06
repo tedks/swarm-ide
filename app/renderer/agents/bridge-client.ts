@@ -22,7 +22,8 @@ export class AgentBridgeClient {
   private prepareTicket = 0;
   private readAgain = false;
 
-  constructor(checkpoint?: LiveAgentState, private readonly persistCheckpoint?: (state: LiveAgentState) => void) {
+  constructor(checkpoint?: LiveAgentState, private readonly persistCheckpoint?: (state: LiveAgentState) => void,
+    private readonly activateCheckpoint?: () => void) {
     this.state = checkpoint ? recoverLiveAgentState(checkpoint) : emptyLiveAgentState();
   }
   getSnapshot = () => this.state;
@@ -34,6 +35,7 @@ export class AgentBridgeClient {
   }
 
   connect(bridge: SwarmBridge | undefined, lifecycle?: LifecycleBridge): () => void {
+    this.activateCheckpoint?.();
     this.bridge = bridge;
     const connection = ++this.epoch;
     let live = true;

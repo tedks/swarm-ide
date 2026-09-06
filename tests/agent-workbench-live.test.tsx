@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, renderHook, screen, waitFor } from "@testing-library/react";
+import { StrictMode } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { AGENT_LIMITS, AgentSnapshotSchema, PreparedAgentContextSchema } from "../protocol/agents";
 import { PROTOCOL_VERSION, type CoreRequest, type CoreResponse, type GraphSlice } from "../protocol/schema";
@@ -10,6 +11,9 @@ import { emptyLiveAgentState, type LiveAgentState } from "../app/renderer/agents
 import { AgentBridgeClient } from "../app/renderer/agents/bridge-client";
 import { LiveRunPane } from "../app/renderer/agents/LiveRunPane";
 import { PreparedLaunchDraft } from "../app/renderer/agents/PreparedLaunchDraft";
+import { useAgentClient } from "../app/renderer/agents/use-agent-workbench";
+import type { AgentClientMemory } from "../app/renderer/agents/client-memory";
+import type { SwarmBridge } from "../app/electron/preload";
 
 vi.mock("../app/renderer/GraphPane", () => ({ GraphPane: ({ graph }: { graph: GraphSlice }) => <section data-testid="live-graph">{graph.title}<input aria-label={`Camera ${graph.topologyId}`} defaultValue="pan 20 zoom 2" /></section> }));
 vi.mock("../app/renderer/EditorPane", () => ({ EditorPane: ({ content, onChange }: { content: string; onChange: (text: string) => void }) => <textarea aria-label="Source buffer" value={content} onChange={(e) => onChange(e.target.value)} /> }));
@@ -26,6 +30,26 @@ function runningState(): LiveAgentState {
 const callbacks = () => ({ onInstruction: vi.fn(), onSteer: vi.fn(), onStop: vi.fn(), onRead: vi.fn(), onReveal: vi.fn(), onClose: vi.fn(), onHeight: vi.fn() });
 
 describe("live workbench presentation", () => {
+  it("preserves the committed StrictMode client's draft and unsent text across hook remount", async () => {
+    const memory: AgentClientMemory = {};
+    const f = fixture();
+    const bridge: SwarmBridge = { onEvent: () => () => undefined, request: async (input) => ({
+      protocolVersion: PROTOCOL_VERSION, requestId: input.requestId, ok: true, snapshot: initialSnapshot(paymentsFileFocus), sequence: 1,
+      agent: input.type === "agent.read" ? { kind: "read", run: f.run!, page: { records: f.records, nextCursor: f.run!.transcript.lastRecord, truncated: false } }
+        : { kind: "snapshot", snapshot: f.snapshot },
+    }) };
+    const view = renderHook(() => useAgentClient(bridge, undefined, memory), { wrapper: StrictMode });
+    await waitFor(() => expect(view.result.current.state.snapshot).not.toBeNull());
+    act(() => { view.result.current.client.select(f.run!.runId); view.result.current.client.openDraft(paymentsFileFocus); });
+    act(() => { view.result.current.client.instruction("New unsent thought"); view.result.current.client.editDraft({ task: "Preserve this draft" }); });
+    expect(memory.state?.draft?.task).toBe("Preserve this draft");
+    expect(memory.state?.instructions[f.run!.runId]).toBe("New unsent thought");
+    view.unmount();
+    const restored = renderHook(() => useAgentClient(bridge, undefined, memory), { wrapper: StrictMode });
+    await waitFor(() => expect(restored.result.current.state.connected).toBe(true));
+    expect(restored.result.current.state.draft?.task).toBe("Preserve this draft");
+    expect(restored.result.current.state.instructions[f.run!.runId]).toBe("New unsent thought");
+  });
   it("shows actual unavailable diagnostics, keeps source/graphs mounted, and prepares disk-only text on explicit gesture", async () => {
     const snapshot = initialSnapshot(paymentsFileFocus);
     const agentSnapshot = emptyAgentWorkbench().snapshot;
