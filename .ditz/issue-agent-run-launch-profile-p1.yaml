@@ -30,5 +30,13 @@ log_events:
     feature aliases, independent legacy notify and pre-initialize facilities. Quality
     passed248 existing tests; native source-backed review CLEAN; foreign security
     reviews/full local gates underway. No app-server/model/auth probe.'
+- time: 2026-09-06T04:05:44-00:00
+  who: Ted Smith
+  what: commented
+  comment: Security-review correction pushed d9725c5266d582c5dd9f938d32ec2d1f05246612.
+    All5 uncached local tests/full build passed again;248 tests/29 files, owned virtual
+    smoke25.7s cleanup_complete=1. Native and Google fix-delta convergence CLEAN;
+    Anthropic warm convergence pending. Added explicit pre-thread/strict/executor/keyring/remote-state
+    gates. No product code or policy availability change.
 blocks:
 - agent-run-effective-policy
