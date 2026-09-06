@@ -1,0 +1,17 @@
+id: live-agent-native-provider-controls
+title: Close native Codex HTTP-only prewarm and retry controls for sealed-context
+  profile
+desc: ""
+type: task
+component: default
+release:
+reporter: Ted Smith <tedks@riseup.net>
+status: unstarted
+disposition:
+creation_time: 2026-09-06T14:36:40-00:00
+references: []
+log_events:
+- time: 2026-09-06T14:36:40-00:00
+  who: Ted Smith
+  what: created
+  comment: ""
