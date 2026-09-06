@@ -23,6 +23,7 @@ filegroup(
         "//tools:electron-runtime-source",
         "//tools:extract-service-topology",
         "//tools:desktop-automation-sources",
+        "//tools:agent-journey-sources",
     ],
 )
 
