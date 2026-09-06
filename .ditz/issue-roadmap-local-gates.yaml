@@ -14,3 +14,14 @@ log_events:
   who: Ted Smith
   what: created
   comment: ""
+- time: 2026-09-06T15:20:50-00:00
+  who: Ted Smith
+  what: commented
+  comment: 'User directive2026-09-06 for remainder of roadmap: verified relevant LOCAL
+    gates plus review/normalPR/push are authoritative. Ignore hosted CI; do not wait,
+    poll, repair or diagnose it, and never call it green. ROOT may update/restart
+    framework0 visualization at discretion because user confirms no ongoing work.
+    Implementation children coordinate shared adoption; all automated GUI tests stay
+    owned virtualX11. Local safety, policy/process/credentials/real-run/runtime-patch
+    gates unchanged. Durable operational directive master/artifacts/roadmap-execution-directive.md;
+    common instructions/ledger and active T3 updated.'
