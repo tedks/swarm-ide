@@ -26,3 +26,9 @@ log_events:
     runner and record actual hosted positive proof; current ignored stderr limits
     root-cause diagnosis, not permission to infer AppArmor/sysctl cause. No product
     capability unlocked.
+- time: 2026-09-06T06:04:19-00:00
+  who: Ted Smith
+  what: blocked by agent-policy-boundary-hosted-seed-pipe
+  comment: ""
+blocked_by:
+- agent-policy-boundary-hosted-seed-pipe
