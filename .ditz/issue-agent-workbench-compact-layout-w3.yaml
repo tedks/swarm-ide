@@ -7,8 +7,8 @@ type: task
 component: default
 release:
 reporter: Ted Smith <tedks@riseup.net>
-status: in_progress
-disposition:
+status: closed
+disposition: fixed
 creation_time: 2026-09-06T05:32:52-00:00
 references: []
 log_events:
@@ -32,5 +32,14 @@ log_events:
     no outer horizontal overflow, maxdock204px leaves source94px/output113px; shortviewport
     fallback500px root scroll; samezoom camera/DOM/draftreload and keyboard steering/Stop
     tested with explicit fixture. Full gates pending; production policy unavailable.'
+- time: 2026-09-06T06:15:43-00:00
+  who: Ted Smith
+  what: 'closed: fixed'
+  comment: Completed bounded W3 in normal PR23 merge 0fc41d8, topic1d54f8a/tree0761254.
+    Exact aggregate full24 build/all8 uncached,554 tests/48files; exact-head owned
+    compact100/150% and fallback160% matrix passed77.157s, cleanup1. Native OpenAI+Google
+    CLEAN, Anthropic session-limit missing. Production unavailable; watched master/app
+    untouched. Shared display bounds and broader scope remain in parent; UI-zoom camera
+    and touch nits filed separately.
 blocks:
 - agent-workbench-compact-layout
