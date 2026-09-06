@@ -7,8 +7,8 @@ type: task
 component: default
 release:
 reporter: Ted Smith <tedks@riseup.net>
-status: in_progress
-disposition:
+status: closed
+disposition: fixed
 creation_time: 2026-09-06T01:28:49-00:00
 references: []
 log_events:
@@ -43,6 +43,14 @@ log_events:
     First full local build and all 5 tests passed, including virtual X11; council
     boundary findings fixed and undergoing convergence. No provider execution or user-app/master
     adoption.'
+- time: 2026-09-06T02:16:37-00:00
+  who: Ted Smith
+  what: 'closed: fixed'
+  comment: 'Normal-merged PR #9 at 1afb2b8185901e87f580d9d53e287cfd386fbb91; strict
+    protocol3 shared interfaces/unavailable bridge delivered. Full local build/test
+    and all three council seats converged clean. Remote CI in progress under explicit
+    conditional waiver. Watched master/app not adopted; R1/W1/E1 can branch from merged
+    base. Followups: restart-drain-policy, late-response-evidence, boundary-diagnostics.'
 blocks:
 - agent-run-runtime
 - agent-run-workbench
