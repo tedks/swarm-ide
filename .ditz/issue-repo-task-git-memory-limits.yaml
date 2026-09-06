@@ -14,3 +14,11 @@ log_events:
   who: Ted Smith
   what: created
   comment: ""
+- time: 2026-09-06T08:11:22-00:00
+  who: Ted Smith
+  what: commented
+  comment: T1 reads hash-verified local Git objects with size preflight, bounded stdout/stderr
+    and 5s command/10s observation deadlines. Git pack/delta decompression still lacks
+    an OS memory ceiling, including hostile same-user object database races. Follow
+    up before claiming a whole-host resource sandbox; T1 does not claim one. Production
+    composition remains separate T3.
