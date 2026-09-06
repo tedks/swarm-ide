@@ -20,5 +20,11 @@ log_events:
   who: Ted Smith
   what: blocked by first-agent-run-contract-gate
   comment: ""
+- time: 2026-09-06T01:29:32-00:00
+  who: Ted Smith
+  what: blocks agent-run-runtime
+  comment: ""
+blocks:
+- agent-run-runtime
 blocked_by:
 - first-agent-run-contract-gate
