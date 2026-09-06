@@ -1,0 +1,18 @@
+id: repo-task-contract-t0
+title: Publish the shared read-only task contract base
+desc: 'First bounded slice after D1: reviewed task schemas, correlated read results,
+  unavailable provider seam and pinned YAML dependency before independent core/UI
+  consumers. See .planning/repo-task-surface.md. ROOT assigns shared-file ownership.'
+type: task
+component: workbench
+release:
+reporter: Ted Smith <tedks@riseup.net>
+status: unstarted
+disposition:
+creation_time: 2026-09-06T06:15:54-00:00
+references: []
+log_events:
+- time: 2026-09-06T06:15:54-00:00
+  who: Ted Smith
+  what: created
+  comment: ""
