@@ -1,0 +1,23 @@
+id: agent-run-post-admission-error-classification
+title: Audit post-admission launch failures for uncertain delivery classification
+desc: 'Anthropic W2B final review flagged out-of-delta boundary: service.ts after
+  store.admit can return a store.read error, while bridge-client mutation mapping
+  treats ordinary storage codes as rejected rather than delivery-unknown. Default
+  file-store.read uses admitted in-memory entries, so triggering conditions need a
+  bounded fault-injection audit, not an asserted live bug. Verify failure-after-persist/uncertain
+  durability cannot imply no admission or enable unsafe retry. Existing real-policy
+  gate remains closed; Runtime/integration owns follow-up before credentialed vertical
+  proof.'
+type: task
+component: default
+release:
+reporter: Ted Smith <tedks@riseup.net>
+status: unstarted
+disposition:
+creation_time: 2026-09-06T04:57:30-00:00
+references: []
+log_events:
+- time: 2026-09-06T04:57:30-00:00
+  who: Ted Smith
+  what: created
+  comment: ""
