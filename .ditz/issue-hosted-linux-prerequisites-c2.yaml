@@ -22,5 +22,14 @@ log_events:
   who: Ted Smith
   what: blocks agent-policy-boundary-hosted-seed-pipe
   comment: ""
+- time: 2026-09-06T14:24:31-00:00
+  who: Ted Smith
+  what: commented
+  comment: PR33 ba3f688 delivers current-family pinned CI, fixed bounded stage/syscall
+    diagnostics, real tracer cleanup test and honest operator stopping boundary. Native
+    convergence CLEAN; Google delta and Anthropic full seat pending. Canonical parent
+    remains open until actual hosted policy/process/UI proof. Initial invalidated
+    rehearsal from C2 docs edit is being rerun on frozen checkout; no proof expectations
+    changed.
 blocks:
 - agent-policy-boundary-hosted-seed-pipe
