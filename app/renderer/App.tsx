@@ -659,7 +659,7 @@ export function App() {
     ...(agentFixtureEnabled ? [{ label: "Preview agent fixture", detail: "DEMO only · no provider or file bytes · explicit launch", run: () => { setPaletteOpen(false); openAgentDraft(); } }] : []),
   ].filter((command) => command.label.toLowerCase().includes(commandQuery.toLowerCase())), [agentClient, agentFixtureEnabled, openAgentDraft, commandQuery, openFile, reconcile, showSurface]);
 
-  if (!snapshot) return <main className="loading-screen"><div className="loading-mark hmr-probe" />Opening the working world…{error ? <strong>{error}</strong> : null}<small>{lifecycleNotice}</small></main>;
+  if (!snapshot) return <main className="loading-screen"><div className="loading-mark hmr-probe" />Opening the working world…{error ? <strong>{error}</strong> : null}<small>{lifecycleNotice}</small><AgentReloadGuard state={liveAgents} client={agentClient} /></main>;
   return (
     <main className="workbench" style={agents.selected || liveAgents.paneOpen ? { gridTemplateRows: `52px minmax(150px, 1fr) min(${(liveAgents.paneOpen ? liveAgents.height : agentPaneHeight) + 28}px, 48vh)` } : undefined}>
       <header className="topbar">

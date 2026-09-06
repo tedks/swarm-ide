@@ -59,6 +59,15 @@ function options() { fireEvent.click(screen.getByText("Inspect local agent inten
 function discard() { options(); fireEvent.click(screen.getByRole("button", { name: "Discard local agent intent and allow refresh" })); }
 
 describe("agent intent at the actual document/preload refresh boundary", () => {
+  it("keeps local recovery actions available even before a workspace snapshot can be loaded", async () => {
+    harness.memory.state = { ...emptyLiveAgentState(), draft: { focus: paymentsFileFocus, task: "Preserved during remount", model: "", prepared: null, confirmed: false, preparing: false } };
+    shell(); delete window.swarm;
+    render(<StrictMode><App /></StrictMode>);
+    expect(screen.getByText(/Opening the working world/)).toBeTruthy();
+    expect(unload().defaultPrevented).toBe(true);
+    discard();
+    expect(unload().defaultPrevented).toBe(false);
+  });
   it("defers manual and successive preload revisions for a launch draft without browser persistence or graph replacement", async () => {
     const h = shell(); await openApp(); const graphs = screen.getAllByTestId("reload-graph");
     draft();

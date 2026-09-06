@@ -176,6 +176,38 @@ describe("document-loss guard local client intent", () => {
     const count = h.calls.length; await client.reconcileOperation("local-command"); expect(h.calls).toHaveLength(count);
   });
 
+  it("a reconciled receipt outranks overlapping older detail and snapshot replies", async () => {
+    const h = harness();
+    const snapshot = AgentSnapshotSchema.parse({ ...fixture().snapshot, capabilities });
+    const client = new AgentBridgeClient({ ...emptyLiveAgentState(), operations: [operation("steer", "instruction")] });
+    client.connect(h.bridge);
+    h.reply(h.latest("agent.snapshot"), { kind: "snapshot", snapshot }, 1); await drain();
+    client.select(run.runId); h.read(h.latest("agent.read"), run, 1); await drain();
+    client.instruction("retained local text");
+    const reading = client.read(true); const olderDetail = h.latest("agent.read");
+    const reconciled = client.reconcileOperation("instruction"); const reconcileRead = h.latest("agent.read");
+    const receipt = { requestId: "instruction", expectedTurnId: run.providerTurnId!, text: "Private local command", textHash: "0".repeat(64),
+      submittedAt: FIXTURE_TIME, settledAt: FIXTURE_TIME, status: "accepted" as const, error: null };
+    h.read(reconcileRead, { ...run, instructions: [receipt] }, 5); await reconciled;
+    expect(client.getSnapshot().operations[0]?.status).toBe("accepted");
+    expect(client.getSnapshot().detailStale).toBe(true);
+    const refresh = h.latest("agent.snapshot");
+    expect(h.calls.filter((call) => call.input.type === "agent.snapshot")).toHaveLength(2);
+    h.read(olderDetail, { ...run, instructions: [{ ...receipt, status: "pending", settledAt: null }] }, 4); await reading;
+    // An older snapshot cannot hide the selected run or make its old detail fresh.
+    h.reply(refresh, { kind: "snapshot", snapshot: h.snapshot }, 4); await drain();
+    expect(client.getSnapshot().snapshot).toEqual(snapshot);
+    expect(client.getSnapshot().selectedRunId).toBe(run.runId);
+    expect(client.getSnapshot().detailStale).toBe(true);
+    expect(client.getSnapshot().run?.instructions).toEqual([]);
+    expect(client.getSnapshot().operations[0]?.status).toBe("accepted");
+    expect(protectsAgentIntent(client.getSnapshot())).toBe(true);
+    client.clearLocalIntent(client.getSnapshot());
+    expect(protectsAgentIntent(client.getSnapshot())).toBe(false);
+    expect(client.getSnapshot().operations[0]?.documentLossAcknowledged).toBeUndefined();
+    expect(h.calls.every((call) => call.input.type === "agent.snapshot" || call.input.type === "agent.read")).toBe(true);
+  });
+
   it("preserves loss acknowledgement in HMR memory while an obsolete owner cannot erase new intent", () => {
     const memory: AgentClientMemory = { state: { ...emptyLiveAgentState(), operations: [operation()] } };
     const old = createAgentClient(memory); old.connect(undefined); old.clearLocalIntent(old.getSnapshot(), true);

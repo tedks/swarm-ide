@@ -146,12 +146,16 @@ export class AgentBridgeClient {
     // text and receipts must remain protected, including between preflight and
     // actual unload. Do not remove mutation identities or change their outcome.
     const clearDraft = this.state.draft === observed.draft;
+    const newerIntent = !clearDraft || this.state.instructions !== observed.instructions ||
+      (allowDocumentLoss && this.state.operations.some((op) => unresolvedOperation(op) && !observed.operations.includes(op)));
     if (clearDraft) ++this.prepareTicket;
     this.update({
       ...(clearDraft ? { draft: null } : {}),
       instructions: this.state.instructions === observed.instructions ? {} : this.state.instructions,
       operations: this.state.operations.map((op) => allowDocumentLoss && unresolvedOperation(op) && observed.operations.includes(op)
         ? { ...op, text: null, documentLossAcknowledged: true } : op),
+      notice: newerIntent ? "Newer local agent intent was preserved. Inspect the current text and receipts before clearing again."
+        : "Local agent loss decision applied. Command outcomes and source buffers are unchanged; nothing was resent.",
     });
   }
   async reconcileOperation(requestId: string) {
@@ -165,6 +169,9 @@ export class AgentBridgeClient {
       if (!result) return;
       if (!result.ok) { this.failure(result); return; }
       if (result.agent?.kind !== "read" || result.sequence < this.watermark) return;
+      // This is authoritative read evidence too: an older overlapping detail
+      // response/event must not undo the receipt we are about to reconcile.
+      this.watermark = result.sequence;
       const run = result.agent.run;
       const receipt = operation.kind === "steer" ? run.instructions.find((r) => r.requestId === requestId) : null;
       // A durable run proves admission, not activity/completion. The contract
@@ -173,7 +180,9 @@ export class AgentBridgeClient {
       this.update({ operations: this.state.operations.map((op) => op.requestId === requestId && unresolvedOperation(op) && status
         ? { ...op, status, message: receipt?.error?.message ?? (op.kind === "launch" ? "Durable admission observed; not turn completion." : "Durable instruction receipt observed; not completion.") } : op),
         notice: status ? "Local receipt reconciled with core evidence; no command resent." : "No matching durable command receipt observed. Delivery remains unresolved; absence is not rejection. No command resent.",
+        detailStale: this.state.selectedRunId !== null && result.sequence > this.detailSequence,
       });
+      if (this.state.detailStale) void this.refresh();
     } finally { this.reconciling.delete(requestId); }
   }
   editDraft(patch: { task?: string; model?: string }) {
