@@ -6,7 +6,7 @@
   "packageManager": "pnpm@11.22.0",
   "dependencies": {
     "@codemirror/commands": "6.10.3",
-    "@codemirror/state": "6.5.4",
+    "@codemirror/state": "6.7.4",
     "@codemirror/view": "6.38.6",
     "@xyflow/react": "12.11.6",
     "react": "19.2.8",

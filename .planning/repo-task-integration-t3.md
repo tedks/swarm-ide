@@ -21,7 +21,7 @@ This is read-only browsing, not task dispatch or attachment to an agent draft.
 - [x] (2026-09-06 15:09Z) State assumptions and split narrow deadline tests and CLI-fixture work into independent native helpers.
 - [x] (2026-09-06 15:38Z) Compose real task provider, package pinned parser and relative file-URL assets; task-only deadline/CLI pinned/cache/disposal tests pass.
 - [x] (2026-09-06 15:38Z) Actual packaged CLI-to-UI path exercises Reveal, dirty source/draft/cameras,100/150, stale/adopt/malformed/missing/recovery and absent-parser negative. Initial32build/all12uncached pass; this is not final error-free acceptance.
-- [ ] Correct separately requested pre-existing CodeMirror state identity bug exposed by actual keyboard proof; runtime regression currently RED (undefined anchor).
+- [x] (2026-09-06 15:43Z) ROOT approved exact dependency exception. Runtime regression RED with undefined anchor; direct state/override unified on compatible6.7.4 via offline lock materialization and frozen install. Fixed runtime/GUI gates pending below.
 - [ ] Repeat error-free packaged UI proof with exact source/selection and visible painted detail measurements.
 - [ ] Complete full local gates, provider-diverse review to fixpoint, normal merge, reviewed integration, Ditz sync and owned cleanup.
 
@@ -48,7 +48,9 @@ other class and interprets its missing top-level anchor/head as undefined.
 The browser can restore a final cursor after that exception, hiding the defect
 from a weak final-state check. NEW actual `cursorCharForwardLogical` regression
 fails with undefined instead of1; all1029 other tests pass. The dependency-only
-repair requires ROOT's explicit frozen-dependency exception before implementation.
+repair received ROOT's explicit exception in `editor-ownership.md`: only direct
+state6.7.4, an exact matching override and corresponding lock changes. Offline
+resolution retained every other package version/integrity, including YAML2.8.1.
 
 ## Decision Log
 
@@ -169,3 +171,6 @@ joined product/package proof before implementation.
 
 Revision note (15:41Z): record actual initial aggregate evidence, discovered
 keyboard corruption and genuine red regression without claiming final acceptance.
+
+Revision note (15:43Z): record ROOT-authorized dependency identity correction and
+offline-only materialization; the new fixed-package gates have not yet run.
