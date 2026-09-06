@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { AgentBridgeClient } from "../app/renderer/agents/bridge-client";
+import { createAgentClient } from "../app/renderer/agents/client-memory";
 import { displayAgentText, emptyLiveAgentState, type LiveAgentState } from "../app/renderer/agents/live-state";
 import { fixtureLaunchContext } from "../app/renderer/agents/client";
 import { emptyAgentWorkbench, fixtureReducer, FIXTURE_TIME } from "../app/renderer/agents/state";
@@ -150,8 +151,9 @@ describe("agent bridge observation and recovery (injected transport, never a pro
       kind: i === 12 ? "gap" : "message", providerItemId: null, text: i === 12 ? "Earlier output truncated" : "<script>not executable</script>" }));
     const run = { ...state.run!, transcript: { ...state.run!.transcript, lastRecord: 141, truncated: true } };
     const first = client.read(true); h.read(h.latest("agent.read"), run, records, 2, true); await first;
-    expect(client.getSnapshot().records).toHaveLength(128);
-    expect(client.getSnapshot().records[0]).toMatchObject({ recordId: 13, kind: "gap" });
+    expect(client.getSnapshot().records).toHaveLength(140);
+    expect(client.getSnapshot().records.map((record) => record.recordId)).toEqual(records.map((record) => record.recordId));
+    expect(client.getSnapshot().records[12]).toMatchObject({ recordId: 13, kind: "gap" });
     expect(client.getSnapshot().pageTruncated).toBe(true);
     expect(client.getSnapshot().pageCursor).toBe(140);
     const next = client.read(); expect(h.latest("agent.read").input).toMatchObject({ afterRecord: 140 });
@@ -218,5 +220,83 @@ describe("agent bridge observation and recovery (injected transport, never a pro
     expect(client.getSnapshot().run).toMatchObject({ state: "completed", processState: "live" });
     const exited = fixture(4); h.changed(exited.snapshot, 4); h.read(h.latest("agent.read"), exited.run!, exited.records, 4); await drain();
     expect(client.getSnapshot().run).toMatchObject({ state: "completed", processState: "exited", cleanup: { status: "confirmed" } });
+  });
+
+  it("launches while historical detail is pending without leaving the new run's reading state stuck", async () => {
+    const historical = fixture(4); const { h, client } = await connected(historical.snapshot);
+    client.select(historical.run!.runId); const oldRead = h.latest("agent.read");
+    expect(client.getSnapshot().reading).toBe(true);
+    client.openDraft(paymentsFileFocus); const preparing = client.prepare(); const draft = {
+      ...prepared(h.latest("agent.prepare")), runId: "33333333-3333-4333-8333-333333333333",
+    };
+    h.reply(h.latest("agent.prepare"), { kind: "prepare", draft }); await preparing; client.confirmDraft(true);
+    const launching = client.launch();
+    expect(client.getSnapshot()).toMatchObject({ selectedRunId: draft.runId, reading: false });
+    h.read(oldRead, historical.run!, historical.records); await drain();
+    expect(client.getSnapshot()).toMatchObject({ selectedRunId: draft.runId, reading: false, run: null });
+    h.reply(h.latest("agent.launch"), { kind: "launch", receipt: {
+      runId: draft.runId, contextHash: draft.contextHash, admittedAt: FIXTURE_TIME, status: "admitted",
+    } }); await launching;
+    const admitted = fixture(0); const run = { ...admitted.run!, runId: draft.runId, launchContext: draft.launchContext };
+    h.reply(h.latest("agent.snapshot"), { kind: "snapshot", snapshot: AgentSnapshotSchema.parse({ ...admitted.snapshot,
+      runs: [historical.snapshot.runs[0], { ...admitted.snapshot.runs[0], runId: draft.runId }], activeRunId: draft.runId,
+    }) }, 2); await drain();
+    expect(h.latest("agent.read").input).toMatchObject({ runId: draft.runId });
+    h.read(h.latest("agent.read"), run, admitted.records, 2); await drain();
+    expect(client.getSnapshot()).toMatchObject({ reading: false, detailStale: false, run: { runId: draft.runId, state: "starting" } });
+  });
+
+  it.each(["edit-current", "replace-draft"] as const)("late admission preserves newer %s text, historical selection and pane closure", async (intent) => {
+    const historical = fixture(4); const { h, client } = await connected(historical.snapshot);
+    client.openDraft(paymentsFileFocus); const preparing = client.prepare(); const draft = {
+      ...prepared(h.latest("agent.prepare")), runId: "33333333-3333-4333-8333-333333333333",
+    };
+    h.reply(h.latest("agent.prepare"), { kind: "prepare", draft }); await preparing; client.confirmDraft(true);
+    const launching = client.launch(); const pendingLaunch = h.latest("agent.launch");
+    if (intent === "replace-draft") { client.closeDraft(); client.openDraft({ ...paymentsFileFocus, key: "new-draft-focus" }); }
+    client.editDraft({ task: "Newer user intent must survive admission", model: "new-model-request" });
+    client.select(historical.run!.runId); h.read(h.latest("agent.read"), historical.run!, historical.records); await drain();
+    client.closePane(); const newerFocus = client.getSnapshot().draft!.focus;
+    h.reply(pendingLaunch, { kind: "launch", receipt: {
+      runId: draft.runId, contextHash: draft.contextHash, admittedAt: FIXTURE_TIME, status: "admitted",
+    } }); await launching;
+    expect(client.getSnapshot()).toMatchObject({ selectedRunId: historical.run!.runId, paneOpen: false,
+      draft: { task: "Newer user intent must survive admission", model: "new-model-request", focus: newerFocus },
+      run: { runId: historical.run!.runId },
+    });
+    expect(client.getSnapshot().records).toEqual(historical.records);
+    expect(client.getSnapshot().operations[0]?.status).toBe("accepted");
+  });
+
+  it("reserves cancellation capacity when 128 local instruction operations are already retained", async () => {
+    const state = fixture(); const runId = state.run!.runId; const h = harness();
+    const operations: LiveAgentState["operations"] = Array.from({ length: 128 }, (_, i) => ({
+      requestId: `retained-instruction-${i}`, runId, kind: "steer", text: `Retained text ${i}`, status: "accepted", message: "Acknowledged, not completion",
+    }));
+    const client = new AgentBridgeClient({ ...emptyLiveAgentState(), selectedRunId: runId, snapshot: state.snapshot, run: state.run, operations });
+    client.connect(h.bridge); h.reply(h.latest("agent.snapshot"), { kind: "snapshot", snapshot: state.snapshot }); await drain();
+    h.read(h.latest("agent.read"), state.run!, state.records); await drain();
+    const stopping = client.stop(); expect(h.calls.filter((call) => call.input.type === "agent.cancel")).toHaveLength(1);
+    const cancel = h.latest("agent.cancel"); h.reply(cancel, { kind: "cancel", receipt: {
+      runId, requestId: cancel.input.requestId, requestedAt: FIXTURE_TIME, status: "requested",
+    } }); await stopping;
+    expect(client.getSnapshot().operations.filter((operation) => operation.kind === "steer")).toEqual(operations);
+    expect(client.getSnapshot().operations.at(-1)).toMatchObject({ kind: "cancel", status: "accepted" });
+    await client.stop(); expect(h.calls.filter((call) => call.input.type === "agent.cancel")).toHaveLength(1);
+  });
+
+  it("prevents an obsolete HMR client acknowledgement from overwriting its replacement's checkpoint", async () => {
+    const memory: { state?: LiveAgentState; owner?: symbol } = {}; const state = fixture(); const h = harness();
+    const oldClient = createAgentClient(memory); const disconnect = oldClient.connect(h.bridge);
+    h.reply(h.latest("agent.snapshot"), { kind: "snapshot", snapshot: state.snapshot }); await drain();
+    oldClient.select(state.run!.runId); h.read(h.latest("agent.read"), state.run!, state.records); await drain();
+    oldClient.instruction("Previously dispatched instruction"); const sending = oldClient.steer(); const pending = h.latest("agent.steer");
+    disconnect(); const replacement = createAgentClient(memory); replacement.instruction("New unsent text after renderer replacement");
+    expect(memory.state?.instructions[state.run!.runId]).toBe("New unsent text after renderer replacement");
+    pending.resolve({ protocolVersion: PROTOCOL_VERSION, requestId: pending.input.requestId, ok: false,
+      error: { code: "AGENT_OUTCOME_UNKNOWN", message: "Old acknowledgement did not arrive" } }); await sending;
+    expect(memory.state?.instructions[state.run!.runId]).toBe("New unsent text after renderer replacement");
+    expect(memory.state?.operations[0]).toMatchObject({ text: "Previously dispatched instruction", status: "delivery-unknown" });
+    expect(h.calls.filter((call) => call.input.type === "agent.steer")).toHaveLength(1);
   });
 });

@@ -14,12 +14,13 @@ function operationMeaning(operation: LocalOperation): string {
   return "Provider acknowledged this instruction; this is not turn completion.";
 }
 
-export function LiveRunPane({ state, onInstruction, onSteer, onStop, onRead, onReveal, onClose, onHeight, currentFingerprint, currentWorldId }: {
+export function LiveRunPane({ state, onInstruction, onSteer, onStop, onRead, onFollow, onReveal, onClose, onHeight, currentFingerprint, currentWorldId }: {
   state: LiveAgentState;
   onInstruction: (text: string) => void;
   onSteer: () => void;
   onStop: () => void;
   onRead: (fromStart?: boolean) => void;
+  onFollow?: () => void;
   onReveal: (focus: FocusRef) => void;
   onClose: () => void;
   onHeight: (height: number) => void;
@@ -81,7 +82,7 @@ export function LiveRunPane({ state, onInstruction, onSteer, onStop, onRead, onR
           <div className={`agent-record agent-record-${record.kind}`}><small>{record.kind} / {record.recordId}<br />{record.timestamp}</small><p>{displayAgentText(record.text)}</p></div>
         </div>)}
       </div>
-      <div className="agent-evidence agent-steer-actions"><button disabled={!canRead} onClick={() => onRead(true)}>Read transcript from start</button><button disabled={!canRead || !run || state.pageCursor >= run.transcript.lastRecord} onClick={() => onRead()}>Read next transcript page</button><small>One bounded page at a time · cursor {state.pageCursor}</small></div>
+      <div className="agent-evidence agent-pagination"><button disabled={!canRead} onClick={() => onRead(true)}>Read transcript from start</button><button disabled={!canRead || !run || state.pageCursor >= run.transcript.lastRecord} onClick={() => onRead()}>Read next transcript page</button>{onFollow ? <button disabled={!state.connected || !active || state.following} onClick={onFollow}>Follow live output</button> : null}<small>{state.following && active ? "Following active tail" : "One bounded page at a time"} · cursor {state.pageCursor}</small></div>
     </div><aside className="agent-controls">
       {capabilities?.availability === "unavailable" ? <p role="status">{capabilities.reason?.code}: {displayAgentText(capabilities.reason?.message ?? "Agent controls unavailable.")}</p> : null}
       {run ? <details><summary>Submitted context</summary><LaunchContextView context={run.launchContext} /></details> : <p>Run detail is not available yet. Local command evidence is retained below.</p>}

@@ -191,12 +191,23 @@ export class AgentBridgeClient {
   }
   private async mutate(request: Extract<AgentRequest, { type: "agent.launch" | "agent.steer" | "agent.cancel" }>) {
     if (!this.state.connected) return;
-    if (this.state.operations.length >= AGENT_LIMITS.receipts) { this.update({ notice: "INSTRUCTION_LIMIT: local receipt limit reached; inspect retained history. No operation dispatched." }); return; }
+    if (request.type !== "agent.cancel" && this.state.operations.filter((op) => op.kind !== "cancel").length >= AGENT_LIMITS.receipts) {
+      this.update({ notice: "INSTRUCTION_LIMIT: local receipt limit reached; inspect retained history. Stop remains available." }); return;
+    }
     const kind = request.type.slice(6) as LocalOperation["kind"];
-    this.update({ operations: [...this.state.operations, { requestId: request.requestId, runId: request.runId, kind,
+    // Reserve Stop independently of the instruction budget. There is one active
+    // run and at most 20 retained runs. A definitively rejected Stop may be
+    // deliberately retried; retain the latest transport receipt for that run.
+    let operations = this.state.operations;
+    if (request.type === "agent.cancel") operations = operations.filter((op) => !(op.kind === "cancel" && op.runId === request.runId && op.status === "rejected"));
+    if (request.type === "agent.launch") {
+      ++this.readTicket; this.readAgain = false; this.detailSequence = -1;
+    }
+    this.update({ operations: [...operations, { requestId: request.requestId, runId: request.runId, kind,
       text: request.type === "agent.steer" ? request.text : request.type === "agent.launch" ? this.state.draft?.task ?? null : null,
       status: "pending", message: "Waiting for acknowledgement; this is not completion." }],
-      ...(request.type === "agent.launch" ? { selectedRunId: request.runId, paneOpen: true, run: null, records: [], following: true, detailStale: true } : {}),
+      ...(request.type === "agent.launch" ? { selectedRunId: request.runId, paneOpen: true, run: null, records: [], pageCursor: 0,
+        pageTruncated: false, reading: false, following: true, detailStale: true } : {}),
     });
     const result = await this.request(request);
     const status = !result || (!result.ok && ["AGENT_OUTCOME_UNKNOWN", "CORE_TIMEOUT", "CORE_GENERATION_CHANGED", "INVALID_CORE_MESSAGE"].includes(result.error.code)) ? "delivery-unknown"
@@ -208,8 +219,10 @@ export class AgentBridgeClient {
     this.update({ operations: this.state.operations.map((op) => op.requestId === request.requestId
       // An already observed durable receipt outranks a later ambiguous transport failure.
       && (op.status === "pending" || op.status === "delivery-unknown") ? { ...op, status, message } : op) });
-    if (result?.ok && request.type === "agent.launch") {
-      this.update({ selectedRunId: request.runId, paneOpen: true, draft: null, run: null, records: [], following: true, detailStale: true });
+    if (result?.ok && request.type === "agent.launch" && this.state.draft?.prepared?.runId === request.runId) {
+      // The user may have moved elsewhere or changed this draft while awaiting
+      // admission. A late acknowledgement cannot steal focus or erase new text.
+      this.update({ draft: null });
     }
     this.failure(result);
     if (result) void this.refresh(); // Only reads, never mutation retries.
@@ -217,6 +230,11 @@ export class AgentBridgeClient {
   async read(fromStart = false) {
     this.update({ following: false });
     await this.readDetail(true, fromStart ? 0 : this.state.pageCursor);
+  }
+  follow() {
+    if (!this.state.selectedRunId || this.state.snapshot?.activeRunId !== this.state.selectedRunId) return;
+    this.update({ following: true });
+    void this.readDetail(false);
   }
   private async readDetail(explicit: boolean, cursor?: number) {
     const runId = this.state.selectedRunId;
@@ -239,10 +257,12 @@ export class AgentBridgeClient {
         this.watermark = Math.max(this.watermark, result.sequence);
         const tail = this.state.following && this.state.snapshot?.activeRunId === runId ? this.state.snapshot.tail : null;
         const replace = explicit || this.state.following || !previous;
-        const records = tail ?? page.records.slice(-128);
+        // The schema already caps each page at 256 KiB / 2048 records. Dropping
+        // a prefix here while advancing the server cursor would make it unreadable.
+        const records = tail ?? page.records;
         this.update({ run, detailStale: false,
           ...(replace ? { records, pageCursor: tail ? tail.at(-1)?.recordId ?? 0 : page.nextCursor,
-            pageTruncated: page.truncated || (records[0]?.recordId ?? 1) > 1 || page.records.length > 128 } : {}),
+            pageTruncated: page.truncated } : {}),
           operations: this.state.operations.map((op) => {
             const receipt = op.runId === runId ? run.instructions.find((r) => r.requestId === op.requestId) : null;
             return receipt ? { ...op, status: receipt.status, message: receipt.error?.message ?? "Durable instruction receipt observed; not completion." } : op;

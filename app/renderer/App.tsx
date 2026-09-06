@@ -660,7 +660,7 @@ export function App() {
         <LiveRunRail state={liveAgents} client={agentClient} onDraft={() => agentClient.openDraft(snapshot.focus)} />
         <PreparedLaunchDraft state={liveAgents} client={agentClient} dirtyPaths={fileTabs.filter((tab) => protectsBuffer(tab)).map((tab) => tab.path)} />
         {agentFixtureEnabled ? <RunRail state={agents} fixtureEnabled={agentFixtureEnabled} onDraft={openAgentDraft} onSelect={() => { agentClient.closePane(); setAgents((state) => ({ ...state, selected: true })); }} /> : null}
-        {agents.draftOpen && agentFixtureEnabled ? <LaunchDraft focus={snapshot.focus} onClose={() => setAgents((state) => ({ ...state, draftOpen: false }))} onLaunch={(context) => setAgents((state) => fixtureReducer(state, { type: "launch", context }))} /> : null}
+        {agents.draftOpen && agentFixtureEnabled ? <LaunchDraft focus={snapshot.focus} onClose={() => setAgents((state) => ({ ...state, draftOpen: false }))} onLaunch={(context) => { agentClient.closePane(); setAgents((state) => fixtureReducer(state, { type: "launch", context })); }} /> : null}
         <div className="rail-section dispatch-list"><div className="section-heading"><span>Dispatch queue</span><b>0</b></div><div className="empty-rail">Task provider is not connected.</div></div>
       </aside>
 
@@ -705,7 +705,7 @@ export function App() {
 
       <section className={`activity-dock panel ${agents.selected || liveAgents.paneOpen ? "agent-dock-open" : ""}`}>
         {liveAgents.paneOpen ? <LiveRunPane state={liveAgents} onInstruction={(text) => agentClient.instruction(text)} onSteer={() => { void agentClient.steer(); }}
-          onStop={() => { void agentClient.stop(); }} onRead={(fromStart) => { void agentClient.read(fromStart); }} onClose={() => agentClient.closePane()}
+          onStop={() => { void agentClient.stop(); }} onRead={(fromStart) => { void agentClient.read(fromStart); }} onFollow={() => agentClient.follow()} onClose={() => agentClient.closePane()}
           onHeight={(height) => agentClient.resize(height)} currentWorldId={snapshot.world.id} currentFingerprint={snapshot.revisions.working.fingerprint}
           onReveal={(focus) => {
             if (focus.worldId === snapshot.world.id && focus.revisionKind === "working") selectFocus({ ...focus, revisionId: snapshot.revisions.working.id });
