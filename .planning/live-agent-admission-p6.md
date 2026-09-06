@@ -28,6 +28,7 @@ by the human and future bounded read tools remain on the roadmap.
 - [x] (2026-09-06 14:38Z) Native steering fix-delta finding resolved in bbb82fe. OpenAI and Google convergence CLEAN; Anthropic actual usage-credit exhaustion is MISSING, not approval.
 - [x] (2026-09-06 14:38Z) Local only-two-document, whitespace, relative-link, cited-symbol and evidence-identity checks pass; no new product tests/GUI/probes performed.
 - [x] (2026-09-06 14:46Z) ROOT explicitly cleared C2 normal dbe457d for this landing continuation; merged that exact aggregate into the own feature branch. Final aggregate has only two added P6 docs, unchanged cited agent seams and passing local documentation checks. The normal-merge/Ditz receipt is recorded in the ignored handoff after the operation.
+- [ ] (2026-09-06 14:48Z) Normal merge/closure held again: the immediate pre-merge guard observed new T2 PR31 normal 7642eb663565ce0e1f97590acf55e21b761c7320. ROOT's ledger does not yet clear this head. Guard stopped before invoking the PR merge; no T2 consumed. Return this exact need to ROOT without waiting or duplicating work.
 - [x] (2026-09-06 14:40Z) Publish reviewed/pushed design handoff, exact landing hold and retained resources; no successor dispatched.
 
 
@@ -96,6 +97,12 @@ in the ignored handoff after landing. Broad policy/first-run parents remain open
 Aggregate clearance and publication are NOT ROOT approval of this proposed
 design or authority for its implementation. Nothing is activated and no
 successor is dispatched.
+
+The landing continuation's immediate pre-merge guard subsequently found remote
+master advanced to T2 PR31 normal7642eb663565ce0e1f97590acf55e21b761c7320.
+ROOT has not cleared that new aggregate. Per the explicit continuation order,
+stop before PR merge, retain the clean pushed C2-based feature, and report the
+exact new authority needed. PR34 is still open; Ditz design remains in progress.
 
 Google's source-table wording nit was fixed. Its dense comparison-table nit is
 tracked in `live-agent-gate-ledger-readability`: retain the finite comparative
@@ -374,3 +381,7 @@ C2 and authorizing only this existing design's normal landing. Repeated
 proportionate documentation checks on the exact approved aggregate; no
 substantive design change or repeated product build/probe/review was needed.
 The immutable final merge receipt and post-merge checks live in the handoff.
+
+Landing gate note, 2026-09-06: no merge receipt exists yet because the pre-merge
+remote-head equality guard stopped on unreviewed T2. The handoff records the
+validated C2-based topic, new exact hold and unchanged design/activation gates.
