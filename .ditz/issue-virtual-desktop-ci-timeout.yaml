@@ -60,3 +60,11 @@ log_events:
     capture plus failure screenshot, before any calibrated deadline change. Do not
     call hosted green or blindly lengthen all waits. No harness changes made by this
     fixtures checkpoint.'
+- time: 2026-09-06T04:26:51-00:00
+  who: Ted Smith
+  what: commented
+  comment: E2 final topic5e26e78 hosted34010983121 completed FAILED after PR14 normal
+    mergea4ae558 under existing local-proof waiver. Same90s Consistent wait with Core1:ready/Reconciling,
+    virtual test98.5s, cleanup_complete=1. Earlier Build/Test passed. E2 final local
+    virtual28.1s and all286 tests/all5 Bazel targets/build passed. No new harness
+    timeout change or hosted-green claim.
