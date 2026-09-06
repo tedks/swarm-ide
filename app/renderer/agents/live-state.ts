@@ -17,6 +17,9 @@ export interface LocalOperation {
   text: string | null;
   status: "pending" | "accepted" | "rejected" | "delivery-unknown";
   message: string;
+  // Explicit permission to lose this local copy on document refresh, NOT a
+  // delivery/cancellation receipt. Keep identity/status for no-replay guards.
+  documentLossAcknowledged?: boolean;
 }
 
 export interface LiveAgentState {
@@ -55,4 +58,11 @@ export function recoverLiveAgentState(state: LiveAgentState): LiveAgentState {
 
 export function displayAgentText(text: string): string {
   return text.replace(/[\p{Cc}\p{Cf}]/gu, (char) => char === "\n" || char === "\t" ? char : `\\u{${char.codePointAt(0)!.toString(16)}}`);
+}
+
+export const unresolvedOperation = (op: LocalOperation): boolean => op.status === "pending" || op.status === "delivery-unknown";
+
+export function protectsAgentIntent(state: LiveAgentState): boolean {
+  return state.draft !== null || Object.values(state.instructions).some((text) => text.length > 0) ||
+    state.operations.some((op) => unresolvedOperation(op) && !op.documentLossAcknowledged);
 }

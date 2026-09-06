@@ -5,7 +5,7 @@ import {
 import { parseCoreResponseForRequest, PROTOCOL_VERSION, type CoreResponse, type FocusRef } from "../../../protocol/schema";
 import type { SwarmBridge } from "../../electron/preload";
 import type { Lifecycle, LifecycleBridge } from "../../lifecycle";
-import { displayAgentText, emptyLiveAgentState, recoverLiveAgentState, type LiveAgentState, type LocalOperation } from "./live-state";
+import { displayAgentText, emptyLiveAgentState, recoverLiveAgentState, unresolvedOperation, type LiveAgentState, type LocalOperation } from "./live-state";
 
 // This class is an observer/client, never a provider selector. Only the core can
 // supply prepared context, admitted runs, policy and durable delivery receipts.
@@ -21,6 +21,7 @@ export class AgentBridgeClient {
   private snapshotTicket = 0;
   private prepareTicket = 0;
   private readAgain = false;
+  private reconciling = new Set<string>();
 
   constructor(checkpoint?: LiveAgentState, private readonly persistCheckpoint?: (state: LiveAgentState) => void,
     private readonly activateCheckpoint?: () => void) {
@@ -140,6 +141,41 @@ export class AgentBridgeClient {
     this.update({ draft: { focus: structuredClone(focus), task: "Explain this focus's inputs, outputs and failure cases.", model: "", prepared: null, confirmed: false, preparing: false } });
   }
   closeDraft() { ++this.prepareTicket; this.update({ draft: null }); }
+  clearLocalIntent(observed: LiveAgentState, allowDocumentLoss = false) {
+    // A click authorizes only what its rendered controls showed. Newer drafts,
+    // text and receipts must remain protected, including between preflight and
+    // actual unload. Do not remove mutation identities or change their outcome.
+    const clearDraft = this.state.draft === observed.draft;
+    if (clearDraft) ++this.prepareTicket;
+    this.update({
+      ...(clearDraft ? { draft: null } : {}),
+      instructions: this.state.instructions === observed.instructions ? {} : this.state.instructions,
+      operations: this.state.operations.map((op) => allowDocumentLoss && unresolvedOperation(op) && observed.operations.includes(op)
+        ? { ...op, text: null, documentLossAcknowledged: true } : op),
+    });
+  }
+  async reconcileOperation(requestId: string) {
+    const operation = this.state.operations.find((op) => op.requestId === requestId);
+    if (!operation || !unresolvedOperation(operation) || !this.state.connected || this.reconciling.has(requestId)) return;
+    this.reconciling.add(requestId);
+    try {
+      // Inspect even a run missing from the bounded snapshot, without selecting
+      // it, moving focus, replacing a transcript page, or replaying a mutation.
+      const result = await this.request({ protocolVersion: PROTOCOL_VERSION, requestId: this.id(), type: "agent.read", runId: operation.runId, afterRecord: 0 });
+      if (!result) return;
+      if (!result.ok) { this.failure(result); return; }
+      if (result.agent?.kind !== "read" || result.sequence < this.watermark) return;
+      const run = result.agent.run;
+      const receipt = operation.kind === "steer" ? run.instructions.find((r) => r.requestId === requestId) : null;
+      // A durable run proves admission, not activity/completion. The contract
+      // has no durable cancel request identity: terminal state cannot prove it.
+      const status = operation.kind === "launch" ? "accepted" : receipt?.status;
+      this.update({ operations: this.state.operations.map((op) => op.requestId === requestId && unresolvedOperation(op) && status
+        ? { ...op, status, message: receipt?.error?.message ?? (op.kind === "launch" ? "Durable admission observed; not turn completion." : "Durable instruction receipt observed; not completion.") } : op),
+        notice: status ? "Local receipt reconciled with core evidence; no command resent." : "No matching durable command receipt observed. Delivery remains unresolved; absence is not rejection. No command resent.",
+      });
+    } finally { this.reconciling.delete(requestId); }
+  }
   editDraft(patch: { task?: string; model?: string }) {
     if (!this.state.draft) return;
     ++this.prepareTicket;
