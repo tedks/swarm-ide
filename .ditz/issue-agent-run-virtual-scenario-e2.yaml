@@ -29,5 +29,13 @@ log_events:
     source/context/stream/steer unknown/Stop/history/recovery under owned virtual
     harness, single shared lock/port55174. Shared fixtures are PR14/b3c106f. Core-only
     injection requires exact Runtime ownership agreement. Do not redo W1 demo.
+- time: 2026-09-06T04:23:45-00:00
+  who: Ted Smith
+  what: commented
+  comment: 'Landing-state update: W2 PR15 independently merged6ead046/topic8be2923
+    before E2 mergea4ae558; reuse reviewed W2 labels/client, do not duplicate it.
+    R2 PR16 still owns missing explicit test-only Electron worker entry. E2 merge
+    parents6ead046+5e26e78 include P1/W2 upstream;286-test local evidence was the
+    isolated E2 topic, combined wave verification remains Runtime-owned.'
 blocks:
 - agent-run-context-evidence
