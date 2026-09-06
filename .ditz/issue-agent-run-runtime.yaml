@@ -42,8 +42,13 @@ log_events:
     through R0 bridge, after ROOT restart-drain decision. Model-specific reasoning
     control evidence separately agent-run-model-capabilities. W2 needs R2 normalized
     Run/snapshot/read/event service, not new R1 renderer contracts.
+- time: 2026-09-06T03:46:42-00:00
+  who: Ted Smith
+  what: blocked by agent-run-runtime-r2
+  comment: ""
 blocks:
 - agent-run-vertical-proof
 blocked_by:
 - agent-run-contract-base
 - agent-run-runtime-r1
+- agent-run-runtime-r2
