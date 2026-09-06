@@ -1,0 +1,21 @@
+id: editor-codemirror-state-identity
+title: Unify CodeMirror state identity for correct keyboard selection
+desc: Actual T3 packaged native ArrowRight logs TextLeaf.lineInner undefined.length.
+  commands6.10.3 uses state6.7.4 while app/view use6.5.4. Cross-copy EditorSelection
+  fails instanceof in6.5.4 resolveTransactionInner; nonexistent top-level anchor/head
+  becomes undefined selection. Need one compatible pinned state identity, regression
+  through actual command and zero-error virtual proof. Dependency exception requested
+  from ROOT; not yet changed.
+type: bugfix
+component: default
+release:
+reporter: Ted Smith <tedks@riseup.net>
+status: unstarted
+disposition:
+creation_time: 2026-09-06T15:36:18-00:00
+references: []
+log_events:
+- time: 2026-09-06T15:36:18-00:00
+  who: Ted Smith
+  what: created
+  comment: ""
