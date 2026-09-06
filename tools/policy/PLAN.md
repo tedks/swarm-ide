@@ -14,6 +14,8 @@ mode. This is a development acceptance harness, never a product adapter.
 
 ## Progress
 
+- [x] (2026-09-06 06:33Z) P4 source gate: immutable legacy local-cache plugin feeds initial MCP projection without a model turn or installation. Local-only marketplace requirements exclude curated Git sync; featured HTTP warmup still needs the existing independent network denial.
+- [ ] P4: fixed enabled/feature-disabled/required-failure controls, exact extra immutable-input checks, focused regressions, available council convergence and full local gates.
 - [x] (2026-09-06 05:20Z) P3: read inherited gates, official app-server documentation and pinned source; designated feature worktree starts from verified normal merge c52f959.
 - [x] (2026-09-06 05:30Z) P3: actual installed required-stdio-MCP positive/negative controls pass across five fixtures; explicit fixed RPC allowlist rejects generation paths. Initial quality passes. Commit153b12b/PR22 enters council and complete local gates.
 - [x] (2026-09-06 05:53Z) P3: bounded seed-pipe diagnostics and deterministic regressions; full first local7 targets passed476tests. Native Important found incomplete trace observation; actual teardown gap confirmed and unsupported observer removed. Six provider-reported/canary controls now pass, no independent syscall claim. Strengthened regression/full rerun and council convergence pending.
@@ -53,6 +55,17 @@ directories. Apps alias collisions, project/managed overrides and inherited MCP
 table merging are now observed from the installed package, not inferred source.
 
 ## Decision Log
+
+Decision (2026-09-06, P4): one legacy plugin-supplied stdio MCP path only, seeded
+under the synthetic readonly Codex home. Assume trusted host/operator and exact
+complete package; reuse all26 independent checks before each launch and add exact
+plugin-file/ancestor mutation checks. Invalid loader state, handshake/status
+ambiguity, changed input, output/deadline or unknown cleanup fails closed. A local
+marketplace allowlist blocks curated Git sync without hiding the installed fixture.
+Featured-catalog warmup may still attempt HTTP; egress denial contains it and is
+not runtime disablement. No install/auth/turn or writable config directory is
+authorized. No personal marketplace/plugin scaffolding is appropriate for this
+fixed disposable fixture. Production stays unavailable.
 
 Decision (2026-09-06, P3): prove the smallest actual startup-triggered path,
 required stdio MCP, with an executable fixed canary, provider-reported attempted activation,
