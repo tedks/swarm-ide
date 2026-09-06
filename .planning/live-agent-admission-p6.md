@@ -24,9 +24,11 @@ by the human and future bounded read tools remain on the roadmap.
 
 - [x] (2026-09-06 14:10Z) Created designated worktree/branch from reviewed PR30 merge; read contracts, planning instructions and P5 evidence; started Ditz slice.
 - [x] (2026-09-06 14:23Z) Pushed draft 6647ff1 / PR34: exact blocked profile, finite gates and next-slice decision using pinned source/current official interface docs.
-- [x] (2026-09-06 14:30Z) Native OpenAI and Google reviews identified durable bootstrap accounting; native also identified initialize/auth ordering and missing normal-turn HTTP-only gate. Anthropic review remains bounded/in flight.
-- [ ] Resolve Important findings to a clean fixpoint; validate only-two-document scope, source anchors, links and evidence identity.
-- [ ] Normal merge under applicable local-doc verification/remote-CI waiver; close/sync only the design Ditz slice and publish final handoff.
+- [x] (2026-09-06 14:30Z) Native OpenAI and Google identified bootstrap accounting; native also found initialize/auth ordering and normal-turn HTTP-only gaps. Fixed f39cc2f.
+- [x] (2026-09-06 14:38Z) Native steering fix-delta finding resolved in bbb82fe. OpenAI and Google convergence CLEAN; Anthropic actual usage-credit exhaustion is MISSING, not approval.
+- [x] (2026-09-06 14:38Z) Local only-two-document, whitespace, relative-link, cited-symbol and evidence-identity checks pass; no new product tests/GUI/probes performed.
+- [ ] Normal merge and Ditz design closure: held for ROOT clearance of C2 merge dbe457d, now on remote master. Do not consume uncleared aggregate; independent design work is complete.
+- [x] (2026-09-06 14:40Z) Publish reviewed/pushed design handoff, exact landing hold and retained resources; no successor dispatched.
 
 
 ## Surprises & Discoveries
@@ -83,10 +85,21 @@ unaccounted login lifetime and transport-ordering gaps. Date/author:
 ## Outcomes & Retrospective
 
 
-Draft outcome: a finite blocked specification, not product availability. Actual
-review, merge and local documentation validation are pending. All broad policy
-and first-run issues remain open. No implementation department is dispatched
-by this plan or by its author.
+Delivered outcome: two reviewed documents in PR34, substantive head bbb82fe;
+native OpenAI and Google CLEAN after fix-delta rounds, Anthropic unavailable
+because of actual usage-credit exhaustion. Local documentation checks pass.
+Normal merge is deliberately held: remote master now includes C2 normal
+dbe457d77c44ef944c9af9fcd2663044bcc602ec, but ROOT's authority ledger currently
+clears only c9e9a74/P5. An ownership request records the exact remaining gate.
+The design Ditz slice remains in progress until landing; broad policy/first-run
+parents remain open. Nothing is activated and no successor is dispatched.
+
+Google's source-table wording nit was fixed. Its dense comparison-table nit is
+tracked in `live-agent-gate-ledger-readability`: retain the finite comparative
+map here, render concise per-gate evidence when implementing. The recommended
+native-provider work is filed as `live-agent-native-provider-controls`, not
+started. Current PR CI is reported in the ignored handoff, never conflated with
+P5's passing local baseline or declared hosted green.
 
 
 ## Context and Orientation
@@ -347,3 +360,8 @@ relay trust, patched harness adoption and G6 are separate authority gates.
 Revision note, 2026-09-06: initial P6 design makes the intended native provider,
 auth transition and pre-turn transport mismatch explicit, so the next step can
 close a finite dependency rather than accumulate disconnected auxiliary cases.
+
+Revision note after review, 2026-09-06: durable bootstrap/claim accounting,
+initialize-before-auth, HTTP-only normal turns and bounded steering continuation
+permits close all review findings. This final accounting records the actual
+ROOT aggregate landing hold rather than claiming an unperformed normal merge.
