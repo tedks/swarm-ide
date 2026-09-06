@@ -28,7 +28,8 @@ application of intelligence before queues, swarm coordination or write authority
 - [x] (2026-09-06) R0: first full build and five uncached Bazel tests passed, including owned virtual desktop smoke (31.6 seconds); 151 focused tests passed at a6d8f4f.
 - [x] (2026-09-06) R0: first fix delta d57de1c passed the full local build/test again (154 focused tests; five Bazel targets, virtual smoke 30.4 seconds). Native and Google convergence clean.
 - [x] (2026-09-06) R0: final code bb3ab3b passed full build and all five uncached Bazel tests (154 focused tests; owned virtual smoke 32.2 seconds). Test-only correction 01fc34c reran quality successfully; unchanged harness tests reused that local evidence.
-- [ ] R0: final council receipt, normal merge and executive handoff without adopting watched master; see PR #9 and master/artifacts/agent-run-contract-base-final for transaction evidence.
+- [x] (2026-09-06) R0: PR #9 normal-merged as 1afb2b8; ROOT verified local gates and CLEAN three-provider review. Hosted CI was in progress under the conditional local-proof waiver. Watched master was not adopted.
+- [ ] R1: bounded adapter and deterministic conformance fixtures implemented; local gates and council convergence in progress. No live model turn or production wiring.
 - [ ] R1 and E1: establish installed-adapter conformance and bounded launch context/profile preflight; W1: show fixture-driven cockpit run surface in parallel.
 - [ ] R2: durable lifecycle, process ownership, cancellation and recovery; E2: adversarial fixtures and virtual scenario; W2: wire live state, steering and uncertainty.
 - [ ] R3/W3/E3: integrate, demonstrate one real read-only run, finish relevant local gates/review and normal-merge the feature PRs.
@@ -59,6 +60,23 @@ invite replay. Existing workspace and file projections must remain unchanged.
 
 ## Decision Log
 
+
+Decision (2026-09-06, R1): the complete installed npm package now reports
+0.153.4, so this slice pins its locally generated stable protocol shapes rather
+than assuming the historical 0.146.0 installation remains. The default adapter
+probe can inspect version but returns policy-unavailable; only a trusted core
+probe/transport injection can exercise fixture execution. E1/R2 must supply
+effective profile evidence before real use. No orchestration bundle is packaged.
+Requested reasoning effort remains explicitly unsupported without model-specific
+capability evidence. The adapter reports the actual initial model, records
+reroutes as status, and preserves the frozen AdapterEvent contract.
+
+Decision (2026-09-06, R1): use one bounded byte-framed transport and normalize
+only consumed lifecycle/message fields. Keep raw reasoning and stderr private.
+Unknown optional notifications are ignored; unknown server requests get a
+bounded unsupported reply and safe stop, known approval requests get cancel.
+Direct-process disposal is explicitly unknown for descendant cleanup, which
+requires R2's owner; a zero exit status never supplies turn success.
 
 Decision (2026-09-06, design department): use one Codex app-server over local
 stdio, a fresh thread and one turn, with live steering and interrupt. Local
@@ -479,3 +497,7 @@ remain unstarted; watched master/runtime adoption belongs to ROOT.
 Plan revision note (2026-09-06, R0 handoff): record delivered module seams,
 local verification and scoped review dispositions. Merge/cleanup is a separate
 recorded transaction; no later department or runtime adoption is claimed.
+
+Plan revision note (2026-09-06, R1 start): record the merged R0 base, current
+installed CLI evidence and first-slice fail-closed adapter boundary. No R2 or
+real-run acceptance is implied.
