@@ -64,6 +64,7 @@ describe("agent intent at the actual document/preload refresh boundary", () => {
     shell(); delete window.swarm;
     render(<StrictMode><App /></StrictMode>);
     expect(screen.getByText(/Opening the working world/)).toBeTruthy();
+    expect(screen.getByRole("region", { name: "Local agent reload protection" }).textContent).toContain("Preserved during remount");
     expect(unload().defaultPrevented).toBe(true);
     discard();
     expect(unload().defaultPrevented).toBe(false);

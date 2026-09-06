@@ -8,7 +8,7 @@ export function AgentReloadGuard({ state, client }: { state: LiveAgentState; cli
     <strong>{protectsAgentIntent(state) ? "Agent intent protects this document" : "Local receipt loss acknowledged"}</strong>
     <details><summary>Inspect local agent intent / refresh options</summary>
     <p>Local text and receipts stay in memory, not browser storage. Document refresh is deferred until you clear or explicitly discard them. Forced quit or a crash can still lose them.</p>
-      {state.draft ? <p>Launch draft remains in the launch form below.</p> : null}
+      {state.draft ? <details><summary>Local launch draft</summary><p>Focus: {displayAgentText(state.draft.focus.path ?? state.draft.focus.key)}</p><pre>{displayAgentText(state.draft.task)}</pre><p>Requested model: {displayAgentText(state.draft.model || "Provider default (unresolved)")}</p></details> : null}
       {Object.entries(state.instructions).filter(([, text]) => text.length > 0).map(([id, text]) => <details key={id}><summary>Local instruction text · {displayAgentText(id)}</summary><pre>{displayAgentText(text)}</pre></details>)}
       {unresolved.map((op) => <details key={op.requestId}><summary>{op.kind} · {op.status} · {displayAgentText(op.requestId)}</summary>
         <p>Run: {displayAgentText(op.runId)}</p>{op.text !== null ? <pre>{displayAgentText(op.text)}</pre> : null}<p>{displayAgentText(op.message)}</p>
