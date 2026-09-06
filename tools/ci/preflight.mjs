@@ -10,10 +10,12 @@ const runtimePattern = /^\/nix\/store\/[a-z0-9]{32}-swarm-offline-policy-runtime
 const unsharePattern = new RegExp(`^${store}/bin/unshare(?![\\s\\S])`);
 // Only this fixed, bounded public-field read runs after unshare. No shell or caller code.
 const namespaceProfile = `const fs = require('node:fs');
-const fd = fs.openSync('/proc/self/attr/current', fs.constants.O_RDONLY | fs.constants.O_NONBLOCK);
-try { const b = Buffer.alloc(4096); const n = fs.readSync(fd,b,0,b.length,null);
-process.stdout.write(JSON.stringify({apparmorProfile:b.subarray(0,n).toString('utf8').trim()})+'\\n'); }
-finally { fs.closeSync(fd); }`;
+let fd, apparmorProfile = 'unavailable';
+try { fd = fs.openSync('/proc/self/attr/current', fs.constants.O_RDONLY | fs.constants.O_NONBLOCK);
+const b = Buffer.alloc(4096); const n = fs.readSync(fd,b,0,b.length,null);
+apparmorProfile = b.subarray(0,n).toString('utf8').trim(); }
+catch {} finally { if (fd !== undefined) fs.closeSync(fd); }
+process.stdout.write(JSON.stringify({apparmorProfile})+'\\n');`;
 
 // Fixed public kernel interfaces only. Never read arbitrary paths or dump environment.
 function smallRead(path) {
@@ -69,7 +71,8 @@ export function summarize(result) {
   else if (result.error) observation = 'START_FAILED';
   else if (!ok && stderr.includes('write failed /proc/self/uid_map')) observation = 'UID_MAP_WRITE_FAILED';
   else if (!ok && stderr.includes('loopback: Failed RTM_NEWADDR')) observation = 'PRIVATE_LOOPBACK_SETUP_FAILED';
-  // Trace evidence identifies the operation/errno, not the responsible security policy.
+  // Syscall errno and netlink's nested error=-EPERM identify denied operations,
+  // not the responsible security policy. Never infer AppArmor from errno alone.
   const denied = stderr.split('\n').filter(line => /= -1 (EPERM|EACCES|ENOSYS)\b|error=-(EPERM|EACCES)\b/.test(line));
   return { ok, observation, exitCode: result.status ?? null, signal: result.signal ?? null,
     denied, stdout, stderr };

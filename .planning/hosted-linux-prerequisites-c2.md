@@ -9,13 +9,20 @@ CI currently reports a policy seed-pipe error before any agent starts, without e
 ## Progress
 
 - [x] (2026-09-06 08:34Z) Created designated independent worktree from reviewed I3 6527495; claimed canonical Ditz issue and inspected exact failed hosted run34020316600.
-- [ ] Add fixed diagnostic command and focused safe-boundary tests; open early draft PR on current hosted image.
-- [ ] Establish exact hosted failure, distinguish kernel observation from attribution, decide supported environment or stopping boundary.
+- [x] (2026-09-06 08:35Z) Added fixed diagnostic command and focused tests; pushed8976956, opened draft PR33. Actual first hosted diagnostic failed with precise UID-map and loopback observations.
+- [x] (2026-09-06 14:16Z) Resumed same child after quota restoration; targeted c8686b1 follow-up34038579174 confirmed enforced post-unshare profile and netlink EPERM. No image/security change attempted.
+- [x] (2026-09-06 14:21Z) Consumed ROOT-reviewed T1c9e9a74/P5 by normal feature merge42ba0d. Native/Google review identified optional LSM metadata bug; fixed with regression. Pinned test Node and separated Node checks from Vitest discovery. Initial full build30targets passed; quality870 cases passed after discovery fix.
 - [ ] Run local full build and all uncached tests, provider-diverse review to fixpoint, normal PR merge, final evidence and cleanup.
 
 ## Surprises & Discoveries
 
 The original required process test discards subprocess stderr; the policy classifier keeps an allowlisted label but the actual hosted line is unrecognized. Neither symptom proves an AppArmor cause. Run34020316600 used Ubuntu24.04.4 image20260831.293.1, built successfully, then failed both prerequisites and skipped desktop tests.
+
+The current hosted kernel6.17.0-1022-azure allows userns creation, then the child reports `unprivileged_userns (enforce)`. UID-map writes and private loopback RTM_NEWADDR are denied with EPERM. This matches Ubuntu's documented capability-denying default profile; correlated audit/host-policy A/B evidence was not acquired. The original historical seed-pipe error ordering remains unrecorded, not retrospectively proven by the new minimal bootstrap.
+
+Full-suite verification found that naming a Node-native suite `preflight.test.mjs` caused Vitest to discover it as well; renamed to `preflight.checks.mjs`, retaining its explicit Bazel/Node target. Native and Google review caught an optional `/proc/self/attr/current` read becoming a false mandatory prerequisite on systems without that LSM attribute; the child now reports unavailable metadata without masking actual unshare failure. Real strace timeout testing proves both held tracee and grandchild stop.
+
+Initial full-suite rehearsal hit STALE_CONTEXT after C2 created its own docs at14:19:27 during the scenario (failure14:19:37). This is an invalidated evidence run, not proof of a product regression. All subsequent whole-UI gates must run from a frozen committed checkout with no edits, not just no commits. The failed run's owned cleanup completed and artifacts are retained.
 
 ## Decision Log
 
@@ -23,9 +30,11 @@ Decision: keep the existing hosted image for the first diagnostic run and introd
 
 Decision: use a new self-contained `tools/ci` Bazel package, preserving the policy and process packages byte-for-byte. Rationale: diagnostics are CI-specific, and independent containment assertions must not be weakened to match an environment. Author C2, 2026-09-06.
 
+Decision: land a diagnostic stopping boundary, not an older-image security-baseline change. Rationale: Ubuntu documents the observed restriction, GitHub22.04 deprecation starts2026-09-17/retirement2027-04-17, and no supported environment-only repair within authority was demonstrated. An operator must review accommodation; required actual containment tests remain gates. Author C2, 2026-09-06.
+
 ## Outcomes & Retrospective
 
-In progress. No hosted-positive claim, new provider capability or production model request has been made.
+The useful increment is an early stage-specific failure with current-run evidence and a documented operator boundary. The canonical hosted issue and blocked hosted-proof obligations stay open. No hosted-positive claim, new provider capability, host-security change or production model request has been made. Final local/review/merge verification remains pending.
 
 ## Context and Orientation
 
@@ -63,4 +72,4 @@ Raw original hosted log is `/tmp/swarm-ide-hosted-prereq-c2.5kQVTr/i3-merge-host
 
 No package, lockfile, flake, core, renderer, protocol, existing policy/process helper or shared-plan changes. New `//tools/ci:linux-prerequisites` accepts no caller arguments. New focused tests stay in the new package to avoid root source-tracking edits. All subprocess argv are fixed by the module; Nix executable locations are validated before execution, with no host executable fallback. All diagnostics describe observation rather than inferred security-policy authority.
 
-Initial plan written 2026-09-06 after exact original hosted-log inspection, before diagnostic implementation.
+Initial plan written2026-09-06 after original hosted-log inspection. Updated14:22Z with two deliberate diagnostic results, ROOT-cleared aggregate, review fixes, and invalidated initial rehearsal evidence; next run freezes all checkout edits.

@@ -1,8 +1,10 @@
+// Explicit Bazel/Node entry, not a Vitest-discovered *.test.mjs suite.
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
+import { runInNewContext } from 'node:vm';
 import { probeDefinitions, executeProbe, summarize, report } from './preflight.mjs';
 
 const runtime = '/nix/store/00000000000000000000000000000000-swarm-offline-policy-runtime';
@@ -17,6 +19,21 @@ test('fixed probes retain the exact owned-process prerequisite and exclude model
   assert.ok(definitions[3].args.includes('--disable-userns'));
   assert.ok(definitions[3].args.includes('--clearenv'));
   assert.ok(!JSON.stringify(definitions).includes('codex'));
+});
+
+test('optional profile metadata failure does not fail a successful namespace command', () => {
+  const script = definitions[0].args.at(-1);
+  for (const code of ['ENOENT', 'EINVAL', 'EACCES']) {
+    let output = '', closed = 0;
+    const fs = { constants: { O_RDONLY: 0, O_NONBLOCK: 2048 },
+      openSync: () => { if (code === 'ENOENT') throw Object.assign(new Error(), { code }); return 42; },
+      readSync: () => { throw Object.assign(new Error(), { code }); }, closeSync: () => closed++,
+    };
+    runInNewContext(script, { require: name => { assert.equal(name, 'node:fs'); return fs; },
+      Buffer, process: { stdout: { write: text => { output += text; } } } });
+    assert.deepEqual(JSON.parse(output), { apparmorProfile: 'unavailable' });
+    assert.equal(closed, code === 'ENOENT' ? 0 : 1);
+  }
 });
 
 test('rejects relative, host-fallback, newline and traversal executable paths', () => {
