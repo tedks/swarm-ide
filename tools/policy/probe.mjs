@@ -7,6 +7,8 @@ import { createHash } from 'node:crypto';
 import { buildArgs, boundedProcess, digestFile, digestTree, sameNamespace, validatePackageManifest, validatePackageLayout, verifyAfterProcess, INSTALLATION_SEED } from './boundary.mjs';
 import { summarizeActivationCases } from './activation-contract.mjs';
 import { PLUGIN_CASES, PLUGIN_MANIFEST, PLUGIN_MARKET, pluginFixture, summarizePluginCases } from './plugin-activation-contract.mjs';
+import { SESSIONSTART_CASES, summarizeSessionStartCases } from './sessionstart-contract.mjs';
+import { SESSIONSTART_BOUNDARY_KEYS, verifySessionstartLifetime } from './sessionstart-boundary.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const runtime = process.argv[2];
@@ -89,6 +91,12 @@ async function makeFixture(root, name, config, packageSource) {
   await writeFile(join(path, 'etc/profile'), '/runtime/bin/node /fixture/canary.mjs login\n');
   await writeFile(join(path, 'home/probe/.bash_profile'), '/runtime/bin/node /fixture/canary.mjs login\n');
   for (const name of ['inner.mjs', 'boundary.mjs', 'activation.mjs', 'activation-contract.mjs', 'plugin-activation-contract.mjs', 'mcp-canary.mjs']) await cp(join(here, name), join(path, 'fixture', name));
+  if (config.hook) {
+    await writeFile(join(path, 'home/probe/.codex/hooks.json'), config.hook);
+    await writeFile(join(path, 'fixture/sessionstart-proof'), 'sessionstart-policy-v1');
+    for (const name of ['sessionstart-boundary.mjs', 'sessionstart-contract.mjs', 'sessionstart.mjs',
+      'sessionstart-response.mjs', 'sessionstart-canary.mjs']) await cp(join(here, name), join(path, 'fixture', name));
+  }
   if (config.plugin) {
     await mkdir(join(path, dirname(PLUGIN_MANIFEST)), { recursive: true });
     await mkdir(join(path, PLUGIN_MARKET), { recursive: true });
@@ -159,19 +167,20 @@ async function main() {
     status: 'ISOLATION_UNAVAILABLE', isolation: {}, cases: [], unproved: [] };
   let root, cleanupSafe = true;
   try {
-    if (process.platform !== 'linux' || ![undefined, '--boundary-test', '--trace-startup', '--activation', '--plugin-activation'].includes(mode)) throw new Error('UNSUPPORTED_PLATFORM_OR_MODE');
+    if (process.platform !== 'linux' || ![undefined, '--boundary-test', '--trace-startup', '--activation', '--plugin-activation', '--sessionstart-boundary-test', '--sessionstart'].includes(mode)) throw new Error('UNSUPPORTED_PLATFORM_OR_MODE');
     const activation = mode === '--activation' || mode === '--plugin-activation';
+    const sessionstart = mode === '--sessionstart' || mode === '--sessionstart-boundary-test';
     // Store metadata only, never provider/config execution. The derivation is pinned.
     const closure = execFileSync('nix-store', ['--query', '--requisites', runtime], {
       env: { PATH: process.env.PATH }, encoding: 'utf8', timeout: 10000, maxBuffer: 65536,
     }).trim().split('\n');
     report.runtime = { path: runtime, closureDigest: createHash('sha256').update(closure.sort().join('\n')).digest('hex') };
     root = await mkdtemp('/tmp/swarm-policy-');
-    const fixture = await makeFixture(root, 'boundary', { user: baseConfig });
+    const fixture = await makeFixture(root, 'boundary', sessionstart ? SESSIONSTART_CASES[0] : { user: baseConfig });
     async function verifyBoundary(fixture) {
     const args = command => buildArgs(runtime, closure, fixture, ['/runtime/bin/node', '/fixture/inner.mjs', command]);
     const before = await digestTree(fixture);
-    const result = await boundedProcess(`${runtime}/bin/bwrap`, args('boundary'), { seed: true });
+    const result = await boundedProcess(`${runtime}/bin/bwrap`, args(sessionstart ? 'sessionstart-boundary' : 'boundary'), { seed: true });
     if (!result.ok) { cleanupSafe = result.cleanup !== 'unknown'; report.failure = result.code;
       report.bootstrapDiagnostic = result.bootstrapDiagnostic; return false; }
     const observed = JSON.parse(result.stdout);
@@ -192,11 +201,30 @@ async function main() {
     report.isolation.inputsUnchanged = before === await digestTree(fixture);
     report.boundaryDigest = before;
     if (Object.values(report.isolation).some(v => v !== true)) { report.failure = 'BOUNDARY_LIFETIME_FAILED'; return false; }
+    if (sessionstart) {
+      report.sessionstartIsolation = { ...observed.sessionstartChecks };
+      report.sessionstartLifetimeEvidence = [];
+      for (const trigger of ['owner', 'deadline', 'output']) {
+        const proof = await verifySessionstartLifetime(runtime, args('sessionstart-hold'), trigger);
+        report.sessionstartLifetimeEvidence.push(proof.evidence);
+        report.sessionstartIsolation.sessionstartFamilyMembership =
+          (report.sessionstartIsolation.sessionstartFamilyMembership ?? true) && proof.membership;
+        report.sessionstartIsolation.sessionstartHostListenerAbsent =
+          (report.sessionstartIsolation.sessionstartHostListenerAbsent ?? true) && proof.hostAbsent;
+        const key = { owner: 'sessionstartOwnerDeathCleanup', deadline: 'sessionstartDeadlineCleanup', output: 'sessionstartOutputCleanup' }[trigger];
+        report.sessionstartIsolation[key] = proof.cleaned;
+        if (!proof.cleanupSafe) cleanupSafe = false;
+        if (!proof.cleaned) { report.failure = 'SESSIONSTART_LIFETIME_UNPROVED'; return false; }
+      }
+      if (SESSIONSTART_BOUNDARY_KEYS.some(key => report.sessionstartIsolation[key] !== true) || before !== await digestTree(fixture)) {
+        report.failure = 'SESSIONSTART_BOUNDARY_UNPROVED'; return false;
+      }
+    }
     return true;
     }
     if (!await verifyBoundary(fixture)) return report;
     report.status = 'BOUNDARY_VERIFIED';
-    if (mode === '--boundary-test') return report;
+    if (mode === '--boundary-test' || mode === '--sessionstart-boundary-test') return report;
     // Inspect and copy ONLY the declared executable/resource package, never auth/config.
     const packageBefore = await digestTree(packagePath);
     const manifest = JSON.parse(await readFile(join(packagePath, 'codex-package.json'), 'utf8'));
@@ -209,15 +237,16 @@ async function main() {
       const plugin = pluginFixture(entry.name);
       return { ...entry, plugin, user: activationConfig.replace('plugins = false', `plugins = ${plugin.enabled}`) + plugin.config, managed: plugin.managed };
     });
-    for (const config of mode === '--plugin-activation' ? pluginCases : mode === '--activation' ? ACTIVATION_CASES : mode === '--trace-startup' ? CASES.slice(0, 1) : CASES) {
+    for (const config of sessionstart ? SESSIONSTART_CASES : mode === '--plugin-activation' ? pluginCases : mode === '--activation' ? ACTIVATION_CASES : mode === '--trace-startup' ? CASES.slice(0, 1) : CASES) {
       const path = await makeFixture(root, config.name, config, packagePath);
       if (await digestTree(join(path, 'package')) !== packageBefore || await digestTree(packagePath) !== packageBefore) throw new Error('PACKAGE_CHANGED');
       const digest = await digestTree(path);
       // Same fixture/package identity, full lifetime proof, BEFORE every activation launch.
       if (activation && !await verifyBoundary(path)) return report;
+      if (sessionstart && !await verifyBoundary(path)) return report;
       const result = await boundedProcess(`${runtime}/bin/bwrap`, buildArgs(runtime, closure, path,
-        ['/runtime/bin/node', '/fixture/inner.mjs', activation ? 'activate' : mode === '--trace-startup' ? 'inspect-trace' : 'inspect',
-          ...(activation ? [config.expected] : [])]), { timeoutMs: activation ? 12000 : 8000, seed: true });
+        ['/runtime/bin/node', '/fixture/inner.mjs', sessionstart ? 'sessionstart' : activation ? 'activate' : mode === '--trace-startup' ? 'inspect-trace' : 'inspect',
+          ...(activation || sessionstart ? [config.expected] : [])]), { timeoutMs: activation || sessionstart ? 12000 : 8000, seed: true });
       report.codexStarted = true; // Conservative: inspection may have started before a transport failure.
       const verification = await verifyAfterProcess(result, async () => digest === await digestTree(path) && packageBefore === await digestTree(packagePath));
       cleanupSafe = verification.cleanupSafe;
@@ -226,11 +255,16 @@ async function main() {
       if (!result.ok) observation = { status: result.code, cleanup: result.cleanup, bootstrapDiagnostic: result.bootstrapDiagnostic };
       else { try { observation = JSON.parse(result.stdout); } catch { observation = { status: 'INVALID_PROBE_OUTPUT' }; } }
       report.cases.push({ name: config.name, digest, inputsUnchanged: true,
-        ...(activation ? { isolation: { ...report.isolation } } : {}), ...observation });
+        ...(activation || sessionstart ? { isolation: { ...report.isolation } } : {}),
+        ...(sessionstart ? { sessionstartIsolation: { ...report.sessionstartIsolation },
+          sessionstartLifetimeEvidence: report.sessionstartLifetimeEvidence } : {}), ...observation });
       await rm(path, { recursive: true, force: true });
     }
     report.status = 'OFFLINE_CHECKPOINT';
-    if (mode === '--plugin-activation') {
+    if (mode === '--sessionstart') {
+      report.status = 'OFFLINE_SESSIONSTART_CHECKPOINT';
+      if (!summarizeSessionStartCases(report.cases)) report.failure = 'SESSIONSTART_CONTROL_UNPROVED';
+    } else if (mode === '--plugin-activation') {
       report.status = 'OFFLINE_PLUGIN_ACTIVATION_CHECKPOINT';
       if (!summarizePluginCases(report.cases)) report.failure = 'PLUGIN_ACTIVATION_CONTROL_UNPROVED';
     } else if (mode === '--activation') {
@@ -252,7 +286,12 @@ async function main() {
       };
       if (Object.values(report.counterexamples).some(value => value !== true)) report.failure = 'COUNTEREXAMPLE_UNPROVED';
     }
-    report.unproved = ['activation modes cover only their named static or local legacy plugin MCP controls, not general auxiliary disablement',
+    report.unproved = mode === '--sessionstart' ? [
+      'Only the fixed ordinary user SessionStart command and its feature-off comparison are exercised',
+      'No external model inference or credentialed production equivalence; response bytes are fixed locally',
+      'Other hook events, managed/plugin/builtin/executor hooks and runtime trust modification remain unproved',
+      'Private endpoint reachability and outbound denial do not prove disabled telemetry or every auxiliary path',
+    ] : ['activation modes cover only their named static or local legacy plugin MCP controls, not general auxiliary disablement',
       'plugins-enabled startup may attempt featured-catalog HTTP; independent network denial is not runtime disablement',
       'SessionStart/notify hooks require a turn in pinned source; hooks/trust bypass/bundled-executor plugins remain unproved',
       'persisted plugin/remote-control and managed-layer interpretation need dedicated fixtures',
@@ -273,5 +312,5 @@ else {
   const report = await main();
   if (report.failure) report.status = 'UNAVAILABLE';
   process.stdout.write(JSON.stringify(report) + '\n');
-  if (report.failure || (mode === '--boundary-test' && report.status !== 'BOUNDARY_VERIFIED')) process.exitCode = 1;
+  if (report.failure || (['--boundary-test', '--sessionstart-boundary-test'].includes(mode) && report.status !== 'BOUNDARY_VERIFIED')) process.exitCode = 1;
 }
