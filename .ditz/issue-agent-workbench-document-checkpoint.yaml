@@ -5,8 +5,8 @@ type: task
 component: default
 release:
 reporter: Ted Smith <tedks@riseup.net>
-status: in_progress
-disposition:
+status: closed
+disposition: fixed
 creation_time: 2026-09-06T04:11:34-00:00
 references: []
 log_events:
@@ -59,5 +59,9 @@ log_events:
     final CLEAN. Hosted34012483020 FAILURE; conditional local-proof waiver used, not
     green. No real model or watched-master adoption. Parent stays open; evidence and
     precise seam archived.
+- time: 2026-09-06T04:59:01-00:00
+  who: Ted Smith
+  what: 'closed: fixed'
+  comment: fixed
 blocks:
 - agent-run-workbench
