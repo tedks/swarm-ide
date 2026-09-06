@@ -1,0 +1,16 @@
+id: agent-wave-live-steering-delivery
+title: Distinguish live steering delivery from queued follow-up messages
+desc: ""
+type: task
+component: tooling
+release:
+reporter: Ted Smith <tedks@riseup.net>
+status: unstarted
+disposition:
+creation_time: 2026-09-06T02:58:03-00:00
+references: []
+log_events:
+- time: 2026-09-06T02:58:03-00:00
+  who: Ted Smith
+  what: created
+  comment: ""
