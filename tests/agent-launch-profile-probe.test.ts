@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { mkdir, mkdtemp, rm, symlink, writeFile } from 'node:fs/promises';
+import { chmod, mkdir, mkdtemp, rm, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { buildArgs, boundedProcess, digestTree, ENV, LIMIT, summarizePages, validatePackageManifest } from '../tools/policy/boundary.mjs';
+import { buildArgs, boundedProcess, digestTree, ENV, LIMIT, summarizePages, validatePackageManifest, validatePackageLayout, verifyAfterProcess } from '../tools/policy/boundary.mjs';
 
 const runtime = '/nix/store/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-runtime';
 const fixture = '/tmp/swarm-policy-Abc123/baseline';
@@ -43,6 +43,27 @@ describe('offline policy boundary contract (not production authority)', () => {
       expect(() => validatePackageManifest({ ...manifest, ...changed })).toThrow('UNSUPPORTED_PACKAGE');
     }
     expect(() => validatePackageManifest(null)).toThrow();
+  });
+  it('requires actual executable resources, not only manifest strings and two binaries', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'policy-package-'));
+    try {
+      for (const dir of ['bin', 'codex-path', 'codex-resources/zsh/bin']) await mkdir(join(root, dir), { recursive: true });
+      for (const path of ['bin/codex', 'bin/codex-code-mode-host', 'codex-path/rg', 'codex-resources/bwrap', 'codex-resources/zsh/bin/zsh']) {
+        await expect(validatePackageLayout(root)).rejects.toThrow();
+        await writeFile(join(root, path), 'synthetic executable'); await chmod(join(root, path), 0o700);
+      }
+      await expect(validatePackageLayout(root)).resolves.toBeUndefined();
+      await chmod(join(root, 'codex-resources/bwrap'), 0o600);
+      await expect(validatePackageLayout(root)).rejects.toThrow('INCOMPLETE_PACKAGE');
+    } finally { await rm(root, { recursive: true, force: true }); }
+  });
+  it('retains uncertain ownership before any fallible post-process hashing', async () => {
+    let called = false;
+    const result = await verifyAfterProcess({ cleanup: 'unknown' }, async () => { called = true; throw new Error('changed or inaccessible'); });
+    expect(result).toEqual({ ok: false, failure: 'PROBE_CLEANUP_UNPROVED', cleanupSafe: false });
+    expect(called).toBe(false);
+    expect(await verifyAfterProcess({ cleanup: 'reaped' }, async () => false)).toMatchObject({ ok: false, failure: 'INPUT_CHANGED', cleanupSafe: true });
+    expect(await verifyAfterProcess({ cleanup: 'reaped' }, async () => { throw new Error(); })).toMatchObject({ ok: false, failure: 'INPUT_RECHECK_FAILED' });
   });
   it('accepts complete effective pages but reports missing required features as unknown', () => {
     const value = summarizePages([{ data: [{ name: 'hooks', enabled: false }], nextCursor: 'next' },

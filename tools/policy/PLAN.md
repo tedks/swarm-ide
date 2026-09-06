@@ -13,8 +13,9 @@ is created. This is a development acceptance harness, never a product adapter.
 ## Progress
 
 - [x] (2026-09-06 04:21Z) Read P1 evidence/contracts and establish basic unprivileged user/network/mount/PID namespace support.
-- [ ] Implement pinned isolated runtime, frozen synthetic inputs and independent boundary canaries.
-- [ ] Gate actual complete installed 0.153.4 model-free inspection behind boundary acceptance.
+- [x] (2026-09-06 04:38Z) Implement pinned isolated runtime, frozen synthetic inputs and independent boundary canaries; owner-SIGKILL/deadline/output checks pass.
+- [x] (2026-09-06 04:49Z) Actual complete installed 0.153.4 metadata inspection succeeds after boundary acceptance; seven fixture cases and all eight expected counterexamples/coverage checks pass.
+- [x] (2026-09-06 04:49Z) Native council identified four Important findings; fixed explicit Nix config/overlay isolation, actual complete layout admission, unknown-cleanup-before-hashing and trace-mode unavailable status, with regressions. Foreign/convergence review pending.
 - [ ] Add negative tests, run local gates and provider-diverse review; land and archive proof.
 
 ## Surprises & Discoveries
@@ -22,6 +23,13 @@ is created. This is a development acceptance harness, never a product adapter.
 P1 found startup work occurs before inspection. Therefore even `config/read`
 requires a separate operating-system boundary. Raw config is not complete
 effective policy and no offline observation enables credentialed execution.
+
+Actual startup first failed with EROFS. File-only strace localized nonfatal
+CODEX_HOME/tmp alias setup and fatal CODEX_HOME/installation_id open-for-write.
+The pinned source requires read/write/create even with a populated identity.
+A private copied runtime-identity inode resolves this without writable policy
+directories. Apps alias collisions, project/managed overrides and inherited MCP
+table merging are now observed from the installed package, not inferred source.
 
 ## Decision Log
 
@@ -33,9 +41,21 @@ Fixtures and their ancestors are readonly; logs/state have separate owned paths.
 Trusted host/operator/kernel and Nix store are assumptions; hostile same-account
 replacement of the harness itself is not a defended boundary.
 
+Decision (2026-09-06, P2): allow one explicitly named installation-identity inode
+as Bubblewrap-private writable runtime state. Its finite seed is synthetic, the
+input pipe is closed/consumed before the program, and all ancestors stay readonly.
+Tests require in-place writing but reject removal, replacement or config edits.
+Runtime source imports explicit empty Nixpkgs config/overlays, independent of
+ambient user customization; a rejecting synthetic NIXPKGS_CONFIG test proves it.
+ROOT approved only the root quality_sources dependency and flake.lock export.
+
 ## Outcomes & Retrospective
 
-Pending implementation. Production remains ADAPTER_POLICY_UNAVAILABLE.
+Independent Linux boundary and real offline metadata/counterexample evidence now
+exist. No hook/plugin/MCP activation exclusion or credentialed equivalence is
+claimed. Ditz agent-run-offline-activation-proof tracks the next bounded proof;
+agent-run-policy-harness-diagnostics tracks nonblocking diagnostics/resource and
+protocol-drift limits. Production remains ADAPTER_POLICY_UNAVAILABLE.
 
 ## Context and Orientation
 
@@ -83,7 +103,8 @@ No watched master/app, physical display or global configuration is changed.
 ## Artifacts and Notes
 
 Sanitized results and final handoff live at the ROOT-authorized ignored
-`master/artifacts/overnight-wave/policy-p2/`. Branch and worktree remain recoverable.
+`master/artifacts/overnight-wave/policy-p2/`. Draft/ready PR17 is the review/merge
+unit; branch and worktree remain recoverable. No integration or app adoption.
 
 ## Interfaces and Dependencies
 
@@ -93,3 +114,5 @@ capability into the public protocol. Dependencies are the existing pinned Nix
 source, Bubblewrap, Node and fixed synthetic scripts, all invoked through Bazel.
 
 Revision (2026-09-06): initial implementation plan and assumptions before coding.
+Revision (2026-09-06 04:49Z): record observed runtime-state exception, actual offline
+counterexamples, exact ownership approval and first review corrections.

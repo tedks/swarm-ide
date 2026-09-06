@@ -6,6 +6,8 @@ export function buildArgs(runtime: string, closure: string[], fixture: string, c
 export function digestTree(path: string): Promise<string>;
 export function digestFile(path: string): Promise<string>;
 export function validatePackageManifest(manifest: unknown): void;
+export function validatePackageLayout(root: string): Promise<void>;
+export function verifyAfterProcess(result: { cleanup: string }, verifyInputs: () => Promise<boolean>): Promise<{ ok: boolean; failure?: string; cleanupSafe: boolean }>;
 export function summarizePages(pages: unknown, required?: readonly string[]): { features: Record<string, boolean>; missing: string[]; pages: number };
 export function sameNamespace(pid: number, namespace: string): Promise<boolean>;
 export function boundedProcess(executable: string, args: string[], options?: { timeoutMs?: number; input?: string; seed?: boolean; onSpawn?: (child: ChildProcess) => void }): Promise<

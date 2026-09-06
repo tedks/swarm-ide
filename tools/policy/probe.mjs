@@ -4,7 +4,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { homedir } from 'node:os';
 import { createHash } from 'node:crypto';
-import { buildArgs, boundedProcess, digestFile, digestTree, sameNamespace, validatePackageManifest, INSTALLATION_SEED } from './boundary.mjs';
+import { buildArgs, boundedProcess, digestFile, digestTree, sameNamespace, validatePackageManifest, validatePackageLayout, verifyAfterProcess, INSTALLATION_SEED } from './boundary.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const runtime = process.argv[2];
@@ -129,8 +129,8 @@ async function main() {
     if (!observed.checks || !Object.keys(observed.checks).length || Object.values(observed.checks).some(v => v !== true)) {
       report.failure = 'BOUNDARY_CHECKS_FAILED'; return report;
     }
-    report.isolation.freshPidNamespace = observed.namespace !== await readlink('/proc/self/ns/pid');
-    report.isolation.freshNetworkNamespace = observed.networkNamespace !== await readlink('/proc/self/ns/net');
+    report.isolation.freshPidNamespace = /^pid:\[\d+\]$/.test(observed.namespace ?? '') && observed.namespace !== await readlink('/proc/self/ns/pid');
+    report.isolation.freshNetworkNamespace = /^net:\[\d+\]$/.test(observed.networkNamespace ?? '') && observed.networkNamespace !== await readlink('/proc/self/ns/net');
     report.isolation.ownerDeathCleanup = await ownerDeath(args('hold'));
     if (!report.isolation.ownerDeathCleanup) { cleanupSafe = false; report.failure = 'OWNER_CLEANUP_UNPROVED'; return report; }
     const timed = await boundedProcess(`${runtime}/bin/bwrap`, args('hold'), { timeoutMs: 400, seed: true });
@@ -148,6 +148,7 @@ async function main() {
     const packageBefore = await digestTree(packagePath);
     const manifest = JSON.parse(await readFile(join(packagePath, 'codex-package.json'), 'utf8'));
     validatePackageManifest(manifest);
+    await validatePackageLayout(packagePath);
     report.package = { version: manifest.version, sourceDigest: packageBefore,
       executableSha256: await digestFile(join(packagePath, 'bin/codex')),
       companionSha256: await digestFile(join(packagePath, 'bin/codex-code-mode-host')) };
@@ -158,17 +159,19 @@ async function main() {
       const result = await boundedProcess(`${runtime}/bin/bwrap`, buildArgs(runtime, closure, path,
         ['/runtime/bin/node', '/fixture/inner.mjs', mode === '--trace-startup' ? 'inspect-trace' : 'inspect']), { timeoutMs: 8000, seed: true });
       report.codexStarted = true; // Conservative: inspection may have started before a transport failure.
-      const unchanged = digest === await digestTree(path) && packageBefore === await digestTree(packagePath);
-      if (!unchanged) throw new Error('INPUT_CHANGED');
+      const verification = await verifyAfterProcess(result, async () => digest === await digestTree(path) && packageBefore === await digestTree(packagePath));
+      cleanupSafe = verification.cleanupSafe;
+      if (!verification.ok) { report.failure = verification.failure; return report; }
       let observation;
       if (!result.ok) observation = { status: result.code, cleanup: result.cleanup };
       else { try { observation = JSON.parse(result.stdout); } catch { observation = { status: 'INVALID_PROBE_OUTPUT' }; } }
-      report.cases.push({ name: config.name, digest, inputsUnchanged: unchanged, ...observation });
-      if (result.cleanup === 'unknown') { cleanupSafe = false; report.failure = 'PROBE_CLEANUP_UNPROVED'; return report; }
+      report.cases.push({ name: config.name, digest, inputsUnchanged: true, ...observation });
       await rm(path, { recursive: true, force: true });
     }
     report.status = 'OFFLINE_CHECKPOINT';
-    if (mode !== '--trace-startup') {
+    if (mode === '--trace-startup') {
+      if (report.cases[0]?.status !== 'OFFLINE_OBSERVED') report.failure = 'TRACED_STARTUP_UNPROVED';
+    } else {
       const find = name => report.cases.find(item => item.name === name);
       report.counterexamples = {
         baselineInspected: find('baseline')?.status === 'OFFLINE_OBSERVED' && find('baseline')?.observations?.features.apps === false,
@@ -199,6 +202,7 @@ async function main() {
 if (mode === '--owner') await owner(JSON.parse(process.argv[4]));
 else {
   const report = await main();
+  if (report.failure) report.status = 'UNAVAILABLE';
   process.stdout.write(JSON.stringify(report) + '\n');
   if (report.failure || (mode === '--boundary-test' && report.status !== 'BOUNDARY_VERIFIED')) process.exitCode = 1;
 }

@@ -13,6 +13,14 @@ sh_binary(
 )
 
 sh_test(
+    name = "runtime-pinning-test",
+    srcs = ["runtime.test.sh"],
+    data = [":sources"],
+    tags = ["local", "no-sandbox"],
+    timeout = "moderate",
+)
+
+sh_test(
     name = "boundary-test",
     srcs = ["boundary.test.sh"],
     data = [":probe"],

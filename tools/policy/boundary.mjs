@@ -28,11 +28,34 @@ export function validatePackageManifest(manifest) {
   }
 }
 
+export async function validatePackageLayout(root) {
+  for (const path of ['bin', 'codex-path', 'codex-resources', 'codex-resources/zsh', 'codex-resources/zsh/bin']) {
+    if (!(await lstat(`${root}/${path}`)).isDirectory()) throw new Error('INCOMPLETE_PACKAGE');
+  }
+  for (const path of ['bin/codex', 'bin/codex-code-mode-host', 'codex-path/rg', 'codex-resources/bwrap', 'codex-resources/zsh/bin/zsh']) {
+    const stat = await lstat(`${root}/${path}`);
+    if (!stat.isFile() || !(stat.mode & 0o111) || !stat.size) throw new Error('INCOMPLETE_PACKAGE');
+  }
+}
+
+/** Ownership uncertainty dominates subsequent fingerprint/parse failures. */
+export async function verifyAfterProcess(result, verifyInputs) {
+  if (result.cleanup === 'unknown') return { ok: false, failure: 'PROBE_CLEANUP_UNPROVED', cleanupSafe: false };
+  try {
+    return await verifyInputs() ? { ok: true, cleanupSafe: true } : { ok: false, failure: 'INPUT_CHANGED', cleanupSafe: true };
+  } catch { return { ok: false, failure: 'INPUT_RECHECK_FAILED', cleanupSafe: true }; }
+}
+
 export async function digestFile(path) {
   const hash = createHash('sha256');
   const stat = await lstat(path);
   if (!stat.isFile() || stat.size > 512 * 1024 * 1024) throw new Error('UNSUPPORTED_INPUT_FILE');
-  for await (const chunk of createReadStream(path, { flags: constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK })) hash.update(chunk);
+  let bytes = 0;
+  for await (const chunk of createReadStream(path, { flags: constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK })) {
+    if ((bytes += chunk.length) > stat.size) throw new Error('INPUT_CHANGED');
+    hash.update(chunk);
+  }
+  if (bytes !== stat.size) throw new Error('INPUT_CHANGED');
   return hash.digest('hex');
 }
 
@@ -113,7 +136,12 @@ export async function digestTree(root) {
     } else if (stat.isFile()) {
       if ((total += stat.size) > 512 * 1024 * 1024) throw new Error('INPUT_LIMIT');
       hash.update(`${stat.size}\0`);
-      for await (const chunk of createReadStream(path, { flags: constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK })) hash.update(chunk);
+      let bytes = 0;
+      for await (const chunk of createReadStream(path, { flags: constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK })) {
+        if ((bytes += chunk.length) > stat.size) throw new Error('INPUT_CHANGED');
+        hash.update(chunk);
+      }
+      if (bytes !== stat.size) throw new Error('INPUT_CHANGED');
     } else throw new Error('UNSUPPORTED_INPUT_TREE');
   }
   await walk(root, '');
