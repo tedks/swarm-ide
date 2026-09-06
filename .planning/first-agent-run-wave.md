@@ -45,6 +45,7 @@ application of intelligence before queues, swarm coordination or write authority
 - [ ] R3/W3/E3: integrate, demonstrate one real read-only run, finish relevant local gates/review and normal-merge the feature PRs.
 - [x] (2026-09-06, I2 code1fd0689) Actual R1 JSONL adapter, R2 durable service/store and namespace owner joined with fixed external protocol fixture. Stop/completion/cleanup sequencing, unexpected exit17 and hard test-core SIGKILL/reopen/no replay pass; full25-target build/all9 uncached local targets,478tests/44files. OpenAI native and Google CLEAN; Anthropic session-limit unavailable. PR24 landing/integration tracked in its dedicated plan; no installed Codex/model/policy proof or watched-app adoption.
 - [x] (2026-09-06, I2 executable8619da1/integrationb8a4149) ROOT-verified A1 admission correction included; actual service.emit sequence and live descendants after accepted steering asserted alongside durable updates. Identical treeaf14e236ec5d559874017c3b035660f062c04e90 passed full25build/all9uncached/493tests45files. Native+Google final delta CLEAN; Anthropic unavailable. Hosted own namespace prerequisite fails closed before fixture and inherited policyseedpipe also fails; dedicated acceptance followup filed. Normal landing and P3-reviewed integration are separate gates.
+- [x] (2026-09-06, I2 final aggregate946a6a5/integrationc5ac5f4) ROOT-cleared A1/P3/W3/D1 now included; identical tree0ef6d1e88510dd8549d60532be21d559131a20ee passes full25-target build/all9uncached/558tests49files. Required external process proof3.4s, owned topology64.4s/agent journey5.3s, all owned cleanup verified. Own executable8619da1 and reviewed peer bytes unchanged; final plan-only accounting checked inline. PR24/executive handoff record normal remote merge, exact heads and cleanup under the conditional remote-CI waiver, not hosted green. Installed-Codex/model/effective-policy proof and watched-app adoption remain excluded; no later T0/P4/W4 work consumed.
 - [ ] ROOT deliberately adopts the integrated build if native-main changes require restart; do not silently replace the watched app.
 
 ## Surprises & Discoveries
@@ -651,3 +652,6 @@ test-worker/policy/adoption gates without claiming a real model run.
 Plan revision note (2026-09-06, I1 start): split fixed production composition
 from explicit test bootstrap, retain all runtime state/unknown/no-replay rules,
 and implement one credential-free vertical journey before any live-policy gate.
+
+Plan revision note (2026-09-06, I2 final): record actual external fixture lifetime
+proof and reviewed combined local gates, without closing real-provider acceptance.
