@@ -3,6 +3,7 @@
 .sidebar-section-heading { flex: none; width: 100%; height: 30px; display: flex; align-items: center; gap: 8px; padding: 0 10px; border: 0; background: #101b19; color: #a9bdb3; text-align: left; font: 500 10px "DM Mono", monospace; text-transform: uppercase; letter-spacing: .06em; cursor: pointer; }
 .sidebar-section-heading:hover { background: #182722; }
 .sidebar-section-heading > span { width: 10px; font-size: 15px; }
+.sidebar-section-heading > small { margin-left: auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 9px; font-weight: 400; text-transform: none; color: #6f8f80; }
 .sidebar-section-content { flex: 1; min-height: 0; min-width: 0; overflow: auto; scrollbar-width: thin; }
 .sidebar-section-content[hidden] { display: none; }
 .sidebar-section:first-child .sidebar-section-content { overflow: hidden; }

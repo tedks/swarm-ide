@@ -915,6 +915,7 @@ export function App() {
       </header>
 
       <WorkbenchSidebar
+        repositoryName={snapshot.project.name}
         directory={repositoryObservation ? <RepositoryNavigation key={snapshot.project.id} rootLabel={snapshot.project.name} focusedPath={snapshot.focus.path} observation={repositoryObservation} actions={repository} onActivate={activateRepositoryEntry} onOpenPath={openLinkedFile} /> : <p className="muted">Observing repository…</p>}
         agents={<>
         <LiveRunRail state={liveAgents} client={agentClient} onDraft={() => { setCompactPanel("work"); agentClient.openDraft(snapshot.focus); }} />

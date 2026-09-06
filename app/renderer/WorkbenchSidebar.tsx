@@ -4,7 +4,7 @@ import "./sidebar.css";
 const names = ["Directory", "Agent runs", "Tasks"] as const;
 
 /** Folding and resizing never unmount drafts or navigation. */
-export function WorkbenchSidebar({ directory, agents, tasks }: { directory: ReactNode; agents: ReactNode; tasks: ReactNode }) {
+export function WorkbenchSidebar({ directory, agents, tasks, repositoryName }: { directory: ReactNode; agents: ReactNode; tasks: ReactNode; repositoryName: string }) {
   const [collapsed, setCollapsed] = useState([false, false, false]);
   const [sizes, setSizes] = useState([1, 1, 1]);
   const root = useRef<HTMLElement>(null);
@@ -16,8 +16,8 @@ export function WorkbenchSidebar({ directory, agents, tasks }: { directory: Reac
   return <aside ref={root} id="work-panel" aria-label="Work panel" className="work-rail panel split-sidebar" style={{ gridTemplateRows: sizes.flatMap((size, index) => [collapsed[index] ? "30px" : `minmax(60px, ${size}fr)`, ...(index < 2 ? ["5px"] : [])]).join(" ") }}>
     {[directory, agents, tasks].map((content, index) => <Fragment key={names[index]}>
       <section className="sidebar-section" aria-label={`${names[index]} sidebar section`}>
-        <button className="sidebar-section-heading" aria-expanded={!collapsed[index]} aria-controls={`sidebar-content-${index}`} onClick={() => setCollapsed((prior) => prior.map((value, item) => item === index ? !value : value))}>
-          <span aria-hidden="true">{collapsed[index] ? "›" : "⌄"}</span>{names[index]}
+        <button className="sidebar-section-heading" aria-label={names[index]} aria-expanded={!collapsed[index]} aria-controls={`sidebar-content-${index}`} onClick={() => setCollapsed((prior) => prior.map((value, item) => item === index ? !value : value))}>
+          <span aria-hidden="true">{collapsed[index] ? "›" : "⌄"}</span>{names[index]}{index === 0 ? <small title={repositoryName}>{repositoryName}</small> : null}
         </button>
         <div id={`sidebar-content-${index}`} className="sidebar-section-content" hidden={collapsed[index]}>{content}</div>
       </section>
