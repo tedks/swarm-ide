@@ -14,3 +14,12 @@ log_events:
   who: Ted Smith
   what: created
   comment: ""
+- time: 2026-09-06T04:11:38-00:00
+  who: Ted Smith
+  what: commented
+  comment: W2 bounds ordinary local admission/steering receipts at128 for the renderer
+    lifetime, retains failed/unknown text, and reserves Stop independently. Historical
+    reads are bounded pages. A later user-visible retention/reset flow should reconcile
+    confirmed local receipts against durable run history so long-lived IDE sessions
+    can continue without losing ambiguous intent; do not auto-replay or silently discard
+    unknown commands.
