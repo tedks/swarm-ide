@@ -233,7 +233,7 @@ describe("repository controls and coordinated cameras", () => {
       { revealPath: "elsewhere/files.ts", focus: { ...focus, domain: "repo", path: "elsewhere/files.ts", key: "file:elsewhere/files.ts" }, confidence: .8, reason: "Off-slice" },
     ] }]);
     expect(mapped.nodes.filter((node) => node.data.focused).map((node) => node.id)).toEqual([repo.nodes[0]!.id]);
-    expect(mapped.nodes[0]!.data.ambiguous).toBe(true);
+    expect(mapped.nodes.find((node) => node.id === repo.nodes[0]!.id)!.data.ambiguous).toBe(true); // The enclosing directory is now ordered before its children.
   });
   it("presents only the latest whole repository props per frame, retaining the mounted graph and cancelling on disposal", () => {
     const frames = new Map<number, FrameRequestCallback>(); let serial = 0;

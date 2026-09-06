@@ -1,5 +1,6 @@
 import { MarkerType, type Edge, type Node } from "@xyflow/react";
 import type { FocusRef, GraphSlice, NavigationMapping } from "../../protocol/schema";
+import { directoryMap } from "./repository/map";
 
 export interface TopologyNodeData extends Record<string, unknown> {
   label: string;
@@ -14,6 +15,7 @@ export interface TopologyNodeData extends Record<string, unknown> {
   ignored?: boolean;
   unavailable?: boolean;
   directoryEntry?: boolean;
+  directoryContainer?: boolean;
 }
 
 export interface GraphConnectionFocus {
@@ -88,7 +90,7 @@ export function adaptGraph(
 ): { nodes: Array<Node<TopologyNodeData>>; edges: Edge[] } {
   const mapped = mappedCandidates(focus, graph.topologyId, mappings);
   const entries = new Map(graph.directory?.entries.map((entry) => [entry.id, entry]) ?? []);
-  return {
+  const result = {
     nodes: graph.nodes.map((node) => ({
       id: node.id,
       type: "topology",
@@ -129,4 +131,5 @@ export function adaptGraph(
       labelBgStyle: { fill: "#0d1718", fillOpacity: 0.92 },
     })),
   };
+  return graph.directory ? { nodes: directoryMap(result.nodes, graph.directory.directory), edges: [] } : result;
 }

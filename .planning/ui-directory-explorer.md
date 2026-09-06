@@ -14,10 +14,12 @@ Replace the noisy duplicated directory list and node diagram with a familiar exp
 - [x] Integrated bounded startup reconciliation and 20 focused tests (passed in first quality run).
 - [x] User steering: single-line task rows, double-click/Enter task document in central workspace, source kept mounted beneath it.
 - [x] User steering: Directory / Agent runs / Tasks now occupy independently collapsible, resizable thirds of the left sidebar.
-- [ ] Refine map into recursive spatial directory grids (user rejected the initial linear map).
+- [x] Refined map into an enclosing directory frame and sibling grid. Folder zoom/double-click descends; zoom-out, Up and root controls ascend. User positively verified the visual and zoom navigation.
+- [x] Made the bottom dock agent-first, with run tabs coordinated with sidebar selection and a secondary Jobs & activity tab. Drafts/output stay mounted; unconfirmed admission remains inspectable. This does not activate real agents.
 - [ ] Continue artifact tabs/shared focus and task-linkage presentation under direct steering.
 - [ ] Verify local quality and owned virtual UI; retain HMR window.
-- [ ] Commit/push, draft PR and proportional council convergence; record remaining work without concluding the personal sprint.
+- [x] Pushed initial checkpoints 844d47b and 3787e4c and opened draft PR #38.
+- [ ] Push current map/dock checkpoint and complete proportional council convergence before landing; record remaining work without concluding the personal sprint.
 
 ## Surprises & Discoveries
 
@@ -29,9 +31,11 @@ The directory browser currently duplicates a maximum-80px list with a much large
 
 2026-09-06: Startup reconciliation is one attempt per initial world/document, waits for usable working evidence, and does not continuously rebuild after edits or retry failures. Manual Build remains available. This is the existing Bazel topology, not a new generic build system.
 
+2026-09-06: Superseding the optional map/orthogonal-edge presentation below, the directory tree lives permanently in the sidebar and the central repo projection is a spatial grid. Containment uses an enclosing frame, not connecting lines that appear to link siblings. Genuine service edges are unchanged. One semantic zoom gesture changes at most one directory level and uses the existing bounded canonical navigation request. The bottom surface is primarily agent interaction; jobs remain accessible without destroying unsent instructions or changing selection on background observations.
+
 ## Outcomes & Retrospective
 
-Live work-in-progress, not reviewed landing. First quality run typechecked and passed 1102 of 1103 tests, including all 20 startup cases. One existing owned-process cleanup assertion failed at tests/agent-owned-process.test.ts:152; the pre-existing namespace-attestation risk remains open and no assertion was relaxed. That run predates later task/sidebar edits and the new tree tests. No full green, virtual acceptance or council claimed. Normal roadmap progression remains paused. No filename search, project selection, real agents or generalized service inference added.
+Live work-in-progress, not reviewed landing. Latest `bazel test --jobs=3 //tools:quality` passed: typechecks, 1123 tests across 80 files, node build and renderer build. New coverage includes the folder tree, 20 startup cases, spatial containment/zoom and agent tab selection/draft retention/unconfirmed admissions. Early local runs exposed a pre-existing owned-process cleanup race (later passed unchanged), a missing repository label (restored), and presentation-sensitive assertions (updated without weakening protected-state or unavailable-policy checks). The namespace-attestation risk remains tracked. This is the quality target, not all Bazel targets; owned-virtual acceptance and council are still pending. User positively verified the live directory map and zoom. Normal roadmap progression remains paused. No filename search, project selection, real agents or generalized service inference added.
 
 ## Context and Orientation
 
@@ -57,7 +61,7 @@ No source migration or dependency changes. The private canvas profile and worktr
 
 ## Artifacts and Notes
 
-Canvas ownership is `/tmp/swarm-ide-ui-sprint.Pmyccs/canvas.md`. Record proof paths and reviewed commits here as they become available. No tests or screenshots are claimed yet.
+Canvas ownership is `/tmp/swarm-ide-ui-sprint.Pmyccs/canvas.md`. Local quality log is `bazel-testlogs/tools/quality/test.log`; no owned-virtual screenshots or council convergence are claimed yet.
 
 ## Interfaces and Dependencies
 
