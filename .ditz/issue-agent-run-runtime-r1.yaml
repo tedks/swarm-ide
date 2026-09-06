@@ -1,0 +1,17 @@
+id: agent-run-runtime-r1
+title: Bounded Codex app-server adapter and conformance fixtures
+desc: R1 only. Bounded JSONL adapter with deterministic transport tests; no live model
+  turns, service/store/owner or production wiring.
+type: task
+component: default
+release:
+reporter: Ted Smith <tedks@riseup.net>
+status: unstarted
+disposition:
+creation_time: 2026-09-06T02:31:32-00:00
+references: []
+log_events:
+- time: 2026-09-06T02:31:32-00:00
+  who: Ted Smith
+  what: created
+  comment: ""
