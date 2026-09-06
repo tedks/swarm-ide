@@ -12,6 +12,7 @@ export interface TaskPanelProps {
   onSelect: (id: string) => void;
   onRefresh: () => void;
   onShowDetails: () => void;
+  onOpen?: (id: string) => void;
 }
 
 const stateLabels: Record<TaskObservationStatus, string> = {
@@ -20,7 +21,7 @@ const stateLabels: Record<TaskObservationStatus, string> = {
   limited: "Task observation limited", error: "Task observation failed",
 };
 
-export function TaskPanel({ observation, refreshing, connected, notice, selectedTaskId, onSelect, onRefresh, onShowDetails }: TaskPanelProps) {
+export function TaskPanel({ observation, refreshing, connected, notice, selectedTaskId, onSelect, onRefresh, onShowDetails, onOpen }: TaskPanelProps) {
   const [filter, setFilter] = useState<"open" | "all">("open");
   const [query, setQuery] = useState("");
   const snapshot = observation?.snapshot ?? null;
@@ -66,10 +67,8 @@ export function TaskPanel({ observation, refreshing, connected, notice, selected
       {summaries!.length === 0 ? <p className="task-empty">No tasks in this snapshot.</p>
         : visible.length === 0 ? <p className="task-empty">No matches in this snapshot.</p>
           : <ul className="task-list" aria-label="Repository tasks">{visible.map((task) => <li key={task.id}>
-            <button type="button" className="task-select" aria-label={`Select task ${task.id}`} aria-pressed={selectedTaskId === task.id} onClick={() => onSelect(task.id)}>
-              <strong>{displayTaskText(task.title)}</strong><code>{task.id}</code>
-              <span>{task.status} · {task.type}</span>
-              <span>Component: {task.component ? displayTaskText(task.component) : "not specified"}</span>
+            <button type="button" className="task-select" aria-label={`Select task ${task.id}`} aria-pressed={selectedTaskId === task.id} title={`${displayTaskText(task.title)}\n${task.id} · ${task.status} · ${task.type}${task.component ? ` · ${displayTaskText(task.component)}` : ""}\nDouble-click or Enter to open task document`} onClick={() => onSelect(task.id)} onDoubleClick={() => onOpen?.(task.id)} onKeyDown={(event) => { if (event.key === "Enter" && onOpen) { event.preventDefault(); onOpen(task.id); } }}>
+              <span className={`task-row-status task-status-${task.status}`} aria-label={task.status}>{task.status === "closed" ? "✓" : task.status === "in_progress" ? "◐" : task.status === "paused" ? "Ⅱ" : "○"}</span><strong>{displayTaskText(task.title)}</strong>
             </button>
           </li>)}</ul>}
     </> : <p className="task-empty">No task snapshot has been loaded.</p>}

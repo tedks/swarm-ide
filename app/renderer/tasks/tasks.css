@@ -23,8 +23,18 @@
 .task-ui .task-warning { color: #e4bd77; }
 .task-ui .task-empty { color: #9dafa7; }
 .task-ui .task-list, .task-ui .task-dependencies, .task-ui .task-file-refs { list-style: none; padding: 0; margin: 8px 0; display: grid; gap: 7px; }
-.task-ui .task-select { display: grid; width: 100%; gap: 3px; padding: 7px; }
-.task-ui .task-select strong { font-size: 10px; font-weight: 500; }
+.task-ui .task-list { gap: 0; }
+.task-ui .task-select { display: flex; align-items: center; width: 100%; gap: 7px; height: 27px; padding: 4px 5px; border: 0; border-radius: 2px; background: transparent; white-space: nowrap; }
+.task-ui .task-select strong { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 11px; font-weight: 400; }
+.task-ui .task-select .task-row-status { width: 12px; flex: none; color: #869c91; font-size: 12px; }
+.task-ui .task-select .task-status-in_progress { color: var(--green); }
+.task-ui .task-select .task-status-paused { color: var(--yellow); }
+.task-editor-surface { grid-row: 3; grid-column: 2; min-width: 0; min-height: 0; overflow: auto; background: #0b1414; }
+.task-editor-surface[hidden], .source-surface[hidden] { display: none; }
+.task-document { max-width: 840px; margin: 0 auto; padding: 28px 32px; font-size: 12px; line-height: 1.8; }
+.task-ui.task-document .task-title { font: 500 22px/1.35 sans-serif; margin: 20px 0; }
+.task-ui.task-document .task-properties { grid-template-columns: 100px minmax(0, 1fr); }
+.task-ui.task-document .task-literal { font: 13px/1.8 "DM Mono", monospace; }
 .task-ui .task-select code, .task-ui .task-select span { font-size: 9px; color: #a1b7ac; }
 .task-ui .task-show-details { margin-top: 8px; }
 .task-detail { padding: 15px 13px; }

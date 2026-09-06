@@ -13,6 +13,7 @@ export interface TopologyNodeData extends Record<string, unknown> {
   focus: FocusRef;
   ignored?: boolean;
   unavailable?: boolean;
+  directoryEntry?: boolean;
 }
 
 export interface GraphConnectionFocus {
@@ -106,17 +107,19 @@ export function adaptGraph(
         focus: node.focus,
         ignored: entries.get(node.id)?.git === "ignored",
         unavailable: entries.get(node.id)?.actionable === false,
+        directoryEntry: Boolean(graph.directory),
       },
     })),
     edges: graph.edges.map((edge) => ({
       id: edge.id,
       source: edge.source,
       target: edge.target,
-      label: edge.label,
+      label: graph.directory ? undefined : edge.label,
+      type: graph.directory ? "smoothstep" : "default",
       animated: edge.status === "yellow",
       focusable: true,
       interactionWidth: 28,
-      markerEnd: { type: MarkerType.ArrowClosed, color: edge.status === "red" ? "#d76161" : edge.status === "yellow" ? "#e8b55b" : "#477d77" },
+      markerEnd: graph.directory ? undefined : { type: MarkerType.ArrowClosed, color: edge.status === "red" ? "#d76161" : edge.status === "yellow" ? "#e8b55b" : "#477d77" },
       style: {
         stroke: edge.status === "red" ? "#d76161" : edge.status === "yellow" ? "#e8b55b" : "#477d77",
         strokeWidth: 1.7,
