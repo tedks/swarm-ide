@@ -50,5 +50,14 @@ log_events:
     absent-run regression and clearer no-proof messaging. Addressing reconnect read
     ownership, unsupported Stop reconcile and acknowledged-only copy. Native+Google
     first fix CLEAN; final small delta review will include all seats.'
+- time: 2026-09-06T04:59:00-00:00
+  who: Ted Smith
+  what: commented
+  comment: Delivered PR18 normal mergefa263e72b056c20c2dc195103ad619c429503842, tested/pushed63def457a2ac0646975cb4a938854c2f3cd23d7c;
+    identical merge/topic tree80702c929c8dfa12c981858b02cae85915609626. Combined425tests/38files/all5uncached/full19target
+    build passed; exact-head owned X11 proof5.498s cleanup1. All3-provider council
+    final CLEAN. Hosted34012483020 FAILURE; conditional local-proof waiver used, not
+    green. No real model or watched-master adoption. Parent stays open; evidence and
+    precise seam archived.
 blocks:
 - agent-run-workbench
