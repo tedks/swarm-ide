@@ -56,7 +56,7 @@ jobs:
           # chrome-sandbox. Electron's renderer API restrictions and context
           # isolation remain configured, but Chromium's OS sandbox is off.
           SWARM_ELECTRON_NO_SANDBOX: "1"
-        run: nix develop --command bazel test //tools:virtual-desktop-smoke-test --test_output=streamed --nocache_test_results
+        run: nix develop --command bazel test //tools:virtual-desktop-smoke-test //tools:virtual-desktop-agent-test --jobs=3 --test_output=streamed --nocache_test_results
 
       - name: Unpack virtual desktop evidence
         if: always()
@@ -76,4 +76,24 @@ jobs:
         with:
           name: virtual-desktop-evidence
           path: ${{ runner.temp }}/virtual-desktop-evidence/**
+          if-no-files-found: warn
+
+      - name: Unpack agent journey evidence
+        if: always()
+        run: |
+          evidence="$RUNNER_TEMP/agent-journey-evidence"
+          mkdir -p "$evidence"
+          archive="$(find bazel-testlogs/tools/virtual-desktop-agent-test/test.outputs -name outputs.zip -print -quit 2>/dev/null || true)"
+          if [[ -n "$archive" ]]; then
+            unzip -q "$archive" -d "$evidence"
+          else
+            printf 'No agent journey archive was produced. Inspect the job log.\n' >"$evidence/README.txt"
+          fi
+
+      - name: Upload agent journey evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: agent-journey-evidence
+          path: ${{ runner.temp }}/agent-journey-evidence/**
           if-no-files-found: warn

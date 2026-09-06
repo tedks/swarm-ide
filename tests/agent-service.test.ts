@@ -278,9 +278,11 @@ describe("durable agent service", () => {
     let fail = false;
     const f = await fixture({ store: { beforePersist: () => { if (fail) throw Object.assign(new Error("private path"), { code: "ENOSPC" }); } } });
     const prepared = await f.prepare(); fail = true;
-    expect(await f.service.request(f.launchRequest(prepared))).toMatchObject({ error: { code: "STORAGE_FULL" } });
+    // The frozen store result cannot distinguish ENOSPC before versus after
+    // rename. An attempted admission and its latched retry stay unknown.
+    expect(await f.service.request(f.launchRequest(prepared))).toMatchObject({ error: { code: "AGENT_OUTCOME_UNKNOWN" } });
     fail = false;
-    expect(await f.service.request(f.launchRequest(prepared))).toMatchObject({ error: { code: "STORAGE_FULL" } });
+    expect(await f.service.request(f.launchRequest(prepared))).toMatchObject({ error: { code: "AGENT_OUTCOME_UNKNOWN" } });
     expect(await f.disk()).toEqual([]); expect(f.adapter.start).not.toHaveBeenCalled();
   });
 
