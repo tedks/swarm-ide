@@ -21,5 +21,11 @@ log_events:
   who: Ted Smith
   what: blocked by agent-run-contract-base
   comment: ""
+- time: 2026-09-06T01:29:33-00:00
+  who: Ted Smith
+  what: blocks agent-run-vertical-proof
+  comment: ""
+blocks:
+- agent-run-vertical-proof
 blocked_by:
 - agent-run-contract-base
