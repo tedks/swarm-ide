@@ -26,6 +26,12 @@ vi.mock("../app/renderer/GraphPane", () => ({
 
 import { App } from "../app/renderer/App";
 describe("selective live recovery", () => {
+  it("exposes the observed topology epoch and status as persistent title evidence", async () => {
+    shell(); const source = files();
+    render(<App />); await open(source.path);
+    const expected = initialSnapshot(paymentsFileFocus).reconciliation;
+    await waitFor(() => expect(document.title).toContain(` — Topology ${expected.epoch}:${expected.status}`));
+  });
 it("waits for a fresh generation snapshot before restoring pathless service focus", async () => {
     const lifecycle = shell();
     const old = initialSnapshot();

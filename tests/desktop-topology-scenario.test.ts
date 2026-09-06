@@ -12,6 +12,9 @@ const build = "Build repository service topology";
 const driver = String.raw`
 zoom=0
 builds=0
+epoch=40
+core=1
+doc=100
 pending=""
 surface="Graphs"
 state="Consistent"
@@ -25,7 +28,11 @@ swarm_window_assert_selected() { :; }
 swarm_window_geometry() { printf 'WIDTH=1280\nHEIGHT=800\n'; }
 swarm_window_click() { :; }
 swarm_window_capture() { record "capture|$(basename "$1")"; }
-swarm_window_title() { echo "swarm-ide — $surface — Zoom 100%@$zoom — $state — FraudCheck visible"; }
+swarm_window_title() {
+  local color=yellow
+  [[ "$state" != Consistent ]] || color=green
+  echo "swarm-ide — $surface — Zoom 100%@$zoom — $state — FraudCheck visible — Core $core:ready — Doc $doc — Topology $epoch:$color"
+}
 swarm_window_type() { pending="$1"; }
 swarm_window_key() {
   case "$1" in
@@ -33,7 +40,16 @@ swarm_window_key() {
     Return)
       record "command|$pending"
       case "$pending" in
-        'Build repository service topology') builds=$((builds + 1)); state=Reconciling ;;
+        'Build repository service topology')
+          builds=$((builds + 1))
+          if [[ "$builds:$SCENARIO_MODE" != '2:stale' ]]; then epoch=$((epoch + 1)); state=Reconciling; fi
+          if (( builds == 2 )); then
+            case "$SCENARIO_MODE" in
+              fast) state=Consistent ;;
+              core-changed) core=2 ;;
+              doc-changed) doc=101 ;;
+            esac
+          fi ;;
         'Open FraudCheck implementation') surface='Source fraudcheck.ts' ;;
         'Open FraudCheck protobuf contract') surface='Source fraudcheck.proto' ;;
         'Show system graphs') surface=Graphs ;;
@@ -52,13 +68,16 @@ swarm_window_wait_title() {
   fi
   case "$1" in
     Reconciling) [[ "$state" == Reconciling ]] || return 92 ;;
-    Consistent) [[ "$state" == Reconciling ]] || return 93; state=Consistent ;;
+    Consistent) if (( builds == 1 )); then state=Consistent; fi; [[ "$state" == Consistent ]] || return 93 ;;
+    'Topology '*)
+      if [[ "$SCENARIO_MODE" != stale ]]; then state=Consistent; fi
+      [[ "$1" == "Topology $epoch:green" && "$state" == Consistent ]] || return 74 ;;
     'Source fraudcheck.ts'|'Source fraudcheck.proto'|Graphs) [[ "$surface" == "$1" ]] || return 94 ;;
   esac
 }
 `;
 
-async function runScenario(failure = "") {
+async function runScenario(failure = "", mode = "delayed") {
   const root = await mkdtemp(join(tmpdir(), "swarm-topology-scenario-"));
   roots.push(root);
   const driverPath = join(root, "driver.sh");
@@ -70,7 +89,7 @@ async function runScenario(failure = "") {
     env: {
       ...process.env, SWARM_X11_DRIVER_PATH: driverPath, SWARM_ARTIFACT_DIR: join(root, "artifacts"),
       SWARM_WINDOW_ID: "fixture-window", SWARM_WINDOW_PID: "123", SWARM_APP_SESSION: "fixture-session",
-      SWARM_RENDERER_PROCESS_ARGUMENT: "fixture-renderer", SCENARIO_LOG: log, SCENARIO_FAIL: failure,
+      SWARM_RENDERER_PROCESS_ARGUMENT: "fixture-renderer", SCENARIO_LOG: log, SCENARIO_FAIL: failure, SCENARIO_MODE: mode,
     },
   });
   expect(result.error).toBeUndefined();
@@ -80,13 +99,13 @@ async function runScenario(failure = "") {
 afterEach(async () => { await Promise.all(roots.splice(0).map((root) => rm(root, { recursive: true, force: true }))); });
 
 describe("desktop topology shell scenario", () => {
-  it("dispatches cold and same-world incremental builds with distinct deadlines before source navigation", async () => {
-    const result = await runScenario();
+  it.each(["delayed", "fast"])("accepts %s incremental completion only at a fresh epoch before source navigation", async (mode) => {
+    const result = await runScenario("", mode);
     expect(result.status, result.stderr).toBe(0);
     expect(result.stdout).toContain("desktop topology scenario passed");
-    expect(result.events.filter((event) => event.startsWith("command|") || /^wait\|(Reconciling|Consistent)\|/.test(event))).toEqual([
+    expect(result.events.filter((event) => event.startsWith("command|") || /^wait\|(Reconciling|Consistent|Topology [^|]+)\|/.test(event))).toEqual([
       `command|${build}`, "wait|Reconciling|present|default", "wait|Consistent|present|360000",
-      `command|${build}`, "wait|Reconciling|present|default", "wait|Consistent|present|30000",
+      `command|${build}`, "wait|Topology 42:green|present|30000",
       "command|Open FraudCheck implementation", "command|Open FraudCheck protobuf contract", "command|Show system graphs",
     ]);
     for (const [command, title, capture] of [
@@ -103,7 +122,7 @@ describe("desktop topology shell scenario", () => {
     expect(result.stdout).toContain("changed_pixels=2000");
   });
 
-  it.each(["1:Reconciling", "1:Consistent", "2:Reconciling", "2:Consistent", "2:Source fraudcheck.ts", "2:Source fraudcheck.proto"])(
+  it.each(["1:Reconciling", "1:Consistent", "2:Topology 42:green", "2:FraudCheck visible", "2:Source fraudcheck.ts", "2:Source fraudcheck.proto"])(
     "propagates %s failure without retrying or reporting success", async (failure) => {
       const result = await runScenario(failure);
       expect(result.status, result.stderr).toBe(73);
@@ -113,4 +132,13 @@ describe("desktop topology shell scenario", () => {
       expect(result.events.at(-1)).toMatch(new RegExp(`^wait\\|${failure.slice(2).replaceAll(".", "\\.")}\\|`));
     },
   );
+
+  it.each(["stale", "core-changed", "doc-changed"])("rejects %s despite a green title and two dispatched builds", async (mode) => {
+    const result = await runScenario("", mode);
+    expect(result.status, result.stderr).toBe(mode === "stale" ? 74 : 4);
+    expect(result.stdout).not.toContain("desktop topology scenario passed");
+    expect(result.events.filter((event) => event === `command|${build}`)).toHaveLength(2);
+    expect(result.events).toContain("wait|Topology 42:green|present|30000");
+    expect(result.events).not.toContain("command|Open FraudCheck implementation");
+  });
 });
