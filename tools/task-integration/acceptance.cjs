@@ -25,6 +25,7 @@ async function main() {
   const win = BrowserWindow.getAllWindows()[0];
   assert(win && !win.isDestroyed());
   const wc = win.webContents;
+  wc.on("console-message", (event) => { if (event.level === "error") console.error(`Owned fixture renderer: ${event.message}`); });
   const run = (fn, ...args) => wc.executeJavaScript(`(${fn.toString()})(...${JSON.stringify(args)})`, true);
   const has = (selector) => run((s) => Boolean(document.querySelector(s)), selector);
   const click = (selector) => run((s) => {
@@ -44,6 +45,8 @@ async function main() {
     const target = document.querySelector(s); if (!target) throw new Error(`No focus target ${s}`);
     target.scrollIntoView({ block: "nearest" }); target.focus();
   }, selector);
+  win.focus(); wc.focus();
+  await until(() => win.isFocused() && wc.isFocused(), "native window and webContents focus");
   const fill = async (selector, value) => { await focus(selector); key("A", ["control"]); await wc.insertText(value); };
   const request = (input) => run((body) => window.swarm.request({ protocolVersion: 4, requestId: `task-proof:${crypto.randomUUID()}`, ...body }), input);
   const status = () => run(() => document.querySelector("[data-task-status]")?.getAttribute("data-task-status"));
@@ -112,7 +115,7 @@ async function main() {
     await until(async () => (await run((s) => document.querySelector(s).parentElement.querySelector(".react-flow__viewport").style.transform, selector)) !== before, `deliberately move ${topology} camera`);
   }
   await focus(".cm-content"); key("End", ["control"]); await wc.insertText("\n// unsaved T3 intent"); key("Home", ["control"]); key("Right");
-  await run(() => [...document.querySelectorAll("button")].find((b) => b.textContent === "Ask an agent about this focus").click());
+  await focus(".agent-rail .agent-primary"); key("Return");
   await until(() => has(".agent-draft textarea"), "fixed-focus draft");
   await fill(".agent-draft textarea", "Retain this independent user draft; task text is not instructions.");
   await fill(".task-search input", fixture.taskId);
@@ -201,5 +204,10 @@ async function main() {
 main().catch(async (error) => {
   const message = error instanceof Error ? `${error.message}\n${error.stack}` : "Task acceptance failed";
   console.error(message);
+  const win = BrowserWindow.getAllWindows()[0];
+  if (win && !win.isDestroyed()) {
+    await fs.writeFile(path.join(evidence, "failure-window.png"), (await win.webContents.capturePage()).toPNG());
+    console.error(await win.webContents.executeJavaScript(`JSON.stringify({active:document.activeElement?.outerHTML,rail:document.querySelector('.agent-rail')?.textContent,draft:document.querySelector('.agent-draft')?.textContent,body:document.querySelector('#root')?.textContent?.slice(0,500)})`));
+  }
   await fs.writeFile(path.join(evidence, "task-failure.json"), JSON.stringify({ ok: false, message }));
 });
