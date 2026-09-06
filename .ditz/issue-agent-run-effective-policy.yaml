@@ -36,5 +36,11 @@ log_events:
     policy fixtures for a live session. Unknown/omitted network evidence currently
     fails closed even though schema defaults false. E1 does not need credentials or
     app-server startup.'
+- time: 2026-09-06T03:46:08-00:00
+  who: Ted Smith
+  what: blocked by agent-run-launch-profile-p1
+  comment: ""
 blocks:
 - agent-run-vertical-proof
+blocked_by:
+- agent-run-launch-profile-p1
