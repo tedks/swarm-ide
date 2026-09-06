@@ -14,3 +14,10 @@ log_events:
   who: Ted Smith
   what: created
   comment: ""
+- time: 2026-09-06T14:33:10-00:00
+  who: Ted Smith
+  what: commented
+  comment: 'P6 Google design-review nit: G0-G6 comparison table is dense. Retained
+    the finite side-by-side map for this two-document design because it exposes enforcement/proof/rejection
+    differences; when implementing gates, render concise per-gate evidence/status
+    rather than expanding table cells. No security finding deferred.'
