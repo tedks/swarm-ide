@@ -14,3 +14,11 @@ log_events:
   who: Ted Smith
   what: created
   comment: ""
+- time: 2026-09-06T04:03:21-00:00
+  who: Ted Smith
+  what: commented
+  comment: R2 lands core-only durable service + namespace transport fixture proofs,
+    real production prepare/history, and policy-unavailable execution. Next bounded
+    slice joins reviewed E2 fixtures through a separate test-only worker entry and
+    exercises real W2 six-command bridge on virtual X11. No renderer-selected fake
+    fallback or live provider enablement. P1 acceptance separate.
