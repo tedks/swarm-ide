@@ -4,8 +4,8 @@ import { createHash, randomUUID } from "node:crypto";
 import { chmod, mkdtemp, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { afterEach, describe, expect, it } from "vitest";
-import { RegisteredAgentContextProvider, type RegisteredAgentContextOptions } from "../core/agents/context";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { CAPABILITY_OBSERVATION_TIMEOUT_MS, CONTEXT_OBSERVATION_TIMEOUT_MS, RegisteredAgentContextProvider, type RegisteredAgentContextOptions } from "../core/agents/context";
 import { computeWorkingWorldFingerprint } from "../core/fingerprint";
 import { AGENT_LIMITS, PreparedAgentContextSchema, type AgentCapabilities, type PreparedAgentContext } from "../protocol/agents";
 
@@ -15,7 +15,7 @@ const verifiedFixture: AgentCapabilities = { availability: "available", reason: 
 async function fixture() {
   const root = await mkdtemp(join(tmpdir(), "swarm-agent-context-"));
   roots.push(root);
-  const git = (...args: string[]) => execFileSync("git", args, { cwd: root, stdio: "pipe" });
+  const git = (...args: string[]) => execFileSync("git", args, { cwd: root, stdio: "pipe", env: { ...process.env, GIT_CONFIG_GLOBAL: "/dev/null", GIT_CONFIG_SYSTEM: "/dev/null" } });
   git("init", "-q"); git("config", "user.name", "Fixture"); git("config", "user.email", "fixture@example.invalid");
   await writeFile(join(root, "source.ts"), "one\r\ntwo λ\r\nthree\n");
   await writeFile(join(root, "AGENTS.md"), "local instruction\n");
@@ -37,7 +37,7 @@ function value(result: Awaited<ReturnType<RegisteredAgentContextProvider["prepar
   if (!result.ok) throw new Error(result.error.code);
   return result.value;
 }
-afterEach(async () => { await Promise.all(roots.splice(0).map((root) => rm(root, { recursive: true, force: true }))); });
+afterEach(async () => { vi.useRealTimers(); vi.restoreAllMocks(); vi.unstubAllEnvs(); await Promise.all(roots.splice(0).map((root) => rm(root, { recursive: true, force: true }))); });
 
 describe("registered disk-only launch context", () => {
   it("captures exact UTF-8/range, identity, hashes, normalized opaque links and honest provenance", async () => {
@@ -90,6 +90,7 @@ describe("registered disk-only launch context", () => {
     expect((await p.prepare(f.input())).ok).toBe(false);
     const other = await RegisteredAgentContextProvider.create({ ...f.options, worldId: "world:elsewhere" });
     expect((await other.prepare(f.input())).ok).toBe(false);
+    expect(await other.prepare({ ...f.input(), focus: { ...f.input().focus, worldId: "world:elsewhere" } })).toMatchObject({ ok: false, error: { message: "Unsupported or invalid working focus, task or links." } });
   });
 
   it("supports reference-only service/directory context without reading linked sources", async () => {
@@ -109,6 +110,7 @@ describe("registered disk-only launch context", () => {
   });
 
   it.each(["../escape", "/etc/passwd", "alias", "nested-alias/source.ts", "binary", "invalid-utf8", "missing", "large", "ignored-unreadable"])("rejects unsafe/unreadable attachment %s", async (path) => {
+    if (path === "ignored-unreadable" && process.getuid?.() === 0) return; // Root bypasses Unix mode bits.
     const f = await fixture();
     await symlink("source.ts", join(f.root, "alias"));
     await symlink(f.root, join(f.root, "nested-alias"));
@@ -146,7 +148,7 @@ describe("registered disk-only launch context", () => {
     expect((await p.revalidate(second)).ok).toBe(false);
   });
 
-  it("detects ignored configuration changes, missing sources becoming observed and unreadable sources", async () => {
+  it("detects ignored configuration changes and missing sources becoming observed", async () => {
     const f = await fixture(); f.options.capabilities = async () => verifiedFixture;
     f.options.provenance = async () => ({ instructions: [], configuration: ["ignored.config"] });
     const p = await RegisteredAgentContextProvider.create(f.options);
@@ -161,14 +163,15 @@ describe("registered disk-only launch context", () => {
     expect((await p.revalidate(present)).ok).toBe(false);
   });
 
-  it("rejects a source changing between observations, mapping races and unavailable policy", async () => {
+  it("rejects an ignored source changing between observations and mapping races", async () => {
     const f = await fixture();
+    await writeFile(join(f.root, "ignored-source.ts"), "first");
     let count = 0;
     const p = await RegisteredAgentContextProvider.create({ ...f.options, provenance: async () => {
-      if (++count === 1) await writeFile(join(f.root, "source.ts"), "raced");
+      if (++count === 1) await writeFile(join(f.root, "ignored-source.ts"), "raced");
       return { instructions: [], configuration: [] };
     } });
-    expect((await p.prepare(f.input())).ok).toBe(false);
+    expect(await p.prepare({ ...f.input(), focus: { ...f.input().focus, path: "ignored-source.ts" } })).toMatchObject({ ok: false, error: { message: "Context changed while being prepared; refresh the draft." } });
     await f.refresh(); count = 0;
     const mapping = await RegisteredAgentContextProvider.create({ ...f.options, resolveFocus: async () => [{ attachmentPath: null, sourcePaths: ++count === 1 ? [] : ["changed.ts"] }] });
     expect((await mapping.prepare(f.input())).ok).toBe(false);
@@ -188,7 +191,7 @@ describe("registered disk-only launch context", () => {
     const p = await RegisteredAgentContextProvider.create({ ...f.options, capabilities: async () => { entered(); await gate; return verifiedFixture; } });
     const first = p.prepare(f.input()); await ready;
     expect(await p.prepare(f.input())).toMatchObject({ ok: false, error: { code: "BUSY" } });
-    release(); expect((await first).ok).toBe(true);
+    release(); expect(await p.revalidate(value(await first))).toMatchObject({ ok: true });
   });
 
   it("rejects changed capabilities and rechecks disk after a delayed capability observation", async () => {
@@ -219,4 +222,100 @@ describe("registered disk-only launch context", () => {
     const invalid = await RegisteredAgentContextProvider.create({ ...f.options, capabilities: async () => ({} as AgentCapabilities) });
     expect(await invalid.prepare(f.input())).toMatchObject({ ok: false, error: { code: "ADAPTER_POLICY_UNAVAILABLE" } });
   });
+
+  it("bounds a stalled capability observation and admits a fresh prepare after timeout", async () => {
+    const f = await fixture(); let stalled = true;
+    const p = await RegisteredAgentContextProvider.create({ ...f.options, capabilities: async () => stalled ? new Promise<AgentCapabilities>(() => {}) : verifiedFixture });
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+    const pending = p.prepare(f.input());
+    await vi.advanceTimersByTimeAsync(CAPABILITY_OBSERVATION_TIMEOUT_MS);
+    expect(await pending).toMatchObject({ ok: false, error: { code: "ADAPTER_POLICY_UNAVAILABLE" } });
+    stalled = false; vi.useRealTimers();
+    expect(await p.revalidate(value(await p.prepare(f.input())))).toMatchObject({ ok: true });
+  });
+
+  it("bounds a stalled context observation and late completion cannot overwrite a replacement draft", async () => {
+    const f = await fixture(); let stalled = true; let release!: () => void; let entered!: () => void;
+    const gate = new Promise<void>((resolve) => { release = resolve; });
+    const ready = new Promise<void>((resolve) => { entered = resolve; });
+    const p = await RegisteredAgentContextProvider.create({ ...f.options, capabilities: async () => verifiedFixture, resolveFocus: async (focus) => {
+      if (stalled) { entered(); await gate; }
+      return [{ attachmentPath: focus.path ?? null, sourcePaths: [] }];
+    } });
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+    const pending = p.prepare(f.input()); await ready;
+    await vi.advanceTimersByTimeAsync(CONTEXT_OBSERVATION_TIMEOUT_MS);
+    expect(await pending).toMatchObject({ ok: false, error: { message: "Context or policy observation exceeded its bounded deadline." } });
+    vi.useRealTimers(); stalled = false;
+    const fresh = value(await p.prepare(f.input())); release();
+    expect(await p.revalidate(fresh)).toMatchObject({ ok: true });
+  });
+
+  it("rejects replacement during revalidation but keeps the replacement usable", async () => {
+    const f = await fixture(); let replace = false; let fresh!: PreparedAgentContext;
+    const p = await RegisteredAgentContextProvider.create({ ...f.options, capabilities: async () => {
+      if (replace) { replace = false; fresh = value(await p.prepare(f.input())); }
+      return verifiedFixture;
+    } });
+    const old = value(await p.prepare(f.input())); replace = true;
+    expect(await p.revalidate(old)).toMatchObject({ ok: false, error: { code: "STALE_CONTEXT" } });
+    expect(await p.revalidate(fresh)).toMatchObject({ ok: true });
+    // Invalid requests do not evict a draft the user is reviewing.
+    expect((await p.prepare({ ...f.input(), taskText: "" })).ok).toBe(false);
+    expect(await p.revalidate(fresh)).toMatchObject({ ok: true });
+  });
+
+  it("records unexpected failures without copying their raw diagnostics", async () => {
+    const f = await fixture(); const warning = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const p = await RegisteredAgentContextProvider.create({ ...f.options, resolveFocus: async () => { throw new TypeError("private-token-do-not-copy"); } });
+    const result = await p.prepare(f.input());
+    expect(result).toMatchObject({ ok: false, error: { code: "STALE_CONTEXT" } });
+    expect(warning).toHaveBeenCalledWith("Agent context prepare failed unexpectedly; raw diagnostics withheld");
+    expect(JSON.stringify([result, warning.mock.calls])).not.toContain("private-token-do-not-copy");
+  });
+
+  it("validates core-resolved attachment and reference bounds independently of renderer path validation", async () => {
+    const f = await fixture();
+    for (const attachmentPath of ["../escape", "/etc/passwd", "different-file.ts"]) {
+      const p = await RegisteredAgentContextProvider.create({ ...f.options, resolveFocus: async () => [{ attachmentPath, sourcePaths: [] }] });
+      expect(await p.prepare(f.input())).toMatchObject({ ok: false, error: { message: "Focus does not uniquely identify its canonical source file." } });
+      if (attachmentPath !== "different-file.ts") {
+        const { path: _, ...focus } = f.input().focus;
+        expect(await p.prepare({ ...f.input(), focus })).toMatchObject({ ok: false, error: { message: "Focus does not uniquely identify its canonical source file." } });
+      }
+    }
+    for (const sourcePaths of [["../escape"], Array(33).fill("source.ts")]) {
+      const p = await RegisteredAgentContextProvider.create({ ...f.options, resolveFocus: async () => [{ attachmentPath: null, sourcePaths }] });
+      expect(await p.prepare(f.input())).toMatchObject({ ok: false, error: { message: "Source links are unsupported or not repository-relative." } });
+    }
+    const p = await RegisteredAgentContextProvider.create({ ...f.options, provenance: async () => ({ instructions: Array(32).fill("AGENTS.md"), configuration: [] }) });
+    expect(await p.prepare(f.input())).toMatchObject({ ok: false, error: { code: "OUTPUT_LIMIT", message: "Too many provenance sources for this bounded draft." } });
+  });
+
+  it("pins ranges to editor line semantics, including empty/trailing lines, and accepts a known parent", async () => {
+    const f = await fixture(); const parentRunId = randomUUID();
+    const p = await RegisteredAgentContextProvider.create({ ...f.options, knownParent: async (id) => id === parentRunId });
+    const draft = value(await p.prepare({ ...f.input(), links: { ...f.input().links, parentRunId } }));
+    expect(draft.launchContext.links.parentRunId).toBe(parentRunId);
+    expect(draft.launchContext.attachments[0]!.endLine).toBe(4);
+    for (const range of [{ startLine: 0, endLine: 1 }, { startLine: 2, endLine: 1 }, { startLine: 1.5, endLine: 2 }]) {
+      expect(await p.prepare({ ...f.input(), focus: { ...f.input().focus, range } })).toMatchObject({ ok: false, error: { message: "Unsupported or invalid working focus, task or links." } });
+    }
+    await writeFile(join(f.root, "source.ts"), ""); await f.refresh();
+    expect(value(await p.prepare(f.input())).launchContext.attachments[0]).toMatchObject({ content: "", startLine: 1, endLine: 1 });
+  });
+
+  it("refuses ambient Git redirection instead of recording another repository's identity", async () => {
+    const f = await fixture(); const p = await RegisteredAgentContextProvider.create(f.options);
+    vi.stubEnv("GIT_DIR", "/private/not-the-registered-repo");
+    expect(await p.prepare(f.input())).toMatchObject({ ok: false, error: { message: "Ambient Git redirection is unsupported for a registered agent world." } });
+    await expect(RegisteredAgentContextProvider.create(f.options)).rejects.toThrow("Ambient Git redirection");
+  });
+
+  it("rejects an ignored FIFO without waiting for a writer or the observation timeout", async () => {
+    const f = await fixture();
+    execFileSync("mkfifo", [join(f.root, "ignored-fifo")]);
+    const p = await RegisteredAgentContextProvider.create(f.options);
+    expect(await p.prepare({ ...f.input(), focus: { ...f.input().focus, path: "ignored-fifo" } })).toMatchObject({ ok: false, error: { code: "STALE_CONTEXT" } });
+  }, 5000);
 });

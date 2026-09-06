@@ -15,6 +15,9 @@ import { READ_ONLY_ACCESS, unavailablePolicyCapabilities } from "./policy";
 
 const git = promisify(execFile);
 const digest = (bytes: string | Buffer) => createHash("sha256").update(bytes).digest("hex");
+const PROVENANCE_MARKERS = new Set(["provider://instruction-expansion-unobserved", "provider://effective-configuration-unobserved"]);
+export const CONTEXT_OBSERVATION_TIMEOUT_MS = 30_000;
+export const CAPABILITY_OBSERVATION_TIMEOUT_MS = 5_000;
 type Sources = { instructions: readonly string[]; configuration: readonly string[] };
 type Source = LaunchContext["instructionSources"][number];
 
@@ -46,13 +49,28 @@ const stale = (message: string): never => { throw new ContextFailure("STALE_CONT
 function normalized(path: string): boolean {
   return AgentLinksSchema.safeParse({ parentRunId: null, task: path, spec: null }).success;
 }
-function failure(error: unknown): AgentOperation<never> {
+function failure(error: unknown, operation: "prepare" | "revalidate"): AgentOperation<never> {
   if (error instanceof ContextFailure) return { ok: false, error: { code: error.code, message: error.message } };
   if (error instanceof WorkspaceFileError && error.code === "FILE_TOO_LARGE") {
     return { ok: false, error: { code: "OUTPUT_LIMIT", message: "The selected disk file exceeds the bounded attachment limit." } };
   }
+  if (!(error instanceof WorkspaceFileError)) console.warn(`Agent context ${operation} failed unexpectedly; raw diagnostics withheld`);
   // Do not forward filesystem/Git error text: it can contain private paths/data.
   return { ok: false, error: { code: "STALE_CONTEXT", message: "Launch context could not be safely observed. Refresh after checking the selected file, repository and configuration." } };
+}
+function rejectGitRedirection(): void {
+  if (["GIT_DIR", "GIT_COMMON_DIR", "GIT_WORK_TREE", "GIT_INDEX_FILE", "GIT_OBJECT_DIRECTORY",
+    "GIT_ALTERNATE_OBJECT_DIRECTORIES", "GIT_CONFIG", "GIT_CONFIG_COUNT", "GIT_CONFIG_PARAMETERS"].some((key) => process.env[key] !== undefined)) {
+    stale("Ambient Git redirection is unsupported for a registered agent world.");
+  }
+}
+async function bounded<T>(operation: () => Promise<T>, milliseconds: number, code: AgentError["code"]): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    return await Promise.race([operation(), new Promise<never>((_, reject) => {
+      timer = setTimeout(() => reject(new ContextFailure(code, "Context or policy observation exceeded its bounded deadline.")), milliseconds);
+    })]);
+  } finally { clearTimeout(timer); }
 }
 function stableSources(sources: Source[]) {
   return sources.map(({ path, digest, observation }) => ({ path, digest, observation }));
@@ -72,6 +90,7 @@ export class RegisteredAgentContextProvider implements AgentContextProvider {
   }
 
   static async create(options: RegisteredAgentContextOptions): Promise<RegisteredAgentContextProvider> {
+    rejectGitRedirection();
     const root = await realpath(options.root);
     const top = await git("git", ["rev-parse", "--show-toplevel"], { cwd: root, timeout: 5000, maxBuffer: 8192 });
     if (await realpath(top.stdout.trim()) !== root) throw new Error("Agent root must be a registered Git working-tree root");
@@ -81,10 +100,10 @@ export class RegisteredAgentContextProvider implements AgentContextProvider {
   async prepare(untrusted: AgentPrepareInput): Promise<AgentOperation<PreparedAgentContext>> {
     if (this.preparing) return { ok: false, error: { code: "BUSY", message: "Another launch context is being prepared." } };
     this.preparing = true;
-    this.draft = null;
     try {
       const parsed = AgentPrepareInputSchema.safeParse(untrusted);
       if (!parsed.success) stale("Unsupported or invalid working focus, task or links.");
+      this.draft = null;
       const input = parsed.data!;
       const preparedAt = this.now();
       const capabilities = await this.capabilities();
@@ -108,7 +127,7 @@ export class RegisteredAgentContextProvider implements AgentContextProvider {
       if (this.now() >= preparedAt + AGENT_LIMITS.draftMs) stale("Context preparation expired; prepare a fresh draft.");
       this.draft = { serialized: JSON.stringify(candidate.data), input, evidence: observation.evidence };
       return { ok: true, value: candidate.data };
-    } catch (error) { return failure(error); }
+    } catch (error) { return failure(error, "prepare"); }
     finally { this.preparing = false; }
   }
 
@@ -129,19 +148,19 @@ export class RegisteredAgentContextProvider implements AgentContextProvider {
       const current = await this.observe(draft!.input);
       if (current.evidence !== draft!.evidence || this.draft !== draft) stale("Source, mapping, instructions or configuration changed; refresh the draft.");
       if ([...current.instructions, ...current.configuration].some((source) =>
-        !source.path.startsWith("provider://") && source.observation !== "observed")) stale("Selected local provenance is unreadable or unobserved; resolve it before launch.");
+        !PROVENANCE_MARKERS.has(source.path) && source.observation !== "observed")) stale("Selected local provenance is unreadable or unobserved; resolve it before launch.");
       checkTime();
       if (capabilities.availability !== "available" || capabilities.policy !== "verified-read-only" || !capabilities.controls.launch) {
         return { ok: false, error: capabilities.reason ?? { code: "ADAPTER_POLICY_UNAVAILABLE", message: "Launch policy has not been verified." } };
       }
       if (JSON.stringify(capabilities) !== JSON.stringify(context.capabilities)) stale("Provider capabilities changed; refresh the draft.");
       return { ok: true, value: JSON.parse(draft!.serialized) as PreparedAgentContext };
-    } catch (error) { return failure(error); }
+    } catch (error) { return failure(error, "revalidate"); }
   }
 
   private async capabilities(): Promise<AgentCapabilities> {
     try {
-      const observed = this.options.capabilities ? await this.options.capabilities() : unavailablePolicyCapabilities();
+      const observed = this.options.capabilities ? await bounded(() => this.options.capabilities!(), CAPABILITY_OBSERVATION_TIMEOUT_MS, "ADAPTER_POLICY_UNAVAILABLE") : unavailablePolicyCapabilities();
       const parsed = AgentCapabilitiesSchema.safeParse(observed);
       if (parsed.success) return parsed.data;
     } catch { /* Probe errors may contain private provider/configuration data. */ }
@@ -165,7 +184,7 @@ export class RegisteredAgentContextProvider implements AgentContextProvider {
     if (bytes.some((byte) => byte < 32 && ![9, 10, 13].includes(byte))) stale("Binary source cannot be attached.");
     // Preserve BOM as actual submitted bytes, unlike TextDecoder's default.
     const text = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true }).decode(bytes);
-    const lines = text.match(/[^\n]*\n|[^\n]+$/g) ?? [""];
+    const lines = text.split("\n").map((line, index, all) => line + (index < all.length - 1 ? "\n" : ""));
     const startLine = input.focus.range?.startLine ?? 1;
     const endLine = input.focus.range?.endLine ?? lines.length;
     if (endLine > lines.length) stale("Selected line range no longer exists on disk.");
@@ -173,7 +192,15 @@ export class RegisteredAgentContextProvider implements AgentContextProvider {
     return { attachments: [{ path, content, digest: digest(content), startLine, endLine }], fileDigest: digest(bytes) };
   }
 
-  private async observe(input: AgentPrepareInput) {
+  private observe(input: AgentPrepareInput) {
+    // This operation only produces local observations: after timeout its late
+    // completion cannot publish/replace a draft. It does not cancel arbitrary
+    // trusted callbacks or kernel I/O; the contained broker must be nonblocking.
+    return bounded(() => this.observeDisk(input), CONTEXT_OBSERVATION_TIMEOUT_MS, "STALE_CONTEXT");
+  }
+
+  private async observeDisk(input: AgentPrepareInput) {
+    rejectGitRedirection();
     if (input.worldId !== this.options.worldId || input.focus.revisionId !== this.options.workingRevision()) stale("Focus is not in the current registered working world.");
     if (input.links.parentRunId && !(await this.options.knownParent?.(input.links.parentRunId))) stale("Parent run is not known in this local world.");
     if (await realpath(this.options.root) !== this.root) stale("Registered root changed identity.");

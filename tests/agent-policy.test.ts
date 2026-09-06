@@ -23,4 +23,13 @@ describe("agent policy evidence (no provider execution)", () => {
   ])("rejects missing/unknown/mismatched authority evidence: %j", (delta) => {
     expect(validateCodexThreadPolicy({ cwd: "/workspace", approvalPolicy: "never", sandbox: { type: "readOnly", networkAccess: false }, ...delta }, "/workspace")).toMatchObject({ ok: false, error: { code: "ADAPTER_POLICY_UNAVAILABLE" } });
   });
+
+  it("rejects noncanonical core cwd and absent/nonobject provider evidence", () => {
+    for (const cwd of ["relative", "/workspace/", "/workspace/../private"]) {
+      expect(validateCodexThreadPolicy({ cwd, approvalPolicy: "never", sandbox: { type: "readOnly", networkAccess: false } }, cwd).ok).toBe(false);
+    }
+    for (const response of [null, "invalid", {}, { cwd: "/workspace", sandbox: { type: "readOnly", networkAccess: false } }]) {
+      expect(validateCodexThreadPolicy(response, "/workspace")).toMatchObject({ ok: false, error: { code: "ADAPTER_POLICY_UNAVAILABLE" } });
+    }
+  });
 });

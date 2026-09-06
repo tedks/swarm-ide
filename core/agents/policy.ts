@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { isAbsolute, resolve } from "node:path";
 import type { AgentCapabilities } from "../../protocol/agents";
 import type { AgentOperation } from "./adapter";
 
@@ -34,7 +35,7 @@ const threadPolicy = z.object({
  */
 export function validateCodexThreadPolicy(response: unknown, expectedCwd: string): AgentOperation<{ cwd: string; policy: "read-only" }> {
   const parsed = threadPolicy.safeParse(response);
-  if (!parsed.success || !expectedCwd.startsWith("/") || parsed.data.cwd !== expectedCwd) {
+  if (!parsed.success || !isAbsolute(expectedCwd) || resolve(expectedCwd) !== expectedCwd || parsed.data.cwd !== expectedCwd) {
     return { ok: false, error: { code: "ADAPTER_POLICY_UNAVAILABLE", message: "Provider sandbox, approvals or working directory did not match the required limited profile." } };
   }
   return { ok: true, value: { cwd: expectedCwd, policy: "read-only" } };
