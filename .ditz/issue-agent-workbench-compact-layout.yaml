@@ -19,3 +19,10 @@ log_events:
   who: Ted Smith
   what: created
   comment: ""
+- time: 2026-09-06T04:11:39-00:00
+  who: Ted Smith
+  what: commented
+  comment: W2 PR15 reduces draft rail nested scrolling, widens inspectable context
+    to300px, allows wrapping pane headers and fits dockheight within48vh. Broader
+    compact/high-zoom layout remains proportional followup, not a whole-workbench
+    redesign.
