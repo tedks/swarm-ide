@@ -7,13 +7,15 @@ export interface AgentWorkbenchState {
   selected: boolean;
   draftOpen: boolean;
   step: number;
+  fixtureGeneration: number;
+  streamedSecond: boolean;
 }
 
 export const emptyAgentWorkbench = (): AgentWorkbenchState => ({
   snapshot: AgentSnapshotSchema.parse({ runs: [], activeRunId: null, tail: [], capabilities: {
     availability: "unavailable", reason: { code: "ADAPTER_UNAVAILABLE", message: "Live agent service is not connected in this slice." },
     provider: null, version: null, controls: { launch: false, steer: false, cancel: false }, policy: "unverified",
-  } }), run: null, records: [], selected: false, draftOpen: false, step: 0,
+  } }), run: null, records: [], selected: false, draftOpen: false, step: 0, fixtureGeneration: 0, streamedSecond: false,
 });
 
 const label = (value: string): string => {
@@ -54,8 +56,9 @@ export function fixtureReducer(state: AgentWorkbenchState, action: FixtureAction
   if (action.type === "launch") {
     // No replacement of active or uncertain work, and no hidden queue.
     if (!canPrepareFixture(state)) return state;
-    return projectFixture({ ...state, selected: true, draftOpen: false, step: 0 }, RunSchema.parse({
-      runId: "11111111-1111-4111-8111-111111111111", launchContext: action.context, state: "starting",
+    const fixtureGeneration = state.fixtureGeneration + 1;
+    return projectFixture({ ...state, selected: true, draftOpen: false, step: 0, fixtureGeneration, streamedSecond: false }, RunSchema.parse({
+      runId: `11111111-1111-4111-8111-${fixtureGeneration.toString(16).padStart(12, "0")}`, launchContext: action.context, state: "starting",
       providerThreadId: null, providerTurnId: null, providerObservation: null, providerOutcome: { kind: "none" },
       createdAt: FIXTURE_TIME, updatedAt: FIXTURE_TIME, startedAt: null, endedAt: null, terminalReason: null,
       processState: "not-started", exitCode: null, cleanup: { status: "not-needed", observedAt: FIXTURE_TIME, detail: "Fixture: no real process exists." },
@@ -84,7 +87,7 @@ export function fixtureReducer(state: AgentWorkbenchState, action: FixtureAction
     run = { ...run, state: "running", providerThreadId: "fixture-thread", providerTurnId: "fixture-turn", startedAt: now,
       processState: "live", cleanup: { status: "pending", observedAt: now, detail: "Simulated process lifecycle only." } };
     message = "FIXTURE stream 1/2: tracing the selected focus and its interface boundaries…";
-  } else if (run.state === "running" && !state.records.some((r) => r.providerItemId === "fixture-commentary-2")) {
+  } else if (run.state === "running" && !state.streamedSecond) {
     message = "FIXTURE stream 2/2: distinguish caller validation, service errors, and retry semantics. This is scripted text, not a source analysis.";
   } else if (run.state === "running" || run.state === "cancelling") {
     const interrupted = run.state === "cancelling";
@@ -108,5 +111,5 @@ export function fixtureReducer(state: AgentWorkbenchState, action: FixtureAction
   run.transcript.lastRecord = record.recordId;
   run.transcript.bytes += new TextEncoder().encode(JSON.stringify(record)).length;
   run.transcript.truncated ||= state.records.length >= AGENT_LIMITS.tailRecords;
-  return projectFixture({ ...state, step }, run, [...state.records, record]);
+  return projectFixture({ ...state, step, streamedSecond: state.streamedSecond || record.providerItemId === "fixture-commentary-2" }, run, [...state.records, record]);
 }

@@ -10,5 +10,6 @@ export function RunRail({ state, fixtureEnabled, onDraft, onSelect }: { state: A
     <p className="empty-rail">{state.snapshot.capabilities.reason?.message}</p>
     {fixtureEnabled ? <button className="agent-primary" disabled={!canPrepareFixture(state)} onClick={onDraft}>Preview agent fixture</button>
       : <button disabled className="agent-primary">Agent harness unavailable</button>}
+    {fixtureEnabled && state.run ? <p className="empty-rail">One local rehearsal; a new fixture replaces the previous one. No retained history or model activity.</p> : null}
   </div>;
 }

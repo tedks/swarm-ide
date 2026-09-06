@@ -68,13 +68,14 @@ describe("bounded schema-valid fixture playback", () => {
   });
   it("bounds transcript, instructions and multibyte labels, preserving explicit truncation", () => {
     let state = fixtureReducer(emptyAgentWorkbench(), { type: "launch", context: fixtureLaunchContext(paymentsFileFocus, "🌳".repeat(300), "", "") });
-    state = advance(state);
+    state = advance(advance(state));
     for (let i = 0; i < 140; i++) state = fixtureReducer(state, { type: "steer", text: "x", outcome: "accepted" });
     expect(state.records).toHaveLength(32);
     expect(state.run?.instructions).toHaveLength(128);
     expect(state.run?.transcript.truncated).toBe(true);
     expect(utf8Bytes(state.snapshot.runs[0]!.taskLabel)).toBeLessThanOrEqual(256);
     expect(AgentSnapshotSchema.safeParse(state.snapshot).success).toBe(true);
+    expect(advance(state).run?.state).toBe("completed");
   });
   it("rejects empty and oversized instructions without mutation", () => {
     const state = advance(started());
@@ -83,6 +84,15 @@ describe("bounded schema-valid fixture playback", () => {
 });
 
 describe("run-specific presentation", () => {
+  it("refuses aggregate JSON escaping overflow without throwing on submit", () => {
+    const onLaunch = vi.fn();
+    render(<LaunchDraft focus={paymentsFileFocus} onLaunch={onLaunch} onClose={() => undefined} />);
+    fireEvent.change(screen.getByLabelText("Task"), { target: { value: "\u0001".repeat(16 * 1024) } });
+    expect((screen.getByRole("button", { name: "Launch fixture — no provider" }) as HTMLButtonElement).disabled).toBe(true);
+    fireEvent.submit(document.querySelector(".agent-draft")!);
+    expect(onLaunch).not.toHaveBeenCalled();
+    expect(screen.getByRole("alert").textContent).toContain("serialized context");
+  });
   it("freezes draft focus and discloses disk/no-bytes/provenance limits", () => {
     const onLaunch = vi.fn();
     const view = render(<LaunchDraft focus={paymentsFileFocus} onLaunch={onLaunch} onClose={() => undefined} />);
@@ -136,6 +146,12 @@ describe("run-specific presentation", () => {
     expect(request.mock.calls.filter(([r]) => r.type === "focus.select")).toHaveLength(focusesBefore);
     expect(request.mock.calls.some(([r]) => r.type.startsWith("agent."))).toBe(false);
     expect(screen.getByRole("log").textContent).not.toContain("UNSAVED PRIVATE BUFFER");
+    fireEvent.change(screen.getByLabelText("Instruction to this run"), { target: { value: "OLD RUN INSTRUCTION" } });
+    for (let i = 0; i < 3; i++) fireEvent.click(screen.getByRole("button", { name: "Next fixture event" }));
+    fireEvent.click(screen.getByRole("button", { name: "Preview agent fixture" }));
+    fireEvent.click(screen.getByRole("button", { name: "Launch fixture — no provider" }));
+    expect((screen.getByLabelText("Instruction to this run") as HTMLTextAreaElement).value).toBe("");
+    expect(screen.getByLabelText("Source buffer")).toBe(source);
     await act(async () => undefined);
   });
 });

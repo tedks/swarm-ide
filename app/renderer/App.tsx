@@ -607,8 +607,9 @@ export function App() {
     const files = ` — ${fileTabs.length} file tab${fileTabs.length === 1 ? "" : "s"}`;
     const palette = paletteOpen ? " — Palette open" : "";
     const hmrSuffix = hmr.generation ? ` — HMR ${hmr.generation}:${hmr.milliseconds}ms` : "";
-    document.title = `swarm-ide — ${title}${focus}${revision}${fraudVisible}${surface}${files}${palette} — ${zoomTitle}${hmrSuffix}${lifecycleTitle}`;
-  }, [activeFile?.status, activeSurface, fileTabs.length, hmr, paletteOpen, snapshot, title, zoomTitle, lifecycleTitle]);
+    const fixtureTitle = agentFixtureEnabled ? agents.draftOpen ? " — Agent fixture draft" : agents.run ? ` — Agent fixture ${agents.run.state} step ${agents.step}` : " — Agent fixture enabled" : "";
+    document.title = `swarm-ide — ${title}${focus}${revision}${fraudVisible}${surface}${files}${palette} — ${zoomTitle}${hmrSuffix}${lifecycleTitle}${fixtureTitle}`;
+  }, [activeFile?.status, activeSurface, fileTabs.length, hmr, paletteOpen, snapshot, title, zoomTitle, lifecycleTitle, agentFixtureEnabled, agents.draftOpen, agents.run, agents.step]);
 
   const selectFocus = useCallback((focus: FocusRef) => {
     setSelectedConnection(null);
@@ -694,7 +695,7 @@ export function App() {
       </aside>
 
       <section className={`activity-dock panel ${agents.selected ? "agent-dock-open" : ""}`}>
-        {agents.selected ? <RunPane state={agents} dispatch={(action) => { if (agentFixtureEnabled) setAgents((state) => fixtureReducer(state, action)); }} onReveal={(focus) => {
+        {agents.selected ? <RunPane key={agents.run?.runId} state={agents} dispatch={(action) => { if (agentFixtureEnabled) setAgents((state) => fixtureReducer(state, action)); }} onReveal={(focus) => {
           if (focus.worldId === snapshot.world.id && focus.revisionKind === "working") selectFocus({ ...focus, revisionId: snapshot.revisions.working.id });
           else setError("Launch focus cannot be mapped to this working world.");
         }} onClose={() => setAgents((state) => ({ ...state, selected: false }))} height={agentPaneHeight} onHeight={setAgentPaneHeight} /> : null}
