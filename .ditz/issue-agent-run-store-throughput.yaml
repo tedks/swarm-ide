@@ -14,3 +14,10 @@ log_events:
   who: Ted Smith
   what: created
   comment: ""
+- time: 2026-09-06T04:03:18-00:00
+  who: Ted Smith
+  what: commented
+  comment: R2 deliberately uses one atomic validated snapshot per durable update/append.
+    Hard store64MiB and transcript8MiB bounds hold, but O(retained-history) serialization/write
+    amplification should be measured and batched or journaled before high-throughput/multi-run
+    support. No throughput claim from first read-only slice.
