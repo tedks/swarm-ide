@@ -16,6 +16,7 @@ export interface TopologyNodeData extends Record<string, unknown> {
   unavailable?: boolean;
   directoryEntry?: boolean;
   directoryContainer?: boolean;
+  mockAgents?: number;
 }
 
 export interface GraphConnectionFocus {

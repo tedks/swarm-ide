@@ -27,6 +27,10 @@
 .task-ui .task-select { display: flex; align-items: center; width: 100%; gap: 7px; height: 27px; padding: 4px 5px; border: 0; border-radius: 2px; background: transparent; white-space: nowrap; }
 .task-ui .task-select strong { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 11px; font-weight: 400; }
 .task-ui .task-select .task-row-status { width: 12px; flex: none; color: #869c91; font-size: 12px; }
+.task-ui .task-list { overflow-x: hidden; min-width: 0; }
+.task-ui .task-select { height: auto; min-height: 32px; align-items: start; padding-block: 5px; overflow: hidden; }
+.task-ui .task-select strong { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; white-space: normal; overflow-wrap: anywhere; font-size: 9px; line-height: 1.45; overflow: hidden; }
+.task-ui .task-select[aria-expanded="true"] strong { display: block; max-height: 110px; overflow-y: auto; -webkit-line-clamp: unset; }
 .task-ui .task-select .task-status-in_progress { color: var(--green); }
 .task-ui .task-select .task-status-paused { color: var(--yellow); }
 .task-editor-surface { grid-row: 3; grid-column: 2; min-width: 0; min-height: 0; overflow: auto; background: #0b1414; }

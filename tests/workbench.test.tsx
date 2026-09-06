@@ -443,7 +443,7 @@ describe("workbench shell", () => {
     expect(document.querySelector(".navigation-field.source-open")).toBeTruthy();
     expect(document.querySelector(".graphs-grid.is-sidebar")).toBeTruthy();
     fireEvent.click(screen.getAllByRole("button", { name: paths[1] })[0]!);
-    await waitFor(() => expect(document.querySelectorAll(".surface-tabs > button, .surface-tab-main")).toHaveLength(3));
+    await waitFor(() => expect(document.querySelectorAll(".surface-tab-main")).toHaveLength(2)); // Documents only; graphs have their own surface.
     expect(request.mock.calls.some(([input]) => input.type === "focus.select" && input.focus.path === paths[1])).toBe(true);
     const surfaceTabs = [...document.querySelectorAll<HTMLButtonElement>(".surface-tabs > button, .surface-tab-main")];
     expect(surfaceTabs.some((tab) => tab.textContent?.includes("payments.ts"))).toBe(true);
@@ -494,7 +494,10 @@ describe("workbench shell", () => {
     });
     expect(screen.queryByRole("button", { name: `Close ${paths[0]}` })).toBeNull();
     expect(screen.queryByRole("button", { name: `Close ${paths[1]}` })).toBeNull();
-    expect(screen.getByRole("button", { name: /System graphs/ }).className).toBe("active");
+    expect(screen.queryByRole("navigation", { name: "Document tabs" })).toBeNull();
+    expect(document.querySelector(".navigation-field.source-open")).toBeNull();
+    expect(document.querySelector(".graphs-grid.is-active")).toBeTruthy();
+    expect(screen.getByRole("separator", { name: "Resize Context" })).toBeTruthy();
   });
 
   it("saves with the expected revision and preserves a dirty buffer on external conflict", async () => {

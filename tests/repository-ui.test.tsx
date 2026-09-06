@@ -226,6 +226,31 @@ describe("repository controls and coordinated cameras", () => {
     view.rerender(<GraphPane {...props} graph={graph(refreshed)} repositoryCameraIntent={hook.result.current.cameraIntent} />); settle();
     expect(flow.getAttribute("data-fits")).toBe("1"); expect(flow.getAttribute("data-camera")).toBe(deliberate);
   });
+  it("toggles display layers without replacing the graph, moving its camera, navigating or claiming live build evidence", () => {
+    const snapshot = initialSnapshot(), repo = graph(observation());
+    const onFocus = vi.fn(), onReconcile = vi.fn(), onNavigateDirectory = vi.fn();
+    const props = { graph: repo, focus: snapshot.focus, mappings: [], onFocus, onConnectionFocus: vi.fn(), onReconcile, onNavigateDirectory, reconciliationRunning: false, interfaceZoom: 100 };
+    const view = render(<GraphPane {...props} />);
+    const build = screen.getByRole("button", { name: /Build links/ });
+    expect((build as HTMLButtonElement).disabled).toBe(true);
+    const flow = screen.getByTestId("repository-flow");
+    fireEvent.click(screen.getByRole("button", { name: "Pan graph" }));
+    const camera = flow.getAttribute("data-camera"), fits = flow.getAttribute("data-fits");
+    view.rerender(<GraphPane {...props} buildLinkSnapshot={{ repositoryId: "test", revision: "reference", capturedAt: date, command: "bazel query", links: [{ from: "//core:a", to: "//docs:b", fromPath: "core", toPath: "docs" }] }} />);
+    // Repository props are published on the next frame; await that below.
+    return waitFor(() => expect((build as HTMLButtonElement).disabled).toBe(false)).then(() => {
+      fireEvent.click(build);
+      expect(screen.getByText(/Snapshot reference · 1 visible links · not live/)).toBeTruthy();
+      fireEvent.click(screen.getByRole("button", { name: /Mock agents/ }));
+      expect(screen.getByText(/MOCK ACTIVITY · visual only · no agents launched/)).toBeTruthy();
+      fireEvent.click(screen.getByRole("button", { name: /Mock agents/ }));
+      expect(screen.queryByText(/MOCK ACTIVITY/)).toBeNull();
+      expect(screen.getByTestId("repository-flow")).toBe(flow);
+      expect(flow.getAttribute("data-camera")).toBe(camera);
+      expect(flow.getAttribute("data-fits")).toBe(fits);
+      expect(onFocus).not.toHaveBeenCalled(); expect(onReconcile).not.toHaveBeenCalled(); expect(onNavigateDirectory).not.toHaveBeenCalled();
+    });
+  });
   it("keeps off-slice candidates in ambiguity without highlighting fictional nodes", () => {
     const snapshot = initialSnapshot(), repo = graph(observation("core"), snapshot), focus = snapshot.focus;
     const mapped = adaptGraph(repo, focus, [{ from: focus, targetTopology: "repo", ambiguous: true, candidates: [
@@ -299,6 +324,10 @@ describe("actual App repository navigation wiring", () => {
     expect(request.mock.calls.some(([input]) => input.type === "file.read")).toBe(false);
     fireEvent.click(screen.getByRole("button", { name: "Open file core/files.ts" }));
     await waitFor(() => expect(document.querySelector(".cm-content")?.textContent).toContain("one"));
+    // Opening the text surface explicitly fits the newly narrowed graphs.
+    await waitFor(() => expect(flows[1]!.getAttribute("data-fits")).toBe("1"));
+    expect(flows[1]!.getAttribute("data-camera")).toBe(JSON.stringify({ x: 0, y: 0, zoom: 1 }));
+    fireEvent.click(within(flows[1]!).getByRole("button", { name: "Pan graph" }));
     const editor = EditorView.findFromDOM(document.querySelector(".cm-editor")!)!;
     act(() => editor.dispatch({ changes: { from: 0, insert: "UNSAVED\n" }, selection: { anchor: 4 } }));
     fireEvent.click(screen.getByRole("button", { name: "Ask an agent about this focus" }));

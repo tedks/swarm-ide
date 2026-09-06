@@ -24,6 +24,7 @@ const stateLabels: Record<TaskObservationStatus, string> = {
 export function TaskPanel({ observation, refreshing, connected, notice, selectedTaskId, onSelect, onRefresh, onShowDetails, onOpen }: TaskPanelProps) {
   const [filter, setFilter] = useState<"open" | "all">("open");
   const [query, setQuery] = useState("");
+  const [expandedTitle, setExpandedTitle] = useState<string | null>(null);
   const snapshot = observation?.snapshot ?? null;
   const summaries = snapshot?.summaries;
   const visible = useMemo(() => {
@@ -67,7 +68,7 @@ export function TaskPanel({ observation, refreshing, connected, notice, selected
       {summaries!.length === 0 ? <p className="task-empty">No tasks in this snapshot.</p>
         : visible.length === 0 ? <p className="task-empty">No matches in this snapshot.</p>
           : <ul className="task-list" aria-label="Repository tasks">{visible.map((task) => <li key={task.id}>
-            <button type="button" className="task-select" aria-label={`Select task ${task.id}`} aria-pressed={selectedTaskId === task.id} title={`${displayTaskText(task.title)}\n${task.id} · ${task.status} · ${task.type}${task.component ? ` · ${displayTaskText(task.component)}` : ""}\nDouble-click or Enter to open task document`} onClick={() => onSelect(task.id)} onDoubleClick={() => onOpen?.(task.id)} onKeyDown={(event) => { if (event.key === "Enter" && onOpen) { event.preventDefault(); onOpen(task.id); } }}>
+            <button type="button" className="task-select" aria-label={`Select task ${task.id}`} aria-pressed={selectedTaskId === task.id} aria-expanded={expandedTitle === task.id} title={`${displayTaskText(task.title)}\n${task.id} · ${task.status} · ${task.type}${task.component ? ` · ${displayTaskText(task.component)}` : ""}\nClick to expand title · double-click or Enter to open task document`} onClick={() => { onSelect(task.id); setExpandedTitle((id) => id === task.id ? null : task.id); }} onDoubleClick={() => onOpen?.(task.id)} onKeyDown={(event) => { if (event.key === "Enter" && onOpen) { event.preventDefault(); onOpen(task.id); } }}>
               <span className={`task-row-status task-status-${task.status}`} aria-label={task.status}>{task.status === "closed" ? "✓" : task.status === "in_progress" ? "◐" : task.status === "paused" ? "Ⅱ" : "○"}</span><strong>{displayTaskText(task.title)}</strong>
             </button>
           </li>)}</ul>}

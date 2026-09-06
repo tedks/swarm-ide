@@ -6,6 +6,7 @@ import { AgentBridgeClient } from "../app/renderer/agents/bridge-client";
 import { emptyLiveAgentState, type LiveAgentState } from "../app/renderer/agents/live-state";
 import { emptyAgentWorkbench } from "../app/renderer/agents/state";
 import { paymentsFileFocus } from "../fixtures/world";
+import { MOCK_AGENTS, MockConversation, MockRunRail, useUiDemo } from "../app/renderer/agents/ui-demo";
 
 const firstId = "11111111-1111-4111-8111-111111111111";
 const secondId = "22222222-2222-4222-8222-222222222222";
@@ -23,6 +24,37 @@ function props(current = state()): AgentDockProps {
 afterEach(() => { cleanup(); vi.restoreAllMocks(); });
 
 describe("simultaneous build, agent-message and activity dock", () => {
+  it("gives every mock agent a tab, follows sidebar activation and retains drafts without selecting a real run", () => {
+    const input = props(state(true)), select = vi.spyOn(input.client, "select");
+    function MockDock() {
+      const demo = useUiDemo();
+      return <><MockRunRail selected={demo.selected} onSelect={demo.select} />
+        <AgentDock {...input} mockConversation={{ tabs: MOCK_AGENTS, selected: demo.selected, onSelect: demo.select, selectionVersion: demo.selectionVersion, content: <MockConversation selected={demo.selected} /> }} /></>;
+    }
+    render(<MockDock />);
+    const aster = screen.getByRole("tab", { name: "Aster mock" });
+    const lumen = screen.getByRole("tab", { name: "Lumen mock" });
+    const quill = screen.getByRole("tab", { name: "Quill mock" });
+    expect(aster.getAttribute("aria-selected")).toBe("true");
+    expect(screen.queryByRole("combobox", { name: "Mock conversation agent" })).toBeNull();
+    fireEvent.change(screen.getByRole("textbox", { name: "Message mock agent" }), { target: { value: "Aster draft" } });
+    fireEvent.click(lumen);
+    expect(lumen.getAttribute("aria-selected")).toBe("true");
+    expect((screen.getByRole("textbox", { name: "Message mock agent" }) as HTMLTextAreaElement).value).toBe("");
+    fireEvent.change(screen.getByRole("textbox", { name: "Message mock agent" }), { target: { value: "Lumen draft" } });
+    fireEvent.click(aster);
+    expect((screen.getByRole("textbox", { name: "Message mock agent" }) as HTMLTextAreaElement).value).toBe("Aster draft");
+    fireEvent.click(screen.getByRole("button", { name: /Quill · Verify the change/ }));
+    expect(quill.getAttribute("aria-selected")).toBe("true");
+    fireEvent.click(screen.getByRole("tab", { name: "Agents" }));
+    fireEvent.click(screen.getByRole("button", { name: /Quill · Verify the change/ }));
+    expect(quill.getAttribute("aria-selected")).toBe("true");
+    fireEvent.click(lumen);
+    expect((screen.getByRole("textbox", { name: "Message mock agent" }) as HTMLTextAreaElement).value).toBe("Lumen draft");
+    expect(screen.getByRole("tabpanel", { name: "Lumen mock" })).toBeTruthy();
+    expect(select).not.toHaveBeenCalled();
+  });
+
   it("starts on Agents with honest unavailable evidence, not fabricated runs", () => {
     const input = props(); render(<AgentDock {...input} />);
     expect(screen.getByRole("tab", { name: "Agents" }).getAttribute("aria-selected")).toBe("true");

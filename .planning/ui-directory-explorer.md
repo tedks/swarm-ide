@@ -16,10 +16,15 @@ Replace the noisy duplicated directory list and node diagram with a familiar exp
 - [x] User steering: Directory / Agent runs / Tasks now occupy independently collapsible, resizable thirds of the left sidebar.
 - [x] Refined map into an enclosing directory frame and sibling grid. Folder zoom/double-click descends; zoom-out, Up and root controls ascend. User positively verified the visual and zoom navigation.
 - [x] Bottom dock now shows builds/resources, agent messages, and recent activity simultaneously. User corrected the intermediate mutually exclusive Agents/Jobs design; only conversations are tabbed inside the central message panel. Drafts/output stay mounted; unconfirmed admission remains inspectable. This does not activate real agents.
-- [ ] Continue artifact tabs/shared focus and task-linkage presentation under direct steering.
-- [ ] Verify local quality and owned virtual UI; retain HMR window.
+- [x] Source/task documents have their own tab strip; closing the last document returns the space to graphs and Context. Context defaults wider and both horizontal boundaries resize by drag or keyboard. Opening text explicitly reframes the graphs once.
+- [x] Task titles now use two small wrapped lines, ellipsis and click expansion (supersedes single-line rows); double-click/Enter still opens the task document.
+- [x] Explicit Demo commands populate mock runs, scripted conversations, graph sprites and deployment/build/test/resource Context cards. Aster, Lumen and Quill have individual conversation tabs linked to sidebar selection and retain per-agent drafts.
+- [x] Real captured Bazel query links can overlay the directory map; a separate Build graph lens supports bounded target selection, direct/transitive dependencies and optional mock agents.
+- [x] Local quality and owned virtual command/source-open/source-close rehearsal passed; human HMR canvas retained.
 - [x] Pushed initial checkpoints 844d47b and 3787e4c and opened draft PR #38.
-- [ ] Push current map/dock checkpoint and complete proportional council convergence before landing; record remaining work without concluding the personal sprint.
+- [x] Pushed map/dock checkpoint 1fe8f23.
+- [ ] Push the next personally steered checkpoint and complete proportional council convergence before landing; this is not the end of the sprint.
+- [ ] Pending user request: service click opens its definition; call-edge click opens the implementation and highlights evidence-backed call locations. Current demo has a declared Payments.Authorize dependency but no corresponding call expression. Do not manufacture a call-site highlight.
 
 ## Surprises & Discoveries
 
@@ -64,6 +69,16 @@ No source migration or dependency changes. The private canvas profile and worktr
 ## Artifacts and Notes
 
 Canvas ownership is `/tmp/swarm-ide-ui-sprint.Pmyccs/canvas.md`. Local quality log is `bazel-testlogs/tools/quality/test.log`; no owned-virtual screenshots or council convergence are claimed yet.
+
+### 2026-09-06 later steering checkpoint (supersedes earlier verification notes)
+
+Final local `//tools:quality` passed: 1,139 tests across 82 files, typechecks and node/renderer builds. This is not the all-target suite or a completed merge gate.
+
+Owned virtual rehearsal passed on :90 / 55174, 3.723s scenario / 5.830s total with cleanup_complete=1 and no renderer exceptions. Evidence: `/tmp/swarm-ide-ui-sprint-check.xPkS9D/{mock-overview,build-lens,document-context,document-closed}.png`. It exercises explicit mock commands plus real source opening/closing through the existing bridge; it is not real agent execution, deployment or telemetry. An initial harness gesture raced the palette's transition to path mode; the title now exposes that existing mode and the driver waits for it before typing. No physical desktop automation. Broader pre-merge acceptance and council remain pending.
+
+`fixtures/ui-build-links.snapshot.json` contains 398 links from a real Bazel query of this working tree at `1fe8f23+working`; it is deliberately dated, not live, and only offered when the registered repository id matches. It must not masquerade as a portable provider or green build evidence. Ditz follow-up: `ui-live-build-links`. Adding a target changes only the view, not BUILD files and does not start a build. Mock controls never invoke the real agent client or replace canonical snapshots. Mock names are local UI identities only.
+
+Resizable Context defaults to 30% of the main layout; without documents the graphs keep the majority of the remaining space. Graphs and text split the central area when documents are open. Sidebar thirds and the simultaneous builds/messages/activity dock remain unchanged. The source editor stays mounted under a task document; dirty buffers and independent graph cameras remain protected, except for the user's explicit once-on-open graph reframe.
 
 ## Interfaces and Dependencies
 

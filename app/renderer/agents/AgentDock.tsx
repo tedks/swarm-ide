@@ -3,7 +3,7 @@ import type { AgentBridgeClient } from "./bridge-client";
 import { displayAgentText, type LiveAgentState } from "./live-state";
 import "./agent-dock.css";
 
-type DockTab = "agents" | "fixture" | `run:${string}`;
+type DockTab = "agents" | "fixture" | `mock:${string}` | `run:${string}`;
 export interface AgentDockProps {
   state: LiveAgentState;
   client: AgentBridgeClient;
@@ -13,12 +13,19 @@ export interface AgentDockProps {
   jobsContent: ReactNode;
   activityContent: ReactNode;
   fixtureContent?: ReactNode;
+  mockConversation?: {
+    tabs: ReadonlyArray<{ id: string; name: string }>;
+    selected: string;
+    onSelect: (id: string) => void;
+    selectionVersion: number;
+    content: ReactNode;
+  };
   /** Explicit sidebar activation, including a re-click of the selected run. */
   selectionVersion?: number;
   fixtureSelectionVersion?: number;
 }
 
-export function AgentDock({ state, client, onDraft, runContent, draftContent, jobsContent, activityContent, fixtureContent, selectionVersion = 0, fixtureSelectionVersion = 0 }: AgentDockProps) {
+export function AgentDock({ state, client, onDraft, runContent, draftContent, jobsContent, activityContent, fixtureContent, mockConversation, selectionVersion = 0, fixtureSelectionVersion = 0 }: AgentDockProps) {
   const id = useId();
   const runs = state.snapshot?.runs ?? [];
   const hasSelection = state.selectedRunId !== null;
@@ -35,20 +42,25 @@ export function AgentDock({ state, client, onDraft, runContent, draftContent, jo
   useEffect(() => { if (draftOpen) setActive("agents"); }, [draftOpen]);
   const fixtureOpen = Boolean(fixtureContent);
   useEffect(() => { if (fixtureOpen) setActive("fixture"); }, [fixtureOpen, fixtureSelectionVersion]);
+  const mockSelected = mockConversation?.selected;
+  const mockSelectionVersion = mockConversation?.selectionVersion;
+  useEffect(() => { if (mockSelected) setActive(`mock:${mockSelected}`); }, [mockSelected, mockSelectionVersion]);
 
   const tabs: Array<{ key: DockTab; label: string; detail?: string }> = [
     { key: "agents", label: draftOpen ? "Agents · draft" : "Agents" },
     ...runs.map((run) => ({ key: `run:${run.runId}` as const, label: displayAgentText(run.taskLabel), detail: run.state })),
     ...(state.selectedRunId && !runs.some((run) => run.runId === state.selectedRunId) ? [{ key: `run:${state.selectedRunId}` as const, label: "Unconfirmed run", detail: "unknown" }] : []),
     ...(fixtureContent ? [{ key: "fixture" as const, label: "Fixture · no model turn" }] : []),
+    ...(mockConversation?.tabs.map((tab) => ({ key: `mock:${tab.id}` as const, label: tab.name, detail: "mock" })) ?? []),
   ];
   const current = tabs.some((tab) => tab.key === active) ? active : "agents";
   const choose = (tab: DockTab) => {
     if (tab.startsWith("run:")) client.select(tab.slice(4));
+    if (tab.startsWith("mock:")) mockConversation?.onSelect(tab.slice(5));
     setActive(tab);
   };
   const tabId = (key: DockTab) => `${id}-tab-${key}`;
-  const panelId = (key: DockTab) => `${id}-panel-${key.startsWith("run:") ? "run" : key}`;
+  const panelId = (key: DockTab) => `${id}-panel-${key.startsWith("run:") ? "run" : key.startsWith("mock:") ? "mock" : key}`;
   const keyboard = (event: KeyboardEvent<HTMLDivElement>) => {
     if (event.altKey || event.ctrlKey || event.metaKey || !["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
     const buttons = [...event.currentTarget.querySelectorAll<HTMLButtonElement>("[role=tab]")];
@@ -83,6 +95,7 @@ export function AgentDock({ state, client, onDraft, runContent, draftContent, jo
     {fixtureContent ? <div id={panelId("fixture")} role="tabpanel" aria-labelledby={tabId("fixture")} hidden={current !== "fixture"} className="agent-dock-panel agent-dock-run">
       <div className="agent-demo-badge">Fixture preview · not a live agent or model turn</div>{fixtureContent}
     </div> : null}
+    {mockConversation ? <div id={panelId("mock:current")} role="tabpanel" aria-labelledby={tabId(`mock:${mockConversation.selected}`)} hidden={!current.startsWith("mock:")} className="agent-dock-panel agent-dock-run">{mockConversation.content}</div> : null}
     </section>
     <section className="dock-side-panel dock-activity" aria-label="Recent activity" tabIndex={0}><header className="dock-section-heading">Recent activity</header>{activityContent}</section>
   </div>;

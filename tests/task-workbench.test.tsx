@@ -68,6 +68,26 @@ async function openSource() {
   await waitFor(() => expect(document.querySelector(".cm-content")?.textContent).toContain("one"));
   return EditorView.findFromDOM(document.querySelector(".cm-editor")!)!;
 }
+
+it("runs the demo palette commands without launching agents or building, and clears only mock surfaces", async () => {
+  const { request } = setup(); render(<App />);
+  await screen.findByRole("button", { name: "Select task task-fixture" });
+  const command = (text: string) => {
+    fireEvent.keyDown(window, { key: "k", ctrlKey: true });
+    const input = screen.getByRole("textbox", { name: "Workspace command" });
+    fireEvent.change(input, { target: { value: text } });
+    fireEvent.keyDown(input, { key: "Enter" });
+  };
+  command("Demo: populate everything");
+  expect(screen.getByRole("region", { name: "Mock agent runs" })).toBeTruthy();
+  expect(screen.getByRole("region", { name: "Mock agent conversation" })).toBeTruthy();
+  expect(screen.getByRole("region", { name: "Mock context" })).toBeTruthy();
+  expect(request.mock.calls.some(([input]) => ["agent.prepare", "agent.launch", "agent.steer", "agent.cancel", "reconciliation.start"].includes(input.type))).toBe(false);
+  command("Demo: clear mock data");
+  expect(screen.queryByRole("region", { name: "Mock agent runs" })).toBeNull();
+  expect(screen.queryByRole("region", { name: "Mock context" })).toBeNull();
+  expect(screen.getByRole("button", { name: "Select task task-fixture" })).toBeTruthy();
+});
 async function selectTask() {
   fireEvent.click(screen.getByRole("button", { name: "Select task task-fixture" }));
   await screen.findByRole("region", { name: "Task details" });

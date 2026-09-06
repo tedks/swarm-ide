@@ -1,0 +1,25 @@
+.topology-views { min-height: 0; min-width: 0; display: grid; grid-template-rows: 28px minmax(0, 1fr); }
+.topology-views > nav { display: flex; border-bottom: 1px solid #304638; gap: 3px; }
+.topology-views > nav button { border: 0; border-bottom: 2px solid transparent; color: #8fab9b; background: #0e1c16; font: 10px monospace; padding: 5px 10px; }
+.topology-views > nav button[aria-pressed="true"] { border-bottom-color: #81b697; color: #d0decf; background: #1d3024; }
+.topology-view { min-height: 0; min-width: 0; display: flex; }
+.topology-view[hidden] { display: none; }
+.topology-view > * { flex: 1; min-width: 0; }
+.build-graph-view { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
+.build-target-controls { display: flex; gap: 5px; align-items: center; flex-wrap: wrap; padding: 6px; border-bottom: 1px solid #2a3e30; font: 9px monospace; }
+.build-target-controls form { display: flex; flex: 1; min-width: 150px; gap: 4px; }
+.build-target-controls input:not([type="checkbox"]) { flex: 1; min-width: 0; color: #c5d4c6; background: #0b1812; border: 1px solid #375440; padding: 4px; font: 10px monospace; }
+.build-target-controls button, .build-root-chips button, .build-selection button { color: #b6c8b7; background: #1d3023; border: 1px solid #3c5943; border-radius: 3px; padding: 4px 6px; font: 9px monospace; cursor: pointer; }
+.build-target-controls button:disabled { opacity: .4; }
+.build-target-controls label { display: flex; gap: 3px; align-items: center; color: #a7bba9; }
+.build-root-chips { display: flex; gap: 4px; padding: 3px 6px; overflow-x: auto; }
+.build-root-chips button { flex-shrink: 0; }
+.build-capture-caption { padding: 3px 8px; color: #b8a37b; font: 9px monospace; }
+.build-canvas { flex: 1; min-height: 0; position: relative; }
+.build-target-node { position: relative; width: 210px; min-height: 56px; padding: 9px; background: #1b2c21; border: 1px solid #6c7853; border-radius: 5px; }
+.build-target-node small { color: #ad9f73; font: 7px monospace; display: block; margin-bottom: 5px; }
+.build-target-node strong { display: block; overflow-wrap: anywhere; color: #d0d6bb; font: 10px monospace; }
+.build-selection { position: absolute; left: 8px; right: 8px; bottom: 8px; display: flex; align-items: center; gap: 6px; padding: 6px; background: #14271feF; border: 1px solid #6d7551; color: #c3caaa; font: 9px monospace; }
+.build-selection strong { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.build-view-empty, .build-empty-hint { padding: 15px; color: #b2ad8b; font: 11px/1.6 monospace; }
+.build-empty-hint { position: absolute; top: 0; left: 0; pointer-events: none; }
