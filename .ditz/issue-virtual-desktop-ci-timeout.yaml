@@ -39,3 +39,11 @@ log_events:
     past90s. PR7 is not merged; no waiver assumed. Local matching topology passes26.2-26.8s
     and selective reload proofs pass. Need scoped hosted-CI diagnosis rather than
     further blind timeout increases. Failure evidence archived under master/artifacts/stable-window-reload-final/ci-33999707395.'
+- time: 2026-09-06T00:06:52-00:00
+  who: Ted Smith
+  what: commented
+  comment: PR7 landed normally as b8c58bd under NEW explicit user clearance to bypass
+    remote CI only because local verification passed. Hosted33999707395 is still FAILED
+    (90s topology wait); no success claim and issue remains unresolved. See PR comment5555681438
+    for exact evidence/clearance. This landing continuation does not diagnose or close
+    CI debt.
