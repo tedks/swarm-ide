@@ -1,6 +1,7 @@
 import { sameGitObject, type GitObjectId, type TaskDetail as TaskDetailData, type TaskFileRef, type TaskSnapshot } from "../../../protocol/tasks";
 import { canRevealTaskRef, displayTaskText, taskRevisionLabel } from "./display";
 import "./tasks.css";
+import type { Ref } from "react";
 
 export interface TaskDetailProps {
   selectedTaskId: string | null;
@@ -13,6 +14,7 @@ export interface TaskDetailProps {
   onSelect: (id: string) => void;
   onReveal: (ref: TaskFileRef) => void;
   onReturnToSource: () => void;
+  returnButtonRef?: Ref<HTMLButtonElement>;
 }
 
 function Dependencies({ title, rows, onSelect }: { title: string; rows: TaskDetailData["blocks"]; onSelect: (id: string) => void }) {
@@ -25,14 +27,14 @@ function Dependencies({ title, rows, onSelect }: { title: string; rows: TaskDeta
   </section>;
 }
 
-export function TaskDetail({ selectedTaskId, snapshot, detail, detailRevision, detailStale, reading, notice, onSelect, onReveal, onReturnToSource }: TaskDetailProps) {
+export function TaskDetail({ selectedTaskId, snapshot, detail, detailRevision, detailStale, reading, notice, onSelect, onReveal, onReturnToSource, returnButtonRef }: TaskDetailProps) {
   // The client validates all wire identities; never display another selection's
   // cached detail during a parent render transition, even for a single frame.
   const selectedDetail = detail?.id === selectedTaskId && detailRevision !== null ? detail : null;
   const missing = selectedTaskId !== null && snapshot !== null && !snapshot.summaries.some((task) => task.id === selectedTaskId);
   const retained = detailStale || (detailRevision !== null && snapshot !== null && !sameGitObject(detailRevision, snapshot.metadataCommit));
   return <section className="task-ui task-detail" aria-label="Task details">
-    <header className="task-heading"><h2>Task details</h2><button type="button" onClick={onReturnToSource}>Return to source information</button></header>
+    <header className="task-heading"><h2>Task details</h2><button ref={returnButtonRef} type="button" onClick={onReturnToSource}>Return to source information</button></header>
     {selectedTaskId === null ? <p className="task-empty">Select a task in Work to inspect its metadata.</p> : <code className="task-selected-id">{displayTaskText(selectedTaskId)}</code>}
     <div role="status" className="task-detail-status">
       {reading ? <p>Reading selected task…</p> : null}

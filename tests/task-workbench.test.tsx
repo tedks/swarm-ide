@@ -5,8 +5,13 @@ import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { initialSnapshot, paymentsFileFocus } from "../fixtures/world";
 import { taskDetailFixture, taskObservationFixture, taskReadFixture } from "../fixtures/tasks";
 import { emptyAgentWorkbench } from "../app/renderer/agents/state";
-import { PROTOCOL_VERSION, type CoreRequest, type CoreResponse, type GraphSlice } from "../protocol/schema";
+import { PROTOCOL_VERSION, type CoreEvent, type FileEvent, type CoreRequest, type CoreResponse, type GraphSlice } from "../protocol/schema";
 import type { TaskFileRef } from "../protocol/tasks";
+import { execFileSync } from "node:child_process";
+import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { dirname, join } from "node:path";
+import { readWorkspaceFile, resolveWorkspaceFile, WorkspaceFileError } from "../core/files";
 
 vi.mock("../app/renderer/GraphPane", () => ({ GraphPane: ({ graph }: { graph: GraphSlice }) =>
   <section data-testid="task-graph">{graph.title}<input aria-label={`Camera ${graph.topologyId}`} defaultValue="camera untouched" /></section>,
@@ -24,17 +29,27 @@ afterEach(() => {
 
 const source = paymentsFileFocus.path!;
 const doc = "docs/architecture.md";
-function setup(refs: TaskFileRef[] = [{ path: source, line: 2, note: "Explicit source", navigation: "candidate" }], failure?: string) {
+function setup(refs: TaskFileRef[] = [{ path: source, line: 2, note: "Explicit source", navigation: "candidate" }], failure?: string, brokerRoot?: string) {
   const snapshot = initialSnapshot(paymentsFileFocus);
   const observation = taskObservationFixture();
   const detail = { ...taskDetailFixture(), fileRefs: refs, counts: { ...taskDetailFixture().counts, fileRefs: refs.length } };
   observation.snapshot!.summaries[0]!.counts.fileRefs = refs.length;
   let sequence = 0;
+  const listeners = new Set<(event: CoreEvent | FileEvent) => void>();
   const request = vi.fn(async (input: CoreRequest): Promise<CoreResponse> => {
     const common = { protocolVersion: PROTOCOL_VERSION, requestId: input.requestId, ok: true as const, sequence: ++sequence, snapshot };
     if (input.type === "tasks.snapshot") return { ...common, task: { kind: "snapshot", observation: { ...observation, sequence } } };
     if (input.type === "tasks.read") return { ...common, task: { ...taskReadFixture(), sequence, result: { ok: true, detail } } };
     if (input.type === "agent.snapshot") return { ...common, agent: { kind: "snapshot", snapshot: emptyAgentWorkbench().snapshot } };
+    if (brokerRoot && (input.type === "file.read" || input.type === "file.watch")) {
+      try {
+        if (input.type === "file.watch") { await resolveWorkspaceFile(brokerRoot, input.path); return common; }
+        return { ...common, file: await readWorkspaceFile(brokerRoot, input.path) };
+      } catch (error) {
+        if (!(error instanceof WorkspaceFileError)) throw error;
+        return { protocolVersion: PROTOCOL_VERSION, requestId: input.requestId, ok: false, error: { code: error.code, message: error.message } };
+      }
+    }
     if ((input.type === "file.read" || input.type === "file.watch") && input.path !== source && failure)
       return { protocolVersion: PROTOCOL_VERSION, requestId: input.requestId, ok: false, error: { code: failure, message: "Contained-file broker refused this reference." } };
     if (input.type === "file.read") {
@@ -43,9 +58,9 @@ function setup(refs: TaskFileRef[] = [{ path: source, line: 2, note: "Explicit s
     }
     return common;
   });
-  window.swarm = { request, onEvent: () => () => undefined };
+  window.swarm = { request, onEvent: (listener) => { listeners.add(listener); return () => { listeners.delete(listener); }; } };
   window.swarmView = { setZoomPercent: async () => ({ ok: true, percent: 100 }) };
-  return { request, observation };
+  return { request, observation, event: (event: CoreEvent | FileEvent) => act(() => { for (const listener of listeners) listener(event); }) };
 }
 async function openSource() {
   await screen.findByRole("button", { name: "Select task task-fixture" });
@@ -126,7 +141,7 @@ describe("task inspection in the source cockpit", () => {
     expect(EditorView.findFromDOM(document.querySelector(".cm-editor")!)).toBe(editor);
   });
 
-  it.each(["FILE_NOT_FOUND", "NOT_REGULAR_FILE", "BINARY_FILE", "FILE_TOO_LARGE", "PATH_OUTSIDE_ROOT"])("keeps previous source on typed broker refusal %s", async (code) => {
+  it.each(["FILE_NOT_FOUND", "NOT_REGULAR_FILE", "BINARY_FILE", "FILE_TOO_LARGE", "PATH_ESCAPE", "SYMLINK_ESCAPE"])("keeps previous source on typed broker refusal %s", async (code) => {
     setup([{ path: "missing.txt", line: null, note: null, navigation: "candidate" }], code);
     render(<App />); const editor = await openSource();
     act(() => editor.dispatch({ changes: { from: 0, insert: "mine\n" }, selection: { anchor: 3 } }));
@@ -151,6 +166,24 @@ describe("task inspection in the source cockpit", () => {
     expect(screen.getByRole("button", { name: `Close ${doc}` })).toBeTruthy();
   });
 
+  it.each(["missing", "fifo"])("surfaces actual contained-file broker %s refusal through explicit Reveal", async (kind) => {
+    const root = await mkdtemp(join(tmpdir(), "swarm-t2-broker-"));
+    try {
+      await mkdir(dirname(join(root, source)), { recursive: true });
+      await writeFile(join(root, source), "one\ntwo\nthree\n");
+      if (kind === "fifo") execFileSync("mkfifo", [join(root, "reference")], { timeout: 1000 });
+      const test = setup([{ path: "reference", line: null, note: null, navigation: "candidate" }], undefined, root);
+      render(<App />); const editor = await openSource();
+      act(() => editor.dispatch({ changes: { from: 0, insert: "unsaved\n" }, selection: { anchor: 3 } }));
+      await selectTask(); reveal("reference", null);
+      await waitFor(() => expect(document.querySelector(".tasks-reveal-notice")?.textContent).toContain(kind === "fifo" ? "NOT_REGULAR_FILE" : "FILE_NOT_FOUND"));
+      expect(EditorView.findFromDOM(document.querySelector(".cm-editor")!)).toBe(editor);
+      expect(editor.state.selection.main.head).toBe(3);
+      expect(editor.state.doc.toString()).toContain("unsaved");
+      expect(test.request.mock.calls.some(([input]) => input.type === "file.write")).toBe(false);
+    } finally { cleanup(); await rm(root, { recursive: true, force: true }); }
+  });
+
   it("offers palette Tasks and details without selecting a source or preparing an agent", async () => {
     const { request } = setup(); render(<App />); await openSource();
     const before = request.mock.calls.length;
@@ -161,6 +194,61 @@ describe("task inspection in the source cockpit", () => {
     fireEvent.click(await screen.findByRole("button", { name: /Show task details.*retained task selection/ }));
     expect(document.querySelector("main.workbench")?.getAttribute("data-compact-panel")).toBe("info");
     expect(screen.getByText("Select a task in Work to inspect its metadata.")).toBeTruthy();
+    await waitFor(() => expect(document.activeElement).toBe(screen.getByRole("button", { name: "Return to source information" })));
     expect(request.mock.calls.slice(before).some(([input]) => input.type === "focus.select" || input.type.startsWith("agent.") || input.type.startsWith("file."))).toBe(false);
+  });
+
+  it("explicit Show details opens Information and gives the keyboard a destination; row selection does neither", async () => {
+    setup(); render(<App />); await openSource();
+    fireEvent.click(screen.getByRole("button", { name: "Toggle work panel" }));
+    const row = screen.getByRole("button", { name: "Select task task-fixture" }); row.focus();
+    await selectTask();
+    expect(document.activeElement).toBe(row);
+    expect(document.querySelector(".workbench")?.getAttribute("data-compact-panel")).toBe("work");
+    fireEvent.click(within(screen.getByRole("region", { name: "Tasks" })).getByRole("button", { name: "Show task details" }));
+    expect(document.querySelector(".workbench")?.getAttribute("data-compact-panel")).toBe("info");
+    await waitFor(() => expect(document.activeElement).toBe(screen.getByRole("button", { name: "Return to source information" })));
+  });
+
+  it("recovers a prior null-revision watcher error by rewatch/read without waiting for another filesystem mutation", async () => {
+    const test = setup(); render(<App />); const editor = await openSource();
+    test.event({ protocolVersion: PROTOCOL_VERSION, type: "file.changed", sequence: 100, path: source,
+      revision: null, change: "error", message: "Watcher unavailable", emittedAt: "2026-09-06T08:00:00.000Z" });
+    await screen.findByRole("button", { name: "Reload disk" });
+    await selectTask(); const before = test.request.mock.calls.length;
+    reveal(source, 2);
+    await waitFor(() => expect(editor.state.selection.main.head).toBe(4));
+    expect(test.request.mock.calls.slice(before).map(([input]) => input.type)).toEqual(["file.watch", "file.read", "focus.select"]);
+    expect(document.querySelector(".file-saved")).toBeTruthy();
+  });
+
+  it("settles superseded Reveal progress without moving source after its delayed read", async () => {
+    const test = setup(); render(<App />); const editor = await openSource(); await selectTask();
+    const original = test.request.getMockImplementation()!;
+    let finish!: () => void;
+    test.request.mockImplementation((input) => input.type === "file.read" ? new Promise((resolve) => { finish = () => { void original(input).then(resolve); }; }) : original(input));
+    reveal(source, 2);
+    await screen.findByText(`Opening working file ${source}…`);
+    fireEvent.pointerDown(document.querySelector(".source-surface")!);
+    await screen.findByText(/Reveal superseded by source navigation/);
+    const before = test.request.mock.calls.length;
+    await act(async () => { finish(); });
+    expect(test.request.mock.calls.slice(before).some(([input]) => input.type === "focus.select")).toBe(false);
+    expect(editor.state.selection.main.head).toBe(0);
+    expect(screen.queryByText(`Opening working file ${source}…`)).toBeNull();
+  });
+
+  it("revokes old Reveal focus authority across same-generation App remount", async () => {
+    const test = setup(); const first = render(<App />); await openSource(); await selectTask();
+    const original = test.request.getMockImplementation()!;
+    let finish!: () => void;
+    test.request.mockImplementation((input) => input.type === "file.read" ? new Promise((resolve) => { finish = () => { void original(input).then(resolve); }; }) : original(input));
+    reveal(source, 2); await screen.findByText(`Opening working file ${source}…`);
+    first.unmount(); render(<App />);
+    await screen.findByRole("button", { name: "Select task task-fixture" });
+    const before = test.request.mock.calls.length;
+    await act(async () => { finish(); });
+    expect(test.request.mock.calls.slice(before).some(([input]) => input.type === "focus.select")).toBe(false);
+    expect(document.querySelector(".cm-editor")).toBeNull();
   });
 });

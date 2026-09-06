@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import {
   PROTOCOL_VERSION,
   type CoreRequest,
@@ -111,10 +111,13 @@ export function App() {
   const [taskClient] = useState(() => new TaskBridgeClient());
   const tasks = useSyncExternalStore(taskClient.subscribe, taskClient.getSnapshot);
   const [informationView, setInformationView] = useState<"source" | "task">("source");
+  const [informationFocusRequest, setInformationFocusRequest] = useState(0);
+  const taskReturnButton = useRef<HTMLButtonElement>(null);
   const [revealNotice, setRevealNotice] = useState("");
   const [sourceNavigation, setSourceNavigation] = useState<(SourceLineNavigation & { path: string }) | null>(null);
   const editorMemories = useRef(new Map<string, EditorMemory>());
   const navigationIntent = useRef(0);
+  useEffect(() => () => { ++navigationIntent.current; }, []);
   const [commandQuery, setCommandQuery] = useState("");
   const [hmr, setHmr] = useState({ generation: 0, milliseconds: 0 });
   const [fileTabs, setFileTabs] = useState<FileTab[]>(hotCheckpoint?.files ?? []);
@@ -171,8 +174,21 @@ export function App() {
   }, [taskClient]);
   const sourceInformation = useCallback(() => {
     ++navigationIntent.current;
+    setRevealNotice((notice) => notice.startsWith("Opening working file") ? "Reveal superseded by source navigation; previous source retained." : notice);
     setInformationView("source");
   }, []);
+  const showTaskDetails = useCallback(() => {
+    setInformationFocusRequest(++navigationIntent.current);
+    setRevealNotice((notice) => notice.startsWith("Opening working file") ? "Reveal superseded by task inspection; previous source retained." : notice);
+    setInformationView("task");
+    setCompactPanel("info");
+  }, []);
+  useLayoutEffect(() => {
+    if (!informationFocusRequest) return;
+    // Only an explicit Show gesture requests a keyboard destination. Ordinary
+    // task selection never opens a hidden pane or takes the user's focus.
+    if (informationFocusRequest === navigationIntent.current) taskReturnButton.current?.focus();
+  }, [informationFocusRequest]);
 
   const applyZoom = useCallback(async (percent: InterfaceZoomPercent, persist: boolean, notice: string | null = null) => {
     const request: ZoomRequest = { percent, persist, notice };
@@ -277,6 +293,7 @@ export function App() {
 
   const showSurface = useCallback((surface: string) => {
     ++navigationIntent.current;
+    setRevealNotice((notice) => notice.startsWith("Opening working file") ? "Reveal superseded by source navigation; previous source retained." : notice);
     activeSurfaceRef.current = surface;
     setActiveSurface(surface);
   }, []);
@@ -493,6 +510,7 @@ export function App() {
     if (prior && !protectsBuffer(prior)) {
       if (prior.status === "loading") { setRevealNotice("Source observation is already in progress; Reveal again when it settles."); return; }
       const openGeneration = openGenerationsRef.current.get(ref.path);
+      const eventSequenceBeforeRead = fileEventsRef.current.get(ref.path)?.sequence ?? 0;
       if (prior.status === "error") {
         const watch = await invoke({ type: "file.watch", requestId: requestId(), protocolVersion: PROTOCOL_VERSION, path: ref.path });
         if (intent !== navigationIntent.current || coreGeneration !== coreGenerationRef.current) return;
@@ -510,7 +528,7 @@ export function App() {
       if (protectsBuffer(current)) tab = current;
       else {
         const latest = fileEventsRef.current.get(ref.path);
-        if (latest && latest.revision !== file.revision) { setRevealNotice("Working file changed during Reveal; existing source and cursor retained. Try again after observation settles."); return; }
+        if (latest && latest.sequence > eventSequenceBeforeRead && latest.revision !== file.revision) { setRevealNotice("Working file changed during Reveal; existing source and cursor retained. Try again after observation settles."); return; }
         tab = { ...current, content: file.content, savedContent: file.content, revision: file.revision, status: "saved", message: "Watching the working file", flash: null };
         const updated = tab;
         fileTabsRef.current = fileTabsRef.current.map((item) => item.path === ref.path ? updated : item);
@@ -749,14 +767,14 @@ export function App() {
   const commands = useMemo(() => [
     { label: "Show repository Tasks", detail: "inspect planning metadata without moving source", run: () => { setPaletteOpen(false); setCompactPanel("work"); } },
     { label: "Refresh tasks", detail: "observe local metadata; no fetch, task mutation or dispatch", run: () => { setPaletteOpen(false); setCompactPanel("work"); void taskClient.refresh(); } },
-    { label: "Show task details", detail: "retained task selection in Information", run: () => { setPaletteOpen(false); setInformationView("task"); setCompactPanel("info"); } },
+    { label: "Show task details", detail: "retained task selection in Information", run: () => { setPaletteOpen(false); showTaskDetails(); } },
     { label: "Ask an agent about this focus", detail: "inspect disk context before explicit read-only launch", run: () => { setPaletteOpen(false); setCompactPanel("work"); if (workspaceRef.current.snapshot) agentClient.openDraft(workspaceRef.current.snapshot.focus); } },
     { label: "Build repository service topology", detail: "exact fingerprint → Bazel artifact → green", run: reconcile },
     { label: "Show system graphs", detail: "return to the coordinated repository and service views", run: () => { setPaletteOpen(false); showSurface("graphs"); } },
     { label: "Open FraudCheck implementation", detail: FRAUDCHECK_IMPLEMENTATION, run: () => { setPaletteOpen(false); void openFile(FRAUDCHECK_IMPLEMENTATION); } },
     { label: "Open FraudCheck protobuf contract", detail: FRAUDCHECK_CONTRACT, run: () => { setPaletteOpen(false); void openFile(FRAUDCHECK_CONTRACT); } },
     ...(agentFixtureEnabled ? [{ label: "Preview agent fixture", detail: "DEMO only · no provider or file bytes · explicit launch", run: () => { setPaletteOpen(false); setCompactPanel("work"); openAgentDraft(); } }] : []),
-  ].filter((command) => command.label.toLowerCase().includes(commandQuery.toLowerCase())), [agentClient, taskClient, agentFixtureEnabled, openAgentDraft, commandQuery, openFile, reconcile, showSurface]);
+  ].filter((command) => command.label.toLowerCase().includes(commandQuery.toLowerCase())), [agentClient, taskClient, agentFixtureEnabled, openAgentDraft, commandQuery, openFile, reconcile, showSurface, showTaskDetails]);
 
   if (!snapshot) return <main className="loading-screen"><div className="loading-mark hmr-probe" />Opening the working world…{error ? <strong>{error}</strong> : null}<small>{lifecycleNotice}</small><AgentReloadGuard state={liveAgents} client={agentClient} /></main>;
   return (
@@ -784,7 +802,7 @@ export function App() {
         <PreparedLaunchDraft state={liveAgents} client={agentClient} dirtyPaths={fileTabs.filter((tab) => protectsBuffer(tab)).map((tab) => tab.path)} />
         {agentFixtureEnabled ? <RunRail state={agents} fixtureEnabled={agentFixtureEnabled} onDraft={() => { setCompactPanel("work"); openAgentDraft(); }} onSelect={() => { agentClient.closePane(); setAgents((state) => ({ ...state, selected: true })); }} /> : null}
         {agents.draftOpen && agentFixtureEnabled ? <LaunchDraft focus={snapshot.focus} onClose={() => setAgents((state) => ({ ...state, draftOpen: false }))} onLaunch={(context) => { agentClient.closePane(); setAgents((state) => fixtureReducer(state, { type: "launch", context })); }} /> : null}
-        <TaskPanel observation={tasks.observation} refreshing={tasks.refreshing} connected={tasks.connected} notice={tasks.notice} selectedTaskId={tasks.selectedTaskId} onSelect={selectTask} onRefresh={() => { void taskClient.refresh(); }} onShowDetails={() => setInformationView("task")} />
+        <TaskPanel observation={tasks.observation} refreshing={tasks.refreshing} connected={tasks.connected} notice={tasks.notice} selectedTaskId={tasks.selectedTaskId} onSelect={selectTask} onRefresh={() => { void taskClient.refresh(); }} onShowDetails={showTaskDetails} />
       </aside>
 
       <section className={`navigation-field ${activeFile ? "source-open" : ""}`}>
@@ -821,8 +839,8 @@ export function App() {
 
       <aside id="information-panel" aria-label="Information panel" className="instrument-panel panel">
         {revealNotice ? <p className="tasks-reveal-notice" role="status" tabIndex={0}>{revealNotice}</p> : null}
-        {informationView === "task" ? <TaskDetail selectedTaskId={tasks.selectedTaskId} snapshot={tasks.observation?.snapshot ?? null} detail={tasks.detail} detailRevision={tasks.detailRevision} detailStale={tasks.detailStale || tasks.observation?.status !== "observed" || Boolean(tasks.notice)} reading={tasks.reading} notice={tasks.detailNotice} onSelect={selectTask} onReveal={(ref) => { void revealTaskReference(ref); }} onReturnToSource={sourceInformation} /> : <>
-        {tasks.selectedTaskId ? <button className="tasks-show-details" onClick={() => setInformationView("task")}>Show task details</button> : null}
+        {informationView === "task" ? <TaskDetail returnButtonRef={taskReturnButton} selectedTaskId={tasks.selectedTaskId} snapshot={tasks.observation?.snapshot ?? null} detail={tasks.detail} detailRevision={tasks.detailRevision} detailStale={tasks.detailStale || tasks.observation?.status !== "observed" || Boolean(tasks.notice)} reading={tasks.reading} notice={tasks.detailNotice} onSelect={selectTask} onReveal={(ref) => { void revealTaskReference(ref); }} onReturnToSource={sourceInformation} /> : <>
+        {tasks.selectedTaskId ? <button className="tasks-show-details" onClick={showTaskDetails}>Show task details</button> : null}
         <div className="instrument-heading"><div><span className="eyebrow">contextual instruments</span><h2>{selectedConnection?.label ?? focusLabel(snapshot.focus)}</h2></div><button>•••</button></div>
         <div className="breadcrumbs">world / {selectedConnection ? "connection" : snapshot.focus.domain} / <b>{selectedConnection?.id ?? focusLabel(snapshot.focus)}</b></div>
         <div className="widget-grid">

@@ -25,6 +25,10 @@ The default task provider is intentionally unavailable and the outer task-read d
 
 Initial combined tests passed 797 and failed three: wide compact-panel toggles incorrectly called visible reopen despite no actual visibility change, and raw CRLF synchronization introduced synthetic editor changes that moved normalized cursors. Removed effect-cleanup visibility toggling and normalized line endings before comparing/synchronizing CodeMirror content. Regression tests retain these concrete cases.
 
+First reviewed topic `0eaf8c5` passed quality801/58, full25 build and all9 local targets (96.505 seconds). The separate actual virtual task proof failed at compact keyboard traversal: after Show details, Tab crossed the editor and restored source instruments before the detail button was reachable. This was a product usability finding, not a green screenshot. The owned desktop cleaned up successfully. Explicit Show now uses a named Return-button ref in a one-shot post-commit layout effect; row selection never focuses or opens a panel.
+
+Initial native council found four Important cases: late Reveal after App remount could emit focus.select; an old null-revision watcher error blocked successful rewatch/read; cancelled Reveal left Opening progress; compact Show did not open Information. Each has a focused regression and a narrow correction. Actual temporary-filesystem tests now include missing-file and FIFO refusal through the existing contained-file broker, distinct from schema-valid metadata playback.
+
 ## Decision Log
 
 
@@ -35,6 +39,8 @@ Decision: native task buttons, filters and scoped CSS compose into existing Work
 Decision: only literal canonical `file_refs` pass to the existing broker. Unsaved, uncertain, loading or conflicting buffers do not receive metadata line navigation. Clean saved files validate line existence before a unique navigation request reaches CodeMirror. Rationale: metadata line numbers are not offsets into arbitrary unsaved content. Date/author: 2026-09-06, T2.
 
 Decision: per-file in-memory editor checkpoints restore selection across an explicit tab switch, rebuilding extensions with current callbacks. Same-file Reveal only dispatches a consumed nonce selection transaction. Rationale: task inspection preserves the existing mounted editor; documentation navigation may switch tabs but must preserve the previous dirty text/cursor. No source or draft text is persisted by this checkpoint, and no cross-tab undo guarantee is introduced. Date/author: 2026-09-06, T2.
+
+Decision: only explicit Show details navigates to compact Information and focuses its Return button. Rationale: keyboard users need a destination that does not require crossing the source editor first; ordinary task/dependency selection and arriving data remain non-disruptive. Date/author: 2026-09-06, T2.
 
 ## Outcomes & Retrospective
 
