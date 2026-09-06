@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import { describe, expect, it } from "vitest";
 import type { AdapterEvent } from "../core/agents/adapter";
 import {
-  AGENT_FIXTURE_AT, AGENT_FIXTURE_PHASES, AGENT_FIXTURE_TURN, agentFixtureContext, agentFixtureFailures,
+  AGENT_FIXTURE_AT, AGENT_FIXTURE_CALL_LIMIT, AGENT_FIXTURE_PHASES, AGENT_FIXTURE_THREAD, AGENT_FIXTURE_TURN, agentFixtureContext, agentFixtureFailures,
   agentFixtureFrames, agentFixturePage, agentFixtureRecords, agentFixtureReordering, createAgentAdapterFixture,
 } from "../fixtures/agents";
 import {
@@ -17,7 +17,7 @@ import { unavailableAgentRequest } from "../core/agents/unavailable";
 
 const hash = (value: string) => createHash("sha256").update(value).digest("hex");
 const terminal: AdapterEvent = { type: "terminal", at: AGENT_FIXTURE_AT,
-  outcome: { kind: "turn", threadId: "fixture-thread", turnId: AGENT_FIXTURE_TURN, status: "completed", observedAt: AGENT_FIXTURE_AT } };
+  outcome: { kind: "turn", threadId: AGENT_FIXTURE_THREAD, turnId: AGENT_FIXTURE_TURN, status: "completed", observedAt: AGENT_FIXTURE_AT } };
 const cleanup = { status: "confirmed" as const, observedAt: AGENT_FIXTURE_AT, detail: "FIXTURE ONLY: simulated owner termination." };
 
 async function start() {
@@ -42,6 +42,9 @@ describe("shared fixture observations use the frozen R0 contract", () => {
     expect(context.launchContext.submittedPrompt).toContain("FIXTURE ONLY");
     expect(context.launchContext.instructionSources).toEqual([]);
     expect(context.launchContext.configurationSources).toEqual([]);
+    const { submittedPrompt, contextHash: _contextHash, ...fields } = context.launchContext;
+    expect(JSON.parse(submittedPrompt.split("\n")[1]!)).toEqual(fields);
+    expect(Date.parse(context.expiresAt)).toBeLessThan(Date.parse("2001-01-01T00:00:00Z"));
   });
   it.each(AGENT_FIXTURE_PHASES)("validates %s frame, read result, broadcast tail and event", (phase) => {
     const frame = agentFixtureFrames()[phase];
@@ -76,12 +79,15 @@ describe("shared fixture observations use the frozen R0 contract", () => {
     }
     expect(frames["steering-stale"].run.instructions[0]!.error?.code).toBe("STALE_TURN");
     expect(frames["recovered-unknown"].run.instructions[0]!.status).toBe("delivery-unknown");
+    expect(frames["steering-stale"].run.instructions[0]!.expectedTurnId).not.toBe(frames["steering-stale"].run.providerTurnId);
   });
   it("returns independent frames and invocations, including nested arrays", () => {
     const first = agentFixtureFrames();
     first.streaming.run.launchContext.attachments[0]!.content = "mutated";
     first.streaming.snapshot.runs[0]!.taskLabel = "mutated";
     first.streaming.read.page.records[0]!.text = "mutated";
+    expect(first.streaming.read.run.launchContext.attachments[0]!.content).not.toBe("mutated");
+    expect(first.streaming.event.snapshot.runs[0]!.taskLabel).not.toBe("mutated");
     expect(JSON.stringify(first["steering-pending"])).not.toContain("mutated");
     expect(JSON.stringify(agentFixtureFrames())).not.toContain("mutated");
   });
@@ -89,6 +95,7 @@ describe("shared fixture observations use the frozen R0 contract", () => {
     const pages = [agentFixturePage(0), agentFixturePage(16), agentFixturePage(32), agentFixturePage(40)];
     expect(pages.map((page) => page.records.length)).toEqual([16, 16, 8, 0]);
     expect(pages.map((page) => page.nextCursor)).toEqual([16, 32, 40, 40]);
+    expect(pages.every((page) => page.truncated)).toBe(true); // Historical loss is still true at EOF, not a has-more flag.
     const all = pages.flatMap((page) => page.records);
     expect(all.map((record) => record.recordId)).toEqual(Array.from({ length: 40 }, (_, i) => i + 1));
     expect(all.find((record) => record.kind === "gap")?.text).toContain("truncated");
@@ -103,6 +110,8 @@ describe("shared fixture observations use the frozen R0 contract", () => {
     expect(frames["completed-live"].snapshot.tail).toEqual([]);
     expect(frames["completed-live"].read.page.records).toHaveLength(16);
     expect(frames["recovered-unknown"].snapshot.tail).toEqual([]);
+    expect(frames["recovered-unknown"].snapshot.activeRunId).toBeNull(); // No active turn does not prove cleanup/admission safety.
+    expect(frames["recovered-unknown"].read.run.cleanup.status).toBe("unknown");
   });
   it.each([-1, 0.5, 41, NaN, Infinity, Number.MAX_SAFE_INTEGER + 1])("rejects fixture cursor %s", (cursor) => {
     expect(() => agentFixturePage(cursor)).toThrow(RangeError);
@@ -192,7 +201,9 @@ describe("manually gated adapter fixture for deterministic delay and race tests"
     expect(await f.handle.steer(AGENT_FIXTURE_TURN, "second")).toMatchObject({ error: { code: "BUSY" } });
     f.fixture.settleSteer(agentFixtureFailures.unknown);
     expect(await pending).toEqual(agentFixtureFailures.unknown);
-    expect(f.fixture.calls()).toEqual([{ method: "start" }, { method: "steer", turnId: AGENT_FIXTURE_TURN, text: "keep my text" }]);
+    expect(f.fixture.calls()).toEqual([{ method: "start" }, { method: "steer", turnId: "old-turn", text: "stale" },
+      { method: "steer", turnId: AGENT_FIXTURE_TURN, text: "keep my text" },
+      { method: "steer", turnId: AGENT_FIXTURE_TURN, text: "second" }]);
     await dispose(f);
   });
   it("separates Stop acknowledgement from interruption and completion racing with Stop", async () => {
@@ -203,7 +214,7 @@ describe("manually gated adapter fixture for deterministic delay and race tests"
     f.fixture.settleInterrupt({ ok: true, value: { status: "requested" } });
     expect(await pending).toEqual({ ok: true, value: { status: "requested" } });
     expect(f.events).toEqual([terminal]);
-    expect(f.fixture.calls().filter((call) => call.method === "interrupt")).toHaveLength(1);
+    expect(f.fixture.calls().filter((call) => call.method === "interrupt")).toHaveLength(2); // Both invocations count, even if coalesced.
     await dispose(f);
   });
   it("requires explicit cleanup evidence, settles lost controls as unknown, and retains late events", async () => {
@@ -241,7 +252,7 @@ describe("manually gated adapter fixture for deterministic delay and race tests"
     expect(Object.isFrozen(agentFixtureFailures.unknown.error)).toBe(true);
     await dispose(f);
   });
-  it("exercises all receipt slots and still disposes with a pending control at call-log exhaustion", async () => {
+  it("exercises all receipt slots and still disposes with a pending control after diagnostic-log overflow", async () => {
     const f = await start();
     for (let index = 0; index < AGENT_LIMITS.receipts; index++) {
       const steering = f.handle.steer(AGENT_FIXTURE_TURN, `fixture ${index}`);
@@ -249,13 +260,17 @@ describe("manually gated adapter fixture for deterministic delay and race tests"
       expect(await steering).toMatchObject({ ok: true });
     }
     const pending = f.handle.steer(AGENT_FIXTURE_TURN, "pending at log limit");
-    expect(() => f.handle.interrupt()).toThrow("call limit");
+    const interrupted = f.handle.interrupt();
+    expect(f.fixture.calls()).toHaveLength(AGENT_LIMITS.receipts + 3);
+    for (let index = 0; index < AGENT_FIXTURE_CALL_LIMIT; index++) f.handle.interrupt();
+    expect(() => f.fixture.calls()).toThrow("ledger incomplete");
     const disposing = f.handle.dispose();
     expect(await pending).toMatchObject({ error: { code: "AGENT_OUTCOME_UNKNOWN" } });
+    expect(await interrupted).toMatchObject({ error: { code: "AGENT_OUTCOME_UNKNOWN" } });
     f.fixture.settleCleanup(cleanup);
     expect(await disposing).toEqual(cleanup);
-    expect(f.fixture.calls()).toHaveLength(AGENT_LIMITS.receipts + 3);
-    expect(f.fixture.calls().at(-1)!.method).toBe("dispose");
+    expect(() => f.fixture.calls()).toThrow("ledger incomplete");
+    expect(() => f.fixture.settleCleanup(cleanup)).toThrow("already settled");
   });
   it("fails explicit test-driver misuse and copies caller-owned observations", async () => {
     const fixture = createAgentAdapterFixture();
@@ -270,5 +285,13 @@ describe("manually gated adapter fixture for deterministic delay and race tests"
     const calls = f.fixture.calls(); calls.length = 0;
     expect(f.fixture.calls()).toHaveLength(1);
     await dispose(f);
+  });
+  it("refuses to attest a ledger containing an oversized text attempt without blocking cleanup", async () => {
+    const f = await start();
+    const pending = f.handle.steer(AGENT_FIXTURE_TURN, "🧪".repeat(AGENT_LIMITS.taskBytes / 4 + 1));
+    expect(() => f.fixture.calls()).toThrow("ledger incomplete");
+    const disposing = f.handle.dispose();
+    expect(await pending).toMatchObject({ error: { code: "AGENT_OUTCOME_UNKNOWN" } });
+    f.fixture.settleCleanup(cleanup); await disposing;
   });
 });
