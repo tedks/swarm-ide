@@ -27,5 +27,12 @@ log_events:
   who: Ted Smith
   what: started
   comment: ""
+- time: 2026-09-06T15:54:50-00:00
+  who: Ted Smith
+  what: commented
+  comment: ROOT-approved direct state6.7.4 plus exact override fixed actual cross-copy
+    EditorSelection corruption. New actual command regression RED undefined vs1, now
+    GREEN within1030/70. Strict packaged native ArrowRight/fulltext/cursor proof rendererErrors[]
+    passed; final aggregate and PR35 landing underway.
 blocks:
 - repo-task-integration-t3
