@@ -95,7 +95,9 @@ describe("strict agent contract v3", () => {
     const ended = { ...run(), state: "completed", endedAt: at, terminalReason: "No final answer supplied", processState: "exited", exitCode: 0 };
     expect(() => RunSchema.parse(ended)).toThrow("terminal provider evidence");
     const completed = { ...ended, startedAt: at, providerThreadId: "thread", providerTurnId: "turn",
+      cleanup: { status: "confirmed", observedAt: at, detail: "Owned process tree exited" },
       providerOutcome: { kind: "turn", threadId: "thread", turnId: "turn", status: "completed", observedAt: at } };
+    expect(RunSchema.parse(completed).state).toBe("completed");
     expect(RunSchema.parse({ ...completed, processState: "live", exitCode: null,
       cleanup: { status: "pending", observedAt: at, detail: "Awaiting disposal" } }).state).toBe("completed");
     expect(() => RunSchema.parse({ ...completed, providerTurnId: "other" })).toThrow();
