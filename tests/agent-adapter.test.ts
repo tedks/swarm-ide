@@ -96,6 +96,12 @@ describe("Codex stable 0.153.4 adapter conformance", () => {
     expect(connect).not.toHaveBeenCalled();
     expect(() => createCodexAppServerAdapter({ root, executable: "codex" })).toThrow();
   });
+  it("retains observed unsupported version or unknown instead of inventing the conformance baseline", async () => {
+    for (const version of ["0.146.0", "unknown"]) {
+      const adapter = createCodexAppServerAdapter({ root, executable, probe: async () => ({ ...caps, version }) });
+      expect(await adapter.probe()).toMatchObject({ version, available: false, reason: { code: "ADAPTER_UNAVAILABLE" } });
+    }
+  });
   it.each([
     { cwd: "/other" }, { model: 42 }, { model: "spoof\u202e" }, { instructionSources: [42] },
     { approvalPolicy: "on-request" }, { sandbox: { type: "dangerFullAccess" } },
@@ -132,13 +138,13 @@ describe("Codex stable 0.153.4 adapter conformance", () => {
     const f = await fixture(); await f.setup(); await f.reply("turn/start", { turn: turn("turn-a", "completed") });
     f.notify("item/completed", { threadId: "thread-a", turnId: "turn-a", item: { type: "agentMessage", id: "final", text: "done", phase: "final_answer" } });
     f.notify("error", { threadId: "thread-a", turnId: "turn-a", error: { message: "private diagnostic" }, willRetry: true });
-    f.sink.exit(0); await flush();
+    f.sink.exit(0); f.sink.end(); await flush();
     expect(f.events.some((e) => e.type === "terminal")).toBe(false);
     expect(f.events).toContainEqual(expect.objectContaining({ type: "error", dispatch: "unknown" }));
     expect(JSON.stringify(f.events)).not.toContain("private diagnostic");
   });
   it.each(["completed", "failed", "interrupted"])("normalizes actual terminal %s separately from exit/cleanup", async (status) => {
-    const f = await fixture(); await f.running(); f.complete(status); f.sink.exit(1); f.sink.exit(1);
+    const f = await fixture(); await f.running(); f.complete(status); f.sink.exit(1); f.sink.exit(1); f.sink.end();
     expect(f.events.filter((e) => e.type === "terminal")).toEqual([expect.objectContaining({ outcome: expect.objectContaining({ status }) })]);
     expect(f.events.filter((e) => e.type === "process-exit")).toHaveLength(1);
     expect(await f.handle.dispose()).toMatchObject({ status: "unknown" });
@@ -189,6 +195,7 @@ describe("Codex stable 0.153.4 adapter conformance", () => {
       expect(f.requests.at(-1)).toEqual(method.startsWith("item/") ? { id: "provider-request", result: { decision: "cancel" } }
         : { id: "provider-request", error: { code: -32601, message: "Unsupported provider request in read-only analysis." } });
       expect(f.events.at(-1)).toMatchObject({ type: "error", error: { code: "ADAPTER_POLICY_UNAVAILABLE" } });
+      await flush();
       expect(f.close).toHaveBeenCalledOnce();
     }
   });
@@ -211,5 +218,33 @@ describe("Codex stable 0.153.4 adapter conformance", () => {
     const broken = await fixture({}, draft(), { throwWrite: true }); await flush();
     expect(broken.events).toContainEqual(expect.objectContaining({ type: "error", dispatch: "not-sent" }));
     expect(broken.close).toHaveBeenCalledOnce();
+  });
+  it("drains stdout terminal/reply bytes after process exit, then emits exit independently", async () => {
+    const f = await fixture(); await f.running(); const steering = f.handle.steer("turn-a", "text");
+    f.sink.exit(0); f.delta("buffered final"); f.complete(); await f.reply("turn/steer", { turnId: "turn-a" }); f.sink.end();
+    expect(await steering).toMatchObject({ ok: true });
+    expect(f.events.at(-2)).toMatchObject({ type: "terminal", outcome: { status: "completed" } });
+    expect(f.events.at(-1)).toMatchObject({ type: "process-exit", exitCode: 0 });
+    expect(f.events.some((e) => e.type === "error")).toBe(false);
+  });
+  it("bounds drain when descendants hold stdout open and does not wait forever", async () => {
+    vi.useFakeTimers(); const f = await fixture({}, draft(), { timeout: 5 }); await f.running(); f.sink.exit(0);
+    await vi.advanceTimersByTimeAsync(6);
+    expect(f.events).toContainEqual(expect.objectContaining({ type: "process-exit" }));
+    expect(f.events.at(-1)).toMatchObject({ type: "error", dispatch: "unknown" });
+    f.complete(); expect(f.events.some((e) => e.type === "terminal")).toBe(false);
+  });
+  it("escapes invisible output controls and bounds aggregate output, IDs and malformed envelopes", async () => {
+    const f = await fixture(); await f.running(); f.delta("visible\u202e\u001b\n\t");
+    expect(f.events.at(-1)).toMatchObject({ type: "item", text: "visible[U+202E][U+001B]\n\t" });
+    const limit = await fixture(); await limit.running();
+    for (let i = 0; i < 130; i++) limit.delta("x".repeat(64 * 1024), { itemId: `m${i}` });
+    expect(limit.events.at(-1)).toMatchObject({ type: "error", error: { code: "OUTPUT_LIMIT" } });
+    const ids = await fixture(); await ids.running(); for (let i = 0; i < 2049; i++) ids.delta("", { itemId: `m${i}` });
+    expect(ids.events.at(-1)).toMatchObject({ type: "error", error: { code: "OUTPUT_LIMIT" } });
+    for (const bad of [null, [], { id: 999, result: {} }, { id: 1, result: {}, error: {} }, { method: "turn/started", params: { threadId: 42 } }]) {
+      const invalid = await fixture(); invalid.receive(bad);
+      expect(invalid.events.find((e) => e.type === "error")).toBeDefined();
+    }
   });
 });

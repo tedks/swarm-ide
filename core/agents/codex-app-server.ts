@@ -101,7 +101,12 @@ export function createCodexAppServerAdapter(options: CodexAdapterOptions): Agent
   if (!Number.isSafeInteger(timeout) || timeout < 1 || timeout > 30_000) throw new Error("Invalid adapter request timeout");
   const probe = async (): Promise<AdapterCapabilities> => {
     const result = await (options.probe?.() ?? unavailableProbe(executable));
-    if (result.executable !== executable || result.version !== CODEX_ADAPTER_VERSION || result.provider !== "codex" ||
+    if (result.version !== CODEX_ADAPTER_VERSION) {
+      return { provider: "codex", executable, version: display(128).safeParse(result.version).success ? result.version : "unknown", available: false,
+        reason: errorFor("ADAPTER_UNAVAILABLE", "Installed Codex version has not passed adapter conformance."),
+        supports: { steer: false, interrupt: false, readOnly: false } };
+    }
+    if (result.executable !== executable || result.provider !== "codex" ||
         (result.available && (!result.supports.readOnly || result.reason))) {
       return { provider: "codex", executable, version: CODEX_ADAPTER_VERSION, available: false,
         reason: errorFor("ADAPTER_POLICY_UNAVAILABLE", "Adapter identity or verified policy evidence does not match."),
@@ -130,6 +135,9 @@ class CodexSession implements AgentHandle {
   private ended = false;
   private stopped = false;
   private exited = false;
+  private stdoutEnded = false;
+  private exitEvidence?: { code: number | null; at: string };
+  private exitDrain?: ReturnType<typeof setTimeout>;
   private nextId = 0;
   private receivedBytes = 0;
   private outputBytes = 0;
@@ -165,16 +173,19 @@ class CodexSession implements AgentHandle {
           if (this.receivedBytes > AGENT_LIMITS.transcriptBytes * 4) this.fail(errorFor("OUTPUT_LIMIT", "Provider stream byte limit reached."));
         },
         end: () => {
+          this.stdoutEnded = true;
           try { this.framer.end(); } catch { this.fail(unknownError()); }
+          this.finishExit();
           if (!this.ended && !this.stopped) this.fail(unknownError());
           else this.rejectPending();
         },
         exit: (exitCode) => {
-          if (this.exited) return;
-          this.exited = true;
-          this.publish({ type: "process-exit", exitCode, at: this.at() });
-          if (!this.ended) this.fail(unknownError());
-          else this.rejectPending();
+          if (this.exitEvidence) return;
+          this.exitEvidence = { code: exitCode, at: this.at() };
+          // ChildProcess exit can precede readable-stream EOF. Drain the final
+          // terminal notification/replies before declaring an uncertain outcome.
+          if (this.stdoutEnded) this.finishExit();
+          else this.exitDrain = setTimeout(() => { this.finishExit(); if (!this.ended) this.fail(unknownError()); }, Math.min(this.timeout, 1000));
         },
         error: () => this.fail(unknownError()),
       });
@@ -192,6 +203,13 @@ class CodexSession implements AgentHandle {
       if (this.deadline) clearTimeout(this.deadline);
       void this.close();
     }
+  }
+  private finishExit(): void {
+    if (!this.exitEvidence || this.exited) return;
+    this.exited = true;
+    if (this.exitDrain) clearTimeout(this.exitDrain);
+    this.publish({ type: "process-exit", exitCode: this.exitEvidence.code, at: this.exitEvidence.at });
+    this.rejectPending();
   }
   private send(message: unknown): void {
     if (this.stopped || !this.transport) throw new Fault(unknownError());
@@ -230,7 +248,7 @@ class CodexSession implements AgentHandle {
     void this.close();
   }
   private close(): Promise<CleanupEvidence> {
-    return this.cleanup ??= (this.transport?.close() ?? Promise.resolve({ status: "not-needed" as const, observedAt: this.at(), detail: "No transport created." }))
+    return this.cleanup ??= Promise.resolve().then(() => this.transport?.close() ?? { status: "not-needed" as const, observedAt: this.at(), detail: "No transport created." })
       .catch(() => ({ status: "unknown" as const, observedAt: this.at(), detail: "Transport cleanup could not be confirmed." }));
   }
   async dispose(): Promise<CleanupEvidence> {
@@ -276,18 +294,18 @@ class CodexSession implements AgentHandle {
     return ids.threadId === this.threadId && ids.turnId === this.turnId;
   }
   private text(itemId: string | null, text: string, kind: "message" | "tool" | "status" = "message"): void {
+    // Make invisible control/bidi characters inspectable; keep ordinary layout.
+    text = text.replace(/[\p{Cc}\p{Cf}]/gu, (point) => point === "\n" || point === "\t" ? point : `[U+${point.codePointAt(0)!.toString(16).toUpperCase().padStart(4, "0")}]`);
     this.outputBytes += utf8Bytes(text);
     if (this.outputBytes > AGENT_LIMITS.transcriptBytes) throw new Fault(errorFor("OUTPUT_LIMIT", "Normalized provider output limit reached."));
-    // Count code points so no record cuts a surrogate pair; UTF-8 limit <=64 KiB.
-    let part = "", bytes = 0;
-    for (const point of text) {
-      const size = utf8Bytes(point);
-      if (bytes + size > AGENT_LIMITS.recordBytes) {
-        this.publish({ type: "item", itemId, kind, text: part, at: this.at() }); part = ""; bytes = 0;
-      }
-      part += point; bytes += size;
+    const bytes = Buffer.from(text, "utf8");
+    for (let start = 0; start < bytes.length;) {
+      let end = Math.min(bytes.length, start + AGENT_LIMITS.recordBytes);
+      // A continuation byte belongs to the code point beginning before `end`.
+      while (end < bytes.length && (bytes[end]! & 0xc0) === 0x80) end--;
+      this.publish({ type: "item", itemId, kind, text: bytes.toString("utf8", start, end), at: this.at() });
+      start = end;
     }
-    if (part) this.publish({ type: "item", itemId, kind, text: part, at: this.at() });
   }
   private item(id: string): { text: string; completed: boolean } {
     let item = this.items.get(id);
