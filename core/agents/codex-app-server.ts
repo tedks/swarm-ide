@@ -4,6 +4,7 @@ import { z } from "zod";
 import { AGENT_LIMITS, PreparedAgentContextSchema, utf8Bytes, type AgentError } from "../../protocol/agents";
 import type { AdapterCapabilities, AdapterEvent, AgentAdapter, AgentHandle, AgentOperation, CleanupEvidence, PreparedAgentContext } from "./adapter";
 import { ProviderJsonl, ProviderLineLimit } from "./jsonl";
+import { validateCodexThreadPolicy } from "./policy";
 
 // Stable schema generated from the complete installed 0.153.4 package. New
 // versions must earn conformance; a --version response is not policy evidence.
@@ -16,8 +17,7 @@ const turn = z.object({ id: identity, status: z.enum(["inProgress", "completed",
 const correlated = z.object({ threadId: identity, turnId: identity });
 const threadResult = z.object({
   thread: z.object({ id: identity }), model: display(256), modelProvider: display(128),
-  cwd: display(4096), approvalPolicy: z.literal("never"),
-  sandbox: z.object({ type: z.literal("readOnly"), networkAccess: z.literal(false).optional() }).strict(),
+  cwd: display(4096),
   instructionSources: z.array(display(4096)).max(32).default([]),
   reasoningEffort: bound(64).nullable().optional(),
 });
@@ -275,7 +275,7 @@ class CodexSession implements AgentHandle {
     const result = await this.request("thread/start", { cwd: this.root, approvalPolicy: "never", sandbox: "read-only",
       ...(requested.model === null ? {} : { model: requested.model }), ephemeral: true });
     const parsed = threadResult.safeParse(result);
-    if (!parsed.success || parsed.data.cwd !== this.root) throw new Fault(errorFor("ADAPTER_POLICY_UNAVAILABLE", "Provider returned mismatched or unverified thread policy or directory."));
+    if (!parsed.success || !validateCodexThreadPolicy(result, this.root).ok) throw new Fault(errorFor("ADAPTER_POLICY_UNAVAILABLE", "Provider returned mismatched or unverified thread policy or directory."));
     const thread = parsed.data;
     this.threadId = thread.thread.id;
     this.publish({ type: "started", threadId: this.threadId, model: thread.model, cwd: thread.cwd,

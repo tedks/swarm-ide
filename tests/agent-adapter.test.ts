@@ -111,6 +111,7 @@ describe("Codex stable 0.153.4 adapter conformance", () => {
   it.each([
     { cwd: "/other" }, { model: 42 }, { model: "spoof\u202e" }, { instructionSources: [42] },
     { approvalPolicy: "on-request" }, { sandbox: { type: "dangerFullAccess" } },
+    { sandbox: { type: "readOnly" } },
     { sandbox: { type: "readOnly", networkAccess: true } }, { sandbox: { type: "readOnly", mysteryAuthority: true } },
   ])("rejects bad thread evidence without any turn: %j", async (change) => {
     const f = await fixture(); await f.reply("initialize", hello); await f.reply("thread/start", { ...thread, ...change });
