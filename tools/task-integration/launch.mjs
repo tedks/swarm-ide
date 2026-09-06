@@ -1,10 +1,11 @@
 import { execFileSync, spawn } from "node:child_process";
 import { createServer } from "node:http";
 import { createRequire } from "node:module";
-import { access, lstat, mkdtemp, readFile, realpath, rm } from "node:fs/promises";
+import { access, lstat, mkdtemp, readFile, realpath, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, isAbsolute, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { createTaskFixture } from "./fixture.mjs";
 import { resolveElectronRuntimeArguments } from "../electron-runtime.mjs";
 
 const scripts = dirname(fileURLToPath(import.meta.url));
@@ -36,6 +37,8 @@ try {
   if (yaml !== join(extracted, "core/node_modules/yaml/index.js")) throw new Error("YAML escaped the actual archive");
   const html = await readFile(join(extracted, "renderer/index.html"), "utf8");
   if (/\b(?:src|href)=["']\/assets\//.test(html)) throw new Error("Packaged file URL has absolute asset references");
+  const fixture = await createTaskFixture(scratch);
+  await writeFile(join(evidence, "fixture.json"), JSON.stringify(fixture));
   server = createServer((_request, response) => { response.writeHead(200); response.end("owned packaged task proof"); });
   await new Promise((resolve, reject) => { server.once("error", reject); server.listen(port, "127.0.0.1", resolve); });
   const environment = { ...process.env, NODE_PATH: "", SWARM_TASK_PACKAGE: extracted, SWARM_TASK_PROFILE: profile,
@@ -43,7 +46,7 @@ try {
   for (const name of ["SWARM_RENDERER_URL", "SWARM_DEV_CONTROL", "SWARM_WORKSPACE_ROOT", "SWARM_AGENT_STORE_ROOT", "NODE_OPTIONS", "ELECTRON_RUN_AS_NODE"])
     delete environment[name];
   desktop = spawn(electron, [...resolveElectronRuntimeArguments(), join(scripts, "acceptance.cjs"),
-    `--user-data-dir=${profile}`, process.env.SWARM_RENDERER_PROCESS_ARGUMENT], { cwd: scratch, env: environment, stdio: "inherit" });
+    `--user-data-dir=${profile}`, process.env.SWARM_RENDERER_PROCESS_ARGUMENT], { cwd: fixture.root, env: environment, stdio: "inherit" });
   for (const signal of ["SIGINT", "SIGTERM", "SIGHUP"]) {
     const handler = () => { desktop.kill("SIGTERM"); killTimer ??= setTimeout(() => desktop.kill("SIGKILL"), 2000); };
     handlers.set(signal, handler); process.on(signal, handler);

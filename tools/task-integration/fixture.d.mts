@@ -18,6 +18,7 @@ export interface TaskFixture {
 }
 export function resolveDitzExecutable(): Promise<string>;
 export function createTaskFixture(parentDir: string, options?: { ditzExecutable?: string }): Promise<TaskFixture>;
+export function resumeTaskFixture(serialized: unknown, ownedParent: string): Promise<TaskFixture>;
 export function advanceTaskFixture(fixture: TaskFixture): Promise<GitObjectId>;
 export function invalidateTaskFixture(fixture: TaskFixture): Promise<GitObjectId>;
 export function restoreTaskFixture(fixture: TaskFixture, commit: GitObjectId): Promise<void>;

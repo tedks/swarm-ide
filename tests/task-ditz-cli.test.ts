@@ -9,7 +9,7 @@ import type { TaskProvider } from "../core/tasks/contracts";
 import { TaskGitReader } from "../core/tasks/git-reader";
 import { createDitzTaskProvider } from "../core/tasks/provider";
 import { advanceTaskFixture, createTaskFixture, invalidateTaskFixture, removeTaskMetadata,
-  restoreTaskFixture } from "../tools/task-integration/fixture.mjs";
+  restoreTaskFixture, resumeTaskFixture } from "../tools/task-integration/fixture.mjs";
 
 const exec = promisify(execFile);
 
@@ -20,6 +20,15 @@ describe("actual installed Ditz CLI authoring joined to the real provider", () =
     let emptyProvider: TaskProvider | undefined;
     try {
       const fixture = await createTaskFixture(parent);
+      const serialized = JSON.parse(JSON.stringify(fixture));
+      await expect(resumeTaskFixture({ ...serialized, root: process.cwd() }, parent)).rejects.toThrow("Invalid owned task fixture transfer");
+      await expect(resumeTaskFixture(serialized, path.dirname(parent))).rejects.toThrow("Invalid owned task fixture transfer");
+      await expect(resumeTaskFixture({ ...serialized, sourceCommit: { algorithm: "sha1", hex: "0".repeat(40) } }, parent))
+        .rejects.toThrow("Invalid owned task fixture transfer");
+      const resumed = await resumeTaskFixture(serialized, parent);
+      expect(resumed).toEqual(fixture);
+      await expect(restoreTaskFixture(serialized, fixture.firstCommit)).rejects.toThrow("not owned");
+      await expect(restoreTaskFixture(resumed, fixture.firstCommit)).resolves.toBeUndefined();
       expect(fixture.ditzExecutable).toMatch(/^\/nix\/store\/.+\/bin\/ditz$/);
       expect(fixture.ditzVersion).toContain("0.1.0");
       const git = (args: string[]) => exec("git", ["-C", fixture.root, ...args]);

@@ -1,10 +1,18 @@
 import { execFile } from "node:child_process";
-import { mkdir, mkdtemp, realpath, writeFile } from "node:fs/promises";
+import { lstat, mkdir, mkdtemp, realpath, writeFile } from "node:fs/promises";
 import path from "node:path";
 
 const metadataRef = "refs/heads/ditz-metadata";
 const owned = new WeakMap();
 let installedDitz;
+const fixedFields = Object.freeze({
+  taskId: "task-browser-primary", secondId: "task-browser-secondary",
+  sourcePath: "src/task-target.ts", sourceLine: 3,
+  missingPath: "src/missing-task-target.ts", docPath: "docs/task-note.md",
+  title: '<img src=x onerror="globalThis.__taskLiteralExecuted=true"> literal task',
+  description: '<script>globalThis.__taskLiteralExecuted=true</script>\nLiteral metadata, not executable instructions.\nOnly explicit file references are navigable.',
+  sourceText: "export const taskFixture = true;\n\nexport function taskTarget() {\n  return \"current working source\";\n}\n",
+});
 
 function command(executable, args, cwd, env, input = "") {
   return new Promise((resolve, reject) => {
@@ -37,14 +45,8 @@ async function revision(git) {
   return Object.freeze({ algorithm: "sha1", hex: await git(["rev-parse", "--verify", metadataRef]) });
 }
 
-/** All source files and metadata are disposable inputs, never product fixtures.
- * The caller owns parentDir and removes it after all providers/processes stop. */
-export async function createTaskFixture(parentDir, options = {}) {
-  const executable = options.ditzExecutable ? await realpath(options.ditzExecutable) : await resolveDitzExecutable();
-  if (!executable.startsWith("/nix/store/") || !executable.endsWith("/bin/ditz")) throw new Error("Expected installed Nix Ditz executable");
-  const root = await mkdtemp(path.join(await realpath(parentDir), "task-repository-"));
+function fixtureCommands(root, executable) {
   const fixtureHome = path.join(root, ".fixture-home");
-  await mkdir(fixtureHome);
   const env = { PATH: process.env.PATH, HOME: fixtureHome, XDG_CONFIG_HOME: fixtureHome,
     LANG: "C", LC_ALL: "C", USER: "Fixture", LOGNAME: "Fixture",
     GIT_CONFIG_GLOBAL: "/dev/null", GIT_CONFIG_NOSYSTEM: "1", GIT_TERMINAL_PROMPT: "0",
@@ -52,15 +54,18 @@ export async function createTaskFixture(parentDir, options = {}) {
     GIT_COMMITTER_NAME: "Task fixture", GIT_COMMITTER_EMAIL: "fixture@example.invalid" };
   const git = (args, input) => command("git", ["-c", "core.hooksPath=/dev/null", "-c", "protocol.allow=never", ...args], root, env, input);
   const ditz = (args) => command(executable, args, root, env);
-  const taskId = "task-browser-primary";
-  const secondId = "task-browser-secondary";
-  const sourcePath = "src/task-target.ts";
-  const sourceLine = 3;
-  const missingPath = "src/missing-task-target.ts";
-  const docPath = "docs/task-note.md";
-  const title = '<img src=x onerror="globalThis.__taskLiteralExecuted=true"> literal task';
-  const description = '<script>globalThis.__taskLiteralExecuted=true</script>\nLiteral metadata, not executable instructions.\nOnly explicit file references are navigable.';
-  const sourceText = "export const taskFixture = true;\n\nexport function taskTarget() {\n  return \"current working source\";\n}\n";
+  return { git, ditz };
+}
+
+/** All source files and metadata are disposable inputs, never product fixtures.
+ * The caller owns parentDir and removes it after all providers/processes stop. */
+export async function createTaskFixture(parentDir, options = {}) {
+  const executable = options.ditzExecutable ? await realpath(options.ditzExecutable) : await resolveDitzExecutable();
+  if (!executable.startsWith("/nix/store/") || !executable.endsWith("/bin/ditz")) throw new Error("Expected installed Nix Ditz executable");
+  const root = await mkdtemp(path.join(await realpath(parentDir), "task-repository-"));
+  await mkdir(path.join(root, ".fixture-home"));
+  const { git, ditz } = fixtureCommands(root, executable);
+  const { taskId, secondId, sourcePath, sourceLine, missingPath, docPath, title, description, sourceText } = fixedFields;
   await mkdir(path.join(root, "src"));
   await mkdir(path.join(root, "docs"));
   await writeFile(path.join(root, sourcePath), sourceText);
@@ -84,6 +89,46 @@ export async function createTaskFixture(parentDir, options = {}) {
   const firstCommit = await revision(git);
   const fixture = Object.freeze({ root, firstCommit, sourceCommit, taskId, secondId,
     sourcePath, sourceLine, missingPath, docPath, sourceText, title, description, ditzVersion, ditzExecutable: executable });
+  owned.set(fixture, { git, ditz, validRevisions: new Set([firstCommit.hex]) });
+  return fixture;
+}
+
+/** Trusted parent-to-child TEST HARNESS transfer only. ownedParent is the exact
+ * private mkdtemp directory supplied independently by the parent, never metadata
+ * or renderer input. Only an untouched, initially authored fixture can resume. */
+export async function resumeTaskFixture(serialized, ownedParent) {
+  const invalid = () => { throw new Error("Invalid owned task fixture transfer"); };
+  if (!serialized || typeof serialized !== "object" || typeof ownedParent !== "string" || !path.isAbsolute(ownedParent)) invalid();
+  const parent = await realpath(ownedParent);
+  const parentStat = await lstat(parent);
+  if (parent !== ownedParent || !parentStat.isDirectory() || parentStat.uid !== process.getuid() || (parentStat.mode & 0o077) !== 0) invalid();
+  if (typeof serialized.root !== "string" || path.dirname(serialized.root) !== parent ||
+      !/^task-repository-[A-Za-z0-9]{6}$/.test(path.basename(serialized.root))) invalid();
+  const root = await realpath(serialized.root);
+  if (root !== serialized.root) invalid();
+  for (const directory of [root, path.join(root, ".git"), path.join(root, ".fixture-home"), path.join(root, ".ditz-worktree")]) {
+    const stat = await lstat(directory);
+    if (!stat.isDirectory() || stat.isSymbolicLink() || stat.uid !== process.getuid() || await realpath(directory) !== directory) invalid();
+  }
+  for (const [key, value] of Object.entries(fixedFields)) if (serialized[key] !== value) invalid();
+  for (const commit of [serialized.sourceCommit, serialized.firstCommit]) {
+    if (commit?.algorithm !== "sha1" || typeof commit.hex !== "string" || !/^[a-f0-9]{40}$/.test(commit.hex)) invalid();
+  }
+  if (typeof serialized.ditzExecutable !== "string") invalid();
+  const executable = await realpath(serialized.ditzExecutable);
+  if (executable !== serialized.ditzExecutable || !/^\/nix\/store\/[a-z0-9]{32}-[^/]+\/bin\/ditz$/.test(executable)) invalid();
+  const { git, ditz } = fixtureCommands(root, executable);
+  if (await git(["rev-parse", "--show-toplevel"]) !== root ||
+      await git(["rev-parse", "--absolute-git-dir"]) !== path.join(root, ".git") ||
+      await realpath(path.resolve(root, await git(["rev-parse", "--git-common-dir"]))) !== path.join(root, ".git") ||
+      await realpath(path.resolve(root, ".ditz-worktree", await git(["-C", path.join(root, ".ditz-worktree"), "rev-parse", "--git-common-dir"]))) !== path.join(root, ".git") ||
+      await git(["rev-parse", "HEAD"]) !== serialized.sourceCommit.hex ||
+      (await revision(git)).hex !== serialized.firstCommit.hex ||
+      await ditz(["--version"]) !== serialized.ditzVersion) invalid();
+  const firstCommit = Object.freeze({ algorithm: "sha1", hex: serialized.firstCommit.hex });
+  const sourceCommit = Object.freeze({ algorithm: "sha1", hex: serialized.sourceCommit.hex });
+  const fixture = Object.freeze({ ...fixedFields, root, firstCommit, sourceCommit,
+    ditzVersion: serialized.ditzVersion, ditzExecutable: executable });
   owned.set(fixture, { git, ditz, validRevisions: new Set([firstCommit.hex]) });
   return fixture;
 }

@@ -7,6 +7,7 @@ const path = require("node:path");
 const { pathToFileURL } = require("node:url");
 const evidence = process.env.SWARM_TASK_EVIDENCE;
 const packaged = process.env.SWARM_TASK_PACKAGE;
+require(path.join(packaged, "app/electron/main.js"));
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 async function until(check, label, ms = 15000) {
   const deadline = Date.now() + ms;
@@ -17,10 +18,7 @@ async function until(check, label, ms = 15000) {
 async function main() {
   const started = Date.now();
   const fixtures = await import(pathToFileURL(process.env.SWARM_TASK_FIXTURE_MODULE).href);
-  const fixture = await fixtures.createTaskFixture(process.env.SWARM_TASK_SCRATCH);
-  process.chdir(fixture.root);
-  await fs.writeFile(path.join(evidence, "fixture.json"), JSON.stringify(fixture));
-  require(path.join(packaged, "app/electron/main.js"));
+  const fixture = await fixtures.resumeTaskFixture(JSON.parse(await fs.readFile(path.join(evidence, "fixture.json"), "utf8")), process.env.SWARM_TASK_SCRATCH);
   await app.whenReady();
   assert.equal(app.getPath("userData"), process.env.SWARM_TASK_PROFILE, "private profile flag must actually bind userData");
   await until(() => fs.access(path.join(evidence, "window-selected")).then(() => true, () => false), "owned native window selection", 30000);
@@ -55,6 +53,10 @@ async function main() {
   };
   const screenshot = async (name) => fs.writeFile(path.join(evidence, name), (await wc.capturePage()).toPNG());
   const showDetails = async () => {
+    if (!await run(() => document.querySelector(".task-show-details").getBoundingClientRect().width > 0)) {
+      await click(button("Toggle work panel"));
+      await until(() => run(() => document.querySelector(".task-show-details").getBoundingClientRect().width > 0), "explicit work panel");
+    }
     await focus(".task-show-details"); key("Return");
     await until(() => has(".task-detail .task-title"), "task detail after keyboard Show");
     assert.equal(await run(() => document.activeElement?.textContent), "Return to source information");
@@ -130,7 +132,10 @@ async function main() {
   const layouts = [];
   for (const percent of [150, 100]) {
     // Real ordinary zoom button, not direct native setZoomFactor or DOM resizing.
-    if (percent === 150) { await click(button("Zoom in")); await click(button("Zoom in")); }
+    if (percent === 150) {
+      await click(button("Zoom in")); await until(() => wc.getZoomFactor() === 1.25, "intermediate zoom125%");
+      await click(button("Zoom in"));
+    }
     else await click(".zoom-value");
     await until(() => wc.getZoomFactor() === percent / 100, `confirmed interface ${percent}%`);
     if (percent === 150) win.setSize(1280, 800);
@@ -148,7 +153,7 @@ async function main() {
     assert(measure.documentOverflow <= 1 && measure.taskOverflow <= 1 && measure.editorWidth > 100);
     layouts.push({ percent, ...measure }); await screenshot(`02-real-tasks-${percent}-compact.png`);
     key("Return");
-    await until(() => run(() => document.activeElement?.textContent === "Source information"), "keyboard Return to source information");
+    await until(() => run(() => document.activeElement === document.querySelector(".instrument-heading h2")), "keyboard Return to source information");
     await preserved();
   }
   win.setSize(1480, 940);
