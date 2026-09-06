@@ -6,8 +6,27 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { parseRehearsalArguments, rehearsalHelp } from "../tools/agent-rehearsal/options.mjs";
+import { rehearsalBundlePath } from "../tools/agent-rehearsal/artifact.mjs";
 
 describe("human rehearsal launch boundary", () => {
+  it("uses the declared fixed Bazel runfile even when another build repoints bazel-bin", async () => {
+    const owned = await mkdtemp(join(tmpdir(), "rehearsal-artifact-test-"));
+    try {
+      const runfiles = join(owned, "runfiles with spaces");
+      const workspace = join(owned, "workspace-with-no-bazel-bin");
+      const artifact = join(runfiles, "_main", "tools", "agent-rehearsal.tar.gz");
+      await mkdir(join(runfiles, "_main", "tools"), { recursive: true });
+      await mkdir(workspace);
+      await writeFile(artifact, "fixed rehearsal artifact");
+      for (const environment of [{ TEST_SRCDIR: runfiles, RUNFILES_DIR: "/ignored" }, { RUNFILES_DIR: runfiles }]) {
+        const path = rehearsalBundlePath(environment, workspace);
+        expect(path).toBe(artifact);
+        expect(await readFile(path, "utf8")).toBe("fixed rehearsal artifact");
+      }
+      expect(rehearsalBundlePath({}, workspace)).toBe(join(workspace, "bazel-bin", "tools", "agent-rehearsal.tar.gz"));
+      expect(() => rehearsalBundlePath({ TEST_SRCDIR: "relative" }, workspace)).toThrow(/absolute/);
+    } finally { await rm(owned, { recursive: true, force: true }); }
+  });
   it("each actual smoke invocation ignores stale success and failure evidence", async () => {
     const owned = await mkdtemp(join(tmpdir(), "rehearsal-launch-test-"));
     try {

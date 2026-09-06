@@ -5,6 +5,7 @@ import { homedir, tmpdir } from "node:os";
 import { isAbsolute, join, resolve } from "node:path";
 import { preview } from "vite";
 import { parseRehearsalArguments, rehearsalHelp } from "./options.mjs";
+import { rehearsalBundlePath } from "./artifact.mjs";
 import { resolveDevEndpoint } from "../dev-port.mjs";
 import { resolveElectronRuntimeArguments } from "../electron-runtime.mjs";
 
@@ -28,7 +29,7 @@ async function main() {
   const runtimeArguments = resolveElectronRuntimeArguments();
   const version = JSON.parse(await readFile("node_modules/electron/package.json", "utf8")).version;
   if (execFileSync(electron, [...runtimeArguments, "--version"], { encoding: "utf8", timeout: 10000 }).trim().replace(/^v/, "") !== version) throw new Error("Electron version mismatch");
-  const bundle = resolve("bazel-bin/tools/agent-rehearsal.tar.gz");
+  const bundle = rehearsalBundlePath(process.env, process.cwd());
   await access(bundle, constants.R_OK);
   const profileParent = virtual ? process.env.SWARM_X11_OWNERSHIP_DIR : join(homedir(), ".local", "state", "swarm-ide-rehearsals");
   await mkdir(profileParent, { recursive: true, mode: 0o700 });
