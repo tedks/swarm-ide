@@ -17,7 +17,8 @@ a development acceptance harness, never a product adapter.
 ## Progress
 
 - [x] (2026-09-06 06:33Z) P4 source gate: immutable legacy local-cache plugin feeds initial MCP projection without a model turn or installation. Local-only marketplace requirements exclude curated Git sync; featured HTTP warmup still needs the existing independent network denial.
-- [ ] P4: fixed enabled/feature-disabled/required-failure controls, exact extra immutable-input checks, focused regressions, available council convergence and full local gates.
+- [x] (2026-09-06 06:46Z) P4 code1a9b332/docscef3228: three actual controls plus three full repeated runs pass all28 checks per case; static six-case acceptance separately passes. Quality592tests/48files, full24 build and all8 uncached local targets pass; owned virtual67.2s and fixture-agent5.7s each cleanup1. Native+Google code and doc-delta CLEAN, Anthropic actual session-limit MISSING. Hosted34016892153 and34017026634 FAILURE; no CI-green claim.
+- [ ] P4 normal PR26 landing and actual aggregate verification if GitHub's merge tree differs; final identities and cleanup go in the ignored executive handoff, without editing the watched master.
 - [x] (2026-09-06 05:20Z) P3: read inherited gates, official app-server documentation and pinned source; designated feature worktree starts from verified normal merge c52f959.
 - [x] (2026-09-06 05:30Z) P3: actual installed required-stdio-MCP positive/negative controls pass across five fixtures; explicit fixed RPC allowlist rejects generation paths. Initial quality passes. Commit153b12b/PR22 enters council and complete local gates.
 - [x] (2026-09-06 05:53Z) P3: bounded seed-pipe diagnostics and deterministic regressions; full first local7 targets passed476tests. Native Important found incomplete trace observation; actual teardown gap confirmed and unsupported observer removed. Six provider-reported/canary controls now pass, no independent syscall claim. Strengthened regression/full rerun and council convergence pending.
@@ -117,6 +118,22 @@ Provider-reported attempts are not independent syscall counts. Unproved
 independent observer support is a separate issue, and production remains closed.
 
 ## Outcomes & Retrospective
+
+P4 supplies one additional observed no-turn legacy plugin MCP gate, not a generic
+policy certificate. The installed positive, matched feature-disabled and reached
+failure cases pass with all28 independent checks, including three additional full
+repetitions. Static six-case controls also pass. Final topic verification passes
+592 tests/48 files, full24-target build and all8 uncached targets; owned virtual
+67.2s (first green59.850s, incremental244ms) and fixture-agent5.7s clean up fully.
+Native/Google reviews are CLEAN, Anthropic session-limited without verdict.
+Hosted code and docs runs fail the existing pre-Codex boundary; conditional local
+waiver applies, not a security/test skip. A first whole-suite run was invalidated
+by this agent committing documentation during topology build: an owned virtual
+capture showed the working-source-change state, so only that scenario was stopped
+and the full suite repeated on an unchanged tree. The rerun is the acceptance
+evidence, not the interrupted run. Keep the tree fixed during graph verification.
+No product availability or watched app adoption changed. Broad policy and
+independent-observer issues remain open; PR26/handoff records actual merge state.
 
 P3's final proof is deliberately narrower than independent syscall exclusion:
 six actual static-MCP fixtures now distinguish reported startup plus full canary
