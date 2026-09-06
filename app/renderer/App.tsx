@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import {
   PROTOCOL_VERSION,
   type CoreRequest,
@@ -7,7 +7,7 @@ import {
   type ReconciliationStatus,
 } from "../../protocol/schema";
 import { applyCoreEvent, emptyWorkspaceState, loadSnapshot, type WorkspaceState } from "./state";
-import { EditorPane } from "./EditorPane";
+import { EditorPane, type EditorMemory, type SourceLineNavigation } from "./EditorPane";
 import { GraphPane, type GraphConnectionFocus } from "./GraphPane";
 import { sourceFlash, type SourceFlash } from "./source-diff";
 import {
@@ -33,6 +33,11 @@ import { PreparedLaunchDraft } from "./agents/PreparedLaunchDraft";
 import { AgentReloadGuard } from "./agents/AgentReloadGuard";
 import { protectsAgentIntent } from "./agents/live-state";
 import "./agents/agents.css";
+import { TaskBridgeClient } from "./tasks/client";
+import { TaskPanel } from "./tasks/TaskPanel";
+import { TaskDetail } from "./tasks/TaskDetail";
+import { taskLineTarget, validTaskReference } from "./tasks/reveal";
+import type { TaskFileRef } from "../../protocol/tasks";
 
 const lensTabs = ["System", "Plan", "Performance", "Refactor"] as const;
 const FRAUDCHECK_IMPLEMENTATION = "examples/checkout-world/services/fraudcheck/fraudcheck.ts";
@@ -103,6 +108,22 @@ export function App() {
   const [activeLens, setActiveLens] = useState<(typeof lensTabs)[number]>(hotCheckpoint?.lens ?? restoredNavigation?.lens ?? "System");
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [compactPanel, setCompactPanel] = useState<"work" | "info" | null>(null);
+  const taskClient = useMemo(() => new TaskBridgeClient(), [TaskBridgeClient]);
+  const tasks = useSyncExternalStore(taskClient.subscribe, taskClient.getSnapshot);
+  const [informationView, setInformationView] = useState<"source" | "task">("source");
+  const [informationFocusRequest, setInformationFocusRequest] = useState(0);
+  const taskReturnButton = useRef<HTMLButtonElement>(null);
+  const sourceInformationHeading = useRef<HTMLHeadingElement>(null);
+  const revealNoticeElement = useRef<HTMLParagraphElement>(null);
+  const [sourceInfoFocusRequest, setSourceInfoFocusRequest] = useState(0);
+  const [noticeFocusRequest, setNoticeFocusRequest] = useState(0);
+  const [revealNotice, setRevealNotice] = useState("");
+  const [sourceNavigation, setSourceNavigation] = useState<(SourceLineNavigation & { path: string }) | null>(null);
+  const editorMemories = useRef(new Map<string, EditorMemory>());
+  const navigationIntent = useRef(0);
+  const pendingRevealIntent = useRef<number | null>(null);
+  const mounted = useRef(false);
+  useEffect(() => { mounted.current = true; return () => { mounted.current = false; ++navigationIntent.current; }; }, []);
   const [commandQuery, setCommandQuery] = useState("");
   const [hmr, setHmr] = useState({ generation: 0, milliseconds: 0 });
   const [fileTabs, setFileTabs] = useState<FileTab[]>(hotCheckpoint?.files ?? []);
@@ -137,6 +158,64 @@ export function App() {
 
   useEffect(() => { fileTabsRef.current = fileTabs; }, [fileTabs]);
   useEffect(() => { workspaceRef.current = workspace; }, [workspace]);
+  useEffect(() => taskClient.connect(window.swarm, window.swarmLifecycle), [taskClient]);
+  useEffect(() => {
+    if (workspace.snapshot) taskClient.setContext(workspace.snapshot.world.id, workspace.snapshot.project.id);
+  }, [taskClient, workspace.snapshot?.world.id, workspace.snapshot?.project.id]);
+  useEffect(() => {
+    // Mirrors the existing compact breakpoint, including Electron's CSS zoom.
+    // Checking panel visibility does not make source/build changes scan tasks.
+    const media = window.matchMedia?.("(max-width: 1100px)");
+    const update = () => taskClient.setVisible(Boolean(workspace.snapshot) && (!media?.matches || compactPanel === "work"));
+    update();
+    media?.addEventListener("change", update);
+    return () => { media?.removeEventListener("change", update); };
+  }, [taskClient, compactPanel, Boolean(workspace.snapshot)]);
+
+  const selectTask = useCallback((id: string) => {
+    ++navigationIntent.current;
+    setInformationView("task");
+    setRevealNotice("");
+    taskClient.select(id);
+  }, [taskClient]);
+  const sourceInformation = useCallback(() => {
+    ++navigationIntent.current;
+    setRevealNotice((notice) => notice.startsWith("Opening working file") ? "Reveal superseded by source navigation; previous source retained." : notice);
+    setInformationView("source");
+  }, []);
+  const showTaskDetails = useCallback(() => {
+    setInformationFocusRequest(++navigationIntent.current);
+    setRevealNotice((notice) => notice.startsWith("Opening working file") ? "Reveal superseded by task inspection; previous source retained." : notice);
+    setInformationView("task");
+    setCompactPanel("info");
+  }, []);
+  const returnToSourceInformation = useCallback(() => {
+    sourceInformation();
+    setSourceInfoFocusRequest(navigationIntent.current);
+  }, [sourceInformation]);
+  const reportRevealFailure = useCallback((message: string) => {
+    setRevealNotice(message);
+    setNoticeFocusRequest(navigationIntent.current);
+  }, []);
+  const interruptPendingReveal = useCallback(() => {
+    if (pendingRevealIntent.current === null) return;
+    pendingRevealIntent.current = null;
+    ++navigationIntent.current;
+    setRevealNotice((notice) => notice.startsWith("Opening working file")
+      ? "Reveal superseded by a newer interaction; previous source retained." : notice);
+  }, []);
+  useLayoutEffect(() => {
+    if (sourceInfoFocusRequest && sourceInfoFocusRequest === navigationIntent.current) sourceInformationHeading.current?.focus();
+  }, [sourceInfoFocusRequest]);
+  useLayoutEffect(() => {
+    if (noticeFocusRequest && noticeFocusRequest === navigationIntent.current) revealNoticeElement.current?.focus();
+  }, [noticeFocusRequest]);
+  useLayoutEffect(() => {
+    if (!informationFocusRequest) return;
+    // Only an explicit Show gesture requests a keyboard destination. Ordinary
+    // task selection never opens a hidden pane or takes the user's focus.
+    if (informationFocusRequest === navigationIntent.current) taskReturnButton.current?.focus();
+  }, [informationFocusRequest]);
 
   const applyZoom = useCallback(async (percent: InterfaceZoomPercent, persist: boolean, notice: string | null = null) => {
     const request: ZoomRequest = { percent, persist, notice };
@@ -240,11 +319,14 @@ export function App() {
   }, [invoke]);
 
   const showSurface = useCallback((surface: string) => {
+    ++navigationIntent.current;
+    setRevealNotice((notice) => notice.startsWith("Opening working file") ? "Reveal superseded by source navigation; previous source retained." : notice);
     activeSurfaceRef.current = surface;
     setActiveSurface(surface);
   }, []);
 
   const activateFile = useCallback((path: string) => {
+    setInformationView("source");
     coordinateFileFocus(path);
     showSurface(path);
   }, [coordinateFileFocus, showSurface]);
@@ -302,6 +384,9 @@ export function App() {
       if (!live || status.revision <= (lifecycleRef.current?.revision ?? -1)) return;
       lifecycleRef.current = status;
       if (coreGenerationRef.current !== status.core.generation) {
+        ++navigationIntent.current;
+        setSourceNavigation(null);
+        setRevealNotice((notice) => notice.startsWith("Opening working file") ? "CORE_GENERATION_CHANGED: Reveal interrupted; previous source retained." : notice);
         coreGenerationRef.current = status.core.generation;
         fileEventsRef.current.clear();
         setWorkspace((current) => ({ ...current, lastSequence: -1 }));
@@ -386,10 +471,13 @@ export function App() {
     return () => { live = false; };
   }, [lifecycle?.core.generation, lifecycle?.core.phase, invoke, hotCheckpoint]);
 
-  const openFile = useCallback(async (path: string, coordinateFocus = true) => {
-    if (coordinateFocus) activateFile(path);
-    else showSurface(path);
-    if (fileTabsRef.current.some((tab) => tab.path === path)) return;
+  const openFile = useCallback(async (path: string, coordinateFocus = true, background = false): Promise<FileTab | null> => {
+    if (!background) {
+      if (coordinateFocus) activateFile(path);
+      else showSurface(path);
+    }
+    const existing = fileTabsRef.current.find((tab) => tab.path === path);
+    if (existing) return existing;
     desiredFilesRef.current.add(path);
     const generation = (openGenerationsRef.current.get(path) ?? 0) + 1;
     openGenerationsRef.current.set(path, generation);
@@ -404,15 +492,16 @@ export function App() {
       setFileTabs((tabs) => tabs.map((tab) => tab.path === path ? update(tab) : tab));
     };
     const watchResponse = await invoke({ type: "file.watch", requestId: requestId(), protocolVersion: PROTOCOL_VERSION, path });
-    if (openGenerationsRef.current.get(path) !== generation || !desiredFilesRef.current.has(path)) return;
+    if (openGenerationsRef.current.get(path) !== generation || !desiredFilesRef.current.has(path)) return null;
     if (!watchResponse?.ok) {
-      settleOpen((tab) => ({ ...tab, status: "error", message: watchResponse?.ok ? "Source observation was cancelled." : "The source file could not be observed." }));
-      return;
+      settleOpen((tab) => ({ ...tab, status: "error", message: watchResponse && !watchResponse.ok
+        ? `${watchResponse.error.code}: ${watchResponse.error.message}` : "CORE_UNAVAILABLE: source observation was interrupted." }));
+      return fileTabsRef.current.find((tab) => tab.path === path) ?? null;
     }
     let eventSequenceBeforeRead = fileEventsRef.current.get(path)?.sequence ?? 0;
     for (let attempt = 0; attempt < 3; attempt += 1) {
       const response = await invoke({ type: "file.read", requestId: requestId(), protocolVersion: PROTOCOL_VERSION, path });
-      if (openGenerationsRef.current.get(path) !== generation || !desiredFilesRef.current.has(path)) return;
+      if (openGenerationsRef.current.get(path) !== generation || !desiredFilesRef.current.has(path)) return null;
       const eventAfterRead = fileEventsRef.current.get(path);
       const superseded = eventAfterRead && eventAfterRead.sequence > eventSequenceBeforeRead;
       if (!response?.ok || !response.file || response.file.kind !== "read") {
@@ -420,8 +509,9 @@ export function App() {
           eventSequenceBeforeRead = eventAfterRead.sequence;
           continue;
         }
-        settleOpen((tab) => ({ ...tab, status: "error", message: "The source file could not be opened." }));
-        return;
+        settleOpen((tab) => ({ ...tab, status: "error", message: response && !response.ok
+          ? `${response.error.code}: ${response.error.message}` : "CORE_UNAVAILABLE: source read was interrupted." }));
+        return fileTabsRef.current.find((tab) => tab.path === path) ?? null;
       }
       const file = response.file;
       if (superseded && eventAfterRead.revision !== file.revision) {
@@ -429,12 +519,77 @@ export function App() {
         continue;
       }
       settleOpen((tab) => ({ ...tab, content: file.content, savedContent: file.content, revision: file.revision, status: "saved", message: "Watching the working file", flash: null }));
-      return;
+      return fileTabsRef.current.find((tab) => tab.path === path) ?? null;
     }
     if (openGenerationsRef.current.get(path) === generation && desiredFilesRef.current.has(path)) {
       settleOpen((tab) => ({ ...tab, status: "error", message: "The working file changed too quickly to open a stable revision." }));
     }
+    return fileTabsRef.current.find((tab) => tab.path === path) ?? null;
   }, [activateFile, invoke, showSurface]);
+
+  const revealTaskReference = useCallback(async (ref: TaskFileRef) => {
+    if (!validTaskReference(ref)) { reportRevealFailure("Unsupported reference: only canonical relative working-file paths can be revealed."); return; }
+    const intent = ++navigationIntent.current;
+    pendingRevealIntent.current = intent;
+    try {
+      const coreGeneration = coreGenerationRef.current;
+      const prior = fileTabsRef.current.find((tab) => tab.path === ref.path);
+      setRevealNotice(`Opening working file ${ref.path}…`);
+      let tab = prior;
+      if (prior && !protectsBuffer(prior)) {
+        if (prior.status === "loading") { reportRevealFailure("Source observation is already in progress; Reveal again when it settles."); return; }
+        const openGeneration = openGenerationsRef.current.get(ref.path);
+        const eventSequenceBeforeRead = fileEventsRef.current.get(ref.path)?.sequence ?? 0;
+        if (prior.status === "error") {
+          const watch = await invoke({ type: "file.watch", requestId: requestId(), protocolVersion: PROTOCOL_VERSION, path: ref.path });
+          if (intent !== navigationIntent.current || coreGeneration !== coreGenerationRef.current) return;
+          if (!watch?.ok) { reportRevealFailure(watch && !watch.ok ? `${watch.error.code}: ${watch.error.message}` : "CORE_UNAVAILABLE: source observation interrupted."); return; }
+        }
+        const response = await invoke({ type: "file.read", requestId: requestId(), protocolVersion: PROTOCOL_VERSION, path: ref.path });
+        if (intent !== navigationIntent.current || coreGeneration !== coreGenerationRef.current ||
+            openGenerationsRef.current.get(ref.path) !== openGeneration || !desiredFilesRef.current.has(ref.path)) return;
+        if (!response?.ok || response.file?.kind !== "read") {
+          reportRevealFailure(response && !response.ok ? `${response.error.code}: ${response.error.message}` : "CORE_UNAVAILABLE: source read was interrupted."); return;
+        }
+        const file = response.file;
+        const current = fileTabsRef.current.find((item) => item.path === ref.path);
+        if (!current) return;
+        if (protectsBuffer(current)) tab = current;
+        else {
+          const latest = fileEventsRef.current.get(ref.path);
+          if (latest && latest.sequence > eventSequenceBeforeRead && latest.revision !== file.revision) { reportRevealFailure("Working file changed during Reveal; existing source and cursor retained. Try again after observation settles."); return; }
+          tab = { ...current, content: file.content, savedContent: file.content, revision: file.revision, status: "saved", message: "Watching the working file", flash: null };
+          const updated = tab;
+          fileTabsRef.current = fileTabsRef.current.map((item) => item.path === ref.path ? updated : item);
+          setFileTabs((tabs) => tabs.map((item) => item.path === ref.path ? updated : item));
+        }
+      } else if (!prior) tab = await openFile(ref.path, false, true) ?? undefined;
+      // A rejected candidate is not an opened source tab. Drop only this new,
+      // still-empty background failure, never an existing or activated buffer.
+      const failedBackground = fileTabsRef.current.find((item) => item.path === ref.path);
+      if (mounted.current && coreGeneration === coreGenerationRef.current && !prior && tab?.status === "error" && !tab.revision && failedBackground?.status === "error" &&
+          !failedBackground.revision && !protectsBuffer(failedBackground) && activeSurfaceRef.current !== ref.path) {
+        desiredFilesRef.current.delete(ref.path);
+        openGenerationsRef.current.set(ref.path, (openGenerationsRef.current.get(ref.path) ?? 0) + 1);
+        openingFilesRef.current.delete(ref.path);
+        fileTabsRef.current = fileTabsRef.current.filter((item) => item.path !== ref.path);
+        setFileTabs((tabs) => tabs.filter((item) => item.path !== ref.path));
+        void invoke({ type: "file.unwatch", requestId: requestId(), protocolVersion: PROTOCOL_VERSION, path: ref.path });
+      }
+      if (intent !== navigationIntent.current || coreGeneration !== coreGenerationRef.current) return;
+      if (!tab || !tab.revision || tab.status === "error" && !protectsBuffer(tab)) {
+        reportRevealFailure(tab?.message ?? "CORE_UNAVAILABLE: source opening was interrupted; previous source retained."); return;
+      }
+      const target = taskLineTarget(tab, ref.line);
+      activateFile(ref.path);
+      setRevealNotice(target.notice);
+      setSourceNavigation({ path: ref.path, content: tab.content, line: target.line, nonce: intent, focus: true });
+    } finally {
+      // An explicit handoff after completion is not a competing interaction.
+      // Never clear a newer Reveal's token when an older read finally settles.
+      if (pendingRevealIntent.current === intent) pendingRevealIntent.current = null;
+    }
+  }, [activateFile, invoke, openFile, reportRevealFailure]);
 
   const closeFile = useCallback((path: string) => {
     const tab = fileTabsRef.current.find((candidate) => candidate.path === path);
@@ -443,6 +598,7 @@ export function App() {
       return;
     }
     desiredFilesRef.current.delete(path);
+    editorMemories.current.delete(path);
     openGenerationsRef.current.set(path, (openGenerationsRef.current.get(path) ?? 0) + 1);
     openingFilesRef.current.delete(path);
     void invoke({ type: "file.unwatch", requestId: requestId(), protocolVersion: PROTOCOL_VERSION, path });
@@ -585,7 +741,7 @@ export function App() {
         if (zoomAction === "reset") void resetZoom();
         return;
       }
-      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "k") { event.preventDefault(); setPaletteOpen((open) => !open); }
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "k") { event.preventDefault(); interruptPendingReveal(); setPaletteOpen((open) => !open); }
       if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "w") {
         event.preventDefault();
         if (activeSurface !== "graphs") closeFile(activeSurface);
@@ -595,7 +751,7 @@ export function App() {
     };
     window.addEventListener("keydown", listener);
     return () => window.removeEventListener("keydown", listener);
-  }, [activeSurface, closeFile, resetZoom, zoomIn, zoomOut]);
+  }, [activeSurface, closeFile, interruptPendingReveal, resetZoom, zoomIn, zoomOut]);
 
   useEffect(() => {
     if (paletteOpen) { setCommandQuery(""); requestAnimationFrame(() => commandInput.current?.focus()); }
@@ -639,31 +795,36 @@ export function App() {
   }, [activeFile?.status, activeSurface, fileTabs.length, hmr, paletteOpen, snapshot, title, zoomTitle, lifecycleTitle, agentFixtureEnabled, agents.draftOpen, agents.run, agents.step, liveAgents.draft, liveAgents.paneOpen, liveAgents.run?.state]);
 
   const selectFocus = useCallback((focus: FocusRef) => {
+    sourceInformation();
     setSelectedConnection(null);
     void invoke({ type: "focus.select", requestId: requestId(), protocolVersion: PROTOCOL_VERSION, focus });
     if (focus.path) void openFile(focus.path, false);
-  }, [invoke, openFile]);
+  }, [invoke, openFile, sourceInformation]);
   const selectConnection = useCallback((connection: GraphConnectionFocus) => {
+    sourceInformation();
     setSelectedConnection(connection);
     void invoke({ type: "focus.select", requestId: requestId(), protocolVersion: PROTOCOL_VERSION, focus: connection.interfaceFocus });
-  }, [invoke]);
+  }, [invoke, sourceInformation]);
   const reconcile = useCallback(() => {
     setPaletteOpen(false);
     return invoke({ type: "reconciliation.start", requestId: requestId(), protocolVersion: PROTOCOL_VERSION, mode: "success" });
   }, [invoke]);
 
   const commands = useMemo(() => [
+    { label: "Show repository Tasks", detail: "inspect planning metadata without moving source", run: () => { setPaletteOpen(false); setCompactPanel("work"); } },
+    { label: "Refresh tasks", detail: "observe local metadata; no fetch, task mutation or dispatch", run: () => { setPaletteOpen(false); setCompactPanel("work"); void taskClient.refresh(); } },
+    { label: "Show task details", detail: "retained task selection in Information", run: () => { setPaletteOpen(false); showTaskDetails(); } },
     { label: "Ask an agent about this focus", detail: "inspect disk context before explicit read-only launch", run: () => { setPaletteOpen(false); setCompactPanel("work"); if (workspaceRef.current.snapshot) agentClient.openDraft(workspaceRef.current.snapshot.focus); } },
     { label: "Build repository service topology", detail: "exact fingerprint → Bazel artifact → green", run: reconcile },
     { label: "Show system graphs", detail: "return to the coordinated repository and service views", run: () => { setPaletteOpen(false); showSurface("graphs"); } },
     { label: "Open FraudCheck implementation", detail: FRAUDCHECK_IMPLEMENTATION, run: () => { setPaletteOpen(false); void openFile(FRAUDCHECK_IMPLEMENTATION); } },
     { label: "Open FraudCheck protobuf contract", detail: FRAUDCHECK_CONTRACT, run: () => { setPaletteOpen(false); void openFile(FRAUDCHECK_CONTRACT); } },
     ...(agentFixtureEnabled ? [{ label: "Preview agent fixture", detail: "DEMO only · no provider or file bytes · explicit launch", run: () => { setPaletteOpen(false); setCompactPanel("work"); openAgentDraft(); } }] : []),
-  ].filter((command) => command.label.toLowerCase().includes(commandQuery.toLowerCase())), [agentClient, agentFixtureEnabled, openAgentDraft, commandQuery, openFile, reconcile, showSurface]);
+  ].filter((command) => command.label.toLowerCase().includes(commandQuery.toLowerCase())), [agentClient, taskClient, agentFixtureEnabled, openAgentDraft, commandQuery, openFile, reconcile, showSurface, showTaskDetails]);
 
   if (!snapshot) return <main className="loading-screen"><div className="loading-mark hmr-probe" />Opening the working world…{error ? <strong>{error}</strong> : null}<small>{lifecycleNotice}</small><AgentReloadGuard state={liveAgents} client={agentClient} /></main>;
   return (
-    <main className="workbench" data-compact-panel={compactPanel ?? "none"} style={agents.selected || liveAgents.paneOpen ? { gridTemplateRows: `var(--topbar-height) minmax(0, 1fr) calc(160px + (clamp(180px, 40vh, 448px) - 160px) * ${Math.min(1, Math.max(0, ((liveAgents.paneOpen ? liveAgents.height : agentPaneHeight) - 230) / 190))})` } : undefined}>
+    <main className="workbench" onPointerDownCapture={interruptPendingReveal} onFocusCapture={interruptPendingReveal} data-compact-panel={compactPanel ?? "none"} style={agents.selected || liveAgents.paneOpen ? { gridTemplateRows: `var(--topbar-height) minmax(0, 1fr) calc(160px + (clamp(180px, 40vh, 448px) - 160px) * ${Math.min(1, Math.max(0, ((liveAgents.paneOpen ? liveAgents.height : agentPaneHeight) - 230) / 190))})` } : undefined}>
       <header className="topbar">
         <div className="product-mark"><span className="hmr-probe" />swarm</div>
         <nav className="lens-tabs" aria-label="Workspace lenses">{lensTabs.map((lens) => <button key={lens} className={activeLens === lens ? "active" : ""} onClick={() => setActiveLens(lens)}>{lens}</button>)}</nav>
@@ -687,7 +848,7 @@ export function App() {
         <PreparedLaunchDraft state={liveAgents} client={agentClient} dirtyPaths={fileTabs.filter((tab) => protectsBuffer(tab)).map((tab) => tab.path)} />
         {agentFixtureEnabled ? <RunRail state={agents} fixtureEnabled={agentFixtureEnabled} onDraft={() => { setCompactPanel("work"); openAgentDraft(); }} onSelect={() => { agentClient.closePane(); setAgents((state) => ({ ...state, selected: true })); }} /> : null}
         {agents.draftOpen && agentFixtureEnabled ? <LaunchDraft focus={snapshot.focus} onClose={() => setAgents((state) => ({ ...state, draftOpen: false }))} onLaunch={(context) => { agentClient.closePane(); setAgents((state) => fixtureReducer(state, { type: "launch", context })); }} /> : null}
-        <div className="rail-section dispatch-list"><div className="section-heading"><span>Dispatch queue</span><b>0</b></div><div className="empty-rail">Task provider is not connected.</div></div>
+        <TaskPanel observation={tasks.observation} refreshing={tasks.refreshing} connected={tasks.connected} notice={tasks.notice} selectedTaskId={tasks.selectedTaskId} onSelect={selectTask} onRefresh={() => { void taskClient.refresh(); }} onShowDetails={showTaskDetails} />
       </aside>
 
       <section className={`navigation-field ${activeFile ? "source-open" : ""}`}>
@@ -701,11 +862,14 @@ export function App() {
           {fileTabs.map((tab) => <div key={tab.path} className={`surface-tab ${activeSurface === tab.path ? "active" : ""}`}><button className="surface-tab-main" onClick={() => activateFile(tab.path)} title={tab.path}><span className={`tab-state status-${tab.status}`}>{tab.status === "dirty" ? "●" : tab.status === "saving" ? "◌" : tab.status === "conflict" || tab.status === "error" ? "!" : "◇"}</span>{tab.path.split("/").at(-1)}</button><button className="surface-tab-close" aria-label={`Close ${tab.path}`} onClick={() => closeFile(tab.path)}>×</button></div>)}
         </nav>
         <div className={`graphs-grid ${activeFile ? "is-sidebar" : activeSurface === "graphs" ? "is-active" : "is-hidden"}`}>{snapshot.graphs.map((graph) => <GraphPane key={graph.topologyId} graph={graph} focus={snapshot.focus} mappings={snapshot.mappings} interfaceZoom={zoomPercent} onFocus={selectFocus} onConnectionFocus={selectConnection} onReconcile={() => { void reconcile(); }} reconciliationRunning={reconciliationRunning} />)}</div>
-        {activeFile ? <section className={`source-surface ${["conflict", "unknown", "error"].includes(activeFile.status) ? "has-banner" : ""}`}>
+        {activeFile ? <section onPointerDown={sourceInformation} onFocusCapture={sourceInformation} className={`source-surface ${["conflict", "unknown", "error"].includes(activeFile.status) ? "has-banner" : ""}`}>
           <header><div><span className="eyebrow">source observatory</span><strong>{activeFile.path}</strong></div><div className={`file-state file-${activeFile.status}`}><i />{activeFile.status}<button onClick={() => void saveFile(activeFile.path)} disabled={activeFile.status !== "dirty" || coreUnavailable}>Save <kbd>Ctrl S</kbd></button></div></header>
           {activeFile.status === "loading" ? <div className="source-message">Loading the canonical working file…</div> : <>
             {["conflict", "unknown", "error"].includes(activeFile.status) ? <div className="source-message source-error source-banner"><span>{activeFile.message}</span><button disabled={coreUnavailable || savesInFlightRef.current.has(activeFile.path)} onClick={() => void reloadFile(activeFile.path)}>{activeFile.status === "unknown" ? "Check disk" : "Reload disk"}</button></div> : null}
-            {activeFile.revision ? <EditorPane key={activeFile.path} content={activeFile.content} flash={activeFile.flash} onChange={(content) => {
+            {activeFile.revision ? <EditorPane key={activeFile.path} content={activeFile.content} flash={activeFile.flash}
+              memory={(() => { let memory = editorMemories.current.get(activeFile.path); if (!memory) { memory = { state: null }; editorMemories.current.set(activeFile.path, memory); } return memory; })()}
+              navigation={sourceNavigation?.path === activeFile.path ? sourceNavigation : null}
+              onNavigation={(nonce, applied) => { setSourceNavigation((current) => current?.nonce === nonce ? null : current); if (!applied) reportRevealFailure("Working buffer changed before Reveal navigation; cursor retained. Reveal again after reconciling source."); }} onChange={(content) => {
               const update = (tab: FileTab): FileTab => {
               if (tab.path !== activeFile.path) return tab;
               const unresolved = ["conflict", "unknown", "error"].includes(tab.status);
@@ -720,13 +884,17 @@ export function App() {
       </section>
 
       <aside id="information-panel" aria-label="Information panel" className="instrument-panel panel">
-        <div className="instrument-heading"><div><span className="eyebrow">contextual instruments</span><h2>{selectedConnection?.label ?? focusLabel(snapshot.focus)}</h2></div><button>•••</button></div>
+        {revealNotice ? <p ref={revealNoticeElement} className="tasks-reveal-notice" role="status" tabIndex={0}>{revealNotice}</p> : null}
+        {informationView === "task" ? <TaskDetail returnButtonRef={taskReturnButton} selectedTaskId={tasks.selectedTaskId} snapshot={tasks.observation?.snapshot ?? null} detail={tasks.detail} detailRevision={tasks.detailRevision} detailStale={tasks.detailStale || tasks.observation?.status !== "observed" || Boolean(tasks.notice)} reading={tasks.reading} notice={tasks.detailNotice} onSelect={selectTask} onReveal={(ref) => { void revealTaskReference(ref); }} onReturnToSource={returnToSourceInformation} /> : <>
+        {tasks.selectedTaskId ? <button className="tasks-show-details" onClick={showTaskDetails}>Show task details</button> : null}
+        <div className="instrument-heading"><div><span className="eyebrow">contextual instruments</span><h2 ref={sourceInformationHeading} tabIndex={-1}>{selectedConnection?.label ?? focusLabel(snapshot.focus)}</h2></div><button>•••</button></div>
         <div className="breadcrumbs">world / {selectedConnection ? "connection" : snapshot.focus.domain} / <b>{selectedConnection?.id ?? focusLabel(snapshot.focus)}</b></div>
         <div className="widget-grid">
           {selectedConnection ? <article className="widget widget-list connection-widget"><header><span>{selectedConnection.kind} connection</span><i title={`${selectedConnection.provenance[0]?.sourceKind}: ${selectedConnection.provenance[0]?.uri}`} /></header><div className="connection-flow"><button onClick={() => selectFocus(selectedConnection.source.focus)}>{selectedConnection.source.label}</button><span>→</span><button onClick={() => selectFocus(selectedConnection.target.focus)}>{selectedConnection.target.label}</button></div>{selectedConnection.contract ? <small>{selectedConnection.contract}</small> : null}<code>{selectedConnection.provenance[0]?.uri}</code></article> : null}
           {[...snapshot.widgets].sort((a, b) => a.priority - b.priority).map((widget) => <article className={`widget widget-${widget.kind}`} key={widget.id}><header><span>{widget.title}</span><i title={`${widget.provenance.sourceKind}: ${widget.provenance.uri}`} /></header>{Array.isArray(widget.value) ? <ul>{widget.value.map((item) => <li key={item}>{widget.id === "source-paths" ? <button className="source-link" onClick={() => void openFile(item)}>{item}</button> : item}</li>)}</ul> : <div className="widget-value">{widget.value}</div>}{widget.unit ? <small>{widget.unit}</small> : null}</article>)}
         </div>
         <article className="widget source-widget"><header><span>Truth source</span><i /></header>{snapshot.focus.path ? <button className="source-link" onClick={() => void openFile(snapshot.focus.path!)}>{snapshot.focus.path}</button> : <code>{snapshot.focus.key}</code>}<small>{snapshot.reconciliation.message}</small></article>
+        </>}
       </aside>
 
       <section className={`activity-dock panel ${agents.selected || liveAgents.paneOpen ? "agent-dock-open" : ""}`}>
@@ -745,7 +913,7 @@ export function App() {
         {agents.selected || liveAgents.paneOpen ? <div className="agent-job-summary" tabIndex={0} aria-label="Build and activity summary">Build / activity · {snapshot.jobs.length ? snapshot.jobs.map((job) => `${job.label}: ${job.status} · ${job.resources.cpuPercent || job.resources.memoryMiB ? `${job.resources.cpuPercent}% CPU / ${job.resources.memoryMiB} MiB` : "telemetry unavailable"}`).join(" · ") : "no derived work running"} · {snapshot.activity[0]?.summary ?? "no recent events"}</div> : null}
       </section>
 
-      {paletteOpen ? <div className="palette-scrim" onMouseDown={() => setPaletteOpen(false)}><section className="command-palette" onMouseDown={(event) => event.stopPropagation()}><header><span>⌕</span><input ref={commandInput} value={commandQuery} onChange={(event) => setCommandQuery(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter" && commands[0]) void commands[0].run(); }} placeholder="Navigate or apply intelligence…" /><kbd>esc</kbd></header><div className="command-results">{commands.map((command) => <button key={command.label} onClick={() => void command.run()}><span>{command.label}<small>{command.detail}</small></span><kbd>↵</kbd></button>)}</div><footer><span>Current focus: {focusLabel(snapshot.focus)}</span><span>scope · action · artifact</span></footer></section></div> : null}
+      {paletteOpen ? <div className="palette-scrim" onMouseDown={() => setPaletteOpen(false)}><section className="command-palette" onMouseDown={(event) => event.stopPropagation()}><header><span>⌕</span><input ref={commandInput} value={commandQuery} onChange={(event) => setCommandQuery(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter" && commands[0]) { event.preventDefault(); void commands[0].run(); } }} placeholder="Navigate or apply intelligence…" /><kbd>esc</kbd></header><div className="command-results">{commands.map((command) => <button key={command.label} onClick={() => void command.run()}><span>{command.label}<small>{command.detail}</small></span><kbd>↵</kbd></button>)}</div><footer><span>Current focus: {focusLabel(snapshot.focus)}</span><span>scope · action · artifact</span></footer></section></div> : null}
       {reloadNotice || lifecycleNotice ? <div className="lifecycle-notice" role="status" tabIndex={0} aria-label="Development status">{reloadNotice || lifecycleNotice}</div> : null}
       {error ? <div className="error-toast">{error}</div> : null}
       {zoomNotice ? <div className="zoom-toast" role="status">{zoomNotice}</div> : null}
