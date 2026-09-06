@@ -49,6 +49,15 @@ log_events:
   who: Ted Smith
   what: blocked by agent-run-virtual-scenario-e2
   comment: ""
+- time: 2026-09-06T04:22:34-00:00
+  who: Ted Smith
+  what: commented
+  comment: E2 fixture checkpoint merged PR14/a4ae558; reusable source is topic5e26e78
+    (38 new cases,286 total on E2 topic). Full virtual journey remains blocked on
+    reviewed R2/W2 plus an explicit privileged test-only Electron worker; child agent-run-virtual-scenario-e2
+    remains open. Production unavailable, no live model/policy proof/adoption. Runtime
+    owns combined integration verification; automatic PR merge also includes earlier
+    independently landed P1 upstream.
 blocks:
 - agent-run-vertical-proof
 blocked_by:
