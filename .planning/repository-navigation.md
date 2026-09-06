@@ -1,5 +1,6 @@
 # Browse the actual registered repository
 
+
 This ExecPlan is maintained according to `.planning/PLANS.md`. It is a living
 implementation plan prepared by N0, a design-only department. ROOT must accept
 the design before dispatching N1; publication does not authorize execution.
@@ -37,6 +38,13 @@ any `focus.path`, including a future directory unless activation is separated.
 keep that guarantee. Existing `core/fingerprint.ts` scans working changes and
 requires a committed HEAD: this plan does not make it Google-scale.
 
+The native design reviewer found that fatal UTF-8 decoding or a dirty-world
+fingerprint bound currently rejects provider startup before a directory can be
+listed (`core/provider.ts` creation and `core/worker-runtime.ts` startup). N1 must
+separate registration from fingerprint success; otherwise unsupported-entry
+handling is impossible. Also distinguish a target on another captured page from
+one genuinely outside the capture budget.
+
 ## Decision Log
 
 
@@ -48,6 +56,11 @@ activation seam rather than inventing a recursive index inside this increment.
 On the same date N0 chose explicit directory observations and Refresh, with stale
 labels, to avoid per-focus repository rescans. An observation is a dated bounded
 listing, not an atomic filesystem snapshot or a successful Bazel build.
+
+Following native review, N0 requires degraded navigation startup after valid
+root/HEAD registration and explicit page/filter Reveal for captured targets.
+Unknown working evidence must remain unavailable for build or agent admission;
+the fingerprint validator is not weakened.
 
 ## Outcomes & Retrospective
 
@@ -98,6 +111,8 @@ whole-subtree tracked status. Provide `RepositoryObservation` with directory,
 observation ID, capture time, state, completeness, page count, entries and notice.
 Core method `list(request): Promise<RepositoryObservation>` is read-only and
 disposable; all errors are bounded typed results, never raw arbitrary Git stderr.
+An error describes the requested directory separately; it never retags a retained
+old listing as that directory or commits a failed slice over the last good one.
 
 Add an optional, runtime-validated directory observation to the repo `GraphSlice`
 and `repo` result to its matched `CoreResponse`. Validate request/result directory,
@@ -157,6 +172,21 @@ Retry/Up. Root startup failure must show unavailable, not an eternal loading
 screen. Maintain only 32 navigation/camera records; old pages/history may require
 fresh observation when revisited.
 
+Separate canonical root/committed-HEAD registration from whole-world fingerprint
+startup. Once registration succeeds, initialize the provider and permit directory
+and existing source reads while the fingerprint is pending or failed. Extend
+`revisions.working` with evidence `observed | unavailable` (existing valid
+snapshots default to observed). Unavailable evidence has an empty fingerprint and
+a registration-scoped `unobserved:` coordinate ID, never a content digest. Require
+observed evidence for green publication and agent context/admission; do not
+weaken the fingerprint parser or enable agents. Bounded initial fingerprint work
+must not gate `workspace.snapshot`/`repo.list`; a later successful observation
+retags current focus through the existing event path. A failure remains an honest
+service/working-evidence notice, not `core.failed` that destroys navigation.
+Keep existing last-observed fingerprint behavior for later failures; show its
+unavailable evidence explicitly. This is degraded browsing, not a new scalable
+fingerprinting algorithm or relaxed mutation authority.
+
 Then replace all fixed repository-graph reconstruction sites in the provider
 with retained directory composition. Derive project ID/name from canonical root.
 On unfamiliar repos keep missing service topology honestly unconfigured or
@@ -167,7 +197,9 @@ file activation reuses `openFile`. Exact relative Open path can address outside
 the captured set and reveals its parent where possible. Buttons and scoped
 keyboard actions share one intent controller. Task details alone never navigate;
 only explicit Reveal does. Failed parent reveal does not destroy a successfully
-opened source tab, and “outside partial slice” is not “file missing.”
+opened source tab. If the target is captured, reset the local filter and select
+its captured page; otherwise show “outside partial directory capture,” never
+“file missing” merely because the graph does not contain it.
 
 Keep graph component keys stable. Save camera per directory/page (bounded 32);
 explicit first descent/page frames once, Back restores. Refresh preserves camera
@@ -214,7 +246,10 @@ IDs, newer B beating slow A, and concurrent service publication preserving both
 projections. Prove new protocols are wired into production, not just a fixture.
 
 The owned packaged GUI proof must browse the real Swarm root to `core/files.ts`
-and an owned unfamiliar committed Git repo. Create tracked, untracked, ignored
+and an owned unfamiliar committed Git repo. Also start with an untracked invalid
+UTF-8 filename and separately an exhausted fingerprint budget: directory browsing
+and supported file reading must work with unknown evidence, while green and agent
+admission remain rejected. Create tracked, untracked, ignored
 and hidden entries using real filesystem/Git operations. Exercise a >4,096-entry
 directory, exact path outside the captured subset, deletion/invalidated refresh,
 keyboard Enter/Up/Back and off-slice explicit Reveal. Pan both graphs; leave a
@@ -247,3 +282,7 @@ close only `repository-navigation-contract-n0` for this design.
 
 Revision note (2026-09-06): initial N0 plan corrects foundation accounting and
 selects a single visible vertical over another infrastructure-only split.
+
+Review revision (2026-09-06): separate fingerprint failure from navigation
+startup; distinguish captured-page Reveal from an uncaptured target; explicitly
+retain the last successful directory on a failed request. No product code changed.

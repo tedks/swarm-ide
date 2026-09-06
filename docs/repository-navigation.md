@@ -29,7 +29,10 @@ The registered root comes from privileged startup, never renderer input. The
 initial scope is a local Git working tree with a valid committed HEAD; an invalid
 root reports unavailable rather than waiting forever. Canonicalize the root once;
 derive project identity from that canonical root and display its basename, not
-`project:swarm-ide`. Root directory path is `""`; other paths are canonical,
+`project:swarm-ide`. Root/HEAD registration must not await the whole-world
+fingerprint: a dirty-world limit or unsupported filename leaves navigation usable
+with explicitly unavailable working/build evidence, never fabricated green truth
+or agent admission. Root directory path is `""`; other paths are canonical,
 case-sensitive relative slash paths, without empty, dot, parent or backslash
 segments. Never derive authority from labels. Node identity includes entry kind
 and encoded relative path under the registered project; it survives refresh and
@@ -49,7 +52,8 @@ descendant expansion on a focus change; Git classification has bounded output
 Show tracked and untracked entries, including dotfiles. Tracked files remain
 visible even if a current ignore rule matches. Ignored entries are visible but
 dimmed and labeled; do not descend them automatically. `.git` administration is
-omitted whether file or directory. Directories are labeled as directories, not
+omitted whether file or directory and rejected as a navigation path segment.
+Directories are labeled as directories, not
 falsely wholly tracked/untracked. If bounded Git classification fails, keep the
 filesystem listing with an explicit unknown Git-status notice. No Git fetch,
 write, checkout or hook execution belongs to navigation.
@@ -92,7 +96,8 @@ Service yellow/red and its last consistent artifact remain unchanged by browsing
 
 Opening a path from a service link, task **explicit Reveal**, or exact Open path
 requests its parent slice and selects it if present. It must not synthesize nodes
-outside the listing budget; an omitted entry gets “outside this partial slice.”
+outside the listing budget: if captured, reset the local filter and select its
+page; if genuinely uncaptured, report “outside this partial directory capture.”
 Reading task details alone still moves neither graph. Unrelated task/agent-draft
 state, dirty text, cursor and source tab identity are preserved.
 
