@@ -45,6 +45,14 @@ log_events:
   who: Ted Smith
   what: blocked by agent-run-workbench-w2
   comment: ""
+- time: 2026-09-06T04:18:51-00:00
+  who: Ted Smith
+  what: commented
+  comment: W2 PR15 merged6ead046; real bridge client and contextual cockpit landed.
+    HMR/generation/admission/unknownreceipt regressions passed, 274localtests, fullbuild/all5gates,
+    ownedvirtualscreen proof. Runtime alone integrates aggregate; watchedmaster/app
+    notadopted. Followups agent-workbench-document-checkpoint and agent-workbench-local-receipt-retention.
+    Liveprovider/run lifecycle notclaimed; W3 awaits Runtime/Evidence seam.
 blocks:
 - agent-run-vertical-proof
 blocked_by:
