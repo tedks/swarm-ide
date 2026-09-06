@@ -38,5 +38,16 @@ log_events:
     smoke25.7s cleanup_complete=1. Native and Google fix-delta convergence CLEAN;
     Anthropic warm convergence pending. Added explicit pre-thread/strict/executor/keyring/remote-state
     gates. No product code or policy availability change.
+- time: 2026-09-06T04:08:21-00:00
+  who: Ted Smith
+  what: commented
+  comment: Delivered documentation-only PR13 normal merge2f3ca7ffeee694301164b85253b986dc3654e380
+    from tested/reviewed d9725c5266d582c5dd9f938d32ec2d1f05246612; topic and merge
+    trees identical. Three-provider fix-delta council CLEAN, nonblocking nits filed
+    separately. Full build/all5 uncached local targets248 tests passed; hosted34010445916
+    in progress at merge under explicit conditional local-proof waiver, not green.
+    No helper/real run/policy availability. Source archived recoverably; owned Bazel/virtual
+    resources cleaned. Runtime owns integration; P2 remains unstarted; effective-policy
+    parent stays open.
 blocks:
 - agent-run-effective-policy
