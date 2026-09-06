@@ -35,6 +35,16 @@ log_events:
     master C2 normaldbe457d not yet ROOT-cleared; ownership request /tmp/swarm-ide-live-contract-p6.7klaR5/ownership-request.md.
     Keep this slice in progress until normal merge; parents remain open. Next native-provider-controls
     is filed, NOT dispatched.'
+- time: 2026-09-06T14:48:55-00:00
+  who: Ted Smith
+  what: commented
+  comment: 'LANDING continuation: ROOT cleared C2dbe457d; exact C2 merged into own
+    feature, local final aggregate doc/scope/link/symbol/unchanged design checks pass.
+    Immediate pre-merge remote-head equality guard stopped BEFORE gh pr merge because
+    master advanced to T2 PR31 normal7642eb663565ce0e1f97590acf55e21b761c7320 (parentsdbe457d
+    + 5d2e35e). That later head is not ROOT-cleared, so no T2 consumption/PR merge/closure.
+    PR34 remains reviewed/open, pushed clean; awaiting exact T2 aggregate authority,
+    not waiting/repeating work. No activation or successor.'
 blocks:
 - agent-run-effective-policy
 - first-real-agent-run-surface
