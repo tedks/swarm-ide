@@ -85,6 +85,12 @@ describe("bounded schema-valid fixture playback", () => {
     const state = advance(started());
     expect(fixtureReducer(state, { type: "launch", context: context() })).toBe(state);
   });
+  it("keeps a nonempty label for a schema-valid whitespace-only path", () => {
+    const launchContext = fixtureLaunchContext({ ...paymentsFileFocus, path: " " }, "Analyze", "", "");
+    const state = fixtureReducer(emptyAgentWorkbench(), { type: "launch", context: launchContext });
+    expect(state.snapshot.runs[0]!.focusLabel).toBe("(whitespace-only)");
+    expect(state.run?.launchContext.focus.path).toBe(" ");
+  });
 });
 
 describe("run-specific presentation", () => {

@@ -24,7 +24,7 @@ const label = (value: string): string => {
     if (utf8Bytes(result + char) > 240) break;
     result += char;
   }
-  return result;
+  return result || "(whitespace-only)";
 };
 export const canPrepareFixture = (state: AgentWorkbenchState): boolean => !state.run ||
   (isTerminalRunState(state.run.state) && (state.run.processState === "exited" || state.run.cleanup.status === "not-needed"));
