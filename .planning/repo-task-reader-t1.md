@@ -14,7 +14,7 @@ This step supplies a real read-only provider behind the existing task contract. 
 - [x] (2026-09-06) State untrusted-input assumptions and publish `createDitzTaskProvider` consumer seam.
 - [x] (2026-09-06 08:09Z) Implement bounded Git object reads, isolated YAML validation, cache and observation lifecycle. Draft PR32 opened from first plan commit `4ddc938`.
 - [x] (2026-09-06 08:22Z) Prove real Git/YAML hostile inputs, correlation, stale/error retention, concurrency and disposal through Bazel-owned tests. Initial executable `efe9f0b`: quality754/57, full25build/all9uncached passed. Reviewed fix `1e802da`: quality755/57. Reviewed I3 aggregate `76a4da0`: full29build/all10uncached passed; final P5 aggregate verification follows.
-- [ ] Complete local build/all-tests, provider-diverse review to fixpoint, normal reviewed PR landing, Ditz sync and owned cleanup.
+- [x] (2026-09-06 08:29Z) Complete local build/all-tests and provider-diverse review to fixpoint; prepare normal PR landing, Ditz sync and owned cleanup. Final normal merge and cleanup are recorded in PR32 and the ignored handoff after these frozen gates; no master/app adoption is part of landing.
 
 ## Surprises & Discoveries
 
@@ -25,7 +25,7 @@ The first executable quality run passed 751 tests and failed two disposable Git 
 
 The reader verifies hashes of selected commit, tree and blob bytes rather than assuming an object filename attests immutable content. Commit/tree size preflight adds a conservative 128KiB structural ceiling. Git still reads local configuration, so a blocking include is killed and reaped under the command deadline. Output/time caps are not an OS memory sandbox for Git pack decompression; Ditz `repo-task-git-memory-limits` records that distinct residual.
 
-Native council found that a cheap same-commit ref check could erase a failed full scan, despite the separate attempt-status contract. Two regressions actually failed before correction: remove/restore the cached commit's issue object without moving the ref, and fail initial ref resolution. Commit `1e802da` preserves the failure until a full refresh succeeds; native fix-delta convergence is CLEAN. Cheap checks update check time/ref only, not the evidence of a failed scan. Google initially hit an actual quota limit; Anthropic's first round is still pending. Missing seats are not approval.
+Native council found that a cheap same-commit ref check could erase a failed full scan, despite the separate attempt-status contract. Two regressions actually failed before correction: remove/restore the cached commit's issue object without moving the ref, and fail initial ref resolution. Commit `1e802da` preserves the failure until a full refresh succeeds; native fix-delta convergence is CLEAN. Cheap checks update check time/ref only, not the evidence of a failed scan. Google initially hit an actual quota limit; one fresh full review after its reported reset returned CLEAN. Anthropic exited124 after900s with zero verdict bytes; its seat is missing, not approval or substitution.
 
 ## Decision Log
 
@@ -39,7 +39,7 @@ The main provider owns one complete cache and one in-flight observation. Concurr
 ## Outcomes & Retrospective
 
 
-The reader is implemented and independently useful through real Git/YAML tests. It handles exact SHA-1/SHA-256 object identities, malformed future revisions, correlated expired/missing details, complete-envelope limits and owned cancellation. No production composition or default behavior changed. Full local verification of the reviewed upstream aggregate and foreign council completion remain landing gates at this revision. The final PR record and ignored handoff record their actual outcomes without rewriting historical test claims.
+The reader is implemented and independently useful through real Git/YAML tests. It handles exact SHA-1/SHA-256 object identities, malformed future revisions, correlated expired/missing details, complete-envelope limits and owned cancellation. No production composition or default behavior changed. The ROOT-reviewed I3/P5 aggregate `eb38eda` passed full29build/all10uncached:870tests63files, topology65.5s, agent5.5s, rehearsal27.5s with all three cleanup attestations, and required external-process proof3.2s. Native convergence and Google full final review are CLEAN; Anthropic is a recorded empty seat. Final normal merge, hosted status and Ditz/resource cleanup are recorded in PR32 and the ignored handoff without rewriting historical test claims.
 
 The initial full suite passed all nine targets, including owned virtual topology66.4s, agent journey5.4s and external-process proof3.1s, with both GUI cleanup attestations. After consuming only ROOT-cleared I3, all ten targets passed, including topology64.4s, agent5.3s, human rehearsal27.6s and external-process proof3.2s. These are regression checks of the combined application, not evidence of task UI integration or real model execution.
 
@@ -96,3 +96,5 @@ Revision note: initial T1 plan records exact scope, assumptions, proof requireme
 Revision note: implementation milestone records actual failing fixture checks, hash/structural bounds and the explicit packaging/resource follow-ups before final verification.
 
 Revision note: recorded verified red/green same-revision status correction, native council convergence and successful initial/I3 local gates. P5 is consumed only after ROOT's explicit authority, with fresh aggregate gates required before landing.
+
+Revision note: final accounting records actual combined gates and all review seats, including the Anthropic timeout rather than implied approval. This revision changes only this plan; executable reader and reviewed aggregate remain unchanged.
