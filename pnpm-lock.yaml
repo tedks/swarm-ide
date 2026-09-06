@@ -26,6 +26,9 @@ importers:
       react-dom:
         specifier: 19.2.8
         version: 19.2.8(react@19.2.8)
+      yaml:
+        specifier: 2.8.1
+        version: 2.8.1
       zod:
         specifier: 4.5.4
         version: 4.5.4
@@ -47,7 +50,7 @@ importers:
         version: 19.2.3(@types/react@19.2.18)
       '@vitejs/plugin-react':
         specifier: 6.1.1
-        version: 6.1.1(vite@8.2.2(@types/node@22.19.7)(esbuild@0.28.2))
+        version: 6.1.1(vite@8.2.2(@types/node@22.19.7)(esbuild@0.28.2)(yaml@2.8.1))
       electron:
         specifier: 43.4.1
         version: 43.4.1
@@ -62,10 +65,10 @@ importers:
         version: 5.9.3
       vite:
         specifier: 8.2.2
-        version: 8.2.2(@types/node@22.19.7)(esbuild@0.28.2)
+        version: 8.2.2(@types/node@22.19.7)(esbuild@0.28.2)(yaml@2.8.1)
       vitest:
         specifier: 5.0.0
-        version: 5.0.0(@types/node@22.19.7)(jsdom@27.0.0)(vite@8.2.2(@types/node@22.19.7)(esbuild@0.28.2))
+        version: 5.0.0(@types/node@22.19.7)(jsdom@27.0.0)(vite@8.2.2(@types/node@22.19.7)(esbuild@0.28.2)(yaml@2.8.1))
 
 packages:
 
@@ -1099,6 +1102,11 @@ packages:
   xmlchars@2.2.0:
     resolution: {integrity: sha512-JZnDKK8B0RCDw84FNdDAIpZK+JuJw+s7Lz8nksI7SIuU3UXJJslUthsi+uWBUYOwPFwW7W7PRLRfUKpxjtjFCw==}
 
+  yaml@2.8.1:
+    resolution: {integrity: sha512-lcYcMxX2PO9XMGvAJkJ3OsNMw+/7FKes7/hgerGUYWIoWu5j/+YQqcZr5JnPZWzOsEBgMbSbiSTn/dv/69Mkpw==}
+    engines: {node: '>= 14.6'}
+    hasBin: true
+
   zod@4.5.4:
     resolution: {integrity: sha512-sC95tT5iHHH9gtpj6A81kh+NEaRAUFN+qlUPDUbRfOMvNf5QCBqsb3WgvnpVtK5Y+4UfA6KqufotuTvMGiTlsA==}
 
@@ -1438,19 +1446,19 @@ snapshots:
     dependencies:
       csstype: 3.2.3
 
-  '@vitejs/plugin-react@6.1.1(vite@8.2.2(@types/node@22.19.7)(esbuild@0.28.2))':
+  '@vitejs/plugin-react@6.1.1(vite@8.2.2(@types/node@22.19.7)(esbuild@0.28.2)(yaml@2.8.1))':
     dependencies:
       '@rolldown/pluginutils': 1.0.1
-      vite: 8.2.2(@types/node@22.19.7)(esbuild@0.28.2)
+      vite: 8.2.2(@types/node@22.19.7)(esbuild@0.28.2)(yaml@2.8.1)
 
-  '@vitest/mocker@5.0.0(vite@8.2.2(@types/node@22.19.7)(esbuild@0.28.2))':
+  '@vitest/mocker@5.0.0(vite@8.2.2(@types/node@22.19.7)(esbuild@0.28.2)(yaml@2.8.1))':
     dependencies:
       '@jridgewell/trace-mapping': 0.3.31
       '@vitest/spy': 5.0.0
       estree-walker: 3.0.3
       magic-string: 1.2.3
     optionalDependencies:
-      vite: 8.2.2(@types/node@22.19.7)(esbuild@0.28.2)
+      vite: 8.2.2(@types/node@22.19.7)(esbuild@0.28.2)(yaml@2.8.1)
 
   '@vitest/spy@5.0.0': {}
 
@@ -1866,7 +1874,7 @@ snapshots:
     dependencies:
       react: 19.2.8
 
-  vite@8.2.2(@types/node@22.19.7)(esbuild@0.28.2):
+  vite@8.2.2(@types/node@22.19.7)(esbuild@0.28.2)(yaml@2.8.1):
     dependencies:
       lightningcss: 1.33.0
       picomatch: 4.0.7
@@ -1877,11 +1885,12 @@ snapshots:
       '@types/node': 22.19.7
       esbuild: 0.28.2
       fsevents: 2.3.3
+      yaml: 2.8.1
 
-  vitest@5.0.0(@types/node@22.19.7)(jsdom@27.0.0)(vite@8.2.2(@types/node@22.19.7)(esbuild@0.28.2)):
+  vitest@5.0.0(@types/node@22.19.7)(jsdom@27.0.0)(vite@8.2.2(@types/node@22.19.7)(esbuild@0.28.2)(yaml@2.8.1)):
     dependencies:
       '@types/chai': 5.2.3
-      '@vitest/mocker': 5.0.0(vite@8.2.2(@types/node@22.19.7)(esbuild@0.28.2))
+      '@vitest/mocker': 5.0.0(vite@8.2.2(@types/node@22.19.7)(esbuild@0.28.2)(yaml@2.8.1))
       chai: 6.2.2
       es-module-lexer: 2.3.2
       expect-type: 1.4.0
@@ -1892,7 +1901,7 @@ snapshots:
       tinybench: 6.1.4
       tinyexec: 1.3.0
       tinyglobby: 0.2.17
-      vite: 8.2.2(@types/node@22.19.7)(esbuild@0.28.2)
+      vite: 8.2.2(@types/node@22.19.7)(esbuild@0.28.2)(yaml@2.8.1)
       why-is-node-running: 2.3.0
     optionalDependencies:
       '@types/node': 22.19.7
@@ -1931,6 +1940,8 @@ snapshots:
   xml-name-validator@5.0.0: {}
 
   xmlchars@2.2.0: {}
+
+  yaml@2.8.1: {}
 
   zod@4.5.4: {}
 

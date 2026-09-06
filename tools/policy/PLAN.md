@@ -1,7 +1,7 @@
 # Prove an offline boundary before probing configuration
 
 This ExecPlan follows `.planning/PLANS.md`. The living sections below record the
-bounded P2 boundary and P3 auxiliary activation implementation, not production authorization.
+bounded P2 boundary, P3 static MCP and P4 local-plugin MCP implementation, not production authorization.
 
 ## Purpose / Big Picture
 
@@ -10,10 +10,15 @@ bounded JSON identifying independently tested isolation and exactly which Codex
 configuration observations remain unavailable. No provider thread or model turn
 is created by that metadata mode. P3 adds an explicit `--activation` mode for
 synthetic, ephemeral thread initialization only. No model turn is allowed in any
-mode. This is a development acceptance harness, never a product adapter.
+mode. P4 adds `--plugin-activation`, a separate three-case local legacy plugin
+comparison through that same no-turn opportunity and process boundary. This is
+a development acceptance harness, never a product adapter.
 
 ## Progress
 
+- [x] (2026-09-06 06:33Z) P4 source gate: immutable legacy local-cache plugin feeds initial MCP projection without a model turn or installation. Local-only marketplace requirements exclude curated Git sync; featured HTTP warmup still needs the existing independent network denial.
+- [x] (2026-09-06 06:46Z) P4 code1a9b332/docscef3228: three actual controls plus three full repeated runs pass all28 checks per case; static six-case acceptance separately passes. Quality592tests/48files, full24 build and all8 uncached local targets pass; owned virtual67.2s and fixture-agent5.7s each cleanup1. Native+Google code and doc-delta CLEAN, Anthropic actual session-limit MISSING. Hosted34016892153 and34017026634 FAILURE; no CI-green claim.
+- [ ] P4 normal PR26 landing and actual aggregate verification if GitHub's merge tree differs; final identities and cleanup go in the ignored executive handoff, without editing the watched master.
 - [x] (2026-09-06 05:20Z) P3: read inherited gates, official app-server documentation and pinned source; designated feature worktree starts from verified normal merge c52f959.
 - [x] (2026-09-06 05:30Z) P3: actual installed required-stdio-MCP positive/negative controls pass across five fixtures; explicit fixed RPC allowlist rejects generation paths. Initial quality passes. Commit153b12b/PR22 enters council and complete local gates.
 - [x] (2026-09-06 05:53Z) P3: bounded seed-pipe diagnostics and deterministic regressions; full first local7 targets passed476tests. Native Important found incomplete trace observation; actual teardown gap confirmed and unsupported observer removed. Six provider-reported/canary controls now pass, no independent syscall claim. Strengthened regression/full rerun and council convergence pending.
@@ -26,6 +31,15 @@ mode. This is a development acceptance harness, never a product adapter.
 - [x] (2026-09-06 04:53Z) Added negative tests; full build22 targets and all7 uncached Bazel tests passed at83da50f (272 unit tests). OpenAI native and Google fix-delta CLEAN; Anthropic full-seat timed out600s with no review, explicitly missing. Remaining nits filed. PR17 records the eventual normal-merge transaction; final aggregate evidence is archived in the handoff.
 
 ## Surprises & Discoveries
+
+P4's direct local-cache loader needs neither installation metadata nor writable
+policy directories. However, enabling plugins also schedules an unauthenticated
+featured-catalog HTTP request even when remote_plugin=false. Local-only managed
+marketplace requirements exclude curated Git synchronization, but do not suppress
+that HTTP path. The existing independent private network contains attempts; no
+claim of zero auxiliary activity is made. Actual three-case controls passed in
+17.5 seconds with all28 boundary checks before every actual process. A test-file
+brace error was caught by initial typecheck and corrected before council review.
 
 Pinned 0.153.4 queues SessionStart hooks at thread creation but executes them
 inside the turn path. It is not a no-model positive control. Thread startup can
@@ -53,6 +67,17 @@ directories. Apps alias collisions, project/managed overrides and inherited MCP
 table merging are now observed from the installed package, not inferred source.
 
 ## Decision Log
+
+Decision (2026-09-06, P4): one legacy plugin-supplied stdio MCP path only, seeded
+under the synthetic readonly Codex home. Assume trusted host/operator and exact
+complete package; reuse all26 independent checks before each launch and add exact
+plugin-file/ancestor mutation checks. Invalid loader state, handshake/status
+ambiguity, changed input, output/deadline or unknown cleanup fails closed. A local
+marketplace allowlist blocks curated Git sync without hiding the installed fixture.
+Featured-catalog warmup may still attempt HTTP; egress denial contains it and is
+not runtime disablement. No install/auth/turn or writable config directory is
+authorized. No personal marketplace/plugin scaffolding is appropriate for this
+fixed disposable fixture. Production stays unavailable.
 
 Decision (2026-09-06, P3): prove the smallest actual startup-triggered path,
 required stdio MCP, with an executable fixed canary, provider-reported attempted activation,
@@ -94,6 +119,22 @@ independent observer support is a separate issue, and production remains closed.
 
 ## Outcomes & Retrospective
 
+P4 supplies one additional observed no-turn legacy plugin MCP gate, not a generic
+policy certificate. The installed positive, matched feature-disabled and reached
+failure cases pass with all28 independent checks, including three additional full
+repetitions. Static six-case controls also pass. Final topic verification passes
+592 tests/48 files, full24-target build and all8 uncached targets; owned virtual
+67.2s (first green59.850s, incremental244ms) and fixture-agent5.7s clean up fully.
+Native/Google reviews are CLEAN, Anthropic session-limited without verdict.
+Hosted code and docs runs fail the existing pre-Codex boundary; conditional local
+waiver applies, not a security/test skip. A first whole-suite run was invalidated
+by this agent committing documentation during topology build: an owned virtual
+capture showed the working-source-change state, so only that scenario was stopped
+and the full suite repeated on an unchanged tree. The rerun is the acceptance
+evidence, not the interrupted run. Keep the tree fixed during graph verification.
+No product availability or watched app adoption changed. Broad policy and
+independent-observer issues remain open; PR26/handoff records actual merge state.
+
 P3's final proof is deliberately narrower than independent syscall exclusion:
 six actual static-MCP fixtures now distinguish reported startup plus full canary
 handshake, successful disabled-thread creation, reached initialization failure,
@@ -117,11 +158,32 @@ remains ADAPTER_POLICY_UNAVAILABLE.
 
 ## Context and Orientation
 
+P4 uses the explicitly designated `agent-policy-plugin-mcp` worktree on branch
+`feature/agent-policy-plugin-mcp`, based on reviewed normal491a6d6. Its
+`tools/policy/plugin-activation-contract.mjs` declares exactly three case names,
+immutable cache/manifest paths, local-only marketplace configuration and final
+acceptance. `probe.mjs` materializes these fixed synthetic inputs before mounting
+them readonly and hashing the tree. `inner.mjs` attempts writes/unlinks and
+ancestor creates/renames before the existing actual-process observer. The observer
+and fixed RPC allowlist remain those of P3; this is not a generic plugin runner.
+
 `tools/policy/` owns all implementation. `docs/agent-launch-profile.md` records
 P1's pinned-source findings. Existing `core/agents/policy.ts` deliberately returns
 unavailable and is not changed. The test runtime is not bundled into Electron.
 
 ## Plan of Work
+
+P4 milestone one is the pinned-source feasibility gate: inspect the legacy plugin
+cache loader, plugin feature early-return and initial MCP projection, without
+executing the package. If this requires a turn, auth, remote installation or
+writable policy ancestor, record a source-only finding instead. Milestone two
+adds only the fixed manual probe and exact immutable-input checks described
+above; demonstrate actual enabled full handshake, matched feature-disabled
+successful thread and reached required-initialize failure. Milestone three is
+repeated controls, deterministic failure tests, full local verification, available
+provider-diverse review to convergence and normal PR landing. Leave general
+policy and independent-observer issues open and hand reviewed heads to I2; never
+change the watched master or adopt the app.
 
 First construct a fresh filesystem and explicit nonsecret environment. Independent
 Node canaries verify network denial, absence of host/config/bus paths, immutable
@@ -135,6 +197,19 @@ explicitly unproved. Hostile configuration fixtures expose aliases and inheritan
 without confusing absent activation opportunities with disabled capabilities.
 
 ## Concrete Steps
+
+For P4, from `/home/tedks/Projects/swarm-ide/agent-policy-plugin-mcp`, materialize
+dependencies with `nix develop --command pnpm install --frozen-lockfile`. Run
+`nix develop --command bazel test //tools/policy:plugin-activation-test --jobs=3
+--test_tag_filters= --nocache_test_results --test_output=all`. Expect
+OFFLINE_PLUGIN_ACTIVATION_CHECKPOINT, no failure, productionAvailable=false,
+three ACTIVATION_OBSERVED cases, all28
+checks true per case, unchanged inputs, exact fixed requests and clean process
+closure. Repeat the three cases and run the six-case static target separately.
+Run `//tools:quality`, full `bazel build //... --jobs=3` and all uncached local
+`bazel test //... --jobs=3 --nocache_test_results --test_output=errors` under
+`flock --close /tmp/swarm-ide-overnight.UgO2Aw/virtual.lock`; all GUI uses owned
+Xvfb/55174. If the normal merge differs, repeat full gates on that actual tree.
 
 In the designated `agent-launch-profile-p2` worktree, materialize frozen pnpm
 dependencies, then run `nix develop --command bazel test //tools/policy:boundary-test
@@ -178,6 +253,13 @@ No watched master/app, physical display or global configuration is changed.
 
 ## Artifacts and Notes
 
+P4's PR26 and ignored handoff/evidence live at
+`master/artifacts/overnight-wave/policy-p4/`; its concise peer seam is
+`/tmp/swarm-ide-policy-p4.pGwR93/seam.md`. Ditz slice is
+`agent-run-plugin-mcp-policy-p4`, blocking the existing offline-activation parent.
+I2 alone owns integration and the shared first-agent execution plan. No new
+authority crosses into the core or renderer.
+
 Sanitized results and final handoff live at the ROOT-authorized ignored
 `master/artifacts/overnight-wave/policy-p2/`. Draft/ready PR17 is the review/merge
 unit; branch and worktree remain recoverable. No integration or app adoption.
@@ -199,3 +281,7 @@ state assumptions and missing-trigger failure mode before implementation.
 Revision (2026-09-06 05:53Z): narrow the proof after actual observer gaps, retain
 clean-close/notification barriers, add absent-executable failure control, and
 document no production or independent-syscall attestation.
+
+Revision (2026-09-06, P4): document source-confirmed no-turn local-plugin trigger,
+fixed controls, extra immutable-input acceptance and the still-attempted featured
+catalog path; keep broader policy, process and runtime adoption gates separate.

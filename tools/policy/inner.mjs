@@ -1,8 +1,9 @@
 // This file is run ONLY inside the independent bubblewrap boundary.
-import { readFileSync, writeFileSync, writeSync, mkdirSync, renameSync, unlinkSync, existsSync, readdirSync, readlinkSync, openSync, closeSync } from 'node:fs';
+import { readFileSync, writeFileSync, writeSync, mkdirSync, renameSync, unlinkSync, existsSync, readdirSync, readlinkSync, openSync, closeSync, lstatSync } from 'node:fs';
 import { spawn, spawnSync } from 'node:child_process';
 import { connect } from 'node:net';
 import { ENV, REQUIRED, summarizePages, summarizeConfig, LIMIT, INSTALLATION_SEED } from './boundary.mjs';
+import { PLUGIN_MANIFEST, PLUGIN_ANCESTORS } from './plugin-activation-contract.mjs';
 
 const mode = process.argv[2];
 const denied = fn => { try { fn(); return false; } catch (error) { return ['EROFS', 'EACCES', 'EPERM'].includes(error.code); } };
@@ -29,6 +30,12 @@ async function boundary() {
     canonicalRoot: process.cwd() === '/work',
   };
   const identity = '/home/probe/.codex/installation_id';
+  if (existsSync('/fixture/plugin-proof')) {
+    checks.pluginManifestReadonly = lstatSync(PLUGIN_MANIFEST).isFile() &&
+      denied(() => writeFileSync(PLUGIN_MANIFEST, 'changed')) && denied(() => unlinkSync(PLUGIN_MANIFEST));
+    checks.pluginAncestorsReadonly = PLUGIN_ANCESTORS.every(path => lstatSync(path).isDirectory() &&
+      denied(() => mkdirSync(`${path}/injected`)) && denied(() => renameSync(path, `${path}-replaced`)));
+  }
   checks.installationSeedMatches = readFileSync(identity, 'utf8') === INSTALLATION_SEED;
   const identityFd = openSync(identity, 'a+'); closeSync(identityFd);
   writeFileSync(identity, '00000000-0000-4000-8000-000000000002\n');

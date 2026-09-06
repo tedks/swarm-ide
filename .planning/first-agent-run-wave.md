@@ -46,7 +46,9 @@ application of intelligence before queues, swarm coordination or write authority
 - [x] (2026-09-06, I2 code1fd0689) Actual R1 JSONL adapter, R2 durable service/store and namespace owner joined with fixed external protocol fixture. Stop/completion/cleanup sequencing, unexpected exit17 and hard test-core SIGKILL/reopen/no replay pass; full25-target build/all9 uncached local targets,478tests/44files. OpenAI native and Google CLEAN; Anthropic session-limit unavailable. PR24 landing/integration tracked in its dedicated plan; no installed Codex/model/policy proof or watched-app adoption.
 - [x] (2026-09-06, I2 executable8619da1/integrationb8a4149) ROOT-verified A1 admission correction included; actual service.emit sequence and live descendants after accepted steering asserted alongside durable updates. Identical treeaf14e236ec5d559874017c3b035660f062c04e90 passed full25build/all9uncached/493tests45files. Native+Google final delta CLEAN; Anthropic unavailable. Hosted own namespace prerequisite fails closed before fixture and inherited policyseedpipe also fails; dedicated acceptance followup filed. Normal landing and P3-reviewed integration are separate gates.
 - [x] (2026-09-06, I2 final aggregate946a6a5/integrationc5ac5f4) ROOT-cleared A1/P3/W3/D1 now included; identical tree0ef6d1e88510dd8549d60532be21d559131a20ee passes full25-target build/all9uncached/558tests49files. Required external process proof3.4s, owned topology64.4s/agent journey5.3s, all owned cleanup verified. Own executable8619da1 and reviewed peer bytes unchanged; final plan-only accounting checked inline. PR24/executive handoff record normal remote merge, exact heads and cleanup under the conditional remote-CI waiver, not hosted green. Installed-Codex/model/effective-policy proof and watched-app adoption remain excluded; no later T0/P4/W4 work consumed.
+- [x] (2026-09-06, I3 executable657c4d6) Fixed test-only human-paced rehearsal joins the unchanged renderer/preload/worker injection, current disk context and real private run service/store with a bounded in-process responder. Owned virtual four-run journey26.058s passed with cleanup1, literal streaming, actual steering outcomes, paged history, unsaved/unknown reload vetoes, zero replay and read-only retained-store/zero-timer proof after active close. Quality640tests53files and native/Google convergence CLEAN; Anthropic actual session-limit missing. Explicit human desktop/workspace target is documented and argument-gated but deliberately not opened by automation. Full final gates and normal reviewed landing are separate below; production remains policy-unavailable.
 - [ ] ROOT deliberately adopts the integrated build if native-main changes require restart; do not silently replace the watched app.
+- [x] (2026-09-06, I3 final executable4bba518) ROOT-cleared I2/P4/T0/W4 aggregate included; full29-target build/all10 uncached local targets/716tests57files passed. Repeated actual Bazel rehearsal27.6s, I1journey5.3s and I2externalproof3.6s passed; owned cleanup1. Fixed full-suite-only runfiles and native-focus ordering defects without product edits, action replay or guard bypass; both fix deltas native/Google CLEAN. Human --help/no-opt-in boundaries are checked without opening the physical desktop. PR29 and I3 handoff record final third-provider disposition, normal merge/integration and hosted status under the conditional local waiver. No installed model, effective-policy readiness or watched-app adoption.
 
 ## Surprises & Discoveries
 
@@ -233,6 +235,19 @@ completed/cleaned-up baseline, so each assertion isolates its intended rule.
 
 ## Outcomes & Retrospective
 
+
+I3 adds manual exploration without granting model authority: the compiled
+`//tools:agent-rehearsal` target requires explicit desktop/workspace selection,
+prints a fresh private retained profile, and needs no human development port.
+Actual UI controls drive real disk preparation, durable admission/receipts,
+history and reload/close protection. Only the paced adapter is synthetic and
+cannot execute instructions or write source; normal explicit editor Save is
+still real. A persistent banner distinguishes rehearsal after every load.
+The closed-run validator proves only bounded in-process disposal, not I2's
+separate external process lifetime or the unfinished installed-provider policy.
+See `docs/agent-rehearsal.md` and `.planning/agent-rehearsal-i3.md` for exact
+commands, retention, evidence and landing state. Watched-master adoption remains
+ROOT's separate decision.
 
 I1 joins the previously separate seams through an actual owned desktop: the
 test provider is deterministic, but admission/storage, public requests, live
