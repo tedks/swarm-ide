@@ -192,13 +192,16 @@ export class CoreSupervisor {
     if (this.state.phase !== "ready" || !this.process || this.closing) return Promise.resolve(failure(request.requestId, "CORE_UNAVAILABLE", "Local core is unavailable; no operation was sent"));
     if (this.pending.has(request.requestId)) return Promise.resolve(failure(request.requestId, "DUPLICATE_REQUEST", "Request is already pending"));
     return new Promise((resolve) => {
+      // Task observations own a 10s provider deadline; allow their bounded result
+      // to cross the bridge without extending any other request's deadline.
+      const timeoutMs = request.type === "tasks.snapshot" || request.type === "tasks.read" ? 12_000 : 5_000;
       const timer = request.type === "file.write" ? null : setTimeout(() => {
         this.settle(request.requestId, failure(request.requestId,
           uncertainMutationCode(request) ?? "CORE_TIMEOUT", uncertainMutationCode(request)
             ? "Local core did not respond in time; do not replay uncertain mutations"
             : "Local core did not respond in time; retry the read after recovery"));
         this.finishDrain();
-      }, 5_000);
+      }, timeoutMs);
       this.pending.set(request.requestId, { request, resolve, timer });
       try { this.process!.postMessage(request); } catch {
         this.settle(request.requestId, failure(request.requestId, uncertainMutationCode(request) ?? "CORE_UNAVAILABLE", "Local core transport failed"));

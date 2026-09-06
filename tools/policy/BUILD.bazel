@@ -43,3 +43,19 @@ sh_test(
     tags = ["local", "no-sandbox"],
     timeout = "moderate",
 )
+
+sh_test(
+    name = "sessionstart-boundary-test",
+    srcs = ["sessionstart-boundary.test.sh"],
+    data = [":probe"],
+    tags = ["manual", "local", "no-sandbox"],
+    timeout = "moderate",
+)
+
+sh_test(
+    name = "sessionstart-test",
+    srcs = ["sessionstart.test.sh"],
+    data = [":probe"],
+    tags = ["manual", "local", "no-sandbox"],
+    timeout = "moderate",
+)
