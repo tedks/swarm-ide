@@ -102,7 +102,7 @@ describe("task inspection in the source cockpit", () => {
     expect((camera as HTMLInputElement).value).toBe("pan 1024,768 zoom 2");
     expect(screen.getByLabelText("Task")).toBe(draft);
     expect((draft as HTMLTextAreaElement).value).toBe("Independent fixed-focus draft");
-    expect(request.mock.calls.slice(before).map(([input]) => input.type)).toEqual(["tasks.read"]);
+    expect(request.mock.calls.slice(before).map(([input]) => input.type).filter((type) => type !== "tasks.snapshot")).toEqual(["tasks.read"]);
     fireEvent.pointerDown(document.querySelector(".source-surface")!);
     expect(screen.queryByRole("region", { name: "Task details" })).toBeNull();
     expect(screen.getByRole("button", { name: "Select task task-fixture" }).getAttribute("aria-pressed")).toBe("true");
@@ -114,6 +114,7 @@ describe("task inspection in the source cockpit", () => {
     const { request } = setup(); render(<App />); const editor = await openSource();
     await selectTask(); reveal(source, 2);
     await waitFor(() => expect(editor.state.selection.main.head).toBe(4));
+    expect(document.activeElement).toBe(editor.contentDOM);
     expect(EditorView.findFromDOM(document.querySelector(".cm-editor")!)).toBe(editor);
     act(() => editor.dispatch({ selection: { anchor: 0 } }));
     showDetails(); reveal(source, 2);
@@ -128,7 +129,8 @@ describe("task inspection in the source cockpit", () => {
     await screen.findByText(/metadata line cannot safely map/);
     expect(editor.state.selection.main.head).toBe(2);
     expect(editor.state.doc.toString()).toContain("unsaved");
-    expect(request.mock.calls.slice(before).map(([input]) => input.type)).toEqual(["focus.select"]);
+    expect(request.mock.calls.slice(before).map(([input]) => input.type).filter((type) => type !== "tasks.snapshot")).toEqual(["focus.select"]);
+    expect(document.activeElement).toBe(editor.contentDOM);
   });
 
   it("opens valid files for out-of-range lines without clamping or moving an existing cursor", async () => {
@@ -147,6 +149,8 @@ describe("task inspection in the source cockpit", () => {
     act(() => editor.dispatch({ changes: { from: 0, insert: "mine\n" }, selection: { anchor: 3 } }));
     await selectTask(); reveal("missing.txt", null);
     await waitFor(() => expect(document.querySelector(".tasks-reveal-notice")?.textContent).toContain(code));
+    expect(document.activeElement).toBe(document.querySelector(".tasks-reveal-notice"));
+    expect(screen.queryByRole("button", { name: "Close missing.txt" })).toBeNull();
     expect(EditorView.findFromDOM(document.querySelector(".cm-editor")!)).toBe(editor);
     expect(editor.state.doc.toString()).toContain("mine");
     expect(editor.state.selection.main.head).toBe(3);
@@ -208,6 +212,8 @@ describe("task inspection in the source cockpit", () => {
     fireEvent.click(within(screen.getByRole("region", { name: "Tasks" })).getByRole("button", { name: "Show task details" }));
     expect(document.querySelector(".workbench")?.getAttribute("data-compact-panel")).toBe("info");
     await waitFor(() => expect(document.activeElement).toBe(screen.getByRole("button", { name: "Return to source information" })));
+    fireEvent.click(screen.getByRole("button", { name: "Return to source information" }));
+    expect(document.activeElement).toBe(document.querySelector(".instrument-heading h2"));
   });
 
   it("recovers a prior null-revision watcher error by rewatch/read without waiting for another filesystem mutation", async () => {
@@ -250,5 +256,34 @@ describe("task inspection in the source cockpit", () => {
     await act(async () => { finish(); });
     expect(test.request.mock.calls.slice(before).some(([input]) => input.type === "focus.select")).toBe(false);
     expect(document.querySelector(".cm-editor")).toBeNull();
+  });
+
+  it("adopts newly read saved content before locating its recorded line", async () => {
+    const test = setup(); render(<App />); const editor = await openSource(); await selectTask();
+    const original = test.request.getMockImplementation()!;
+    test.request.mockImplementation(async (input) => {
+      const response = await original(input);
+      return input.type === "file.read" && response.ok ? { ...response, file: { kind: "read", path: source, content: "fresh\nnext\n", revision: "e".repeat(64), size: 11 } } : response;
+    });
+    reveal(source, 2);
+    await waitFor(() => expect(editor.state.doc.toString()).toBe("fresh\nnext\n"));
+    expect(editor.state.selection.main.head).toBe(6);
+    expect(document.activeElement).toBe(editor.contentDOM);
+    expect(EditorView.findFromDOM(document.querySelector(".cm-editor")!)).toBe(editor);
+  });
+
+  it("rejects a fresh watcher failure that supersedes a pending Reveal read", async () => {
+    const test = setup(); render(<App />); const editor = await openSource(); await selectTask();
+    const original = test.request.getMockImplementation()!;
+    let finish!: () => void;
+    test.request.mockImplementation((input) => input.type === "file.read" ? new Promise((resolve) => { finish = () => { void original(input).then(resolve); }; }) : original(input));
+    reveal(source, 2); await screen.findByText(`Opening working file ${source}…`);
+    test.event({ protocolVersion: PROTOCOL_VERSION, type: "file.changed", sequence: 100, path: source,
+      revision: null, change: "error", message: "New failure", emittedAt: "2026-09-06T08:00:00.000Z" });
+    const before = test.request.mock.calls.length;
+    await act(async () => { finish(); });
+    await screen.findByText(/Working file changed during Reveal/);
+    expect(test.request.mock.calls.slice(before).some(([input]) => input.type === "focus.select")).toBe(false);
+    expect(editor.state.selection.main.head).toBe(0);
   });
 });

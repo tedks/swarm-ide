@@ -17,7 +17,7 @@ const setSourceFlash = StateEffect.define<SourceFlash | null>();
 
 /** Tab-local memory, not persisted text or filesystem authority. */
 export interface EditorMemory { state: EditorState | null }
-export interface SourceLineNavigation { nonce: number; line: number; content: string }
+export interface SourceLineNavigation { nonce: number; line: number | null; content: string; focus?: boolean }
 
 class RemovedTextWidget extends WidgetType {
   constructor(private readonly removed: string) { super(); }
@@ -137,10 +137,11 @@ export function EditorPane({ content, flash, onChange, onSave, memory, navigatio
     const current = view.current;
     if (!current || !navigation) return;
     if (current.state.doc.toString() !== navigation.content.replace(/\r\n?/g, "\n") ||
-        !Number.isSafeInteger(navigation.line) || navigation.line < 1 || navigation.line > current.state.doc.lines) {
+        (navigation.line !== null && (!Number.isSafeInteger(navigation.line) || navigation.line < 1 || navigation.line > current.state.doc.lines))) {
       onNavigationRef.current?.(navigation.nonce, false); return;
     }
-    current.dispatch({ selection: { anchor: current.state.doc.line(navigation.line).from }, scrollIntoView: true });
+    if (navigation.line !== null) current.dispatch({ selection: { anchor: current.state.doc.line(navigation.line).from }, scrollIntoView: true });
+    if (navigation.focus) current.focus();
     onNavigationRef.current?.(navigation.nonce, true);
   }, [navigation]);
 

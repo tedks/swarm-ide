@@ -34,7 +34,7 @@ export function TaskPanel({ observation, refreshing, connected, notice, selected
   const selectedPresent = selectedTaskId !== null && summaries?.some((task) => task.id === selectedTaskId);
   const selectedVisible = selectedTaskId !== null && visible.some((task) => task.id === selectedTaskId);
   const status = observation?.status ?? "unobserved";
-  const retainedAfterFailure = status === "observed" && notice !== null && !refreshing;
+  const retainedAfterFailure = status === "observed" && notice !== null;
 
   return <section className="rail-section task-ui task-panel" aria-label="Tasks">
     <header className="task-heading"><h2>Tasks</h2><button type="button" onClick={onRefresh} disabled={!connected || refreshing}>Refresh tasks</button></header>

@@ -39,7 +39,10 @@ export class TaskBridgeClient {
   private disconnectCurrent: (() => void) | undefined;
   private context: { worldId: string; repositoryId: string } | null = null;
   private epoch = 0;
-  private watermark = -1;
+  // Snapshot and detail responses do not share completion order. A later ref
+  // check must not invalidate a still-valid pinned detail (or vice versa).
+  private snapshotWatermark = -1;
+  private detailWatermark = -1;
   private detailTicket = 0;
   private pendingSnapshot: symbol | null = null;
   private refreshAgain = false;
@@ -80,7 +83,7 @@ export class TaskBridgeClient {
       const ready = next.core.phase === "ready" && Boolean(bridge);
       if (changed || (!ready && this.state.connected)) {
         this.invalidate();
-        this.markDisconnected(safeMessage(next.core.message));
+        this.markDisconnected(`TASK_RECONNECT_REQUIRED: ${safeMessage(next.core.message)}`);
       }
       const reconnect = ready && !this.state.connected;
       this.update({ connected: ready, ...(!ready ? { notice: `CORE_UNAVAILABLE: ${safeMessage(next.core.message)}` } : {}) });
@@ -114,7 +117,8 @@ export class TaskBridgeClient {
   disconnect() { this.disconnectCurrent?.(); }
   dispose() { this.disconnect(); this.invalidate(); this.listeners.clear(); }
   private invalidate() {
-    ++this.epoch; ++this.detailTicket; this.watermark = -1;
+    ++this.epoch; ++this.detailTicket;
+    this.snapshotWatermark = -1; this.detailWatermark = -1;
     this.pendingSnapshot = null; this.refreshAgain = false; this.needsInitial = true;
     this.stopTimer();
   }
@@ -163,15 +167,19 @@ export class TaskBridgeClient {
     const pending = Symbol("task-snapshot");
     this.pendingSnapshot = pending;
     const epoch = this.epoch;
+    // An initial failed scan is still an attempted scan. Reopen/focus/timers
+    // check only the ref; another full scan requires Refresh or a new lifetime.
     this.needsInitial = false;
-    this.update({ refreshing: true, notice: null });
+    // Starting another request is not evidence that the previous failure has
+    // recovered. Keep that warning visible throughout the bounded pending read.
+    this.update({ refreshing: true });
     try {
       const result = await this.request({ protocolVersion: PROTOCOL_VERSION, requestId: this.id(),
         type: "tasks.snapshot", worldId: context.worldId, refresh });
       if (epoch !== this.epoch) return;
       if (result.kind !== "snapshot") throw new TaskClientFailure("INVALID_CORE_MESSAGE: unexpected task reply kind.");
       let observation = result.observation;
-      if (observation.sequence < this.watermark) {
+      if (observation.sequence < this.snapshotWatermark) {
         this.update({ notice: "Stale task observation ignored; retained data is unchanged." }); return;
       }
       const retained = this.state.observation?.snapshot;
@@ -193,8 +201,10 @@ export class TaskBridgeClient {
         ++this.detailTicket;
         this.update({ reading: false, detailStale: true });
       }
-      this.watermark = observation.sequence;
-      this.update({ observation, notice: observation.reason ? `${observation.reason.code}: ${observation.reason.message}` : null });
+      this.snapshotWatermark = observation.sequence;
+      // Domain outcomes already have observation.reason. notice is reserved
+      // for client/transport failures, not a duplicate rendering of that reason.
+      this.update({ observation, notice: null });
       this.reconcileDetail(refresh || Boolean(changed));
     } catch (error) { if (epoch === this.epoch) this.update({ notice: this.failure(error) }); }
     finally {
@@ -248,17 +258,17 @@ export class TaskBridgeClient {
       if (epoch !== this.epoch || ticket !== this.detailTicket) return;
       if (result.kind !== "read") throw new TaskClientFailure("INVALID_CORE_MESSAGE: unexpected task detail kind.");
       const current = this.state.observation?.snapshot;
-      if (!current || !sameGitObject(current.metadataCommit, snapshot.metadataCommit) || result.sequence < this.watermark) {
+      if (!current || !sameGitObject(current.metadataCommit, snapshot.metadataCommit) || result.sequence < this.detailWatermark) {
         this.update({ detailNotice: "Task detail became stale; select it again or refresh to retry." }); return;
       }
       if (!result.result.ok) {
-        this.watermark = result.sequence;
+        this.detailWatermark = result.sequence;
         this.update({ detailNotice: `${result.result.error.code}: ${result.result.error.message}` }); return;
       }
       const detail = result.result.detail;
       if (!sameSummary(detail, summary))
         throw new TaskClientFailure("INVALID_CORE_MESSAGE: task detail does not match its observed summary/blob.");
-      this.watermark = result.sequence;
+      this.detailWatermark = result.sequence;
       this.update({ detail, detailRevision: snapshot.metadataCommit, detailStale: false, detailNotice: null });
     } catch (error) { if (epoch === this.epoch && ticket === this.detailTicket) this.update({ detailNotice: this.failure(error) }); }
     finally { if (epoch === this.epoch && ticket === this.detailTicket) this.update({ reading: false }); }

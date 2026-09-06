@@ -107,7 +107,7 @@ describe("read-only task panel", () => {
 
   it("labels retained data after transport failure without rewriting the last authoritative observation", () => {
     const observation = taskObservationFixture();
-    render(<TaskPanel {...panelProps({ observation, notice: "CORE_TIMEOUT: Task read timed out." })} />);
+    const view = render(<TaskPanel {...panelProps({ observation, notice: "CORE_TIMEOUT: Task read timed out." })} />);
     expect(screen.getByText("Task snapshot retained")).toBeTruthy();
     expect(screen.getByText("Latest check failed or was ignored; retained data is not confirmed current.")).toBeTruthy();
     expect(screen.queryByText("Tasks observed")).toBeNull();
@@ -115,6 +115,10 @@ describe("read-only task panel", () => {
     expect(screen.getByRole("button", { name: "Select task task-fixture" })).toBeTruthy();
     expect(observation.status).toBe("observed");
     expect(observation.sequence).toBe(1);
+    view.rerender(<TaskPanel {...panelProps({ observation, notice: "CORE_TIMEOUT: Task read timed out.", refreshing: true })} />);
+    expect(screen.getByText("Task snapshot retained")).toBeTruthy();
+    expect(screen.getByText("CORE_TIMEOUT: Task read timed out.")).toBeTruthy();
+    expect(screen.queryByText("Tasks observed")).toBeNull();
   });
 
   it("exposes only explicit selection/show/refresh callbacks and disables duplicate refresh", () => {
@@ -224,6 +228,7 @@ describe("explicit task detail", () => {
 describe("literal task display boundary", () => {
   it("preserves ordinary multiline text and exposes invisible direction/terminal controls", () => {
     expect(displayTaskText("a\n\tb\r\u001b\u202e\u200b")).toBe("a\n\tb\\u{d}\\u{1b}\\u{202e}\\u{200b}");
+    expect(displayTaskText("first\r\nsecond\r\n")).toBe("first\nsecond\n");
   });
   it.each(["/absolute", "../escape", "file:///etc/passwd", "https://example.invalid/a", "a\\b", "a//b", "a/./b", "a/../b", "a\u0000b", "a\u202eb", ""])("does not offer Reveal for %j even with a false candidate flag", (path) => {
     expect(canRevealTaskRef({ path, line: 1, note: null, navigation: "candidate" })).toBe(false);

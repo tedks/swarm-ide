@@ -108,16 +108,21 @@ export function App() {
   const [activeLens, setActiveLens] = useState<(typeof lensTabs)[number]>(hotCheckpoint?.lens ?? restoredNavigation?.lens ?? "System");
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [compactPanel, setCompactPanel] = useState<"work" | "info" | null>(null);
-  const [taskClient] = useState(() => new TaskBridgeClient());
+  const taskClient = useMemo(() => new TaskBridgeClient(), [TaskBridgeClient]);
   const tasks = useSyncExternalStore(taskClient.subscribe, taskClient.getSnapshot);
   const [informationView, setInformationView] = useState<"source" | "task">("source");
   const [informationFocusRequest, setInformationFocusRequest] = useState(0);
   const taskReturnButton = useRef<HTMLButtonElement>(null);
+  const sourceInformationHeading = useRef<HTMLHeadingElement>(null);
+  const revealNoticeElement = useRef<HTMLParagraphElement>(null);
+  const [sourceInfoFocusRequest, setSourceInfoFocusRequest] = useState(0);
+  const [noticeFocusRequest, setNoticeFocusRequest] = useState(0);
   const [revealNotice, setRevealNotice] = useState("");
   const [sourceNavigation, setSourceNavigation] = useState<(SourceLineNavigation & { path: string }) | null>(null);
   const editorMemories = useRef(new Map<string, EditorMemory>());
   const navigationIntent = useRef(0);
-  useEffect(() => () => { ++navigationIntent.current; }, []);
+  const mounted = useRef(false);
+  useEffect(() => { mounted.current = true; return () => { mounted.current = false; ++navigationIntent.current; }; }, []);
   const [commandQuery, setCommandQuery] = useState("");
   const [hmr, setHmr] = useState({ generation: 0, milliseconds: 0 });
   const [fileTabs, setFileTabs] = useState<FileTab[]>(hotCheckpoint?.files ?? []);
@@ -183,6 +188,20 @@ export function App() {
     setInformationView("task");
     setCompactPanel("info");
   }, []);
+  const returnToSourceInformation = useCallback(() => {
+    sourceInformation();
+    setSourceInfoFocusRequest(navigationIntent.current);
+  }, [sourceInformation]);
+  const reportRevealFailure = useCallback((message: string) => {
+    setRevealNotice(message);
+    setNoticeFocusRequest(navigationIntent.current);
+  }, []);
+  useLayoutEffect(() => {
+    if (sourceInfoFocusRequest && sourceInfoFocusRequest === navigationIntent.current) sourceInformationHeading.current?.focus();
+  }, [sourceInfoFocusRequest]);
+  useLayoutEffect(() => {
+    if (noticeFocusRequest && noticeFocusRequest === navigationIntent.current) revealNoticeElement.current?.focus();
+  }, [noticeFocusRequest]);
   useLayoutEffect(() => {
     if (!informationFocusRequest) return;
     // Only an explicit Show gesture requests a keyboard destination. Ordinary
@@ -501,26 +520,26 @@ export function App() {
   }, [activateFile, invoke, showSurface]);
 
   const revealTaskReference = useCallback(async (ref: TaskFileRef) => {
-    if (!validTaskReference(ref)) { setRevealNotice("Unsupported reference: only canonical relative working-file paths can be revealed."); return; }
+    if (!validTaskReference(ref)) { reportRevealFailure("Unsupported reference: only canonical relative working-file paths can be revealed."); return; }
     const intent = ++navigationIntent.current;
     const coreGeneration = coreGenerationRef.current;
     const prior = fileTabsRef.current.find((tab) => tab.path === ref.path);
     setRevealNotice(`Opening working file ${ref.path}…`);
     let tab = prior;
     if (prior && !protectsBuffer(prior)) {
-      if (prior.status === "loading") { setRevealNotice("Source observation is already in progress; Reveal again when it settles."); return; }
+      if (prior.status === "loading") { reportRevealFailure("Source observation is already in progress; Reveal again when it settles."); return; }
       const openGeneration = openGenerationsRef.current.get(ref.path);
       const eventSequenceBeforeRead = fileEventsRef.current.get(ref.path)?.sequence ?? 0;
       if (prior.status === "error") {
         const watch = await invoke({ type: "file.watch", requestId: requestId(), protocolVersion: PROTOCOL_VERSION, path: ref.path });
         if (intent !== navigationIntent.current || coreGeneration !== coreGenerationRef.current) return;
-        if (!watch?.ok) { setRevealNotice(watch && !watch.ok ? `${watch.error.code}: ${watch.error.message}` : "CORE_UNAVAILABLE: source observation interrupted."); return; }
+        if (!watch?.ok) { reportRevealFailure(watch && !watch.ok ? `${watch.error.code}: ${watch.error.message}` : "CORE_UNAVAILABLE: source observation interrupted."); return; }
       }
       const response = await invoke({ type: "file.read", requestId: requestId(), protocolVersion: PROTOCOL_VERSION, path: ref.path });
       if (intent !== navigationIntent.current || coreGeneration !== coreGenerationRef.current ||
           openGenerationsRef.current.get(ref.path) !== openGeneration || !desiredFilesRef.current.has(ref.path)) return;
       if (!response?.ok || response.file?.kind !== "read") {
-        setRevealNotice(response && !response.ok ? `${response.error.code}: ${response.error.message}` : "CORE_UNAVAILABLE: source read was interrupted."); return;
+        reportRevealFailure(response && !response.ok ? `${response.error.code}: ${response.error.message}` : "CORE_UNAVAILABLE: source read was interrupted."); return;
       }
       const file = response.file;
       const current = fileTabsRef.current.find((item) => item.path === ref.path);
@@ -528,22 +547,34 @@ export function App() {
       if (protectsBuffer(current)) tab = current;
       else {
         const latest = fileEventsRef.current.get(ref.path);
-        if (latest && latest.sequence > eventSequenceBeforeRead && latest.revision !== file.revision) { setRevealNotice("Working file changed during Reveal; existing source and cursor retained. Try again after observation settles."); return; }
+        if (latest && latest.sequence > eventSequenceBeforeRead && latest.revision !== file.revision) { reportRevealFailure("Working file changed during Reveal; existing source and cursor retained. Try again after observation settles."); return; }
         tab = { ...current, content: file.content, savedContent: file.content, revision: file.revision, status: "saved", message: "Watching the working file", flash: null };
         const updated = tab;
         fileTabsRef.current = fileTabsRef.current.map((item) => item.path === ref.path ? updated : item);
         setFileTabs((tabs) => tabs.map((item) => item.path === ref.path ? updated : item));
       }
     } else if (!prior) tab = await openFile(ref.path, false, true) ?? undefined;
+    // A rejected candidate is not an opened source tab. Drop only this new,
+    // still-empty background failure, never an existing or activated buffer.
+    const failedBackground = fileTabsRef.current.find((item) => item.path === ref.path);
+    if (mounted.current && coreGeneration === coreGenerationRef.current && !prior && tab?.status === "error" && !tab.revision && failedBackground?.status === "error" &&
+        !failedBackground.revision && !protectsBuffer(failedBackground) && activeSurfaceRef.current !== ref.path) {
+      desiredFilesRef.current.delete(ref.path);
+      openGenerationsRef.current.set(ref.path, (openGenerationsRef.current.get(ref.path) ?? 0) + 1);
+      openingFilesRef.current.delete(ref.path);
+      fileTabsRef.current = fileTabsRef.current.filter((item) => item.path !== ref.path);
+      setFileTabs((tabs) => tabs.filter((item) => item.path !== ref.path));
+      void invoke({ type: "file.unwatch", requestId: requestId(), protocolVersion: PROTOCOL_VERSION, path: ref.path });
+    }
     if (intent !== navigationIntent.current || coreGeneration !== coreGenerationRef.current) return;
     if (!tab || !tab.revision || tab.status === "error" && !protectsBuffer(tab)) {
-      setRevealNotice(tab?.message ?? "CORE_UNAVAILABLE: source opening was interrupted; previous source retained."); return;
+      reportRevealFailure(tab?.message ?? "CORE_UNAVAILABLE: source opening was interrupted; previous source retained."); return;
     }
     const target = taskLineTarget(tab, ref.line);
     activateFile(ref.path);
     setRevealNotice(target.notice);
-    setSourceNavigation(target.line === null ? null : { path: ref.path, content: tab.savedContent, line: target.line, nonce: intent });
-  }, [activateFile, invoke, openFile]);
+    setSourceNavigation({ path: ref.path, content: tab.content, line: target.line, nonce: intent, focus: true });
+  }, [activateFile, invoke, openFile, reportRevealFailure]);
 
   const closeFile = useCallback((path: string) => {
     const tab = fileTabsRef.current.find((candidate) => candidate.path === path);
@@ -823,7 +854,7 @@ export function App() {
             {activeFile.revision ? <EditorPane key={activeFile.path} content={activeFile.content} flash={activeFile.flash}
               memory={(() => { let memory = editorMemories.current.get(activeFile.path); if (!memory) { memory = { state: null }; editorMemories.current.set(activeFile.path, memory); } return memory; })()}
               navigation={sourceNavigation?.path === activeFile.path ? sourceNavigation : null}
-              onNavigation={(nonce, applied) => { setSourceNavigation((current) => current?.nonce === nonce ? null : current); if (!applied) setRevealNotice("Working buffer changed before line navigation; cursor retained. Reveal again after reconciling source."); }} onChange={(content) => {
+              onNavigation={(nonce, applied) => { setSourceNavigation((current) => current?.nonce === nonce ? null : current); if (!applied) reportRevealFailure("Working buffer changed before line navigation; cursor retained. Reveal again after reconciling source."); }} onChange={(content) => {
               const update = (tab: FileTab): FileTab => {
               if (tab.path !== activeFile.path) return tab;
               const unresolved = ["conflict", "unknown", "error"].includes(tab.status);
@@ -838,10 +869,10 @@ export function App() {
       </section>
 
       <aside id="information-panel" aria-label="Information panel" className="instrument-panel panel">
-        {revealNotice ? <p className="tasks-reveal-notice" role="status" tabIndex={0}>{revealNotice}</p> : null}
-        {informationView === "task" ? <TaskDetail returnButtonRef={taskReturnButton} selectedTaskId={tasks.selectedTaskId} snapshot={tasks.observation?.snapshot ?? null} detail={tasks.detail} detailRevision={tasks.detailRevision} detailStale={tasks.detailStale || tasks.observation?.status !== "observed" || Boolean(tasks.notice)} reading={tasks.reading} notice={tasks.detailNotice} onSelect={selectTask} onReveal={(ref) => { void revealTaskReference(ref); }} onReturnToSource={sourceInformation} /> : <>
+        {revealNotice ? <p ref={revealNoticeElement} className="tasks-reveal-notice" role="status" tabIndex={0}>{revealNotice}</p> : null}
+        {informationView === "task" ? <TaskDetail returnButtonRef={taskReturnButton} selectedTaskId={tasks.selectedTaskId} snapshot={tasks.observation?.snapshot ?? null} detail={tasks.detail} detailRevision={tasks.detailRevision} detailStale={tasks.detailStale || tasks.observation?.status !== "observed" || Boolean(tasks.notice)} reading={tasks.reading} notice={tasks.detailNotice} onSelect={selectTask} onReveal={(ref) => { void revealTaskReference(ref); }} onReturnToSource={returnToSourceInformation} /> : <>
         {tasks.selectedTaskId ? <button className="tasks-show-details" onClick={showTaskDetails}>Show task details</button> : null}
-        <div className="instrument-heading"><div><span className="eyebrow">contextual instruments</span><h2>{selectedConnection?.label ?? focusLabel(snapshot.focus)}</h2></div><button>•••</button></div>
+        <div className="instrument-heading"><div><span className="eyebrow">contextual instruments</span><h2 ref={sourceInformationHeading} tabIndex={-1}>{selectedConnection?.label ?? focusLabel(snapshot.focus)}</h2></div><button>•••</button></div>
         <div className="breadcrumbs">world / {selectedConnection ? "connection" : snapshot.focus.domain} / <b>{selectedConnection?.id ?? focusLabel(snapshot.focus)}</b></div>
         <div className="widget-grid">
           {selectedConnection ? <article className="widget widget-list connection-widget"><header><span>{selectedConnection.kind} connection</span><i title={`${selectedConnection.provenance[0]?.sourceKind}: ${selectedConnection.provenance[0]?.uri}`} /></header><div className="connection-flow"><button onClick={() => selectFocus(selectedConnection.source.focus)}>{selectedConnection.source.label}</button><span>→</span><button onClick={() => selectFocus(selectedConnection.target.focus)}>{selectedConnection.target.label}</button></div>{selectedConnection.contract ? <small>{selectedConnection.contract}</small> : null}<code>{selectedConnection.provenance[0]?.uri}</code></article> : null}

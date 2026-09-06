@@ -112,7 +112,8 @@ describe("TaskBridgeClient read-only observation scheduling", () => {
     void h.client.refresh(); h.snapshot({ ...taskObservationFixture(status, false), sequence: 3 }); await drain();
     expect(h.client.getSnapshot().observation).toMatchObject({ status, snapshot: old.observation!.snapshot });
     expect(h.client.getSnapshot().detail).toBe(old.detail);
-    expect(h.client.getSnapshot().notice).toContain("TASK_");
+    expect(h.client.getSnapshot().observation?.reason?.code).toContain("TASK_");
+    expect(h.client.getSnapshot().notice).toBeNull();
     expect(h.client.getSnapshot().refreshing).toBe(false);
   });
 
@@ -128,6 +129,36 @@ describe("TaskBridgeClient read-only observation scheduling", () => {
     await drain(); expect(h.client.getSnapshot()).toMatchObject({ refreshing: false, detail: old.detail, observation: old.observation });
     expect(h.client.getSnapshot().notice).toContain(code); const count = h.calls.length;
     await drain(); expect(h.calls).toHaveLength(count);
+  });
+
+  it("keeps the prior transport warning during the next bounded pending request until a valid observation replaces it", async () => {
+    const h = await observed(); void h.client.refresh(); const failed = h.latest("tasks.snapshot");
+    failed.resolve({ protocolVersion: PROTOCOL_VERSION, requestId: failed.request.requestId,
+      ok: false, error: { code: "CORE_TIMEOUT", message: "Read did not complete." } }); await drain();
+    const notice = h.client.getSnapshot().notice;
+    expect(notice).toContain("CORE_TIMEOUT");
+    void h.client.refresh();
+    expect(h.client.getSnapshot()).toMatchObject({ notice, refreshing: true });
+    await vi.advanceTimersByTimeAsync(9000);
+    expect(h.client.getSnapshot()).toMatchObject({ notice, refreshing: true });
+    expect(h.calls).toHaveLength(3);
+    h.snapshot({ ...taskObservationFixture(), sequence: 2 }); await drain();
+    expect(h.client.getSnapshot()).toMatchObject({ notice: null, refreshing: false });
+  });
+
+  it("does not automatically repeat the initial full scan after failure or on reopening", async () => {
+    const h = harness(); h.client.setVisible(true); const first = h.latest("tasks.snapshot");
+    expect(first.request).toMatchObject({ refresh: true });
+    first.resolve({ protocolVersion: PROTOCOL_VERSION, requestId: first.request.requestId,
+      ok: false, error: { code: "CORE_TIMEOUT", message: "Initial scan did not complete." } }); await drain();
+    h.client.setVisible(false); h.client.setVisible(true);
+    expect(h.latest("tasks.snapshot").request).toMatchObject({ refresh: false });
+    h.snapshot(taskObservationFixture("unavailable", false)); await drain();
+    await vi.advanceTimersByTimeAsync(5000);
+    expect(h.latest("tasks.snapshot").request).toMatchObject({ refresh: false });
+    h.snapshot({ ...taskObservationFixture("unavailable", false), sequence: 2 }); await drain();
+    expect(h.calls.filter((call) => call.request.type === "tasks.snapshot" && call.request.refresh)).toHaveLength(1);
+    void h.client.refresh(); expect(h.latest("tasks.snapshot").request).toMatchObject({ refresh: true });
   });
 
   it("does not expose a thrown bridge error even if it spoofs a known error prefix", async () => {
@@ -162,6 +193,31 @@ describe("TaskBridgeClient authority and selection", () => {
     expect(h.client.getSnapshot().observation).toBe(old);
     expect(h.client.getSnapshot()).not.toHaveProperty("focus");
     expect(h.client.getSnapshot()).not.toHaveProperty("workspace");
+  });
+
+  it("accepts a pinned detail even when a later-sequenced cheap snapshot completes first", async () => {
+    const h = await observed(); h.client.select("task-fixture"); const detail = h.latest("tasks.read");
+    await vi.advanceTimersByTimeAsync(5000);
+    h.snapshot({ ...taskObservationFixture(), sequence: 3 }); await drain();
+    h.read({ ...taskReadFixture(), sequence: 2 }, detail); await drain();
+    expect(h.client.getSnapshot()).toMatchObject({ detail: { id: "task-fixture" }, reading: false,
+      detailStale: false, detailNotice: null, observation: { sequence: 3 } });
+  });
+
+  it("accepts a snapshot even when a later-sequenced detail completes first", async () => {
+    const h = await observed(); await vi.advanceTimersByTimeAsync(5000); const pending = h.latest("tasks.snapshot");
+    h.client.select("task-fixture"); h.read({ ...taskReadFixture(), sequence: 3 }); await drain();
+    h.snapshot({ ...taskObservationFixture("stale"), sequence: 2 }, pending); await drain();
+    expect(h.client.getSnapshot()).toMatchObject({ observation: { status: "stale", sequence: 2 }, notice: null,
+      detail: { id: "task-fixture" }, detailStale: false, reading: false });
+  });
+
+  it("still rejects an older detail sequence within its own result stream", async () => {
+    const h = await observed(); h.client.select("task-fixture"); h.read({ ...taskReadFixture(), sequence: 5 }); await drain();
+    const old = h.client.getSnapshot().detail;
+    h.client.select("task-fixture"); h.read({ ...taskReadFixture(), sequence: 4 }); await drain();
+    expect(h.client.getSnapshot()).toMatchObject({ detail: old, detailStale: true, reading: false });
+    expect(h.client.getSnapshot().detailNotice).toContain("became stale");
   });
 
   it("rejects an incoherent object algorithm when retaining a snapshot across a failed attempt", async () => {
