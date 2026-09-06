@@ -40,6 +40,10 @@ log_events:
   who: Ted Smith
   what: blocked by repo-task-integration-t3
   comment: ""
+- time: 2026-09-06T15:30:08-00:00
+  who: Ted Smith
+  what: blocked by repo-task-browser-followups
+  comment: ""
 blocks:
 - repo-task-draft-provenance
 blocked_by:
@@ -48,3 +52,4 @@ blocked_by:
 - repo-task-reader-t1
 - repo-task-ui-t2
 - repo-task-integration-t3
+- repo-task-browser-followups
