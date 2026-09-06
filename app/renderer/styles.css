@@ -308,4 +308,5 @@ button.truth-dot:disabled { cursor: wait; opacity: 0.72; }
 }
 /* A quiet in-window diagnostic, never a notification or focus-taking window. */
 .workbench:has(.lifecycle-notice) { padding-bottom: 28px; }
+#root:has(.lifecycle-notice) { scroll-padding-bottom: 28px; }
 .lifecycle-notice { position: fixed; bottom: 0; left: 0; right: 0; height: 28px; overflow: auto; white-space: nowrap; font-size: 11px; color: #b7c9bb; background: #102020; padding: 4px 8px; border-top: 1px solid var(--line); z-index: 8; }
