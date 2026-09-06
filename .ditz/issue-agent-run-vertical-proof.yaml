@@ -42,6 +42,10 @@ log_events:
   who: Ted Smith
   what: blocked by agent-run-effective-policy
   comment: ""
+- time: 2026-09-06T04:57:32-00:00
+  who: Ted Smith
+  what: blocked by agent-run-post-admission-error-classification
+  comment: ""
 blocks:
 - first-real-agent-run-surface
 - agent-run-write-authority
@@ -50,3 +54,4 @@ blocked_by:
 - agent-run-workbench
 - agent-run-context-evidence
 - agent-run-effective-policy
+- agent-run-post-admission-error-classification
