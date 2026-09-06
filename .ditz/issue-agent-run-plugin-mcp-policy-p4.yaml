@@ -8,8 +8,8 @@ type: task
 component: default
 release:
 reporter: Ted Smith <tedks@riseup.net>
-status: in_progress
-disposition:
+status: closed
+disposition: fixed
 creation_time: 2026-09-06T06:29:39-00:00
 references: []
 log_events:
@@ -35,5 +35,15 @@ log_events:
     (owned X11 capture confirms working-source change); full stable-tree rerun required,
     no product/harness defect claimed. Hosted34016892153 failed pre-Codex SEED_PIPE_FAILED/UNRECOGNIZED_STDERR,
     existing canonical issue retained. No production availability/model/adoption.'
+- time: 2026-09-06T06:52:45-00:00
+  who: Ted Smith
+  what: 'closed: fixed'
+  comment: 'PR26 normal3c50d7f delivers one fixed no-turn local legacy plugin MCP
+    exclusion proof: enabled full handshake, matched feature-disabled created thread/no
+    named startup, reached required-init failure. Actual merged25build/all9local/600tests50files
+    and both manual3plugin+6static controls pass, all28/26boundaries each, clean no
+    generation. Native+Google CLEAN; Anthropic session-limit MISSING; hosted earlier
+    SEEDPIPE failure under local waiver. Broader hook/executor/remote/telemetry/independent-observer/credentialed
+    gates open.'
 blocks:
 - agent-run-offline-activation-proof
