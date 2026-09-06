@@ -68,3 +68,10 @@ log_events:
     virtual test98.5s, cleanup_complete=1. Earlier Build/Test passed. E2 final local
     virtual28.1s and all286 tests/all5 Bazel targets/build passed. No new harness
     timeout change or hosted-green claim.
+- time: 2026-09-06T04:29:45-00:00
+  who: Ted Smith
+  what: commented
+  comment: R2 hosted run 34011115120 again failed dedicated virtual smoke waiting
+    90000 ms for Consistent while Reconciling; local final runtime and 404-test aggregate
+    all five targets plus selective reload and prepared-context UI pass. Conditional
+    user local-verification waiver used, not hosted green.
