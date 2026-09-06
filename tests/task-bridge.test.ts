@@ -50,6 +50,12 @@ vi.mock("node:fs/promises", async (importOriginal) => {
     .map(([name]) => [name, (...args: unknown[]) => { boundary.filesystem(name, ...args); throw new Error("Unexpected filesystem access"); }]));
   return { ...actual, ...blocked, default: { ...actual, ...blocked } };
 });
+vi.mock("node:fs", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("node:fs")>();
+  const blocked = Object.fromEntries(Object.entries(actual).filter(([, value]) => typeof value === "function")
+    .map(([name]) => [name, (...args: unknown[]) => { boundary.filesystem(name, ...args); throw new Error("Unexpected filesystem access"); }]));
+  return { ...actual, ...blocked, default: { ...actual, ...blocked } };
+});
 
 const snapshotRequest = (requestId = "tasks-snapshot", refresh = true): CoreRequest => ({
   protocolVersion: PROTOCOL_VERSION, requestId, type: "tasks.snapshot", worldId: TASK_FIXTURE_WORLD.worldId, refresh,
