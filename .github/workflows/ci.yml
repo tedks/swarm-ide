@@ -13,7 +13,9 @@ on:
 
 jobs:
   build-and-test:
-    runs-on: ubuntu-latest
+    # Pin the OS family; weekly image revisions remain visible in Set up job.
+    # Required namespace support is checked, never assumed from this label.
+    runs-on: ubuntu-24.04
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -35,16 +37,29 @@ jobs:
 
       # --- end of shared preamble; steps below are repo-specific ---
 
+      - name: Verify Linux namespace prerequisites
+        run: |
+          set -o pipefail
+          nix develop --command bazel run //tools/ci:linux-prerequisites --jobs=3 2>&1 | tee "$RUNNER_TEMP/linux-prerequisites.log"
+
+      - name: Upload Linux prerequisite evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-prerequisites
+          path: ${{ runner.temp }}/linux-prerequisites.log
+          if-no-files-found: warn
+
       - name: Install JavaScript dependencies
         run: nix develop --command pnpm install --frozen-lockfile
 
       - name: Build
-        run: nix develop --command bazel build //...
+        run: nix develop --command bazel build //... --jobs=3
 
       - name: Test
         env:
           SWARM_ELECTRON_NO_SANDBOX: "1"
-        run: nix develop --command bazel test //... --test_tag_filters=-desktop --test_output=errors
+        run: nix develop --command bazel test //... --jobs=3 --test_tag_filters=-desktop --test_output=errors --nocache_test_results
 
       - name: Virtual desktop smoke
         env:
@@ -56,7 +71,7 @@ jobs:
           # chrome-sandbox. Electron's renderer API restrictions and context
           # isolation remain configured, but Chromium's OS sandbox is off.
           SWARM_ELECTRON_NO_SANDBOX: "1"
-        run: nix develop --command bazel test //tools:virtual-desktop-smoke-test //tools:virtual-desktop-agent-test --jobs=3 --test_output=streamed --nocache_test_results
+        run: nix develop --command bazel test //tools:virtual-desktop-smoke-test //tools:virtual-desktop-agent-test //tools:virtual-desktop-agent-rehearsal-test --jobs=3 --test_output=streamed --nocache_test_results
 
       - name: Unpack virtual desktop evidence
         if: always()
@@ -96,4 +111,24 @@ jobs:
         with:
           name: agent-journey-evidence
           path: ${{ runner.temp }}/agent-journey-evidence/**
+          if-no-files-found: warn
+
+      - name: Unpack human rehearsal evidence
+        if: always()
+        run: |
+          evidence="$RUNNER_TEMP/agent-rehearsal-evidence"
+          mkdir -p "$evidence"
+          archive="$(find bazel-testlogs/tools/virtual-desktop-agent-rehearsal-test/test.outputs -name outputs.zip -print -quit 2>/dev/null || true)"
+          if [[ -n "$archive" ]]; then
+            unzip -q "$archive" -d "$evidence"
+          else
+            printf 'No rehearsal archive was produced. Inspect the job log.\n' >"$evidence/README.txt"
+          fi
+
+      - name: Upload human rehearsal evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: agent-rehearsal-evidence
+          path: ${{ runner.temp }}/agent-rehearsal-evidence/**
           if-no-files-found: warn
