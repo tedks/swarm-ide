@@ -26,6 +26,27 @@ vi.mock("../app/renderer/GraphPane", () => ({
 
 import { App } from "../app/renderer/App";
 describe("selective live recovery", () => {
+  it("keeps initial loading safe until topology evidence arrives", async () => {
+    shell();
+    const fresh = initialSnapshot();
+    let resolveSnapshot!: (response: CoreResponse) => void;
+    const request = vi.fn(async (input: CoreRequest): Promise<CoreResponse> => {
+      if (input.type === "workspace.snapshot") return new Promise((resolve) => { resolveSnapshot = resolve; });
+      return { protocolVersion: PROTOCOL_VERSION, requestId: input.requestId, ok: true, sequence: 0, snapshot: fresh };
+    });
+    Object.defineProperty(window, "swarm", { configurable: true, value: { request, onEvent: () => () => undefined } });
+    installViewBridge(); render(<App />);
+    await screen.findByText("Opening the working world…");
+    expect(document.title).not.toContain(" — Topology ");
+    await act(async () => resolveSnapshot({ protocolVersion: PROTOCOL_VERSION, requestId: "initial", ok: true, sequence: 0, snapshot: fresh }));
+    await waitFor(() => expect(document.title).toContain(` — Topology ${fresh.reconciliation.epoch}:${fresh.reconciliation.status}`));
+  });
+  it("exposes the observed topology epoch and status as persistent title evidence", async () => {
+    shell(); const source = files();
+    render(<App />); await open(source.path);
+    const expected = initialSnapshot(paymentsFileFocus).reconciliation;
+    await waitFor(() => expect(document.title).toContain(` — Topology ${expected.epoch}:${expected.status}`));
+  });
 it("waits for a fresh generation snapshot before restoring pathless service focus", async () => {
     const lifecycle = shell();
     const old = initialSnapshot();
@@ -42,6 +63,7 @@ it("waits for a fresh generation snapshot before restoring pathless service focu
     await waitFor(() => expect(request.mock.calls.some(([r]) => r.type === "workspace.snapshot")).toBe(true));
     expect(request.mock.calls.some(([r]) => r.type === "focus.select")).toBe(false);
     await act(async () => resolveSnapshot({ protocolVersion: PROTOCOL_VERSION, requestId: "fresh", ok: true, sequence: 0, snapshot: fresh }));
+    await waitFor(() => expect(document.title).toContain(` — Topology ${fresh.reconciliation.epoch}:${fresh.reconciliation.status}`));
     await waitFor(() => expect(request.mock.calls.some(([r]) => r.type === "focus.select" && r.focus.key === selected.key && r.focus.revisionId === fresh.revisions.working.id)).toBe(true));
     expect(lifecycle.bridge.reload).not.toHaveBeenCalled();
   });

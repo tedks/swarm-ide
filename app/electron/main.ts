@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, Menu, utilityProcess, type IpcMainInvokeEvent } from "electron";
+import { app, BrowserWindow, ipcMain, Menu, type IpcMainInvokeEvent } from "electron";
 import { readFile } from "node:fs/promises";
 import { watchFile, unwatchFile } from "node:fs";
 import { join } from "node:path";
@@ -7,6 +7,7 @@ import { VIEW_SHELL_ZOOM_CHANNEL, applyInterfaceZoom, type ViewShellResult } fro
 import { DevUpdateSchema, LIFECYCLE_CHANNEL, LIFECYCLE_REQUEST_CHANNEL, LifecycleRequestSchema, type Lifecycle } from "../lifecycle";
 import { applicationMenuTemplate } from "./menu";
 import { CoreSupervisor } from "./core-supervisor";
+import { launchLocalCore } from "./core-launch";
 
 const REQUEST_CHANNEL = "swarm:request";
 const EVENT_CHANNEL = "swarm:event";
@@ -28,10 +29,7 @@ function publish(update: Partial<Lifecycle>) {
 }
 const supervisor = new CoreSupervisor({
   launch() {
-    const child = utilityProcess.fork(join(__dirname, "../../core/worker.js"), [], {
-      serviceName: "swarm-ide-local-core", stdio: "pipe",
-      env: { ...process.env, SWARM_WORKSPACE_ROOT: process.cwd(), SWARM_AGENT_STORE_ROOT: join(app.getPath("userData"), "agent-runs") },
-    });
+    const child = launchLocalCore(process.cwd(), join(app.getPath("userData"), "agent-runs"));
     child.stdout?.on("data", (chunk) => process.stdout.write(`[core] ${chunk}`));
     child.stderr?.on("data", (chunk) => process.stderr.write(`[core] ${chunk}`));
     child.on("spawn", () => console.log(`[core] spawned pid=${child.pid} generation=${supervisor.state.generation}`));

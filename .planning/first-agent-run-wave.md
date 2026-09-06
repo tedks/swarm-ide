@@ -39,12 +39,20 @@ application of intelligence before queues, swarm coordination or write authority
 - [x] (2026-09-06) R2 final code c6aa292: 340 tests across 33 files, full 19-target build and all five uncached local test targets passed. The final virtual reload scenario took 31.739 seconds, cleanup_complete=1; renderer 173 ms, core 501 ms and crash 407 ms, preserving native window/workspace/focus and dirty-buffer protection.
 - [x] (2026-09-06) R2 council converged CLEAN in OpenAI native and Google seats after fixing missing push-only storage-failure publication and safely recovering abandoned private snapshot temporaries. Anthropic timed out without a verdict and is explicitly missing, not approval. Hosted run 34011115120 failed its dedicated virtual smoke's known 90-second Reconciling wait; the conditional local-verification waiver applies, not a green-CI claim. PR #16 records the normal merge transaction and landing evidence.
 - [x] (2026-09-06) Reviewed integration d8cf40d combines R2 code with normal-merged W2 PR #15 (6ead046), E2 PR #14 (a4ae558) and P1 PR #13 (2f3ca7f). Full local build and all five uncached targets passed; 404 tests across 36 files. W2 supplies the actual bridge cockpit, E2 supplies adversarial fixtures, and R2 supplies durable lifecycle and separately tested owned process cleanup. No real provider was launched or watched master adopted.
-- [ ] Separate test-only worker/virtual execution journey: agent-run-runtime-r2-vertical and agent-run-virtual-scenario-e2. P1 supplied no effective-policy attestation; ROOT's separate policy gate remains closed.
+- [x] (2026-09-06, I1) Separate test-only worker/virtual execution journey delivered in agent-integrated-journey from normal merge e443b38; agent-run-runtime-r2-vertical and agent-run-virtual-scenario-e2 are the completed slice. Two small native helpers supplied fixture composition/tests and fixed desktop driver; I1 integrated and verified them. No policy promotion.
+- [x] (2026-09-06, I1 checkpoint b9782ea) Actual fixed-focus disk draft, admission, literal stream, accepted/stale steering, Stop/completion versus cleanup, history paging/Reveal and real core crash/unknown/no-replay journey passed on owned virtual X11. Reviewed W2B fa263e7 is included. Full21-target build,435 tests and all6 uncached local targets passed. Deliberate failure after active streaming also retained diagnostics and confirmed owned cleanup. Review fixes/final aggregate landing remain pending, not live-provider proof.
+- [x] (2026-09-06, I1 final code14d6da7) Reviewed W2B/P2/C1 normal merges included; full24-target build and all8 uncached local targets passed,474 tests across43 files. Virtual agent journey3.189s automation/4.936s total, cleanup_complete=1; same-head admitted/streaming failure probe returned expected nonzero and cleanup1. OpenAI native and Google CLEAN fixpoint; Anthropic600s timeout without verdict, explicitly missing. Hosted34013611396 was in progress under conditional local-proof waiver, not green. PR20 records the normal-merge transaction; watched master/app unadopted.
 - [ ] R3/W3/E3: integrate, demonstrate one real read-only run, finish relevant local gates/review and normal-merge the feature PRs.
 - [ ] ROOT deliberately adopts the integrated build if native-main changes require restart; do not silently replace the watched app.
 
 ## Surprises & Discoveries
 
+
+I1's native reviewer identified a test-only timing hazard: screenshot capture,
+PNG encoding and disk I/O were inside R2's two-second disposal deadline. The
+journey now asserts pending cleanup, releases the manual fixture gate, and only
+then captures the completed/cleaned view. The production deadline is unchanged.
+Optional failure screenshots cannot suppress the independent JSON/socket error.
 
 The installed CLI is 0.146.0 while ROOT uses a complete pinned 0.153.4 bundle.
 Both locally generated stable schemas support app-server steering and interrupt;
@@ -68,6 +76,17 @@ invite replay. Existing workspace and file projections must remain unchanged.
 
 ## Decision Log
 
+
+Decision (2026-09-06, I1): production worker construction remains a fixed entry
+calling startCoreWorker without overrides. A separately compiled test-only entry
+injects E2's deterministic adapter into the real service/store/E1 disk context.
+The actual Electron main/supervisor/preload and renderer are reused. A fixed
+test-build alias observes the exact owned utility process; private harness
+controls never join the six public commands or normal development environment.
+Only the owned virtual-X11 scenario can trigger compiled automation. In-process
+fixture disposal confirms no external process existed, not namespace policy or
+provider cleanup. Crash recovery still blocks on unknown ownership exactly as
+production does; it never upgrades knowledge from the test harness.
 
 Decision (2026-09-06, ROOT delegated overnight): intentional core replacement
 closes admission and waits at most 1000 milliseconds for outstanding agent
@@ -198,6 +217,20 @@ completed/cleaned-up baseline, so each assertion isolates its intended rule.
 
 ## Outcomes & Retrospective
 
+
+I1 joins the previously separate seams through an actual owned desktop: the
+test provider is deterministic, but admission/storage, public requests, live
+events, renderer controls and crash recovery are real. The first complete
+journey took roughly3 seconds of fixed automation; this is not model latency.
+`docs/agent-journey.md` explains exact targets, evidence and failure mode. The
+provider and process-owner proof remain deliberately separate; production is
+still unavailable. Final executable14d6da7 passed474 tests/all8 local targets,
+full build, repeated actual journey and active-failure cleanup, including the
+reviewed reload-protection/policy-test/cold-build slices. OpenAI and Google
+converged CLEAN; Anthropic timed out without a verdict. Dedicated hosted CI now
+includes the new journey and its separate evidence archive, but hosted status
+was still in progress at final local verification. PR20 and the executive
+handoff record actual merge/integration state; neither claims a model turn.
 
 R2 final code c6aa292 joins durable admission, bounded event/command queues,
 steering intent/outcomes, Stop races and recovery against the actual file store.
@@ -599,3 +632,7 @@ nonlaunchable production scope and smallest independently reviewable continuatio
 Plan revision note (2026-09-06, R2 convergence): record exact final code tests,
 review dispositions, hosted failure, reviewed peer integration and the remaining
 test-worker/policy/adoption gates without claiming a real model run.
+
+Plan revision note (2026-09-06, I1 start): split fixed production composition
+from explicit test bootstrap, retain all runtime state/unknown/no-replay rules,
+and implement one credential-free vertical journey before any live-policy gate.
