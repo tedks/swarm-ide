@@ -1,0 +1,16 @@
+id: owned-namespace-cleanup-attestation-race
+title: Investigate transient live namespace member after confirmed cleanup
+desc: ""
+type: bugfix
+component: default
+release:
+reporter: Ted Smith <tedks@riseup.net>
+status: unstarted
+disposition:
+creation_time: 2026-09-06T17:14:08-00:00
+references: []
+log_events:
+- time: 2026-09-06T17:14:08-00:00
+  who: Ted Smith
+  what: created
+  comment: ""
