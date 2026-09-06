@@ -1,0 +1,18 @@
+id: first-agent-run-contract-gate
+title: Freeze the first real agent-run contract and parallel build plan
+desc: Design-only gate after stable-window adoption. Choose real adapter; freeze typed
+  lifecycle/context/recovery/UI contracts; split at most three bounded builders. No
+  implementation in this issue.
+type: task
+component: default
+release:
+reporter: Ted Smith <tedks@riseup.net>
+status: unstarted
+disposition:
+creation_time: 2026-09-06T01:19:04-00:00
+references: []
+log_events:
+- time: 2026-09-06T01:19:04-00:00
+  who: Ted Smith
+  what: created
+  comment: ""
