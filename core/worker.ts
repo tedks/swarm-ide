@@ -14,6 +14,7 @@ import {
 } from "../protocol/schema";
 import { AgentEventSchema, type AgentEvent, type AgentResult } from "../protocol/agents";
 import { unavailableAgentRequest, unavailableAgentSnapshot } from "./agents/unavailable";
+import { createProductionAgentService, type ProductionAgentService } from "./agents/production";
 import { readWorkspaceFile, WorkspaceFileError, writeWorkspaceFile } from "./files";
 import { computeWorkingWorldFingerprint } from "./fingerprint";
 import { RealWorkspaceProvider } from "./provider";
@@ -27,6 +28,29 @@ const requestIds = new BoundedRequestIds(512);
 const fileReadGenerations = new Map<string, number>();
 const providerPromise = RealWorkspaceProvider.create(workspaceRoot);
 let workingWorldObserver: WorkingWorldObserver | null = null;
+let shuttingDown = false;
+const agentServicePromise: Promise<ProductionAgentService | null> = providerPromise.then(async (provider) => {
+  // Absence is an explicitly unavailable bridge, useful for legacy/test boot.
+  // Production main always supplies its own app-data location, not renderer input.
+  if (!process.env.SWARM_AGENT_STORE_ROOT) return null;
+  try {
+    return await createProductionAgentService({ root: workspaceRoot, storeRoot: process.env.SWARM_AGENT_STORE_ROOT,
+      snapshot: () => provider.snapshot(), emit: publishAgents });
+  } catch {
+    console.warn("Agent history/context could not be initialized; execution is disabled. Raw diagnostics withheld.");
+    const error = { code: "STORAGE_UNAVAILABLE" as const, message: "Agent history or registered context could not be opened safely; execution is disabled." };
+    const snapshot = unavailableAgentSnapshot();
+    snapshot.capabilities.reason = error;
+    return { async request(request) {
+      return request.type === "agent.snapshot" ? { ok: true, value: { kind: "snapshot", snapshot } } : { ok: false, error };
+    }, async shutdown() {} } satisfies ProductionAgentService;
+  }
+});
+
+function publishAgents(snapshot: AgentEvent["snapshot"]): void {
+  post(AgentEventSchema.parse({ protocolVersion: PROTOCOL_VERSION, type: "agent.changed", sequence: ++sequence,
+    emittedAt: new Date().toISOString(), snapshot }));
+}
 
 function post(message: CoreResponse | CoreEvent | FileEvent | AgentEvent): void {
   process.parentPort?.postMessage(message);
@@ -95,17 +119,30 @@ const fileWatchers = new WorkspaceFileWatchers(
 );
 
 process.parentPort?.on("message", async (event) => {
+  // This private utility-process control is not in the public request schema.
+  if (event.data?.type === "core.shutdown") {
+    if (!shuttingDown) {
+      shuttingDown = true;
+      try {
+        await (await agentServicePromise)?.shutdown();
+        process.parentPort?.postMessage({ type: "core.shutdown.ready" });
+      } catch { /* No successful shutdown attestation; supervisor's deadline owns fallback. */ }
+    }
+    return;
+  }
   let requestId = "invalid-request";
   try {
     const request = parseCoreRequest(event.data);
     requestId = request.requestId;
+    if (shuttingDown) { post(fail(requestId, "CORE_UNAVAILABLE", "Core is shutting down; no operation was sent.")); return; }
     if (!requestIds.accept(requestId)) {
       post(fail(requestId, "DUPLICATE_REQUEST", "This request id has already been processed"));
       return;
     }
     const provider = await providerPromise;
     if (isAgentRequest(request)) {
-      const result = unavailableAgentRequest(request);
+      const service = await agentServicePromise;
+      const result = service ? await service.request(request) : unavailableAgentRequest(request);
       post(result.ok ? ok(requestId, provider.snapshot(), undefined, result.value)
         : fail(requestId, result.error.code, result.error.message));
       return;
@@ -162,7 +199,7 @@ process.parentPort?.on("message", async (event) => {
   }
 });
 
-void providerPromise.then((provider) => {
+void providerPromise.then(async (provider) => {
   workingWorldObserver = new WorkingWorldObserver(
     provider.snapshot().revisions.working.fingerprint,
     () => computeWorkingWorldFingerprint(workspaceRoot),
@@ -170,11 +207,10 @@ void providerPromise.then((provider) => {
     (error) => provider.markWorkingWorldUnknown(error.message, publish),
   );
   workingWorldObserver.start();
+  const service = await agentServicePromise;
   process.parentPort?.postMessage({ type: "core.ready" });
-  post(AgentEventSchema.parse({
-    protocolVersion: PROTOCOL_VERSION, type: "agent.changed", sequence: ++sequence,
-    emittedAt: new Date().toISOString(), snapshot: unavailableAgentSnapshot(),
-  }));
+  const initial = await service?.request({ protocolVersion: PROTOCOL_VERSION, requestId: "initial-agent-snapshot", type: "agent.snapshot" });
+  publishAgents(initial?.ok && initial.value.kind === "snapshot" ? initial.value.snapshot : unavailableAgentSnapshot());
 }).catch((error) => {
   console.error("Local core failed to open the workspace", error);
   process.parentPort?.postMessage({ type: "core.failed" });
