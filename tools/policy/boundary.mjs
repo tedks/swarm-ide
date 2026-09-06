@@ -90,9 +90,30 @@ export function boundedProcess(executable, args, { timeoutMs = 10000, input = ''
     return Promise.resolve({ ok: false, code: 'INVALID_LIMIT', cleanup: 'not-started' });
   }
   return new Promise(resolve => {
-    let child, timer, killTimer, finished = false, total = 0, reason = null;
-    const chunks = [];
-    const finish = (value) => { if (!finished) { finished = true; clearTimeout(timer); clearTimeout(killTimer); resolve(value); } };
+    let child, timer, killTimer, seedTimer, finished = false, total = 0, reason = null, stderrBytes = 0;
+    const chunks = [], stderrChunks = [];
+    // Diagnostic labels describe exact stderr observations, not inferred kernel/operator causes.
+    // Keep a small private prefix only; no stderr bytes are returned, including on unknown cleanup.
+    const bootstrapDiagnostic = () => {
+      const lines = Buffer.concat(stderrChunks).toString('utf8').split(/\r?\n/);
+      if (stderrBytes > 4096) lines.pop(); // A truncated partial line is not an exact observation.
+      let observation = stderrBytes ? 'UNRECOGNIZED_STDERR' : 'NO_STDERR';
+      for (const line of lines) {
+        if (line === 'bwrap: Creating new namespace failed: Operation not permitted') {
+          observation = 'NAMESPACE_OPERATION_NOT_PERMITTED'; break;
+        }
+        if (line === 'bwrap: Creating new namespace failed: Permission denied') {
+          observation = 'NAMESPACE_PERMISSION_DENIED'; break;
+        }
+      }
+      return { observation, truncated: stderrBytes > 4096 };
+    };
+    const finish = (value) => {
+      if (!finished) {
+        finished = true; clearTimeout(timer); clearTimeout(killTimer); clearTimeout(seedTimer);
+        resolve(!value.ok && seed ? { ...value, bootstrapDiagnostic: bootstrapDiagnostic() } : value);
+      }
+    };
     const fail = code => {
       if (finished) return;
       reason ??= code; child?.kill('SIGKILL');
@@ -104,12 +125,15 @@ export function boundedProcess(executable, args, { timeoutMs = 10000, input = ''
     try {
       // No shell, inherited socket/TTY/fds, loader hooks or user environment.
       child = spawn(executable, args, { env: { LANG: 'C.UTF-8' }, cwd: '/', stdio: seed ? ['pipe', 'pipe', 'pipe', 'ignore', 'pipe'] : ['pipe', 'pipe', 'pipe'] });
-      if (seed) { child.stdio[4].on('error', () => fail('SEED_PIPE_FAILED')); child.stdio[4].end(INSTALLATION_SEED); }
       timer = setTimeout(() => fail('DEADLINE'), timeoutMs);
       child.on('error', () => finish({ ok: false, code: 'START_FAILED', cleanup: 'not-started' }));
       for (const stream of [child.stdout, child.stderr]) {
         stream.on('error', () => fail('PIPE_FAILED'));
         stream.on('data', chunk => {
+          if (stream === child.stderr) {
+            if (stderrBytes < 4096) stderrChunks.push(chunk.subarray(0, 4096 - stderrBytes));
+            stderrBytes += chunk.length;
+          }
           total += chunk.length;
           if (total > LIMIT) fail('OUTPUT_LIMIT');
           else if (stream === child.stdout && !reason) chunks.push(chunk);
@@ -119,6 +143,16 @@ export function boundedProcess(executable, args, { timeoutMs = 10000, input = ''
       child.on('close', (code, signal) => finish(reason || code !== 0
         ? { ok: false, code: reason ?? 'PROCESS_FAILED', exitCode: code, signal, cleanup: 'reaped' }
         : { ok: true, stdout: Buffer.concat(chunks).toString('utf8'), cleanup: 'reaped' }));
+      if (seed) {
+        child.stdio[4].on('error', () => {
+          if (finished) return;
+          reason ??= 'SEED_PIPE_FAILED';
+          // A failed seed never permits acceptance. Briefly drain racing bootstrap stderr;
+          // the original deadline/output bounds still call fail() without this grace.
+          seedTimer ??= setTimeout(() => fail('SEED_PIPE_FAILED'), 100);
+        });
+        child.stdio[4].end(INSTALLATION_SEED);
+      }
       onSpawn?.(child);
       child.stdin.end(input);
     } catch { fail('START_FAILED'); finish({ ok: false, code: 'START_FAILED', cleanup: child ? 'unknown' : 'not-started' }); }

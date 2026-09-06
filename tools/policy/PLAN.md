@@ -14,7 +14,7 @@ mode. This is a development acceptance harness, never a product adapter.
 
 ## Progress
 
-- [x] (2026-09-06 05:34Z) P3: read inherited gates, official app-server documentation and pinned source; designated feature worktree starts from verified normal merge c52f959.
+- [x] (2026-09-06 05:20Z) P3: read inherited gates, official app-server documentation and pinned source; designated feature worktree starts from verified normal merge c52f959.
 - [ ] P3: executable required-stdio-MCP positive/negative activation controls with an explicit no-generation RPC allowlist.
 - [ ] P3: bounded seed-pipe bootstrap diagnostics and regressions; full local gates, council, normal PR merge and handoff.
 
@@ -146,5 +146,5 @@ Revision (2026-09-06 04:49Z): record observed runtime-state exception, actual of
 counterexamples, exact ownership approval and first review corrections.
 Revision (2026-09-06 04:53Z): record converged available council seats, actual local
 gates and clean normal integration of reviewed peer work before final landing.
-Revision (2026-09-06 05:34Z): begin P3's bounded executable activation increment,
+Revision (2026-09-06 05:20Z): begin P3's bounded executable activation increment,
 state assumptions and missing-trigger failure mode before implementation.

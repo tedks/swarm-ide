@@ -152,6 +152,16 @@ try {
     child.unref(); emit({ holding: true, namespace: readlinkSync('/proc/self/ns/pid'), descendant: child.pid });
     setInterval(() => {}, 1000);
   } else if (mode === 'flood') { for (;;) writeSync(1, 'x'.repeat(4096)); }
+  else if (mode === 'activate') {
+    const checks = await boundary();
+    if (Object.values(checks).some(value => value !== true)) emit({ status: 'BOUNDARY_UNAVAILABLE', checks, codexStarted: false });
+    else {
+      const { activate } = await import('./activation.mjs');
+      emit({ ...await activate(), checks, codexStarted: true });
+    }
+    // Namespace init exits too: it owns all traced Codex/canary descendants.
+    process.exit(0);
+  }
   else if (mode === 'inspect' || mode === 'inspect-trace') await inspect();
   else throw new Error('MODE_INVALID');
 } catch { emit({ status: 'INNER_CHECK_FAILED', codexStarted: false }); process.exitCode = 1; }

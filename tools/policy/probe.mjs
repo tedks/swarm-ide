@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url';
 import { homedir } from 'node:os';
 import { createHash } from 'node:crypto';
 import { buildArgs, boundedProcess, digestFile, digestTree, sameNamespace, validatePackageManifest, validatePackageLayout, verifyAfterProcess, INSTALLATION_SEED } from './boundary.mjs';
+import { summarizeActivationCases } from './activation-contract.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const runtime = process.argv[2];
@@ -37,6 +38,40 @@ export const CASES = Object.freeze([
   { name: 'malformed', user: 'features = [ broken TOML' },
 ]);
 
+// A unique synthetic provider disables the actual websocket-prewarm capability;
+// removed features.responses_websockets flags would not do so in pinned 0.153.4.
+const activationConfig = 'model = "gpt-5.2"\nmodel_provider = "policy_offline"\n' + baseConfig + `
+code_mode_prewarm = false
+memories = false
+memory_tool = false
+use_agent_identity = false
+[memories]
+generate_memories = false
+use_memories = false
+[model_providers.policy_offline]
+name = "Policy offline"
+base_url = "http://127.0.0.1:9/v1"
+wire_api = "responses"
+requires_openai_auth = false
+supports_websockets = false
+`;
+const mcpConfig = enabled => `[mcp_servers.policy_canary]
+command = "/runtime/bin/node"
+args = ["/fixture/mcp-canary.mjs"]
+cwd = "/work"
+enabled = ${enabled}
+required = true
+startup_timeout_sec = 2
+tool_timeout_sec = 2
+`;
+const ACTIVATION_CASES = [
+  { name: 'mcp-enabled', user: activationConfig + mcpConfig(true) },
+  { name: 'mcp-disabled', user: activationConfig + mcpConfig(false) },
+  { name: 'mcp-inherited', user: activationConfig + mcpConfig(true), project: '[mcp_servers]\n' },
+  { name: 'mcp-project-disabled', user: activationConfig + mcpConfig(true), project: mcpConfig(false) },
+  { name: 'mcp-required-fails', user: activationConfig + mcpConfig(true).replace('"/fixture/mcp-canary.mjs"]', '"/fixture/mcp-canary.mjs", "fail"]') },
+];
+
 async function makeFixture(root, name, config, packageSource) {
   const path = join(root, name);
   for (const dir of ['home/probe/.codex', 'home/probe/.config', 'work/.codex', 'etc/codex', 'fixture', ...(packageSource ? [] : ['package'])])
@@ -47,7 +82,7 @@ async function makeFixture(root, name, config, packageSource) {
   await writeFile(join(path, 'etc/codex/requirements.toml'), config.managed ?? '');
   await writeFile(join(path, 'etc/profile'), '/runtime/bin/node /fixture/canary.mjs login\n');
   await writeFile(join(path, 'home/probe/.bash_profile'), '/runtime/bin/node /fixture/canary.mjs login\n');
-  for (const name of ['inner.mjs', 'boundary.mjs']) await cp(join(here, name), join(path, 'fixture', name));
+  for (const name of ['inner.mjs', 'boundary.mjs', 'activation.mjs', 'activation-contract.mjs', 'mcp-canary.mjs']) await cp(join(here, name), join(path, 'fixture', name));
   await writeFile(join(path, 'fixture/canary.mjs'),
     `import {writeFileSync} from 'node:fs'; const name=process.argv[2]; if(!/^(positive|login|notify|hooks|plugin|mcp)$/.test(name))process.exit(1);writeFileSync('/state/'+name,'synthetic-canary');`);
   if (packageSource) await cp(packageSource, join(path, 'package'), { recursive: true, force: false, errorOnExist: false });
@@ -112,7 +147,7 @@ async function main() {
     status: 'ISOLATION_UNAVAILABLE', isolation: {}, cases: [], unproved: [] };
   let root, cleanupSafe = true;
   try {
-    if (process.platform !== 'linux' || ![undefined, '--boundary-test', '--trace-startup'].includes(mode)) throw new Error('UNSUPPORTED_PLATFORM_OR_MODE');
+    if (process.platform !== 'linux' || ![undefined, '--boundary-test', '--trace-startup', '--activation'].includes(mode)) throw new Error('UNSUPPORTED_PLATFORM_OR_MODE');
     // Store metadata only, never provider/config execution. The derivation is pinned.
     const closure = execFileSync('nix-store', ['--query', '--requisites', runtime], {
       env: { PATH: process.env.PATH }, encoding: 'utf8', timeout: 10000, maxBuffer: 65536,
@@ -120,28 +155,33 @@ async function main() {
     report.runtime = { path: runtime, closureDigest: createHash('sha256').update(closure.sort().join('\n')).digest('hex') };
     root = await mkdtemp('/tmp/swarm-policy-');
     const fixture = await makeFixture(root, 'boundary', { user: baseConfig });
+    async function verifyBoundary(fixture) {
     const args = command => buildArgs(runtime, closure, fixture, ['/runtime/bin/node', '/fixture/inner.mjs', command]);
     const before = await digestTree(fixture);
     const result = await boundedProcess(`${runtime}/bin/bwrap`, args('boundary'), { seed: true });
-    if (!result.ok) { cleanupSafe = result.cleanup !== 'unknown'; report.failure = result.code; return report; }
+    if (!result.ok) { cleanupSafe = result.cleanup !== 'unknown'; report.failure = result.code;
+      report.bootstrapDiagnostic = result.bootstrapDiagnostic; return false; }
     const observed = JSON.parse(result.stdout);
     report.isolation = observed.checks;
     if (!observed.checks || !Object.keys(observed.checks).length || Object.values(observed.checks).some(v => v !== true)) {
-      report.failure = 'BOUNDARY_CHECKS_FAILED'; return report;
+      report.failure = 'BOUNDARY_CHECKS_FAILED'; return false;
     }
     report.isolation.freshPidNamespace = /^pid:\[\d+\]$/.test(observed.namespace ?? '') && observed.namespace !== await readlink('/proc/self/ns/pid');
     report.isolation.freshNetworkNamespace = /^net:\[\d+\]$/.test(observed.networkNamespace ?? '') && observed.networkNamespace !== await readlink('/proc/self/ns/net');
     report.isolation.ownerDeathCleanup = await ownerDeath(args('hold'));
-    if (!report.isolation.ownerDeathCleanup) { cleanupSafe = false; report.failure = 'OWNER_CLEANUP_UNPROVED'; return report; }
+    if (!report.isolation.ownerDeathCleanup) { cleanupSafe = false; report.failure = 'OWNER_CLEANUP_UNPROVED'; return false; }
     const timed = await boundedProcess(`${runtime}/bin/bwrap`, args('hold'), { timeoutMs: 400, seed: true });
     report.isolation.deadlineStops = !timed.ok && timed.code === 'DEADLINE' && timed.cleanup === 'reaped';
-    if (timed.cleanup === 'unknown') { cleanupSafe = false; report.failure = 'DEADLINE_CLEANUP_UNPROVED'; return report; }
+    if (timed.cleanup === 'unknown') { cleanupSafe = false; report.failure = 'DEADLINE_CLEANUP_UNPROVED'; return false; }
     const flooded = await boundedProcess(`${runtime}/bin/bwrap`, args('flood'), { seed: true });
     report.isolation.outputStops = !flooded.ok && flooded.code === 'OUTPUT_LIMIT' && flooded.cleanup === 'reaped';
-    if (flooded.cleanup === 'unknown') { cleanupSafe = false; report.failure = 'OUTPUT_CLEANUP_UNPROVED'; return report; }
+    if (flooded.cleanup === 'unknown') { cleanupSafe = false; report.failure = 'OUTPUT_CLEANUP_UNPROVED'; return false; }
     report.isolation.inputsUnchanged = before === await digestTree(fixture);
     report.boundaryDigest = before;
-    if (Object.values(report.isolation).some(v => v !== true)) { report.failure = 'BOUNDARY_LIFETIME_FAILED'; return report; }
+    if (Object.values(report.isolation).some(v => v !== true)) { report.failure = 'BOUNDARY_LIFETIME_FAILED'; return false; }
+    return true;
+    }
+    if (!await verifyBoundary(fixture)) return report;
     report.status = 'BOUNDARY_VERIFIED';
     if (mode === '--boundary-test') return report;
     // Inspect and copy ONLY the declared executable/resource package, never auth/config.
@@ -152,24 +192,30 @@ async function main() {
     report.package = { version: manifest.version, sourceDigest: packageBefore,
       executableSha256: await digestFile(join(packagePath, 'bin/codex')),
       companionSha256: await digestFile(join(packagePath, 'bin/codex-code-mode-host')) };
-    for (const config of mode === '--trace-startup' ? CASES.slice(0, 1) : CASES) {
+    for (const config of mode === '--activation' ? ACTIVATION_CASES : mode === '--trace-startup' ? CASES.slice(0, 1) : CASES) {
       const path = await makeFixture(root, config.name, config, packagePath);
       if (await digestTree(join(path, 'package')) !== packageBefore || await digestTree(packagePath) !== packageBefore) throw new Error('PACKAGE_CHANGED');
       const digest = await digestTree(path);
+      // Same fixture/package identity, full lifetime proof, BEFORE every activation launch.
+      if (mode === '--activation' && !await verifyBoundary(path)) return report;
       const result = await boundedProcess(`${runtime}/bin/bwrap`, buildArgs(runtime, closure, path,
-        ['/runtime/bin/node', '/fixture/inner.mjs', mode === '--trace-startup' ? 'inspect-trace' : 'inspect']), { timeoutMs: 8000, seed: true });
+        ['/runtime/bin/node', '/fixture/inner.mjs', mode === '--activation' ? 'activate' : mode === '--trace-startup' ? 'inspect-trace' : 'inspect']), { timeoutMs: mode === '--activation' ? 12000 : 8000, seed: true });
       report.codexStarted = true; // Conservative: inspection may have started before a transport failure.
       const verification = await verifyAfterProcess(result, async () => digest === await digestTree(path) && packageBefore === await digestTree(packagePath));
       cleanupSafe = verification.cleanupSafe;
       if (!verification.ok) { report.failure = verification.failure; return report; }
       let observation;
-      if (!result.ok) observation = { status: result.code, cleanup: result.cleanup };
+      if (!result.ok) observation = { status: result.code, cleanup: result.cleanup, bootstrapDiagnostic: result.bootstrapDiagnostic };
       else { try { observation = JSON.parse(result.stdout); } catch { observation = { status: 'INVALID_PROBE_OUTPUT' }; } }
-      report.cases.push({ name: config.name, digest, inputsUnchanged: true, ...observation });
+      report.cases.push({ name: config.name, digest, inputsUnchanged: true,
+        ...(mode === '--activation' ? { isolation: { ...report.isolation } } : {}), ...observation });
       await rm(path, { recursive: true, force: true });
     }
     report.status = 'OFFLINE_CHECKPOINT';
-    if (mode === '--trace-startup') {
+    if (mode === '--activation') {
+      report.status = 'OFFLINE_ACTIVATION_CHECKPOINT';
+      if (!summarizeActivationCases(report.cases)) report.failure = 'ACTIVATION_CONTROL_UNPROVED';
+    } else if (mode === '--trace-startup') {
       if (report.cases[0]?.status !== 'OFFLINE_OBSERVED') report.failure = 'TRACED_STARTUP_UNPROVED';
     } else {
       const find = name => report.cases.find(item => item.name === name);
@@ -185,10 +231,11 @@ async function main() {
       };
       if (Object.values(report.counterexamples).some(value => value !== true)) report.failure = 'COUNTEREXAMPLE_UNPROVED';
     }
-    report.unproved = ['provider feature disablement is not inferred from missing canary activation',
-      'hooks/trust bypass/bundled-executor plugin activation needs a separately bounded no-model trigger',
+    report.unproved = ['only named static stdio MCP startup is covered by activation mode, not general auxiliary disablement',
+      'SessionStart/notify hooks require a turn in pinned source; hooks/trust bypass/bundled-executor plugins remain unproved',
       'persisted plugin/remote-control and managed-layer interpretation need dedicated fixtures',
-      'offline credentials/config differ from production; no thread or turn policy proof'];
+      'network denial is not disabled telemetry; offline credentials/config differ from production',
+      'thread echo matches only this synthetic fixture; no model turn or credentialed production equivalence'];
     return report;
   } catch (error) {
     report.failure = /^[A-Z_]+$/.test(error.message) ? error.message : 'PROBE_UNAVAILABLE';
