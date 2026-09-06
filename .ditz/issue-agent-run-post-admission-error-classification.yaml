@@ -12,8 +12,8 @@ type: task
 component: default
 release:
 reporter: Ted Smith <tedks@riseup.net>
-status: in_progress
-disposition:
+status: closed
+disposition: fixed
 creation_time: 2026-09-06T04:57:30-00:00
 references: []
 log_events:
@@ -48,5 +48,14 @@ log_events:
     successful admission still unknown. Fifteen new tests;479 tests/all7/full22 pass
     before joining newly normal-merged I1. Current topic192c2cb includes I1 PR20 unchanged
     and runs final aggregate gates; no watched app/adoption or actual model.'
+- time: 2026-09-06T05:34:27-00:00
+  who: Ted Smith
+  what: 'closed: fixed'
+  comment: PR21 normal-merged c68aa4c, exact tested tree a5d80b1 equals topic192c2cb.
+    Real post-rename admission false-rejection fixed; definite semantic preflight
+    preserved, typed/thrown ambiguity latched, no replay. Fifteen new tests;489 aggregate
+    tests/all8/full24 build and owned virtual agent journey passed. OpenAI+Google
+    CLEAN; Anthropic session limit missing. Production policy and watched-app adoption
+    remain gated.
 blocks:
 - agent-run-vertical-proof
