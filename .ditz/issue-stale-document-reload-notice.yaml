@@ -1,0 +1,21 @@
+id: stale-document-reload-notice
+title: Clear stale shell reload-veto notice after successful manual refresh
+desc: 'W2B owned virtual screenshot shows same-window manual CtrlR succeeds after
+  explicit agent-intent discard, Doc timeOrigin changes/source restored, but shell
+  lifecycle notice still says Document reload deferred: save or reconcile buffers
+  first. main.ts will-prevent-unload sets source-only notice and did-finish-load keeps
+  it. Needs Runtime-owned lifecycle wording/reset; renderer agent guard correctly
+  describes intent while current document retained. No shared lifecycle edit in W2B.'
+type: bugfix
+component: default
+release:
+reporter: Ted Smith <tedks@riseup.net>
+status: unstarted
+disposition:
+creation_time: 2026-09-06T04:43:35-00:00
+references: []
+log_events:
+- time: 2026-09-06T04:43:35-00:00
+  who: Ted Smith
+  what: created
+  comment: ""
