@@ -5,8 +5,8 @@ type: task
 component: testing
 release:
 reporter: Ted Smith <tedks@riseup.net>
-status: in_progress
-disposition:
+status: closed
+disposition: fixed
 creation_time: 2026-09-06T03:56:24-00:00
 references: []
 log_events:
@@ -41,5 +41,12 @@ log_events:
   who: Ted Smith
   what: started
   comment: ""
+- time: 2026-09-06T05:23:45-00:00
+  who: Ted Smith
+  what: 'closed: fixed'
+  comment: 'PR20 normal merge7a583c5: owned virtual-X11 full source/context/stream/accepted-stale
+    steering/Stop-completion-cleanup/history/Reveal/core crash unknown/no-replay journey;474
+    local tests/all8targets/fullbuild, success and active-failure cleanup confirmed.
+    No live provider claim.'
 blocks:
 - agent-run-context-evidence
