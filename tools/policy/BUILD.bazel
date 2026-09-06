@@ -21,6 +21,14 @@ sh_test(
 )
 
 sh_test(
+    name = "activation-test",
+    srcs = ["activation.test.sh"],
+    data = [":probe"],
+    tags = ["manual", "local", "no-sandbox"],
+    timeout = "moderate",
+)
+
+sh_test(
     name = "boundary-test",
     srcs = ["boundary.test.sh"],
     data = [":probe"],

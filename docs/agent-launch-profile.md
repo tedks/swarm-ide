@@ -301,3 +301,109 @@ The next bounded slice should use this proven offline boundary to test the
 remaining auxiliary startup/activation paths with genuine positive controls.
 Production process/config binding and credential-preserving admission remain
 separate ROOT gates. Do not reuse an offline result as `AgentCapabilities`.
+
+## P3: actual no-model auxiliary activation controls
+
+The explicit manual target exercises real installed 0.153.4 startup, not a mock
+adapter. It does not belong to the ordinary hosted test suite, where this local
+package is not assumed installed. It never enables product execution:
+
+    nix develop --command bazel test //tools/policy:activation-test --jobs=3 --test_tag_filters= --nocache_test_results --test_output=all
+    nix develop --command bazel run //tools/policy:probe --jobs=3 -- --activation
+
+Every case first repeats all 26 independent P2 boundary/lifetime checks using
+that exact fixture/package tree. The inner process rechecks the immediate
+boundary before actual Codex launch. Complete copied package and input hashes
+remain stable; no new mount or writable configuration directory was added.
+State and canary records remain in the existing finite private `/state` tmpfs.
+Output, RPC time, observation-file reads and namespace cleanup are bounded. Any
+unsupported check fails closed before launch; uncertain cleanup retains scratch.
+
+The only outgoing RPCs are fixed `initialize`, `initialized`, and `thread/start`
+with an ephemeral synthetic thread, `/work`, `never` approvals and `read-only`.
+There are no externally supplied parameters or replayed sessions. An explicit
+allowlist rejects generation, review, compaction, auth, resume and arbitrary
+shell operations. `gpt-5.2` is only a fixed catalog name for this fixture; no
+model entitlement or model invocation is claimed. No model turn is requested.
+
+An important pinned-source distinction prevents accidental model prewarm:
+`core/src/session_startup_prewarm.rs:198` branches on the provider's websocket
+capability, not the removed websocket feature flags. `core/src/client.rs:1049`
+reads `supports_websockets`; normal built-in provider definitions do not accept
+that override (`model-provider-info/src/lib.rs:585`). Both matched fixtures use
+the unique synthetic `policy_offline` provider with `supports_websockets=false`,
+`requires_openai_auth=false`, no auth/env/bearer fields and a non-listening private
+loopback URL. Code-mode prewarm, memories and agent identity are disabled too.
+The independent namespace still prevents all outbound traffic and host auth;
+configuration alone is not that enforcement. A thread reply must echo the
+expected provider/cwd/read-only/never/ephemeral fields before observation passes.
+
+Required stdio MCP startup is actually awaited by
+`core/src/session/mcp_runtime.rs:104–150` and
+`codex-mcp/src/connection_manager/required.rs:16–59`. Enabled servers are selected
+at `codex-mcp/src/connection_manager.rs:249,291`. The fixed canary implements only
+MCP initialization, an empty tools list and ping; it cannot execute arbitrary
+commands or connect to a network. It records boot and incoming handshake stages
+inside private state. Positives await Codex's named `starting` and `ready`
+notifications and the exact complete canary handshake before closing stdin.
+Every observation requires clean process close and drained stdio under the
+original deadline; delayed or missing notifications are not manufactured.
+Rejected thread creation may have no startup notifications because the pinned
+app-server installs that listener only after successful creation. Those controls
+instead require the named `policy_canary` required-initialization rejection;
+the missing-executable control additionally requires the observed ENOENT class.
+These are provider-reported attempts and actual canary records, not independent
+OS execution counts. Missing binary/failed handshake cannot count as disabled.
+
+The first installed-process observations were:
+
+| Fixture | Thread result | Provider-reported startup/attempt | Actual canary record |
+| --- | --- | --- | --- |
+| Required enabled server | Created | starting, ready | boot, initialize, initialized, tools/list |
+| Same config, only enabled=false | Created | None | None |
+| Enabled user server + empty project MCP table | Created | starting, ready | Full handshake |
+| Full project server definition with enabled=false | Created | None | None |
+| Required canary deliberately exits during initialize | Required-MCP rejection | Named initialization failure | boot, initialize |
+| Required fixed executable absent | Required-MCP rejection | Named executable-not-found failure | None |
+
+Thus absence is compared against a genuine matched positive opportunity and a
+successful thread-creation barrier. Failed canary startup is explicitly different
+from disablement. These observations end at thread initialization and namespace
+teardown, not lifetime exclusion for a future model turn. Provider reports are
+not an independent syscall monitor; the independently enforced OS boundary is
+still P2's namespace/immutable-input/lifetime acceptance, repeated for every case.
+An attempted partial project server definition failed startup; the valid deeper
+override fixture supplies the complete fixed server declaration. No fallback
+interprets that startup error as disabled MCP.
+
+Review found an unsound early trace snapshot in the first implementation. A
+proper tracer-completion barrier revealed real `???( <detached ...>` and
+unfinished capture during Codex teardown. Pinned process hardening disables
+dumpability, but the exact cause of each gap was not established. P3 removed
+that observer and its independent-exec claim instead of accepting incomplete
+traces or patching hardening. The delivered proof is explicitly the narrower
+static-MCP provider-report/canary comparison above.
+
+### Coverage ledger, not production certification
+
+| Requested restriction | Pinned trigger/source | Positive opportunity and observation | Remaining limit |
+| --- | --- | --- | --- |
+| Named static stdio MCP disabled | Required initialization, sources above | Actual enabled startup+handshake vs disabled created thread without reported startup or canary; reached-failure and missing-executable controls | Provider-reported/static definitions only; not independent syscall exclusion, plugin/executor MCP or a later turn |
+| Ordinary SessionStart hooks disabled | `session/session.rs:1600–1623` queues source; `session/turn.rs:264,504` executes it | No permitted turn trigger | UNPROVED; do not invent a no-model hook control |
+| Legacy notify disabled | `hooks/src/registry.rs:113`, turn completion callback | P2 observes populated callback, no turn completion here | UNPROVED activation |
+| Hook-trust bypass, built-in/executor plugin hooks disabled | `hooks/src/engine/mod.rs:239,255`; executor hooks in `hooks/src/registry.rs:100` | No matched installed activation controls here | UNPROVED independently of ordinary hooks=false |
+| Plugin/per-executor MCP disabled | `core/src/session/mcp_runtime.rs:154` projects executor-owned configuration | Static MCP controls do not exercise this path | UNPROVED |
+| Persisted remote-control/plugin state disabled | `app-server/src/lib.rs:453`; P1 source inventory | Fresh synthetic state, no seeded enabled-state control | UNPROVED; deferred to avoid writable policy ancestry |
+| Telemetry disabled | Exporter settings at startup, P1 inventory | Network namespace denies outbound traffic | UNPROVED runtime disablement; denied traffic is not a disabled exporter |
+| Credentialed production equivalence | A separately owned, exact admitted process | No host credentials/model turn/product process | UNPROVED; ROOT gate unchanged |
+
+The broader `agent-run-offline-activation-proof` and `agent-run-effective-policy`
+issues stay open. No `productionAvailable:true` can be returned by this harness.
+
+P2 hosted run 34012740498 failed the independent boundary before Codex with
+`SEED_PIPE_FAILED`, not the older topology timeout. P3 preserves that fatal
+classification but briefly drains racing bootstrap stderr under the original
+deadline/output limits. Only exact allowlisted observation labels and a truncation
+boolean are exported, never raw stderr or an inferred AppArmor/sysctl cause.
+`agent-run-policy-hosted-boundary-failure` tracks actual runner support; no test
+skip, global runner setting, kernel policy or CI weakening is authorized here.
