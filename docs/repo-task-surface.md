@@ -147,7 +147,10 @@ existing typed error. If the line no longer exists, open the valid file with a
 visible “referenced line unavailable” notice, without inventing a location.
 Show “Opens current working file; link recorded at metadata M.”
 
-Do not overwrite a dirty source tab or bypass its read/save lifecycle. Successful
+Do not overwrite a dirty source tab or bypass its read/save lifecycle. For an
+already-open dirty buffer, retain its cursor and explain that the recorded line
+cannot be located reliably until source is saved/current; never treat unsaved
+line offsets as an exact metadata link target. Successful
 Reveal uses the existing explicit file-navigation mapping: the repo projection
 may follow, the service camera stays put, and ambiguous mappings remain choices.
 Multiple refs are individual choices, never an inferred default attachment.

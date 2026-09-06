@@ -24,7 +24,7 @@ release or weaken agent policy gates.
 
 - [x] (2026-09-06) D1 inspected product/agent architecture, installed Ditz help/JSON, real metadata and corroborating local Ditz source; selected the read-only first release.
 - [x] (2026-09-06) D1 drafted `docs/repo-task-surface.md` and this plan; no product files changed.
-- [ ] D1 independent design review, local document checks, PR normal merge and Ditz closure.
+- [x] (2026-09-06) D1 light independent OpenAI native design review CLEAN; whitespace, referenced existing files, actual schema/file-opening claims and plan consistency checked locally. PR #25 pushed; landing outcome recorded in its PR and ignored handoff.
 - [ ] T0: shared task read contracts, fail-closed stub and parser dependency base.
 - [ ] T1 and T2 in parallel: pinned local metadata provider; work-panel/detail UI against fixtures.
 - [ ] T3: integrate reviewed T1/T2, real-metadata acceptance and owned virtual desktop proof.
@@ -74,10 +74,14 @@ data. A 256-task ceiling is an acknowledged prototype limit, not scale readiness
 ## Outcomes & Retrospective
 
 
-D1 currently provides the design and exact implementation sequence only. No
+D1 provides the independently reviewed design and exact implementation sequence only. No
 backlog provider, new UI, schema, YAML dependency or agent attachment exists as
 a result of D1. The product's earlier source/run functionality is unchanged.
-Update this section after review and each implementation landing; record the
+Review was one proportional native design pass, not a full code council;
+foreign seats were not requested for this docs-only gate. No build, model or GUI
+test was run or needed for these two document additions. Hosted CI must be
+reported separately; its execution is not evidence of product implementation.
+Update this section after each implementation landing; record the
 actual commit, local evidence, hosted status and remaining boundaries separately.
 
 ## Context and Orientation
@@ -222,7 +226,13 @@ In parallel with T1, one UI owner creates `app/renderer/tasks/client.ts`,
 `TaskPanel.tsx`, `TaskDetail.tsx`, local styles and
 `tests/task-client.test.ts` / `task-panel.test.tsx`. Use T0's schema-valid
 fixtures in new `fixtures/tasks.ts`. After W3's reviewed layout is available,
-that owner alone edits the small App composition and palette hooks. Keep Work
+that owner alone edits the small App composition and palette hooks, plus narrow
+requested-line/error presentation in `App.tsx` and `EditorPane.tsx`. The existing
+`openFile` has no line argument and currently hides broker details behind generic
+text: implement these explicit obligations without replacing the tab lifecycle.
+For an already-open dirty buffer, do not infer that metadata line numbers match
+unsaved text; retain its cursor and report that line Reveal needs saved/current
+source rather than moving to an unverified location. Keep Work
 and Information panel IDs/buttons and mounted source/graphs; do not change
 agent clients, durable context, reload guards or existing renderer layout rules.
 
@@ -409,3 +419,7 @@ database, UI framework, Ditz mutation API or model dependency.
 Revision note (2026-09-06, D1): initial plan records real Ditz capabilities,
 read-only release staging, conservative complete snapshots and one shared base
 before parallel core/UI work. No existing first-agent plan was edited.
+
+Review note (2026-09-06, D1): independent light review was CLEAN. Added explicit
+T2 ownership for the current opener's missing line/error presentation, including
+dirty-buffer line ambiguity; all implementation milestones remain unstarted.
