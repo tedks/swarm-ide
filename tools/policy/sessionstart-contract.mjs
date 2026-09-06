@@ -89,6 +89,20 @@ export function sessionstartVerdict(o, expected) {
     : o.hookWitness === false && o.hookStarted === 0 && o.hookCompleted === 0;
 }
 
+/** Correlate fixed protocol notifications with the acknowledged thread/turn. */
+export function sessionstartCorrelationsMatch(events, threadId, turnId) {
+  if (!Array.isArray(events) || events.length === 0 || events.length > 64 ||
+      typeof threadId !== 'string' || !threadId.length || typeof turnId !== 'string' || !turnId.length) return false;
+  return events.every(value => {
+    if (!value || !['turn/started', 'turn/completed', 'item/started', 'item/completed', 'hook/started', 'hook/completed'].includes(value.method) ||
+        value.params?.threadId !== threadId) return false;
+    const id = value.method.startsWith('turn/') ? value.params.turn?.id : value.params.turnId;
+    // Only hook notifications permit absent/null turn IDs in installed v2.
+    if (value.method.startsWith('hook/') && id == null) return true;
+    return typeof id === 'string' && id === turnId;
+  });
+}
+
 export function summarizeSessionStartCases(cases) {
   if (!Array.isArray(cases) || cases.length !== 2) return false;
   const names = new Set();

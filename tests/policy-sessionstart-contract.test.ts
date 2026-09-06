@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { ACTIVATION_BOUNDARY, activationEnvelope } from '../tools/policy/activation-contract.mjs';
 import { SESSIONSTART_BOUNDARY_KEYS } from '../tools/policy/sessionstart-boundary.mjs';
 import { HOOK_CANONICAL, HOOK_KEY, HOOK_TRUST, SESSIONSTART_CASES, sessionstartEnvelope,
-  sessionstartVerdict, summarizeSessionStartCases } from '../tools/policy/sessionstart-contract.mjs';
+  sessionstartVerdict, sessionstartCorrelationsMatch, summarizeSessionStartCases } from '../tools/policy/sessionstart-contract.mjs';
 import { P5_TEXT } from '../tools/policy/sessionstart-response.mjs';
 
 const good = (enabled = true): Record<string, unknown> => ({ syntheticTurnExecuted: true, turnCompleted: true,
@@ -18,6 +18,25 @@ const entries = () => SESSIONSTART_CASES.map(value => ({ name: value.name, statu
   observation: good(value.expected === 'enabled') }));
 
 describe('separate fixed SessionStart profile', () => {
+  it('rejects malformed synthetic turn/item transcripts while allowing nullable hook turn IDs only', () => {
+    const thread = '00000000-0000-4000-8000-000000000001', turn = 'synthetic-turn-1';
+    for (const method of ['turn/started', 'turn/completed', 'item/started', 'item/completed']) {
+      const params = (id: unknown) => ({ threadId: thread, ...(method.startsWith('turn/') ? { turn: { id } } : { turnId: id }) });
+      expect(sessionstartCorrelationsMatch([{ method, params: params(turn) }], thread, turn)).toBe(true);
+      for (const bad of [undefined, null, '', 'wrong-turn']) {
+        expect(sessionstartCorrelationsMatch([{ method, params: params(bad) }], thread, turn)).toBe(false);
+      }
+      expect(sessionstartCorrelationsMatch([{ method, params: { ...params(turn), threadId: 'wrong-thread' } }], thread, turn)).toBe(false);
+    }
+    for (const method of ['hook/started', 'hook/completed']) {
+      for (const id of [undefined, null, turn]) expect(sessionstartCorrelationsMatch([{ method, params: { threadId: thread, turnId: id } }], thread, turn)).toBe(true);
+      expect(sessionstartCorrelationsMatch([{ method, params: { threadId: thread, turnId: 'wrong-turn' } }], thread, turn)).toBe(false);
+    }
+    expect(sessionstartCorrelationsMatch([{ method: 'turn/completed', params: { threadId: thread, turnId: turn } }], thread, turn)).toBe(false);
+    for (const invalid of [null, [], [{ method: 'other', params: { threadId: thread, turnId: turn } }], [null]]) {
+      expect(sessionstartCorrelationsMatch(invalid, thread, turn)).toBe(false);
+    }
+  });
   it('pairs exact immutable hook/trust inputs with only the ordinary feature exclusion changed', () => {
     expect(SESSIONSTART_CASES).toHaveLength(2);
     expect(SESSIONSTART_CASES[0].user.replace('hooks = true', 'hooks = false')).toBe(SESSIONSTART_CASES[1].user);

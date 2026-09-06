@@ -5,7 +5,7 @@ import { spawn } from 'node:child_process';
 import { createServer } from 'node:http';
 import { constants, existsSync, openSync, fstatSync, readSync, closeSync, readlinkSync } from 'node:fs';
 import { ENV, LIMIT } from './boundary.mjs';
-import { HOOK_PATH, sessionstartEnvelope } from './sessionstart-contract.mjs';
+import { HOOK_PATH, sessionstartEnvelope, sessionstartCorrelationsMatch } from './sessionstart-contract.mjs';
 import { P5_MODEL, P5_PORT, P5_PROVIDER, P5_SSE, P5_TEXT, validateSyntheticRequest } from './sessionstart-response.mjs';
 
 function witness() {
@@ -120,7 +120,7 @@ export async function sessionstart(expected) {
           const p = value.params;
           if (['turn/started', 'turn/completed', 'item/started', 'item/completed', 'hook/started', 'hook/completed'].includes(value.method)) {
             if (!p || typeof p.threadId !== 'string' || correlations.length > 64) throw new Error('TURN_CORRELATION_INVALID');
-            correlations.push({ thread: p.threadId, turn: p.turnId ?? p.turn?.id });
+            correlations.push({ method: value.method, params: { threadId: p.threadId, turnId: p.turnId, turn: { id: p.turn?.id } } });
           }
           if (value.method === 'turn/started') {
             if (++turnStarts !== 1) throw new Error('EXTRA_TURN');
@@ -171,7 +171,7 @@ export async function sessionstart(expected) {
     closing = true; codex.stdin.end();
     if (!await closed || fault) throw new Error(fault ?? 'SERVER_CLOSE_UNPROVED');
     if ((buffer + decoder.decode()).length) throw new Error('SERVER_INCOMPLETE_JSON');
-    if (correlations.some(value => value.thread !== threadId || (value.turn != null && value.turn !== turnId))) throw new Error('TURN_CORRELATION_MISMATCH');
+    if (!sessionstartCorrelationsMatch(correlations, threadId, turnId)) throw new Error('TURN_CORRELATION_MISMATCH');
     await new Promise((resolve, reject) => responder.close(error => error ? reject(error) : resolve()));
     responderClosed = true;
     if (fault) throw new Error(fault);
