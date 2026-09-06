@@ -22,3 +22,9 @@ log_events:
     slice joins reviewed E2 fixtures through a separate test-only worker entry and
     exercises real W2 six-command bridge on virtual X11. No renderer-selected fake
     fallback or live provider enablement. P1 acceptance separate.
+- time: 2026-09-06T04:03:22-00:00
+  who: Ted Smith
+  what: blocks agent-run-runtime
+  comment: ""
+blocks:
+- agent-run-runtime
