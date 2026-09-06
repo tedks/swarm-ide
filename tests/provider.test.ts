@@ -27,6 +27,7 @@ function dependencies(
   readArtifact: ProviderDependencies["readArtifact"] = async () => ({ bytes: Buffer.from(JSON.stringify(artifact)), artifact }),
 ): ProviderDependencies {
   return {
+    register: async (root) => ({ root, id: `repository:${"0".repeat(64)}`, name: "Provider fixture" }),
     fingerprint: async () => fingerprints.shift() ?? (() => { throw new Error("unexpected fingerprint request"); })(),
     build: async () => { await build(); return { artifactPath: "/unused/service-topology.json" }; },
     readArtifact,
@@ -44,6 +45,9 @@ describe("real workspace provider", () => {
     expect(initial.graphs.find((graph) => graph.topologyId === "service")?.nodes).toEqual([]);
     expect(initial.jobs).toEqual([]);
     expect(JSON.stringify(initial)).not.toMatch(/Gateway|Checkout hardening|deploy:|agent-07|sourceKind":"mock|sourceKind":"runtime/);
+    expect(initial.revisions.working).toMatchObject({ fingerprint: "", evidence: "unavailable" });
+    await provider.observeWorkingWorld(() => undefined);
+    expect(provider.snapshot().revisions.working).toMatchObject({ fingerprint: initialFingerprint, evidence: "observed" });
 
     const published: WorkspaceSnapshot[] = [];
     await provider.startReconciliation((_type, snapshot) => published.push(snapshot));
@@ -74,6 +78,7 @@ describe("real workspace provider", () => {
     let shouldFail = false;
     const deps = dependencies([a, b, b, c], async () => { if (shouldFail) throw new Error("bazel failed"); });
     const provider = await RealWorkspaceProvider.create("/unused", deps);
+    await provider.observeWorkingWorld(() => undefined);
     await provider.startReconciliation(() => undefined);
     expect(provider.snapshot().reconciliation.status).toBe("green");
     shouldFail = true;
@@ -91,6 +96,7 @@ describe("real workspace provider", () => {
       dependencies(["a".repeat(64), "b".repeat(64)], undefined, async () => { throw new Error("artifact is malformed"); }),
     ]) {
       const provider = await RealWorkspaceProvider.create("/unused", deps);
+      await provider.observeWorkingWorld(() => undefined);
       const published: WorkspaceSnapshot[] = [];
       await provider.startReconciliation((_type, snapshot) => published.push(snapshot));
       expect(published.map((snapshot) => snapshot.reconciliation.status)).toEqual(["yellow", "red"]);
@@ -101,6 +107,7 @@ describe("real workspace provider", () => {
 
   it("turns red instead of green when the workspace changes during a successful build", async () => {
     const provider = await RealWorkspaceProvider.create("/unused", dependencies(["a".repeat(64), "b".repeat(64), "c".repeat(64)]));
+    await provider.observeWorkingWorld(() => undefined);
     await provider.startReconciliation(() => undefined);
     expect(provider.snapshot().reconciliation.status).toBe("red");
     expect(provider.snapshot().reconciliation.message).toContain("changed during the build");
@@ -111,6 +118,7 @@ describe("real workspace provider", () => {
     const b = "b".repeat(64);
     const c = "c".repeat(64);
     const provider = await RealWorkspaceProvider.create("/unused", dependencies([a, b, b]));
+    await provider.observeWorkingWorld(() => undefined);
     await provider.startReconciliation(() => undefined);
     const events: Array<{ type: string; snapshot: WorkspaceSnapshot }> = [];
     provider.markWorkingWorldChanged(c, (type, snapshot) => events.push({ type, snapshot }));
@@ -126,6 +134,7 @@ describe("real workspace provider", () => {
   it("recovers an observer-caused red state even when the fingerprint is unchanged", async () => {
     const fingerprint = "a".repeat(64);
     const provider = await RealWorkspaceProvider.create("/unused", dependencies([fingerprint]));
+    await provider.observeWorkingWorld(() => undefined);
     const events: WorkspaceSnapshot[] = [];
     provider.markWorkingWorldUnknown("git briefly unavailable", (_type, snapshot) => events.push(snapshot));
     provider.markWorkingWorldChanged(fingerprint, (_type, snapshot) => events.push(snapshot));
@@ -135,6 +144,7 @@ describe("real workspace provider", () => {
 
   it("publishes a bounded red state when fingerprint preflight fails", async () => {
     const provider = await RealWorkspaceProvider.create("/unused", dependencies(["a".repeat(64)]));
+    await provider.observeWorkingWorld(() => undefined);
     const published: WorkspaceSnapshot[] = [];
     await expect(provider.startReconciliation((_type, snapshot) => published.push(snapshot))).resolves.toBeUndefined();
     expect(published.map((snapshot) => snapshot.reconciliation.status)).toEqual(["red"]);
@@ -155,6 +165,7 @@ describe("real workspace provider", () => {
         if (buildNumber === 1) { markFirstStarted(); await firstBuild; }
       },
     ));
+    await provider.observeWorkingWorld(() => undefined);
     const published: WorkspaceSnapshot[] = [];
     const first = provider.startReconciliation((_type, snapshot) => published.push(snapshot));
     await firstStarted;
@@ -162,7 +173,7 @@ describe("real workspace provider", () => {
     releaseFirst();
     await first;
     expect(provider.snapshot().reconciliation.status).toBe("green");
-    expect(provider.snapshot().reconciliation.epoch).toBe(2);
+    expect(provider.snapshot().reconciliation.epoch).toBe(3);
     expect(provider.snapshot().reconciliation.inputFingerprint).toBe("c".repeat(64));
     expect(published.filter((snapshot) => snapshot.reconciliation.status === "green")).toHaveLength(1);
   });

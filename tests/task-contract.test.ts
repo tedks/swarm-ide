@@ -20,7 +20,7 @@ const reply = (task: unknown, requestId = snapshotRequest.requestId) => ({ proto
 
 describe("task read contract base", () => {
   it("uses a new wire version, exactly two read operations and no mutation semantics", () => {
-    expect(PROTOCOL_VERSION).toBe(4);
+    expect(PROTOCOL_VERSION).toBe(5);
     for (const request of [snapshotRequest, readRequest]) {
       expect(CoreRequestSchema.parse(request)).toEqual(request);
       expect(uncertainMutationCode(request)).toBeNull();

@@ -368,7 +368,7 @@ export function initialSnapshot(selected: FocusRef = checkoutServiceFocus): Work
     project: { id: "project:swarm-ide", name: "swarm-ide" },
     world: { id: "world:working", label: "working tree" },
     revisions: {
-      working: { id: "work:a1", fingerprint: "work:a1" },
+      working: { id: "work:a1", fingerprint: "work:a1", evidence: "observed" },
       built: { id: "build:a1", sourceFingerprint: "work:a1" },
       deployed: { id: "deploy:local-084", buildId: "build:a0", environment: "local" },
     },
@@ -395,7 +395,7 @@ export function dirtySnapshot(previous: WorkspaceSnapshot): WorkspaceSnapshot {
     ...previous,
     revisions: {
       ...previous.revisions,
-      working: { id: workingId, fingerprint: workingId },
+      working: { id: workingId, fingerprint: workingId, evidence: "observed" },
     },
     graphs: markGraphsPending(previous.graphs, epoch),
     jobs: [

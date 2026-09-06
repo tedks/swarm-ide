@@ -2,8 +2,9 @@
 
 
 This ExecPlan is maintained according to `.planning/PLANS.md`. It is a living
-implementation plan prepared by N0, a design-only department. ROOT must accept
-the design before dispatching N1; publication does not authorize execution.
+implementation plan prepared by N0 and accepted by ROOT. N1 implements it in
+PR37 with actual packaged acceptance. The PR and executive handoff record final
+local verification, normal landing and the separately leased integration.
 
 ## Purpose / Big Picture
 
@@ -21,14 +22,40 @@ of a monorepo. Builds remain independent.
 - [x] (2026-09-06) N0 inspected the T3 base, actual navigation seams and unclosed foundations.
 - [x] (2026-09-06) N0 drafted the navigation contract and closure ledger.
 - [x] (2026-09-06) N0 completed native/Google design convergence and local document checks; PR36 holds normal-merge and Ditz handoff evidence.
-- [ ] ROOT evaluate the published contract and dispatch N1 if accepted.
-- [ ] N1 implement the vertical, prove actual packaged behavior, review and land.
+- [x] (2026-09-06) ROOT accepted N0 and dispatched N1 with explicit unavailable-evidence and privileged boundary conditions.
+- [x] (2026-09-06 17:03 UTC) N1 pushed shared protocol, bounded reader/provider, navigation UI and packaged harness with distinct helper ownership.
+- [x] (2026-09-06 17:08 UTC) Actual packaged Swarm root → core/files.ts works without a service build; strict native-input assertions stopped the first proof, with no renderer errors and owned cleanup complete.
+- [x] (2026-09-06 17:15 UTC) Full quality passed 1,079 tests; BOM filename regressions proved three actual failures before the byte-preserving fix.
+- [x] (2026-09-06) Observer-generation and provider/renderer review converged; native OpenAI and Google CLEAN, Anthropic credit-unavailable and not replaced.
+- [x] (2026-09-06 18:03 UTC) All four ordinary packaged cases passed at `5af87b8`: Swarm 5.955s, unfamiliar 8.520s, invalid filename 0.663s and fingerprint budget 0.669s; zero renderer errors, all cleanup complete.
+- [x] N1 implemented the coupled vertical and its visible acceptance. Final local/review/normal-merge gates remain mandatory and are recorded on PR37; no hosted gate or watched-app adoption is implied.
 - [ ] ROOT verify N1 and separately decide runtime adoption and next consumers.
 
 ## Surprises & Discoveries
 
 
-`core/provider.ts` hardcodes project identity and every repository node. Its
+N1 native review found that UTF-8 decoding stripped a leading filename BOM,
+aliasing another entry; byte-preserving decode and exact roundtrip now protect
+identity. It also found that initial unavailable registration could discard
+retained service provenance and that the background observer could suppress
+unchanged-digest recovery. Retained built identity is separate from never-observed
+working coordinates; external fingerprint revocation must invalidate in-flight
+samples without suppressing a first failure or scanning on directory focus.
+
+One preliminary unchanged owned-process test observed a transient namespace member
+after cleanup attestation; later runs passed without changing its assertion.
+`owned-namespace-cleanup-attestation-race` records that follow-up, not a waiver.
+
+Rapid replacement of 200 graph cards exposed a genuine ResizeObserver loop.
+Fixed geometry and uncontrolled layout publication did not eliminate it; both
+experiments were reverted. A small whole-pane, latest-frame controlled
+publication fixes the actual packaged case without dropping authoritative
+events or suppressing errors. Native review also caught local Backspace deletion
+in the discarded uncontrolled approach. The native-input harness separately
+needed to wait for d3's temporary post-drag click capture to end before its next
+button activation. The final proof uses no diagnostic mode or retry clicks.
+
+At the N0 baseline, `core/provider.ts` hardcoded project identity and every repository node. Its
 `markWorkingWorldChanged`, `startReconciliation` and failure paths reconstruct or
 recolor that graph. Replacing only initialization would revert browsing on the
 next build/event. `WorkspaceSnapshotSchema` in `protocol/schema.ts` requires every
@@ -47,6 +74,14 @@ one genuinely outside the capture budget.
 
 ## Decision Log
 
+
+N1 defines registration coordinates as `unobserved:<canonical-root SHA256>`;
+the working fingerprint is empty until observed, and graph/reconciliation IDs
+may carry this coordinate without treating it as a digest. Last consistency
+remains `unobserved`; unavailable evidence revokes green and context authority
+even when an earlier digest is retained. `repo.list` adds an optional exact
+`revealPath` in the requested parent to resolve captured off-page targets without
+exposing or fabricating an unbounded directory inventory.
 
 On 2026-09-06 N0 chose one mono-agent vertical because protocol, provider events,
 mappings and App activation are coupled. A separate contract-only landing would
@@ -75,6 +110,14 @@ the startup correction; Google reviewed the original and fix delta CLEAN.
 Anthropic is unavailable from known credit exhaustion, not replaced. Local
 scope/whitespace, internal links, twelve plan sections and existing symbol checks
 passed. No product build/test or hosted CI run is claimed for this docs-only step.
+
+N1 delivers the actual reader, protocol v5, provider/evidence composition,
+privileged boundary checks and coordinated navigation/editor path. Its packaged
+acceptance is real Git/filesystem/production-bridge behavior in disposable owned
+repositories, not model inference. Evidence lives under
+`master/artifacts/repository-navigation-n1/`; `frame-publication/run.z047i2`
+is the first complete four-case pass. Search, project selection, richer context,
+views and live-agent policy retain their separate open gates.
 
 ## Context and Orientation
 
@@ -292,4 +335,7 @@ selects a single visible vertical over another infrastructure-only split.
 
 Review revision (2026-09-06): separate fingerprint failure from navigation
 startup; distinguish captured-page Reveal from an uncaptured target; explicitly
-retain the last successful directory on a failed request. No product code changed.
+retain the last successful directory on a failed request. No product code changed
+in N0. N1 revision (2026-09-06): record implementation and actual preliminary
+evidence, plus review-discovered filename/observer/restart corrections. No
+foundation completion is inferred before full packaged proof.

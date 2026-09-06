@@ -17,6 +17,7 @@ const SECOND_TASK = "FIXTURE ONLY: inspect the protobuf contract; demonstrate un
 type RendererAction =
   | { action: "observe" | "remember" | "continuity" | "install-observer" | "ledger" | "palette" | "confirm" | "remove-observer" }
   | { action: "click"; label: string }
+  | { action: "path"; value: string }
   | { action: "text"; field: "task" | "instruction"; value: string }
   | { action: "read"; runId?: string; afterRecord?: number; version: typeof PROTOCOL_VERSION };
 type UiObservation = {
@@ -96,7 +97,10 @@ async function rendererAction(input: RendererAction): Promise<unknown> {
     window.dispatchEvent(new KeyboardEvent("keydown", { key: "k", ctrlKey: true, bubbles: true })); return true;
   }
   if (input.action === "click") {
-    const candidates = buttons().filter((button) => button.getAttribute("aria-label") === input.label || button.textContent?.trim() === input.label ||
+    // The directory form has its own Open path button; this gesture belongs
+    // exclusively to the command palette, even while that form is mounted.
+    const scope = input.label === "Open path" ? [...document.querySelectorAll<HTMLButtonElement>(".command-results button")] : buttons();
+    const candidates = scope.filter((button) => button.getAttribute("aria-label") === input.label || button.textContent?.trim() === input.label ||
       (button.closest(".command-results") && button.querySelector("span")?.firstChild?.textContent === input.label));
     if (candidates.length !== 1 || candidates[0]!.disabled) throw new Error(`Expected exactly one enabled UI control: ${input.label}`);
     candidates[0]!.click(); return true;
@@ -105,6 +109,12 @@ async function rendererAction(input: RendererAction): Promise<unknown> {
     const field = document.querySelector<HTMLTextAreaElement>(input.field === "task" ? ".agent-draft textarea" : "textarea[aria-label='Instruction to this run']");
     if (!field) throw new Error(`Missing UI textarea: ${input.field}`);
     Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")!.set!.call(field, input.value);
+    field.dispatchEvent(new Event("input", { bubbles: true })); return true;
+  }
+  if (input.action === "path") {
+    const field = document.querySelector<HTMLInputElement>("input[aria-label='Exact repository path']");
+    if (!field) throw new Error("Expected exact repository path mode");
+    Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!.call(field, input.value);
     field.dispatchEvent(new Event("input", { bubbles: true })); return true;
   }
   if (input.action === "confirm") {
@@ -191,7 +201,13 @@ export async function runJourney(options: {
     // Palette buttons include descriptive children, so only this fixed action
     // uses the closed function's label matcher instead of flattened button text.
     await until("command palette", async () => {
-      try { return await evaluate<boolean>({ action: "click", label: "Open FraudCheck protobuf contract" }); } catch { return false; }
+      try { return await evaluate<boolean>({ action: "click", label: "Open repository path" }); } catch { return false; }
+    }, Boolean);
+    await until("exact repository path mode", async () => {
+      try { return await evaluate<boolean>({ action: "path", value: CONTRACT }); } catch { return false; }
+    }, Boolean);
+    await until("open exact path", async () => {
+      try { return await evaluate<boolean>({ action: "click", label: "Open path" }); } catch { return false; }
     }, Boolean);
     await ui("protobuf source ready", (value) => value.source === CONTRACT && value.editor);
   };

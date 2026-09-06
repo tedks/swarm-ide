@@ -1,0 +1,28 @@
+.graph-pane.has-directory { grid-template-rows: 37px minmax(0, .85fr) minmax(0, 1fr); }
+.repository-navigation { min-width: 0; min-height: 0; overflow: auto; font: 9px "DM Mono", monospace; border-bottom: 1px solid #233738; scrollbar-width: thin; }
+.repository-controls, .repository-query-row, .repository-page-controls { display: flex; min-width: 0; align-items: center; gap: 4px; padding: 3px 6px; }
+.repository-navigation button { border: 1px solid #2c4542; border-radius: 3px; padding: 3px 5px; color: #a9c6c0; background: #10201f; font: inherit; }
+.repository-navigation button:hover { background: #1b3430; }
+.repository-navigation button:disabled, .repository-navigation button[aria-disabled="true"] { color: #6a7e7b; opacity: .7; }
+.repository-navigation :focus-visible { outline: 2px solid #8fd8c8; outline-offset: 1px; }
+.repository-breadcrumbs { display: flex; flex: 1; min-width: 0; overflow-x: auto; gap: 2px; scrollbar-width: thin; }
+.repository-breadcrumbs button { flex-shrink: 0; }
+.repository-breadcrumbs button[aria-current] { color: #e0eee8; border-color: #679d90; }
+.repository-observation, .repository-notice { color: #8ca4a0; padding: 2px 7px; overflow-wrap: anywhere; font-size: 8px; }
+.repository-observation span { display: block; }
+.repository-notice { color: #efbc7a; }
+.repository-query-row { flex-wrap: wrap; }
+.repository-query-row form { display: flex; flex: 1; gap: 3px; min-width: 0; }
+.repository-navigation input { min-width: 0; width: 100%; border: 1px solid #29413e; background: #081413; color: #bdcec8; border-radius: 3px; padding: 3px 5px; font: inherit; }
+.repository-open-path { flex: 1; min-width: 65px; }
+.repository-open-path summary { color: #94bfb3; cursor: pointer; }
+.repository-page-controls span { min-width: 0; flex: 1; font-size: 8px; color: #829b95; }
+.repository-entries { list-style: none; padding: 0 5px 4px; margin: 0; max-height: 80px; overflow: auto; scrollbar-width: thin; }
+.repository-entry button { width: 100%; display: flex; gap: 7px; justify-content: space-between; border: 0; background: transparent; text-align: left; }
+.repository-entry button span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.repository-entry button small { flex: none; color: #738c85; max-width: 48%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 8px; }
+.repository-entry.git-ignored { opacity: .55; }
+.repository-empty { padding: 4px; color: #7b918b; }
+.topology-node.is-ignored { opacity: .5; }
+.topology-node.is-unavailable { border-style: dotted; }
+.repository-recipes { display: flex; flex-direction: column; gap: 4px; }

@@ -15,6 +15,9 @@ import {
   type WorkspaceSnapshot,
 } from "../protocol/schema";
 import { computeWorkingWorldFingerprint } from "./fingerprint";
+import { registerRepository } from "./repository-registration";
+import { RepositoryReader, RepositoryError } from "./repository";
+import { RepositoryRequestSchema, repositoryEntryId, type RepositoryObservation, type RepositoryRequest } from "../protocol/repository";
 import { readBoundedRegularFile, readCanonicalWorkspaceBytes, resolveWorkspaceFile } from "./files";
 import {
   ServiceTopologyArtifactSchema,
@@ -30,10 +33,6 @@ const SOURCE_PATHS = [
   "examples/checkout-world/services/fraudcheck/fraudcheck.proto",
   "examples/checkout-world/services/fraudcheck/fraudcheck.ts",
 ];
-const DECLARATION_PATHS = [
-  "examples/checkout-world/services/fraudcheck/fraudcheck.proto",
-  "examples/checkout-world/services/payments/payments.proto",
-];
 const INTERFACE_DECLARATIONS = new Map([
   ["interface:fraud-check.assess", "examples/checkout-world/services/fraudcheck/fraudcheck.proto"],
   ["interface:payments.authorize", "examples/checkout-world/services/payments/payments.proto"],
@@ -48,6 +47,8 @@ export interface BazelBuildResult {
 }
 
 export interface ProviderDependencies {
+  register?: typeof registerRepository;
+  repository?: (root: string, repositoryId: string) => Pick<RepositoryReader, "list" | "markStale" | "dispose">;
   fingerprint(workspaceRoot: string): Promise<string>;
   build(workspaceRoot: string): Promise<BazelBuildResult>;
   readArtifact(workspaceRoot: string, build: BazelBuildResult): Promise<{ bytes: Buffer; artifact: ServiceTopologyArtifact }>;
@@ -222,37 +223,51 @@ function repoProvenance(fingerprint: string, observedAt: string): Provenance {
   return { sourceKind: "repo", uri: "repo://.", version: fingerprint, observedAt };
 }
 
-function repositoryGraph(fingerprint: string, epoch: number, status: "gray" | "yellow" | "green" | "red", observedAt: string): GraphSlice {
-  const paths = [...new Set([MANIFEST_PATH, ...SOURCE_PATHS, ...DECLARATION_PATHS])];
-  const nodes: GraphSlice["nodes"] = [
-    { id: "repo:root", label: "swarm-ide", kind: "repository", status: "green", position: { x: 0, y: 105 }, focus: focus("repo", "repo:swarm-ide", fingerprint), detail: "opened working tree" },
-    { id: "repo:fraudcheck", label: "fraudcheck/", kind: "directory", status: "green", position: { x: 225, y: 105 }, focus: focus("repo", "dir:fraudcheck", fingerprint), detail: "Bazel package" },
-  ];
-  paths.forEach((path, index) => nodes.push({
-    id: `repo:file:${path}`,
-    label: path.split("/").at(-1)!,
-    kind: "file",
-    status: "green",
-    position: { x: 465, y: index * 92 },
-    focus: focus("repo", `file:${path}`, fingerprint, path),
-    detail: path,
-  }));
+function repositoryGraph(snapshot: WorkspaceSnapshot, directory: RepositoryObservation): GraphSlice {
+  const fingerprint = snapshot.revisions.working.id;
+  const previous = snapshot.graphs.find((graph) => graph.topologyId === "repo");
+  const preservePositions = previous?.directory?.directory === directory.directory && previous.directory.page === directory.page;
+  const positions = new Map(preservePositions ? previous.nodes.map((node) => [node.id, node.position]) : []);
+  const parentId = repositoryEntryId(snapshot.project.id, "directory", directory.directory);
+  const nodes: GraphSlice["nodes"] = [{ id: parentId, label: directory.directory.split("/").at(-1) || snapshot.project.name,
+    kind: "directory", status: "gray", position: { x: 0, y: 0 }, focus: focus("repo", `dir:${directory.directory}`, fingerprint, directory.directory || undefined), detail: directory.directory || "repository root" }];
+  const used = new Set([...positions.values()].map((position) => `${position.x}:${position.y}`));
+  let slot = 0;
+  for (const entry of directory.entries) {
+    let position = positions.get(entry.id);
+    while (!position) {
+      const candidate = { x: 270 + (slot % 4) * 240, y: Math.floor(slot / 4) * 108 }; ++slot;
+      if (!used.has(`${candidate.x}:${candidate.y}`)) { position = candidate; used.add(`${candidate.x}:${candidate.y}`); }
+    }
+    nodes.push({ id: entry.id, label: entry.label, kind: entry.kind, status: "gray", position,
+      focus: focus("repo", entry.kind === "file" && entry.path ? `file:${entry.path}` : entry.kind === "directory" && entry.path ? `dir:${entry.path}` : `unsupported:${entry.id}`, fingerprint, entry.path ?? undefined),
+      detail: entry.reason ?? (entry.kind === "directory" ? "directory" : entry.git) });
+  }
   return {
     schemaVersion: PROTOCOL_VERSION,
     topologyId: "repo",
-    title: "Repository topology",
-    scope: "examples/checkout-world/services/fraudcheck",
+    title: "Repository",
+    scope: directory.directory || "/",
     zoomBand: "file",
-    epoch,
-    reconciliation: status,
+    epoch: snapshot.reconciliation.epoch,
+    reconciliation: "gray",
     inputFingerprint: fingerprint,
     nodes,
-    edges: [
-      { id: "repo:contains:fraudcheck", source: "repo:root", target: "repo:fraudcheck", kind: "contains", status: "green" },
-      ...paths.map((path) => ({ id: `repo:contains:${path}`, source: "repo:fraudcheck", target: `repo:file:${path}`, kind: "contains", status: "green" as const })),
-    ],
-    provenance: [repoProvenance(fingerprint, observedAt)],
+    edges: directory.entries.map((entry) => ({ id: `${parentId}:contains:${entry.id}`, source: parentId, target: entry.id, kind: "contains", status: "gray" as const })),
+    provenance: [repoProvenance(directory.observationId, directory.capturedAt)],
+    directory,
   };
+}
+
+function rebindRepositoryMappings(mappings: NavigationMapping[], graph: GraphSlice): NavigationMapping[] {
+  return mappings.map((mapping) => mapping.targetTopology !== "repo" ? mapping : { ...mapping,
+    candidates: mapping.candidates.map((candidate) => {
+      const path = candidate.focus.path;
+      if (!path || candidate.focus.domain !== "repo" || candidate.focus.key !== `file:${path}`) return candidate;
+      const node = graph.nodes.find((node) => node.kind === "file" && node.focus.path === path);
+      const { nodeId: _nodeId, revealPath: _revealPath, ...rest } = candidate;
+      return { ...rest, ...(node ? { nodeId: node.id } : { revealPath: path }) };
+    }) });
 }
 
 function emptyServiceGraph(fingerprint: string, epoch: number, status: "gray" | "yellow" | "red", observedAt: string): GraphSlice {
@@ -303,27 +318,35 @@ export class RealWorkspaceProvider {
   private serviceMappings: NavigationMapping[] = [];
   private serviceWidgets: Widget[] = [];
   private workingWorldUnknown = false;
+  private navigationGeneration = 0;
+  private disposed = false;
+  private directoryTimer: ReturnType<typeof setTimeout> | undefined;
+  private readonly repository: Pick<RepositoryReader, "list" | "markStale" | "dispose">;
 
   private constructor(
     private readonly workspaceRoot: string,
     private readonly dependencies: ProviderDependencies,
-  ) {}
+    repositoryId: string,
+  ) { this.repository = dependencies.repository?.(workspaceRoot, repositoryId) ?? new RepositoryReader(workspaceRoot, repositoryId); }
 
   static async create(workspaceRoot: string, dependencies: ProviderDependencies = defaultDependencies): Promise<RealWorkspaceProvider> {
-    const provider = new RealWorkspaceProvider(workspaceRoot, dependencies);
-    const fingerprint = await dependencies.fingerprint(workspaceRoot);
+    const registration = await (dependencies.register ?? registerRepository)(workspaceRoot);
+    const provider = new RealWorkspaceProvider(registration.root, dependencies, registration.id);
+    const fingerprint = `unobserved:${registration.id.slice("repository:".length)}`;
     const observedAt = dependencies.now();
-    provider.snapshotValue = WorkspaceSnapshotSchema.parse({
+    const directory: RepositoryObservation = { directory: "", observationId: `registration:${registration.id.slice("repository:".length)}`, capturedAt: observedAt,
+      state: "loading", complete: false, capturedCount: 0, filteredCount: 0, page: 0, pageCount: 1, filter: "", entries: [], notice: "Opening the registered root directory" };
+    const initial: WorkspaceSnapshot = {
       protocolVersion: PROTOCOL_VERSION,
-      project: { id: "project:swarm-ide", name: "swarm-ide" },
+      project: { id: registration.id, name: registration.name },
       world: { id: "world:working", label: "working tree" },
       revisions: {
-        working: { id: fingerprint, fingerprint },
+        working: { id: fingerprint, fingerprint: "", evidence: "unavailable" },
         built: { id: "", sourceFingerprint: "" },
         deployed: { id: "", buildId: "", environment: "not configured" },
       },
-      focus: focus("repo", "repo:swarm-ide", fingerprint),
-      graphs: [repositoryGraph(fingerprint, 0, "gray", observedAt), emptyServiceGraph(fingerprint, 0, "gray", observedAt)],
+      focus: focus("repo", "dir:", fingerprint),
+      graphs: [emptyServiceGraph(fingerprint, 0, "gray", observedAt)],
       mappings: [],
       widgets: initialWidgets(fingerprint, observedAt),
       jobs: [],
@@ -333,10 +356,64 @@ export class RealWorkspaceProvider {
         status: "gray",
         inputFingerprint: fingerprint,
         lastConsistentFingerprint: "unobserved",
-        message: "Service topology has not been built for this working world",
+        message: "Working evidence unavailable until source observation; directory browsing is independent",
       },
-    });
+    };
+    provider.snapshotValue = WorkspaceSnapshotSchema.parse({ ...initial, graphs: [repositoryGraph(initial, directory), ...initial.graphs] });
+    provider.workingWorldUnknown = true;
     return provider;
+  }
+
+  async listRepository(input: RepositoryRequest, publish: ProviderPublish): Promise<RepositoryObservation> {
+    const request = RepositoryRequestSchema.parse(input);
+    if (this.disposed) throw new RepositoryError("REPOSITORY_UNAVAILABLE", "Repository reader was disposed");
+    const generation = ++this.navigationGeneration;
+    try {
+      const directory = await this.repository.list(request);
+      if (generation !== this.navigationGeneration || this.disposed) throw new RepositoryError("REPOSITORY_STALE", "A newer navigation superseded this request");
+      // Merge with the *latest* service publication, not the pre-await world.
+      const graph = repositoryGraph(this.snapshotValue, directory);
+      this.snapshotValue = WorkspaceSnapshotSchema.parse({ ...this.snapshotValue,
+        graphs: this.snapshotValue.graphs.map((existing) => existing.topologyId === "repo" ? graph : existing),
+        mappings: rebindRepositoryMappings(this.snapshotValue.mappings, graph) });
+      publish("workspace.changed", this.snapshotValue);
+      if (this.directoryTimer) clearTimeout(this.directoryTimer);
+      if (directory.state === "observed") {
+        this.directoryTimer = setTimeout(() => {
+          if (!this.disposed && this.snapshotValue.graphs.find((item) => item.topologyId === "repo")?.directory?.observationId === directory.observationId)
+            this.markDirectoryStale(publish);
+        }, Math.max(0, Date.parse(directory.capturedAt) + 5_000 - Date.now()));
+        this.directoryTimer.unref();
+      }
+      return directory;
+    } catch (error) {
+      if (generation === this.navigationGeneration && !this.disposed) {
+        const graph = this.snapshotValue.graphs.find((graph) => graph.topologyId === "repo")!;
+        if (graph.directory?.state === "loading") {
+          const failed = repositoryGraph(this.snapshotValue, { ...graph.directory, state: "error", notice: `Could not list ${request.directory || "/"}; use Refresh or Up to retry` });
+          this.snapshotValue = WorkspaceSnapshotSchema.parse({ ...this.snapshotValue, graphs: this.snapshotValue.graphs.map((item) => item.topologyId === "repo" ? failed : item) });
+          publish("workspace.changed", this.snapshotValue);
+        }
+      }
+      throw error;
+    }
+  }
+
+  markDirectoryStale(publish?: ProviderPublish): void {
+    this.repository.markStale();
+    const graph = this.snapshotValue.graphs.find((graph) => graph.topologyId === "repo")!;
+    if (!graph.directory || graph.directory.state !== "observed") return;
+    this.snapshotValue = WorkspaceSnapshotSchema.parse({ ...this.snapshotValue, graphs: this.snapshotValue.graphs.map((item) => item === graph ? { ...item, directory: { ...graph.directory!, state: "stale" } } : item) });
+    publish?.("workspace.changed", this.snapshotValue);
+  }
+
+  dispose(): void { this.disposed = true; ++this.navigationGeneration; ++this.currentAttempt; if (this.directoryTimer) clearTimeout(this.directoryTimer); this.repository.dispose(); }
+
+  /** Explicit observation seam also used by small provider tests. Registration
+   * never awaits this; worker observation is independently scheduled. */
+  async observeWorkingWorld(publish: ProviderPublish): Promise<void> {
+    try { const fingerprint = await this.dependencies.fingerprint(this.workspaceRoot); if (!this.disposed) this.markWorkingWorldChanged(fingerprint, publish); }
+    catch (error) { if (!this.disposed) this.markWorkingWorldUnknown(error instanceof Error ? error.message : "Source observation failed", publish); }
   }
 
   snapshot(): WorkspaceSnapshot {
@@ -364,6 +441,8 @@ export class RealWorkspaceProvider {
   }
 
   markWorkingWorldChanged(fingerprint: string, publish: ProviderPublish): WorkspaceSnapshot {
+    if (this.disposed) return this.snapshotValue;
+    this.markDirectoryStale();
     const recoveredFromUnknown = this.workingWorldUnknown;
     this.workingWorldUnknown = false;
     if (fingerprint === this.snapshotValue.revisions.working.fingerprint && !recoveredFromUnknown) return this.snapshotValue;
@@ -374,9 +453,9 @@ export class RealWorkspaceProvider {
     const previousServiceGraph = this.snapshotValue.graphs.find((graph) => graph.topologyId === "service")!;
     this.snapshotValue = WorkspaceSnapshotSchema.parse(retagSnapshot({
       ...this.snapshotValue,
-      revisions: { ...this.snapshotValue.revisions, working: { id: fingerprint, fingerprint } },
+      revisions: { ...this.snapshotValue.revisions, working: { id: fingerprint, fingerprint, evidence: "observed" } },
       graphs: [
-        repositoryGraph(fingerprint, epoch, "yellow", observedAt),
+        this.snapshotValue.graphs.find((graph) => graph.topologyId === "repo")!,
         hadGreen
           ? { ...previousServiceGraph, epoch, reconciliation: "yellow" as const }
           : emptyServiceGraph(fingerprint, epoch, "yellow", observedAt),
@@ -404,12 +483,15 @@ export class RealWorkspaceProvider {
   }
 
   markWorkingWorldUnknown(message: string, publish: ProviderPublish): WorkspaceSnapshot {
+    if (this.disposed) return this.snapshotValue;
+    this.markDirectoryStale();
     this.workingWorldUnknown = true;
     ++this.currentAttempt;
     const epoch = this.snapshotValue.reconciliation.epoch + 1;
     this.snapshotValue = WorkspaceSnapshotSchema.parse({
       ...this.snapshotValue,
-      graphs: this.snapshotValue.graphs.map((graph) => ({ ...graph, epoch, reconciliation: "red" as const })),
+      revisions: { ...this.snapshotValue.revisions, working: { ...this.snapshotValue.revisions.working, evidence: "unavailable" } },
+      graphs: this.snapshotValue.graphs.map((graph) => graph.directory ? graph : ({ ...graph, epoch, reconciliation: "red" as const })),
       jobs: [],
       activity: [{ id: `activity:working:${epoch}:unknown`, at: this.dependencies.now(), kind: "diff", summary: "Working source changed but its fingerprint is unavailable", status: "red" }, ...this.snapshotValue.activity].slice(0, 32),
       reconciliation: {
@@ -424,11 +506,13 @@ export class RealWorkspaceProvider {
   }
 
   async startReconciliation(publish: ProviderPublish): Promise<void> {
+    if (this.disposed) return;
     const attempt = ++this.currentAttempt;
     const epoch = this.snapshotValue.reconciliation.epoch + 1;
     let started = false;
+    let fingerprintUnavailable = false;
     try {
-      const beforeFingerprint = await this.dependencies.fingerprint(this.workspaceRoot);
+      const beforeFingerprint = await this.dependencies.fingerprint(this.workspaceRoot).catch((error) => { fingerprintUnavailable = true; throw error; });
       if (attempt !== this.currentAttempt) return;
       this.workingWorldUnknown = false;
       const observedAt = this.dependencies.now();
@@ -436,9 +520,9 @@ export class RealWorkspaceProvider {
       const previousServiceGraph = this.snapshotValue.graphs.find((graph) => graph.topologyId === "service")!;
       this.snapshotValue = WorkspaceSnapshotSchema.parse(retagSnapshot({
         ...this.snapshotValue,
-        revisions: { ...this.snapshotValue.revisions, working: { id: beforeFingerprint, fingerprint: beforeFingerprint } },
+        revisions: { ...this.snapshotValue.revisions, working: { id: beforeFingerprint, fingerprint: beforeFingerprint, evidence: "observed" } },
         graphs: [
-          repositoryGraph(beforeFingerprint, epoch, "yellow", observedAt),
+          this.snapshotValue.graphs.find((graph) => graph.topologyId === "repo")!,
           hadGreen
             ? { ...previousServiceGraph, epoch, reconciliation: "yellow" as const }
             : emptyServiceGraph(beforeFingerprint, epoch, "yellow", observedAt),
@@ -468,14 +552,17 @@ export class RealWorkspaceProvider {
       if (attempt !== this.currentAttempt) return;
       const { bytes, artifact } = await this.dependencies.readArtifact(this.workspaceRoot, build);
       if (attempt !== this.currentAttempt) return;
-      const afterFingerprint = await this.dependencies.fingerprint(this.workspaceRoot);
+      const afterFingerprint = await this.dependencies.fingerprint(this.workspaceRoot).catch((error) => { fingerprintUnavailable = true; throw error; });
       if (attempt !== this.currentAttempt) return;
-      if (afterFingerprint !== beforeFingerprint) throw new Error("working source changed during the build; refusing stale green publication");
+      if (afterFingerprint !== beforeFingerprint) {
+        fingerprintUnavailable = true; // The retained preflight digest is no longer current authority.
+        throw new Error("working source changed during the build; refusing stale green publication");
+      }
       const buildId = artifactBuildId(bytes);
       const adapted = adaptServiceTopology(artifact, `bazel://${SERVICE_TOPOLOGY_ARTIFACT}`, buildId, beforeFingerprint, epoch, this.dependencies.now());
       this.serviceMappings = adapted.mappings;
       this.serviceWidgets = adapted.widgets;
-      const repoGraph = repositoryGraph(beforeFingerprint, epoch, "green", this.dependencies.now());
+      const repoGraph = this.snapshotValue.graphs.find((graph) => graph.topologyId === "repo")!;
       this.snapshotValue = WorkspaceSnapshotSchema.parse({
         ...this.snapshotValue,
         revisions: {
@@ -483,7 +570,7 @@ export class RealWorkspaceProvider {
           built: { id: buildId, sourceFingerprint: beforeFingerprint },
         },
         graphs: [repoGraph, adapted.graph],
-        mappings: adapted.mappings,
+        mappings: rebindRepositoryMappings(adapted.mappings, repoGraph),
         widgets: adapted.widgets,
         jobs: this.snapshotValue.jobs.map((job) => ({ ...job, status: "succeeded" as const, progress: 1, message: `Published artifact sha256:${buildId.slice(0, 12)}` })),
         activity: [{ id: `activity:topology:${epoch}:green`, at: this.dependencies.now(), kind: "system", summary: `FraudCheck topology published from ${SERVICE_TOPOLOGY_TARGET}`, status: "green" }, ...this.snapshotValue.activity].slice(0, 32),
@@ -501,9 +588,11 @@ export class RealWorkspaceProvider {
       const message = error instanceof Error ? error.message : "unknown topology build failure";
       const observedAt = this.dependencies.now();
       const currentFingerprint = this.snapshotValue.revisions.working.fingerprint;
+      if (fingerprintUnavailable) this.workingWorldUnknown = true;
       this.snapshotValue = WorkspaceSnapshotSchema.parse({
         ...this.snapshotValue,
-        graphs: this.snapshotValue.graphs.map((graph) => ({ ...graph, epoch, reconciliation: "red" as const })),
+        revisions: { ...this.snapshotValue.revisions, working: { ...this.snapshotValue.revisions.working, ...(fingerprintUnavailable ? { evidence: "unavailable" as const } : {}) } },
+        graphs: this.snapshotValue.graphs.map((graph) => graph.directory ? graph : ({ ...graph, epoch, reconciliation: "red" as const })),
         jobs: started
           ? this.snapshotValue.jobs.map((job) => ({ ...job, status: "failed" as const, message: message.slice(0, 300) }))
           : [{ id: `job:service-topology:${epoch}`, label: `bazel build ${SERVICE_TOPOLOGY_TARGET}`, kind: "build", status: "failed", progress: 0, resources: { cpuPercent: 0, memoryMiB: 0 }, message: message.slice(0, 300) }],
@@ -512,7 +601,7 @@ export class RealWorkspaceProvider {
           ...this.snapshotValue.reconciliation,
           epoch,
           status: "red",
-          inputFingerprint: currentFingerprint,
+          inputFingerprint: currentFingerprint || this.snapshotValue.revisions.working.id,
           message: `Topology build failed: ${message.slice(0, 240)}`,
         },
       });

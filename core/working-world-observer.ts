@@ -25,6 +25,7 @@ export class WorkingWorldObserver {
   private timer: WorkingWorldObserverTimer | null = null;
   private lastFingerprint: string;
   private observationFailed = false;
+  private mustPublishSuccess = false;
 
   constructor(
     initialFingerprint: string,
@@ -55,9 +56,16 @@ export class WorkingWorldObserver {
     if (!this.running) void this.drain();
   }
 
+  /** Another observer (e.g. build preflight) revoked current evidence. A later
+   * successful sample must be published even if its digest equals the last one.
+   * Treat revocation as one coalesced hint: an already-running pre-revocation
+   * sample cannot restore authority. This changes no observed digest. */
+  invalidate(): void { this.mustPublishSuccess = true; this.request(); }
+
   observeKnown(fingerprint: string): void {
     this.lastFingerprint = fingerprint;
     this.observationFailed = false;
+    this.mustPublishSuccess = false;
     // Invalidate a computation that may have started before the caller's
     // atomic save, then reconcile once more against Git's complete view.
     this.request();
@@ -78,8 +86,9 @@ export class WorkingWorldObserver {
           const fingerprint = await this.compute();
           this.processed = generation;
           if (generation !== this.requested || this.closed) continue;
-          const recovered = this.observationFailed;
+          const recovered = this.observationFailed || this.mustPublishSuccess;
           this.observationFailed = false;
+          this.mustPublishSuccess = false;
           if (fingerprint !== this.lastFingerprint || recovered) {
             this.lastFingerprint = fingerprint;
             this.changed(fingerprint);

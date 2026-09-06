@@ -1,13 +1,16 @@
-import { useMemo } from "react";
+import { memo, useMemo, type ReactNode } from "react";
 import { Background, Controls, Handle, Position, ReactFlow, type NodeProps } from "@xyflow/react";
 import type { FocusRef, GraphSlice, NavigationMapping } from "../../protocol/schema";
 import { adaptGraph, describeGraphConnection, type GraphConnectionFocus, type TopologyNodeData } from "./graph-adapter";
+import { useDirectoryCamera } from "./repository/camera";
+import type { RepositoryCameraIntent } from "./repository/navigation";
+import { useFramePresentation } from "./repository/presentation";
 export type { GraphConnectionFocus } from "./graph-adapter";
 
 function TopologyNode({ data }: NodeProps) {
   const node = data as TopologyNodeData;
   return (
-    <div className={`topology-node status-${node.status} ${node.focused ? "is-focused" : ""} ${node.ambiguous ? "is-ambiguous" : ""}`} title={node.mappingReason}>
+    <div className={`topology-node status-${node.status} ${node.focused ? "is-focused" : ""} ${node.ambiguous ? "is-ambiguous" : ""} ${node.ignored ? "is-ignored" : ""} ${node.unavailable ? "is-unavailable" : ""}`} title={node.mappingReason ?? node.detail}>
       <Handle type="target" position={Position.Left} />
       <span className="node-kind">{node.kind}</span>
       <strong>{node.label}</strong>
@@ -20,7 +23,7 @@ function TopologyNode({ data }: NodeProps) {
 
 const nodeTypes = { topology: TopologyNode };
 
-export function GraphPane({ graph, focus, mappings, onFocus, onConnectionFocus, onReconcile, reconciliationRunning }: {
+interface GraphPaneProps {
   graph: GraphSlice;
   focus: FocusRef;
   mappings: NavigationMapping[];
@@ -29,24 +32,42 @@ export function GraphPane({ graph, focus, mappings, onFocus, onConnectionFocus, 
   onReconcile: () => void;
   reconciliationRunning: boolean;
   interfaceZoom: number | null;
-}) {
+  repositoryNavigation?: ReactNode;
+  repositoryCameraIntent?: RepositoryCameraIntent | null;
+}
+
+export function GraphPane(props: GraphPaneProps) {
+  return props.graph.topologyId === "repo" ? <RepositoryGraphPane {...props} /> : <GraphPaneContent {...props} />;
+}
+
+function RepositoryGraphPane(props: GraphPaneProps) {
+  const presented = useFramePresentation(props);
+  return <GraphPaneContent {...presented} />;
+}
+
+const GraphPaneContent = memo(function GraphPaneContent({ graph, focus, mappings, onFocus, onConnectionFocus, onReconcile, reconciliationRunning, repositoryNavigation, repositoryCameraIntent }: GraphPaneProps) {
   const adapted = useMemo(() => adaptGraph(graph, focus, mappings), [graph, focus, mappings]);
+  const camera = useDirectoryCamera(graph.directory, repositoryCameraIntent);
   // Interface zoom resizes CSS presentation, not the user's graph camera.
   // Let each mounted ReactFlow retain its own viewport through zoom/resize;
   // only initial fit and the explicit Fit control should frame the graph.
 
   return (
-    <section className="graph-pane" data-topology={graph.topologyId}>
+    <section className={`graph-pane ${graph.directory ? "has-directory" : ""}`} data-topology={graph.topologyId} data-directory={graph.directory?.directory} data-observation-state={graph.directory?.state}>
       <header className="graph-header">
         <div><span className="eyebrow">{graph.topologyId} lens</span><h2>{graph.title}</h2></div>
-        <div className="graph-meta"><span>{graph.scope}</span><span>{graph.zoomBand}</span>{graph.reconciliation === "yellow"
+        <div className="graph-meta"><span>{graph.scope}</span><span>{graph.zoomBand}</span>{graph.directory ? <span aria-label="Directory observation, not build evidence">◷</span> : graph.reconciliation === "yellow"
           ? <button className="truth-dot status-yellow" aria-label={reconciliationRunning ? "Topology build in progress" : "Build repository service topology"} title={reconciliationRunning ? "Topology build in progress" : "Working world changed — build topology"} disabled={reconciliationRunning} onClick={onReconcile} />
           : <span className={`truth-dot status-${graph.reconciliation}`} role="status" aria-label={`Topology ${graph.reconciliation === "green" ? "consistent" : graph.reconciliation === "gray" ? "unobserved" : "failed"}`} title={graph.reconciliation === "green" ? "Topology consistent" : graph.reconciliation === "gray" ? "Topology unobserved" : "Topology build failed"} />}</div>
       </header>
+      {repositoryNavigation}
       <div className="graph-canvas">
         <ReactFlow
           nodes={adapted.nodes}
           edges={adapted.edges}
+          onInit={camera.onInit}
+          onMoveStart={camera.onMoveStart}
+          onMoveEnd={camera.onMoveEnd}
           nodeTypes={nodeTypes}
           fitView
           fitViewOptions={{ padding: 0.18, maxZoom: 1.35 }}
@@ -69,4 +90,4 @@ export function GraphPane({ graph, focus, mappings, onFocus, onConnectionFocus, 
       </div>
     </section>
   );
-}
+});

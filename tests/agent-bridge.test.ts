@@ -16,10 +16,10 @@ vi.mock("electron", () => ({
     removeListener: electron.removeListener },
 }));
 vi.mock("../core/provider", () => ({ RealWorkspaceProvider: {
-  create: async () => ({ snapshot: () => initialSnapshot() }),
+  create: async () => ({ snapshot: () => initialSnapshot(), listRepository: async () => { throw new Error("Directory observation is outside this isolated agent dispatcher test"); }, dispose() {} }),
 } }));
 vi.mock("../core/watchers", () => ({ WorkspaceFileWatchers: class { closeAll() {} } }));
-vi.mock("../core/working-world-observer", () => ({ WorkingWorldObserver: class { start() {} close() {} } }));
+vi.mock("../core/working-world-observer", () => ({ WorkingWorldObserver: class { start() {} request() {} close() {} } }));
 
 afterEach(() => {
   vi.resetModules(); vi.clearAllMocks(); electron.exposed.clear(); electron.listeners.clear();

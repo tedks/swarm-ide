@@ -34,7 +34,10 @@ export async function createProductionAgentService(options: {
   try {
     const context = await RegisteredAgentContextProvider.create({
       root, repositoryId: `repository:${identity}`, worldId: options.snapshot().world.id,
-      workingRevision: () => options.snapshot().revisions.working.fingerprint || null,
+      workingRevision: () => {
+        const working = options.snapshot().revisions.working;
+        return working.evidence === "observed" ? working.fingerprint || null : null;
+      },
       async resolveFocus(focus) {
         const snapshot = options.snapshot();
         const matches = snapshot.graphs.flatMap((graph) => graph.nodes).filter((node) =>

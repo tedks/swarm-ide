@@ -125,7 +125,7 @@ export function adaptServiceTopology(
       ambiguous: false,
       candidates: [{
         focus: focus("repo", `file:${candidatePath}`, fingerprint, candidatePath),
-        nodeId: `repo:file:${candidatePath}`,
+        revealPath: candidatePath,
         confidence: 1,
         reason: item.domain === "interface" ? "declared protobuf interface source" : "Bazel-owned implementation source",
       }],

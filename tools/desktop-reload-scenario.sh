@@ -26,6 +26,12 @@ command_palette() {
   swarm_window_key ctrl+a
   swarm_window_type "$1" 1
   swarm_window_key Return
+  if (( $# == 2 )); then
+    swarm_window_wait_title 'Palette open'
+    swarm_window_key ctrl+a
+    swarm_window_type "$2" 1
+    swarm_window_key Return
+  fi
   swarm_window_wait_title 'Palette open' absent
 }
 background() {
@@ -84,7 +90,7 @@ NODE
 command_palette 'Build repository service topology'
 swarm_window_wait_title 'Consistent' present 60000
 swarm_window_wait_title 'FraudCheck visible'
-command_palette 'Open FraudCheck implementation'
+command_palette 'Open repository path' 'examples/checkout-world/services/fraudcheck/fraudcheck.ts'
 swarm_window_wait_title 'fraudcheck.ts:saved'
 swarm_window_capture "$artifacts/source-before.png"
 background

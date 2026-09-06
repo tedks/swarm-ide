@@ -7,6 +7,9 @@ vi.mock("node:child_process", () => ({ execFile: vi.fn() }));
 vi.mock("../core/fingerprint", () => ({
   computeWorkingWorldFingerprint: vi.fn(async () => "a".repeat(64)),
 }));
+vi.mock("../core/repository-registration", () => ({
+  registerRepository: vi.fn(async (root: string) => ({ root, id: `repository:${"a".repeat(64)}`, name: "Build invocation fixture" })),
+}));
 
 describe("fixed topology build invocation", () => {
   it("bounds nested concurrency independently of the caller's Bazel flags", async () => {

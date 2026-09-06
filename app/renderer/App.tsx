@@ -38,6 +38,9 @@ import { TaskPanel } from "./tasks/TaskPanel";
 import { TaskDetail } from "./tasks/TaskDetail";
 import { taskLineTarget, validTaskReference } from "./tasks/reveal";
 import type { TaskFileRef } from "../../protocol/tasks";
+import { isRepositoryPath, type RepositoryEntry, type RepositoryRequest } from "../../protocol/repository";
+import { useRepositoryNavigation } from "./repository/navigation";
+import { RepositoryNavigation } from "./repository/RepositoryNavigation";
 
 const lensTabs = ["System", "Plan", "Performance", "Refactor"] as const;
 const FRAUDCHECK_IMPLEMENTATION = "examples/checkout-world/services/fraudcheck/fraudcheck.ts";
@@ -107,6 +110,7 @@ export function App() {
   const [error, setError] = useState<string | null>(null);
   const [activeLens, setActiveLens] = useState<(typeof lensTabs)[number]>(hotCheckpoint?.lens ?? restoredNavigation?.lens ?? "System");
   const [paletteOpen, setPaletteOpen] = useState(false);
+  const [palettePathMode, setPalettePathMode] = useState(false);
   const [compactPanel, setCompactPanel] = useState<"work" | "info" | null>(null);
   const taskClient = useMemo(() => new TaskBridgeClient(), [TaskBridgeClient]);
   const tasks = useSyncExternalStore(taskClient.subscribe, taskClient.getSnapshot);
@@ -298,6 +302,18 @@ export function App() {
       return null;
     }
   }, []);
+
+  const requestDirectory = useCallback(async (request: RepositoryRequest) => {
+    const generation = coreGenerationRef.current;
+    if (!window.swarm) return null;
+    const response = await window.swarm.request(request);
+    // Directory failures belong to this navigation intent, not the global
+    // invoke toast: an obsolete request cannot overwrite a newer notice.
+    return generation === coreGenerationRef.current && (!window.swarmLifecycle || lifecycleRef.current?.core.phase === "ready") ? response : null;
+  }, []);
+  const repositoryObservation = workspace.snapshot?.graphs.find((graph) => graph.topologyId === "repo")?.directory;
+  const repository = useRepositoryNavigation(repositoryObservation, coreGenerationRef.current,
+    Boolean(window.swarm && (!window.swarmLifecycle || lifecycle?.core.phase === "ready")), requestDirectory);
 
   const coordinateFileFocus = useCallback((path: string) => {
     setSelectedConnection(null);
@@ -527,8 +543,10 @@ export function App() {
     return fileTabsRef.current.find((tab) => tab.path === path) ?? null;
   }, [activateFile, invoke, showSurface]);
 
-  const revealTaskReference = useCallback(async (ref: TaskFileRef) => {
-    if (!validTaskReference(ref)) { reportRevealFailure("Unsupported reference: only canonical relative working-file paths can be revealed."); return; }
+  const revealTaskReference = useCallback(async (ref: TaskFileRef, origin: "task" | "repository" = "task") => {
+    // Task metadata has a deliberately narrower display/link policy. An exact
+    // repository path is not metadata or a URL; the file broker owns access.
+    if (origin === "repository" ? !isRepositoryPath(ref.path) : !validTaskReference(ref)) { reportRevealFailure("Unsupported reference: only canonical relative working-file paths can be revealed."); return; }
     const intent = ++navigationIntent.current;
     pendingRevealIntent.current = intent;
     try {
@@ -584,12 +602,28 @@ export function App() {
       activateFile(ref.path);
       setRevealNotice(target.notice);
       setSourceNavigation({ path: ref.path, content: tab.content, line: target.line, nonce: intent, focus: true });
+      // Explicit Reveal alone navigates the repository projection. The file
+      // opener remains authoritative; failed/partial listing cannot hide it.
+      if (workspaceRef.current.snapshot?.graphs.some((graph) => graph.directory)) void repository.reveal(ref.path);
     } finally {
       // An explicit handoff after completion is not a competing interaction.
       // Never clear a newer Reveal's token when an older read finally settles.
       if (pendingRevealIntent.current === intent) pendingRevealIntent.current = null;
     }
-  }, [activateFile, invoke, openFile, reportRevealFailure]);
+  }, [activateFile, invoke, openFile, reportRevealFailure, repository.reveal]);
+
+  const openLinkedFile = useCallback((path: string) => {
+    if (!isRepositoryPath(path)) { reportRevealFailure("Use an exact canonical repository-relative file path, without .git or parent segments."); return; }
+    if (workspaceRef.current.snapshot?.graphs.some((graph) => graph.directory))
+      void revealTaskReference({ path, line: null, note: null, navigation: "candidate" }, "repository");
+    else void openFile(path);
+  }, [openFile, revealTaskReference, reportRevealFailure]);
+
+  const activateRepositoryEntry = useCallback((entry: RepositoryEntry) => {
+    if (!entry.actionable || !entry.path) return;
+    if (entry.kind === "directory") { ++navigationIntent.current; void repository.enter(entry.path); }
+    else if (entry.kind === "file") void openFile(entry.path);
+  }, [repository.enter, openFile]);
 
   const closeFile = useCallback((path: string) => {
     const tab = fileTabsRef.current.find((candidate) => candidate.path === path);
@@ -754,7 +788,7 @@ export function App() {
   }, [activeSurface, closeFile, interruptPendingReveal, resetZoom, zoomIn, zoomOut]);
 
   useEffect(() => {
-    if (paletteOpen) { setCommandQuery(""); requestAnimationFrame(() => commandInput.current?.focus()); }
+    if (paletteOpen) { setPalettePathMode(false); setCommandQuery(""); requestAnimationFrame(() => commandInput.current?.focus()); }
   }, [paletteOpen]);
 
   useEffect(() => {
@@ -797,9 +831,20 @@ export function App() {
   const selectFocus = useCallback((focus: FocusRef) => {
     sourceInformation();
     setSelectedConnection(null);
+    const repoGraph = workspaceRef.current.snapshot?.graphs.find((graph) => graph.topologyId === "repo");
+    const entry = repoGraph?.directory?.entries.find((item) => item.path === focus.path);
+    if (repoGraph?.directory && focus.domain === "repo") {
+      if (entry) { activateRepositoryEntry(entry); return; }
+      if (focus.key === `dir:${repoGraph.directory.directory}`) { void repository.enter(repoGraph.directory.directory); return; }
+      // A recipe is explicit current-working path navigation, not an invented
+      // loaded node and not permission to open a directory as text.
+      if (focus.path && focus.key === `file:${focus.path}`) { openLinkedFile(focus.path); return; }
+      return;
+    }
     void invoke({ type: "focus.select", requestId: requestId(), protocolVersion: PROTOCOL_VERSION, focus });
-    if (focus.path) void openFile(focus.path, false);
-  }, [invoke, openFile, sourceInformation]);
+    const loaded = repoGraph?.nodes.find((node) => node.focus.key === focus.key && node.focus.path === focus.path);
+    if (focus.path && focus.domain === "repo" && loaded?.kind === "file") void openFile(focus.path, false);
+  }, [invoke, openFile, sourceInformation, activateRepositoryEntry, repository.enter, openLinkedFile]);
   const selectConnection = useCallback((connection: GraphConnectionFocus) => {
     sourceInformation();
     setSelectedConnection(connection);
@@ -810,17 +855,27 @@ export function App() {
     return invoke({ type: "reconciliation.start", requestId: requestId(), protocolVersion: PROTOCOL_VERSION, mode: "success" });
   }, [invoke]);
 
-  const commands = useMemo(() => [
+  const commands = useMemo(() => palettePathMode ? [
+    { label: "Open path", detail: "Exact repository-relative file path · not filename search", run: () => { setPaletteOpen(false); openLinkedFile(commandQuery); } },
+  ] : [
+    ...(repositoryObservation ? [
+      { label: "Repository root", detail: "Browse actual root entries", run: () => { setPaletteOpen(false); void repository.enter(""); } },
+      { label: "Repository Up", detail: "Browse the parent directory", run: () => { setPaletteOpen(false); void repository.up(); } },
+      { label: "Refresh directory", detail: "Observe current entries without a build", run: () => { setPaletteOpen(false); void repository.refresh(); } },
+      { label: "Open repository path", detail: "Enter an exact relative file path; no recursive search", run: () => { setPalettePathMode(true); setCommandQuery(""); requestAnimationFrame(() => commandInput.current?.focus()); } },
+    ] : []),
     { label: "Show repository Tasks", detail: "inspect planning metadata without moving source", run: () => { setPaletteOpen(false); setCompactPanel("work"); } },
     { label: "Refresh tasks", detail: "observe local metadata; no fetch, task mutation or dispatch", run: () => { setPaletteOpen(false); setCompactPanel("work"); void taskClient.refresh(); } },
     { label: "Show task details", detail: "retained task selection in Information", run: () => { setPaletteOpen(false); showTaskDetails(); } },
     { label: "Ask an agent about this focus", detail: "inspect disk context before explicit read-only launch", run: () => { setPaletteOpen(false); setCompactPanel("work"); if (workspaceRef.current.snapshot) agentClient.openDraft(workspaceRef.current.snapshot.focus); } },
     { label: "Build repository service topology", detail: "exact fingerprint → Bazel artifact → green", run: reconcile },
     { label: "Show system graphs", detail: "return to the coordinated repository and service views", run: () => { setPaletteOpen(false); showSurface("graphs"); } },
-    { label: "Open FraudCheck implementation", detail: FRAUDCHECK_IMPLEMENTATION, run: () => { setPaletteOpen(false); void openFile(FRAUDCHECK_IMPLEMENTATION); } },
-    { label: "Open FraudCheck protobuf contract", detail: FRAUDCHECK_CONTRACT, run: () => { setPaletteOpen(false); void openFile(FRAUDCHECK_CONTRACT); } },
+    ...(!repositoryObservation ? [
+      { label: "Open FraudCheck implementation", detail: FRAUDCHECK_IMPLEMENTATION, run: () => { setPaletteOpen(false); void openFile(FRAUDCHECK_IMPLEMENTATION); } },
+      { label: "Open FraudCheck protobuf contract", detail: FRAUDCHECK_CONTRACT, run: () => { setPaletteOpen(false); void openFile(FRAUDCHECK_CONTRACT); } },
+    ] : []),
     ...(agentFixtureEnabled ? [{ label: "Preview agent fixture", detail: "DEMO only · no provider or file bytes · explicit launch", run: () => { setPaletteOpen(false); setCompactPanel("work"); openAgentDraft(); } }] : []),
-  ].filter((command) => command.label.toLowerCase().includes(commandQuery.toLowerCase())), [agentClient, taskClient, agentFixtureEnabled, openAgentDraft, commandQuery, openFile, reconcile, showSurface, showTaskDetails]);
+  ].filter((command) => command.label.toLowerCase().includes(commandQuery.toLowerCase())), [agentClient, taskClient, agentFixtureEnabled, openAgentDraft, commandQuery, openFile, reconcile, showSurface, showTaskDetails, palettePathMode, openLinkedFile, repositoryObservation, repository.enter, repository.up, repository.refresh]);
 
   if (!snapshot) return <main className="loading-screen"><div className="loading-mark hmr-probe" />Opening the working world…{error ? <strong>{error}</strong> : null}<small>{lifecycleNotice}</small><AgentReloadGuard state={liveAgents} client={agentClient} /></main>;
   return (
@@ -842,7 +897,7 @@ export function App() {
       </header>
 
       <aside id="work-panel" aria-label="Work panel" className="work-rail panel">
-        <div className="rail-section"><span className="eyebrow">working world</span><h1>swarm-ide</h1><p className="muted">real local repository</p></div>
+        <div className="rail-section"><span className="eyebrow">working world</span><h1>{snapshot.project.name}</h1><p className="muted">real local repository</p></div>
         <LiveRunRail state={liveAgents} client={agentClient} onDraft={() => { setCompactPanel("work"); agentClient.openDraft(snapshot.focus); }} />
         <AgentReloadGuard state={liveAgents} client={agentClient} />
         <PreparedLaunchDraft state={liveAgents} client={agentClient} dirtyPaths={fileTabs.filter((tab) => protectsBuffer(tab)).map((tab) => tab.path)} />
@@ -861,7 +916,7 @@ export function App() {
           <button className={activeSurface === "graphs" ? "active" : ""} onClick={() => showSurface("graphs")}><span>⌘</span> System graphs</button>
           {fileTabs.map((tab) => <div key={tab.path} className={`surface-tab ${activeSurface === tab.path ? "active" : ""}`}><button className="surface-tab-main" onClick={() => activateFile(tab.path)} title={tab.path}><span className={`tab-state status-${tab.status}`}>{tab.status === "dirty" ? "●" : tab.status === "saving" ? "◌" : tab.status === "conflict" || tab.status === "error" ? "!" : "◇"}</span>{tab.path.split("/").at(-1)}</button><button className="surface-tab-close" aria-label={`Close ${tab.path}`} onClick={() => closeFile(tab.path)}>×</button></div>)}
         </nav>
-        <div className={`graphs-grid ${activeFile ? "is-sidebar" : activeSurface === "graphs" ? "is-active" : "is-hidden"}`}>{snapshot.graphs.map((graph) => <GraphPane key={graph.topologyId} graph={graph} focus={snapshot.focus} mappings={snapshot.mappings} interfaceZoom={zoomPercent} onFocus={selectFocus} onConnectionFocus={selectConnection} onReconcile={() => { void reconcile(); }} reconciliationRunning={reconciliationRunning} />)}</div>
+        <div className={`graphs-grid ${activeFile ? "is-sidebar" : activeSurface === "graphs" ? "is-active" : "is-hidden"}`}>{snapshot.graphs.map((graph) => <GraphPane key={graph.topologyId} graph={graph} focus={snapshot.focus} mappings={snapshot.mappings} interfaceZoom={zoomPercent} onFocus={selectFocus} onConnectionFocus={selectConnection} onReconcile={() => { void reconcile(); }} reconciliationRunning={reconciliationRunning} repositoryCameraIntent={graph.directory ? repository.cameraIntent : undefined} repositoryNavigation={graph.directory ? <RepositoryNavigation observation={graph.directory} actions={repository} onActivate={activateRepositoryEntry} onOpenPath={openLinkedFile} /> : undefined} />)}</div>
         {activeFile ? <section onPointerDown={sourceInformation} onFocusCapture={sourceInformation} className={`source-surface ${["conflict", "unknown", "error"].includes(activeFile.status) ? "has-banner" : ""}`}>
           <header><div><span className="eyebrow">source observatory</span><strong>{activeFile.path}</strong></div><div className={`file-state file-${activeFile.status}`}><i />{activeFile.status}<button onClick={() => void saveFile(activeFile.path)} disabled={activeFile.status !== "dirty" || coreUnavailable}>Save <kbd>Ctrl S</kbd></button></div></header>
           {activeFile.status === "loading" ? <div className="source-message">Loading the canonical working file…</div> : <>
@@ -891,9 +946,10 @@ export function App() {
         <div className="breadcrumbs">world / {selectedConnection ? "connection" : snapshot.focus.domain} / <b>{selectedConnection?.id ?? focusLabel(snapshot.focus)}</b></div>
         <div className="widget-grid">
           {selectedConnection ? <article className="widget widget-list connection-widget"><header><span>{selectedConnection.kind} connection</span><i title={`${selectedConnection.provenance[0]?.sourceKind}: ${selectedConnection.provenance[0]?.uri}`} /></header><div className="connection-flow"><button onClick={() => selectFocus(selectedConnection.source.focus)}>{selectedConnection.source.label}</button><span>→</span><button onClick={() => selectFocus(selectedConnection.target.focus)}>{selectedConnection.target.label}</button></div>{selectedConnection.contract ? <small>{selectedConnection.contract}</small> : null}<code>{selectedConnection.provenance[0]?.uri}</code></article> : null}
-          {[...snapshot.widgets].sort((a, b) => a.priority - b.priority).map((widget) => <article className={`widget widget-${widget.kind}`} key={widget.id}><header><span>{widget.title}</span><i title={`${widget.provenance.sourceKind}: ${widget.provenance.uri}`} /></header>{Array.isArray(widget.value) ? <ul>{widget.value.map((item) => <li key={item}>{widget.id === "source-paths" ? <button className="source-link" onClick={() => void openFile(item)}>{item}</button> : item}</li>)}</ul> : <div className="widget-value">{widget.value}</div>}{widget.unit ? <small>{widget.unit}</small> : null}</article>)}
+          {[...snapshot.widgets].sort((a, b) => a.priority - b.priority).map((widget) => <article className={`widget widget-${widget.kind}`} key={widget.id}><header><span>{widget.title}</span><i title={`${widget.provenance.sourceKind}: ${widget.provenance.uri}`} /></header>{Array.isArray(widget.value) ? <ul>{widget.value.map((item) => <li key={item}>{widget.id === "source-paths" ? <button className="source-link" onClick={() => openLinkedFile(item)}>{item}</button> : item}</li>)}</ul> : <div className="widget-value">{widget.value}</div>}{widget.unit ? <small>{widget.unit}</small> : null}</article>)}
+          {snapshot.mappings.filter((mapping) => mapping.targetTopology === "repo" && mapping.from.key === snapshot.focus.key && mapping.from.domain === snapshot.focus.domain && mapping.from.worldId === snapshot.focus.worldId).map((mapping, index) => <article className="widget widget-list repository-recipes" key={`repository-mapping:${index}`}><header><span>{mapping.ambiguous ? "Repository candidates" : "Repository link"}</span></header>{mapping.candidates.map((candidate) => candidate.focus.path ? <button key={candidate.nodeId ?? candidate.revealPath} className="source-link" title={`${candidate.reason} · ${Math.round(candidate.confidence * 100)}%`} onClick={() => openLinkedFile(candidate.focus.path!)}>{candidate.focus.path}{candidate.revealPath ? " · reveal in current working tree" : ""}</button> : null)}</article>)}
         </div>
-        <article className="widget source-widget"><header><span>Truth source</span><i /></header>{snapshot.focus.path ? <button className="source-link" onClick={() => void openFile(snapshot.focus.path!)}>{snapshot.focus.path}</button> : <code>{snapshot.focus.key}</code>}<small>{snapshot.reconciliation.message}</small></article>
+        <article className="widget source-widget"><header><span>Truth source</span><i /></header>{snapshot.focus.path ? <button className="source-link" onClick={() => snapshot.focus.key.startsWith("dir:") ? void repository.enter(snapshot.focus.path!) : openLinkedFile(snapshot.focus.path!)}>{snapshot.focus.path}</button> : <code>{snapshot.focus.key}</code>}<small>{snapshot.reconciliation.message}</small></article>
         </>}
       </aside>
 
@@ -913,7 +969,7 @@ export function App() {
         {agents.selected || liveAgents.paneOpen ? <div className="agent-job-summary" tabIndex={0} aria-label="Build and activity summary">Build / activity · {snapshot.jobs.length ? snapshot.jobs.map((job) => `${job.label}: ${job.status} · ${job.resources.cpuPercent || job.resources.memoryMiB ? `${job.resources.cpuPercent}% CPU / ${job.resources.memoryMiB} MiB` : "telemetry unavailable"}`).join(" · ") : "no derived work running"} · {snapshot.activity[0]?.summary ?? "no recent events"}</div> : null}
       </section>
 
-      {paletteOpen ? <div className="palette-scrim" onMouseDown={() => setPaletteOpen(false)}><section className="command-palette" onMouseDown={(event) => event.stopPropagation()}><header><span>⌕</span><input ref={commandInput} value={commandQuery} onChange={(event) => setCommandQuery(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter" && commands[0]) { event.preventDefault(); void commands[0].run(); } }} placeholder="Navigate or apply intelligence…" /><kbd>esc</kbd></header><div className="command-results">{commands.map((command) => <button key={command.label} onClick={() => void command.run()}><span>{command.label}<small>{command.detail}</small></span><kbd>↵</kbd></button>)}</div><footer><span>Current focus: {focusLabel(snapshot.focus)}</span><span>scope · action · artifact</span></footer></section></div> : null}
+      {paletteOpen ? <div className="palette-scrim" onMouseDown={() => setPaletteOpen(false)}><section className="command-palette" onMouseDown={(event) => event.stopPropagation()}><header><span>⌕</span><input ref={commandInput} aria-label={palettePathMode ? "Exact repository path" : "Workspace command"} value={commandQuery} onChange={(event) => setCommandQuery(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter" && commands[0]) { event.preventDefault(); void commands[0].run(); } }} placeholder={palettePathMode ? "Exact relative path, e.g. core/files.ts" : "Navigate or apply intelligence…"} /><kbd>esc</kbd></header><div className="command-results">{commands.map((command) => <button key={command.label} onClick={() => void command.run()}><span>{command.label}<small>{command.detail}</small></span><kbd>↵</kbd></button>)}</div><footer><span>Current focus: {focusLabel(snapshot.focus)}</span><span>{palettePathMode ? "exact path · file opener" : "scope · action · artifact"}</span></footer></section></div> : null}
       {reloadNotice || lifecycleNotice ? <div className="lifecycle-notice" role="status" tabIndex={0} aria-label="Development status">{reloadNotice || lifecycleNotice}</div> : null}
       {error ? <div className="error-toast">{error}</div> : null}
       {zoomNotice ? <div className="zoom-toast" role="status">{zoomNotice}</div> : null}

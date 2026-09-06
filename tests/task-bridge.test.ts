@@ -24,7 +24,7 @@ vi.mock("electron", () => ({
     removeListener: electron.removeListener },
 }));
 vi.mock("../core/provider", () => ({ RealWorkspaceProvider: {
-  create: async () => ({ snapshot: () => initialSnapshot() }),
+  create: async () => ({ snapshot: () => initialSnapshot(), listRepository: async () => { throw new Error("Directory observation is outside this isolated task dispatcher test"); }, dispose() {} }),
 } }));
 vi.mock("../core/agents/production", () => ({ createProductionAgentService: vi.fn(() => {
   throw new Error("The test must inject its agent service");
@@ -35,7 +35,7 @@ vi.mock("../core/files", () => ({
 }));
 vi.mock("../core/fingerprint", () => ({ computeWorkingWorldFingerprint: boundary.fingerprint }));
 vi.mock("../core/watchers", () => ({ WorkspaceFileWatchers: class { closeAll() {} } }));
-vi.mock("../core/working-world-observer", () => ({ WorkingWorldObserver: class { start() {} close() {} } }));
+vi.mock("../core/working-world-observer", () => ({ WorkingWorldObserver: class { start() {} request() {} close() {} } }));
 // Any accidental Git/Ditz invocation or direct metadata access fails visibly.
 // The worker's ordinary startup services are isolated above, not real readers.
 vi.mock("node:child_process", async (importOriginal) => {

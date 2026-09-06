@@ -1,8 +1,10 @@
 # Repository navigation: first useful slice
 
-Design contract, not implemented functionality. N0 is based on T3 normal merge
-`2270922`. [The implementation plan](../.planning/repository-navigation.md)
-is subject to ROOT acceptance before dispatch.
+Implemented by N1 in PR37 after ROOT accepted N0 at `abf149d`. The actual
+packaged Swarm and unfamiliar-repository journeys pass; final local gate and
+normal-merge records belong to the PR and executive handoff. See the living
+[implementation plan](../.planning/repository-navigation.md). This does not
+implement filename search or an interactive project picker.
 
 ## Human journey
 
@@ -127,3 +129,27 @@ Later filename search may reuse canonical entry identity and explicit path
 activation after N1; it needs its own bounded index/query contract and honest
 coverage. Symbol search, global project picker, function/call/service semantic
 drilldown and plugin discovery are not smuggled into N1.
+
+## Implemented coordination details
+
+Protocol v5 uses `repo.list` with an optional exact parent-scoped `revealPath`
+to select a captured off-page file. No fabricated node is needed for an exact
+path outside a partial capture. Initial registration uses `unobserved:<root
+SHA256>` coordination IDs with an empty working fingerprint; these IDs are not
+content evidence. `working.evidence = unavailable` also revokes a retained old
+digest after a later observation failure. Green publication and agent context
+preparation/revalidation remain denied until genuine observation recovers.
+
+Repository presentation keeps one latest coherent pane frame and commits it
+before node measurement. Core events still reduce normally; headers, controls,
+nodes and camera intent are presented together. Service rendering is unchanged.
+This removes rapid page-replacement ResizeObserver errors without suppressing
+errors, remounting graphs or granting local graph deletion.
+
+`//tools/repository-navigation:smoke` verifies the ordinary packaged main,
+preload and core on owned virtual X11. It covers two committed repositories,
+4,096-entry partial coverage, actual CLI-authored Ditz Reveal, exact dirty
+source/cursor/draft retention, both cameras and 100/150 zoom. Separate invalid
+filename and fingerprint-budget cases prove degraded browsing with denied
+context authority. All four cases passed at `5af87b8`, with zero renderer
+errors and all owned processes cleaned up. No model execution is claimed.
