@@ -75,3 +75,9 @@ log_events:
     90000 ms for Consistent while Reconciling; local final runtime and 404-test aggregate
     all five targets plus selective reload and prepared-context UI pass. Conditional
     user local-verification waiver used, not hosted green.
+- time: 2026-09-06T04:39:28-00:00
+  who: Ted Smith
+  what: blocked by virtual-desktop-cold-build-c1
+  comment: ""
+blocked_by:
+- virtual-desktop-cold-build-c1
