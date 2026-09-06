@@ -19,3 +19,11 @@ log_events:
   who: Ted Smith
   what: created
   comment: ""
+- time: 2026-09-06T04:49:15-00:00
+  who: Ted Smith
+  what: commented
+  comment: Second locked attempt at W2B f834032 reported port58020 occupied in interrupt-registration-xvfb.
+    Later ss saw no sockets58000..58030. No owner/process deletion. Third unchanged
+    retry queued under flock --close. A separate real inherited-lock issue was identified
+    in C1 Bazel daemon153733 and acknowledged/released by C1 owner; use flock --close
+    in future Bazel guarded launches.
