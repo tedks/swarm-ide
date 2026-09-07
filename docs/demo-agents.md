@@ -104,7 +104,7 @@ reader, schemas, stale/lifetime guards and Linux owned-target identity. The
 dedicated packaged proof runs with the owned virtual desktop:
 
 ```sh
-flock --close /tmp/swarm-ide-overnight.UgO2Aw/virtual.lock \
+SWARM_VIRTUAL_DISPLAY=:123 SWARM_VIRTUAL_DESKTOP_PORT=55203 \
   nix develop --command bazel run --jobs=3 //tools/demo-agents:smoke
 ```
 
@@ -113,3 +113,7 @@ archive and bridge, an eight-level tree, real source bytes and a disposable tmux
 holder; no provider/model turn. Actual local Swarm metadata ancestry is recorded
 separately in ignored operator evidence, never mislabeled as the synthetic GUI
 proof or committed into public examples.
+
+The harness validates the configured port, rejects occupied endpoints and retains
+shared atomic display locks, private profiles and owned cleanup. Pick an available
+owned display/port; no global desktop lock is required for this focused proof.

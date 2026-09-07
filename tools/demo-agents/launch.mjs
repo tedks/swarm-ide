@@ -4,13 +4,14 @@ import { lstat, mkdir, mkdtemp, readFile, realpath, rm, writeFile } from "node:f
 import { dirname, isAbsolute, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { resolveElectronRuntimeArguments } from "../electron-runtime.mjs";
+import { resolveOwnedPort } from "./port.cjs";
 
 const scripts = dirname(fileURLToPath(import.meta.url)), owner = process.env.SWARM_X11_OWNERSHIP_DIR;
 if (!owner || !isAbsolute(owner) || process.env.DISPLAY === ":0" || process.env.DISPLAY !== process.env.SWARM_X11_DISPLAY) throw new Error("Owned virtual X11 required");
 const stat = await lstat(owner);
 if (!stat.isDirectory() || stat.isSymbolicLink() || stat.uid !== process.getuid() || (stat.mode & 0o077) ||
     (await readFile(join(owner, "token"), "utf8")).trim() !== process.env.SWARM_X11_TOKEN) throw new Error("Invalid virtual owner");
-if (Number(process.env.SWARM_DEV_PORT) !== 55174) throw new Error("Owned test port required");
+const port = resolveOwnedPort(process.env);
 const evidence = await realpath(process.env.SWARM_EXTERNAL_EVIDENCE), scratch = await mkdtemp(join(owner, "external-agents-"));
 const socket = join(scratch, "owned.sock"), tmux = (...args) => execFileSync("tmux", ["-S", socket, ...args], { encoding: "utf8", timeout: 2000, env: { PATH: process.env.PATH, LANG: "C.UTF-8" } });
 let server, desktop, timer, target, tmuxCreated = false;
@@ -58,7 +59,7 @@ try {
   const bundle = runfiles ? join(runfiles, "_main/swarm-ide-foundation.tar.gz") : join(process.cwd(), "bazel-bin/swarm-ide-foundation.tar.gz");
   execFileSync("tar", ["-xzf", bundle, "-C", archive], { timeout: 30000 });
   server = createServer((_request, response) => response.end("owned external observer proof"));
-  await new Promise((resolve, reject) => { server.once("error", reject); server.listen(55174, "127.0.0.1", resolve); });
+  await new Promise((resolve, reject) => { server.once("error", reject); server.listen(port, "127.0.0.1", resolve); });
   const environment = { ...process.env, NODE_PATH: "", SWARM_EXTERNAL_AGENTS_REGISTRY: registry, SWARM_EXTERNAL_PACKAGE: archive };
   for (const name of ["SWARM_RENDERER_URL", "SWARM_DEV_CONTROL", "SWARM_WORKSPACE_ROOT", "SWARM_AGENT_STORE_ROOT", "NODE_OPTIONS", "ELECTRON_RUN_AS_NODE"]) delete environment[name];
   desktop = spawn(process.env.SWARM_ELECTRON_BIN, [...resolveElectronRuntimeArguments(), join(scripts, "acceptance.cjs"), `--user-data-dir=${profile}`, process.env.SWARM_RENDERER_PROCESS_ARGUMENT], { cwd: root, env: environment, stdio: "inherit" });

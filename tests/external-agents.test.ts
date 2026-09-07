@@ -29,6 +29,15 @@ async function setup(content = meta() + message()) {
   return { dir, root, rollout, registry, service };
 }
 describe("operator-registered external observation", () => {
+  it("proof port matches the owned configurable endpoint and rejects absent, malformed or mismatched values", () => {
+    const { resolveOwnedPort } = createRequire(import.meta.url)("../tools/demo-agents/port.cjs");
+    expect(resolveOwnedPort({ SWARM_DEV_PORT: "55174" })).toBe(55174);
+    expect(resolveOwnedPort({ SWARM_DEV_PORT: "55203", SWARM_VIRTUAL_DESKTOP_PORT: "55203" })).toBe(55203);
+    for (const raw of [undefined, "", "0", "65536", "NaN", "1e3", "55203 ", "55174"]) {
+      expect(() => resolveOwnedPort({ SWARM_DEV_PORT: raw, SWARM_VIRTUAL_DESKTOP_PORT: "55203" })).toThrow();
+    }
+    expect(() => resolveOwnedPort({ SWARM_DEV_PORT: "55203", SWARM_VIRTUAL_DESKTOP_PORT: "55203x" })).toThrow();
+  });
   it("reads actual metadata and assistant text, excludes input, reasoning, arguments and raw outputs", async () => {
     const { service } = await setup(meta(A, B) + message() +
       JSON.stringify({ type: "response_item", payload: { type: "message", role: "user", content: [{ type: "input_text", text: "PRIVATE_INPUT" }] } }) + "\n" +
@@ -161,6 +170,21 @@ describe("operator-registered external observation", () => {
     expect(() => parseCoreRequest({ ...request("externalAgents.read", { sessionId: A }), path: "/arbitrary" })).toThrow();
     const input = request("externalAgents.handoff", { sessionId: A, observationId: "a".repeat(64) });
     expect(() => parseCoreResponseForRequest({ protocolVersion: PROTOCOL_VERSION, requestId: input.requestId, ok: true, sequence: 0, snapshot: initialSnapshot(), external: { kind: "handoff", sessionId: B, status: "opened", message: "no" } }, input)).toThrow();
+  });
+  it("joined build graph and external observer responses cannot exchange authority", () => {
+    const snapshot = initialSnapshot(), externalRequest = request("externalAgents.snapshot");
+    const graphRequest = parseCoreRequest({ protocolVersion: PROTOCOL_VERSION, requestId: "graph", type: "buildGraph.observe",
+      repositoryId: snapshot.project.id, worldId: snapshot.world.id, refresh: false });
+    const buildGraph = { repositoryId: snapshot.project.id, worldId: snapshot.world.id, generation: 0, status: "unavailable", message: "No build graph" };
+    const external = { kind: "snapshot", snapshot: { status: "observed", message: "Registered", observedAt: "2026-09-07T12:00:00Z", sessions: [] } };
+    const base = { protocolVersion: PROTOCOL_VERSION, ok: true, sequence: 0, snapshot };
+    expect(() => parseCoreResponseForRequest({ ...base, requestId: externalRequest.requestId, external }, externalRequest)).not.toThrow();
+    expect(() => parseCoreResponseForRequest({ ...base, requestId: graphRequest.requestId, buildGraph }, graphRequest)).not.toThrow();
+    for (const input of [externalRequest, graphRequest]) {
+      expect(() => parseCoreResponseForRequest({ ...base, requestId: input.requestId, external, buildGraph }, input)).toThrow();
+    }
+    expect(() => parseCoreResponseForRequest({ ...base, requestId: graphRequest.requestId, external }, graphRequest)).toThrow();
+    expect(() => parseCoreResponseForRequest({ ...base, requestId: externalRequest.requestId, buildGraph }, externalRequest)).toThrow();
   });
   it("does not promote analysis or prose into verified edits", () => {
     expect(extractEntry({ type: "response_item", payload: { type: "message", phase: "analysis", role: "assistant", content: [{ type: "output_text", text: "private reasoning" }] } }, "1")).toBeNull();
