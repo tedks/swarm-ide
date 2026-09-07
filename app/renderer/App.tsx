@@ -312,7 +312,14 @@ export function App() {
     retireSourceNavigation(command);
     if (reportInvalid) reportRevealFailure("Working buffer changed before Reveal navigation; cursor retained. Reveal again after reconciling source.");
   }, [retireSourceNavigation, reportRevealFailure]);
-  const interruptPendingReveal = useCallback(() => {
+  const interruptPendingReveal = useCallback((event?: { type: string; target: EventTarget | null }) => {
+    // A completed read may still own an undelivered editor command. Generic
+    // interaction revokes it even after pendingRevealIntent has been cleared.
+    // Source focus already advances authority in sourceInformation; leaving
+    // retirement to the delivery/ack path also preserves legitimate self-focus.
+    const sourceFocus = event?.type === "focus" && event.target instanceof Element && event.target.closest(".source-surface");
+    const command = sourceNavigationRef.current;
+    if (command && !sourceFocus) retireSourceNavigation(command);
     if (pendingBacklinkIntent.current !== null) { pendingBacklinkIntent.current = null; ++navigationIntent.current; }
     if (pendingRevealIntent.current === null) return;
     pendingRevealIntent.current = null;
@@ -320,7 +327,7 @@ export function App() {
     ++navigationIntent.current;
     setRevealNotice((notice) => notice.startsWith("Opening working file")
       ? "Reveal superseded by a newer interaction; previous source retained." : notice);
-  }, []);
+  }, [retireSourceNavigation]);
   useLayoutEffect(() => {
     if (sourceInfoFocusRequest && sourceInfoFocusRequest === navigationIntent.current) sourceInformationHeading.current?.focus();
   }, [sourceInfoFocusRequest]);
