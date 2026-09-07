@@ -1,0 +1,18 @@
+id: demo-polish-install-rehearsal-20260907
+title: Verify evaluator installation and document copyable Linux setup
+desc: 'L2 bounded lane: existing fresh-checkout smoke, README and evaluator-install
+  guide, warm-cache attribution, private access and owned virtual proof. ROOT owns
+  merge; Codex-only review.'
+type: task
+component: docs
+release:
+reporter: Ted Smith <tedks@riseup.net>
+status: unstarted
+disposition:
+creation_time: 2026-09-07T21:32:54-00:00
+references: []
+log_events:
+- time: 2026-09-07T21:32:54-00:00
+  who: Ted Smith
+  what: created
+  comment: ""
