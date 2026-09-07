@@ -1,0 +1,19 @@
+id: task-workspace-central-split-followon
+title: 'Follow-on: split central task document and focused task graph'
+desc: 'User future ideal: upper central task detail/metadata/timing and lower half
+  task location graph. T4 deliberately retains existing independent graph and central
+  task document; add configurable split without losing source/draft/cameras. Not a
+  demo-blocking requirement.'
+type: feature
+component: ui
+release:
+reporter: Ted Smith <tedks@riseup.net>
+status: unstarted
+disposition:
+creation_time: 2026-09-07T23:23:15-00:00
+references: []
+log_events:
+- time: 2026-09-07T23:23:15-00:00
+  who: Ted Smith
+  what: created
+  comment: ""
