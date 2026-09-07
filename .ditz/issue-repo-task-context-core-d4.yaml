@@ -25,3 +25,9 @@ log_events:
     exact timeout. Initial shared regression23RED/1345PASS; corrected quality1389/100
     passed before final settling guard/worker/late-admission proof extensions. Native/foreign
     council active; final frozen full gates pending. No provider or UI adoption.'
+- time: 2026-09-07T10:48:41-00:00
+  who: Ted Smith
+  what: commented
+  comment: 'Correction to preceding count: actual quality-implementation2 output is1388
+    tests/100files (not1389). Later new worker-cancellation case was not in that execution.
+    Exact final counts will be recorded from frozen logs.'
