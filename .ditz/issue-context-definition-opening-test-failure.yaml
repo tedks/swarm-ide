@@ -1,0 +1,16 @@
+id: context-definition-opening-test-failure
+title: Investigate observed mounted Context definition-opening test failure
+desc: ""
+type: task
+component: default
+release:
+reporter: Ted Smith <tedks@riseup.net>
+status: unstarted
+disposition:
+creation_time: 2026-09-07T06:23:05-00:00
+references: []
+log_events:
+- time: 2026-09-07T06:23:05-00:00
+  who: Ted Smith
+  what: created
+  comment: ""
