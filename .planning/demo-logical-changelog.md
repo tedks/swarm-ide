@@ -28,6 +28,8 @@ Decision: distinguish artifact observation, agent report and inferred reconstruc
 
 Decision: user steering places compact logical changes in the EXISTING Activity log, with selection opening an expanded Activity document in the main text area. No separate topbar Journal or floating overlay. Expanded entries identify explicit agent/task associations and code actions; unknown associations stay unknown. Date/author: 2026-09-07 user/J1.
 
+Decision: explicit source citations use the existing authoritative `openLinkedFile` Reveal flow, not a display-only open that leaves agent-draft focus on an unrelated directory. Repository navigation caused by an explicit source gesture is intentional; Activity inspection/refresh does not command any cameras or source. Date/author: 2026-09-07 J1, packaged screenshot inspection.
+
 ## Outcomes & Retrospective
 
 In progress. No output generation, UI proof or landing is claimed yet. In-app scheduling, streaming summarization and managed provider activation are explicitly outside this increment.

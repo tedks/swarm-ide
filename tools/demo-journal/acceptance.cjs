@@ -41,6 +41,9 @@ async function main() {
   await click(".agent-dock-welcome .agent-primary");
   await until(() => run(() => Boolean(document.querySelector(".agent-draft textarea"))), "real unlaunched agent draft");
   const draftBefore = await run(() => document.querySelector(".agent-draft textarea").value);
+  assert((await text(".agent-draft")).includes("src/receipt.ts"), "explicit evidence source uses the ordinary authoritative source handoff");
+  await run(() => { window.__journalRetained = { source: document.querySelector(".cm-content"), draft: document.querySelector(".agent-draft textarea"),
+    graphs: [...document.querySelectorAll(".react-flow")] }; });
   await click(".journal-activity-heading");
   await fs.copyFile(path.join(authoring, "proof-second-bundle.json"), path.join(fixture.root, ".swarm/changelog-bundle.json"));
   await click('[aria-label="Refresh logical changes"]');
@@ -54,6 +57,9 @@ async function main() {
   await screenshot("02-new-logical-change.png");
   assert.equal(await text(".cm-content"), sourceText); assert.equal(await run(() => document.querySelector(".agent-draft textarea").value), draftBefore);
   assert.deepEqual(await cameras(), baselineCamera);
+  assert(await run(() => window.__journalRetained.source === document.querySelector(".cm-content") &&
+    window.__journalRetained.draft === document.querySelector(".agent-draft textarea") &&
+    window.__journalRetained.graphs.every((element, index) => element === document.querySelectorAll(".react-flow")[index])), "source/draft/graph DOM instances retained");
   const output = path.join(fixture.root, ".swarm/changelog.json"), valid = await fs.readFile(output, "utf8");
   const invalid = JSON.parse(valid); invalid.entries[0].outcome.evidenceIds = ["unknown-citation"];
   await fs.writeFile(output, JSON.stringify(invalid));

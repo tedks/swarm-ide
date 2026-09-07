@@ -37,7 +37,10 @@ Exporting a newer
 bundle invalidates an older generation: the UI retains the previous observation
 with an error until a new valid summary is materialized. Current source links
 explicitly open the working file, not the historical commit bytes. Dirty editor
-buffers remain authoritative and independent graph cameras stay in place.
+buffers remain authoritative. Deliberately opening a source uses the existing
+repository Reveal flow (the repository graph may navigate to that file);
+unrelated graph cameras are not commanded. Inspecting and refreshing the
+Activity document never navigates source or graph focus.
 
 ## Trust and scope
 
