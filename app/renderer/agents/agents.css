@@ -58,7 +58,7 @@
 .work-rail > * { flex-shrink: 0; }
 .work-rail .agent-rail { overflow: visible; }
 @media (min-width: 1101px) {
-  .workbench:has(.agent-draft) { grid-template-columns: 280px minmax(0, 1fr) minmax(220px, 24%); }
+  .workbench:has(.work-rail .agent-draft) { grid-template-columns: 280px minmax(0, 1fr) minmax(220px, 24%); }
 }
 .work-rail:has(.agent-draft) > * { flex-shrink: 0; }
 .work-rail .agent-draft { overflow: visible; }

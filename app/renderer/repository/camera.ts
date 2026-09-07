@@ -1,12 +1,17 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { ReactFlowInstance, Viewport } from "@xyflow/react";
+import type { FitViewOptions, ReactFlowInstance, Viewport } from "@xyflow/react";
 import type { RepositoryObservation } from "../../../protocol/repository";
 import { DIRECTORY_HISTORY_LIMIT, directoryCameraKey, type RepositoryCameraIntent } from "./navigation";
+
+/** Viewport-only authority, independent of each projection's node schema. */
+export type GraphCamera = Pick<ReactFlowInstance, "getViewport" | "setViewport"> & {
+  fitView: (options?: Pick<FitViewOptions, "padding" | "maxZoom" | "duration">) => Promise<boolean>;
+};
 
 /** Camera memory is deliberately bounded and keyed independently of revision,
  * capture freshness and interface zoom. Those observations cannot move a camera. */
 export function useDirectoryCamera(observation: RepositoryObservation | undefined, intent: RepositoryCameraIntent | null | undefined) {
-  const [instance, setInstance] = useState<ReactFlowInstance | null>(null);
+  const [instance, setInstance] = useState<GraphCamera | null>(null);
   const cameras = useRef(new Map<string, Viewport>());
   const displayed = useRef<{ key: string; loaded: boolean } | null>(null);
   const consumedIntent = useRef<number | null>(null);

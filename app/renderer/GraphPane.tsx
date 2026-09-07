@@ -1,22 +1,31 @@
-import { memo, useMemo, type ReactNode } from "react";
+import { memo, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Background, Controls, Handle, Position, ReactFlow, type NodeProps } from "@xyflow/react";
 import type { FocusRef, GraphSlice, NavigationMapping } from "../../protocol/schema";
 import { adaptGraph, describeGraphConnection, type GraphConnectionFocus, type TopologyNodeData } from "./graph-adapter";
-import { useDirectoryCamera } from "./repository/camera";
+import { useDirectoryCamera, type GraphCamera } from "./repository/camera";
 import type { RepositoryCameraIntent } from "./repository/navigation";
 import { useFramePresentation } from "./repository/presentation";
+import { directoryZoomDestination } from "./repository/map";
+import { parentDirectory } from "./repository/navigation";
+import { useGraphReframe } from "./repository/reframe";
+import { AgentSprites } from "./repository/AgentSprites";
+import { directoryBuildLinks, withMockDirectoryAgents, type BuildLinkSnapshot } from "./repository/layers";
 export type { GraphConnectionFocus } from "./graph-adapter";
 
 function TopologyNode({ data }: NodeProps) {
   const node = data as TopologyNodeData;
+  const buildHandles = <><Handle id="build-in" type="target" position={Position.Left} className="directory-build-handle" /><Handle id="build-out" type="source" position={Position.Right} className="directory-build-handle" /></>;
+  if (node.directoryContainer) return <div className={`directory-map-frame ${node.focused ? "is-focused" : ""}`}><header>▱ {node.focus.path || node.label}<span>directory</span></header>{buildHandles}{node.mockAgents ? <AgentSprites count={node.mockAgents} /> : null}</div>;
   return (
-    <div className={`topology-node status-${node.status} ${node.focused ? "is-focused" : ""} ${node.ambiguous ? "is-ambiguous" : ""} ${node.ignored ? "is-ignored" : ""} ${node.unavailable ? "is-unavailable" : ""}`} title={node.mappingReason ?? node.detail}>
-      <Handle type="target" position={Position.Left} />
-      <span className="node-kind">{node.kind}</span>
+    <div className={`topology-node ${node.directoryEntry ? "directory-map-node" : ""} status-${node.status} ${node.focused ? "is-focused" : ""} ${node.ambiguous ? "is-ambiguous" : ""} ${node.ignored ? "is-ignored" : ""} ${node.unavailable ? "is-unavailable" : ""}`} title={node.mappingReason ?? node.detail}>
+      {!node.directoryEntry ? <Handle type="target" position={Position.Left} /> : null}
+      {node.directoryEntry ? buildHandles : null}
+      {!node.directoryEntry ? <span className="node-kind">{node.kind}</span> : <span className="directory-map-icon" aria-hidden="true">{node.kind === "directory" ? "▱" : "·"}</span>}
       <strong>{node.label}</strong>
-      {node.detail ? <small>{node.detail}</small> : null}
+      {node.detail && !node.directoryEntry ? <small>{node.detail}</small> : null}
       {node.ambiguous && node.mappingConfidence !== undefined ? <span className="mapping-badge">candidate {Math.round(node.mappingConfidence * 100)}%</span> : null}
-      <Handle type="source" position={Position.Right} />
+      {!node.directoryEntry ? <Handle type="source" position={Position.Right} /> : null}
+      {node.mockAgents ? <AgentSprites count={node.mockAgents} /> : null}
     </div>
   );
 }
@@ -34,6 +43,12 @@ interface GraphPaneProps {
   interfaceZoom: number | null;
   repositoryNavigation?: ReactNode;
   repositoryCameraIntent?: RepositoryCameraIntent | null;
+  onNavigateDirectory?: (directory: string) => Promise<boolean>;
+  onInspectFocus?: (focus: FocusRef) => void;
+  buildLinkSnapshot?: BuildLinkSnapshot;
+  mockAgents?: boolean;
+  mockGraphVersion?: number;
+  reframeVersion?: number;
 }
 
 export function GraphPane(props: GraphPaneProps) {
@@ -45,39 +60,85 @@ function RepositoryGraphPane(props: GraphPaneProps) {
   return <GraphPaneContent {...presented} />;
 }
 
-const GraphPaneContent = memo(function GraphPaneContent({ graph, focus, mappings, onFocus, onConnectionFocus, onReconcile, reconciliationRunning, repositoryNavigation, repositoryCameraIntent }: GraphPaneProps) {
+const GraphPaneContent = memo(function GraphPaneContent({ graph, focus, mappings, onFocus, onConnectionFocus, onReconcile, reconciliationRunning, repositoryNavigation, repositoryCameraIntent, onNavigateDirectory, onInspectFocus, buildLinkSnapshot, mockAgents = false, mockGraphVersion = 0, reframeVersion = 0 }: GraphPaneProps) {
   const adapted = useMemo(() => adaptGraph(graph, focus, mappings), [graph, focus, mappings]);
+  const [buildLinksVisible, setBuildLinksVisible] = useState(false);
+  const [mockAgentsVisible, setMockAgentsVisible] = useState(false);
+  useEffect(() => { setMockAgentsVisible(mockAgents); }, [mockAgents, mockGraphVersion]);
+  const [selectedBuildLink, setSelectedBuildLink] = useState<string | null>(null);
+  const buildEdges = useMemo(() => graph.directory && buildLinksVisible && buildLinkSnapshot ? directoryBuildLinks(adapted.nodes, buildLinkSnapshot) : [], [graph.directory, adapted.nodes, buildLinksVisible, buildLinkSnapshot]);
+  const displayNodes = useMemo(() => mockAgentsVisible ? withMockDirectoryAgents(adapted.nodes) : adapted.nodes, [mockAgentsVisible, adapted.nodes]);
+  const selectedBuild = buildEdges.find((edge) => edge.id === selectedBuildLink);
+  const [repositoryView, setRepositoryView] = useState<"tree" | "map">("tree");
+  const explorer = Boolean(graph.directory && repositoryNavigation);
   const camera = useDirectoryCamera(graph.directory, repositoryCameraIntent);
+  const flow = useRef<GraphCamera | null>(null);
+  const cancelReframe = useGraphReframe(flow, reframeVersion);
+  const canvas = useRef<HTMLDivElement>(null);
+  const gesture = useRef<{ startZoom: number; baselineZoom: number; directory: string } | null>(null);
+  const baseline = useRef<{ directory: string; zoom: number } | null>(null);
+  const navigating = useRef(false);
+  const navigate = (directory: string) => {
+    if (!onNavigateDirectory || navigating.current) return;
+    navigating.current = true;
+    void onNavigateDirectory(directory).finally(() => { navigating.current = false; });
+  };
   // Interface zoom resizes CSS presentation, not the user's graph camera.
   // Let each mounted ReactFlow retain its own viewport through zoom/resize;
   // only initial fit and the explicit Fit control should frame the graph.
 
   return (
-    <section className={`graph-pane ${graph.directory ? "has-directory" : ""}`} data-topology={graph.topologyId} data-directory={graph.directory?.directory} data-observation-state={graph.directory?.state}>
+    <section className={`graph-pane ${graph.directory ? "has-directory" : ""} ${explorer ? `repository-view-${repositoryView}` : ""}`} data-topology={graph.topologyId} data-directory={graph.directory?.directory} data-observation-state={graph.directory?.state}>
       <header className="graph-header">
-        <div><span className="eyebrow">{graph.topologyId} lens</span><h2>{graph.title}</h2></div>
+        <div><span className="eyebrow">{explorer ? "repository" : `${graph.topologyId} lens`}</span>{!explorer ? <h2>{graph.title}</h2> : null}</div>
+        {explorer ? <div className="repository-view-switch" aria-label="Repository presentation"><button aria-pressed={repositoryView === "tree"} onClick={() => setRepositoryView("tree")}>Explorer</button><button aria-pressed={repositoryView === "map"} onClick={() => setRepositoryView("map")}>Map</button></div> : null}
+        {graph.directory && onNavigateDirectory ? <div className="directory-map-controls"><button disabled={!graph.directory.directory} aria-label="Map parent directory" onClick={() => navigate(parentDirectory(graph.directory!.directory))}>↑</button><button aria-label="Map repository root" onClick={() => navigate("")}>/</button><span title={graph.directory.directory || "/"}>{graph.directory.directory || "/"}</span></div> : null}
         <div className="graph-meta"><span>{graph.scope}</span><span>{graph.zoomBand}</span>{graph.directory ? <span aria-label="Directory observation, not build evidence">◷</span> : graph.reconciliation === "yellow"
           ? <button className="truth-dot status-yellow" aria-label={reconciliationRunning ? "Topology build in progress" : "Build repository service topology"} title={reconciliationRunning ? "Topology build in progress" : "Working world changed — build topology"} disabled={reconciliationRunning} onClick={onReconcile} />
           : <span className={`truth-dot status-${graph.reconciliation}`} role="status" aria-label={`Topology ${graph.reconciliation === "green" ? "consistent" : graph.reconciliation === "gray" ? "unobserved" : "failed"}`} title={graph.reconciliation === "green" ? "Topology consistent" : graph.reconciliation === "gray" ? "Topology unobserved" : "Topology build failed"} />}</div>
       </header>
-      {repositoryNavigation}
-      <div className="graph-canvas">
+      {graph.directory ? <div className="directory-layers" aria-label="Directory map layers">
+        <button aria-pressed={buildLinksVisible} disabled={!buildLinkSnapshot} title={buildLinkSnapshot ? `Captured from Bazel at ${buildLinkSnapshot.revision}; not live build truth` : "No Bazel snapshot captured for this workspace"} onClick={() => { setBuildLinksVisible((shown) => !shown); setSelectedBuildLink(null); }}>{buildLinksVisible ? "☑" : "☐"} Build links</button>
+        <button aria-pressed={mockAgentsVisible} onClick={() => setMockAgentsVisible((shown) => !shown)}>♧ Mock agents</button>
+        <span>{!buildLinkSnapshot ? "No captured build links for this workspace" : buildLinksVisible ? `Snapshot ${buildLinkSnapshot.revision} · ${buildEdges.length} visible links · not live` : "Build links off · click to show captured dependencies"}</span>
+      </div> : null}
+      {repositoryNavigation ? <div className="repository-browser-surface" hidden={explorer && repositoryView !== "tree"}>{repositoryNavigation}</div> : null}
+      <div className="graph-canvas" ref={canvas}>
         <ReactFlow
-          nodes={adapted.nodes}
-          edges={adapted.edges}
-          onInit={camera.onInit}
-          onMoveStart={camera.onMoveStart}
-          onMoveEnd={camera.onMoveEnd}
+          nodes={displayNodes}
+          edges={buildEdges.length ? buildEdges : adapted.edges}
+          onInit={(instance) => { flow.current = instance; camera.onInit(instance); }}
+          onMoveStart={(event) => {
+            if (event) cancelReframe();
+            camera.onMoveStart(event);
+            if (!event || !graph.directory || !flow.current || !onNavigateDirectory) return;
+            const zoom = flow.current.getViewport().zoom;
+            if (baseline.current?.directory !== graph.directory.directory) baseline.current = { directory: graph.directory.directory, zoom };
+            gesture.current = { directory: graph.directory.directory, startZoom: zoom, baselineZoom: baseline.current.zoom };
+          }}
+          onMoveEnd={(event, viewport) => {
+            camera.onMoveEnd(event, viewport);
+            const started = gesture.current; gesture.current = null;
+            if (!event || !started || !graph.directory || started.directory !== graph.directory.directory || !canvas.current) return;
+            const rect = canvas.current.getBoundingClientRect();
+            const pointer = "clientX" in event ? event : "changedTouches" in event ? event.changedTouches[0] : null;
+            const point = { x: ((pointer?.clientX ?? rect.left + rect.width / 2) - rect.left - viewport.x) / viewport.zoom, y: ((pointer?.clientY ?? rect.top + rect.height / 2) - rect.top - viewport.y) / viewport.zoom };
+            const destination = directoryZoomDestination({ nodes: adapted.nodes, viewport, ...started, point });
+            if (destination !== null) navigate(destination);
+          }}
           nodeTypes={nodeTypes}
           fitView
           fitViewOptions={{ padding: 0.18, maxZoom: 1.35 }}
-          minZoom={0.25}
-          maxZoom={2.2}
+          minZoom={graph.directory ? 0.03 : 0.25}
+          maxZoom={graph.directory ? 4 : 2.2}
+          zoomOnDoubleClick={!graph.directory}
           nodesConnectable={false}
           elementsSelectable
-          onNodeClick={(_event, node) => onFocus((node.data as TopologyNodeData).focus)}
+          onNodeClick={(_event, node) => { const data = node.data as TopologyNodeData; if (graph.directory && data.kind === "directory" && onInspectFocus) onInspectFocus(data.focus); else onFocus(data.focus); }}
+          onNodeDoubleClick={(_event, node) => { const data = node.data as TopologyNodeData; if (graph.directory && data.kind === "directory" && !data.directoryContainer && !data.unavailable && data.focus.path) navigate(data.focus.path); }}
           onSelectionChange={({ edges }) => {
             if (edges.length !== 1) return;
+            if (buildEdges.some((edge) => edge.id === edges[0]!.id)) { setSelectedBuildLink(edges[0]!.id); return; }
             const connection = describeGraphConnection(graph, edges[0]!.id);
             if (connection) onConnectionFocus(connection);
           }}
@@ -87,6 +148,8 @@ const GraphPaneContent = memo(function GraphPaneContent({ graph, focus, mappings
           <Background color="#173031" gap={22} size={1} />
           <Controls showInteractive={false} />
         </ReactFlow>
+        {mockAgentsVisible ? <div className="directory-layer-note">MOCK ACTIVITY · visual only · no agents launched</div> : null}
+        {selectedBuild?.data ? <aside className="directory-build-detail" aria-label="Captured Bazel link"><button aria-label="Close captured link" onClick={() => setSelectedBuildLink(null)}>×</button><strong>Bazel snapshot · {buildLinkSnapshot?.revision}</strong><small>Consumer → dependency · not live evidence</small><ul>{selectedBuild.data.labels.map((label) => <li key={label}>{label}</li>)}</ul></aside> : null}
       </div>
     </section>
   );

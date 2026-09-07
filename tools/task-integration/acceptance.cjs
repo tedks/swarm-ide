@@ -78,15 +78,19 @@ async function main() {
     assert.equal(await run(() => document.activeElement?.textContent), "Return to source information");
   };
   const preserved = async () => {
-    assert.equal(await run(() => {
+    const proof = await run(() => {
       const saved = globalThis.__taskProof;
       const state = document.querySelector(".cm-content").cmView.rootView.view.state;
-      return saved.editor === document.querySelector(".cm-content") && saved.draft === document.querySelector(".agent-draft textarea") &&
-        saved.graphs.every((node, index) => node === document.querySelectorAll(".react-flow")[index]) &&
-        saved.transforms.every((value, index) => value === document.querySelectorAll(".react-flow__viewport")[index].style.transform) &&
-        saved.source === state.doc.toString() && saved.anchor === state.selection.main.anchor && saved.head === state.selection.main.head &&
-        saved.draftValue === document.querySelector(".agent-draft textarea").value;
-    }), true, "source/draft/graph DOM and cameras retained");
+      const transforms = [...document.querySelectorAll(".react-flow__viewport")].map((node) => node.style.transform);
+      return { checks: {
+        editor: saved.editor === document.querySelector(".cm-content"), draft: saved.draft === document.querySelector(".agent-draft textarea"),
+        graphs: saved.graphs.length === document.querySelectorAll(".react-flow").length && saved.graphs.every((node, index) => node === document.querySelectorAll(".react-flow")[index]),
+        cameras: JSON.stringify(saved.transforms) === JSON.stringify(transforms),
+        source: saved.source === state.doc.toString(), anchor: saved.anchor === state.selection.main.anchor, head: saved.head === state.selection.main.head,
+        draftValue: saved.draftValue === document.querySelector(".agent-draft textarea").value,
+      }, before: { transforms: saved.transforms, anchor: saved.anchor, head: saved.head }, after: { transforms, anchor: state.selection.main.anchor, head: state.selection.main.head } };
+    });
+    assert(Object.values(proof.checks).every(Boolean), `source/draft/graph DOM and cameras retained: ${JSON.stringify(proof)}`);
   };
   await until(() => has("[data-task-status='observed']"), "actual task data from packaged core");
   assert(wc.getURL().startsWith(pathToFileURL(path.join(packaged, "renderer/index.html")).href));
@@ -116,14 +120,22 @@ async function main() {
   // Give each mounted graph a deliberate independent camera via actual inputs.
   for (const topology of ["repo", "service"]) {
     const selector = `.graph-pane[data-topology='${topology}'] .react-flow__pane`;
+    let previous, stableAt = Date.now();
+    await until(async () => { const value = await run((s) => document.querySelector(s).parentElement.querySelector(".react-flow__viewport").style.transform, selector); if (value !== previous) { previous = value; stableAt = Date.now(); } return Date.now() - stableAt >= 300; }, "initial camera settled");
     const before = await run((s) => document.querySelector(s).parentElement.querySelector(".react-flow__viewport").style.transform, selector);
-    const rect = await run((s) => { const r = document.querySelector(s).getBoundingClientRect(); return { x: r.x + r.width * .65, y: r.y + r.height * .65 }; }, selector);
+    const rect = await run((s) => {
+      const pane = document.querySelector(s), r = pane.getBoundingClientRect();
+      for (const fy of [.02, .98, .05, .95, .2, .8, .5]) for (const fx of [.02, .98, .05, .95, .2, .8, .5]) {
+        const x = Math.round(r.x + r.width * fx), y = Math.round(r.y + r.height * fy);
+        if (document.elementFromPoint(x, y) === pane) return { x, y };
+      }
+      throw new Error("No visible blank graph pane point");
+    }, selector);
     const x = Math.round(rect.x), y = Math.round(rect.y);
     wc.sendInputEvent({ type: "mouseMove", x, y });
     wc.sendInputEvent({ type: "mouseDown", x, y, button: "left", clickCount: 1 });
     wc.sendInputEvent({ type: "mouseMove", x: x + 31, y: y + 19, movementX: 31, movementY: 19 });
     wc.sendInputEvent({ type: "mouseUp", x: x + 31, y: y + 19, button: "left", clickCount: 1 });
-    wc.sendInputEvent({ type: "mouseWheel", x, y, deltaY: -47, deltaX: 0 });
     await until(async () => (await run((s) => document.querySelector(s).parentElement.querySelector(".react-flow__viewport").style.transform, selector)) !== before, `deliberately move ${topology} camera`);
   }
   await focus(".cm-content"); key("End", ["control"]);

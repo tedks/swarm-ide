@@ -1,28 +1,81 @@
-.graph-pane.has-directory { grid-template-rows: 37px minmax(0, .85fr) minmax(0, 1fr); }
-.repository-navigation { min-width: 0; min-height: 0; overflow: auto; font: 9px "DM Mono", monospace; border-bottom: 1px solid #233738; scrollbar-width: thin; }
-.repository-controls, .repository-query-row, .repository-page-controls { display: flex; min-width: 0; align-items: center; gap: 4px; padding: 3px 6px; }
-.repository-navigation button { border: 1px solid #2c4542; border-radius: 3px; padding: 3px 5px; color: #a9c6c0; background: #10201f; font: inherit; }
+.graph-pane.has-directory { position: relative; grid-template-rows: 32px auto minmax(0, 1fr); }
+.has-directory > .graph-canvas { grid-row: 3; position: relative; }
+.repository-browser-surface { grid-row: 3; min-width: 0; min-height: 0; overflow: hidden; }
+.repository-browser-surface[hidden] { display: none; }
+.repository-view-tree > .graph-canvas { visibility: hidden; pointer-events: none; }
+.repository-view-map > .graph-canvas { grid-row: 3; }
+.repository-view-switch { display: flex; gap: 2px; }
+.repository-view-switch button { font: inherit; font-size: 10px; border: 0; padding: 4px 7px; border-radius: 4px; background: transparent; color: #7f9993; cursor: pointer; }
+.repository-view-switch button[aria-pressed="true"] { background: #20332f; color: #c2ddd2; }
+.has-directory .graph-meta { display: none; }
+.repository-navigation { min-width: 0; height: 100%; min-height: 0; display: flex; flex-direction: column; font: 11px "DM Mono", monospace; scrollbar-width: thin; }
+.repository-controls, .repository-query-row, .repository-page-controls { display: flex; min-width: 0; align-items: center; gap: 3px; padding: 4px 6px; }
+.repository-controls { flex: none; position: relative; border-bottom: 1px solid #1b2b29; }
+.repository-navigation button { border: 0; border-radius: 3px; padding: 3px 5px; color: #a9c6c0; background: transparent; font: inherit; cursor: pointer; }
 .repository-navigation button:hover { background: #1b3430; }
-.repository-navigation button:disabled, .repository-navigation button[aria-disabled="true"] { color: #6a7e7b; opacity: .7; }
-.repository-navigation :focus-visible { outline: 2px solid #8fd8c8; outline-offset: 1px; }
+.repository-navigation button:disabled, .repository-navigation button[aria-disabled="true"] { color: #6a7e7b; opacity: .7; cursor: default; }
+.repository-navigation :focus-visible { outline: 2px solid #8fd8c8; outline-offset: -2px; }
 .repository-breadcrumbs { display: flex; flex: 1; min-width: 0; overflow-x: auto; gap: 2px; scrollbar-width: thin; }
-.repository-breadcrumbs button { flex-shrink: 0; }
-.repository-breadcrumbs button[aria-current] { color: #e0eee8; border-color: #679d90; }
-.repository-observation, .repository-notice { color: #8ca4a0; padding: 2px 7px; overflow-wrap: anywhere; font-size: 8px; }
+.repository-breadcrumbs button { flex-shrink: 0; font-size: 10px; }
+.repository-breadcrumbs button + button::before { content: "›"; padding-right: 6px; color: #607b70; }
+.repository-breadcrumbs button[aria-current] { color: #d3e4db; }
+.repository-observation, .repository-notice { flex: none; color: #829b92; padding: 4px 9px; overflow-wrap: anywhere; font-size: 9px; max-height: 64px; overflow-y: auto; }
+.repository-observation { border-top: 1px solid #1b2b29; }
 .repository-observation span { display: block; }
 .repository-notice { color: #efbc7a; }
 .repository-query-row { flex-wrap: wrap; }
 .repository-query-row form { display: flex; flex: 1; gap: 3px; min-width: 0; }
-.repository-navigation input { min-width: 0; width: 100%; border: 1px solid #29413e; background: #081413; color: #bdcec8; border-radius: 3px; padding: 3px 5px; font: inherit; }
-.repository-open-path { flex: 1; min-width: 65px; }
-.repository-open-path summary { color: #94bfb3; cursor: pointer; }
-.repository-page-controls span { min-width: 0; flex: 1; font-size: 8px; color: #829b95; }
-.repository-entries { list-style: none; padding: 0 5px 4px; margin: 0; max-height: 80px; overflow: auto; scrollbar-width: thin; }
-.repository-entry button { width: 100%; display: flex; gap: 7px; justify-content: space-between; border: 0; background: transparent; text-align: left; }
-.repository-entry button span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.repository-entry button small { flex: none; color: #738c85; max-width: 48%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 8px; }
-.repository-entry.git-ignored { opacity: .55; }
-.repository-empty { padding: 4px; color: #7b918b; }
+.repository-navigation input { min-width: 0; width: 100%; border: 1px solid #29413e; background: #081413; color: #bdcec8; border-radius: 3px; padding: 5px; font: inherit; }
+.repository-options > summary { cursor: pointer; padding: 2px 6px; list-style: none; }
+.repository-options[open] > .repository-query-row { position: absolute; z-index: 10; left: 4px; right: 4px; top: 100%; padding: 10px; background: #10201e; border: 1px solid #355048; border-radius: 4px; box-shadow: 0 8px 24px #0008; }
+.repository-open-path { flex-basis: 100%; min-width: 65px; }
+.repository-open-path summary { color: #94bfb3; cursor: pointer; margin-top: 6px; }
+.repository-page-controls { border-top: 1px solid #1b2b29; }
+.repository-page-controls span { min-width: 0; flex: 1; font-size: 9px; color: #829b95; }
+.repository-entries { flex: 1; min-height: 0; list-style: none; padding: 5px 0; margin: 0; overflow: auto; scrollbar-width: thin; }
+.repository-entry button { width: 100%; min-height: 25px; display: flex; align-items: center; gap: 6px; padding: 3px 8px 3px calc(6px + var(--tree-depth) * 14px); border-radius: 0; text-align: left; }
+.repository-entry.is-selected > button { background: #1c352e; color: #dbece3; }
+.repository-chevron { width: 10px; flex: none; color: #9db1a7; text-align: center; font: 15px sans-serif; }
+.repository-icon { width: 15px; height: 15px; flex: none; stroke: currentColor; stroke-width: 1.2; }
+.repository-icon.folder { color: #baa47a; }
+.repository-icon.file { color: #809c98; }
+.repository-entry-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.repository-entry button small { flex: none; color: #829b8c; font-size: 9px; }
+.repository-entry.git-ignored { opacity: .5; }
+.repository-empty { padding: 3px 8px 3px calc(40px + var(--tree-depth) * 14px); color: #7b918b; font-size: 10px; }
 .topology-node.is-ignored { opacity: .5; }
 .topology-node.is-unavailable { border-style: dotted; }
+.topology-node.directory-map-node { width: 100%; height: 100%; min-height: 0; flex-direction: row; align-items: center; gap: 9px; padding: 10px; background: #14271f; border-color: #345342; border-radius: 5px; box-shadow: none; }
+.directory-map-frame { width: 100%; height: 100%; border: 1px solid #2c493d; border-radius: 10px; background: #10201988; }
+.directory-map-frame > header { padding: 16px 20px; display: flex; gap: 12px; font: 13px "DM Mono", monospace; color: #b2c4b7; }
+.directory-map-frame > header span { margin-left: auto; color: #607f6f; font-size: 10px; }
+.directory-map-frame.is-focused { border-color: #71b58e; }
+.directory-map-controls { display: flex; align-items: center; gap: 5px; min-width: 0; }
+.directory-map-controls button { background: #182e23; border: 1px solid #304b3c; border-radius: 3px; font: 11px monospace; color: #b2c8b9; cursor: pointer; }
+.directory-map-controls button:disabled { opacity: .4; cursor: default; }
+.directory-map-controls span { min-width: 0; max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #7c9b88; font: 10px monospace; }
+.directory-map-node strong { font-size: 11px; }
+.directory-map-icon { color: #bba379; }
 .repository-recipes { display: flex; flex-direction: column; gap: 4px; }
+.directory-layers { display: flex; gap: 5px; align-items: center; min-width: 0; padding: 4px 8px; border-bottom: 1px solid #253c32; overflow-x: auto; }
+.directory-layers button { flex-shrink: 0; border: 1px solid #31483c; border-radius: 4px; background: #10221b; color: #93ae9f; padding: 4px 7px; font: 9px "DM Mono", monospace; cursor: pointer; }
+.directory-layers button[aria-pressed="true"] { color: #e3d3aa; background: #343724; border-color: #84784d; }
+.directory-layers button:disabled { opacity: .45; cursor: default; }
+.directory-layers span { font: 9px "DM Mono", monospace; color: #799584; white-space: nowrap; }
+.directory-build-handle { opacity: 0; pointer-events: none; }
+.topology-node:has(.directory-agents) { position: relative; overflow: visible; }
+.graph-pane:not(.has-directory) .graph-canvas { position: relative; }
+.directory-agents { position: absolute; right: -5px; bottom: -9px; z-index: 3; display: flex; align-items: center; gap: 1px; padding: 3px 5px; border: 1px solid #846c47; border-radius: 7px; background: #20281f; box-shadow: 0 2px 8px #0007; }
+.directory-map-frame > .directory-agents { bottom: auto; top: -9px; right: 12px; }
+.directory-agent { width: 17px; height: 17px; stroke: #afcdb8; fill: #203c31; stroke-width: 1.5; animation: directory-agent-breathe 2.8s ease-in-out infinite; }
+.directory-agent.sprite-1 { stroke: #d9b78d; fill: #49392a; animation-delay: -.9s; }
+.directory-agent.sprite-2 { stroke: #b6b3de; fill: #333047; animation-delay: -1.8s; }
+.directory-agents small { color: #c1a878; font: 7px monospace; margin-left: 3px; }
+.directory-layer-note { position: absolute; bottom: 8px; right: 8px; z-index: 5; pointer-events: none; background: #1c251fe8; border: 1px solid #66583d; color: #c5ab7c; padding: 5px 7px; border-radius: 4px; font: 8px "DM Mono", monospace; }
+.directory-build-detail { position: absolute; top: 8px; right: 8px; z-index: 6; width: min(360px, 90%); max-height: 65%; overflow: auto; padding: 10px; background: #13221ff5; border: 1px solid #8d7d53; border-radius: 5px; color: #c8ba99; font: 10px monospace; }
+.directory-build-detail > button { float: right; background: transparent; border: 0; color: inherit; cursor: pointer; }
+.directory-build-detail small { display: block; padding: 6px 0; color: #8fa899; }
+.directory-build-detail ul { margin: 0; padding-left: 14px; overflow-wrap: anywhere; }
+.directory-build-detail li { padding: 4px 0; }
+@keyframes directory-agent-breathe { 50% { opacity: .65; transform: translateY(-2px); } }
+@media (prefers-reduced-motion: reduce) { .directory-agent { animation: none; } }
