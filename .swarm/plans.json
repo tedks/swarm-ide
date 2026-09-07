@@ -36,10 +36,14 @@
       "kind": "component",
       "title": "Turn repo tasks into bounded agent context",
       "parentId": "plan:swarm",
-      "docs": ["docs/repo-task-draft.md"],
+      "docs": ["docs/demo/task-context-briefing.md", "docs/repo-task-draft.md"],
       "sourcePaths": ["core/tasks/draft-context.ts", "app/renderer/tasks/TaskDetail.tsx"],
-      "taskIds": [],
-      "contextRefs": [{ "kind": "contract", "path": "protocol/agent-task.ts", "note": "Metadata revision, issue blob and canonical task bytes are separate from working source selection." }]
+      "taskIds": ["repo-task-draft-contract-d2", "repo-task-draft-base-d3", "repo-task-context-core-d4", "repo-task-draft-ui-d5", "repo-task-draft-integration-d6"],
+      "contextRefs": [
+        { "kind": "doctrine", "path": "docs/demo/task-context-briefing.md", "note": "A human-authored briefing connects intent, contract and lessons; linked documents are not automatically included in prepared context." },
+        { "kind": "contract", "path": "protocol/agent-task.ts", "note": "Metadata revision, issue blob and canonical task bytes are separate from working source selection." },
+        { "kind": "lesson", "path": "docs/repo-task-draft.md", "note": "Navigation must not retarget a draft; metadata advancement requires explicit refresh, reattachment and preparation." }
+      ]
     },
     {
       "id": "plan:task-blockage",
