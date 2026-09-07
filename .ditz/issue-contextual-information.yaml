@@ -60,6 +60,11 @@ log_events:
     real packaged proof, council fixpoint. This parent remains OPEN for reverse knowledge/task
     links, live build/runtime/deployment providers, composable configuration and deeper
     subject levels.
+- time: 2026-09-07T03:47:18-00:00
+  who: Ted Smith
+  what: commented
+  comment: Q2 consumes existing typed service evidence and adds combined packaged
+    Swarm retained-service core recovery/navigation proof.
 blocks:
 - meaningful-workbench-lenses
 - scoped-workbench-configuration
