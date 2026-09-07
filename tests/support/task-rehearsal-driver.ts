@@ -11,6 +11,7 @@ import { advanceUnrelatedTaskFixture, resumeTaskFixture } from "../../tools/task
 import { AdmissionReceiptSchema, AgentResultSchema, RunSchema, TranscriptRecordSchema, type Run, type TranscriptRecord } from "../../protocol/agents";
 import { PROTOCOL_VERSION } from "../../protocol/schema";
 import type { RehearsalLedger } from "./agent-rehearsal-driver";
+import { installTaskResizeDiagnostics } from "./task-rehearsal-diagnostics";
 
 const hash = (value: string | Buffer) => createHash("sha256").update(value).digest("hex");
 const canonical = (value: unknown): string => Array.isArray(value) ? `[${value.map(canonical).join(",")}]` :
@@ -45,10 +46,22 @@ export async function runTaskRehearsalProof({ window: win, artifacts, ledger }: 
   const fixture = await resumeTaskFixture(JSON.parse(await readFile(join(artifacts, "fixture.json"), "utf8")), process.env.SWARM_TASK_REHEARSAL_SCRATCH!);
   assert.equal(fixture.root, process.cwd());
   const errors: string[] = [];
-  wc.on("console-message", (event) => { if (event.level === "error") errors.push(event.message.slice(0, 4096)); });
+  let phase = "initialization";
+  const consoleEvidence: unknown[] = [];
+  const documentEvidence: unknown[] = [];
+  wc.on("console-message", (event) => { if (event.level === "error") {
+    errors.push(event.message.slice(0, 4096));
+    if (consoleEvidence.length < 16) consoleEvidence.push({ at: Date.now(), phase, zoom: wc.getZoomFactor(),
+      message: event.message.slice(0, 4096), line: event.lineNumber, source: event.sourceId });
+  } });
   const js = <T = unknown>(code: string) => wc.executeJavaScript(code, true) as Promise<T>;
+  const installDiagnostics = () => js(`globalThis.__taskResize?.dispose();globalThis.__taskResize=(${installTaskResizeDiagnostics.toString()})();void 0`);
+  let installed = installDiagnostics();
+  const reinstallDiagnostics = () => { installed = installDiagnostics(); };
+  wc.on("did-finish-load", reinstallDiagnostics);
   const q = JSON.stringify;
   const until = async <T>(label: string, read: () => Promise<T>, accept: (value: T) => boolean, ms = 15000): Promise<T> => {
+    phase = label;
     const end = Date.now() + ms;
     do { const value = await read(); if (accept(value)) return value; await new Promise((done) => setTimeout(done, 40)); } while (Date.now() < end);
     throw new Error(`Task rehearsal timed out: ${label}`);
@@ -61,6 +74,7 @@ export async function runTaskRehearsalProof({ window: win, artifacts, ledger }: 
     wc.sendInputEvent({ type: "keyUp", keyCode, modifiers });
   };
   const click = async (selector: string) => {
+    phase = `click ${selector}`;
     win.focus(); wc.focus();
     await until("owned focus", async () => win.isFocused() && wc.isFocused(), Boolean);
     await until(`enabled ${selector}`, () => js<boolean>(`(() => { const t=document.querySelector(${q(selector)});return Boolean(t && !t.disabled); })()`), Boolean);
@@ -105,6 +119,8 @@ export async function runTaskRehearsalProof({ window: win, artifacts, ledger }: 
     const result = await request({ type: "agent.read", runId: run.runId, afterRecord });
     assert(result.ok); return result.agent;
   });
+  try {
+  await installed;
   await until("native owned window selected", () => readFile(join(artifacts, "window-selected"), "utf8").then(() => true, () => false), Boolean, 30000);
   await js("addEventListener('error', e=>console.error(e.error?.stack ?? e.message))");
   await until("actual CLI Tasks reader", () => has("[data-task-status='observed']"), Boolean);
@@ -201,8 +217,10 @@ export async function runTaskRehearsalProof({ window: win, artifacts, ledger }: 
   assert((await text(`${historyTask} > p`)).includes(`not current Ditz state. Metadata sha1:${fixture.firstCommit.hex}`));
   await taskScreenshot(historyTask, "02-admitted-old-task-after-metadata-advance.png");
   let loads = 0; const loaded = () => { loads++; }; wc.on("did-finish-load", loaded);
+  documentEvidence.push(await js("globalThis.__taskResize?.read() ?? null"));
   wc.reload();
   await until("clean renderer reload", async () => loads, (value) => value === 1);
+  await installed;
   await until("history after document reload", snapshot, (value) => value.runs.length === 1);
   assert.deepEqual((await read(runId)).launchContext, active.launchContext);
   assert.deepEqual(await transcript(complete), originalTranscript, "renderer reload preserves exact paged record contents and timestamps");
@@ -244,6 +262,12 @@ export async function runTaskRehearsalProof({ window: win, artifacts, ledger }: 
   assert.deepEqual(errors, []); assert.equal(ledger().overflow, false);
   return { run: recovered, transcriptHash: originalTranscript.transcriptHash, originalMetadata: fixture.firstCommit.hex, currentMetadata: advanced.hex, rendererErrors: errors,
     sourceUnchanged: true, replayedCommands: 0, fixtureOnly: true, coreGenerations: ledger().generations, elapsedMs: Date.now() - started };
+  } finally {
+    wc.removeListener("did-finish-load", reinstallDiagnostics);
+    const resize = await js("globalThis.__taskResize?.read() ?? null").catch(() => null);
+    documentEvidence.push(resize);
+    await writeFile(join(artifacts, "task-resize-diagnostics.json"), JSON.stringify({ phase, consoleEvidence, documentEvidence }, null, 2));
+  }
 }
 
 export async function verifyTaskRehearsalClose(profile: string, workspace: string, proof: TaskRehearsalProof) {
