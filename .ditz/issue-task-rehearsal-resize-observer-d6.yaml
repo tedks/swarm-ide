@@ -1,0 +1,17 @@
+id: task-rehearsal-resize-observer-d6
+title: Localize strict task rehearsal ResizeObserver failure without suppressing renderer
+  errors
+desc: ""
+type: bugfix
+component: workbench
+release:
+reporter: Ted Smith <tedks@riseup.net>
+status: unstarted
+disposition:
+creation_time: 2026-09-07T18:40:11-00:00
+references: []
+log_events:
+- time: 2026-09-07T18:40:11-00:00
+  who: Ted Smith
+  what: created
+  comment: ""
