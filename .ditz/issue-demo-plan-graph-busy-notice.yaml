@@ -1,0 +1,19 @@
+id: demo-plan-graph-busy-notice
+title: Clarify busy graph-detail activation versus expired metadata
+desc: Native review found cap rejection when four graph reads are pending is safely
+  unavailable but currently says metadata revision unavailable. Noncritical explanatory-text
+  follow-up; no wrong task or dispatch occurs. Keep bounded slots and do not retry
+  automatically.
+type: task
+component: swarm-ide
+release:
+reporter: Ted Smith <tedks@riseup.net>
+status: unstarted
+disposition:
+creation_time: 2026-09-07T19:56:24-00:00
+references: []
+log_events:
+- time: 2026-09-07T19:56:24-00:00
+  who: Ted Smith
+  what: created
+  comment: ""
