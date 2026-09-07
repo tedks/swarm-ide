@@ -1,0 +1,22 @@
+package(default_visibility = ["//visibility:public"])
+
+sh_test(
+    name = "regressions",
+    srcs = ["regressions.sh"],
+    data = ["//:quality_sources"],
+    tags = ["local"],
+)
+
+sh_binary(
+    name = "smoke",
+    srcs = ["smoke.sh"],
+    data = [
+        "scenario.sh",
+        "launch.sh",
+        "fixture.mjs",
+        "//tools:dev",
+        "//tools:virtual-desktop-run.sh",
+        "//tools:x11-driver-source",
+    ],
+    tags = ["manual"],
+)
