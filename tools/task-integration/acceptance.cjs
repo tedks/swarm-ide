@@ -160,6 +160,23 @@ async function main() {
     assert.match(preview.label, /[Pp]repare/, "preview identifies its later core verification boundary");
     return { ...preview, reference: expectedReference };
   };
+  const screenshotAttachment = async (selector, name) => {
+    await run((s) => {
+      const target = document.querySelector(s), dock = target?.closest(".agent-dock-panel");
+      if (!target || !dock) throw new Error(`Missing dock attachment capture ${s}`);
+      // Scroll only the existing dock; do not resize it or the graphs to stage
+      // evidence. A populated DOM below the fold is not visible UI evidence.
+      dock.scrollTop += target.getBoundingClientRect().top - dock.getBoundingClientRect().top;
+    }, selector);
+    await paint();
+    assert.equal(await run((s) => {
+      const target = document.querySelector(s), heading = target.querySelector("h3");
+      const r = heading.getBoundingClientRect(), d = target.closest(".agent-dock-panel").getBoundingClientRect();
+      return r.width > 0 && r.height > 0 && r.top >= d.top && r.bottom <= d.bottom &&
+        heading.contains(document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2));
+    }, selector), true, `attachment heading is actually visible before ${name}`);
+    await screenshot(name);
+  };
   await until(() => has("[data-task-status='observed']"), "actual task data from packaged core");
   assert(wc.getURL().startsWith(pathToFileURL(path.join(packaged, "renderer/index.html")).href));
   assert.equal(await snapshotRevision(), `${fixture.firstCommit.algorithm}:${fixture.firstCommit.hex}`);
@@ -289,6 +306,8 @@ async function main() {
     await until(() => has(proposal), "native Attach reveals explicit review");
     await attachmentPreview(proposal, expectedReference);
     await attachmentRetained(originalInstructions);
+    await screenshotAttachment(proposal, `04-task-attachment-${percent}-review.png`);
+    await attachmentRetained(originalInstructions);
     await focus(`${proposal} [data-task-attachment='cancel']`); key("Escape");
     await until(async () => !await has(proposal), "keyboard Escape cancels task attachment");
     assert.equal(await has(".agent-task-slot"), false);
@@ -302,7 +321,8 @@ async function main() {
     await until(async () => !await has(proposal) && await has(".agent-task-slot"), "Append fills one task slot");
     await attachmentRetained(originalInstructions); await preserved();
     const preview = await attachmentPreview(".agent-task-slot", expectedReference);
-    await screenshot(`04-task-attachment-${percent}-append.png`);
+    await screenshotAttachment(".agent-task-slot", `04-task-attachment-${percent}-append.png`);
+    await attachmentRetained(originalInstructions);
     const beforeDuplicate = await attachmentPreparation();
     const duplicateSlot = await text(".agent-task-slot");
     const duplicateNotice = await text(".agent-draft-notice");
@@ -331,7 +351,8 @@ async function main() {
     await until(async () => !await has(proposal) && await has(".agent-task-slot"), "Replace fills slot");
     await attachmentRetained(""); // Must be checked BEFORE ordinary restoration.
     await attachmentPreview(".agent-task-slot", expectedReference);
-    await screenshot(`06-task-attachment-${percent}-replace-empty.png`);
+    await screenshotAttachment(".agent-task-slot", `06-task-attachment-${percent}-replace-empty.png`);
+    await attachmentRetained("");
     await fill(".agent-draft textarea", originalInstructions);
     await preserved();
     await nativeAttachmentClick(".agent-task-slot [data-task-attachment='remove']");

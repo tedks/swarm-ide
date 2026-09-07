@@ -346,7 +346,9 @@ export class AgentBridgeClient {
     if (result?.ok && request.type === "agent.launch" && this.state.draft?.prepared?.runId === request.runId) {
       // The user may have moved elsewhere or changed this draft while awaiting
       // admission. A late acknowledgement cannot steal focus or erase new text.
-      this.update({ draft: null });
+      // Retire its proposal and tickets too: an unaccepted review must never
+      // resurrect the admitted draft after this asynchronous acknowledgement.
+      this.closeDraft();
     }
     this.failure(result);
     if (result) void this.refresh(); // Only reads, never mutation retries.

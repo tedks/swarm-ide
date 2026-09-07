@@ -13,6 +13,8 @@ D5 adds a deliberate task-to-draft interaction. A person inspecting an authorita
 - [x] (2026-09-07) Read ROOT authority, accepted product contract, full parent plan and D3 intake/handoff; verified designated clean feature/task-draft-ui at 6e11ce42.
 - [x] (2026-09-07 10:38Z) UI baseline: four mounted failures (missing review, attached-empty Prepare disabled, legacy label absent), 1,396 passed. Client/selector were already implemented and their green tests are not historical RED. A mechanical test-type adapter removal overlapped baseline startup; this is not final frozen-head attribution.
 - [x] (2026-09-07 10:46Z) Current-detail selector, source-independent generation-bound proposal, one-slot form, explicit original history and narrow ROOT-approved dock reveal implemented. Quality1 passed 1,400 tests/100 files; scoped packaged driver was authored alongside, not yet executed.
+- [x] (2026-09-07 10:52Z) Frozen bd9eb84 build34 PASS56.170s and all13 fresh local suites PASS260.734s, quality1403/100. Actual CLI-Ditz packaged attachment journey passed9.1s with cleanup1/zero renderer errors at100/150 compact, retaining source/cursor/cameras through each intentional instruction edit. Google full review CLEAN; native found one held-launch retirement race; Anthropic timed out420s without review, unavailable.
+- [x] (2026-09-07 15:25Z) Resumed same D5 after user quota replenishment; preserved existing work and completed evidence. Exact held-launch regression RED1/1403PASS before narrow existing closeDraft retirement correction. Screenshot-only additions expose the actual review/slot in the existing dock, without changing layout or old assertions. Corrected frozen gates/convergence pending.
 - [ ] Prove actual owned virtual interaction, strict local full suite and provider-aware council convergence.
 - [ ] Push and normally land only on ROOT-cleared base; hand off D4/D6 limits.
 
@@ -20,6 +22,8 @@ D5 adds a deliberate task-to-draft interaction. A person inspecting an authorita
 
 
 The existing dock has independent agent, run and mock-conversation tabs; merely opening an existing draft does not reveal its tab. Attachment must deliberately reveal the draft without changing source/task documents. The existing task client owns a single ref-check timer; attachment adds no timer or scan.
+
+Native review found a specific asynchronous retirement path missed by the first tests: launch acknowledgement cleared a prepared draft without invalidating its pending attachment proposal. The new held-response regression demonstrates resurrection of retired instructions with a reset model (1 RED, 1,403 pass). Reusing existing closeDraft invalidates preparation, edit generation and proposal together while preserving the existing runId guard that protects newer drafts. This is a controlled schema-fixture race, not a historical production/model incident.
 
 ## Decision Log
 

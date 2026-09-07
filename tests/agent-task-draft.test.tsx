@@ -195,6 +195,29 @@ describe("deliberate one-slot task attachment client (injected transport, no pro
     expect(h.client.getSnapshot().draft).toBe(draft); expect(h.client.getSnapshot().draft?.confirmed).toBe(true);
   });
 
+  it("retires a proposal with its admitted draft so a held launch acknowledgement cannot let it resurrect", async () => {
+    const h = await connected(); h.client.openDraft(paymentsFileFocus);
+    h.client.editDraft({ task: "Original admitted instructions", model: "original-requested-model" });
+    const prepared = await prepareFixture(h); h.client.confirmDraft(true);
+    const launching = h.client.launch(); const call = h.latest("agent.launch");
+    expect(h.client.getSnapshot().operations.at(-1)?.status).toBe("pending");
+    expect(h.client.proposeTaskAttachment(candidate(), null)).toBe("review");
+    const proposalId = h.client.getSnapshot().taskProposal!.id;
+    expect(h.client.getSnapshot().draft?.model).toBe("original-requested-model");
+    h.success(call, { kind: "launch", receipt: { runId: prepared.runId, contextHash: prepared.contextHash,
+      admittedAt: new Date().toISOString(), status: "admitted" } });
+    await launching;
+    expect(h.client.getSnapshot().draft).toBeNull();
+    expect(h.client.getSnapshot().operations.at(-1)?.status).toBe("accepted");
+    h.client.acceptTaskAttachment("append", proposalId);
+    // The proposal captured a draft that no longer exists. It must not become
+    // a newly created draft with the old instructions and a reset model.
+    expect(h.client.getSnapshot().draft).toBeNull();
+    expect(h.client.getSnapshot().taskProposal ?? null).toBeNull();
+    expect(h.calls.filter((entry) => entry.input.type === "agent.launch")).toHaveLength(1);
+    h.off();
+  });
+
   it("accepted attachment and removal invalidate held Prepare replies without replay", async () => {
     const h = await connected(); h.client.openDraft(paymentsFileFocus); const first = h.client.prepare(); const firstCall = h.latest("agent.prepare");
     h.client.proposeTaskAttachment(candidate(), null); h.client.acceptTaskAttachment("append");
