@@ -11,8 +11,9 @@ Clicking Recent Activity opens a readable central Activity log without disturbin
 - [x] (2026-09-07) Read current journal, worker, protocol and ownership instructions; designated `feature/activity-pr-instruments` from reviewed 83e53e7.
 - [x] (2026-09-07 23:08Z) Implemented cleaned Activity entry and actual native outcome-first recorded wording with unchanged citations.
 - [x] (2026-09-07 23:15Z) Implemented typed GitHub origin observation and client, separate Changes/PRs views and parent-death-safe owned commands.
-- [x] (2026-09-07 23:26Z) Actual owned packaged GitHub20 PR/source/typed-draft/camera/stale-failure journey passed3.1s, zero errors and cleanup1. Malformed/foreign/late and hard owner-death tests passed; final local/native delta gates pending.
-- [ ] Push ready PR, sync Ditz and hand back to ROOT without merging or adopting.
+- [x] (2026-09-07 23:26Z) Actual owned packaged GitHub20 PR/source/typed-draft/camera/stale-failure journey passed3.1s, zero errors and cleanup1. Malformed/foreign/late and hard owner-death tests passed; native final fixpoint CLEAN8608a47.
+- [x] (2026-09-07 23:34Z) Full60-target build passed; focused Activity gate64tests/5files passed2.7s. Final aggregate quality1693pass/1fail in unchanged agent-owned-process.test.ts:152 remains an explicit ROOT disposition gate, not a J2 fix or waiver.
+- [ ] Push final handoff, mark PR64 ready, sync Ditz and return to ROOT without merging or adopting.
 
 ## Surprises & Discoveries
 
@@ -37,6 +38,8 @@ The current user mandate is Codex-only native council and local-only checks; for
 ## Outcomes & Retrospective
 
 The vertical is usable: Recent Activity opens readable Changes; Pull requests is an explicit separate view with actual GitHub state and bounded file links. Recorded narrative remains explicitly recorded and is not used to invent PR/agent/task associations. Final handoff records exact gates and the deliberately limited github.com-origin-only scope.
+
+Final aggregate quality observed a transient namespace member after another unchanged agent test's confirmed cleanup. The test records an unpinned namespace-number string and separate PID state, so identity reuse is an ambiguity, not an established cause. ROOT was asked to dispose of this exact boundary or authorize narrow test-only identity instrumentation; no retry-to-green or assertion weakening occurred. The independently focused Activity gate and actual UI proof pass but do not waive that failure.
 
 ## Context and Orientation
 
