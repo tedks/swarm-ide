@@ -176,6 +176,17 @@ describe("deterministic injected capture bounds and cancellation faults", () => 
     const cancelled = expect(waiting).rejects.toMatchObject({ code: "REPOSITORY_CANCELLED" });
     value.dispose(); await cancelled; expect(metadata).toHaveBeenCalledTimes(1);
   });
+  it("does not start more filesystem lookups when a timed-out kernel check eventually returns", async () => {
+    const root = await repository(); await mkdir(join(root, "directory")); await writeFile(join(root, "directory/file"), "");
+    let release!: (value: Stats) => void;
+    const metadata = vi.fn((_path: string): Promise<Stats> => new Promise((resolve) => { release = resolve; }));
+    const value = reader(root, { lstat: metadata, metadataTimeoutMs: 25 });
+    await expect(value.search(request("file"))).rejects.toMatchObject({ code: "REPOSITORY_SEARCH_UNAVAILABLE" });
+    const isDirectory = vi.fn(() => true);
+    release({ isDirectory, isSymbolicLink: () => false } as Stats);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(isDirectory).not.toHaveBeenCalled(); expect(metadata).toHaveBeenCalledTimes(1);
+  });
   it("does not convert a tab-containing stage-looking untracked name into a path alias", async () => {
     const root = await repository();
     await writeFile(join(root, `100644 ${"a".repeat(40)} 0\talias`), "unsupported name");

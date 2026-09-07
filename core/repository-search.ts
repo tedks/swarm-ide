@@ -62,6 +62,10 @@ export class RepositoryFileSearch {
     const needle = request.query.toLowerCase();
     const candidates = capture.paths.filter((path) => path.toLowerCase().includes(needle)).sort((a, b) => compareSearchPaths(request.query, a, b));
     const deadline = Date.now() + (this.options.metadataTimeoutMs ?? 2_000);
+    const metadataCurrent = () => {
+      current();
+      if (Date.now() >= deadline) throw new RepositoryError("REPOSITORY_SEARCH_UNAVAILABLE", "Filename metadata deadline expired; no further lookups started");
+    };
     // A kernel metadata operation cannot be cancelled by Node. Keep at most one
     // actual metadata chain alive; timing out callers never starts more chains
     // behind a stalled mount. The local-core process owns its final lifetime.
@@ -74,7 +78,7 @@ export class RepositoryFileSearch {
         current();
         if (checked >= 160 || paths.length >= FILE_SEARCH_RESULTS || Date.now() >= deadline) break;
         ++checked;
-        if (await this.eligible(path, capture.gitlinks, directories, deadline, current)) paths.push(path);
+        if (await this.eligible(path, capture.gitlinks, directories, deadline, metadataCurrent)) paths.push(path);
       }
       return { paths, matchesComplete: checked === candidates.length && Date.now() < deadline };
     })();

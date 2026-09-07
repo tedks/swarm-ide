@@ -343,6 +343,7 @@ async function main() {
       const previousCapture = await request({ type: "repo.search", repositoryId: (await snapshot()).project.id, query: "same-match.ts", refresh: false });
       assert(previousCapture.ok);
       const previousLifecycle = await run(() => window.swarmLifecycle.status());
+      const previousCoreRepoCamera = await viewport("repo");
       const metrics = app.getAppMetrics();
       await fs.writeFile(path.join(evidence, "owned-core-metrics.json"), JSON.stringify(metrics));
       const cores = metrics.filter((metric) => metric.type === "Utility" && (metric.name === "swarm-ide-local-core" || metric.serviceName === "swarm-ide-local-core"));
@@ -357,7 +358,8 @@ async function main() {
       const recoveredCapture = await request({ type: "repo.search", repositoryId: (await snapshot()).project.id, query: "same-match.ts", refresh: false });
       assert(recoveredCapture.ok && recoveredCapture.search.captureId !== previousCapture.search.captureId, "old lifetime capture cannot survive replacement");
       assert.deepEqual(recoveredCapture.search.paths, ["search-proof/a/same-match.ts", "search-proof/b/same-match.ts"]);
-      await closeSearch(); await preserved();
+      await closeSearch(); await paint(); await preserved();
+      assert.equal(await viewport("repo"), previousCoreRepoCamera, "core replacement preserves irrelevant repository camera");
       facts.push("N2 actual owned packaged core termination/recovery retains query and work; capture identity replaced");
       stage = "file-search-partial-capture";
       // Actual filesystem cap, introduced only after the regular journey.
