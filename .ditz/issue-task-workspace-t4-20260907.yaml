@@ -27,3 +27,11 @@ log_events:
     zero renderer errors and owned cleanup. Quality1672/124 passed before final narrow
     layout/record excerpts; final gates/native convergence underway. ROOT owns normal
     merge/adoption.'
+- time: 2026-09-07T23:28:32-00:00
+  who: Ted Smith
+  what: commented
+  comment: 'Final executable79199a4: quality1674/124 + focused14/4 PASS, actual packaged
+    CLI-Ditz journey1729ms/zeroerrors/cleanup1; same native finaldelta CLEAN. PR66
+    ready for ROOT normal merge; source/draft/cameras retained. No live-provider or
+    whole-suite/hosted claim. Future central split and compact-fit layout filed. Retain
+    issue in progress until ROOT merge.'
