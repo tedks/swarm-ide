@@ -1,9 +1,11 @@
 # Explicit file-to-Ditz backlinks
 
-Q3 is **design only**, based on Q2 normal `7562668`. Nothing in this document
-publishes backlinks yet. ROOT must evaluate this contract before authorizing the
-single Q4 implementation in [the ExecPlan](../.planning/task-backlinks.md).
-The broader [foundation gaps](foundation-closure.md) remain open.
+Q3 established this contract at normal `650432b`; ROOT approved its full
+[ExecPlan](../.planning/task-backlinks.md) for the Q4 implementation in PR44.
+Q4 now publishes explicit backlinks and retains exact task pins. The proof and
+remaining landing gate are recorded below; implementation is not an assertion
+that every aggregate gate passed. Broader [foundation gaps](foundation-closure.md)
+remain open.
 
 ## Useful behavior and assumptions
 
@@ -22,9 +24,9 @@ inferred callsites or application adoption are authorized by Q3/Q4.
 ## Reuse one observation, publish one bounded association set
 
 `core/tasks/provider.ts` already scans and parses the complete bounded issue set
-at one commit and atomically caches summaries and details. `TaskSummary` currently
-has only `counts.fileRefs`; renderer discovery by fetching details would be
-incomplete or expensive. Q4 adds optional `backlinks` to `TaskSnapshot` in
+at one commit and atomically caches summaries and details. `TaskSummary` has only
+`counts.fileRefs`; renderer discovery by fetching details would be incomplete or
+expensive. Q4 adds optional `backlinks` to `TaskSnapshot` in
 `protocol/tasks.ts`, constructed from those already validated details during
 the existing full refresh. No additional Git command, parser, worker or timer.
 
@@ -210,7 +212,7 @@ even when repo, path and commit strings repeat. No late response can steal focus
 or resurrect a tab. Keyboard activation follows native button behavior; pending
 or failed work never moves keyboard focus asynchronously.
 
-## One next vertical, with a hard implementation gate
+## One bounded vertical and its landing gate
 
 Q4 should have **one owner** across protocol/provider, task client, Context/App
 and packaged acceptance: bounds, selection and visibility share these seams.
@@ -228,3 +230,34 @@ GUI, provider or model evidence**. ROOT evaluation, local gates and substantive
 review precede Q4 landing; hosted CI remains ignored and human canvas55175 stays
 untouched. D2, wiki/instructions, generic build links and live-agent admission
 remain separate unimplemented gates.
+
+## Q4 implementation evidence
+
+PR44 implements the atomic v6 projection, exact-path index, shared pinned detail,
+file Context controls and existing-timer visibility union. Source/draft/camera
+preservation is tested, not inferred from successful rendering. The fixed
+Information-panel scroll position exposes the newly inspected task heading
+without moving keyboard focus. ROOT separately approved only the sidebar's
+optional folded-Tasks visibility signal and a diagnostic-only rehearsal helper.
+
+At executable `d3282cf`, the actual packaged two-repository journey passed in
+98.0 seconds: real CLI-authored refs, closed tasks, duplicate collapse, basename/
+prose negatives, exact pin/explicit reselection, malformed/missing/overflow,
+owned core recovery and 100%/150% source/cursor/draft/graph retention. All four
+owned desktop cases cleaned up and recorded zero renderer exceptions; no model
+turn occurred. Oversized/malformed metadata was a labelled disposable Git/YAML
+fault, not an assertion that the CLI authored invalid input. Mounted/provider
+tests separately cover races, byte ceilings and no additional discovery/timer.
+
+The frozen 34-target build passed and 12 of 13 full local suites passed. The
+existing agent-rehearsal ordinary-close verifier failed with an opaque diagnostic;
+that failed gate is not waived by the Q4-specific successes. ROOT authorized
+finite safe diagnostic codes and one bounded diagnostic run, not a runtime fix,
+weakened assertion or retry-until-green. Follow-up is tracked as
+`agent-rehearsal-close-diagnostics`. Native and Google review are CLEAN through
+the Q4 changes and diagnostic delta `5003dfe`; Anthropic was unavailable after
+one 180-second timeout. The diagnostic quality suite passed 1,267 tests/94 files.
+The one authorized owned-virtual diagnostic run at `5003dfe` passed in28.6s,
+but did not reproduce or explain the original failure. Normal merge/integration
+are held for ROOT disposition; no second execution or independent waiver. The
+exact final disposition belongs to PR44 and its landing receipt.

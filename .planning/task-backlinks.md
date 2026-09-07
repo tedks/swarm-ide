@@ -36,8 +36,18 @@ not a general knowledge index or agent dispatch feature.
 - [x] (2026-09-07 05:36Z) Client/index/consumer union/pin/Context implemented with
   negative delayed-read, same-commit, invalid-detail, attention ABA and reconnect
   tests. ROOT approved only the optional sidebar-fold visibility callback.
-- [ ] Q4 actual packaged CLI-metadata proof, local full gates, substantive review,
-  normal merge, Ditz and reviewed integration handoff.
+- [x] (2026-09-07 05:50Z) Frozen `d3282cf` actual packaged CLI-metadata proof
+  passed in both repositories plus two unavailable-evidence cases (98.0s), zero
+  renderer exceptions/model turns and four cleanup receipts. Reviewed the final
+  150% screenshot; newly inspected task heading is now visible without focus loss.
+- [x] (2026-09-07 05:54Z) Native and Google code/fix-delta council CLEAN;
+  Anthropic unavailable after a bounded 180-second timeout. Quality 1,267/94
+  passes including the approved diagnostic-only extension at `5003dfe`.
+- [ ] Aggregate local gate: frozen build passed34, full tests passed12/13;
+  existing rehearsal ordinary-close proof failed. ROOT approved safe diagnostic
+  codes and one bounded owned diagnostic run, which passed28.6s at5003dfe but
+  did not reproduce/explain the original failure. No runtime fix or waiver.
+- [ ] Normal merge, Ditz slice closure and reviewed integration handoff.
 
 ## Surprises & Discoveries
 
@@ -72,6 +82,14 @@ the prior panel explicitly fixed the setup. A second test probe incorrectly
 assumed task attention survives Q1's core-realm reset and threw a renderer
 exception; the corrected proof explicitly revisits the retained task selection.
 Neither failed run is presented as a passed or zero-exception acceptance.
+
+The frozen full suite exposed an opaque failure in the existing rehearsal-close
+verifier, even though the earlier nonfrozen full run passed. A static
+audit found possible emitted-versus-retained close-tail and shutdown-deadline
+causes, but the original artifact cannot distinguish them. ROOT approved two
+test-support files to add finite safe failure codes only; no runtime predicate,
+read, cleanup, retry or timeout changes. Four classification/non-disclosure
+regressions were RED while the other1,263 passed, then all1,267 passed.
 
 ## Decision Log
 
@@ -116,6 +134,15 @@ foundation Context/knowledge issues remain open after this design, and Q4 will
 close only explicit file-to-task backlinks. Task-to-draft provenance, docs/wiki,
 live build links, configuration, function metrics and real-agent policy are not
 covered by this work.
+
+Q4 has implemented and reviewed the bounded vertical, with actual CLI-to-packaged
+UI proof rather than injected renderer data. The full local landing gate remains
+held on the independent rehearsal close uncertainty; do not mistake the12/13
+aggregate result or a non-reproducing diagnostic for a complete final gate.
+Evidence is retained under `/tmp/swarm-ide-task-backlinks-q4.NP4JSm`, especially
+`frozen-tests.log`, `frozen-tests/run.ixP5Uj` (successful Q4 package),
+`frozen-tests/run.aGiXty` (failed close), `rehearsal-ownership.md` and
+`review-summary.md`. PR44 and the final landing receipt record actual disposition.
 
 ## Context and Orientation
 
@@ -366,5 +393,6 @@ Light review clarified that existing scalar limits count raw UTF-8 while aggrega
 limits count serialized JSON, and the plan now names the actual packaged harness.
 
 Revision note (Q4, 2026-09-07): ROOT authorized implementation. Progress now
-separates passing runtime/mounted checks from still-pending final packaged/full
-gates; records council fixes and the failed harness evidence without erasing it.
+separates passing packaged/runtime/mounted checks from the held full landing
+gate; records council fixes, safe diagnostic ownership and failed evidence
+without erasing it. No normal merge or integration is implied by implementation.
