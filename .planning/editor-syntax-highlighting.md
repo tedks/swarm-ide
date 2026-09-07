@@ -14,8 +14,8 @@ parser; unknown paths remain ordinary plain text. Source content is never run.
 - [x] (2026-09-07) Verified clean designated branch at 83e53e7 and scoped existing editor.
 - [x] (2026-09-07 22:25Z) Added pinned parsers and compartment-selected highlighting, keeping state6.7.4 override.
 - [x] (2026-09-07 22:32Z) Focused syntax/identity/navigation/command/task-workbench tests passed; real packaged TS/JSON/Markdown native edit/tab/save proof passed with owned cleanup and zero renderer errors.
-- [ ] Verify ROOT-approved exact focus-test synchronization and final relevant quality/build.
-- [ ] Native review, push ready PR, Ditz sync and executive handoff.
+- [x] (2026-09-07 22:34Z) ROOT-approved exact focus synchronization passed its selected case; final quality1694tests/122files and desktop bundle passed.
+- [x] (2026-09-07 22:34Z) Native review and final delta CLEAN; executable0d81dc1 pushed as PR63. ROOT owns normal merge/adoption; Ditz remains in progress until landing.
 
 ## Context and Orientation
 
@@ -115,9 +115,35 @@ including failed test/proof boundaries rather than erasing them on correction.
 
 ## Outcomes & Retrospective
 
-Implementation and real owned packaged proof complete; final quality/review and
-ready-PR handoff pending. Scope remains source files only, not rendered task docs
+Implementation, real owned packaged proof, final quality and native review are
+complete; PR63 is the bounded implementation handoff. Scope remains source files only, not rendered task docs
 or chat. Tiny proof repo intentionally has no service topology or Ditz branch,
 whose existing failed/unavailable states remain visible. No managed model turn,
 provider claim or shared app adoption. ROOT must materialize reviewed frozen
 dependencies before adopting this renderer enhancement.
+
+## Artifacts and Notes
+
+Local evidence lives under `/tmp/swarm-ide-syntax-highlight.xcOwru`:
+`quality-final.log` records the passed Bazel quality target (its test log reports
+1694tests/122files); `build-final.log` records desktop-bundle success;
+`focused-authorized.log` records the exact dirty-Reveal case after the approved
+test synchronization correction. `packaged-caret/run.UuHB3j/proof.json` and its
+three PNG screenshots record real token colors, exact source/cursor retention,
+one owned save, zero renderer errors and zero model requests. `supervisor.log`
+records2.336s scenario and cleanup_complete=1 on owned:137/55217.
+
+Run the small proof with
+`nix develop --command bazel run --jobs=3 //tools/demo-syntax:smoke`.
+Run the focused editor regressions with
+`nix develop --command bazel test --jobs=3 //tools/demo-syntax:editor-tests`.
+The normal quality target includes all of these unit cases and the unchanged
+navigation/command tests. These are local results, not hosted-CI claims. Native
+review was CLEAN and its final delta CLEAN; foreign providers were intentionally
+omitted under the user's Codex-only directive.
+
+Revision 2026-09-07 22:34Z: recorded actual final gates and proof paths. Earlier
+failed test or driver assumptions remain above; later success is not attributed
+as a historical production fix. This change adds no undo subsystem: its history
+test proves preserving an installed field, while tab memory keeps the baseline
+selection-only behavior.
