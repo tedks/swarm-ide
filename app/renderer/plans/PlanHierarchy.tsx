@@ -13,6 +13,8 @@ export function PlanHierarchy({ visible, worldId, repositoryId, generation, conn
   const [observation, setObservation] = useState<{ result: PlanReadResult; generation: number; serial: number } | null>(null);
   const [loading, setLoading] = useState(false), [notice, setNotice] = useState("");
   const [selected, setSelected] = useState<string | null>(null);
+  const contextGuidance = useRef<HTMLDetailsElement>(null);
+  const supportingMaterial = useRef<HTMLDivElement>(null);
   const lifetime = useRef({ generation, connected, worldId, repositoryId });
   lifetime.current = { generation, connected, worldId, repositoryId };
   const serial = useRef(0);
@@ -62,17 +64,33 @@ export function PlanHierarchy({ visible, worldId, repositoryId, generation, conn
     </div>
     {index ? <>
       <ProjectionCanvas label="Plan containment canvas" nodes={nodes} edges={edges} selected={selected} onSelect={setSelected} />
-      <div className="planning-inspector">
-        {node ? <><strong>{node.title}</strong><code>{node.id} · {node.kind}</code>
-          <div className="planning-links">{node.docs.map((path, i) => <button key={`doc:${i}`} disabled={!current} onClick={() => onOpenFile(path)}>Read doc · {path}</button>)}
-            {node.sourcePaths.map((path, i) => <button key={`source:${i}`} disabled={!current} onClick={() => onOpenFile(path)}>Open source · {path}</button>)}
-            {node.taskIds.map((id, i) => <button key={`task:${i}`} disabled={!current || !tasks.connected} onClick={() => { void openTask(id); }}>Inspect task · {id}</button>)}</div>
-          <h3>Why this context?</h3><p>Repo-authored guidance; selected briefing, not an inventory of effective permissions.</p>
+      <div className="planning-inspector plan-selection-inspector">
+        {node ? <div className="plan-selection-primary">
+          <div className="plan-selection-title"><strong title={node.title} tabIndex={0}>{node.title}</strong>
+            <button onClick={() => {
+              if (!contextGuidance.current) return;
+              contextGuidance.current.open = true;
+              if (supportingMaterial.current) supportingMaterial.current.scrollTop = 0;
+              contextGuidance.current.querySelector("summary")?.focus({ preventScroll: true });
+            }}>Why this context?</button>
+          </div>
+          <code title={`${node.id} · ${node.kind}`} tabIndex={0}>{node.id} · {node.kind}</code>
+          <div className="planning-links">
+            {node.docs.length ? <div role="group" aria-label="Document actions">{node.docs.map((path, i) => <button key={`doc:${i}`} title={`Read doc · ${path}`} disabled={!current} onClick={() => onOpenFile(path)}>Read doc · {path}</button>)}</div> : null}
+            {node.sourcePaths.length ? <div role="group" aria-label="Source actions">{node.sourcePaths.map((path, i) => <button key={`source:${i}`} title={`Open source · ${path}`} disabled={!current} onClick={() => onOpenFile(path)}>Open source · {path}</button>)}</div> : null}
+            {node.taskIds.length ? <div role="group" aria-label="Task actions">{node.taskIds.map((id, i) => <button key={`task:${i}`} title={`Inspect task · ${id}`} disabled={!current || !tasks.connected} onClick={() => { void openTask(id); }}>Inspect task · {id}</button>)}</div> : null}
+          </div>
+        </div> : <p className="plan-selection-prompt">Select a plan or component to inspect its explicit document, source, task and context links.</p>}
+        <div className="plan-selection-support" ref={supportingMaterial}>
+          {node ? <details className="plan-context-guidance" key={node.id} ref={contextGuidance} open>
+          <summary>Context guidance · {node.contextRefs.length} references</summary>
+          <p>Repo-authored guidance; selected briefing, not an inventory of effective permissions.</p>
           {node.contextRefs.length ? <ul>{node.contextRefs.map((ref, i) => <li key={i}><button disabled={!current} onClick={() => onOpenFile(ref.path)}>{ref.kind} · {ref.path}</button><span>{ref.note === null ? null : displayTaskText(ref.note)}</span></li>)}</ul> : <p>No context references authored for this node.</p>}
-        </> : <p>Select a plan or component to inspect its explicit document, source, task and context links.</p>}
+          </details> : null}
         <details open><summary>Keyboard plan outline · {nodes.length} nodes</summary><ul>{index.nodes.map((item) => <li key={item.id} style={{ paddingLeft: `${Math.min(depth(item.id), 12) * 10}px` }}>
           <button aria-label={`Inspect plan ${item.id}`} onClick={() => setSelected(item.id)}>{item.title}</button><span>{item.kind} · depth {depth(item.id)}</span>
         </li>)}</ul></details>
+        </div>
       </div>
     </> : <div className="planning-empty">Keep a versioned plan index beside the code. Agents can maintain it through ordinary reviewed repository edits.</div>}
   </section>;

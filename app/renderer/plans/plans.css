@@ -35,3 +35,21 @@
 .planning-inspector li span { color: #94afa5; }
 .planning-empty { padding: 15px; color: #9bb5ac; font-size: 12px; }
 .planning-links { display: flex; gap: 6px; flex-wrap: wrap; margin: 7px 0; }
+
+/* Selected-plan actions stay outside the outline/context scroll. Do not alter
+   the task inspector, graph grid or mounted projection cameras. */
+.planning-inspector.plan-selection-inspector { display: flex; flex-direction: column; padding: 0; overflow: hidden; }
+.plan-selection-inspector .plan-selection-primary { flex: 0 0 auto; min-width: 0; padding: 8px 9px; background: #10201e; border-bottom: 1px solid #33504a; }
+.plan-selection-inspector .plan-selection-title { display: flex; align-items: flex-start; gap: 8px; }
+.plan-selection-inspector .plan-selection-title strong { flex: 1; min-width: 0; max-height: 36px; overflow: auto; font-size: 13px; line-height: 1.35; }
+.plan-selection-inspector .plan-selection-title > button { flex: 0 0 auto; color: #c4ffe6; }
+.plan-selection-inspector .plan-selection-primary > code { display: block; margin-top: 3px; max-height: 26px; overflow: auto; font-size: 10px; color: #9cb8ae; }
+.plan-selection-inspector .planning-links { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); margin: 7px 0 0; }
+.plan-selection-inspector .planning-links:empty { display: none; }
+.plan-selection-inspector .planning-links > div { min-width: 0; max-height: 80px; overflow: auto; padding: 2px; }
+.plan-selection-inspector .planning-links button { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; width: 100%; margin-bottom: 4px; text-align: left; overflow-wrap: anywhere; }
+.plan-selection-inspector .plan-selection-primary strong:focus-visible, .plan-selection-inspector .plan-selection-primary code:focus-visible { outline: 2px solid #9dedc9; outline-offset: -2px; }
+.plan-selection-inspector .plan-selection-support { min-height: 36px; overflow: auto; padding: 0 9px 7px; }
+.plan-selection-inspector .plan-selection-support details { margin-top: 5px; }
+.plan-selection-inspector .plan-selection-support summary:focus-visible { outline: 2px solid #9dedc9; outline-offset: -2px; }
+.plan-selection-inspector .plan-selection-prompt { margin: 8px 9px; }

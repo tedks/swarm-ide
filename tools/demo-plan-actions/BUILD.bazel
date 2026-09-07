@@ -1,0 +1,30 @@
+package(default_visibility = ["//visibility:public"])
+
+sh_test(
+    name = "regressions",
+    srcs = ["regressions.sh"],
+    data = ["//:quality_sources"],
+    tags = ["local"],
+)
+
+filegroup(
+    name = "sources",
+    srcs = glob(["*.mjs", "*.cjs", "*.sh"]),
+)
+
+sh_test(
+    name = "packaged-actions-test",
+    srcs = ["smoke.sh"],
+    data = [
+        ":sources",
+        "//:desktop-bundle",
+        "//tools:electron-runtime-source",
+        "//tools:virtual-desktop-run.sh",
+        "//tools:x11-driver-source",
+        "//tools/demo-plans:sources",
+        "//tools/task-integration:sources",
+    ],
+    env_inherit = ["SWARM_ELECTRON_BIN", "SWARM_ELECTRON_NO_SANDBOX", "SWARM_SOURCE_WORKSPACE", "SWARM_VIRTUAL_DISPLAY", "SWARM_VIRTUAL_DESKTOP_PORT"],
+    tags = ["desktop", "exclusive", "local", "no-sandbox"],
+    timeout = "long",
+)
