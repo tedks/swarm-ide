@@ -8,12 +8,14 @@ import { fileURLToPath } from "node:url";
 import { resolveOwnedVirtualPort } from "../task-integration/owned-port.mjs";
 import { resolveElectronRuntimeArguments } from "../electron-runtime.mjs";
 
-// Git environment overrides ignore cwd and can redirect init/fetch/checkout
-// outside scratch. This manual proof accepts none, including empty overrides.
-// Reject before invoking Git or performing owned launch/setup work; do not echo
-// caller-controlled paths or injected configuration values.
-if (Object.keys(process.env).some((name) => name.startsWith("GIT_")))
+// Git redirection can ignore cwd and write outside scratch. Editor/pager are
+// ordinary operator UI preferences, not repository selectors; accept those but
+// clear ALL inherited Git settings before noninteractive commands. Reject other
+// keys before setup (including empty overrides), without echoing their values.
+const inertGitPreferences = new Set(["GIT_EDITOR", "GIT_PAGER"]);
+if (Object.keys(process.env).some((name) => name.startsWith("GIT_") && !inertGitPreferences.has(name)))
   throw new Error("Ambient Git environment is unsupported for the disposable tour");
+const cleanEnvironment = Object.fromEntries(Object.entries(process.env).filter(([name]) => !name.startsWith("GIT_")));
 
 const scripts = dirname(fileURLToPath(import.meta.url));
 const port = await resolveOwnedVirtualPort();
@@ -28,7 +30,7 @@ await access(archive);
 const scratch = await mkdtemp(join(owner, "connected-tour-"));
 const root = join(scratch, "swarm-tour"), packaged = join(scratch, "app"), profile = join(scratch, "profile"), privateHome = join(scratch, "home");
 const command = (exe, args, cwd = source) => execFileSync(exe, args, { cwd, encoding: "utf8", timeout: 60000, maxBuffer: 4 * 1024 * 1024,
-  env: { ...process.env, GIT_CONFIG_NOSYSTEM: "1", GIT_CONFIG_GLOBAL: "/dev/null", GIT_TERMINAL_PROMPT: "0" } }).trim();
+  env: { ...cleanEnvironment, GIT_CONFIG_NOSYSTEM: "1", GIT_CONFIG_GLOBAL: "/dev/null", GIT_TERMINAL_PROMPT: "0" } }).trim();
 const git = (cwd, ...args) => command("git", ["-c", "core.hooksPath=/dev/null", ...args], cwd);
 let server, desktop, killTimer;
 const handlers = new Map();
@@ -49,7 +51,7 @@ try {
     actualTaskMetadata: true, sourcePath: "core/tasks/draft-context.ts" }, null, 2));
   server = createServer((_req, res) => { res.writeHead(200); res.end("owned connected tour"); });
   await new Promise((resolve, reject) => { server.once("error", reject); server.listen(port, "127.0.0.1", resolve); });
-  const environment = { ...process.env, HOME: privateHome, XDG_CONFIG_HOME: profile, NODE_PATH: "",
+  const environment = { ...cleanEnvironment, HOME: privateHome, XDG_CONFIG_HOME: profile, NODE_PATH: "",
     SWARM_TOUR_PACKAGE: packaged, SWARM_TOUR_PROFILE: profile };
   for (const name of ["SWARM_RENDERER_URL", "SWARM_DEV_CONTROL", "SWARM_WORKSPACE_ROOT", "SWARM_AGENT_STORE_ROOT",
     "SWARM_EXTERNAL_AGENTS_REGISTRY", "NODE_OPTIONS", "ELECTRON_RUN_AS_NODE", "CODEX_HOME", "ANTHROPIC_API_KEY", "OPENAI_API_KEY"])

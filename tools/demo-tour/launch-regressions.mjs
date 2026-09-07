@@ -27,3 +27,8 @@ test("no redirection proceeds to the existing virtual-owner guard", () => {
   assert.equal(result.status, 1);
   assert.match(result.stderr, /Owned virtual X11 required/);
 });
+for (const name of ["GIT_EDITOR", "GIT_PAGER"]) test(`inert ${name} is permitted then cleared for Git`, () => {
+  const result = launch({ [name]: "false" });
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /Owned virtual X11 required/);
+});
