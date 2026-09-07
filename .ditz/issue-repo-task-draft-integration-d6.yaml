@@ -29,3 +29,9 @@ log_events:
     unfilled. One frozen35-target build PASSED; fresh all14 local underway, source
     immutable. No app/model/credential changes; original historical topology timeout
     remains open.
+- time: 2026-09-07T18:40:15-00:00
+  who: Ted Smith
+  what: blocked by task-rehearsal-resize-observer-d6
+  comment: ""
+blocked_by:
+- task-rehearsal-resize-observer-d6
