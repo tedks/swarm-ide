@@ -9,21 +9,27 @@ Selecting a plan should immediately expose its title and deliberate document, so
 ## Progress
 
 - [x] (2026-09-07 21:35Z) Verified assigned branch, baseline and bounded ownership; read instructions and materialized frozen dependencies.
-- [ ] Add focused regressions and implement inspector-only presentation.
-- [ ] Run relevant local gates, native review and actual owned virtual proof.
-- [ ] Push a ready PR and hand back to ROOT for merge/adoption.
+- [x] (2026-09-07 21:38Z) Added focused regressions and inspector-only presentation. Original implementation: 3 new RED / 11 PASS; corrected focused suite: 15 PASS including dense reference groups.
+- [x] (2026-09-07 21:43Z) Local quality 1,637 tests / 118 files, desktop package build, focused interactions and actual owned virtual proof passed. Native review converged CLEAN after bounded-header correction.
+- [x] (2026-09-07 21:46Z) PR58 published for ROOT review/merge. Shared app and other worktrees untouched.
 
 ## Surprises & Discoveries
 
 The inspector currently shares one 220px scrolling region for title, actions, context and an initially expanded keyboard outline. Existing keyboard and packaged tests depend on the outline and context links remaining reachable; do not silently remove or relabel them.
 
+Native review caught a legal long-title clipping case in the initial fixed header. The final header bounds title/id independently and separates document/source/task scrolling so one category cannot hide another. The first full quality attempt caught a test response type annotation, corrected before the passing quality run.
+
+The first packaged proof incorrectly required the repository camera to remain unchanged across explicit docs-to-source navigation. The existing directory camera intentionally frames fresh matching navigation intent. The corrected proof checks every camera during supporting-only scroll, the Plan camera during cross-directory navigation, and the actual requested docs/src directory changes separately. The failed run remains recorded as a test-oracle mismatch, not a repaired product bug.
+
 ## Decision Log
 
-The header will retain the exact existing action labels and callbacks. Supporting guidance and the outline get an independent scroll region. A visible Why this context control reveals and focuses its disclosure without navigating a file. Existing context and outline remain initially expanded for compatibility. Large action sets have their own bounded scrolling list, rather than allowing repository content to cover the whole inspector. This is a presentation change, not new authority.
+The header retains the exact existing action labels and callbacks. Supporting guidance and the outline get an independent scroll region. A visible Why this context control reveals and focuses its disclosure without navigating a file. Existing context and outline remain initially expanded for compatibility. Document, source and task categories each have a bounded scrolling list. Long labels show two lines, with the full value retained in the native tooltip and accessible text. Title/id remain keyboard-scrollable. This is a presentation change, not new authority.
 
 ## Outcomes & Retrospective
 
-Pending implementation and proof. No managed provider or shared app changes are authorized.
+The selected title and Read doc, Open source, Inspect task and Why this context controls remain visible at identical measured coordinates while supporting content scrolls through 917 CSS pixels. Native file/task activation works through the actual packaged bridge and a disposable real Git/Ditz repository. Dirty source, logical cursor, attached draft and Plan camera/component identity remain intact; source disk stays unchanged. No model turn occurred. Native review is CLEAN; foreign seats were intentionally omitted under the Codex-only directive. PR58 is ready, not merged; ROOT owns final merge, Ditz closure and shared preview adoption.
+
+The screenshot uses explicitly authored disposable layout-test input, not inferred architecture or a live Swarm task history. Maximum 16/16/32 category sizes have mounted component coverage, not a separate maximum-density real-window claim. Existing exact resize warnings remain an accepted policy, but this run produced zero renderer errors of any kind. Hosted CI was ignored, not called green.
 
 ## Context and Orientation
 
@@ -49,8 +55,14 @@ The worktree is isolated and ROOT owns normal merging. Do not consume moving pee
 
 Operational handoff: `/tmp/swarm-ide-demo-polish.HjpljW/plan-actions/verification.md`. New issue: `demo-polish-plan-actions-20260907`, left open until ROOT merges. Tests are deterministic UI fixtures unless explicitly described as real packaged filesystem observations.
 
+Final evidence lives at `/tmp/swarm-ide-demo-polish.HjpljW/plan-actions/packaged-final/run.ji0Wnc/`: `01-selected-plan-actions.png`, `02-plan-actions-retained-work.png`, `actions-proof.json` and `supervisor.log`. Native journey took 1.693 seconds, packaged target 4.7 seconds, cleanup_complete=1. Requested content size was 1440×876; measured renderer viewport was 1441×879 at devicePixelRatio 1.046875. Record measurements rather than claiming the requested dimensions were exact.
+
+`final-local.log` records the 49.97-second passing quality/focused/packaged run on the final production code. A subsequent proof-only change added nonempty-camera guards and accurate dimensions; only its relevant packaged test was rerun, passing in 5.88 seconds including Bazel overhead. No unrelated full-suite rerun or branch-movement ceremony was required.
+
 ## Interfaces and Dependencies
 
 No new dependencies, schemas, provider methods or graph semantics. Continue using existing `onOpenFile(path)` and `onOpenTask(snapshot, id)` callbacks and the validated `PlanReadResult`. Native React refs may target the context disclosure; never query or mutate graph state.
 
 Revision note: initial bounded plan records input-size, stale-authority, compatibility and layout assumptions before implementation.
+
+Completion revision: recorded actual test-oracle correction, proportional gate attribution, native convergence and real versus deterministic evidence boundaries.

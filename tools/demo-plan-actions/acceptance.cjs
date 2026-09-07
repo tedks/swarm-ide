@@ -99,6 +99,7 @@ async function main() {
     globalThis.__actionsScrollGraphs = [...document.querySelectorAll(".react-flow__viewport")];
     return globalThis.__actionsScrollGraphs.map((node) => node.style.transform);
   });
+  assert(scrollCameras.length > 0, "graph camera selectors must resolve real mounted viewports");
   assert(beforeScroll.controls.every((control) => control.visible), "title and all primary controls visible before supporting scroll");
   await run(() => { const support = document.querySelector(".plan-selection-support"); support.scrollTop = support.scrollHeight; });
   await paint(); const afterScroll = await measurements();
@@ -140,6 +141,7 @@ async function main() {
   // Explicit cross-directory source activation intentionally frames the repo
   // directory projection. It must not move the separate Plan projection.
   const cameras = await run(() => { globalThis.__actionsGraphs = [...document.querySelectorAll(".planning-field .react-flow__viewport")]; return globalThis.__actionsGraphs.map((node) => node.style.transform); });
+  assert(cameras.length > 0, "Plan camera selector must not make retention vacuously true");
   await click(".plan-selection-primary button", `Read doc · ${fixture.docPath}`);
   await until(async () => (await sourceState())?.text === fixture.docText, "read doc with retained dirty source");
   await until(() => has('.graph-pane[data-directory="docs"]'), "explicit document activation follows docs directory");
@@ -158,7 +160,9 @@ async function main() {
   assert.equal(diagnostics.blockingErrors.length, 0, JSON.stringify(rendererErrors));
   await fs.writeFile(path.join(evidence, "actions-proof.json"), JSON.stringify({ ok: true, realDitz: true, packagedCore: true,
     input: "Disposable real Git/Ditz repo with explicitly authored supporting-note layout pressure; not observed live architecture",
-    viewport: { width: 1440, height: 876 }, selectedTitle: selected.title, beforeScroll, afterScroll,
+    requestedContentSize: { width: 1440, height: 876 },
+    actualViewport: await run(() => ({ width: innerWidth, height: innerHeight, devicePixelRatio })),
+    actualContentSize: win.getContentSize(), selectedTitle: selected.title, beforeScroll, afterScroll,
     primaryControlsVisibleAfterScroll: true, sourceDraftCamerasRetained: true,
     cameraScope: "All graph instances/cameras during supporting scroll; Plan instances/cameras during explicit docs-to-src activation; repository directory follows that explicit navigation",
     activated: ["native Enter plan selection", "Why this context focus", "context document", "Read doc", "Open source", "Inspect task", "Attach"],
