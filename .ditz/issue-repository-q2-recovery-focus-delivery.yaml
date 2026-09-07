@@ -1,0 +1,24 @@
+id: repository-q2-recovery-focus-delivery
+title: 'Q2 packaged recovery: establish service-node focus before inspect input'
+desc: 'B1 frozen eb46f55 full-local14/15 passes; Swarm navigation Q2 retained-service
+  core replacement times out at service inspect. Saved app.log active element Refresh
+  directory, click trace extra Refresh event consistent with Enter at old focus, Context
+  NONE but retained service nodes/source/draft and zero renderer exceptions. No event-target
+  record at focus/key dispatch, so no historical cause or production fix claimed.
+  Evidence /tmp/swarm-ide-build-graph-b1.MFmmXC/frozen1-navigation and recovery-boundary.md.
+  Small next step: exact focus/native-focus/key-target instrumentation, one finite
+  navigation run; no retry-to-green, timeout increase or verifier weakening. B1 production
+  query not requested in failed case.'
+type: bugfix
+component: default
+release:
+reporter: Ted Smith <tedks@riseup.net>
+status: unstarted
+disposition:
+creation_time: 2026-09-07T19:44:24-00:00
+references: []
+log_events:
+- time: 2026-09-07T19:44:24-00:00
+  who: Ted Smith
+  what: created
+  comment: ""
