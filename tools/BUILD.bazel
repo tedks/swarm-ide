@@ -104,7 +104,7 @@ sh_binary(
 
 filegroup(
     name = "dev-entry-sources",
-    srcs = ["dev.sh", "dev.mjs", "dev-entry.mjs", "dev-workspace.test.mjs", "dev-workspace.test.sh"],
+    srcs = ["dev.sh", "dev.mjs", "dev-entry.mjs", "dev-workspace-check.mjs", "dev-workspace.test.sh"],
 )
 
 sh_test(

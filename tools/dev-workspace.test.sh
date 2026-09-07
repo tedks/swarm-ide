@@ -1,4 +1,4 @@
 #!/usr/bin/env bash
 set -euo pipefail
 scripts=$(dirname "$(readlink -f "$0")")
-exec node --test "$scripts/dev-workspace.test.mjs"
+exec node --test "$scripts/dev-workspace-check.mjs"
