@@ -3,8 +3,8 @@
 
 This ExecPlan follows `.planning/PLANS.md`. Keep Progress, Surprises &
 Discoveries, Decision Log, and Outcomes & Retrospective current. Q0 authors the
-design only. Nothing below authorizes implementation until ROOT accepts its
-single-owner Q1 gate. The full contract is `docs/contextual-information.md`.
+design only; ROOT accepted its single-owner Q1 gate on 2026-09-07. Q1 implements
+that approved slice in PR41. The full contract is `docs/contextual-information.md`.
 
 ## Purpose / Big Picture
 
@@ -27,8 +27,18 @@ are visibly unavailable. It does not activate agents or create a new scanner.
   checks passed. PR40 owns normal docs landing and the final recap its receipt.
 - [x] (2026-09-07 02:40Z) ROOT verified Q0, approved Q1 and designated the contextual-information worktree.
 - [x] (2026-09-07 02:45Z) Red provider regressions proved ordinary-file and required-declaration ownership leakage: 2 failed, 1194 passed. Frozen log in Q1 step red.log.
-- [ ] Q1 red regressions, typed publication and Context composition.
-- [ ] Q1 actual two-repository packaged acceptance, local gates, review, landing.
+- [x] (2026-09-07 02:56Z) Q1 typed publication, explicit attention and bounded
+  local composition pushed as `b0ad27c`; draft PR41 opened.
+- [x] (2026-09-07 03:21Z) Verified earlier two-repository packaged acceptance on
+  `ebd71eb`, including exact source/artifact relations and retained work.
+- [x] (2026-09-07 03:16Z) Fixed native/Google Back acknowledgement race and
+  publication provenance cache identity; added mounted regressions, unrelated
+  document-close retention and actual failed-manifest build proof in `d53c63f`.
+- [x] (2026-09-07 03:21Z) Frozen `d53c63f` full 34-target build and all 13 local
+  suites passed; quality 1,212 tests / 90 files. Native and Google convergence
+  CLEAN; Anthropic attempted but timed out at 600 seconds without a review.
+  PR41 is the normal landing unit; its merge receipt and exact integration tree
+  are recorded in the Q1 executive handoff rather than inferred from test success.
 
 ## Surprises & Discoveries
 
@@ -45,6 +55,28 @@ implementation file. The manifest's Payments dependency is not an observed call:
 the implementation has no corresponding call expression. Existing Ditz summary
 counts cannot implement a complete file-to-task index. These are limits to show,
 not gaps to fill with plausible strings.
+
+Q1's removed subjectless widgets were also test file-opening controls. The first
+iteration exposed 47 failures in six legacy suites. ROOT approved migrating only
+those setup gestures to the real command palette and changing obsolete default
+widget labels. This exposed a real first-activation bug: a layout effect could
+use the previous workspace reference. Publishing the accepted reference before
+the attention reset fixes that bug; the retention assertions were not waived.
+
+Explicit Reveal of an already open dirty buffer previously skipped checking the
+destination. It now performs a broker read to validate the explicit link while
+retaining dirty bytes and cursor. Context composition itself does not reread.
+The old focus-only request-list assertion was updated to require read then focus.
+
+Native and Google review both caught Back reading an event-owned workspace after
+an acknowledgement that need not be accompanied by the graph event yet. Back now
+captures its actual requested destination, guarded by intent/realm/attention.
+The native pass also caught reuse of an artifact index when build bytes stayed
+identical but the source fingerprint changed; the index now keys all publication
+provenance. New mounted tests exercise both, including unchanged artifact bytes.
+One first regression used an impossible same-epoch green publication and was
+correctly rejected; the test now models a new reconciliation epoch, without
+weakening the receiver. Earlier failures remain in the step's iteration logs.
 
 ## Decision Log
 
@@ -66,6 +98,19 @@ Decision (2026-09-07, Q0): Preserve separate evidence clocks and limited coverag
 Capture is never live, Ditz commit is not working source, unsaved buffer is not
 built/deployed, and a complete example artifact is not a complete monorepo index.
 
+Decision (2026-09-07, Q1): ROOT approved preserving the original optional service
+observation in `retainDerived`, and refusing cross-world retention beside the
+existing repository guard. No lifecycle, replay or freshness authority changed.
+
+Decision (2026-09-07, Q1): Keep the existing task inspector for explicit task
+attention, including its honest empty selection. Closing a non-inspected source
+tab must not steal graph/task attention. The explicit mock panel stays separate.
+
+Decision (2026-09-07, Q1): File the Google review's pre-existing `graphs` document
+sentinel collision and the producer's working-world-only limitation as
+`document-surface-sentinel-collision` and `service-topology-world-parameter`.
+They need independent compatibility/producer changes, not a wider Q1 refactor.
+
 ## Outcomes & Retrospective
 
 
@@ -78,6 +123,34 @@ plan sections, with no build or GUI execution. PR40 and the final executive reca
 record actual normal landing/Ditz status. The larger contextual, knowledge,
 configuration, callsite, and real-agent gates remain open. The useful simplification
 is to retain evidence already produced, not commission another general platform.
+
+Q1 delivers exact file/source/buffer facts, separately sourced service and capture
+relationships, literal task attention, and matching directory/service/interface/
+edge facts. `core/files.ts` no longer inherits FraudCheck ownership;
+`fraudcheck.ts` is an implementation member, `fraudcheck.proto` also declares a
+provided interface, and `payments.proto` declares a required interface without
+claiming implementation ownership or an observed callsite. Unsupported providers
+remain unavailable. Source receipt timestamps are explicitly client receipts;
+retained artifacts preserve their original fingerprint through failure/recovery.
+
+At executable head `d53c63f90589241e8e2ec1bcc63ba95d6d5f9fde`, the full build
+passed in 56.453 seconds and all 13 freshly executed local suites in 245.528
+seconds. Quality passed 1,212 tests in 90 files. Real packaged navigation passed
+in 92.1 seconds across Swarm, an unfamiliar repository, an invalid filename and
+an unavailable-fingerprint case. Swarm used actual broker bytes and a real Bazel
+artifact, then an owned invalid manifest to prove retained failure. All four
+virtual sessions recorded cleanup_complete=1 and zero renderer exceptions.
+Delayed/out-of-order activation races are deterministic unit/mounted proofs,
+not claimed as controlled timing in the package. Product model turns were zero.
+
+Council seats were OpenAI native and Google via ask-agent (both CLEAN on fix delta
+`ebd71eb..d53c63f`), and Anthropic via ask-agent (missing: actual 600-second
+timeout, exit 124, no review). This is two-provider convergence, not three-provider
+approval. Hosted CI was ignored under ROOT authority. The unchanged-head local
+owned-process proof passed but does not resolve its separately tracked discrepancy.
+Normal PR41 landing and the integration-only merge consume this reviewed tree;
+the final handoff records exact hashes. Human ui-canvas55175 and old master remain
+untouched. Broad contextual/provider/configuration and real-agent work remain open.
 
 ## Context and Orientation
 
@@ -207,10 +280,10 @@ dependencies and use the existing Nix/Bazel entry points; never run renderer
 tools directly. Relevant commands from that worktree are:
 
     nix develop --command pnpm install --frozen-lockfile
-    nix develop --command bazel test --jobs=3 //:quality
+    nix develop --command bazel test --jobs=3 //tools:quality
     nix develop --command bazel test --jobs=3 --nocache_test_results //tools/repository-navigation:packaged-navigation-test //tools/task-integration:packaged-task-test
     nix develop --command bazel build --jobs=3 //...
-    nix develop --command bazel test --jobs=3 --nocache_test_results //...
+    flock --close /tmp/swarm-ide-overnight.UgO2Aw/virtual.lock nix develop --command bazel test --jobs=3 --nocache_test_results //...
 
 Serialize shared owned-virtual proofs with ROOT's current virtual lock if peers
 exist. Use the harness's private display/profile/port, never physical DISPLAY=:0
@@ -255,6 +328,15 @@ design; `contextual-information` and `ui-context-linkages` remain open. Existing
 `ui-service-source-navigation`, `ui-live-build-links`, reverse knowledge/task,
 scoped configuration, and process ownership followups are not closed by Q1.
 
+Q1 evidence is `/tmp/swarm-ide-context-q1.XvJMyh`: `red.log`, all `iteration*.log`,
+`review-fixes*.log`, `build-final1.log`, `full-final1.log` and council logs retain
+both failures and final results. `evidence-d53c63f/testlogs` is an independent copy
+of every suite, not rewritable Bazel output. Under `evidence-d53c63f/extracted/
+repository-navigation/run.XG3W3e`, each case has proof JSON and owned cleanup;
+`swarm/q1-*.png` contrasts ordinary, implementation, provided, required and failed
+build contexts. Earlier real-package evidence remains in `evidence-ebd71eb` and
+is not substituted for the final frozen-head run.
+
 ## Interfaces and Dependencies
 
 
@@ -293,3 +375,9 @@ existing retention branch and focused recovery regressions (step ownership.md).
 The old workbench tests use unconditional legacy widgets as file-opening controls;
 these setup gestures must migrate to deliberate navigation without restoring the
 misleading fallback. Existing behavioral retention assertions remain required.
+
+Q1 implementation revision (2026-09-07): records the implemented vertical,
+ROOT-approved narrow recovery/test migrations, two real review findings and their
+regressions, exact frozen local/packaged proof and honest missing review seat.
+No new RPC, scanner, timer, worker, dependency, model call or persistent migration
+was introduced. This closes the first truthful Context slice, not its parents.
