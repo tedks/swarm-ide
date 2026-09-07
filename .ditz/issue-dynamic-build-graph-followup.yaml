@@ -1,0 +1,22 @@
+id: dynamic-build-graph-followup
+title: 'Build graph follow-up: target selection and wider observation coverage'
+desc: 'B1 intentionally bounds local Bazel7 declaration observation: 80 target display,
+  2000 target/8000 edge data cap, unconfigured query, unresolved external deps, no
+  symlinked definitions. Google review nit: all-target default can be noisy at scale;
+  future saved/focused target selection should improve this without hiding isolated
+  rules. Ignored/external/environment triggers require explicit refresh; extending
+  coverage and Bazel configuration support needs a new bounded slice, not relabeling
+  partial as complete.'
+type: feature
+component: default
+release:
+reporter: Ted Smith <tedks@riseup.net>
+status: unstarted
+disposition:
+creation_time: 2026-09-07T19:29:03-00:00
+references: []
+log_events:
+- time: 2026-09-07T19:29:03-00:00
+  who: Ted Smith
+  what: created
+  comment: ""
