@@ -68,6 +68,15 @@ log_events:
   who: Ted Smith
   what: blocked by live-agent-native-provider-controls
   comment: ""
+- time: 2026-09-07T23:01:40-00:00
+  who: Ted Smith
+  what: commented
+  comment: 'PM reconciliation 2026-09-07: the user now authorizes a separate trusted-local
+    route with normal installed-harness permissions/approvals; trusted-local-execution-x1
+    owns that active implementation. This sealed-context/limited-profile issue is
+    no longer a prerequisite for that separate route. Proposed roadmap reorganization:
+    retain it only as optional hardened-profile research. Left open, not marked implemented:
+    earlier exclusion and credentialed production proofs remain incomplete.'
 blocks:
 - agent-run-vertical-proof
 blocked_by:
