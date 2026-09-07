@@ -34,6 +34,8 @@ export class RepositoryFileSearch {
       if (this.disposed || serial !== this.querySerial) throw new RepositoryError("REPOSITORY_CANCELLED", "Search was superseded or its core disposed");
     };
     current();
+    if (!this.capture && this.failure && !request.refresh)
+      throw new RepositoryError("REPOSITORY_SEARCH_UNAVAILABLE", "Filename capture is unavailable. Use explicit Refresh to retry, or exact Open path.");
     if (request.refresh || !this.capture || this.pending) {
       if (request.refresh) { this.pending?.controller.abort(); this.pending = undefined; }
       if (!this.pending) {
@@ -66,7 +68,7 @@ export class RepositoryFileSearch {
       if (await this.eligible(path, capture.gitlinks, directories, deadline, current)) paths.push(path);
     }
     current();
-    const matchesComplete = checked === candidates.length;
+    const matchesComplete = checked === candidates.length && Date.now() < deadline;
     const stale = this.failure || capture.generation !== this.generation || this.now() - capture.time >= FILE_SEARCH_STALE_MS;
     return RepositorySearchResultSchema.parse({ kind: "search", repositoryId: this.repositoryId, query: request.query,
       captureId: capture.id, capturedAt: new Date(capture.time).toISOString(), state: stale ? "stale" : "observed",
@@ -120,7 +122,8 @@ export class RepositoryFileSearch {
         if (!directories.get(prefix)) return false;
       }
       current(); if (Date.now() >= deadline || gitlinks.has(path)) return false;
-      return (await lstat(join(this.root, path))).isFile();
+      const absolute = join(this.root, path);
+      return (await lstat(absolute)).isFile() && await realpath(absolute) === absolute;
     } catch (error) {
       current();
       const code = (error as NodeJS.ErrnoException).code;

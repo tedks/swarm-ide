@@ -280,7 +280,7 @@ describe("task inspection in the source cockpit", () => {
     const { request } = setup(); render(<App />); await openSource();
     const before = request.mock.calls.length;
     fireEvent.keyDown(window, { key: "k", ctrlKey: true });
-    const input = await screen.findByPlaceholderText("Navigate or apply intelligence…");
+    const input = await screen.findByPlaceholderText("Find a filename, path fragment or command…");
     fireEvent.change(input, { target: { value: "Show task details" } });
     expect(fireEvent.keyDown(input, { key: "Enter", cancelable: true })).toBe(false);
     fireEvent.keyUp(input, { key: "Enter" });
@@ -342,7 +342,7 @@ describe("task inspection in the source cockpit", () => {
     }
     const before = test.request.mock.calls.length;
     await act(async () => { finish(); });
-    const target = destination === "draft" ? draft : screen.getByPlaceholderText("Navigate or apply intelligence…");
+    const target = destination === "draft" ? draft : screen.getByPlaceholderText("Find a filename, path fragment or command…");
     await waitFor(() => expect(document.activeElement).toBe(target));
     if (destination === "palette") fireEvent.change(target, { target: { value: "Newer palette search" } });
     expect((target as HTMLInputElement).value).toBe(destination === "draft" ? "Newer agent instruction, still unsent" : "Newer palette search");
