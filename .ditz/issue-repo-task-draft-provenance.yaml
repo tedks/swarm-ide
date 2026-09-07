@@ -86,6 +86,12 @@ log_events:
     OPEN for broader D6 metadata-change/admission/history/recovery evidence; ROOT
     intake required before aggregate adoption. Original timeout issue remains OPEN;
     no policy/model/credential/process or protected app/human55175 changes.
+- time: 2026-09-07T17:51:46-00:00
+  who: Ted Smith
+  what: commented
+  comment: 'D6 started at reviewed PR50 e8ec0f9: remaining real CLI metadata advance/re-attach/reprepare
+    plus separately deterministic admitted history/recovery; production launch unavailable.
+    Parent remains open until exact coverage closes.'
 blocked_by:
 - repo-task-surface
 - repo-task-draft-contract-d2
