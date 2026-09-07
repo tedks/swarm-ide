@@ -14,3 +14,13 @@ log_events:
   who: Ted Smith
   what: created
   comment: ""
+- time: 2026-09-07T23:34:29-00:00
+  who: Ted Smith
+  what: commented
+  comment: 'J2 final quality8608a47: unchanged tests/agent-owned-process.test.ts:152
+    reported PID690372 after confirmed cleanup (1693PASS/1FAIL). PID later absent;
+    no cause or fix claim. Native read-only inspection found unpinned namespace-number
+    and separate PID-state observations, so reuse is an ambiguity. Proposed exact
+    diagnostic: pin namespace FD and retain PID/start/state/NSpid through unchanged
+    immediate assertion; requires ROOT ownership approval. Evidence /tmp/swarm-ide-demo-controls.q2i33c/activity-prs/quality-boundary.md.
+    Shared owner/service/test unedited.'
