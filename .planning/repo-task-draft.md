@@ -30,8 +30,9 @@ deterministic rehearsal for admission/history/recovery evidence, not model work.
 - [x] (2026-09-07 09:58Z) Frozen21c3400 build34 passed56.203s; full local13 executed in641.439s with11 PASS and exactly navigation/task packaged failures. Actual logs identify old CJS wire6 requests rejected by required7. Full archive retained; ROOT approved five literal corrections and exact boundary/tripwire only. New tripwire RED:2 failed/1340 passed before correction.
 - [x] (2026-09-07 09:58Z) Native council CLEAN. Google withdrew two false positives after exact installed Zod4.5.4 and Array.isArray guard evidence, SAME-session recheck CLEAN. Anthropic no review before420s timeout, explicitly unavailable; not backfilled. Exact wire correction now in convergence/final local gates, not yet a green aggregate or merge claim.
 - [x] (2026-09-07 10:05Z) Corrected frozen6eaf9e8 build34 PASS5.474s; all13 fresh local suites PASS256.284s, quality1342/98. Actual packaged four-case navigation100.4s, CLI-authored task browsing8.9s and unchanged ordinary-close fixture rehearsal28.7s passed on owned X11 :90/55174 with cleanup1. Native and same-session Google fix-delta convergence CLEAN; Anthropic remains honestly unfilled. No model turn or attachment-resolution proof claimed.
-- [ ] D3 lands and is ROOT-verified before D4 core and D5 UI consumers.
-- [ ] D4/D5 independently reviewed increments; neither alone closes delivered behavior.
+- [x] (2026-09-07) D3 normal PR48 `6e11ce42` landed and ROOT-verified before consumers.
+- [x] (2026-09-07) D5 normal PR49 `3b6d166a` and D4 normal PR50 `e8ec0f95` landed and ROOT-verified; exact D4 topic/tree and local gates are in the ROOT intake receipt. Both prior workers retired. No provider activation or app adoption.
+- [x] (2026-09-07 18:18Z) D6 implementation/targeted proof extends the joined base: real unrelated CLI metadata advancement and explicit fresh preparation at100/150, separately deterministic admitted context/history across renderer/core recovery. New evidence and exact reused adversarial coverage are in `.planning/repo-task-draft-integration.md`; final integrated gates below still govern parent closure.
 - [ ] D6 reviewed packaged real-data integration and separate deterministic rehearsal proof; only then close implementation parent.
 
 ## Surprises & Discoveries

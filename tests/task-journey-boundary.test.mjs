@@ -4,10 +4,30 @@ import { execFileSync } from "node:child_process";
 import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { runInNewContext } from "node:vm";
 import { describe, expect, it } from "vitest";
 import { advanceUnrelatedTaskFixture, createTaskFixture } from "../tools/task-integration/fixture.mjs";
 
 describe("D6 real task journey boundaries", () => {
+  it("observes transport without modifying payloads, transfer lists, return values or bounds", async () => {
+    const sent = [], launched = [], sentinel = {}, child = { postMessage(...args) { sent.push(args); return sentinel; } };
+    const utilityProcess = { fork(...args) { launched.push(args); return child; } };
+    const module = { exports: {} };
+    runInNewContext(await readFile("tools/task-integration/observe-transport.cjs", "utf8"), {
+      require(name) { expect(name).toBe("electron"); return { utilityProcess }; }, module,
+    });
+    const options = {}, process = utilityProcess.fork("/fixed/core", [], options);
+    expect(process).toBe(child); expect(launched[0][2]).toBe(options);
+    const input = { type: "agent.prepare", requestId: "proof", privateBody: "not recorded" }, transfer = [];
+    expect(child.postMessage(input, transfer)).toBe(sentinel);
+    expect(sent[0][0]).toBe(input); expect(sent[0][1]).toBe(transfer);
+    const first = module.exports();
+    expect(JSON.parse(JSON.stringify(first))).toEqual({ generations: 1, overflow: false, requests: [{ type: "agent.prepare", requestId: "proof" }] });
+    first.requests.length = 0; expect(module.exports().requests).toHaveLength(1);
+    for (let index = 0; index < 4096; index++) child.postMessage({ type: "agent.snapshot", requestId: String(index) });
+    expect(module.exports().requests).toHaveLength(4096); expect(module.exports().overflow).toBe(true);
+    expect(sent).toHaveLength(4097);
+  });
   it("unrelated CLI edit advances full metadata pin without changing primary blob or source", async () => {
     const owned = await mkdtemp(join(tmpdir(), "task-journey-boundary-"));
     try {

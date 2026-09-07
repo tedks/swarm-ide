@@ -10,6 +10,7 @@ process.env.VITE_SWARM_AGENT_DEMO = "0";
 const source = process.cwd();
 const result = await build({ entryPoints: {
   "app/electron/main": "tests/support/agent-rehearsal-main.ts",
+  "app/electron/task-main": "tests/support/task-rehearsal-main.ts",
   "app/electron/preload": "app/electron/preload.ts",
   "core/worker": "tests/support/agent-rehearsal-worker.ts",
 }, bundle: true, platform: "node", format: "cjs", target: "node22", external: ["electron"], outdir: output, metafile: true,
