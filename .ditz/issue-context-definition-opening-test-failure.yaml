@@ -14,3 +14,14 @@ log_events:
   who: Ted Smith
   what: created
   comment: ""
+- time: 2026-09-07T06:23:06-00:00
+  who: Ted Smith
+  what: commented
+  comment: 'Observed during Q4 close-order current quality run: tests/context-workbench.test.tsx
+    newer inspection supersedes definition completion without stealing current source
+    could not find Opening working file example/fraudcheck.proto message. Evidence
+    /tmp/swarm-ide-task-backlinks-q4.NP4JSm/close-order-current-fixed.log; current
+    totals3FAIL/1268PASS include2 separately intentional shutdown-oracle counterexamples.
+    No assertion/code changed or repeated run to erase this failure; cause unproved.
+    Corresponding baseline full quality run had only2 shutdown counterexamples. Triage
+    remains outside current diagnostic authority.'
