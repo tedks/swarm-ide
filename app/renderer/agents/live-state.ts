@@ -1,5 +1,18 @@
 import type { AgentSnapshot, PreparedAgentContext, Run, TranscriptRecord } from "../../../protocol/agents";
 import type { FocusRef } from "../../../protocol/schema";
+import type { AgentTaskReference } from "../../../protocol/agent-task";
+
+export interface TaskPreview { title: string; description: string; verified: boolean }
+export interface TaskAttachmentProposal {
+  id: string;
+  focus: FocusRef;
+  reference: AgentTaskReference;
+  title: string;
+  description: string;
+  instructions: string;
+  replacing: boolean;
+  hasDraft: boolean;
+}
 
 export interface LaunchForm {
   focus: FocusRef;
@@ -8,6 +21,9 @@ export interface LaunchForm {
   prepared: PreparedAgentContext | null;
   confirmed: boolean;
   preparing: boolean;
+  taskReference?: AgentTaskReference;
+  // Retained display data, never submitted as metadata authority.
+  taskPreview?: TaskPreview;
 }
 
 export interface LocalOperation {
@@ -30,6 +46,7 @@ export interface LiveAgentState {
   paneOpen: boolean;
   height: number;
   draft: LaunchForm | null;
+  taskProposal?: TaskAttachmentProposal | null;
   run: Run | null;
   records: TranscriptRecord[];
   pageCursor: number;
@@ -50,7 +67,9 @@ export const emptyLiveAgentState = (): LiveAgentState => ({
 
 export function recoverLiveAgentState(state: LiveAgentState): LiveAgentState {
   return { ...state, connected: false, detailStale: true, reading: false,
-    draft: state.draft ? { ...state.draft, preparing: false, confirmed: false } : null,
+    taskProposal: null,
+    draft: state.draft ? { ...state.draft, prepared: null, preparing: false, confirmed: false,
+      ...(state.draft.taskPreview ? { taskPreview: { ...state.draft.taskPreview, verified: false } } : {}) } : null,
     operations: state.operations.map((op) => op.status === "pending"
       ? { ...op, status: "delivery-unknown", message: "Renderer connection replaced before acknowledgement. Never resent automatically." } : op),
   };

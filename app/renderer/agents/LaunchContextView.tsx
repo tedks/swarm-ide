@@ -21,6 +21,13 @@ export function LaunchContextView({ context }: { context: LaunchContext }) {
     <p className="agent-context-path">Launch focus: {focus.domain} · {displayAgentText(focus.path ?? focus.key)}<br />Key: {displayAgentText(focus.key)}<br />Revision: {focus.revisionKind} · {displayAgentText(focus.revisionId)}{focus.symbol ? <><br />Symbol: {displayAgentText(focus.symbol)}</> : null}{focus.range ? <><br />Lines: {focus.range.startLine}–{focus.range.endLine}</> : null}</p>
     <p>Requested model: {context.requested.model === null ? "provider default (unresolved)" : displayAgentText(context.requested.model)}<br />Requested reasoning: {context.requested.effort === null ? "provider default (unresolved)" : displayAgentText(context.requested.effort)}. Requested settings are not provider observations.</p>
     <details><summary>Task and links</summary><pre>{displayAgentText(context.taskText)}</pre><p>Parent run: {context.links.parentRunId ?? "none"}<br />Task link: {context.links.task === null ? "none" : displayAgentText(context.links.task)}<br />Spec link: {context.links.spec === null ? "none" : displayAgentText(context.links.spec)}. Links do not add access or attach their contents.</p></details>
+    {!("contextVersion" in context) ? <p>Legacy context; no structured task provenance recorded.</p> : context.repositoryTask ? <details>
+      <summary>Recorded repository task · immutable</summary>
+      <p>Original core materialization, not current Ditz state. Metadata {context.repositoryTask.reference.metadataCommit.algorithm}:{context.repositoryTask.reference.metadataCommit.hex}<br />
+        Issue blob {context.repositoryTask.reference.issueBlob.algorithm}:{context.repositoryTask.reference.issueBlob.hex}<br />
+        UTF-8 bytes: {context.repositoryTask.bytes} · SHA-256: {context.repositoryTask.digest}</p>
+      <pre>{displayAgentText(context.repositoryTask.content)}</pre>
+    </details> : <p>No repository task was attached to this recorded context.</p>}
     <details><summary>Disk attachments ({context.attachments.length})</summary>
       {context.attachments.length === 0 ? <p>No file bytes attached.</p> : context.attachments.map((attachment) => <div key={attachment.path}>
         <p>{displayAgentText(attachment.path)} · lines {attachment.startLine}–{attachment.endLine}<br />Digest: {attachment.digest}</p>

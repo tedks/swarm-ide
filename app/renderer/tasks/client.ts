@@ -6,6 +6,16 @@ import {
   type GitObjectId, type TaskDetail, type TaskObservation, type TaskRequest, type TaskResult, type TaskSummary, type TaskBacklinkTarget,
 } from "../../../protocol/tasks";
 import { indexTaskBacklinks, type TaskBacklinkIndex, type TaskBacklinkAssociation } from "./backlinks";
+import { AgentTaskReferenceSchema, type AgentTaskReference } from "../../../protocol/agent-task";
+
+/** Read-only UI preview, not core task-materialization authority. The predicate
+ * revokes a proposed edit when its exact observation or client lifetime ends. */
+export interface TaskAttachmentCandidate {
+  reference: AgentTaskReference;
+  title: string;
+  description: string;
+  isCurrent: () => boolean;
+}
 
 export interface TaskClientState {
   observation: TaskObservation | null;
@@ -56,6 +66,39 @@ export class TaskBridgeClient {
   private timer: ReturnType<typeof setInterval> | undefined;
 
   getSnapshot = () => this.state;
+  getAttachmentCandidate(taskId: string | null): TaskAttachmentCandidate | null {
+    const context = this.context, state = this.state;
+    const observation = state.observation, detail = state.detail, revision = state.detailRevision;
+    const epoch = this.epoch, ticket = this.detailTicket, pin = state.pin;
+    const eligible = () => {
+      const current = this.state, snapshot = observation?.snapshot;
+      if (!taskId || !context || !observation || !snapshot || !detail || !revision ||
+          !this.bridge || !current.connected || this.epoch !== epoch || this.detailTicket !== ticket ||
+          this.context !== context || current.observation !== observation || current.detail !== detail ||
+          current.detailRevision !== revision || current.pin !== pin || current.selectedTaskId !== taskId ||
+          current.refreshing || this.pendingSnapshot || this.refreshAgain || current.reading || current.detailStale ||
+          current.notice || current.detailNotice || current.backlinkNotice || observation.status !== "observed" ||
+          observation.reason || !observation.localRef || !observation.checkedAt ||
+          observation.worldId !== context.worldId || observation.repositoryId !== context.repositoryId || observation.provider !== "ditz" ||
+          snapshot.worldId !== context.worldId || snapshot.repositoryId !== context.repositoryId || snapshot.provider !== "ditz" ||
+          !sameGitObject(observation.localRef, snapshot.metadataCommit) || !sameGitObject(revision, snapshot.metadataCommit) ||
+          detail.id !== taskId) return false;
+      const summary = snapshot.summaries.find((row) => row.id === taskId);
+      return Boolean(summary && sameSummary(detail, summary) && (!pin ||
+        pin.worldId === context.worldId && pin.repositoryId === context.repositoryId && pin.provider === "ditz" &&
+        pin.taskId === taskId && sameGitObject(pin.metadataCommit, revision) && sameGitObject(pin.issueBlob, detail.blob)));
+    };
+    if (!eligible() || !context || !observation || !detail || !revision || !taskId) return null;
+    // Parsing detaches the objects from the observer; freezing prevents a UI
+    // consumer from turning a valid candidate into a different pin in place.
+    const reference = AgentTaskReferenceSchema.parse({ version: 1, ...context, provider: "ditz", taskId,
+      metadataCommit: revision, issueBlob: detail.blob });
+    Object.freeze(reference.metadataCommit); Object.freeze(reference.issueBlob); Object.freeze(reference);
+    const title = detail.title, description = detail.description, sequence = observation.sequence;
+    return Object.freeze({ reference, title, description, isCurrent: () => eligible() &&
+      observation.sequence === sequence && sameGitObject(revision, reference.metadataCommit) &&
+      sameGitObject(detail.blob, reference.issueBlob) && detail.title === title && detail.description === description });
+  }
   subscribe = (listener: () => void) => { this.listeners.add(listener); return () => { this.listeners.delete(listener); }; };
   private update(patch: Partial<TaskClientState>) {
     this.state = { ...this.state, ...patch };

@@ -92,6 +92,91 @@ async function main() {
     });
     assert(Object.values(proof.checks).every(Boolean), `source/draft/graph DOM and cameras retained: ${JSON.stringify(proof)}`);
   };
+  // D5 additions intentionally do not change preserved() or its original saved
+  // baseline. Inspect the intermediate Replace state before ordinary restoration.
+  const attachmentRetained = async (expectedInstructions) => {
+    const proof = await run((expected, sourcePath) => {
+      const saved = globalThis.__taskProof;
+      const state = document.querySelector(".cm-content").cmView.rootView.view.state;
+      return {
+        editor: saved.editor === document.querySelector(".cm-content"),
+        draft: saved.draft === document.querySelector(".agent-draft textarea"),
+        graphs: saved.graphs.length === document.querySelectorAll(".react-flow").length && saved.graphs.every((node, index) => node === document.querySelectorAll(".react-flow")[index]),
+        cameras: JSON.stringify(saved.transforms) === JSON.stringify([...document.querySelectorAll(".react-flow__viewport")].map((node) => node.style.transform)),
+        source: saved.source === state.doc.toString(), anchor: saved.anchor === state.selection.main.anchor, head: saved.head === state.selection.main.head,
+        instructions: document.querySelector(".agent-draft textarea").value === expected,
+        fixedSource: document.querySelector(".agent-draft > .agent-context-path").textContent === sourcePath,
+      };
+    }, expectedInstructions, fixture.sourcePath);
+    assert(Object.values(proof).every(Boolean), `attachment intermediate source/draft/camera retention: ${JSON.stringify(proof)}`);
+  };
+  const nativeAttachmentClick = async (selector, allowDisabled = false) => {
+    await run((s) => {
+      const target = document.querySelector(s); if (!target) throw new Error(`No attachment control ${s}`);
+      target.scrollIntoView({ block: "center" });
+    }, selector);
+    await paint();
+    const point = await run((s, disabledAllowed) => {
+      const target = document.querySelector(s);
+      if (!target || (!disabledAllowed && target.disabled)) throw new Error(`Missing/disabled attachment control ${s}`);
+      const rect = target.getBoundingClientRect();
+      const x = Math.round(rect.x + rect.width / 2), y = Math.round(rect.y + rect.height / 2);
+      if (!rect.width || !rect.height || !target.contains(document.elementFromPoint(x, y))) throw new Error(`Attachment control not visibly reachable ${s}`);
+      return { x, y };
+    }, selector, allowDisabled);
+    // DOM hit testing uses CSS pixels; native widget input uses DIP coordinates.
+    const nativePoint = { x: Math.round(point.x * wc.getZoomFactor()), y: Math.round(point.y * wc.getZoomFactor()) };
+    wc.sendInputEvent({ type: "mouseMove", ...nativePoint });
+    wc.sendInputEvent({ type: "mouseDown", ...nativePoint, button: "left", clickCount: 1 });
+    wc.sendInputEvent({ type: "mouseUp", ...nativePoint, button: "left", clickCount: 1 });
+    await paint();
+  };
+  const attachmentPreparation = () => run(() => ({
+    prepared: document.querySelector(".agent-draft .agent-launch-context")?.textContent ?? null,
+    confirmed: document.querySelector(".agent-draft .agent-confirm input")?.checked ?? null,
+    prepareLabel: document.querySelector(".agent-draft .agent-primary")?.textContent ?? null,
+    prepareDisabled: document.querySelector(".agent-draft .agent-primary")?.disabled ?? null,
+  }));
+  const attachmentPreview = async (selector, expectedReference) => {
+    const preview = await run((s) => {
+      const root = document.querySelector(s); if (!root) throw new Error(`Missing attachment preview ${s}`);
+      return {
+        referenceText: root.querySelector(".agent-task-reference").textContent,
+        title: root.querySelector(".agent-task-preview-title").textContent,
+        description: root.querySelector(".agent-task-preview-description").textContent,
+        editable: root.querySelectorAll("textarea,input,[contenteditable=true]").length,
+        executable: root.querySelectorAll("script,img,iframe").length,
+        label: root.textContent,
+      };
+    }, selector);
+    assert.equal(preview.referenceText,
+      `${expectedReference.taskId} · ${expectedReference.provider}Repository: ${expectedReference.repositoryId} · World: ${expectedReference.worldId}` +
+      `Metadata: ${expectedReference.metadataCommit.algorithm}:${expectedReference.metadataCommit.hex}Issue blob: ${expectedReference.issueBlob.algorithm}:${expectedReference.issueBlob.hex}`,
+      "visible complete labelled task pin, including both object algorithms");
+    assert.equal(preview.title, fixture.title, "decoded literal readonly task title");
+    assert.equal(preview.description, fixture.description, "decoded literal readonly task description");
+    assert.equal(preview.editable, 0, "task preview is not an editable instruction field");
+    assert.equal(preview.executable, 0, "hostile task preview is text, never executable markup");
+    assert.match(preview.label, /[Pp]repare/, "preview identifies its later core verification boundary");
+    return { ...preview, reference: expectedReference };
+  };
+  const screenshotAttachment = async (selector, name) => {
+    await run((s) => {
+      const target = document.querySelector(s), dock = target?.closest(".agent-dock-panel");
+      if (!target || !dock) throw new Error(`Missing dock attachment capture ${s}`);
+      // Scroll only the existing dock; do not resize it or the graphs to stage
+      // evidence. A populated DOM below the fold is not visible UI evidence.
+      dock.scrollTop += target.getBoundingClientRect().top - dock.getBoundingClientRect().top;
+    }, selector);
+    await paint();
+    assert.equal(await run((s) => {
+      const target = document.querySelector(s), heading = target.querySelector("h3");
+      const r = heading.getBoundingClientRect(), d = target.closest(".agent-dock-panel").getBoundingClientRect();
+      return r.width > 0 && r.height > 0 && r.top >= d.top && r.bottom <= d.bottom &&
+        heading.contains(document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2));
+    }, selector), true, `attachment heading is actually visible before ${name}`);
+    await screenshot(name);
+  };
   await until(() => has("[data-task-status='observed']"), "actual task data from packaged core");
   assert(wc.getURL().startsWith(pathToFileURL(path.join(packaged, "renderer/index.html")).href));
   assert.equal(await snapshotRevision(), `${fixture.firstCommit.algorithm}:${fixture.firstCommit.hex}`);
@@ -177,6 +262,7 @@ async function main() {
   await showDetails(); await screenshot("01-real-tasks-100.png");
 
   const layouts = [];
+  const attachments = [];
   for (const percent of [150, 100]) {
     // Real ordinary zoom button, not direct native setZoomFactor or DOM resizing.
     if (percent === 150) {
@@ -202,6 +288,92 @@ async function main() {
     }));
     assert(measure.documentOverflow <= 1 && measure.taskOverflow <= 1 && measure.editorWidth > 100 && measure.taskWidth > 100);
     layouts.push({ percent, ...measure }); await screenshot(`02-real-tasks-${percent}-compact.png`);
+    // Real CLI-authored Ditz detail through the ordinary packaged UI. D3 still
+    // rejects attached Prepare; this is UI proof, not D4 success or a model run.
+    const expectedReference = { version: 1, worldId: first.task.observation.snapshot.worldId,
+      repositoryId: first.task.observation.snapshot.repositoryId, provider: first.task.observation.snapshot.provider,
+      metadataCommit: fixture.firstCommit, taskId: fixture.taskId, issueBlob: detail.task.result.detail.blob };
+    const attach = ".task-detail:not(.task-document) .task-attach button";
+    const proposal = '.agent-task-proposal[aria-label="Review task attachment"]';
+    const originalInstructions = await run(() => globalThis.__taskProof.draftValue);
+    const beforeAttachmentAgent = await request({ type: "agent.snapshot" });
+    assert(beforeAttachmentAgent.ok && beforeAttachmentAgent.agent.kind === "snapshot");
+    assert.equal(beforeAttachmentAgent.agent.snapshot.runs.length, 0);
+    assert.equal(beforeAttachmentAgent.agent.snapshot.capabilities.controls.launch, false);
+    assert.equal(await has(".agent-task-slot"), false);
+    const beforeCancel = await attachmentPreparation();
+    await nativeAttachmentClick(attach);
+    await until(() => has(proposal), "native Attach reveals explicit review");
+    await attachmentPreview(proposal, expectedReference);
+    await attachmentRetained(originalInstructions);
+    await screenshotAttachment(proposal, `04-task-attachment-${percent}-review.png`);
+    await attachmentRetained(originalInstructions);
+    await focus(`${proposal} [data-task-attachment='cancel']`); key("Escape");
+    await until(async () => !await has(proposal), "keyboard Escape cancels task attachment");
+    assert.equal(await has(".agent-task-slot"), false);
+    assert.deepEqual(await attachmentPreparation(), beforeCancel, "Cancel cannot invalidate preparation");
+    assert.equal(await run((s) => document.activeElement === document.querySelector(s), attach), true, "Cancel returns only to its still-mounted invoker");
+    await preserved();
+    await nativeAttachmentClick(attach);
+    await until(() => has(proposal), "review again for Append");
+    assert.equal(await text(`${proposal} [data-task-attachment='append']`), "Append — keep instructions");
+    await nativeAttachmentClick(`${proposal} [data-task-attachment='append']`);
+    await until(async () => !await has(proposal) && await has(".agent-task-slot"), "Append fills one task slot");
+    await attachmentRetained(originalInstructions); await preserved();
+    const preview = await attachmentPreview(".agent-task-slot", expectedReference);
+    await screenshotAttachment(".agent-task-slot", `04-task-attachment-${percent}-append.png`);
+    await attachmentRetained(originalInstructions);
+    const beforeDuplicate = await attachmentPreparation();
+    const duplicateSlot = await text(".agent-task-slot");
+    const duplicateNotice = await text(".agent-draft-notice");
+    assert.equal(await run((s) => document.querySelector(s).disabled, attach), true);
+    assert.equal(await text(attach), "Already attached");
+    await nativeAttachmentClick(attach, true);
+    assert.equal(await has(proposal), false, "same full pin does not open another proposal");
+    assert.equal(await text(".agent-task-slot"), duplicateSlot, "duplicate retains the exact slot");
+    assert.equal(await text(".agent-draft-notice"), duplicateNotice, "disabled duplicate cannot change the notice");
+    assert.deepEqual(await attachmentPreparation(), beforeDuplicate, "duplicate cannot invalidate preparation");
+    await preserved();
+    await nativeAttachmentClick(".agent-draft .agent-primary");
+    await until(async () => (await text(".agent-draft-notice")).includes("UNSUPPORTED_CONTROL") &&
+      await run(() => !document.querySelector(".agent-draft .agent-primary").disabled), "actual attached Prepare reports D3 UNSUPPORTED_CONTROL");
+    const unavailableNotice = await text(".agent-draft-notice");
+    assert.equal(await has(".agent-draft .agent-launch-context"), false, "unavailable resolver must not invent a prepared context");
+    await attachmentPreview(".agent-task-slot", expectedReference); await preserved();
+    await screenshot(`05-task-attachment-${percent}-unavailable.png`);
+    await nativeAttachmentClick(".agent-task-slot [data-task-attachment='remove']");
+    await until(async () => !await has(".agent-task-slot"), "Remove deletes only the task slot");
+    await attachmentRetained(originalInstructions); await preserved();
+    await nativeAttachmentClick(attach);
+    await until(() => has(proposal), "review again for Replace");
+    assert.equal(await text(`${proposal} [data-task-attachment='replace']`), "Replace — clear instructions");
+    await nativeAttachmentClick(`${proposal} [data-task-attachment='replace']`);
+    await until(async () => !await has(proposal) && await has(".agent-task-slot"), "Replace fills slot");
+    await attachmentRetained(""); // Must be checked BEFORE ordinary restoration.
+    await attachmentPreview(".agent-task-slot", expectedReference);
+    await screenshotAttachment(".agent-task-slot", `06-task-attachment-${percent}-replace-empty.png`);
+    await attachmentRetained("");
+    await fill(".agent-draft textarea", originalInstructions);
+    await preserved();
+    await nativeAttachmentClick(".agent-task-slot [data-task-attachment='remove']");
+    await until(async () => !await has(".agent-task-slot"), "return to original free-instruction-only draft");
+    await preserved();
+    const afterAttachmentAgent = await request({ type: "agent.snapshot" });
+    assert(afterAttachmentAgent.ok && afterAttachmentAgent.agent.kind === "snapshot");
+    assert.equal(afterAttachmentAgent.agent.snapshot.runs.length, 0);
+    assert.equal(afterAttachmentAgent.agent.snapshot.capabilities.controls.launch, false);
+    attachments.push({ percent, realCliAuthoredMetadata: true, ordinaryPackagedUi: true,
+      boundary: "D5 UI on D3 resolver-unavailable base; not successful attached preparation or provider delivery",
+      reference: preview.reference, readonlyTitle: preview.title, readonlyDescription: preview.description,
+      cancel: "native Escape; instructions/preparation unchanged; invoker restored",
+      append: "exact original instructions retained", duplicate: "same full pin; no proposal or preparation invalidation",
+      remove: "slot only; instructions retained", replace: "empty instructions verified before ordinary restoration",
+      sourceCursorDraftAndCamerasRetainedThroughReplace: true, prepareError: "UNSUPPORTED_CONTROL", unavailableNotice,
+      beforeRuns: beforeAttachmentAgent.agent.snapshot.runs.length, afterRuns: afterAttachmentAgent.agent.snapshot.runs.length,
+      beforeLaunchAvailable: beforeAttachmentAgent.agent.snapshot.capabilities.controls.launch,
+      afterLaunchAvailable: afterAttachmentAgent.agent.snapshot.capabilities.controls.launch,
+    });
+    await focus(".task-detail:not(.task-document) .task-heading button");
     key("Return");
     await until(() => run(() => document.activeElement === document.querySelector(".instrument-heading h2")), "keyboard Return to source information");
     await preserved();
@@ -241,10 +413,12 @@ async function main() {
   assert.deepEqual(rendererErrors, [], "renderer exceptions are failures, even if a later browser fallback restores final state");
   await fs.writeFile(path.join(evidence, "task-proof.json"), JSON.stringify({ ok: true, realDitz: true, packagedCore: true,
     modelTurns: 0, ditzVersion: fixture.ditzVersion, firstRevision: fixture.firstCommit, advancedRevision: advanced,
-    invalidGitStructureRevision: invalid, issueBlob: detail.task.result.detail.blob, layouts, rendererErrors, elapsedMs: Date.now() - started,
+    invalidGitStructureRevision: invalid, issueBlob: detail.task.result.detail.blob, layouts, attachments, rendererErrors, elapsedMs: Date.now() - started,
     facts: ["file URL production assets", "archive-local YAML plus missing-parser negative", "real preload/main/core tasks",
       "literal hostile text", "explicit line Reveal", "dirty cursor/text/draft/graphs retained", "missing file typed error",
-      "cheap stale and explicit adoption", "expired pinned detail", "retained malformed/unavailable and recovery", "source disk unchanged"] }, null, 2));
+      "cheap stale and explicit adoption", "expired pinned detail", "retained malformed/unavailable and recovery", "source disk unchanged",
+      "D5 native attachment review/Cancel/Append/Remove/Replace/full-pin duplicate at100/150",
+      "real UI attached Prepare reports D3 UNSUPPORTED_CONTROL; no successful core attachment/provider claim"] }, null, 2));
 }
 main().catch(async (error) => {
   const message = error instanceof Error ? `${error.message}\n${error.stack}` : "Task acceptance failed";
