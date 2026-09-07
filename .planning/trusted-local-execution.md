@@ -9,13 +9,16 @@ An operator can prepare a fixed source/task draft, inspect the exact text and wo
 ## Progress
 
 - [x] Inspected installed Codex 0.153.4 help, official app-server documentation and existing bridge/context/process seams.
-- [ ] Implement the separate typed preparation/conversation namespace and UI.
-- [ ] Verify local tests, native review and owned virtual journey; attempt at most one authorized benign live smoke.
-- [ ] Push a ready PR, synchronize Ditz and provide ROOT's handoff.
+- [x] Implement the separate typed preparation/conversation namespace and UI; native review fixes through0741db3.
+- [x] Local quality1687/123 passed; actual owned packaged controlled-harness journey passed3.910s with cleanup1 and zero renderer exceptions.
+- [x] One authorized actual Codex0.153.4 turn completed2026-09-07T23:23Z with “Swarm IDE launch verified.”, zero attached files/configuration overrides/approval answers and confirmed process cleanup.
+- [ ] Push final status, mark PR67 ready and synchronize Ditz; ROOT owns landing and adoption.
 
 ## Surprises & Discoveries
 
 The existing adapter hardcodes read-only permissions, rejects all approval requests and disposes after one turn. Enabling it would not implement trusted conversation. The installed TUI can use a shared daemon, so killing a terminal is not adequate turn ownership.
+
+Actual packaged proof caught the worker bundle's helper-directory location; it is `app/core/agents/owner-process.js`, not next to the original source module. Legacy context hashes include observation timestamps, so trusted revalidation compares its exact stable prompt including head/fingerprint, source and task bytes rather than that unrelated legacy serialization. Review caught missing approval cwd, stale-turn approvals, exhausted-budget Stop and lost launch observation; each has a regression.
 
 ## Decision Log
 
@@ -23,7 +26,9 @@ Use a separate direct stdio app-server session and the existing private process-
 
 ## Outcomes & Retrospective
 
-Implementation underway. Durable cross-core conversation recovery is outside this bounded first increment; shutdown stops the owned conversation and the UI must not silently relaunch it.
+The explicit prepare/review/launch/converse/approve/Stop loop works. Real-provider evidence is one bounded benign turn, not a proof that every plugin/approval flow is supported. Durable cross-core conversation recovery is outside this bounded first increment; shutdown stops the owned conversation and the UI never silently relaunches it. Follow-ups are `trusted-local-history-followup` and `trusted-local-interactive-followup`.
+
+An unchanged existing joined-owner test once observed a transient namespace-member assertion; the log is preserved in the operational directory and `owned-namespace-member-witness-20260907` remains open. A later all-green run and independent owned cleanup proofs are not an attribution or historical fix for it.
 
 ## Context and Orientation
 
@@ -53,4 +58,4 @@ Operational evidence is under `/tmp/swarm-ide-demo-controls.q2i33c/trusted-execu
 
 Use existing Zod, React, Node and the existing process owner; no dependency additions. Installed Codex is selected by privileged `SWARM_CODEX_BIN` or the normal PATH, never renderer-provided shell commands. The renderer receives bounded text and typed state only.
 
-Initial plan recorded for the user-approved trusted-local route, replacing isolation research as the execution prerequisite.
+Updated2026-09-07T23:24Z after actual controlled GUI and one authorized live-provider success. Initial plan replaced isolation research as the execution prerequisite; final outcome retains the distinction between tested trusted operation and the old unavailable isolated adapter.
