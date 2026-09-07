@@ -5,8 +5,8 @@ type: feature
 component: default
 release:
 reporter: Ted Smith <tedks@riseup.net>
-status: in_progress
-disposition:
+status: closed
+disposition: fixed
 creation_time: 2026-09-07T05:09:03-00:00
 references: []
 log_events:
@@ -57,3 +57,14 @@ log_events:
     CLI backlinks/navigation/Context with source/cursor/draft/cameras100/150 and zero
     renderer exceptions/model turns. Evidence /tmp/swarm-ide-task-backlinks-q4.NP4JSm/composition-evidence.
     Original PR44 tip unchanged and landing/integration held for ROOT.
+- time: 2026-09-07T08:32:01-00:00
+  who: Ted Smith
+  what: 'closed: fixed'
+  comment: Delivered explicit revision-pinned Ditz file Context backlinks, complete/unavailable
+    projection with bounded atomic refresh/cache, never-opened and closed-task visibility,
+    exact pin/reselection/document gestures, truthful provenance/fault/recovery and
+    retained source/cursor/draft/graph cameras. PR44 normally merged9e2f095c7cfc78291be5f37ffa735e92e6fc085e
+    after ROOT-approved R3fe01fb5; final tracked tree EXACTf0b8c4c2 equals frozen
+    candidatea4f3918. Reused actual local34build/all13fresh/1305quality and two-repository
+    packaged CLI proof; no new landing run, fixture-to-live claim or historical-cause
+    closure. Only this bounded Q4 slice is closed.
