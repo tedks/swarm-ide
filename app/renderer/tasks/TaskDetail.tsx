@@ -1,7 +1,7 @@
 import { sameGitObject, type GitObjectId, type TaskDetail as TaskDetailData, type TaskFileRef, type TaskSnapshot } from "../../../protocol/tasks";
 import { canRevealTaskRef, displayTaskText, taskRevisionLabel } from "./display";
 import "./tasks.css";
-import type { Ref } from "react";
+import type { Ref, ReactNode } from "react";
 
 export interface TaskDetailProps {
   selectedTaskId: string | null;
@@ -19,6 +19,7 @@ export interface TaskDetailProps {
   onShowDocument?: () => void;
   onRefresh?: () => void;
   compact?: boolean;
+  afterMetadata?: ReactNode;
   attachment?: { eligible: boolean; alreadyAttached: boolean; notice: string | null; onAttach: (origin: HTMLButtonElement) => void };
 }
 
@@ -32,7 +33,7 @@ function Dependencies({ title, rows, onSelect, snapshot }: { title: string; rows
   </section>;
 }
 
-export function TaskDetail({ selectedTaskId, snapshot, detail, detailRevision, detailStale, reading, notice, onSelect, onReveal, onReturnToSource, returnButtonRef, surface = "information", onShowDocument, onRefresh, attachment, compact = false }: TaskDetailProps) {
+export function TaskDetail({ selectedTaskId, snapshot, detail, detailRevision, detailStale, reading, notice, onSelect, onReveal, onReturnToSource, returnButtonRef, surface = "information", onShowDocument, onRefresh, attachment, compact = false, afterMetadata }: TaskDetailProps) {
   // The client validates all wire identities; never display another selection's
   // cached detail during a parent render transition, even for a single frame.
   const selectedDetail = detail?.id === selectedTaskId && detailRevision !== null ? detail : null;
@@ -67,6 +68,7 @@ export function TaskDetail({ selectedTaskId, snapshot, detail, detailRevision, d
         <p>Metadata <code>{taskRevisionLabel(detailRevision)}</code></p>
         <p>Issue blob <code>{taskRevisionLabel(selectedDetail.blob)}</code></p>
       </details>
+      {afterMetadata}
       {!compact ? <section className="task-detail-section"><h3>Description</h3><p className="task-literal">{selectedDetail.description ? displayTaskText(selectedDetail.description) : "No description recorded."}</p></section> : null}
       <p className="task-hint">Recorded dependencies describe metadata, not dispatch readiness.</p>
       <Dependencies title="Blocking" rows={selectedDetail.blocks} onSelect={onSelect} snapshot={detailRevision && snapshot && sameGitObject(detailRevision, snapshot.metadataCommit) ? snapshot : null} />

@@ -5,11 +5,11 @@ import { sameGitObject } from "../../../protocol/tasks";
 import { parseCoreResponseForRequest, PROTOCOL_VERSION } from "../../../protocol/schema";
 import { type TaskActivity, type TaskActivityRequest } from "../../../protocol/task-activity";
 import { entryEvidence, type ChangelogResult } from "../../../protocol/changelog";
-import type { Run } from "../../../protocol/agents";
+import type { Run, TranscriptRecord } from "../../../protocol/agents";
 
 export interface TaskContextProps extends TaskDetailProps {
   connected: boolean; generation: number; journal: ChangelogResult | null; journalRetained: boolean;
-  run: Run | null; onJournal: (id: string) => void;
+  run: Run | null; runRecords?: TranscriptRecord[]; runRetained?: boolean; onJournal: (id: string) => void;
 }
 export function TaskContext(props: TaskContextProps) {
   const { snapshot, detail, detailRevision, selectedTaskId, connected, generation, journal, run } = props;
@@ -38,9 +38,7 @@ export function TaskContext(props: TaskContextProps) {
   const linkedRun = reference && snapshot && reference.taskId === selectedTaskId && reference.repositoryId === snapshot.repositoryId && reference.worldId === snapshot.worldId ? run : null;
   const latest = activity?.events.reduce<string | null>((time, event) => !time || Date.parse(event.time) > Date.parse(time) ? event.time : time, null);
   return <section className="task-context" aria-label="Task context">
-    <TaskDetail {...props} compact />
-    <div className="task-ui task-context-supplement">
-      <section className="task-detail-section"><h3>Issue update log</h3>
+    <TaskDetail {...props} compact afterMetadata={<section className="task-detail-section"><h3>Issue update log</h3>
         <p className="task-hint">Recorded Ditz metadata · {props.detailStale || !connected ? "retained revision" : "displayed revision"}. Not agent execution.</p>
         {activity ? <>
           <dl className="task-properties"><dt>Created</dt><dd>{activity.createdAt ?? "Not recorded"}</dd>
@@ -51,12 +49,21 @@ export function TaskContext(props: TaskContextProps) {
             {event.comment ? <p className="task-literal">{displayTaskText(event.comment)}</p> : null}
           </li>)}</ol> : activity.status === "complete" ? <p className="task-empty">No recorded updates.</p> : null}
         </> : <p className="task-empty">{!connected ? "Update history unavailable while disconnected." : history?.key === key ? history.notice : "No update history loaded."}</p>}
-      </section>
+      </section>} />
+    <div className="task-ui task-context-supplement">
       <section className="task-detail-section"><h3>Agent log & linked activity</h3>
         <p className="task-hint">Explicit task associations in the loaded run and repository activity log only.</p>
-        {linkedRun ? <p>Loaded run · {linkedRun.state} · <code>{linkedRun.runId}</code><br />Task attached at metadata {reference!.metadataCommit.hex.slice(0, 8)}.</p> : null}
+        {linkedRun ? <>
+          <p>Loaded run · {linkedRun.state}{props.runRetained ? " · retained observation" : ""} · <code>{linkedRun.runId}</code><br />Task attached at metadata {reference!.metadataCommit.hex.slice(0, 8)}.</p>
+          <details><summary>Loaded agent output · last {Math.min(8, props.runRecords?.length ?? 0)} records</summary>
+            <p className="task-hint">Excerpts from the loaded run only, not complete session history.</p>
+            <ol className="task-update-log">{(props.runRecords ?? []).slice(-8).map((record) => <li key={record.recordId}>
+              <small>{record.timestamp} · {record.kind}</small><p className="task-literal">{displayTaskText(record.text).slice(0, 1000)}{record.text.length > 1000 ? "…" : ""}</p>
+            </li>)}</ol>
+          </details>
+        </> : null}
         {associations.length ? <ul className="task-dependencies">{associations.map((entry) => <li key={entry.id}>
-          <button onClick={() => props.onJournal(entry.id)}>{entry.headline}</button><small>Recorded {entry.reasoning} · {entry.state}{props.journalRetained ? " · retained observation" : ""}</small>
+          <button onClick={() => props.onJournal(entry.id)}>{entry.headline}</button><small>Recorded {entry.reasoning} · {entry.state}{props.journalRetained ? " · retained observation" : ""} · {journal ? [...new Set(entryEvidence(entry, journal.bundle).map((evidence) => evidence.kind))].join(", ") : ""}</small>
         </li>)}</ul> : null}
         {!linkedRun && !associations.length ? <p className="task-empty">No agent activity in this scope.</p> : null}
       </section>

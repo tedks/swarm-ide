@@ -20,7 +20,8 @@ export function ProjectionCanvas({ label, nodes: input, edges: links, selected, 
   const graph = useMemo(() => {
     const layout = (taskScopeVersion === undefined ? dependencyPositions : compactTaskPositions)(input.map((node) => node.id), links);
     const nodes: Node[] = input.map((node) => ({ id: node.id, position: positions.get(node.id) ?? layout.get(node.id)!,
-      sourcePosition: Position.Right, targetPosition: Position.Left, selected: selected === node.id,
+      sourcePosition: taskScopeVersion === undefined ? Position.Right : Position.Bottom,
+      targetPosition: taskScopeVersion === undefined ? Position.Left : Position.Top, selected: selected === node.id,
       data: { label: <><strong>{node.title}</strong><small>{node.subtitle}</small></> },
       className: `planning-node ${node.warning ? "planning-warning" : ""}`, ariaLabel: `${node.title} · ${node.subtitle}` }));
     const edges: Edge[] = links.map((edge) => ({ ...edge, markerEnd: { type: MarkerType.ArrowClosed },

@@ -42,16 +42,28 @@ async function main() {
   const sourceState = () => run(() => { const state = document.querySelector(".cm-content")?.cmView?.rootView?.view?.state;
     return state ? { text: state.doc.toString(), anchor: state.selection.main.anchor, head: state.selection.main.head } : null; });
   const cameras = () => run(() => [...document.querySelectorAll(".react-flow__viewport")].map((node) => node.style.transform));
+  const draftState = () => run(() => {
+    const slot = document.querySelector(".agent-task-slot");
+    const retainedMessage = "Retained preview; not confirmed in this connection. Refresh tasks and inspect the pin. Core always verifies independently.";
+    const retained = [...slot.querySelectorAll("p")].filter((node) => node.textContent === retainedMessage);
+    const content = slot.cloneNode(true);
+    for (const node of content.querySelectorAll("p")) if (node.textContent === retainedMessage) node.remove();
+    return { payload: { text: document.querySelector(".agent-draft textarea")?.value, slot: content.textContent,
+      source: document.querySelector(".agent-draft .agent-context-path")?.textContent }, retainedNotices: retained.length };
+  });
   win.setContentSize(1440, 900); win.focus(); wc.focus(); await paint();
   await run(() => { addEventListener("error", (e) => console.error(e.error?.stack ?? e.message));
     addEventListener("unhandledrejection", (e) => console.error(e.reason?.stack ?? e.reason)); });
   await until(() => has("[data-task-status='observed']"), "actual Ditz observation");
   stage = "source";
-  key("K", ["control"]);
+  await click(".command-trigger");
   await until(() => has(".command-palette input"), "palette");
+  await click(".command-palette input");
+  await until(() => run(() => document.activeElement === document.querySelector(".command-palette input")), "palette input focus");
   await wc.insertText(fixture.sourcePath);
+  await until(() => run((value) => document.querySelector(".command-palette input")?.value === value, fixture.sourcePath), "palette input value");
   await until(() => has(`[data-file-search-path='${fixture.sourcePath}']`), "exact filename result");
-  key("Enter");
+  await click(`[data-file-search-path='${fixture.sourcePath}']`);
   await until(async () => (await sourceState())?.text === fixture.sourceText, "real source");
   await run(() => document.querySelector(".cm-content").focus()); key("End", ["control"]);
   await until(async () => (await sourceState())?.anchor === fixture.sourceText.length, "end of source");
@@ -72,7 +84,7 @@ async function main() {
   const action = await has("[data-task-attachment='append']") ? "append" : "attach";
   await click(`[data-task-attachment='${action}']`);
   await until(() => has(".agent-task-slot"), "one draft task slot");
-  const draft = await text(".agent-task-slot");
+  const draft = await draftState(); assert.equal(draft.retainedNotices, 0);
   stage = "graph";
   await click(".lens-tabs button", "Plan");
   await click(".planning-heading button", "Load dependency graph");
@@ -82,7 +94,8 @@ async function main() {
   await click("[aria-label='Task blockage canvas'] .react-flow__node[data-id='graph-left']");
   await until(async () => (await text(".task-document .task-title")) === "Implement the first independent part", "graph click opens document");
   await until(async () => (await text(".task-context")).includes("Record explicit planning intent"), "human blocker title");
-  assert.deepEqual(await sourceState(), dirty); assert.equal(await text(".agent-task-slot"), draft);
+  assert.deepEqual(await sourceState(), dirty);
+  const changedSelection = await draftState(); assert.deepEqual(changedSelection.payload, draft.payload); assert.equal(changedSelection.retainedNotices, 1);
   assert.deepEqual(await cameras(), beforeCameras);
   await shot("02-task-graph-retained-work.png");
   await click(".task-graph-scope button", "Focus selected task");
@@ -91,7 +104,7 @@ async function main() {
   await until(async () => (await text(".task-document .task-title")) === "Record explicit planning intent", "dependency opens central document");
   await shot("03-focused-task-neighborhood.png");
   await click(".task-document .task-heading button", "Return to source");
-  assert.deepEqual(await sourceState(), dirty); assert.equal(await text(".agent-task-slot"), draft);
+  assert.deepEqual(await sourceState(), dirty); assert.deepEqual((await draftState()).payload, draft.payload);
   assert.equal(await fs.readFile(path.join(fixture.root, fixture.sourcePath), "utf8"), fixture.sourceText);
   assert.equal(rendererErrors.length, 0, JSON.stringify(rendererErrors));
   await fs.writeFile(path.join(evidence, "task-workspace-proof.json"), JSON.stringify({ ok: true, realDitz: true, packagedCore: true,

@@ -5,6 +5,9 @@ import { TaskContext, type TaskContextProps } from "../app/renderer/tasks/TaskCo
 import { taskDetailFixture, taskObservationFixture, TASK_FIXTURE_COMMIT } from "../fixtures/tasks";
 import { initialSnapshot } from "../fixtures/world";
 import { PROTOCOL_VERSION, type CoreRequest, type CoreResponse } from "../protocol/schema";
+import { syntheticJournal } from "./journal-fixture";
+import { agentFixtureFrames } from "../fixtures/agents";
+import { type LaunchContextV2 } from "../protocol/agents";
 afterEach(() => { cleanup(); delete window.swarm; });
 const props = (): TaskContextProps => ({ selectedTaskId: "task-fixture", detail: taskDetailFixture(), snapshot: taskObservationFixture().snapshot,
   detailRevision: TASK_FIXTURE_COMMIT, detailStale: false, reading: false, notice: null, onSelect: vi.fn(), onReveal: vi.fn(), onReturnToSource: vi.fn(),
@@ -38,4 +41,31 @@ it("late previous-task history cannot overwrite the current selection", async ()
   expect(screen.getByText("Current update")).toBeTruthy(); expect(screen.queryByText("Old update")).toBeNull();
   view.rerender(<TaskContext {...input} selectedTaskId="missing" detail={null} />);
   expect(within(screen.getByRole("region", { name: "Task context" })).queryByText("Current update")).toBeNull();
+});
+it("only links exact task IDs in this repository and labels synthetic journal evidence", () => {
+  const input = props(), journal = syntheticJournal().result;
+  journal.repositoryId = input.snapshot!.repositoryId; journal.bundle.evidence[0]!.taskIds = ["task-fixture"];
+  const view = render(<TaskContext {...input} journal={journal} />);
+  const link = screen.getByRole("button", { name: "Synthetic change" });
+  expect(screen.getByText(/Recorded reconstructed.*synthetic/)).toBeTruthy();
+  fireEvent.click(link); expect(input.onJournal).toHaveBeenCalledWith("change-a");
+  view.rerender(<TaskContext {...input} journal={{ ...journal, repositoryId: "another-repository" }} />);
+  expect(screen.queryByRole("button", { name: "Synthetic change" })).toBeNull();
+  journal.bundle.evidence[0]!.taskIds = ["task-fixture-prefix"];
+  view.rerender(<TaskContext {...input} journal={journal} />);
+  expect(screen.queryByRole("button", { name: "Synthetic change" })).toBeNull();
+});
+it("renders only a loaded run's explicitly attached task output, not task-label matching", () => {
+  const input = props(), run = agentFixtureFrames().streaming.run;
+  const reference = { version: 1 as const, worldId: input.snapshot!.worldId, repositoryId: input.snapshot!.repositoryId,
+    provider: "ditz" as const, taskId: "task-fixture", metadataCommit: TASK_FIXTURE_COMMIT, issueBlob: input.detail!.blob };
+  // Controlled presentation fixture, not a valid provider launch or run proof.
+  run.launchContext = { ...run.launchContext, contextVersion: 2, sourceLinks: [], repositoryTask: { reference } } as LaunchContextV2;
+  const records = [{ recordId: 1, timestamp: "2026-09-07T12:00:00Z", kind: "message" as const, providerItemId: null, text: "Synthetic explicitly attached run output" }];
+  const view = render(<TaskContext {...input} run={run} runRecords={records} runRetained />);
+  expect(screen.getByText("Synthetic explicitly attached run output")).toBeTruthy();
+  expect(screen.getByText(/Loaded run.*retained observation/)).toBeTruthy();
+  reference.taskId = "another-task";
+  view.rerender(<TaskContext {...input} run={run} runRecords={records} />);
+  expect(screen.queryByText("Synthetic explicitly attached run output")).toBeNull();
 });

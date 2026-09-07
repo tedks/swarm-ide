@@ -61,7 +61,7 @@ export function TaskGraph({ client, state, visible, onOpen }: {
         {projection!.omittedEdges + projection!.omittedEndpoints > 0 ? ` · ${projection!.omittedEdges} edge declarations / ${projection!.omittedEndpoints} endpoints omitted by graph limits` : ""}
         {!fresh ? " · RETAINED / NOT CURRENT — Refresh tasks and load again" : " · revision checked"}
       </p>}
-      <p>{notice || state.notice || state.observation?.reason?.message || "Relations are recorded declarations. No known blockers is not permission to dispatch."}</p>
+      {notice || state.notice || state.observation?.reason?.message ? <p>{notice || state.notice || state.observation?.reason?.message}</p> : null}
     </div>
     {projection ? <>
       <nav className="task-graph-scope" aria-label="Task graph scope">

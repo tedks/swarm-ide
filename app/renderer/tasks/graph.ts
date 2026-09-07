@@ -122,7 +122,8 @@ export function compactTaskPositions(ids: string[], edges: { source: string; tar
       const id = pending.pop()!; if (visited.has(id)) continue;
       visited.add(id); component.push(id); pending.push(...neighbors.get(id)!);
     }
-    const layout = dependencyPositions(component, edges);
+    const layout = new Map([...dependencyPositions(component, edges)].map(([id, point]) =>
+      [id, { x: point.y / 104 * 260, y: point.x / 260 * 88 }]));
     const width = Math.max(...[...layout.values()].map((point) => point.x)) + 260;
     const height = Math.max(...[...layout.values()].map((point) => point.y)) + 104;
     if (x && x + width > 1040) { x = 0; y += shelf; shelf = 0; }

@@ -26,5 +26,5 @@ it("packs isolated tasks without modifying the Plan default or the directed grap
   expect(new Set([...compact.values()].map((point) => `${point.x}:${point.y}`)).size).toBe(16);
   expect(dependencyPositions(ids, []).get("15")).toEqual({ x: 0, y: 1560 });
   const layered = compactTaskPositions(["a", "b", "independent"], [{ source: "a", target: "b" }]);
-  expect(layered.get("b")!.x).toBeGreaterThan(layered.get("a")!.x);
+  expect(layered.get("b")!.y).toBeGreaterThan(layered.get("a")!.y);
 });

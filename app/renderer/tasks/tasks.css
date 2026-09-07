@@ -83,5 +83,17 @@
 .task-context .task-update-log small { display: block; color: #8fa59a; font-size: 9px; }
 .task-context .task-update-log p { margin: 4px 0; }
 .task-context .task-empty { color: #778d84; font-size: 9px; }
+.task-context .task-dependencies li { padding: 4px 6px; gap: 2px; }
+.task-context .task-update-log { max-height: 200px; }
 .task-graph-scope { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 6px 12px; color: #9eb9ad; font: 10px/1.4 monospace; }
 .task-projection { grid-template-rows: auto auto auto minmax(160px, 1fr) minmax(60px, auto); }
+.task-projection .planning-heading { padding: 5px 7px; gap: 4px; }
+.task-projection .planning-heading > div { flex: 1 1 100%; }
+.task-projection .planning-heading strong { display: none; }
+.task-projection .planning-heading small { margin: 0; font-size: 9px; }
+.task-projection button { padding: 3px 6px; font-size: 10px; }
+.task-projection .planning-status { font-size: 9px; }
+.task-projection .planning-inspector { max-height: 110px; padding: 5px 7px; }
+.task-projection .planning-node { min-height: 54px; padding: 7px; }
+.task-projection .planning-node strong { font-size: 12px; }
+.task-projection .planning-node small { margin-top: 3px; }
