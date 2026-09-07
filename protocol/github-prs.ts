@@ -28,9 +28,11 @@ export const GithubPrObservationSchema = z.object({
 }).strict().superRefine((value, ctx) => {
   if (new Set(value.pullRequests.map((pr) => pr.number)).size !== value.pullRequests.length)
     ctx.addIssue({ code: "custom", message: "Duplicate pull request" });
-  for (const pr of value.pullRequests)
-    if (pr.url !== `https://github.com/${value.githubRepository}/pull/${pr.number}`)
+  for (const pr of value.pullRequests) {
+    const url = /^https:\/\/github\.com\/([^/]+\/[^/]+)\/pull\/([1-9][0-9]*)$/.exec(pr.url);
+    if (!url || url[1].toLowerCase() !== value.githubRepository.toLowerCase() || url[2] !== String(pr.number))
       ctx.addIssue({ code: "custom", message: "Pull request URL does not match the observed repository" });
+  }
 });
 export type GithubPrObservation = z.infer<typeof GithubPrObservationSchema>;
 export type GithubPrRequest = z.infer<typeof GithubPrRequestSchema>;

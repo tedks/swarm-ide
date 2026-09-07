@@ -1,7 +1,11 @@
-import { spawn } from "node:child_process";
+import { constants } from "node:fs";
+import { access, realpath, stat } from "node:fs/promises";
+import { delimiter, join } from "node:path";
 import { z } from "zod";
 import { journalGit } from "./changelog";
 import { GithubPrObservationSchema, GithubRepositorySchema, GITHUB_PR_LIMIT, GITHUB_PR_PATH_LIMIT, type GithubPrObservation } from "../protocol/github-prs";
+import { createOwnedCodexTransport, type OwnedCodexTransportOptions } from "./agents/owner";
+import { collectBuildQuery, BuildQueryCleanupError } from "./build-graph";
 
 const MAX_BYTES = 512 * 1024;
 export function githubOrigin(value: string): string {
@@ -11,35 +15,28 @@ export function githubOrigin(value: string): string {
   return GithubRepositorySchema.parse(match[1].replace(/\.git$/, ""));
 }
 
-/** Fixed read-only gh command, bounded output; credentials remain in gh's normal environment. */
-export function githubPrCommand(root: string, repository: string, signal: AbortSignal): Promise<string> {
+async function executable(name: string): Promise<string> {
+  for (const directory of (process.env.PATH ?? "").split(delimiter).filter((path) => path.startsWith("/"))) {
+    try { const path = await realpath(join(directory, name)); await access(path, constants.X_OK); if ((await stat(path)).isFile()) return path; } catch { /* next normal installed tool path */ }
+  }
+  throw new Error("Required local GitHub tooling unavailable");
+}
+export async function githubOwnerOptions(root: string): Promise<Omit<OwnedCodexTransportOptions, "args">> {
+  const [gh, node, unshare, setpriv] = await Promise.all(["gh", "node", "unshare", "setpriv"].map(executable));
+  return { root, executable: gh!, nodeExecutable: node!, unshareExecutable: unshare!, setprivExecutable: setpriv!, ownerScript: join(__dirname, "agents/owner-process.js") };
+}
+
+/** Fixed gh read inside the existing parent-death-safe PID owner. This is process
+ * lifetime ownership only: gh keeps normal network/filesystem/auth configuration. */
+export async function githubPrCommand(root: string, repository: string, signal: AbortSignal,
+  options: (root: string) => Promise<Omit<OwnedCodexTransportOptions, "args">> = githubOwnerOptions): Promise<string> {
   GithubRepositorySchema.parse(repository);
-  return new Promise((resolve, reject) => {
-    if (signal.aborted) { reject(new Error("Cancelled")); return; }
-    const env = { ...process.env, GH_HOST: "github.com", GH_PROMPT_DISABLED: "1", GH_PAGER: "cat", NO_COLOR: "1" };
-    delete (env as NodeJS.ProcessEnv).GH_DEBUG;
-    delete (env as NodeJS.ProcessEnv).DEBUG;
-    const child = spawn("gh", ["pr", "list", "--repo", `github.com/${repository}`, "--state", "all", "--limit", String(GITHUB_PR_LIMIT),
-      "--json", "number,title,state,isDraft,author,updatedAt,url,changedFiles,files"], { cwd: root, env, detached: true, stdio: ["ignore", "pipe", "pipe"] });
-    let failed = false, stopped = false, bytes = 0, stderrBytes = 0;
-    const chunks: Buffer[] = [];
-    let escalation: ReturnType<typeof setTimeout> | undefined;
-    const kill = (signal: NodeJS.Signals) => { if (child.pid) { try { process.kill(-child.pid, signal); } catch { /* Already exited. */ } } };
-    const stop = () => { if (stopped) return; stopped = true; kill("SIGTERM"); escalation = setTimeout(() => kill("SIGKILL"), 100); };
-    signal.addEventListener("abort", stop, { once: true });
-    if (signal.aborted) stop();
-    child.stdout.on("data", (chunk: Buffer) => { bytes += chunk.length; if (bytes > MAX_BYTES) stop(); else chunks.push(chunk); });
-    child.stderr.on("data", (chunk: Buffer) => { stderrBytes += chunk.length; if (stderrBytes > MAX_BYTES) stop(); });
-    child.once("error", () => { failed = true; });
-    child.once("close", (code) => {
-      clearTimeout(escalation); signal.removeEventListener("abort", stop);
-      // No gh descendant belongs beyond this one read, even if it closed its pipes early.
-      kill("SIGKILL");
-      if (stopped || failed || code !== 0) { reject(new Error("GitHub read unavailable")); return; }
-      try { resolve(new TextDecoder("utf8", { fatal: true }).decode(Buffer.concat(chunks))); }
-      catch { reject(new Error("Invalid GitHub output")); }
-    });
-  });
+  if (signal.aborted) throw new Error("Cancelled");
+  const config = await options(root);
+  const bytes = await collectBuildQuery((sink) => createOwnedCodexTransport({ ...config, args: ["pr", "list", "--repo", `github.com/${repository}`, "--state", "all", "--limit", String(GITHUB_PR_LIMIT),
+    "--json", "number,title,state,isDraft,author,updatedAt,url,changedFiles,files"] }, sink), signal);
+  if (bytes.byteLength > MAX_BYTES) throw new Error("GitHub response exceeds bound");
+  return new TextDecoder("utf8", { fatal: true }).decode(bytes);
 }
 
 const RawPullRequests = z.array(z.object({
@@ -57,10 +54,11 @@ export function parseGithubPrs(bytes: string, repositoryId: string, worldId: str
 export class GithubPrProvider {
   private lifetime = new AbortController();
   private pending: Promise<GithubPrObservation> | null = null;
+  private cleanupBlocked = false;
   constructor(private root: string, private repositoryId: string, private worldId: string,
     private command = githubPrCommand, private git = journalGit) {}
   refresh(): Promise<GithubPrObservation> {
-    if (this.lifetime.signal.aborted) return Promise.reject(new Error("Disposed"));
+    if (this.lifetime.signal.aborted || this.cleanupBlocked) return Promise.reject(new Error("Disposed or previous process cleanup unconfirmed"));
     if (this.pending) return this.pending;
     const request = new AbortController();
     const cancel = () => request.abort();
@@ -74,7 +72,8 @@ export class GithubPrProvider {
       const bytes = await this.command(this.root, repository, request.signal);
       if (remote !== await this.git(this.root, args, request.signal) || request.signal.aborted) throw new Error("Origin changed or read expired");
       return parseGithubPrs(bytes, this.repositoryId, this.worldId, repository);
-    })().finally(() => { clearTimeout(deadline); this.lifetime.signal.removeEventListener("abort", cancel); this.pending = null; });
+    })().catch((error) => { if (error instanceof BuildQueryCleanupError) this.cleanupBlocked = true; throw error; })
+      .finally(() => { clearTimeout(deadline); this.lifetime.signal.removeEventListener("abort", cancel); this.pending = null; });
     return this.pending;
   }
   async dispose(): Promise<void> { this.lifetime.abort(); await this.pending?.catch(() => {}); }

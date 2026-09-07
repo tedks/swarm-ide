@@ -16,7 +16,19 @@ async function main() {
   const run = (fn, ...args) => wc.executeJavaScript(`(${fn.toString()})(...${JSON.stringify(args)})`, true);
   await run(() => { addEventListener("error", (event) => console.error(event.error?.stack ?? event.message)); addEventListener("unhandledrejection", (event) => console.error(event.reason?.stack ?? event.reason)); });
   const click = async (selector) => {
-    const p = await run((s) => { const node = document.querySelector(s); if (!node || node.disabled) throw new Error(`Missing ${s}`); node.scrollIntoView({ block: "nearest" }); const r = node.getBoundingClientRect(), x = r.x + r.width / 2, y = r.y + r.height / 2; if (!r.width || !r.height || !node.contains(document.elementFromPoint(x, y))) throw new Error(`Occluded ${s}`); return { x: Math.round(x), y: Math.round(y) }; }, selector);
+    const p = await run((s) => {
+      const node = document.querySelector(s); if (!node || node.disabled) throw new Error(`Missing ${s}`);
+      node.scrollIntoView({ block: "nearest" }); const r = node.getBoundingClientRect();
+      let left = Math.max(0, r.left), right = Math.min(innerWidth, r.right), top = Math.max(0, r.top), bottom = Math.min(innerHeight, r.bottom);
+      for (let parent = node.parentElement; parent; parent = parent.parentElement) {
+        const style = getComputedStyle(parent), rect = parent.getBoundingClientRect();
+        if (/(auto|scroll|hidden|clip)/.test(style.overflowY)) { top = Math.max(top, rect.top); bottom = Math.min(bottom, rect.bottom); }
+        if (/(auto|scroll|hidden|clip)/.test(style.overflowX)) { left = Math.max(left, rect.left); right = Math.min(right, rect.right); }
+      }
+      const x = (left + right) / 2, y = (top + bottom) / 2;
+      if (right <= left || bottom <= top || !node.contains(document.elementFromPoint(x, y))) throw new Error(`Occluded ${s}`);
+      return { x: Math.round(x), y: Math.round(y) };
+    }, selector);
     wc.sendInputEvent({ type: "mouseDown", ...p, button: "left", clickCount: 1 }); wc.sendInputEvent({ type: "mouseUp", ...p, button: "left", clickCount: 1 }); await delay(60);
   };
   await until(() => run(() => Boolean(document.querySelector(".activity-open-heading"))), "Recent Activity heading");
@@ -25,6 +37,8 @@ async function main() {
   await until(() => run(() => !document.querySelector(".journal-panel").hidden), "central Activity log");
   assert.equal(await run(() => document.querySelector(".journal-header h2").textContent), "Activity log");
   assert(!(await run(() => document.querySelector(".journal-panel").textContent)).includes("The work, reconstructed"));
+  await fs.writeFile(path.join(evidence, "00-readable-activity.png"), (await wc.capturePage()).toPNG());
+  await click('.journal-view-tabs button:last-child');
   await click('[aria-label="Refresh pull requests"]');
   await until(() => run(() => Boolean(document.querySelector(".github-prs li")) || Boolean(document.querySelector(".github-pr-notice"))), "actual GitHub response");
   const notice = await run(() => document.querySelector(".github-pr-notice")?.textContent ?? "");
@@ -43,6 +57,7 @@ async function main() {
   await click(".source-surface:not([hidden]) .cm-content"); await wc.insertText("\n// owned Activity proof draft\n");
   await click(".agent-dock-welcome .agent-primary");
   await until(() => run(() => Boolean(document.querySelector(".agent-draft textarea"))), "unlaunched draft");
+  await click(".agent-draft textarea"); await wc.insertText("Retain my unlaunched J2 instructions.");
   await delay(400);
   const retained = await run(() => { globalThis.__activityRetained = { source: document.querySelector(".cm-content"), draft: document.querySelector(".agent-draft textarea"), graphs: [...document.querySelectorAll(".react-flow")] }; return { source: document.querySelector(".cm-content").cmView.rootView.view.state.doc.toString(), draft: document.querySelector(".agent-draft textarea").value, cameras: [...document.querySelectorAll(".react-flow__viewport")].map((node) => node.style.transform) }; });
   await click(".activity-open-heading");

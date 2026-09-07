@@ -53,19 +53,20 @@ export function JournalPanel({ open, state, selectedEntry, selectionVersion = 0,
 }) {
   const { observation, notice, busy, refresh } = state;
   const [filter, setFilter] = useState("");
+  const [view, setView] = useState<"changes" | "prs">("changes");
   const body = useRef<HTMLDivElement>(null);
   const heading = useRef<HTMLHeadingElement>(null);
   const [pendingEntry, setPendingEntry] = useState<string | null>(null);
   useEffect(() => {
     if (!open) return;
-    if (selectedEntry) { setFilter(""); setPendingEntry(selectedEntry); }
+    if (selectedEntry) { setView("changes"); setFilter(""); setPendingEntry(selectedEntry); }
     else heading.current?.focus();
   }, [selectedEntry, selectionVersion, open, observation?.document.inputDigest]);
   useLayoutEffect(() => {
     if (!open || !pendingEntry || filter) return;
     const element = [...(body.current?.querySelectorAll<HTMLDetailsElement>("[data-change-id]") ?? [])].find((node) => node.dataset.changeId === pendingEntry);
     if (element) { element.open = true; element.scrollIntoView?.({ block: "nearest" }); element.querySelector("summary")?.focus(); setPendingEntry(null); }
-  }, [pendingEntry, filter, open, observation?.document.inputDigest]);
+  }, [pendingEntry, filter, open, view, observation?.document.inputDigest]);
 
   const bundle = observation?.bundle;
   const paths = [...new Set(bundle?.evidence.flatMap((item) => item.paths) ?? [])].sort();
@@ -73,8 +74,10 @@ export function JournalPanel({ open, state, selectedEntry, selectionVersion = 0,
   return <section className="journal-panel" aria-label="Activity log" hidden={!open} data-journal-digest={observation?.document.inputDigest ?? ""}>
     <header className="journal-header"><div><h2 ref={heading} tabIndex={-1}>Activity log</h2></div>
       <div className="journal-controls"><button onClick={() => void refresh()} disabled={busy} aria-label="Refresh logical changes">{busy ? "Reading…" : "Refresh"}</button><button onClick={onClose} aria-label="Close logical changes">×</button></div></header>
+    {pullRequests ? <nav className="journal-view-tabs" aria-label="Activity views"><button aria-pressed={view === "changes"} onClick={() => setView("changes")}>Changes</button><button aria-pressed={view === "prs"} onClick={() => setView("prs")}>Pull requests</button></nav> : null}
     <div className="journal-body" ref={body}>
-      {pullRequests ? <GithubPullRequests state={pullRequests} onOpenSource={onOpenSource} /> : null}
+      {pullRequests ? <div hidden={view !== "prs"}><GithubPullRequests state={pullRequests} onOpenSource={onOpenSource} /></div> : null}
+      <div hidden={Boolean(pullRequests && view !== "changes")}>
       {notice ? <p role="status" className="journal-warning">{observation ? "Retained · " : "Unavailable · "}{notice}</p> : null}
       {busy && observation ? <p className="journal-warning">Retained while observing the current artifacts…</p> : null}
       {!observation && !busy ? <p className="journal-empty">No recorded activity summary. <code>docs/logical-changelog.md</code> describes how to add one.</p> : null}
@@ -99,6 +102,7 @@ export function JournalPanel({ open, state, selectedEntry, selectionVersion = 0,
         })}</ol>
         <details className="journal-provenance"><summary>Coverage & generation provenance</summary><p>{observation.bundle.coverage}</p><ul>{observation.bundle.limitations.map((limit, index) => <li key={index}>{limit}</li>)}</ul><p>Exported {observation.bundle.exportedAt} · Generated {observation.document.generatedAt} · Observed {observation.observedAt}</p><p>Input digest <code>{observation.document.inputDigest}</code></p><p>Generator {observation.document.generator.name} · run {observation.document.generator.run}</p><p>Instructions digest <code>{observation.document.generator.instructionsDigest}</code></p></details>
       </> : null}
+      </div>
     </div>
   </section>;
 }
