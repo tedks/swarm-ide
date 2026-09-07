@@ -28,6 +28,6 @@ Run `nix develop --command bazel test //:quality --jobs=3` for local service, se
 
 The optional manual live-smoke target is a separate, explicitly gated experiment; it must never be treated as part of unattended tests. Its results, if run, are recorded separately from deterministic UI evidence.
 
-On2026-09-07 the authorized one-turn probe used actual Codex0.153.4 in an empty temporary workspace and returned “Swarm IDE launch verified.” Its one provider start ended with confirmed owned cleanup, no attached files, no model/configuration override and no approval answer. This establishes real launch/output/cleanup; it does not independently attest zero provider tool use or every configured plugin interaction.
+On 2026-09-07 the authorized one-turn probe used actual Codex 0.153.4 in an empty temporary workspace and returned “Swarm IDE launch verified.” Its one provider start ended with confirmed owned cleanup, no attached files, no model/configuration override and no approval answer. This establishes real launch/output/cleanup; it does not independently attest zero provider tool use or every configured plugin interaction.
 
 The installed app-server help/schema and [official app-server documentation](https://learn.chatgpt.com/docs/app-server) informed the stdio conversation and approval integration. No credentials are read into IDE storage or test reports.

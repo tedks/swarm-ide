@@ -9,10 +9,10 @@ An operator can prepare a fixed source/task draft, inspect the exact text and wo
 ## Progress
 
 - [x] Inspected installed Codex 0.153.4 help, official app-server documentation and existing bridge/context/process seams.
-- [x] Implement the separate typed preparation/conversation namespace and UI; native review fixes through0741db3.
-- [x] Local quality1687/123 passed; actual owned packaged controlled-harness journey passed3.910s with cleanup1 and zero renderer exceptions.
-- [x] One authorized actual Codex0.153.4 turn completed2026-09-07T23:23Z with “Swarm IDE launch verified.”, zero attached files/configuration overrides/approval answers and confirmed process cleanup.
-- [ ] Push final status, mark PR67 ready and synchronize Ditz; ROOT owns landing and adoption.
+- [x] Implement the separate typed preparation/conversation namespace and UI; native review fixes through 0741db3.
+- [x] Local quality: 1,687 tests in 123 files passed; actual owned packaged controlled-harness journey passed in 3.910 seconds with confirmed cleanup and zero renderer exceptions.
+- [x] One authorized actual Codex 0.153.4 turn completed at 2026-09-07T23:23Z with “Swarm IDE launch verified.”, zero attached files/configuration overrides/approval answers and confirmed process cleanup.
+- [x] Pushed the topic, marked PR #67 ready and synchronized Ditz. ROOT owns landing and adoption.
 
 ## Surprises & Discoveries
 
@@ -58,4 +58,4 @@ Operational evidence is under `/tmp/swarm-ide-demo-controls.q2i33c/trusted-execu
 
 Use existing Zod, React, Node and the existing process owner; no dependency additions. Installed Codex is selected by privileged `SWARM_CODEX_BIN` or the normal PATH, never renderer-provided shell commands. The renderer receives bounded text and typed state only.
 
-Updated2026-09-07T23:24Z after actual controlled GUI and one authorized live-provider success. Initial plan replaced isolation research as the execution prerequisite; final outcome retains the distinction between tested trusted operation and the old unavailable isolated adapter.
+Updated 2026-09-07T23:24Z after actual controlled GUI and one authorized live-provider success. Initial plan replaced isolation research as the execution prerequisite; final outcome retains the distinction between tested trusted operation and the old unavailable isolated adapter.
