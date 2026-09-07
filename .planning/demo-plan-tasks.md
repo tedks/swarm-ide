@@ -19,7 +19,8 @@ The opened workspace is a registered local Git worktree. Ditz summaries and deta
 - [x] Prove real CLI-authored disposable metadata and actual packaged UI on owned virtual X11; default repository passed at 123fa18 with strict source/draft/camera/negative checks and zero renderer exceptions.
 - [x] Finish the separate authored-Swarm archive case after correcting its exposed controlled-selection feedback loop: actual six-node/three-level committed index and 71 CLI-authored tasks, with 64 read / 7 unread coverage, passed at 8bd8367.
 - [x] Run meaningful local gates and proportional provider-diverse council; push reviewed PR53. Full build42 passed; all18 suites executed,17 passed and quality found two owned test typing options. Test-only correction07317bb passes quality1558/111,109 focused regressions and packaged edge/task/Attach proof; unchanged production covered by the17 other full-suite passes.
-- [ ] Normal merge and Ditz closure: held for ROOT's written B1-base clearance and merge-order slot, not an implementation gate. Do not consume later remote master without approval.
+- [x] Compose subsequently ROOT-cleared B1 base fb225596 in normal merge345043b, retaining separate Plan/Build request authority and both projections. Relevant combined gates: build46, quality1577/112, focused111, packaged Plan9.7s and existing two-repository Build proof48.1s all pass. Native composition review CLEAN.
+- [ ] Normal PR merge and Ditz closure: held behind ROOT's reserved H1/PR55 merge-order slot, not an implementation gate. Do not consume later remote master without approval.
 
 ## Surprises & Discoveries
 
@@ -37,7 +38,7 @@ The 71-task Swarm proof and 70-task small-repository proof exercise real visible
 
 ## Outcomes & Retrospective
 
-The bounded views, strict broker reader, authored Swarm index and maintenance guide are implemented, reviewed and locally verified in PR53. Normal landing remains coordinated by ROOT because remote master advanced to B1 and its previous landing slot is still reserved. This step does not implement planning automation, task mutation, live managed providers or orgs' full skill system. Default disposable data is CLI-authored test input; the Swarm case archives committed authored source but creates its own matching task records, not the source repository's metadata branch. Final runtime code is unchanged from the frozen full-suite tree; the later correction changes only test typings and adds the explicit edge endpoint proof.
+The bounded views, strict broker reader, authored Swarm index and maintenance guide are implemented, reviewed and locally verified in PR53. Normal landing remains coordinated by ROOT; B1 is now composed and H1 owns the next landing slot. This step does not implement planning automation, task mutation, live managed providers or orgs' full skill system. Default disposable data is CLI-authored test input; the Swarm case archives committed authored source but creates its own matching task records, not the source repository's metadata branch. Final combined executable345043b adds only reviewed B1 composition beyond the prior frozen implementation: separate bridge authority, retained cameras, live Build wiring and no Build poll demand while Plan hides its consumers. Mixed-authority and mounted consumer-lifetime tests cover those seams. Relevant combined packaged checks pass with two exact accepted resize warnings in the final Plan run and no other renderer errors; prior raw warning counts remain historical evidence, not overwritten claims.
 
 ## Context and Orientation
 
