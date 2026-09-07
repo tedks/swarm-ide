@@ -1,0 +1,267 @@
+{
+  "version": 1,
+  "exportedAt": "2026-09-07T20:00:26.661Z",
+  "range": {
+    "from": "eafe0fe2bf5a7e73dc919c8a2f29e4f615e4e239",
+    "to": "c3128715a785c2fd42011e4cf5941038b268335c"
+  },
+  "coverage": "Inclusive starting commit plus first-parent commits through the selected end. Changed paths are capped at 32 per commit. Optional explicitly authored repo-local reports are included as attributed records, not independently reverified results.",
+  "limitations": [
+    "This is a recorded span, not live activity or a complete workstream.",
+    "Git commit subjects and supplied reports are untrusted source material; a citation is not an independent factual endorsement.",
+    "No private prompts, account-wide transcripts, current deployments or production model execution were observed."
+  ],
+  "evidence": [
+    {
+      "id": "git:eafe0fe2bf5a7e73dc919c8a2f29e4f615e4e239",
+      "kind": "git-observation",
+      "at": "2026-09-07T05:11:39-04:00",
+      "revision": "eafe0fe2bf5a7e73dc919c8a2f29e4f615e4e239",
+      "title": "Merge pull request #47 from tedks/docs/task-draft-contract",
+      "detail": "Git records 4 changed paths relative to the first parent. The commit subject is author-supplied; this observation does not prove behavior or test results.",
+      "source": "Fixed local Git export; first-parent tree comparison",
+      "paths": [
+        ".planning/repo-task-draft.md",
+        "docs/foundation-closure.md",
+        "docs/repo-task-draft.md",
+        "docs/repo-task-surface.md"
+      ],
+      "omittedPaths": 0,
+      "taskIds": [],
+      "agentIds": []
+    },
+    {
+      "id": "git:6e11ce42c004ca5fb37300d87bcbaf11807740a8",
+      "kind": "git-observation",
+      "at": "2026-09-07T06:13:36-04:00",
+      "revision": "6e11ce42c004ca5fb37300d87bcbaf11807740a8",
+      "title": "Merge pull request #48 from tedks/feature/task-draft-base",
+      "detail": "Git records 29 changed paths relative to the first parent. The commit subject is author-supplied; this observation does not prove behavior or test results.",
+      "source": "Fixed local Git export; first-parent tree comparison",
+      "paths": [
+        ".planning/repo-task-draft.md",
+        "core/agents/context-provider.ts",
+        "core/agents/context.ts",
+        "core/agents/file-store.ts",
+        "docs/repo-task-draft.md",
+        "fixtures/agent-context-v2.ts",
+        "fixtures/agent-owned-process/composition.ts",
+        "fixtures/agents.ts",
+        "protocol/agent-task.ts",
+        "protocol/agents.ts",
+        "protocol/common.ts",
+        "protocol/schema.ts",
+        "tests/agent-adapter.test.ts",
+        "tests/agent-context.test.ts",
+        "tests/agent-contracts.test.ts",
+        "tests/agent-rehearsal-close.test.ts",
+        "tests/agent-service.test.ts",
+        "tests/agent-store.test.ts",
+        "tests/agent-task-contract.test.ts",
+        "tests/agent-task-store.test.ts",
+        "tests/agent-workbench-client.test.ts",
+        "tests/agent-workbench-live.test.tsx",
+        "tests/agent-workbench-reload-client.test.ts",
+        "tests/repository-navigation-boundary.test.ts",
+        "tests/support/agent-rehearsal-close.ts",
+        "tests/task-backlinks.test.ts",
+        "tests/task-contract.test.ts",
+        "tools/repository-navigation/acceptance.cjs",
+        "tools/task-integration/acceptance.cjs"
+      ],
+      "omittedPaths": 0,
+      "taskIds": [],
+      "agentIds": []
+    },
+    {
+      "id": "git:3b6d166ac15a745dea6c65d309c822f6ad1b8b58",
+      "kind": "git-observation",
+      "at": "2026-09-07T11:39:41-04:00",
+      "revision": "3b6d166ac15a745dea6c65d309c822f6ad1b8b58",
+      "title": "Merge pull request #49 from tedks/feature/task-draft-ui",
+      "detail": "Git records 13 changed paths relative to the first parent. The commit subject is author-supplied; this observation does not prove behavior or test results.",
+      "source": "Fixed local Git export; first-parent tree comparison",
+      "paths": [
+        ".planning/repo-task-draft-ui.md",
+        "app/renderer/App.tsx",
+        "app/renderer/agents/AgentDock.tsx",
+        "app/renderer/agents/LaunchContextView.tsx",
+        "app/renderer/agents/PreparedLaunchDraft.tsx",
+        "app/renderer/agents/agents.css",
+        "app/renderer/agents/bridge-client.ts",
+        "app/renderer/agents/live-state.ts",
+        "app/renderer/tasks/TaskDetail.tsx",
+        "app/renderer/tasks/client.ts",
+        "tests/agent-task-draft.test.tsx",
+        "tests/task-attachment-eligibility.test.ts",
+        "tools/task-integration/acceptance.cjs"
+      ],
+      "omittedPaths": 0,
+      "taskIds": [],
+      "agentIds": []
+    },
+    {
+      "id": "git:e8ec0f953071cec9bfeed7555e120aedc4c108dc",
+      "kind": "git-observation",
+      "at": "2026-09-07T13:30:31-04:00",
+      "revision": "e8ec0f953071cec9bfeed7555e120aedc4c108dc",
+      "title": "Merge pull request #50 from tedks/feature/task-draft-core",
+      "detail": "Git records 14 changed paths relative to the first parent. The commit subject is author-supplied; this observation does not prove behavior or test results.",
+      "source": "Fixed local Git export; first-parent tree comparison",
+      "paths": [
+        ".planning/repo-task-draft-core.md",
+        "app/electron/core-supervisor.ts",
+        "core/agents/context.ts",
+        "core/agents/production.ts",
+        "core/tasks/draft-context.ts",
+        "tests/agent-context.test.ts",
+        "tests/agent-production.test.ts",
+        "tests/agent-rehearsal-service.test.ts",
+        "tests/agent-task-context.test.ts",
+        "tests/core-supervisor-agent-task.test.ts",
+        "tests/support/agent-rehearsal-service.ts",
+        "tools/task-integration/acceptance.cjs",
+        "tools/virtual-desktop-run.sh",
+        "tools/virtual-desktop-supervisor.test.sh"
+      ],
+      "omittedPaths": 0,
+      "taskIds": [],
+      "agentIds": []
+    },
+    {
+      "id": "git:c3128715a785c2fd42011e4cf5941038b268335c",
+      "kind": "git-observation",
+      "at": "2026-09-07T15:23:26-04:00",
+      "revision": "c3128715a785c2fd42011e4cf5941038b268335c",
+      "title": "Merge pull request #51 from tedks/feature/task-draft-integration",
+      "detail": "Git records 19 changed paths relative to the first parent. The commit subject is author-supplied; this observation does not prove behavior or test results.",
+      "source": "Fixed local Git export; first-parent tree comparison",
+      "paths": [
+        ".planning/repo-task-draft-integration.md",
+        ".planning/repo-task-draft.md",
+        "tests/support/agent-rehearsal-worker.ts",
+        "tests/support/task-rehearsal-diagnostics.ts",
+        "tests/support/task-rehearsal-driver.ts",
+        "tests/support/task-rehearsal-main.ts",
+        "tests/task-journey-boundary.test.mjs",
+        "tests/task-rehearsal-close.test.ts",
+        "tests/task-rehearsal-diagnostics.test.ts",
+        "tools/BUILD.bazel",
+        "tools/agent-rehearsal/build.mjs",
+        "tools/agent-rehearsal/task-launch.mjs",
+        "tools/agent-rehearsal/task-launch.sh",
+        "tools/agent-rehearsal/task-scenario.sh",
+        "tools/agent-rehearsal/task-smoke.sh",
+        "tools/task-integration/acceptance.cjs",
+        "tools/task-integration/fixture.d.mts",
+        "tools/task-integration/fixture.mjs",
+        "tools/task-integration/observe-transport.cjs"
+      ],
+      "omittedPaths": 0,
+      "taskIds": [],
+      "agentIds": []
+    },
+    {
+      "id": "artifact:task-context-design",
+      "kind": "recorded-artifact",
+      "at": "2026-09-07T19:58:18Z",
+      "revision": "c3128715a785c2fd42011e4cf5941038b268335c",
+      "title": "Design/base: task identity is separate from source selection",
+      "detail": "Read docs/repo-task-draft.md at the selected merged base: one readonly revision-labelled task section is separate from editable instructions and an independently captured working source. Attach never opens a linked file or sends an agent command. The design specifies exact commit/blob identity, core materialization/revalidation and legacy compatibility. Its status paragraph still describes the D3-only stage with attached Prepare unavailable; later merged consumers are separate evidence, so that paragraph is not the current aggregate status. PR47/48 Git records establish design/base changes, not their correctness.",
+      "source": "Selected tracked design document at c3128715; bounded paraphrase, not an independently rerun check",
+      "paths": [
+        "docs/repo-task-draft.md",
+        "protocol/agent-task.ts"
+      ],
+      "omittedPaths": 0,
+      "taskIds": [
+        "repo-task-draft-provenance"
+      ],
+      "agentIds": []
+    },
+    {
+      "id": "report:d5-attachment",
+      "kind": "agent-report",
+      "at": "2026-09-07T19:58:18Z",
+      "revision": "3b6d166ac15a745dea6c65d309c822f6ad1b8b58",
+      "title": "D5: deliberate task attachment without choosing source",
+      "detail": "Selected D5 final recap, captured for this bundle: one explicit task slot offers Append/Replace/Cancel/Remove; task selection never chooses source, existing draft source stays fixed, generations reject stale proposals and accepted changes invalidate preparation. Agent reports actual CLI-authored Ditz metadata through packaged attachment controls at 100%/150%, dirty source/cursor/draft/cameras retained, zero renderer exceptions and owned cleanup. At this milestone attached Prepare still truthfully returned base UNSUPPORTED_CONTROL; this was UI delivery, not joined preparation. Later PR50 is a separate Git observation, not retroactive evidence about this test.",
+      "source": "Explicitly supplied D5 executive recap; timestamp is capture time, not original event time",
+      "paths": [
+        "app/renderer/tasks/TaskDetail.tsx",
+        "app/renderer/agents/PreparedLaunchDraft.tsx",
+        "tests/agent-task-draft.test.tsx"
+      ],
+      "omittedPaths": 0,
+      "taskIds": [
+        "repo-task-draft-provenance"
+      ],
+      "agentIds": [
+        "D5"
+      ]
+    },
+    {
+      "id": "report:d4-resolver",
+      "kind": "agent-report",
+      "at": "2026-09-07T19:58:18Z",
+      "revision": "18ab0a5b1074b2b883db55f972aef53d8c308874",
+      "title": "D4: core materializes and revalidates exact task bytes",
+      "detail": "Selected initial D4 final recap: Git/YAML resolver verifies task identity, commit and blob; core materializes canonical task text, hashes and byte bounds, single-file authority and independent metadata/source/config revalidation. Agent reports owned metadata cancellation and shutdown drain, 40-second task Prepare and unchanged five-second ordinary/launch uncertainty. That recap was held before peer clearance, not a landing receipt. PR50's later normal merge is independently recorded by Git. Production launch remained ADAPTER_POLICY_UNAVAILABLE; admission/history responses were deterministic rehearsal, not live model execution.",
+      "source": "Explicitly supplied D4 executive recap, captured before-landing account; timestamp is capture time",
+      "paths": [
+        "core/tasks/draft-context.ts",
+        "core/agents/context.ts",
+        "tests/agent-task-context.test.ts"
+      ],
+      "omittedPaths": 0,
+      "taskIds": [
+        "repo-task-draft-provenance"
+      ],
+      "agentIds": [
+        "D4"
+      ]
+    },
+    {
+      "id": "report:d6-joined-proof",
+      "kind": "agent-report",
+      "at": "2026-09-07T19:58:18Z",
+      "revision": "c3128715a785c2fd42011e4cf5941038b268335c",
+      "title": "D6: real task metadata and deterministic admitted history remain distinct",
+      "detail": "D6 risk-accepted landing recap reports normal PR51 merge and completed task-specific proof: 81 records preserved exactly through recovery and postclose with equal hashes and confirmed drain/disposal/cleanup. Real Git/Ditz and resolver; deterministic output, not live agents. The exact ResizeObserver warning remains open/nonblocking under user disposition; a run with zero warnings is not a fix. No production policy/model changes were made.",
+      "source": "Explicitly supplied D6 risk-accepted executive recap; timestamp is capture time",
+      "paths": [
+        ".planning/repo-task-draft-integration.md",
+        "tests/task-rehearsal-close.test.ts",
+        "tools/task-integration/acceptance.cjs"
+      ],
+      "omittedPaths": 0,
+      "taskIds": [
+        "repo-task-draft-provenance"
+      ],
+      "agentIds": [
+        "D6"
+      ]
+    },
+    {
+      "id": "record:root-d6-verification",
+      "kind": "recorded-check",
+      "at": "2026-09-07T19:58:18Z",
+      "revision": "c3128715a785c2fd42011e4cf5941038b268335c",
+      "title": "ROOT intake: merged tree and local proof attribution",
+      "detail": "Sanitized supplied ROOT verification receipt: PR51 parents e8ec0f9 and 91a0975, topic and merge tree d68bfd2733e45e805ce7fe86386292084e8772e0. ROOT inspected logs for 35 build targets and 14 fresh passing suites, with quality 1479/105 attributed to that checkpoint, not rerun here. Production proof had realDitz=true/packagedCore=true/modelTurns=0; separate task rehearsal fixtureOnly=true/externalAgentProcesses=0, two core generations, replayedCommands=0, immutable 81 records with pre/post hash b6ffb573ef2051ae8b6e5610e3ea4cb37c7ad7c33635f37b1681057778b78d04. ROOT checked twelve owned PIDs absent in three critical receipts. Original topology timeout and resize warning remained separately open.",
+      "source": "Imported sanitized ROOT accepted-final verification receipt; recorded check, not rerun by Journal",
+      "paths": [
+        "tests/task-rehearsal-close.test.ts",
+        "tests/task-journey-boundary.test.mjs"
+      ],
+      "omittedPaths": 0,
+      "taskIds": [
+        "repo-task-draft-provenance"
+      ],
+      "agentIds": [
+        "ROOT",
+        "D6"
+      ]
+    }
+  ]
+}

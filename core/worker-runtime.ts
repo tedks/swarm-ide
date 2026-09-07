@@ -30,6 +30,7 @@ import { parseTaskResultForRequest, type TaskResult } from "../protocol/tasks";
 import { RepositoryError } from "./repository";
 import { type RepositoryResult } from "../protocol/repository";
 import type { RepositorySearchResult } from "../protocol/repository-search";
+import { readChangelog } from "./changelog";
 import { readPlanIndex } from "./plans";
 import { ExternalAgentService } from "./external-agents";
 import type { ExternalResult } from "../protocol/external-agents";
@@ -53,6 +54,8 @@ const providerPromise = RealWorkspaceProvider.create(workspaceRoot);
 const buildGraphPromise = providerPromise.then((provider) => new BuildGraphProvider(workspaceRoot, provider.snapshot().project.id, provider.snapshot().world.id));
 let workingWorldObserver: WorkingWorldObserver | null = null;
 let shuttingDown = false;
+const journalLifetime = new AbortController();
+let journalPending: ReturnType<typeof readChangelog> | null = null;
 const taskProviderPromise: Promise<TaskProvider> = providerPromise.then(async (provider) => {
   const snapshot = provider.snapshot();
   const context = { root: workspaceRoot, worldId: snapshot.world.id, repositoryId: snapshot.project.id };
@@ -160,12 +163,14 @@ process.parentPort?.on("message", async (event) => {
   if (event.data?.type === "core.shutdown") {
     if (!shuttingDown) {
       shuttingDown = true;
+      journalLifetime.abort();
       void providerPromise.then((provider) => provider.dispose());
       try {
         await Promise.all([
           externalAgents.dispose(),
           agentServicePromise.then((service) => service?.shutdown()),
           taskProviderPromise.then((tasks) => tasks.dispose()),
+          journalPending?.catch(() => {}),
           buildGraphPromise.then((graph) => graph.dispose()),
         ]);
         process.parentPort?.postMessage({ type: "core.shutdown.ready" });
@@ -222,6 +227,21 @@ process.parentPort?.on("message", async (event) => {
       return;
     }
     switch (request.type) {
+      case "changelog.read": {
+        if (shuttingDown) { post(fail(requestId, "CORE_UNAVAILABLE", "Core is shutting down; no Journal read was sent.")); return; }
+        if (request.repositoryId !== provider.snapshot().project.id) {
+          post(fail(requestId, "JOURNAL_REPOSITORY_MISMATCH", "Journal requires the opened repository.")); return;
+        }
+        try {
+          journalPending ??= readChangelog(workspaceRoot, request.repositoryId, journalLifetime.signal).finally(() => { journalPending = null; });
+          const changelog = await journalPending;
+          if (shuttingDown) return;
+          post(parseCoreResponseForRequest({ ...ok(requestId, provider.snapshot()), changelog }, request));
+        } catch {
+          if (!shuttingDown) post(fail(requestId, "JOURNAL_UNAVAILABLE", "Journal unavailable or changed: check the bundle, citations, generation digest and recorded Git ancestry. No summary was replaced."));
+        }
+        return;
+      }
       case "plans.read": {
         const snapshot = provider.snapshot();
         if (request.worldId !== snapshot.world.id || request.repositoryId !== snapshot.project.id) {
