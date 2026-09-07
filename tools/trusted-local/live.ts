@@ -98,7 +98,7 @@ async function main() {
     await session?.stop();
     // This exact mkdtemp-owned path is the only removal target; auth/config and
     // the consumed evidence marker are neither read nor altered.
-    await rm(root, { recursive: true, force: true });
+    if (transportStarts === 0 || cleanup?.status === "confirmed") await rm(root, { recursive: true, force: true });
   }
 }
 void main().catch(() => { console.error("Live proof failed before confirmed evidence; do not retry or remove a consumed marker without renewed authorization."); process.exitCode = 1; });
