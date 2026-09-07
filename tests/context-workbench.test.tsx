@@ -8,6 +8,16 @@ import type { RepositoryObservation } from "../protocol/repository";
 import { contextArtifact } from "./context-fixture";
 import { adaptServiceTopology } from "../core/service-topology";
 import { openContextPath } from "./context-navigation";
+import uiBuildLinks from "../fixtures/ui-build-links.snapshot.json";
+vi.mock("@xyflow/react", async () => {
+  const React = await import("react");
+  return { Background: () => null, Controls: () => null, Handle: () => null, Position: { Left: "left", Right: "right" }, MarkerType: { ArrowClosed: "arrowclosed" },
+    ReactFlow: ({ onInit }: { onInit?: (instance: { fitView: () => Promise<boolean> }) => void }) => {
+      const [camera, setCamera] = React.useState("initial"), [instance] = React.useState(() => ({ fitView: async () => { setCamera("fit"); return true; } }));
+      React.useEffect(() => { onInit?.(instance); }, [instance]);
+      return <div data-testid="captured-build-camera" data-camera={camera}><button onClick={() => setCamera("deliberate")}>Pan captured build</button></div>;
+    } };
+});
 vi.mock("../app/renderer/GraphPane", () => ({ GraphPane: ({ graph, onFocus, onActivate }: { graph: GraphSlice; onFocus: (focus: FocusRef) => void; onActivate?: (focus: FocusRef) => void }) => <section data-testid={`graph-${graph.topologyId}`}>
   {graph.nodes.map((node) => <span key={node.id}><button onClick={() => onFocus(node.focus)}>Inspect {node.id}</button><button onClick={() => (onActivate ?? onFocus)(node.focus)}>Activate {node.id}</button></span>)}
   <input aria-label={`Camera ${graph.topologyId}`} defaultValue="unchanged" />
@@ -44,6 +54,22 @@ function setup(artifact = contextArtifact) {
   return { snapshot, emit, request, delay: (path: string) => { delayPath = path; }, fail: (path: string) => { failPath = path; }, finish: async () => { if (!delayed) throw new Error("No delayed read"); const held = delayed; await act(async () => held.resolve(response(held.request))); } };
 }
 describe("truthful Context in the mounted workbench", () => {
+  it("definition activation preserves a mounted captured Build camera and its manually selected view", async () => {
+    const test = setup(); test.snapshot.project.id = uiBuildLinks.repositoryId;
+    if (test.snapshot.serviceContext?.status !== "observed") throw new Error("fixture");
+    test.snapshot.serviceContext.repositoryId = uiBuildLinks.repositoryId;
+    render(<App />); await openContextPath("core/files.ts"); await waitFor(() => expect(subject()).toBe("core/files.ts"));
+    fireEvent.click(screen.getByRole("button", { name: "Build graph" }));
+    fireEvent.click(screen.getByRole("checkbox", { name: "Follow file" }));
+    const camera = await screen.findByTestId("captured-build-camera");
+    await waitFor(() => expect(camera.dataset.camera).toBe("fit"));
+    fireEvent.click(screen.getByRole("button", { name: "Pan captured build" }));
+    fireEvent.click(screen.getByRole("button", { name: "Service" }));
+    fireEvent.click(screen.getByRole("button", { name: "Activate service:fraud-check" }));
+    await waitFor(() => expect(subject()).toBe("example/fraudcheck.proto"));
+    expect(screen.getByTestId("captured-build-camera")).toBe(camera); expect(camera.dataset.camera).toBe("deliberate");
+    expect((screen.getByRole("checkbox", { name: "Follow file", hidden: true }) as HTMLInputElement).checked).toBe(false);
+  });
   it("holds prior file through a pending definition and Escape rejects its late activation", async () => {
     const test = setup(); render(<App />); await openContextPath("core/files.ts"); await waitFor(() => expect(subject()).toBe("core/files.ts"));
     test.delay("example/fraudcheck.proto"); fireEvent.click(screen.getByRole("button", { name: "Activate service:fraud-check" }));
@@ -54,7 +80,7 @@ describe("truthful Context in the mounted workbench", () => {
   it("a changed service publication invalidates an in-flight definition even with the same path", async () => {
     const test = setup(); render(<App />); await openContextPath("core/files.ts"); await waitFor(() => expect(subject()).toBe("core/files.ts"));
     test.delay("example/fraudcheck.proto"); fireEvent.click(screen.getByRole("button", { name: "Activate service:fraud-check" }));
-    await screen.findByText("Opening working file example/fraudcheck.proto…");
+    await waitFor(() => expect(document.querySelector(".tasks-reveal-notice")?.textContent).toBe("Opening working file example/fraudcheck.proto…"));
     const next = structuredClone(test.snapshot); if (next.serviceContext?.status !== "observed") throw new Error("fixture");
     next.serviceContext.observedAt = "2026-09-07T04:00:00.000Z"; test.emit(next); await test.finish();
     expect(subject()).toBe("core/files.ts");

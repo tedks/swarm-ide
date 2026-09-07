@@ -366,9 +366,12 @@ async function main() {
       try { await oversized.truncate(64 * 1024 * 1024 + 1); } finally { await oversized.close(); }
       try {
         await until(async () => { const value = await snapshot(); return value.revisions.working.evidence === "unavailable" && value.reconciliation.message.includes("exceeds the fingerprint bound"); }, "Q2 actual unavailable fingerprint before replacement");
+        const recoveryRepoCamera = await viewport("repo");
         const recovery = await replaceOwnedCore("q2");
         await until(async () => { const value = await snapshot(); return value.revisions.working.evidence === "unavailable" && value.reconciliation.message.includes("exceeds the fingerprint bound"); }, "Q2 new core independently rejects oversized input");
         await paint(); await preserved();
+        assert.equal(await viewport("repo"), recoveryRepoCamera, "Q2 core recovery cannot reframe repo camera");
+        assert(!(await snapshot()).jobs.some((job) => job.status === "running"), "Q2 core recovery does not replay a build");
         await focus(serviceNode("service:fraud-check")); key("Enter", ["shift"]);
         await until(async () => await contextSubject() === "service:fraud-check", "Q2 retained service inspect after recovery");
         const retained = await contextText("services");
@@ -394,6 +397,10 @@ async function main() {
         facts.push("Q2 actual Swarm core replacement retains original built service evidence as historical while new fingerprint unavailable; explicit declaration revalidates deleted/restored current file; dirty source/cursor/draft/camera retained");
       } finally { await fs.unlink(budgetPath); }
       await click(label("Repository root")); await directory("");
+      await until(() => run(() => document.querySelector('[aria-label="Repository navigation"]')?.getAttribute("aria-busy") === "false"), "Q2 root entry settled");
+      // The retained tree may still have core expanded. Its row toggles that
+      // disclosure, so deliberately collapse before asking to enter it again.
+      await click(label("Collapse folders"));
       await click(label(`Enter directory ${fixture.directory}`)); await directory(fixture.directory);
       await paint();
       // Core recovery replaced the directory observation. Only explicit entry
