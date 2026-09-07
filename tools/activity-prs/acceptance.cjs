@@ -2,9 +2,9 @@
 const { app, BrowserWindow, ipcMain } = require("electron");
 const fs = require("node:fs/promises"), path = require("node:path"), assert = require("node:assert/strict");
 const { execFileSync } = require("node:child_process");
-const evidence = process.env.SWARM_ACTIVITY_EVIDENCE, errors = [], requests = [];
+const evidence = process.env.SWARM_ACTIVITY_EVIDENCE, errors = [], requests = [], failures = [];
 const handle = ipcMain.handle.bind(ipcMain);
-ipcMain.handle = (channel, listener) => handle(channel, async (event, input) => { if (channel === "swarm:request") requests.push(input.type); return listener(event, input); });
+ipcMain.handle = (channel, listener) => handle(channel, async (event, input) => { if (channel === "swarm:request") requests.push(input.type); const result = await listener(event, input); if (channel === "swarm:request" && !result.response.ok) failures.push({ type: input.type, code: result.response.error.code }); return result; });
 app.on("web-contents-created", (_event, wc) => wc.on("console-message", (event) => { if (event.level === "error") errors.push(event.message); }));
 require(path.join(process.env.SWARM_ACTIVITY_PACKAGE, "app/electron/main.js"));
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -79,4 +79,4 @@ async function main() {
   await fs.writeFile(path.join(evidence, "proof.json"), JSON.stringify({ ok: true, realGithub: true, packagedCore: true, pullRequests: prs.length, sourcePath: chosen, sourceDraftCamerasRetained: true, sameOriginFailureRetained: true, explicitRequests: 2, modelTurns: 0, rendererErrors: errors, elapsedMs: Date.now() - start }));
   await until(() => fs.access(path.join(evidence, "close-request")).then(() => true, () => false), "owned close request"); app.quit();
 }
-main().catch(async (error) => { await fs.writeFile(path.join(evidence, "failure.json"), JSON.stringify({ error: error.stack, rendererErrors: errors })); app.exit(1); });
+main().catch(async (error) => { await fs.writeFile(path.join(evidence, "failure.json"), JSON.stringify({ error: error.stack, rendererErrors: errors, failures })); app.exit(1); });

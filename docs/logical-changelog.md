@@ -99,6 +99,11 @@ observation. Install the ordinary GitHub CLI (`gh`) and authenticate it normally
 with `gh auth login`. Swarm does not read or copy token files. The opened checkout
 must have one github.com `origin` using HTTPS or Git SSH syntax. GitHub Enterprise
 and arbitrary repository selection are not supported by this first slice.
+If launching Electron with a disposable `XDG_CONFIG_HOME`, explicitly preserve
+the normal GitHub configuration location in `GH_CONFIG_DIR` before overriding
+XDG. The owned proof does this; it points gh at existing configuration without
+reading or copying credentials. A normal desktop launch with its usual XDG
+environment needs no override.
 
 Click **Refresh PRs** to read up to 20 recent PRs across all states, with title,
 number, author, update time and up to 100 changed-file paths per PR. Coverage is

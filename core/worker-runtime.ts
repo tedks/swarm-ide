@@ -36,7 +36,7 @@ import { ExternalAgentService } from "./external-agents";
 import type { ExternalResult } from "../protocol/external-agents";
 import { BuildGraphProvider } from "./build-graph";
 import type { BuildGraphObservation } from "../protocol/build-graph";
-import { GithubPrProvider } from "./github-prs";
+import { GithubPrProvider, GithubPrReadError } from "./github-prs";
 
 export interface WorkerDependencies {
   createAgents?: typeof createProductionAgentService;
@@ -241,8 +241,8 @@ process.parentPort?.on("message", async (event) => {
           const githubPrs = await prs.refresh();
           if (shuttingDown) return;
           post(parseCoreResponseForRequest({ ...ok(requestId, provider.snapshot()), githubPrs }, request));
-        } catch {
-          if (!shuttingDown) post(fail(requestId, "GITHUB_PR_UNAVAILABLE", "GitHub unavailable. Check origin, gh login, or connection; then Refresh."));
+        } catch (error) {
+          if (!shuttingDown) post(fail(requestId, error instanceof GithubPrReadError ? error.code : "GITHUB_PR_UNAVAILABLE", "GitHub unavailable. Check origin, gh login, or connection; then Refresh."));
         }
         return;
       }

@@ -9,14 +9,20 @@ Clicking Recent Activity opens a readable central Activity log without disturbin
 ## Progress
 
 - [x] (2026-09-07) Read current journal, worker, protocol and ownership instructions; designated `feature/activity-pr-instruments` from reviewed 83e53e7.
-- [ ] Implement cleaned Activity entry and outcome-first recorded wording.
-- [ ] Implement typed bounded GitHub origin observation, client and PR cards.
-- [ ] Prove malformed/foreign/late result rejection, local checks and owned virtual interaction; converge native review.
+- [x] (2026-09-07 23:08Z) Implemented cleaned Activity entry and actual native outcome-first recorded wording with unchanged citations.
+- [x] (2026-09-07 23:15Z) Implemented typed GitHub origin observation and client, separate Changes/PRs views and parent-death-safe owned commands.
+- [x] (2026-09-07 23:26Z) Actual owned packaged GitHub20 PR/source/typed-draft/camera/stale-failure journey passed3.1s, zero errors and cleanup1. Malformed/foreign/late and hard owner-death tests passed; final local/native delta gates pending.
 - [ ] Push ready PR, sync Ditz and hand back to ROOT without merging or adopting.
 
 ## Surprises & Discoveries
 
 The existing Journal is a real core read of a repo-authored bounded evidence export, not an automatic live summarizer. It already preserves the source document when opened. PRs therefore belong beside it as a separately timestamped observation, not fabricated journal evidence.
+
+Native review found that ordinary app quit kills core without its async shutdown path; an initial detached gh could survive it. Reused the existing PID owner and collector, then exercised the actual GitHub command function from a killed disposable caller with a detached descendant. Unknown cleanup blocks another read and cannot acknowledge shutdown.
+
+The first UI proof clicked the middle of a long editor outside its visible scrollport; the driver now intersects clipping ancestors before a checked native click. A later diagnostic initially unpacked the bridge envelope incorrectly; review corrected that diagnostic separately. Neither is a production editor fix.
+
+Owned GitHub command probing worked outside Electron but failed in the disposable GUI profile. The virtual harness replaces XDG_CONFIG_HOME, changing gh's ordinary config lookup. Preserving the incoming GH_CONFIG_DIR before that override made the unchanged owned command path pass. No credentials were inspected, copied or supplied to the renderer.
 
 ## Decision Log
 
@@ -24,11 +30,13 @@ Use only the opened workspace's single validated `origin` on github.com. Support
 
 Use ordinary installed `gh` authentication and fixed read-only argv. GitHub errors are sanitized, stdout bounded and commands cancelled/drained on core shutdown. Never read credential files or forward raw errors. No new dependencies or background polling.
 
+Reuse the already tested private PID process owner for hard parent death, not a new full-isolation policy. The shared collector caps total command output at4MiB; parsing/publication additionally rejects GitHub output over512KiB. Preserve a four-second provider deadline and the existing five-second bridge timeout. Fail closed and visibly unavailable if ownership tooling cannot operate.
+
 The current user mandate is Codex-only native council and local-only checks; foreign seats and hosted CI are intentionally omitted.
 
 ## Outcomes & Retrospective
 
-Implementation and verification pending.
+The vertical is usable: Recent Activity opens readable Changes; Pull requests is an explicit separate view with actual GitHub state and bounded file links. Recorded narrative remains explicitly recorded and is not used to invent PR/agent/task associations. Final handoff records exact gates and the deliberately limited github.com-origin-only scope.
 
 ## Context and Orientation
 
@@ -58,4 +66,4 @@ Operational notes and raw evidence live at `/tmp/swarm-ide-demo-controls.q2i33c/
 
 Use existing Zod, React, Node child_process, Git and installed gh. `githubPrs.refresh` accepts only protocol/request/repository/world identifiers; it never accepts shell fragments, executable paths or raw URLs. `GithubPrObservation` identifies repository/world, GitHub owner/name, observed time, coverage and validated PR cards. GitHub links are selectable text unless an already checked external-opening mechanism applies.
 
-Revision note: initial bounded implementation plan before code changes.
+Revision note: initial bounded plan updated23:27Z with implemented behavior, native findings, diagnostic distinctions and actual packaged result.

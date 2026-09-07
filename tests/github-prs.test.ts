@@ -65,7 +65,7 @@ describe("GitHub PR fixed scope and validation", () => {
     const command = vi.fn(async () => JSON.stringify(raw()));
     const provider = new GithubPrProvider("/unused", "repo", "world", command, git);
     const first = provider.refresh(); expect(provider.refresh()).toBe(first);
-    await expect(first).rejects.toThrow("Origin changed"); expect(command).toHaveBeenCalledTimes(1);
+    await expect(first).rejects.toThrow("GITHUB_PR_MOVED"); expect(command).toHaveBeenCalledTimes(1);
     await provider.dispose(); await expect(provider.refresh()).rejects.toThrow("Disposed");
   });
   it("disposal waits for the actual in-flight reader to settle", async () => {
@@ -83,6 +83,7 @@ describe("GitHub PR fixed scope and validation", () => {
     const root = await mkdtemp(join(tmpdir(), "github-pr-command-")); owned.push(root);
     const executable = join(root, "gh");
     await writeFile(executable, `#!${process.execPath}\nprocess.stdout.write(JSON.stringify(process.argv.slice(2)));\n`, { mode: 0o700 });
+    vi.stubEnv("PATH", `${root}:${process.env.PATH ?? ""}`);
     const config = { ...await githubOwnerOptions(root), executable, ownerScript: resolve("core/agents/owner-process.mjs") };
     const options = async () => config;
     for (const name of ["NODE_OPTIONS", "NODE_PATH", "LD_PRELOAD", "LD_AUDIT"]) vi.stubEnv(name, "");
@@ -98,7 +99,7 @@ describe("GitHub PR fixed scope and validation", () => {
   it("blocks another read after uncertain owned cleanup", async () => {
     const command = vi.fn(async () => { throw new BuildQueryCleanupError("unknown"); });
     const provider = new GithubPrProvider("/unused", "repo", "world", command, async () => "git@github.com:example/project.git\n");
-    await expect(provider.refresh()).rejects.toThrow("unknown");
+    await expect(provider.refresh()).rejects.toThrow("GITHUB_PR_OWNER");
     await expect(provider.refresh()).rejects.toThrow("cleanup unconfirmed"); expect(command).toHaveBeenCalledTimes(1);
     await expect(provider.dispose()).rejects.toThrow("cleanup remains unconfirmed");
   });
@@ -107,6 +108,7 @@ describe("GitHub PR fixed scope and validation", () => {
     const script = join(root, "gh"), namespacePath = join(root, "namespace"), readyPath = join(root, "ready");
     await writeFile(script, `#!${process.execPath}\nconst fs=require('node:fs');fs.writeFileSync(${JSON.stringify(namespacePath)},fs.readlinkSync('/proc/self/ns/pid'));
 require('node:child_process').spawn(process.execPath,['-e',${JSON.stringify(`require('node:fs').writeFileSync(${JSON.stringify(readyPath)},'ready');process.on('SIGTERM',()=>{});setInterval(()=>{},1000);`)}],{detached:true,stdio:'ignore'});process.on('SIGTERM',()=>{});setInterval(()=>{},1000);`, { mode: 0o700 });
+    vi.stubEnv("PATH", `${root}:${process.env.PATH ?? ""}`);
     const config = { ...await githubOwnerOptions(root), executable: script, ownerScript: resolve("core/agents/owner-process.mjs") };
     const caller = join(root, "caller.cjs");
     await build({ stdin: { contents: `import {githubPrCommand} from ${JSON.stringify(resolve("core/github-prs.ts"))}; void githubPrCommand(${JSON.stringify(root)},'example/project',new AbortController().signal,async()=>(${JSON.stringify(config)})).catch(()=>{});`, resolveDir: process.cwd() }, outfile: caller, bundle: true, platform: "node", format: "cjs", logLevel: "silent" });
