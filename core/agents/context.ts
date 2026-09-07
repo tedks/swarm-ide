@@ -116,7 +116,7 @@ export class RegisteredAgentContextProvider implements AgentContextProvider {
 
   async prepare(untrusted: AgentPrepareInput): Promise<AgentOperation<PreparedAgentContext>> {
     if (this.closed) return failure(new ContextFailure("STALE_CONTEXT", "Context provider is closed."), "prepare");
-    if (this.preparing) return { ok: false, error: { code: "BUSY", message: "Another launch context is being prepared." } };
+    if (this.preparing || this.metadata.size > 0) return { ok: false, error: { code: "BUSY", message: "Another launch context observation is still settling." } };
     this.preparing = true;
     try {
       const parsed = AgentPrepareInputSchema.safeParse(untrusted);
@@ -159,7 +159,7 @@ export class RegisteredAgentContextProvider implements AgentContextProvider {
       if (this.closed) stale("Context provider is closed.");
       const parsed = PreparedAgentContextSchema.safeParse(untrusted);
       const draft = this.draft;
-      if (!parsed.success || !draft || JSON.stringify(parsed.data) !== draft.serialized || this.preparing) {
+      if (!parsed.success || !draft || JSON.stringify(parsed.data) !== draft.serialized || this.preparing || this.metadata.size > 0) {
         stale("Draft is unknown, changed or replaced; prepare it again.");
       }
       const context = parsed.data!;
