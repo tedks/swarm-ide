@@ -14,3 +14,11 @@ log_events:
   who: Ted Smith
   what: created
   comment: ""
+- time: 2026-09-07T23:18:53-00:00
+  who: Ted Smith
+  what: commented
+  comment: R4 ships an explicitly illustrative profile only. Existing Job.resources
+    has no sample time, source, CPU normalization or collection window; current real
+    provider sends zero placeholders. Future real distributions require typed observation
+    provenance and bounded timestamped samples; never derive histories from React
+    renders or treat unavailable zero placeholders as measured idle.
