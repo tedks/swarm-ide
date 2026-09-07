@@ -67,7 +67,7 @@ swarm_window_key() {
             esac
           fi ;;
         'Open repository path') palette=path; pending="" ;;
-        'Show system graphs') surface=Graphs ;;
+        'Show system graphs') : ;; # Independent source selection is retained.
         *) echo "unexpected command: $pending" >&2; return 91 ;;
       esac ;;
   esac
@@ -130,7 +130,7 @@ describe("desktop topology shell scenario", () => {
     for (const [command, title, capture] of [
       [sourcePath, "Source fraudcheck.ts", "fraudcheck-source.png"],
       [contractPath, "Source fraudcheck.proto", "fraudcheck-contract.png"],
-      ["Show system graphs", "Graphs", "returned-to-graphs.png"],
+      ["Show system graphs", "Source fraudcheck.proto", "returned-to-graphs.png"],
     ]) {
       const commandIndex = result.events.indexOf(`command|${command}`);
       const waitIndex = result.events.indexOf(`wait|${title}|present|default`, commandIndex);

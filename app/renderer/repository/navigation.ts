@@ -5,7 +5,7 @@ import { isRepositoryPath, parseRepositoryResultForRequest, type RepositoryObser
 
 export interface DirectoryLocation { directory: string; page: number; filter: string }
 export interface RepositoryCameraIntent { directory: string; page: number; restore: boolean; serial: number }
-interface Intent extends DirectoryLocation { refresh: boolean; revealPath?: string; backIndex?: number }
+interface Intent extends DirectoryLocation { refresh: boolean; revealPath?: string; backIndex?: number; expand?: boolean }
 export const DIRECTORY_HISTORY_LIMIT = 32;
 export const directoryCameraKey = (location: Pick<DirectoryLocation, "directory" | "page">) => JSON.stringify([location.directory, location.page]);
 export const parentDirectory = (path: string) => path.split("/").slice(0, -1).join("/");
@@ -22,16 +22,19 @@ export function useRepositoryNavigation(observation: RepositoryObservation | und
   const intentSerial = useRef(0);
   const history = useRef<DirectoryLocation[]>([]);
   const failed = useRef<Intent | null>(null);
-  const [pending, setPending] = useState(false);
+  const [pendingSerial, setPendingSerial] = useState<number | null>(null);
+  const pending = pendingSerial !== null;
   const [notice, setNotice] = useState("");
   const [historySize, setHistorySize] = useState(0);
   const [cameraIntent, setCameraIntent] = useState<RepositoryCameraIntent | null>(null);
+  const [expansionIntent, setExpansionIntent] = useState<{ directory: string; serial: number } | null>(null);
 
   useEffect(() => {
     ++intentSerial.current;
-    setPending(false);
+    setPendingSerial(null);
     failed.current = null;
     setCameraIntent(null);
+    setExpansionIntent(null);
     setNotice("");
     return () => { ++intentSerial.current; };
   }, [generation]);
@@ -48,13 +51,14 @@ export function useRepositoryNavigation(observation: RepositoryObservation | und
       ...(!intent.refresh && prior.directory === intent.directory ? { observationId: prior.observationId } : {}),
       ...(intent.revealPath ? { revealPath: intent.revealPath } : {}),
     };
-    setPending(true); setNotice(""); failed.current = null;
+    setPendingSerial(serial); setNotice(""); failed.current = null;
     setCameraIntent(null);
     try {
       const response = await before.request(input);
       if (serial !== intentSerial.current || before.generation !== current.current.generation) return false;
       if (!response?.ok || !response.repo) throw new Error(response && !response.ok ? response.error.message : "Local-core directory observation was interrupted.");
       const result = parseRepositoryResultForRequest(response.repo, input).observation;
+      if (intent.expand) setExpansionIntent({ directory: result.directory, serial });
       if (prior.directory !== result.directory || prior.page !== result.page || intent.backIndex !== undefined)
         setCameraIntent({ directory: result.directory, page: result.page, restore: intent.backIndex !== undefined, serial });
       if (intent.backIndex !== undefined) history.current = history.current.slice(0, intent.backIndex);
@@ -69,15 +73,15 @@ export function useRepositoryNavigation(observation: RepositoryObservation | und
       setNotice(`Could not open ${intent.directory || "/"}: ${error instanceof Error ? error.message : "directory unavailable"}. Previous directory retained.`);
       return false;
     } finally {
-      if (serial === intentSerial.current && before.generation === current.current.generation) setPending(false);
+      if (serial === intentSerial.current && before.generation === current.current.generation) setPendingSerial(null);
     }
   }, []);
 
-  const enter = useCallback((directory: string) => navigate({ directory, page: 0, filter: "", refresh: true }), [navigate]);
+  const enter = useCallback((directory: string) => navigate({ directory, page: 0, filter: "", refresh: true, expand: true }), [navigate]);
   const up = useCallback(() => enter(parentDirectory(current.current.observation?.directory ?? "")), [enter]);
   const back = useCallback(() => {
     const index = history.current.length - 1, target = history.current[index];
-    return target ? navigate({ ...target, refresh: true, backIndex: index }) : Promise.resolve(false);
+    return target ? navigate({ ...target, refresh: true, backIndex: index, expand: true }) : Promise.resolve(false);
   }, [navigate]);
   const refresh = useCallback(() => {
     const observed = current.current.observation;
@@ -94,9 +98,9 @@ export function useRepositoryNavigation(observation: RepositoryObservation | und
   const reveal = useCallback((path: string) => {
     if (!isRepositoryPath(path)) { setNotice("Use an exact canonical repository-relative file path, without .git or parent segments."); return Promise.resolve(false); }
     const directory = parentDirectory(path);
-    return navigate({ directory, page: 0, filter: "", refresh: current.current.observation?.directory !== directory, revealPath: path });
+    return navigate({ directory, page: 0, filter: "", refresh: current.current.observation?.directory !== directory, revealPath: path, expand: true });
   }, [navigate]);
   const retry = useCallback(() => failed.current ? navigate({ ...failed.current, refresh: true }) : Promise.resolve(false), [navigate]);
-  return { pending, notice, cameraIntent, backEnabled: historySize > 0, retryEnabled: Boolean(failed.current), enter, up, back, refresh, page, filter, reveal, retry };
+  return { pending, pendingSerial, notice, cameraIntent, expansionIntent, backEnabled: historySize > 0, retryEnabled: Boolean(failed.current), enter, up, back, refresh, page, filter, reveal, retry };
 }
 export type RepositoryNavigationActions = ReturnType<typeof useRepositoryNavigation>;

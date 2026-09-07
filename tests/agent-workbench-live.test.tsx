@@ -63,7 +63,7 @@ describe("live workbench presentation", () => {
     window.swarm = { request, onEvent: () => () => undefined };
     window.swarmView = { setZoomPercent: async () => ({ ok: true, percent: 100 }) };
     render(<App />);
-    await screen.findByText(/ADAPTER_POLICY_UNAVAILABLE: Effective hooks/);
+    expect(await screen.findAllByText(/ADAPTER_POLICY_UNAVAILABLE: Effective hooks/)).toHaveLength(2); // Sidebar and agent dock remain independently useful.
     expect(screen.queryByText("Preview agent fixture")).toBeNull();
     fireEvent.click(screen.getAllByRole("button", { name: paymentsFileFocus.path! })[0]!);
     const source = await screen.findByLabelText("Source buffer");

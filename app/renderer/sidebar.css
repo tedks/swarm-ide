@@ -1,0 +1,21 @@
+.work-rail.split-sidebar { display: grid; overflow: hidden; }
+.sidebar-section { min-width: 0; min-height: 0; display: flex; flex-direction: column; overflow: hidden; }
+.sidebar-section-heading { flex: none; width: 100%; height: 30px; display: flex; align-items: center; gap: 8px; padding: 0 10px; border: 0; background: #101b19; color: #a9bdb3; text-align: left; font: 500 10px "DM Mono", monospace; text-transform: uppercase; letter-spacing: .06em; cursor: pointer; }
+.sidebar-section-heading:hover { background: #182722; }
+.sidebar-section-heading > span { width: 10px; font-size: 15px; }
+.sidebar-section-heading > small { margin-left: auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 9px; font-weight: 400; text-transform: none; color: #6f8f80; }
+.sidebar-section-content { flex: 1; min-height: 0; min-width: 0; overflow: auto; scrollbar-width: thin; }
+.sidebar-section-content[hidden] { display: none; }
+.sidebar-section:first-child .sidebar-section-content { overflow: hidden; }
+.sidebar-divider { background: #182a24; cursor: row-resize; touch-action: none; }
+.sidebar-divider:hover, .sidebar-divider:focus-visible { background: #579b80; }
+.sidebar-divider[aria-disabled="true"] { cursor: default; }
+.sidebar-section-content .rail-section { padding: 8px; }
+.sidebar-section-content .task-heading h2 { display: none; }
+.sidebar-section-content .task-heading { margin-bottom: 4px; }
+.sidebar-section-content .task-observation { font-size: 9px; margin: 4px 0; }
+.sidebar-section-content .task-search { margin: 4px 0; }
+@media (max-width: 1100px) {
+  .work-rail.split-sidebar { display: none; }
+  .workbench[data-compact-panel="work"] .work-rail.split-sidebar { display: grid; }
+}

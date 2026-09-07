@@ -20,7 +20,7 @@ vi.mock("@xyflow/react", async () => {
     ReactFlow: ({ nodes, onInit, onNodeClick, onMoveStart, onMoveEnd, children }: {
       nodes: Array<{ id: string; data: { label: string; focus: FocusRef } }>;
       onInit: (value: unknown) => void; onNodeClick: (event: unknown, node: unknown) => void;
-      onMoveStart: (event: unknown) => void; onMoveEnd: (event: unknown, camera: unknown) => void; children: ReactNode;
+      onMoveStart: (event: unknown) => void; onMoveEnd?: (event: unknown, camera: unknown) => void; children: ReactNode;
     }) => {
       const viewport = React.useRef({ x: 0, y: 0, zoom: 1 });
       const [camera, setCamera] = React.useState(viewport.current);
@@ -32,7 +32,7 @@ vi.mock("@xyflow/react", async () => {
       }));
       React.useEffect(() => { onInit(instance); }, [instance]);
       return <div data-testid="repository-flow" data-camera={JSON.stringify(camera)} data-fits={fits}>
-        <button aria-label="Pan graph" onClick={() => { onMoveStart({}); viewport.current = { x: 73, y: -29, zoom: 1.7 }; setCamera(viewport.current); onMoveEnd({}, viewport.current); }}>Pan</button>
+        <button aria-label="Pan graph" onClick={() => { onMoveStart({}); viewport.current = { x: 73, y: -29, zoom: 1.7 }; setCamera(viewport.current); onMoveEnd?.({}, viewport.current); }}>Pan</button>
         {nodes.map((node) => <button key={node.id} aria-label={`Graph node ${node.data.label}`} onClick={() => onNodeClick({}, node)}>{node.data.label}</button>)}{children}
       </div>;
     },
@@ -40,8 +40,73 @@ vi.mock("@xyflow/react", async () => {
 });
 import { GraphPane } from "../app/renderer/GraphPane";
 import { App } from "../app/renderer/App";
+import { BuildGraphPane, TopologyViews } from "../app/renderer/repository/BuildGraphPane";
+import { buildTargets, selectFileBuildView } from "../app/renderer/repository/build-view";
+import buildCapture from "../fixtures/ui-build-links.snapshot.json";
 
 const date = "2026-09-06T12:00:00.000Z";
+it("follows file targets, preserves a pinned manual pattern, and reports unmapped files without stale nodes", async () => {
+  const input = { capture: buildCapture, mockAgents: false, mockVersion: 0, onOpenBuild: vi.fn() };
+  const view = render(<BuildGraphPane {...input} focusedFile="core/files.ts" />);
+  const pane = screen.getByRole("region", { name: "Bazel build graph" });
+  expect(pane.getAttribute("data-file-focus")).toBe("core/files.ts");
+  expect(screen.getAllByRole("button", { name: /^Graph node / })).toHaveLength(selectFileBuildView(buildCapture, "core/files.ts", false).depths.size);
+  const flow = screen.getByTestId("repository-flow");
+  await waitFor(() => expect(Number(flow.getAttribute("data-fits"))).toBeGreaterThan(0));
+  const before = Number(flow.getAttribute("data-fits"));
+  fireEvent.click(screen.getByRole("button", { name: "Pan graph" }));
+  view.rerender(<BuildGraphPane {...input} mockAgents={true} focusedFile="core/files.ts" />);
+  expect(flow.getAttribute("data-camera")).toContain('"x":73');
+  expect(Number(flow.getAttribute("data-fits"))).toBe(before);
+  view.rerender(<BuildGraphPane {...input} focusedFile="tools/extract-service-topology.mjs" />);
+  await waitFor(() => expect(Number(flow.getAttribute("data-fits"))).toBeGreaterThan(before));
+  expect(pane.getAttribute("data-file-focus")).toBe("tools/extract-service-topology.mjs");
+  fireEvent.change(screen.getByRole("combobox", { name: "Bazel target" }), { target: { value: "//..." } });
+  fireEvent.click(screen.getByRole("button", { name: "Add target" }));
+  expect((screen.getByRole("checkbox", { name: "Follow file" }) as HTMLInputElement).checked).toBe(false);
+  view.rerender(<BuildGraphPane {...input} focusedFile="uncaptured/new.ts" />);
+  expect(screen.getAllByRole("button", { name: /^Graph node / })).toHaveLength(buildTargets(buildCapture).length);
+  fireEvent.click(screen.getByRole("checkbox", { name: "Follow file" }));
+  expect(screen.queryAllByRole("button", { name: /^Graph node / })).toHaveLength(0);
+  expect(screen.getByText(/No captured target references this file/)).toBeTruthy();
+  fireEvent.click(screen.getByRole("checkbox", { name: "Follow file" }));
+  expect(screen.getByRole("button", { name: "//... ×" })).toBeTruthy();
+  expect(input.onOpenBuild).not.toHaveBeenCalled();
+});
+
+it("does not steal the service lens when file focus changes and updates the retained build view when reopened", () => {
+  const input = { capture: buildCapture, service: <div>Service graph retained</div>, mockAgents: false, mockVersion: 0, onOpenBuild: vi.fn() };
+  const view = render(<TopologyViews {...input} focusedFile="core/files.ts" />);
+  const service = screen.getByRole("button", { name: /^Service$/ });
+  expect(service.getAttribute("aria-pressed")).toBe("true");
+  fireEvent.click(screen.getByRole("button", { name: /^Build graph$/ }));
+  const flow = screen.getByTestId("repository-flow");
+  fireEvent.click(service);
+  view.rerender(<TopologyViews {...input} focusedFile="tools/extract-service-topology.mjs" />);
+  expect(service.getAttribute("aria-pressed")).toBe("true");
+  fireEvent.click(screen.getByRole("button", { name: /^Build graph$/ }));
+  expect(screen.getByTestId("repository-flow")).toBe(flow);
+  expect(screen.getByRole("region", { name: "Bazel build graph" }).getAttribute("data-file-focus")).toBe("tools/extract-service-topology.mjs");
+});
+
+it("adds and removes //... as one build-view pattern without invoking a source action", () => {
+  const open = vi.fn();
+  render(<BuildGraphPane capture={buildCapture} mockAgents={true} mockVersion={1} onOpenBuild={open} />);
+  const input = screen.getByRole("combobox", { name: "Bazel target" });
+  const add = screen.getByRole("button", { name: "Add target" });
+  const before = screen.getAllByRole("button", { name: /^Graph node / }).length;
+  fireEvent.change(input, { target: { value: "//..." } });
+  expect((add as HTMLButtonElement).disabled).toBe(false);
+  fireEvent.click(add);
+  expect(screen.getAllByRole("button", { name: /^Graph node / })).toHaveLength(buildTargets(buildCapture).length);
+  expect((add as HTMLButtonElement).disabled).toBe(true);
+  fireEvent.click(screen.getByRole("button", { name: "//... ×" }));
+  expect(screen.getAllByRole("button", { name: /^Graph node / })).toHaveLength(before);
+  fireEvent.change(input, { target: { value: "//missing/..." } });
+  expect((add as HTMLButtonElement).disabled).toBe(true);
+  expect(screen.getByRole("status").textContent).toContain("No captured rule targets match");
+  expect(open).not.toHaveBeenCalled();
+});
 function observation(directory = "", patch: Partial<RepositoryObservation> = {}): RepositoryObservation {
   return { directory, observationId: `capture:${directory}`, capturedAt: date, state: "observed", complete: true,
     capturedCount: 2, filteredCount: 2, page: 0, pageCount: 1, filter: "",
@@ -104,6 +169,24 @@ describe("bounded repository navigation intent controller", () => {
     await act(async () => { pending[2]!.resolve(result(pending[2]!.input)); await first; });
     expect(view.result.current.pending).toBe(false); expect(view.result.current.cameraIntent).toBeNull();
   });
+  it("publishes a new pending serial before an overlapping same-directory Reveal settles", async () => {
+    const pending: Array<{ input: RepositoryRequest; resolve: (value: CoreResponse) => void }> = [];
+    const request = vi.fn((input: RepositoryRequest) => new Promise<CoreResponse>((resolve) => pending.push({ input, resolve })));
+    const view = renderHook(() => useRepositoryNavigation(observation(), 1, true, request));
+    let first!: Promise<boolean>, second!: Promise<boolean>;
+    act(() => { first = view.result.current.enter("core"); });
+    const oldSerial = view.result.current.pendingSerial;
+    act(() => { second = view.result.current.reveal("core/files.ts"); });
+    const newerSerial = view.result.current.pendingSerial;
+    expect(newerSerial).not.toBeNull(); expect(newerSerial).not.toBe(oldSerial);
+    await act(async () => { pending[0]!.resolve(result(pending[0]!.input)); await first; });
+    expect(view.result.current.pendingSerial).toBe(newerSerial);
+    expect(view.result.current.expansionIntent).toBeNull();
+    await act(async () => { pending[1]!.resolve(result(pending[1]!.input, observation("core", { reveal: { path: "core/files.ts", status: "selected" } }))); await second; });
+    expect(view.result.current.pendingSerial).toBeNull();
+    expect(view.result.current.expansionIntent).toEqual({ directory: "core", serial: newerSerial });
+  });
+
   it("rejects mismatched results, keeps the old observation, and offers an explicit Retry", async () => {
     const observed = observation();
     const request = vi.fn(async (input: RepositoryRequest) => result(input, observation("wrong")));
@@ -226,6 +309,31 @@ describe("repository controls and coordinated cameras", () => {
     view.rerender(<GraphPane {...props} graph={graph(refreshed)} repositoryCameraIntent={hook.result.current.cameraIntent} />); settle();
     expect(flow.getAttribute("data-fits")).toBe("1"); expect(flow.getAttribute("data-camera")).toBe(deliberate);
   });
+  it("toggles display layers without replacing the graph, moving its camera, navigating or claiming live build evidence", () => {
+    const snapshot = initialSnapshot(), repo = graph(observation());
+    const onFocus = vi.fn(), onReconcile = vi.fn(), onNavigateDirectory = vi.fn();
+    const props = { graph: repo, focus: snapshot.focus, mappings: [], onFocus, onConnectionFocus: vi.fn(), onReconcile, onNavigateDirectory, reconciliationRunning: false, interfaceZoom: 100 };
+    const view = render(<GraphPane {...props} />);
+    const build = screen.getByRole("button", { name: /Build links/ });
+    expect((build as HTMLButtonElement).disabled).toBe(true);
+    const flow = screen.getByTestId("repository-flow");
+    fireEvent.click(screen.getByRole("button", { name: "Pan graph" }));
+    const camera = flow.getAttribute("data-camera"), fits = flow.getAttribute("data-fits");
+    view.rerender(<GraphPane {...props} buildLinkSnapshot={{ repositoryId: "test", revision: "reference", capturedAt: date, command: "bazel query", links: [{ from: "//core:a", to: "//docs:b", fromPath: "core", toPath: "docs" }] }} />);
+    // Repository props are published on the next frame; await that below.
+    return waitFor(() => expect((build as HTMLButtonElement).disabled).toBe(false)).then(() => {
+      fireEvent.click(build);
+      expect(screen.getByText(/Snapshot reference · 1 visible links · not live/)).toBeTruthy();
+      fireEvent.click(screen.getByRole("button", { name: /Mock agents/ }));
+      expect(screen.getByText(/MOCK ACTIVITY · visual only · no agents launched/)).toBeTruthy();
+      fireEvent.click(screen.getByRole("button", { name: /Mock agents/ }));
+      expect(screen.queryByText(/MOCK ACTIVITY/)).toBeNull();
+      expect(screen.getByTestId("repository-flow")).toBe(flow);
+      expect(flow.getAttribute("data-camera")).toBe(camera);
+      expect(flow.getAttribute("data-fits")).toBe(fits);
+      expect(onFocus).not.toHaveBeenCalled(); expect(onReconcile).not.toHaveBeenCalled(); expect(onNavigateDirectory).not.toHaveBeenCalled();
+    });
+  });
   it("keeps off-slice candidates in ambiguity without highlighting fictional nodes", () => {
     const snapshot = initialSnapshot(), repo = graph(observation("core"), snapshot), focus = snapshot.focus;
     const mapped = adaptGraph(repo, focus, [{ from: focus, targetTopology: "repo", ambiguous: true, candidates: [
@@ -233,7 +341,7 @@ describe("repository controls and coordinated cameras", () => {
       { revealPath: "elsewhere/files.ts", focus: { ...focus, domain: "repo", path: "elsewhere/files.ts", key: "file:elsewhere/files.ts" }, confidence: .8, reason: "Off-slice" },
     ] }]);
     expect(mapped.nodes.filter((node) => node.data.focused).map((node) => node.id)).toEqual([repo.nodes[0]!.id]);
-    expect(mapped.nodes[0]!.data.ambiguous).toBe(true);
+    expect(mapped.nodes.find((node) => node.id === repo.nodes[0]!.id)!.data.ambiguous).toBe(true); // The enclosing directory is now ordered before its children.
   });
   it("presents only the latest whole repository props per frame, retaining the mounted graph and cancelling on disposal", () => {
     const frames = new Map<number, FrameRequestCallback>(); let serial = 0;
@@ -273,7 +381,7 @@ describe("actual App repository navigation wiring", () => {
   it("enters directories without source reads, opens an actual editor, retains exact dirty text/cursor/draft and both graphs through Up and Reveal", async () => {
     let sequence = 0;
     let snapshot: WorkspaceSnapshot = initialSnapshot();
-    snapshot = WorkspaceSnapshotSchema.parse({ ...snapshot, mappings: [], graphs: [graph(observation(), snapshot), snapshot.graphs[1]!] });
+    snapshot = WorkspaceSnapshotSchema.parse({ ...snapshot, project: { ...snapshot.project, id: buildCapture.repositoryId }, mappings: [], graphs: [graph(observation(), snapshot), snapshot.graphs[1]!] });
     const listeners = new Set<(event: CoreEvent | FileEvent) => void>();
     const publish = () => { const event: CoreEvent = { protocolVersion: PROTOCOL_VERSION, type: "workspace.changed", sequence: ++sequence, epoch: snapshot.reconciliation.epoch, emittedAt: date, snapshot }; for (const listener of listeners) listener(event); };
     const request = vi.fn(async (input: CoreRequest): Promise<CoreResponse> => {
@@ -299,6 +407,10 @@ describe("actual App repository navigation wiring", () => {
     expect(request.mock.calls.some(([input]) => input.type === "file.read")).toBe(false);
     fireEvent.click(screen.getByRole("button", { name: "Open file core/files.ts" }));
     await waitFor(() => expect(document.querySelector(".cm-content")?.textContent).toContain("one"));
+    // Opening the text surface explicitly fits the newly narrowed graphs.
+    await waitFor(() => expect(flows[1]!.getAttribute("data-fits")).toBe("1"));
+    expect(flows[1]!.getAttribute("data-camera")).toBe(JSON.stringify({ x: 0, y: 0, zoom: 1 }));
+    fireEvent.click(within(flows[1]!).getByRole("button", { name: "Pan graph" }));
     const editor = EditorView.findFromDOM(document.querySelector(".cm-editor")!)!;
     act(() => editor.dispatch({ changes: { from: 0, insert: "UNSAVED\n" }, selection: { anchor: 4 } }));
     fireEvent.click(screen.getByRole("button", { name: "Ask an agent about this focus" }));
@@ -318,6 +430,18 @@ describe("actual App repository navigation wiring", () => {
       await waitFor(() => expect(document.querySelector(".source-surface header strong")?.textContent).toBe(path));
     }
     expect(validTaskReference({ path: "core/https:reference.ts", navigation: "candidate", line: null, note: null })).toBe(false);
+    fireEvent.click(screen.getByRole("button", { name: /^Build graph$/ }));
+    const build = screen.getByRole("region", { name: "Bazel build graph" });
+    expect(build.getAttribute("data-file-focus")).toBe("core/naïve.ts");
+    fireEvent.click(within(screen.getByRole("navigation", { name: "Document tabs" })).getByTitle("core/files.ts"));
+    await waitFor(() => expect(build.getAttribute("data-file-focus")).toBe("core/files.ts"));
+    expect(within(build).getAllByRole("button", { name: /^Graph node / })).toHaveLength(selectFileBuildView(buildCapture, "core/files.ts", false).depths.size);
+    const restored = EditorView.findFromDOM(document.querySelector(".cm-editor")!)!;
+    expect(restored.state.doc.toString()).toBe("UNSAVED\none\ntwo\nthree\n");
+    expect(restored.state.selection.main.anchor).toBe(4);
+    fireEvent.click(screen.getByRole("button", { name: "Open file core/other.ts" }));
+    await waitFor(() => expect(build.getAttribute("data-file-focus")).toBe("core/other.ts"));
+    expect(within(build).queryAllByRole("button", { name: /^Graph node / })).toHaveLength(0);
     expect(request.mock.calls.some(([input]) => input.type === "file.write" || input.type === "agent.launch")).toBe(false);
   });
 });

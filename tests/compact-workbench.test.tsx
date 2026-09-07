@@ -83,10 +83,11 @@ describe("compact workbench presentation boundaries", () => {
     expect(selectedPanel()).toBe("none");
     expect(work.getAttribute("aria-expanded")).toBe("false");
     expect(information.getAttribute("aria-expanded")).toBe("false");
-    const activity = screen.getByLabelText("Build jobs and recent activity");
-    expect(activity.tabIndex).toBe(0);
-    activity.focus();
-    expect(document.activeElement).toBe(activity);
+    for (const instrument of [screen.getByRole("region", { name: "Build jobs" }), screen.getByRole("region", { name: "Recent activity" })]) {
+      expect(instrument.tabIndex).toBe(0);
+      instrument.focus();
+      expect(document.activeElement).toBe(instrument);
+    }
     work.focus();
     expect(document.activeElement).toBe(work);
     toggle("work");
@@ -171,10 +172,11 @@ describe("compact workbench presentation boundaries", () => {
     const slider = screen.getByRole("slider", { name: "Run pane height" }) as HTMLInputElement;
     const output = screen.getByLabelText("Agent output");
     const heading = run.querySelector<HTMLElement>(".agent-pane-header strong")!;
-    const activity = screen.getByLabelText("Build and activity summary");
+    const activity = screen.getByRole("region", { name: "Recent activity" });
+    const jobs = screen.getByRole("region", { name: "Build jobs" });
     // Bounded scrolling regions and overflowed headings must remain native
     // keyboard focus targets. Actual scroll geometry is a virtual-X11 gate.
-    for (const target of [output, heading, activity]) {
+    for (const target of [output, heading, jobs, activity]) {
       expect(target.tabIndex).toBe(0);
       target.focus();
       expect(document.activeElement).toBe(target);

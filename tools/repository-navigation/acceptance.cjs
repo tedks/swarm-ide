@@ -61,7 +61,9 @@ async function main() {
     wc.sendInputEvent({ type: "keyUp", keyCode, modifiers });
   };
   const fill = async (selector, value) => {
-    await focus(selector); key("A", ["control"]);
+    await focus(selector);
+    await until(() => run((s) => document.activeElement === document.querySelector(s), selector), "visible field focused");
+    key("A", ["control"]);
     await until(() => run((s) => { const input = document.querySelector(s); return input.selectionStart === 0 && input.selectionEnd === input.value.length; }, selector), "native select-all");
     await wc.insertText(value);
     await until(() => run((s, v) => document.querySelector(s).value === v, selector, value), "exact native field value");
@@ -76,6 +78,7 @@ async function main() {
   const paint = () => run(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve(true)))));
   const screenshot = async (name) => { await paint(); await fs.writeFile(path.join(evidence, name), (await wc.capturePage()).toPNG()); };
   const openPath = async (value) => {
+    if (!await run(() => document.querySelector(".repository-options").open)) await click(".repository-options > summary");
     if (!await run(() => document.querySelector(".repository-open-path").open)) await click(".repository-open-path summary");
     await fill(label("Open repository path"), value); await click(".repository-open-path button[type='submit']");
   };
@@ -128,14 +131,21 @@ async function main() {
     stage = "pan-independent-cameras";
     // Deliberately independent cameras. Every pointer gesture is completed.
     for (const topology of ["repo", "service"]) {
+      let previous, stableAt = Date.now();
+      await until(async () => { const value = await viewport(topology); if (value !== previous) { previous = value; stableAt = Date.now(); } return Date.now() - stableAt >= 300; }, "initial camera settled");
       const before = await viewport(topology);
-      const point = await run((id) => { const rect = document.querySelector(`[data-topology='${id}'] .react-flow__pane`).getBoundingClientRect();
-        return { x: Math.round(rect.x + rect.width * .65), y: Math.round(rect.y + rect.height * .65) }; }, topology);
+      const point = await run((id) => {
+        const pane = document.querySelector(`[data-topology='${id}'] .react-flow__pane`), rect = pane.getBoundingClientRect();
+        for (const fy of [.02, .98, .05, .95, .2, .8, .5]) for (const fx of [.02, .98, .05, .95, .2, .8, .5]) {
+          const x = Math.round(rect.x + rect.width * fx), y = Math.round(rect.y + rect.height * fy);
+          if (document.elementFromPoint(x, y) === pane) return { x, y };
+        }
+        throw new Error(`No visible blank ${id} pane point`);
+      }, topology);
       wc.sendInputEvent({ type: "mouseMove", ...point });
       wc.sendInputEvent({ type: "mouseDown", ...point, button: "left", clickCount: 1 });
       wc.sendInputEvent({ type: "mouseMove", x: point.x + 31, y: point.y + 19, movementX: 31, movementY: 19 });
       wc.sendInputEvent({ type: "mouseUp", x: point.x + 31, y: point.y + 19, button: "left", clickCount: 1 });
-      wc.sendInputEvent({ type: "mouseWheel", ...point, deltaY: -47, deltaX: 0 });
       await until(async () => await viewport(topology) !== before, `deliberate ${topology} camera`);
     }
     stage = "dirty-source-and-draft";
@@ -224,6 +234,7 @@ async function main() {
       assert.equal(observe(await snapshot()).observationId, captureId);
       const offPage = observe(await snapshot()).entries[0].path;
       await click(label("Previous directory page")); await until(async () => observe(await snapshot()).page === 0, "ordinary previous page");
+      if (!await run(() => document.querySelector(".repository-options").open)) await click(".repository-options > summary");
       await fill(label("Filter captured directory"), "no-such-captured-name"); key("Enter");
       await until(async () => observe(await snapshot()).filteredCount === 0, "captured-only filter");
       assert.equal(observe(await snapshot()).observationId, captureId);

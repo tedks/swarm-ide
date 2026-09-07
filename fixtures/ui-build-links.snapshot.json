@@ -1,0 +1,2396 @@
+{
+  "repositoryId": "repository:1b0c5c72452a4d288a78986a7052926f2e8169f9a5111cca39ca07a48ab15af6",
+  "revision": "1fe8f23+working",
+  "capturedAt": "2026-09-06",
+  "command": "bazel query --noimplicit_deps --notool_deps --output=graph --nograph:factored 'filter(\"^//\", deps(//...))'",
+  "links": [
+    {
+      "from": "//tools/policy:activation-test",
+      "to": "//tools/policy:probe",
+      "fromPath": "tools/policy",
+      "toPath": "tools/policy"
+    },
+    {
+      "from": "//tools/policy:activation-test",
+      "to": "//tools/policy:activation.test.sh",
+      "fromPath": "tools/policy",
+      "toPath": "tools/policy/activation.test.sh"
+    },
+    {
+      "from": "//tools:desktop-zoom-smoke",
+      "to": "//tools:dev",
+      "fromPath": "tools",
+      "toPath": "tools"
+    },
+    {
+      "from": "//tools:desktop-zoom-smoke",
+      "to": "//tools:x11-driver-source",
+      "fromPath": "tools",
+      "toPath": "tools"
+    },
+    {
+      "from": "//tools:desktop-zoom-smoke",
+      "to": "//tools:desktop-zoom-scenario.sh",
+      "fromPath": "tools",
+      "toPath": "tools/desktop-zoom-scenario.sh"
+    },
+    {
+      "from": "//tools:desktop-zoom-smoke",
+      "to": "//tools:virtual-desktop-run.sh",
+      "fromPath": "tools",
+      "toPath": "tools/virtual-desktop-run.sh"
+    },
+    {
+      "from": "//tools:desktop-zoom-smoke",
+      "to": "//tools:desktop-zoom-smoke.sh",
+      "fromPath": "tools",
+      "toPath": "tools/desktop-zoom-smoke.sh"
+    },
+    {
+      "from": "//tools/ci:linux-prerequisites",
+      "to": "//tools/policy:sources",
+      "fromPath": "tools/ci",
+      "toPath": "tools/policy"
+    },
+    {
+      "from": "//tools/ci:linux-prerequisites",
+      "to": "//tools/ci:preflight.mjs",
+      "fromPath": "tools/ci",
+      "toPath": "tools/ci/preflight.mjs"
+    },
+    {
+      "from": "//tools/ci:linux-prerequisites",
+      "to": "//tools/ci:preflight.sh",
+      "fromPath": "tools/ci",
+      "toPath": "tools/ci/preflight.sh"
+    },
+    {
+      "from": "//tools/repository-navigation:packaged-navigation-test",
+      "to": "//:desktop-bundle",
+      "fromPath": "tools/repository-navigation",
+      "toPath": ""
+    },
+    {
+      "from": "//tools/repository-navigation:packaged-navigation-test",
+      "to": "//tools:x11-driver-source",
+      "fromPath": "tools/repository-navigation",
+      "toPath": "tools"
+    },
+    {
+      "from": "//tools/repository-navigation:packaged-navigation-test",
+      "to": "//tools/repository-navigation:sources",
+      "fromPath": "tools/repository-navigation",
+      "toPath": "tools/repository-navigation"
+    },
+    {
+      "from": "//tools/repository-navigation:packaged-navigation-test",
+      "to": "//tools/task-integration:sources",
+      "fromPath": "tools/repository-navigation",
+      "toPath": "tools/task-integration"
+    },
+    {
+      "from": "//tools/repository-navigation:packaged-navigation-test",
+      "to": "//tools/repository-navigation:smoke.sh",
+      "fromPath": "tools/repository-navigation",
+      "toPath": "tools/repository-navigation/smoke.sh"
+    },
+    {
+      "from": "//tools/repository-navigation:packaged-navigation-test",
+      "to": "//tools:virtual-desktop-run.sh",
+      "fromPath": "tools/repository-navigation",
+      "toPath": "tools/virtual-desktop-run.sh"
+    },
+    {
+      "from": "//tools:desktop-agent-rehearsal-smoke",
+      "to": "//tools:agent-rehearsal-bundle",
+      "fromPath": "tools",
+      "toPath": "tools"
+    },
+    {
+      "from": "//tools:desktop-agent-rehearsal-smoke",
+      "to": "//tools:agent-rehearsal-sources",
+      "fromPath": "tools",
+      "toPath": "tools"
+    },
+    {
+      "from": "//tools:desktop-agent-rehearsal-smoke",
+      "to": "//tools:x11-driver-source",
+      "fromPath": "tools",
+      "toPath": "tools"
+    },
+    {
+      "from": "//tools:desktop-agent-rehearsal-smoke",
+      "to": "//tools:virtual-desktop-run.sh",
+      "fromPath": "tools",
+      "toPath": "tools/virtual-desktop-run.sh"
+    },
+    {
+      "from": "//tools:desktop-agent-rehearsal-smoke",
+      "to": "//tools:agent-rehearsal/smoke.sh",
+      "fromPath": "tools",
+      "toPath": "tools/agent-rehearsal/smoke.sh"
+    },
+    {
+      "from": "//tools:virtual-desktop-agent-rehearsal-test",
+      "to": "//:quality_sources",
+      "fromPath": "tools",
+      "toPath": ""
+    },
+    {
+      "from": "//tools:virtual-desktop-agent-rehearsal-test",
+      "to": "//tools:agent-rehearsal-bundle",
+      "fromPath": "tools",
+      "toPath": "tools"
+    },
+    {
+      "from": "//tools:virtual-desktop-agent-rehearsal-test",
+      "to": "//tools:agent-rehearsal-sources",
+      "fromPath": "tools",
+      "toPath": "tools"
+    },
+    {
+      "from": "//tools:virtual-desktop-agent-rehearsal-test",
+      "to": "//tools:x11-driver-source",
+      "fromPath": "tools",
+      "toPath": "tools"
+    },
+    {
+      "from": "//tools:virtual-desktop-agent-rehearsal-test",
+      "to": "//tools:virtual-desktop-run.sh",
+      "fromPath": "tools",
+      "toPath": "tools/virtual-desktop-run.sh"
+    },
+    {
+      "from": "//tools:virtual-desktop-agent-rehearsal-test",
+      "to": "//tools:agent-rehearsal/smoke.sh",
+      "fromPath": "tools",
+      "toPath": "tools/agent-rehearsal/smoke.sh"
+    },
+    {
+      "from": "//tools:measure-hmr",
+      "to": "//tools:dev",
+      "fromPath": "tools",
+      "toPath": "tools"
+    },
+    {
+      "from": "//tools:measure-hmr",
+      "to": "//tools:x11-driver-source",
+      "fromPath": "tools",
+      "toPath": "tools"
+    },
+    {
+      "from": "//tools:measure-hmr",
+      "to": "//tools:hmr-scenario.sh",
+      "fromPath": "tools",
+      "toPath": "tools/hmr-scenario.sh"
+    },
+    {
+      "from": "//tools:measure-hmr",
+      "to": "//tools:virtual-desktop-run.sh",
+      "fromPath": "tools",
+      "toPath": "tools/virtual-desktop-run.sh"
+    },
+    {
+      "from": "//tools:measure-hmr",
+      "to": "//tools:measure-hmr.sh",
+      "fromPath": "tools",
+      "toPath": "tools/measure-hmr.sh"
+    },
+    {
+      "from": "//tools/task-integration:packaged-task-test",
+      "to": "//:desktop-bundle",
+      "fromPath": "tools/task-integration",
+      "toPath": ""
+    },
+    {
+      "from": "//tools/task-integration:packaged-task-test",
+      "to": "//tools:x11-driver-source",
+      "fromPath": "tools/task-integration",
+      "toPath": "tools"
+    },
+    {
+      "from": "//tools/task-integration:packaged-task-test",
+      "to": "//tools/task-integration:sources",
+      "fromPath": "tools/task-integration",
+      "toPath": "tools/task-integration"
+    },
+    {
+      "from": "//tools/task-integration:packaged-task-test",
+      "to": "//tools/task-integration:smoke.sh",
+      "fromPath": "tools/task-integration",
+      "toPath": "tools/task-integration/smoke.sh"
+    },
+    {
+      "from": "//tools/task-integration:packaged-task-test",
+      "to": "//tools:virtual-desktop-run.sh",
+      "fromPath": "tools/task-integration",
+      "toPath": "tools/virtual-desktop-run.sh"
+    },
+    {
+      "from": "//tools:x11-driver-test",
+      "to": "//tools:x11-driver-source",
+      "fromPath": "tools",
+      "toPath": "tools"
+    },
+    {
+      "from": "//tools:x11-driver-test",
+      "to": "//tools:x11-driver.test.sh",
+      "fromPath": "tools",
+      "toPath": "tools/x11-driver.test.sh"
+    },
+    {
+      "from": "//examples/checkout-world/services/fraudcheck:fraudcheck_sources",
+      "to": "//examples/checkout-world/services/fraudcheck:fraudcheck.proto",
+      "fromPath": "examples/checkout-world/services/fraudcheck",
+      "toPath": "examples/checkout-world/services/fraudcheck/fraudcheck.proto"
+    },
+    {
+      "from": "//examples/checkout-world/services/fraudcheck:fraudcheck_sources",
+      "to": "//examples/checkout-world/services/fraudcheck:fraudcheck.ts",
+      "fromPath": "examples/checkout-world/services/fraudcheck",
+      "toPath": "examples/checkout-world/services/fraudcheck/fraudcheck.ts"
+    },
+    {
+      "from": "//tools/policy:runtime-pinning-test",
+      "to": "//tools/policy:sources",
+      "fromPath": "tools/policy",
+      "toPath": "tools/policy"
+    },
+    {
+      "from": "//tools/policy:runtime-pinning-test",
+      "to": "//tools/policy:runtime.test.sh",
+      "fromPath": "tools/policy",
+      "toPath": "tools/policy/runtime.test.sh"
+    },
+    {
+      "from": "//tools/ci:preflight-test",
+      "to": "//tools/policy:sources",
+      "fromPath": "tools/ci",
+      "toPath": "tools/policy"
+    },
+    {
+      "from": "//tools/ci:preflight-test",
+      "to": "//tools/ci:preflight.mjs",
+      "fromPath": "tools/ci",
+      "toPath": "tools/ci/preflight.mjs"
+    },
+    {
+      "from": "//tools/ci:preflight-test",
+      "to": "//tools/ci:preflight.checks.mjs",
+      "fromPath": "tools/ci",
+      "toPath": "tools/ci/preflight.checks.mjs"
+    },
+    {
+      "from": "//tools/ci:preflight-test",
+      "to": "//tools/ci:preflight.sh",
+      "fromPath": "tools/ci",
+      "toPath": "tools/ci/preflight.sh"
+    },
+    {
+      "from": "//tools/ci:preflight-test",
+      "to": "//tools/ci:preflight.test.sh",
+      "fromPath": "tools/ci",
+      "toPath": "tools/ci/preflight.test.sh"
+    },
+    {
+      "from": "//tools:virtual-desktop-supervisor-test",
+      "to": "//tools:x11-driver-source",
+      "fromPath": "tools",
+      "toPath": "tools"
+    },
+    {
+      "from": "//tools:virtual-desktop-supervisor-test",
+      "to": "//tools:virtual-desktop-run.sh",
+      "fromPath": "tools",
+      "toPath": "tools/virtual-desktop-run.sh"
+    },
+    {
+      "from": "//tools:virtual-desktop-supervisor-test",
+      "to": "//tools:virtual-desktop-supervisor.test.sh",
+      "fromPath": "tools",
+      "toPath": "tools/virtual-desktop-supervisor.test.sh"
+    },
+    {
+      "from": "//tools/repository-navigation:smoke",
+      "to": "//:desktop-bundle",
+      "fromPath": "tools/repository-navigation",
+      "toPath": ""
+    },
+    {
+      "from": "//tools/repository-navigation:smoke",
+      "to": "//tools:x11-driver-source",
+      "fromPath": "tools/repository-navigation",
+      "toPath": "tools"
+    },
+    {
+      "from": "//tools/repository-navigation:smoke",
+      "to": "//tools/repository-navigation:sources",
+      "fromPath": "tools/repository-navigation",
+      "toPath": "tools/repository-navigation"
+    },
+    {
+      "from": "//tools/repository-navigation:smoke",
+      "to": "//tools/task-integration:sources",
+      "fromPath": "tools/repository-navigation",
+      "toPath": "tools/task-integration"
+    },
+    {
+      "from": "//tools/repository-navigation:smoke",
+      "to": "//tools/repository-navigation:smoke.sh",
+      "fromPath": "tools/repository-navigation",
+      "toPath": "tools/repository-navigation/smoke.sh"
+    },
+    {
+      "from": "//tools/repository-navigation:smoke",
+      "to": "//tools:virtual-desktop-run.sh",
+      "fromPath": "tools/repository-navigation",
+      "toPath": "tools/virtual-desktop-run.sh"
+    },
+    {
+      "from": "//tools:virtual-desktop-agent-test",
+      "to": "//:quality_sources",
+      "fromPath": "tools",
+      "toPath": ""
+    },
+    {
+      "from": "//tools:virtual-desktop-agent-test",
+      "to": "//tools:agent-journey-sources",
+      "fromPath": "tools",
+      "toPath": "tools"
+    },
+    {
+      "from": "//tools:virtual-desktop-agent-test",
+      "to": "//tools:x11-driver-source",
+      "fromPath": "tools",
+      "toPath": "tools"
+    },
+    {
+      "from": "//tools:virtual-desktop-agent-test",
+      "to": "//tools:virtual-desktop-run.sh",
+      "fromPath": "tools",
+      "toPath": "tools/virtual-desktop-run.sh"
+    },
+    {
+      "from": "//tools:virtual-desktop-agent-test",
+      "to": "//tools:desktop-agent-smoke.sh",
+      "fromPath": "tools",
+      "toPath": "tools/desktop-agent-smoke.sh"
+    },
+    {
+      "from": "//tools:build-agent-rehearsal",
+      "to": "//tools:agent-rehearsal-sources",
+      "fromPath": "tools",
+      "toPath": "tools"
+    },
+    {
+      "from": "//tools:build-agent-rehearsal",
+      "to": "//tools:agent-rehearsal/build.sh",
+      "fromPath": "tools",
+      "toPath": "tools/agent-rehearsal/build.sh"
+    },
+    {
+      "from": "//tools/policy:plugin-activation-test",
+      "to": "//tools/policy:probe",
+      "fromPath": "tools/policy",
+      "toPath": "tools/policy"
+    },
+    {
+      "from": "//tools/policy:plugin-activation-test",
+      "to": "//tools/policy:plugin-activation.test.sh",
+      "fromPath": "tools/policy",
+      "toPath": "tools/policy/plugin-activation.test.sh"
+    },
+    {
+      "from": "//:dev",
+      "to": "//tools:dev",
+      "fromPath": "",
+      "toPath": "tools"
+    },
+    {
+      "from": "//tools:agent-rehearsal",
+      "to": "//tools:agent-rehearsal-bundle",
+      "fromPath": "tools",
+      "toPath": "tools"
+    },
+    {
+      "from": "//tools:agent-rehearsal",
+      "to": "//tools:agent-rehearsal-sources",
+      "fromPath": "tools",
+      "toPath": "tools"
+    },
+    {
+      "from": "//tools:agent-rehearsal",
+      "to": "//tools:agent-rehearsal/launch.sh",
+      "fromPath": "tools",
+      "toPath": "tools/agent-rehearsal/launch.sh"
+    },
+    {
+      "from": "//tools:hmr-scenario-test",
+      "to": "//tools:hmr-scenario.sh",
+      "fromPath": "tools",
+      "toPath": "tools/hmr-scenario.sh"
+    },
+    {
+      "from": "//tools:hmr-scenario-test",
+      "to": "//tools:hmr-scenario.test.sh",
+      "fromPath": "tools",
+      "toPath": "tools/hmr-scenario.test.sh"
+    },
+    {
+      "from": "//tools:build-app",
+      "to": "//tools:build-app.sh",
+      "fromPath": "tools",
+      "toPath": "tools/build-app.sh"
+    },
+    {
+      "from": "//tools/policy:sessionstart-test",
+      "to": "//tools/policy:probe",
+      "fromPath": "tools/policy",
+      "toPath": "tools/policy"
+    },
+    {
+      "from": "//tools/policy:sessionstart-test",
+      "to": "//tools/policy:sessionstart.test.sh",
+      "fromPath": "tools/policy",
+      "toPath": "tools/policy/sessionstart.test.sh"
+    },
+    {
+      "from": "//tools/agent-process:proof-test",
+      "to": "//:quality_sources",
+      "fromPath": "tools/agent-process",
+      "toPath": ""
+    },
+    {
+      "from": "//tools/agent-process:proof-test",
+      "to": "//tools/agent-process:proof.sh",
+      "fromPath": "tools/agent-process",
+      "toPath": "tools/agent-process/proof.sh"
+    },
+    {
+      "from": "//tools:agent-rehearsal-bundle",
+      "to": "//:quality_sources",
+      "fromPath": "tools",
+      "toPath": ""
+    },
+    {
+      "from": "//tools:agent-rehearsal-bundle",
+      "to": "//:package.json",
+      "fromPath": "tools",
+      "toPath": "package.json"
+    },
+    {
+      "from": "//tools/policy:boundary-test",
+      "to": "//tools/policy:probe",
+      "fromPath": "tools/policy",
+      "toPath": "tools/policy"
+    },
+    {
+      "from": "//tools/policy:boundary-test",
+      "to": "//tools/policy:boundary.test.sh",
+      "fromPath": "tools/policy",
+      "toPath": "tools/policy/boundary.test.sh"
+    },
+    {
+      "from": "//examples/checkout-world/services/fraudcheck:service_topology",
+      "to": "//examples/checkout-world/services/fraudcheck:fraudcheck_proto",
+      "fromPath": "examples/checkout-world/services/fraudcheck",
+      "toPath": "examples/checkout-world/services/fraudcheck"
+    },
+    {
+      "from": "//examples/checkout-world/services/fraudcheck:service_topology",
+      "to": "//examples/checkout-world/services/payments:payments_proto",
+      "fromPath": "examples/checkout-world/services/fraudcheck",
+      "toPath": "examples/checkout-world/services/payments"
+    },
+    {
+      "from": "//examples/checkout-world/services/fraudcheck:service_topology",
+      "to": "//examples/checkout-world/services/fraudcheck:fraudcheck.proto",
+      "fromPath": "examples/checkout-world/services/fraudcheck",
+      "toPath": "examples/checkout-world/services/fraudcheck/fraudcheck.proto"
+    },
+    {
+      "from": "//examples/checkout-world/services/fraudcheck:service_topology",
+      "to": "//examples/checkout-world/services/fraudcheck:fraudcheck.ts",
+      "fromPath": "examples/checkout-world/services/fraudcheck",
+      "toPath": "examples/checkout-world/services/fraudcheck/fraudcheck.ts"
+    },
+    {
+      "from": "//examples/checkout-world/services/fraudcheck:service_topology",
+      "to": "//examples/checkout-world/services/fraudcheck:service.swarm.json",
+      "fromPath": "examples/checkout-world/services/fraudcheck",
+      "toPath": "examples/checkout-world/services/fraudcheck/service.swarm.json"
+    },
+    {
+      "from": "//examples/checkout-world/services/fraudcheck:service_topology",
+      "to": "//examples/checkout-world/services/payments:payments.proto",
+      "fromPath": "examples/checkout-world/services/fraudcheck",
+      "toPath": "examples/checkout-world/services/payments/payments.proto"
+    },
+    {
+      "from": "//examples/checkout-world/services/payments:payments_proto",
+      "to": "//examples/checkout-world/services/payments:payments.proto",
+      "fromPath": "examples/checkout-world/services/payments",
+      "toPath": "examples/checkout-world/services/payments/payments.proto"
+    },
+    {
+      "from": "//examples/checkout-world/services/fraudcheck:fraudcheck_proto",
+      "to": "//examples/checkout-world/services/fraudcheck:fraudcheck.proto",
+      "fromPath": "examples/checkout-world/services/fraudcheck",
+      "toPath": "examples/checkout-world/services/fraudcheck/fraudcheck.proto"
+    },
+    {
+      "from": "//tools:desktop-agent-smoke",
+      "to": "//tools:agent-journey-sources",
+      "fromPath": "tools",
+      "toPath": "tools"
+    },
+    {
+      "from": "//tools:desktop-agent-smoke",
+      "to": "//tools:x11-driver-source",
+      "fromPath": "tools",
+      "toPath": "tools"
+    },
+    {
+      "from": "//tools:desktop-agent-smoke",
+      "to": "//tools:virtual-desktop-run.sh",
+      "fromPath": "tools",
+      "toPath": "tools/virtual-desktop-run.sh"
+    },
+    {
+      "from": "//tools:desktop-agent-smoke",
+      "to": "//tools:desktop-agent-smoke.sh",
+      "fromPath": "tools",
+      "toPath": "tools/desktop-agent-smoke.sh"
+    },
+    {
+      "from": "//tools/task-integration:smoke",
+      "to": "//:desktop-bundle",
+      "fromPath": "tools/task-integration",
+      "toPath": ""
+    },
+    {
+      "from": "//tools/task-integration:smoke",
+      "to": "//tools:x11-driver-source",
+      "fromPath": "tools/task-integration",
+      "toPath": "tools"
+    },
+    {
+      "from": "//tools/task-integration:smoke",
+      "to": "//tools/task-integration:sources",
+      "fromPath": "tools/task-integration",
+      "toPath": "tools/task-integration"
+    },
+    {
+      "from": "//tools/task-integration:smoke",
+      "to": "//tools/task-integration:smoke.sh",
+      "fromPath": "tools/task-integration",
+      "toPath": "tools/task-integration/smoke.sh"
+    },
+    {
+      "from": "//tools/task-integration:smoke",
+      "to": "//tools:virtual-desktop-run.sh",
+      "fromPath": "tools/task-integration",
+      "toPath": "tools/virtual-desktop-run.sh"
+    },
+    {
+      "from": "//tools/policy:sessionstart-boundary-test",
+      "to": "//tools/policy:probe",
+      "fromPath": "tools/policy",
+      "toPath": "tools/policy"
+    },
+    {
+      "from": "//tools/policy:sessionstart-boundary-test",
+      "to": "//tools/policy:sessionstart-boundary.test.sh",
+      "fromPath": "tools/policy",
+      "toPath": "tools/policy/sessionstart-boundary.test.sh"
+    },
+    {
+      "from": "//tools/policy:probe",
+      "to": "//tools/policy:sources",
+      "fromPath": "tools/policy",
+      "toPath": "tools/policy"
+    },
+    {
+      "from": "//tools/policy:probe",
+      "to": "//tools/policy:probe.sh",
+      "fromPath": "tools/policy",
+      "toPath": "tools/policy/probe.sh"
+    },
+    {
+      "from": "//:desktop-bundle",
+      "to": "//:quality_sources",
+      "fromPath": "",
+      "toPath": ""
+    },
+    {
+      "from": "//:desktop-bundle",
+      "to": "//:package.json",
+      "fromPath": "",
+      "toPath": "package.json"
+    },
+    {
+      "from": "//:quality",
+      "to": "//tools:quality",
+      "fromPath": "",
+      "toPath": "tools"
+    },
+    {
+      "from": "//tools:quality",
+      "to": "//:quality_sources",
+      "fromPath": "tools",
+      "toPath": ""
+    },
+    {
+      "from": "//tools:quality",
+      "to": "//tools:quality.sh",
+      "fromPath": "tools",
+      "toPath": "tools/quality.sh"
+    },
+    {
+      "from": "//:quality_sources",
+      "to": "//tools:agent-journey-sources",
+      "fromPath": "",
+      "toPath": "tools"
+    },
+    {
+      "from": "//:quality_sources",
+      "to": "//tools:agent-rehearsal-sources",
+      "fromPath": "",
+      "toPath": "tools"
+    },
+    {
+      "from": "//:quality_sources",
+      "to": "//tools:desktop-automation-sources",
+      "fromPath": "",
+      "toPath": "tools"
+    },
+    {
+      "from": "//:quality_sources",
+      "to": "//tools:dev-port-source",
+      "fromPath": "",
+      "toPath": "tools"
+    },
+    {
+      "from": "//:quality_sources",
+      "to": "//tools:electron-runtime-source",
+      "fromPath": "",
+      "toPath": "tools"
+    },
+    {
+      "from": "//:quality_sources",
+      "to": "//tools:extract-service-topology",
+      "fromPath": "",
+      "toPath": "tools"
+    },
+    {
+      "from": "//:quality_sources",
+      "to": "//tools/policy:sources",
+      "fromPath": "",
+      "toPath": "tools/policy"
+    },
+    {
+      "from": "//:quality_sources",
+      "to": "//tools/repository-navigation:sources",
+      "fromPath": "",
+      "toPath": "tools/repository-navigation"
+    },
+    {
+      "from": "//:quality_sources",
+      "to": "//tools/task-integration:sources",
+      "fromPath": "",
+      "toPath": "tools/task-integration"
+    },
+    {
+      "from": "//:quality_sources",
+      "to": "//:app/electron/core-launch.ts",
+      "fromPath": "",
+      "toPath": "app/electron/core-launch.ts"
+    },
+    {
+      "from": "//:quality_sources",
+      "to": "//:app/electron/core-supervisor.ts",
+      "fromPath": "",
+      "toPath": "app/electron/core-supervisor.ts"
+    },
+    {
+      "from": "//:quality_sources",
+      "to": "//:app/electron/main.ts",
+      "fromPath": "",
+      "toPath": "app/electron/main.ts"
+    },
+    {
+      "from": "//:quality_sources",
+      "to": "//:app/electron/menu.ts",
+      "fromPath": "",
+      "toPath": "app/electron/menu.ts"
+    },
+    {
+      "from": "//:quality_sources",
+      "to": "//:app/electron/preload.ts",
+      "fromPath": "",
+      "toPath": "app/electron/preload.ts"
+    },
+    {
+      "from": "//:quality_sources",
+      "to": "//:app/lifecycle.ts",
+      "fromPath": "",
+      "toPath": "app/lifecycle.ts"
+    },
+    {
+      "from": "//:quality_sources",
+      "to": "//:app/renderer/App.tsx",
+      "fromPath": "",
+      "toPath": "app/renderer/App.tsx"
+    },
+    {
+      "from": "//:quality_sources",
+      "to": "//:app/renderer/EditorPane.tsx",
+      "fromPath": "",
+      "toPath": "app/renderer/EditorPane.tsx"
+    },
+    {
+      "from": "//:quality_sources",
+      "to": "//:app/renderer/GraphPane.tsx",
+      "fromPath": "",
+      "toPath": "app/renderer/GraphPane.tsx"
+    },
+    {
+      "from": "//:quality_sources",
+      "to": "//:app/renderer/WorkbenchSidebar.tsx",
+      "fromPath": "",
+      "toPath": "app/renderer/WorkbenchSidebar.tsx"
+    },
+    {
+      "from": "//:quality_sources",
+      "to": "//:app/renderer/agents/AgentDock.tsx",
+      "fromPath": "",
+      "toPath": "app/renderer/agents/AgentDock.tsx"
+    },
+    {
+      "from": "//:quality_sources",
+      "to": "//:app/renderer/agents/AgentReloadGuard.tsx",
+      "fromPath": "",
+      "toPath": "app/renderer/agents/AgentReloadGuard.tsx"
+    },
+    {
+      "from": "//:quality_sources",
+      "to": "//:app/renderer/agents/LaunchContextView.tsx",
+      "fromPath": "",
+      "toPath": "app/renderer/agents/LaunchContextView.tsx"
+    },
+    {
+      "from": "//:quality_sources",
+      "to": "//:app/renderer/agents/LaunchDraft.tsx",
+      "fromPath": "",
+      "toPath": "app/renderer/agents/LaunchDraft.tsx"
+    },
+    {
+      "from": "//:quality_sources",
+      "to": "//:app/renderer/agents/LiveRunPane.tsx",
+      "fromPath": "",
+      "toPath": "app/renderer/agents/LiveRunPane.tsx"
+    },
+    {
+      "from": "//:quality_sources",
+      "to": "//:app/renderer/agents/LiveRunRail.tsx",
+      "fromPath": "",
+      "toPath": "app/renderer/agents/LiveRunRail.tsx"
+    },
+    {
+      "from": "//:quality_sources",
+      "to": "//:app/renderer/agents/PreparedLaunchDraft.tsx",
+      "fromPath": "",
+      "toPath": "app/renderer/agents/PreparedLaunchDraft.tsx"
+    },
+    {
+      "from": "//:quality_sources",
+      "to": "//:app/renderer/agents/RunPane.tsx",
+      "fromPath": "",
+      "toPath": "app/renderer/agents/RunPane.tsx"
+    },
+    {
+      "from": "//:quality_sources",
+      "to": "//:app/renderer/agents/RunRail.tsx",
+      "fromPath": "",
+      "toPath": "app/renderer/agents/RunRail.tsx"
+    },
+    {
+      "from": "//:quality_sources",
+      "to": "//:app/renderer/agents/agent-dock.css",
+      "fromPath": "",
+      "toPath": "app/renderer/agents/agent-dock.css"
+    },
+    {
+      "from": "//:quality_sources",
+      "to": "//:app/renderer/agents/agents.css",
+      "fromPath": "",
+      "toPath": "app/renderer/agents/agents.css"
+    },
+    {
+      "from": "//:quality_sources",
+      "to": "//:app/renderer/agents/bridge-client.ts",
+      "fromPath": "",
+      "toPath": "app/renderer/agents/bridge-client.ts"
+    },
+    {
+      "from": "//:quality_sources",
+      "to": "//:app/renderer/agents/client-memory.ts",
+      "fromPath": "",
+      "toPath": "app/renderer/agents/client-memory.ts"
+    },
+    {
+      "from": "//:quality_sources",
+      "to": "//:app/renderer/agents/client.ts",
+      "fromPath": "",
+      "toPath": "app/renderer/agents/client.ts"
+    },
+    {
+      "from": "//:quality_sources",
+      "to": "//:app/renderer/agents/live-state.ts",
+      "fromPath": "",
+      "toPath": "app/renderer/agents/live-state.ts"
+    },
+    {
+      "from": "//:quality_sources",
+      "to": "//:app/renderer/agents/state.ts",
+      "fromPath": "",
+      "toPath": "app/renderer/agents/state.ts"
+    },
+    {
+      "from": "//:quality_sources",
+      "to": "//:app/renderer/agents/use-agent-workbench.ts",
+      "fromPath": "",
+      "toPath": "app/renderer/agents/use-agent-workbench.ts"
+    },
+    {
+      "from": "//:quality_sources",
+      "to": "//:app/renderer/global.d.ts",
+      "fromPath": "",
+      "toPath": "app/renderer/global.d.ts"
+    },
+    {
+      "from": "//:quality_sources",
+      "to": "//:app/renderer/graph-adapter.ts",
+      "fromPath": "",
+      "toPath": "app/renderer/graph-adapter.ts"
+    },
+    {
+      "from": "//:quality_sources",
+      "to": "//:app/renderer/hmr-probe.css",
+      "fromPath": "",
+      "toPath": "app/renderer/hmr-probe.css"
+    },
+    {
+      "from": "//:quality_sources",
+      "to": "//:app/renderer/hot-memory.ts",
+      "fromPath": "",
+      "toPath": "app/renderer/hot-memory.ts"
+    },
+    {
+      "from": "//:quality_sources",
+      "to": "//:app/renderer/main.tsx",
+      "fromPath": "",
+      "toPath": "app/renderer/main.tsx"
+    },
+    {
+      "from": "//:quality_sources",
+      "to": "//:app/renderer/recovery.ts",
+      "fromPath": "",
+      "toPath": "app/renderer/recovery.ts"
+    },
+    {
+      "from": "//:quality_sources",
+      "to": "//:app/renderer/repository/AgentSprites.tsx",
+      "fromPath": "",
+      "toPath": "app/renderer/repository/AgentSprites.tsx"
+    },
+    {
+      "from": "//:quality_sources",
+      "to": "//:app/renderer/repository/RepositoryNavigation.tsx",
+      "fromPath": "",
+      "toPath": "app/renderer/repository/RepositoryNavigation.tsx"
+    },
+    {
+      "from": "//:quality_sources",
+      "to": "//:app/renderer/repository/camera.ts",
+      "fromPath": "",
+      "toPath": "app/renderer/repository/camera.ts"
+    },
+    {
+      "from": "//:quality_sources",
+      "to": "//:app/renderer/repository/layers.ts",
+      "fromPath": "",
+      "toPath": "app/renderer/repository/layers.ts"
+    },
+    {
+      "from": "//:quality_sources",
+      "to": "//:app/renderer/repository/map.ts",
+      "fromPath": "",
+      "toPath": "app/renderer/repository/map.ts"
+    },
+    {
+      "from": "//:quality_sources",
+      "to": "//:app/renderer/repository/navigation.ts",
+      "fromPath": "",
+      "toPath": "app/renderer/repository/navigation.ts"
+    },
+    {
+      "from": "//:quality_sources",
+      "to": "//:app/renderer/repository/presentation.ts",
+      "fromPath": "",
+      "toPath": "app/renderer/repository/presentation.ts"
+    },
+    {
+      "from": "//:quality_sources",
+      "to": "//:app/renderer/repository/repository.css",
+      "fromPath": "",
+      "toPath": "app/renderer/repository/repository.css"
+    },
+    {
+      "from": "//:quality_sources",
+      "to": "//:app/renderer/repository/tree.ts",
+      "fromPath": "",
+      "toPath": "app/renderer/repository/tree.ts"
+    },
+    {
+      "from": "//:quality_sources",
+      "to": "//:app/renderer/sidebar.css",
+      "fromPath": "",
+      "toPath": "app/renderer/sidebar.css"
+    },
+    {
+      "from": "//:quality_sources",
+      "to": "//:app/renderer/source-diff.ts",
+      "fromPath": "",
+      "toPath": "app/renderer/source-diff.ts"
+    },
+    {
+      "from": "//:quality_sources",
+      "to": "//:app/renderer/startup-topology.ts",
+      "fromPath": "",
+      "toPath": "app/renderer/startup-topology.ts"
+    },
+    {
+      "from": "//:quality_sources",
+      "to": "//:app/renderer/state.ts",
+      "fromPath": "",
+      "toPath": "app/renderer/state.ts"
+    },
+    {
+      "from": "//:quality_sources",
+      "to": "//:app/renderer/styles.css",
+      "fromPath": "",
+      "toPath": "app/renderer/styles.css"
+    },
+    {
+      "from": "//:quality_sources",
+      "to": "//:app/renderer/tasks/TaskDetail.tsx",
+      "fromPath": "",
+      "toPath": "app/renderer/tasks/TaskDetail.tsx"
+    },
+    {
+      "from": "//:quality_sources",
+      "to": "//:app/renderer/tasks/TaskPanel.tsx",
+      "fromPath": "",
+      "toPath": "app/renderer/tasks/TaskPanel.tsx"
+    },
+    {
+      "from": "//:quality_sources",
+      "to": "//:app/renderer/tasks/client.ts",
+      "fromPath": "",
+      "toPath": "app/renderer/tasks/client.ts"
+    },
+    {
+      "from": "//:quality_sources",
+      "to": "//:app/renderer/tasks/display.ts",
+      "fromPath": "",
+      "toPath": "app/renderer/tasks/display.ts"
+    },
+    {
+      "from": "//:quality_sources",
+      "to": "//:app/renderer/tasks/reveal.ts",
+      "fromPath": "",
+      "toPath": "app/renderer/tasks/reveal.ts"
+    },
+    {
+      "from": "//:quality_sources",
+      "to": "//:app/renderer/tasks/tasks.css",
+      "fromPath": "",
+      "toPath": "app/renderer/tasks/tasks.css"
+    },
+    {
+      "from": "//:quality_sources",
+      "to": "//:app/renderer/zoom.ts",
+      "fromPath": "",
+      "toPath": "app/renderer/zoom.ts"
+    },
+    {
+      "from": "//:quality_sources",
+      "to": "//:app/view-shell.ts",
+      "fromPath": "",
+      "toPath": "app/view-shell.ts"
+    },
+    {
+      "from": "//:quality_sources",
+      "to": "//:core/agents/adapter.ts",
+      "fromPath": "",
+      "toPath": "core/agents/adapter.ts"
+    },
+    {
+      "from": "//:quality_sources",
+      "to": "//:core/agents/codex-app-server.ts",
+      "fromPath": "",
+      "toPath": "core/agents/codex-app-server.ts"
+    },
+    {
+      "from": "//:quality_sources",
+      "to": "//:core/agents/context-provider.ts",
+      "fromPath": "",
+      "toPath": "core/agents/context-provider.ts"
+    },
+    {
+      "from": "//:quality_sources",
+      "to": "//:core/agents/context.ts",
+      "fromPath": "",
+      "toPath": "core/agents/context.ts"
+    },
+    {
+      "from": "//:quality_sources",
+      "to": "//:core/agents/file-store.ts",
+      "fromPath": "",
+      "toPath": "core/agents/file-store.ts"
+    },
+    {
+      "from": "//:quality_sources",
+      "to": "//:core/agents/jsonl.ts",
+      "fromPath": "",
+      "toPath": "core/agents/jsonl.ts"
+    },
+    {
+      "from": "//:quality_sources",
+      "to": "//:core/agents/owner-process.mjs",
+      "fromPath": "",
+      "toPath": "core/agents/owner-process.mjs"
+    },
+    {
+      "from": "//:quality_sources",
+      "to": "//:core/agents/owner.ts",
+      "fromPath": "",
+      "toPath": "core/agents/owner.ts"
+    },
+    {
+      "from": "//:quality_sources",
+      "to": "//:core/agents/policy.ts",
+      "fromPath": "",
+      "toPath": "core/agents/policy.ts"
+    },
+    {
+      "from": "//:quality_sources",
+      "to": "//:core/agents/production.ts",
+      "fromPath": "",
+      "toPath": "core/agents/production.ts"
+    },
+    {
+      "from": "//:quality_sources",
+      "to": "//:core/agents/service.ts",
+      "fromPath": "",
+      "toPath": "core/agents/service.ts"
+    },
+    {
+      "from": "//:quality_sources",
+      "to": "//:core/agents/store.ts",
+      "fromPath": "",
+      "toPath": "core/agents/store.ts"
+    },
+    {
+      "from": "//:quality_sources",
+      "to": "//:core/agents/unavailable.ts",
+      "fromPath": "",
+      "toPath": "core/agents/unavailable.ts"
+    },
+    {
+      "from": "//:quality_sources",
+      "to": "//:core/files.ts",
+      "fromPath": "",
+      "toPath": "core/files.ts"
+    },
+    {
+      "from": "//:quality_sources",
+      "to": "//:core/fingerprint.ts",
+      "fromPath": "",
+      "toPath": "core/fingerprint.ts"
+    },
+    {
+      "from": "//:quality_sources",
+      "to": "//:core/provider.ts",
+      "fromPath": "",
+      "toPath": "core/provider.ts"
+    },
+    {
+      "from": "//:quality_sources",
+      "to": "//:core/repository-boundary.ts",
+      "fromPath": "",
+      "toPath": "core/repository-boundary.ts"
+    },
+    {
+      "from": "//:quality_sources",
+      "to": "//:core/repository-registration.ts",
+      "fromPath": "",
+      "toPath": "core/repository-registration.ts"
+    },
+    {
+      "from": "//:quality_sources",
+      "to": "//:core/repository.ts",
+      "fromPath": "",
+      "toPath": "core/repository.ts"
+    },
+    {
+      "from": "//:quality_sources",
+      "to": "//:core/request-ids.ts",
+      "fromPath": "",
+      "toPath": "core/request-ids.ts"
+    },
+    {
+      "from": "//:quality_sources",
+      "to": "//:core/service-topology.ts",
+      "fromPath": "",
+      "toPath": "core/service-topology.ts"
+    },
+    {
+      "from": "//:quality_sources",
+      "to": "//:core/tasks/contracts.ts",
+      "fromPath": "",
+      "toPath": "core/tasks/contracts.ts"
+    },
+    {
+      "from": "//:quality_sources",
+      "to": "//:core/tasks/git-reader.ts",
+      "fromPath": "",
+      "toPath": "core/tasks/git-reader.ts"
+    },
+    {
+      "from": "//:quality_sources",
+      "to": "//:core/tasks/metadata-worker.ts",
+      "fromPath": "",
+      "toPath": "core/tasks/metadata-worker.ts"
+    },
+    {
+      "from": "//:quality_sources",
+      "to": "//:core/tasks/metadata.ts",
+      "fromPath": "",
+      "toPath": "core/tasks/metadata.ts"
+    },
+    {
+      "from": "//:quality_sources",
+      "to": "//:core/tasks/provider.ts",
+      "fromPath": "",
+      "toPath": "core/tasks/provider.ts"
+    },
+    {
+      "from": "//:quality_sources",
+      "to": "//:core/tasks/unavailable.ts",
+      "fromPath": "",
+      "toPath": "core/tasks/unavailable.ts"
+    },
+    {
+      "from": "//:quality_sources",
+      "to": "//:core/watchers.ts",
+      "fromPath": "",
+      "toPath": "core/watchers.ts"
+    },
+    {
+      "from": "//:quality_sources",
+      "to": "//:core/worker-runtime.ts",
+      "fromPath": "",
+      "toPath": "core/worker-runtime.ts"
+    },
+    {
+      "from": "//:quality_sources",
+      "to": "//:core/worker.ts",
+      "fromPath": "",
+      "toPath": "core/worker.ts"
+    },
+    {
+      "from": "//:quality_sources",
+      "to": "//:core/working-world-observer.ts",
+      "fromPath": "",
+      "toPath": "core/working-world-observer.ts"
+    },
+    {
+      "from": "//:quality_sources",
+      "to": "//:fixtures/agent-owned-process/composition.ts",
+      "fromPath": "",
+      "toPath": "fixtures/agent-owned-process/composition.ts"
+    },
+    {
+      "from": "//:quality_sources",
+      "to": "//:fixtures/agent-owned-process/core.ts",
+      "fromPath": "",
+      "toPath": "fixtures/agent-owned-process/core.ts"
+    },
+    {
+      "from": "//:quality_sources",
+      "to": "//:fixtures/agent-owned-process/provider.mjs",
+      "fromPath": "",
+      "toPath": "fixtures/agent-owned-process/provider.mjs"
+    },
+    {
+      "from": "//:quality_sources",
+      "to": "//:fixtures/agents.ts",
+      "fromPath": "",
+      "toPath": "fixtures/agents.ts"
+    },
+    {
+      "from": "//:quality_sources",
+      "to": "//:fixtures/tasks.ts",
+      "fromPath": "",
+      "toPath": "fixtures/tasks.ts"
+    },
+    {
+      "from": "//:quality_sources",
+      "to": "//:fixtures/world.ts",
+      "fromPath": "",
+      "toPath": "fixtures/world.ts"
+    },
+    {
+      "from": "//:quality_sources",
+      "to": "//:protocol/agents.ts",
+      "fromPath": "",
+      "toPath": "protocol/agents.ts"
+    },
+    {
+      "from": "//:quality_sources",
+      "to": "//:protocol/common.ts",
+      "fromPath": "",
+      "toPath": "protocol/common.ts"
+    },
+    {
+      "from": "//:quality_sources",
+      "to": "//:protocol/repository.ts",
+      "fromPath": "",
+      "toPath": "protocol/repository.ts"
+    },
+    {
+      "from": "//:quality_sources",
+      "to": "//:protocol/schema.ts",
+      "fromPath": "",
+      "toPath": "protocol/schema.ts"
+    },
+    {
+      "from": "//:quality_sources",
+      "to": "//:protocol/tasks.ts",
+      "fromPath": "",
+      "toPath": "protocol/tasks.ts"
+    },
+    {
+      "from": "//:quality_sources",
+      "to": "//:tests/agent-adapter.test.ts",
+      "fromPath": "",
+      "toPath": "tests/agent-adapter.test.ts"
+    },
+    {
+      "from": "//:quality_sources",
+      "to": "//:tests/agent-admission-audit.test.ts",
+      "fromPath": "",
+      "toPath": "tests/agent-admission-audit.test.ts"
+    },
+    {
+      "from": "//:quality_sources",
+      "to": "//:tests/agent-bridge.test.ts",
+      "fromPath": "",
+      "toPath": "tests/agent-bridge.test.ts"
+    },
+    {
+      "from": "//:quality_sources",
+      "to": "//:tests/agent-context.test.ts",
+      "fromPath": "",
+      "toPath": "tests/agent-context.test.ts"
+    },
+    {
+      "from": "//:quality_sources",
+      "to": "//:tests/agent-contracts.test.ts",
+      "fromPath": "",
+      "toPath": "tests/agent-contracts.test.ts"
+    },
+    {
+      "from": "//:quality_sources",
+      "to": "//:tests/agent-dock.test.tsx",
+      "fromPath": "",
+      "toPath": "tests/agent-dock.test.tsx"
+    },
+    {
+      "from": "//:quality_sources",
+      "to": "//:tests/agent-journey-boundary.test.ts",
+      "fromPath": "",
+      "toPath": "tests/agent-journey-boundary.test.ts"
+    },
+    {
+      "from": "//:quality_sources",
+      "to": "//:tests/agent-journey-service.test.ts",
+      "fromPath": "",
+      "toPath": "tests/agent-journey-service.test.ts"
+    },
+    {
+      "from": "//:quality_sources",
+      "to": "//:tests/agent-launch-profile-probe.test.ts",
+      "fromPath": "",
+      "toPath": "tests/agent-launch-profile-probe.test.ts"
+    },
+    {
+      "from": "//:quality_sources",
+      "to": "//:tests/agent-owned-process.test.ts",
+      "fromPath": "",
+      "toPath": "tests/agent-owned-process.test.ts"
+    },
+    {
+      "from": "//:quality_sources",
+      "to": "//:tests/agent-owner.test.ts",
+      "fromPath": "",
+      "toPath": "tests/agent-owner.test.ts"
+    },
+    {
+      "from": "//:quality_sources",
+      "to": "//:tests/agent-policy-activation-observer.test.ts",
+      "fromPath": "",
+      "toPath": "tests/agent-policy-activation-observer.test.ts"
+    },
+    {
+      "from": "//:quality_sources",
+      "to": "//:tests/agent-policy-activation.test.ts",
+      "fromPath": "",
+      "toPath": "tests/agent-policy-activation.test.ts"
+    },
+    {
+      "from": "//:quality_sources",
+      "to": "//:tests/agent-policy-bootstrap.test.ts",
+      "fromPath": "",
+      "toPath": "tests/agent-policy-bootstrap.test.ts"
+    },
+    {
+      "from": "//:quality_sources",
+      "to": "//:tests/agent-policy-plugin-activation.test.ts",
+      "fromPath": "",
+      "toPath": "tests/agent-policy-plugin-activation.test.ts"
+    },
+    {
+      "from": "//:quality_sources",
+      "to": "//:tests/agent-policy.test.ts",
+      "fromPath": "",
+      "toPath": "tests/agent-policy.test.ts"
+    },
+    {
+      "from": "//:quality_sources",
+      "to": "//:tests/agent-production.test.ts",
+      "fromPath": "",
+      "toPath": "tests/agent-production.test.ts"
+    },
+    {
+      "from": "//:quality_sources",
+      "to": "//:tests/agent-rehearsal-boundary.test.mjs",
+      "fromPath": "",
+      "toPath": "tests/agent-rehearsal-boundary.test.mjs"
+    },
+    {
+      "from": "//:quality_sources",
+      "to": "//:tests/agent-rehearsal-close.test.ts",
+      "fromPath": "",
+      "toPath": "tests/agent-rehearsal-close.test.ts"
+    },
+    {
+      "from": "//:quality_sources",
+      "to": "//:tests/agent-rehearsal-service.test.ts",
+      "fromPath": "",
+      "toPath": "tests/agent-rehearsal-service.test.ts"
+    },
+    {
+      "from": "//:quality_sources",
+      "to": "//:tests/agent-scenarios.test.ts",
+      "fromPath": "",
+      "toPath": "tests/agent-scenarios.test.ts"
+    },
+    {
+      "from": "//:quality_sources",
+      "to": "//:tests/agent-service.test.ts",
+      "fromPath": "",
+      "toPath": "tests/agent-service.test.ts"
+    },
+    {
+      "from": "//:quality_sources",
+      "to": "//:tests/agent-store.test.ts",
+      "fromPath": "",
+      "toPath": "tests/agent-store.test.ts"
+    },
+    {
+      "from": "//:quality_sources",
+      "to": "//:tests/agent-workbench-client.test.ts",
+      "fromPath": "",
+      "toPath": "tests/agent-workbench-client.test.ts"
+    },
+    {
+      "from": "//:quality_sources",
+      "to": "//:tests/agent-workbench-live.test.tsx",
+      "fromPath": "",
+      "toPath": "tests/agent-workbench-live.test.tsx"
+    },
+    {
+      "from": "//:quality_sources",
+      "to": "//:tests/agent-workbench-reload-client.test.ts",
+      "fromPath": "",
+      "toPath": "tests/agent-workbench-reload-client.test.ts"
+    },
+    {
+      "from": "//:quality_sources",
+      "to": "//:tests/agent-workbench-reload.test.tsx",
+      "fromPath": "",
+      "toPath": "tests/agent-workbench-reload.test.tsx"
+    },
+    {
+      "from": "//:quality_sources",
+      "to": "//:tests/agent-workbench.test.tsx",
+      "fromPath": "",
+      "toPath": "tests/agent-workbench.test.tsx"
+    },
+    {
+      "from": "//:quality_sources",
+      "to": "//:tests/compact-workbench.test.tsx",
+      "fromPath": "",
+      "toPath": "tests/compact-workbench.test.tsx"
+    },
+    {
+      "from": "//:quality_sources",
+      "to": "//:tests/contracts.test.ts",
+      "fromPath": "",
+      "toPath": "tests/contracts.test.ts"
+    },
+    {
+      "from": "//:quality_sources",
+      "to": "//:tests/core-supervisor-tasks.test.ts",
+      "fromPath": "",
+      "toPath": "tests/core-supervisor-tasks.test.ts"
+    },
+    {
+      "from": "//:quality_sources",
+      "to": "//:tests/core-supervisor.test.ts",
+      "fromPath": "",
+      "toPath": "tests/core-supervisor.test.ts"
+    },
+    {
+      "from": "//:quality_sources",
+      "to": "//:tests/desktop-topology-scenario.test.ts",
+      "fromPath": "",
+      "toPath": "tests/desktop-topology-scenario.test.ts"
+    },
+    {
+      "from": "//:quality_sources",
+      "to": "//:tests/dev-port.test.mjs",
+      "fromPath": "",
+      "toPath": "tests/dev-port.test.mjs"
+    },
+    {
+      "from": "//:quality_sources",
+      "to": "//:tests/dev-update.test.mjs",
+      "fromPath": "",
+      "toPath": "tests/dev-update.test.mjs"
+    },
+    {
+      "from": "//:quality_sources",
+      "to": "//:tests/directory-map.test.ts",
+      "fromPath": "",
+      "toPath": "tests/directory-map.test.ts"
+    },
+    {
+      "from": "//:quality_sources",
+      "to": "//:tests/electron-runtime.test.mjs",
+      "fromPath": "",
+      "toPath": "tests/electron-runtime.test.mjs"
+    },
+    {
+      "from": "//:quality_sources",
+      "to": "//:tests/extractor.test.mjs",
+      "fromPath": "",
+      "toPath": "tests/extractor.test.mjs"
+    },
+    {
+      "from": "//:quality_sources",
+      "to": "//:tests/files.test.ts",
+      "fromPath": "",
+      "toPath": "tests/files.test.ts"
+    },
+    {
+      "from": "//:quality_sources",
+      "to": "//:tests/fingerprint.test.ts",
+      "fromPath": "",
+      "toPath": "tests/fingerprint.test.ts"
+    },
+    {
+      "from": "//:quality_sources",
+      "to": "//:tests/graph-adapter.test.ts",
+      "fromPath": "",
+      "toPath": "tests/graph-adapter.test.ts"
+    },
+    {
+      "from": "//:quality_sources",
+      "to": "//:tests/graph-camera.test.tsx",
+      "fromPath": "",
+      "toPath": "tests/graph-camera.test.tsx"
+    },
+    {
+      "from": "//:quality_sources",
+      "to": "//:tests/graph-pane.test.tsx",
+      "fromPath": "",
+      "toPath": "tests/graph-pane.test.tsx"
+    },
+    {
+      "from": "//:quality_sources",
+      "to": "//:tests/menu.test.ts",
+      "fromPath": "",
+      "toPath": "tests/menu.test.ts"
+    },
+    {
+      "from": "//:quality_sources",
+      "to": "//:tests/policy-sessionstart-boundary.test.ts",
+      "fromPath": "",
+      "toPath": "tests/policy-sessionstart-boundary.test.ts"
+    },
+    {
+      "from": "//:quality_sources",
+      "to": "//:tests/policy-sessionstart-contract.test.ts",
+      "fromPath": "",
+      "toPath": "tests/policy-sessionstart-contract.test.ts"
+    },
+    {
+      "from": "//:quality_sources",
+      "to": "//:tests/policy-sessionstart-response.test.ts",
+      "fromPath": "",
+      "toPath": "tests/policy-sessionstart-response.test.ts"
+    },
+    {
+      "from": "//:quality_sources",
+      "to": "//:tests/production-boundary.test.ts",
+      "fromPath": "",
+      "toPath": "tests/production-boundary.test.ts"
+    },
+    {
+      "from": "//:quality_sources",
+      "to": "//:tests/provider-boundary.test.ts",
+      "fromPath": "",
+      "toPath": "tests/provider-boundary.test.ts"
+    },
+    {
+      "from": "//:quality_sources",
+      "to": "//:tests/provider-build-command.test.ts",
+      "fromPath": "",
+      "toPath": "tests/provider-build-command.test.ts"
+    },
+    {
+      "from": "//:quality_sources",
+      "to": "//:tests/provider.test.ts",
+      "fromPath": "",
+      "toPath": "tests/provider.test.ts"
+    },
+    {
+      "from": "//:quality_sources",
+      "to": "//:tests/reconciliation.test.ts",
+      "fromPath": "",
+      "toPath": "tests/reconciliation.test.ts"
+    },
+    {
+      "from": "//:quality_sources",
+      "to": "//:tests/recovery.test.ts",
+      "fromPath": "",
+      "toPath": "tests/recovery.test.ts"
+    },
+    {
+      "from": "//:quality_sources",
+      "to": "//:tests/repository-boundary.test.ts",
+      "fromPath": "",
+      "toPath": "tests/repository-boundary.test.ts"
+    },
+    {
+      "from": "//:quality_sources",
+      "to": "//:tests/repository-contract.test.ts",
+      "fromPath": "",
+      "toPath": "tests/repository-contract.test.ts"
+    },
+    {
+      "from": "//:quality_sources",
+      "to": "//:tests/repository-navigation-boundary.test.ts",
+      "fromPath": "",
+      "toPath": "tests/repository-navigation-boundary.test.ts"
+    },
+    {
+      "from": "//:quality_sources",
+      "to": "//:tests/repository-provider.test.ts",
+      "fromPath": "",
+      "toPath": "tests/repository-provider.test.ts"
+    },
+    {
+      "from": "//:quality_sources",
+      "to": "//:tests/repository-reader.test.ts",
+      "fromPath": "",
+      "toPath": "tests/repository-reader.test.ts"
+    },
+    {
+      "from": "//:quality_sources",
+      "to": "//:tests/repository-tree.test.tsx",
+      "fromPath": "",
+      "toPath": "tests/repository-tree.test.tsx"
+    },
+    {
+      "from": "//:quality_sources",
+      "to": "//:tests/repository-ui.test.tsx",
+      "fromPath": "",
+      "toPath": "tests/repository-ui.test.tsx"
+    },
+    {
+      "from": "//:quality_sources",
+      "to": "//:tests/request-ids.test.ts",
+      "fromPath": "",
+      "toPath": "tests/request-ids.test.ts"
+    },
+    {
+      "from": "//:quality_sources",
+      "to": "//:tests/source-diff.test.ts",
+      "fromPath": "",
+      "toPath": "tests/source-diff.test.ts"
+    },
+    {
+      "from": "//:quality_sources",
+      "to": "//:tests/startup-topology.test.tsx",
+      "fromPath": "",
+      "toPath": "tests/startup-topology.test.tsx"
+    },
+    {
+      "from": "//:quality_sources",
+      "to": "//:tests/support/agent-journey-driver.ts",
+      "fromPath": "",
+      "toPath": "tests/support/agent-journey-driver.ts"
+    },
+    {
+      "from": "//:quality_sources",
+      "to": "//:tests/support/agent-journey-launch.ts",
+      "fromPath": "",
+      "toPath": "tests/support/agent-journey-launch.ts"
+    },
+    {
+      "from": "//:quality_sources",
+      "to": "//:tests/support/agent-journey-main.ts",
+      "fromPath": "",
+      "toPath": "tests/support/agent-journey-main.ts"
+    },
+    {
+      "from": "//:quality_sources",
+      "to": "//:tests/support/agent-journey-service.ts",
+      "fromPath": "",
+      "toPath": "tests/support/agent-journey-service.ts"
+    },
+    {
+      "from": "//:quality_sources",
+      "to": "//:tests/support/agent-journey-worker.ts",
+      "fromPath": "",
+      "toPath": "tests/support/agent-journey-worker.ts"
+    },
+    {
+      "from": "//:quality_sources",
+      "to": "//:tests/support/agent-rehearsal-close.ts",
+      "fromPath": "",
+      "toPath": "tests/support/agent-rehearsal-close.ts"
+    },
+    {
+      "from": "//:quality_sources",
+      "to": "//:tests/support/agent-rehearsal-driver.ts",
+      "fromPath": "",
+      "toPath": "tests/support/agent-rehearsal-driver.ts"
+    },
+    {
+      "from": "//:quality_sources",
+      "to": "//:tests/support/agent-rehearsal-launch.ts",
+      "fromPath": "",
+      "toPath": "tests/support/agent-rehearsal-launch.ts"
+    },
+    {
+      "from": "//:quality_sources",
+      "to": "//:tests/support/agent-rehearsal-main.ts",
+      "fromPath": "",
+      "toPath": "tests/support/agent-rehearsal-main.ts"
+    },
+    {
+      "from": "//:quality_sources",
+      "to": "//:tests/support/agent-rehearsal-service.ts",
+      "fromPath": "",
+      "toPath": "tests/support/agent-rehearsal-service.ts"
+    },
+    {
+      "from": "//:quality_sources",
+      "to": "//:tests/support/agent-rehearsal-worker.ts",
+      "fromPath": "",
+      "toPath": "tests/support/agent-rehearsal-worker.ts"
+    },
+    {
+      "from": "//:quality_sources",
+      "to": "//:tests/task-bridge.test.ts",
+      "fromPath": "",
+      "toPath": "tests/task-bridge.test.ts"
+    },
+    {
+      "from": "//:quality_sources",
+      "to": "//:tests/task-client.test.ts",
+      "fromPath": "",
+      "toPath": "tests/task-client.test.ts"
+    },
+    {
+      "from": "//:quality_sources",
+      "to": "//:tests/task-contract.test.ts",
+      "fromPath": "",
+      "toPath": "tests/task-contract.test.ts"
+    },
+    {
+      "from": "//:quality_sources",
+      "to": "//:tests/task-ditz-cli.test.ts",
+      "fromPath": "",
+      "toPath": "tests/task-ditz-cli.test.ts"
+    },
+    {
+      "from": "//:quality_sources",
+      "to": "//:tests/task-editor-command-regression.test.mjs",
+      "fromPath": "",
+      "toPath": "tests/task-editor-command-regression.test.mjs"
+    },
+    {
+      "from": "//:quality_sources",
+      "to": "//:tests/task-metadata.test.ts",
+      "fromPath": "",
+      "toPath": "tests/task-metadata.test.ts"
+    },
+    {
+      "from": "//:quality_sources",
+      "to": "//:tests/task-provider.test.ts",
+      "fromPath": "",
+      "toPath": "tests/task-provider.test.ts"
+    },
+    {
+      "from": "//:quality_sources",
+      "to": "//:tests/task-reader-git.test.ts",
+      "fromPath": "",
+      "toPath": "tests/task-reader-git.test.ts"
+    },
+    {
+      "from": "//:quality_sources",
+      "to": "//:tests/task-reveal.test.tsx",
+      "fromPath": "",
+      "toPath": "tests/task-reveal.test.tsx"
+    },
+    {
+      "from": "//:quality_sources",
+      "to": "//:tests/task-surface.test.tsx",
+      "fromPath": "",
+      "toPath": "tests/task-surface.test.tsx"
+    },
+    {
+      "from": "//:quality_sources",
+      "to": "//:tests/task-workbench.test.tsx",
+      "fromPath": "",
+      "toPath": "tests/task-workbench.test.tsx"
+    },
+    {
+      "from": "//:quality_sources",
+      "to": "//:tests/task-yaml-api.test.ts",
+      "fromPath": "",
+      "toPath": "tests/task-yaml-api.test.ts"
+    },
+    {
+      "from": "//:quality_sources",
+      "to": "//:tests/vite-config.test.ts",
+      "fromPath": "",
+      "toPath": "tests/vite-config.test.ts"
+    },
+    {
+      "from": "//:quality_sources",
+      "to": "//:tests/watchers.test.ts",
+      "fromPath": "",
+      "toPath": "tests/watchers.test.ts"
+    },
+    {
+      "from": "//:quality_sources",
+      "to": "//:tests/workbench.test.tsx",
+      "fromPath": "",
+      "toPath": "tests/workbench.test.tsx"
+    },
+    {
+      "from": "//:quality_sources",
+      "to": "//:tests/working-world-observer.test.ts",
+      "fromPath": "",
+      "toPath": "tests/working-world-observer.test.ts"
+    },
+    {
+      "from": "//:quality_sources",
+      "to": "//:tests/zoom.test.ts",
+      "fromPath": "",
+      "toPath": "tests/zoom.test.ts"
+    },
+    {
+      "from": "//:quality_sources",
+      "to": "//:index.html",
+      "fromPath": "",
+      "toPath": "index.html"
+    },
+    {
+      "from": "//:quality_sources",
+      "to": "//:package.json",
+      "fromPath": "",
+      "toPath": "package.json"
+    },
+    {
+      "from": "//:quality_sources",
+      "to": "//:pnpm-lock.yaml",
+      "fromPath": "",
+      "toPath": "pnpm-lock.yaml"
+    },
+    {
+      "from": "//:quality_sources",
+      "to": "//:pnpm-workspace.yaml",
+      "fromPath": "",
+      "toPath": "pnpm-workspace.yaml"
+    },
+    {
+      "from": "//:quality_sources",
+      "to": "//:tsconfig.json",
+      "fromPath": "",
+      "toPath": "tsconfig.json"
+    },
+    {
+      "from": "//:quality_sources",
+      "to": "//:tsconfig.node.json",
+      "fromPath": "",
+      "toPath": "tsconfig.node.json"
+    },
+    {
+      "from": "//:quality_sources",
+      "to": "//:vite.config.mts",
+      "fromPath": "",
+      "toPath": "vite.config.mts"
+    },
+    {
+      "from": "//:quality_sources",
+      "to": "//:vitest.config.mts",
+      "fromPath": "",
+      "toPath": "vitest.config.mts"
+    },
+    {
+      "from": "//tools/task-integration:sources",
+      "to": "//tools/task-integration:acceptance.cjs",
+      "fromPath": "tools/task-integration",
+      "toPath": "tools/task-integration/acceptance.cjs"
+    },
+    {
+      "from": "//tools/task-integration:sources",
+      "to": "//tools/task-integration:fixture.d.mts",
+      "fromPath": "tools/task-integration",
+      "toPath": "tools/task-integration/fixture.d.mts"
+    },
+    {
+      "from": "//tools/task-integration:sources",
+      "to": "//tools/task-integration:fixture.mjs",
+      "fromPath": "tools/task-integration",
+      "toPath": "tools/task-integration/fixture.mjs"
+    },
+    {
+      "from": "//tools/task-integration:sources",
+      "to": "//tools/task-integration:launch.mjs",
+      "fromPath": "tools/task-integration",
+      "toPath": "tools/task-integration/launch.mjs"
+    },
+    {
+      "from": "//tools/task-integration:sources",
+      "to": "//tools/task-integration:launch.sh",
+      "fromPath": "tools/task-integration",
+      "toPath": "tools/task-integration/launch.sh"
+    },
+    {
+      "from": "//tools/task-integration:sources",
+      "to": "//tools/task-integration:scenario.sh",
+      "fromPath": "tools/task-integration",
+      "toPath": "tools/task-integration/scenario.sh"
+    },
+    {
+      "from": "//tools/task-integration:sources",
+      "to": "//tools/task-integration:smoke.sh",
+      "fromPath": "tools/task-integration",
+      "toPath": "tools/task-integration/smoke.sh"
+    },
+    {
+      "from": "//tools/repository-navigation:sources",
+      "to": "//tools/repository-navigation:acceptance.cjs",
+      "fromPath": "tools/repository-navigation",
+      "toPath": "tools/repository-navigation/acceptance.cjs"
+    },
+    {
+      "from": "//tools/repository-navigation:sources",
+      "to": "//tools/repository-navigation:fixture.d.mts",
+      "fromPath": "tools/repository-navigation",
+      "toPath": "tools/repository-navigation/fixture.d.mts"
+    },
+    {
+      "from": "//tools/repository-navigation:sources",
+      "to": "//tools/repository-navigation:fixture.mjs",
+      "fromPath": "tools/repository-navigation",
+      "toPath": "tools/repository-navigation/fixture.mjs"
+    },
+    {
+      "from": "//tools/repository-navigation:sources",
+      "to": "//tools/repository-navigation:launch.mjs",
+      "fromPath": "tools/repository-navigation",
+      "toPath": "tools/repository-navigation/launch.mjs"
+    },
+    {
+      "from": "//tools/repository-navigation:sources",
+      "to": "//tools/repository-navigation:launch.sh",
+      "fromPath": "tools/repository-navigation",
+      "toPath": "tools/repository-navigation/launch.sh"
+    },
+    {
+      "from": "//tools/repository-navigation:sources",
+      "to": "//tools/repository-navigation:scenario.sh",
+      "fromPath": "tools/repository-navigation",
+      "toPath": "tools/repository-navigation/scenario.sh"
+    },
+    {
+      "from": "//tools/repository-navigation:sources",
+      "to": "//tools/repository-navigation:smoke.sh",
+      "fromPath": "tools/repository-navigation",
+      "toPath": "tools/repository-navigation/smoke.sh"
+    },
+    {
+      "from": "//tools/policy:sources",
+      "to": "//tools/policy:activation-contract.d.mts",
+      "fromPath": "tools/policy",
+      "toPath": "tools/policy/activation-contract.d.mts"
+    },
+    {
+      "from": "//tools/policy:sources",
+      "to": "//tools/policy:activation-contract.mjs",
+      "fromPath": "tools/policy",
+      "toPath": "tools/policy/activation-contract.mjs"
+    },
+    {
+      "from": "//tools/policy:sources",
+      "to": "//tools/policy:activation.d.mts",
+      "fromPath": "tools/policy",
+      "toPath": "tools/policy/activation.d.mts"
+    },
+    {
+      "from": "//tools/policy:sources",
+      "to": "//tools/policy:activation.mjs",
+      "fromPath": "tools/policy",
+      "toPath": "tools/policy/activation.mjs"
+    },
+    {
+      "from": "//tools/policy:sources",
+      "to": "//tools/policy:activation.test.sh",
+      "fromPath": "tools/policy",
+      "toPath": "tools/policy/activation.test.sh"
+    },
+    {
+      "from": "//tools/policy:sources",
+      "to": "//tools/policy:boundary.d.mts",
+      "fromPath": "tools/policy",
+      "toPath": "tools/policy/boundary.d.mts"
+    },
+    {
+      "from": "//tools/policy:sources",
+      "to": "//tools/policy:boundary.mjs",
+      "fromPath": "tools/policy",
+      "toPath": "tools/policy/boundary.mjs"
+    },
+    {
+      "from": "//tools/policy:sources",
+      "to": "//tools/policy:boundary.test.sh",
+      "fromPath": "tools/policy",
+      "toPath": "tools/policy/boundary.test.sh"
+    },
+    {
+      "from": "//tools/policy:sources",
+      "to": "//tools/policy:inner.mjs",
+      "fromPath": "tools/policy",
+      "toPath": "tools/policy/inner.mjs"
+    },
+    {
+      "from": "//tools/policy:sources",
+      "to": "//tools/policy:mcp-canary.mjs",
+      "fromPath": "tools/policy",
+      "toPath": "tools/policy/mcp-canary.mjs"
+    },
+    {
+      "from": "//tools/policy:sources",
+      "to": "//tools/policy:plugin-activation-contract.d.mts",
+      "fromPath": "tools/policy",
+      "toPath": "tools/policy/plugin-activation-contract.d.mts"
+    },
+    {
+      "from": "//tools/policy:sources",
+      "to": "//tools/policy:plugin-activation-contract.mjs",
+      "fromPath": "tools/policy",
+      "toPath": "tools/policy/plugin-activation-contract.mjs"
+    },
+    {
+      "from": "//tools/policy:sources",
+      "to": "//tools/policy:plugin-activation.test.sh",
+      "fromPath": "tools/policy",
+      "toPath": "tools/policy/plugin-activation.test.sh"
+    },
+    {
+      "from": "//tools/policy:sources",
+      "to": "//tools/policy:probe.mjs",
+      "fromPath": "tools/policy",
+      "toPath": "tools/policy/probe.mjs"
+    },
+    {
+      "from": "//tools/policy:sources",
+      "to": "//tools/policy:probe.sh",
+      "fromPath": "tools/policy",
+      "toPath": "tools/policy/probe.sh"
+    },
+    {
+      "from": "//tools/policy:sources",
+      "to": "//tools/policy:reject-config.nix",
+      "fromPath": "tools/policy",
+      "toPath": "tools/policy/reject-config.nix"
+    },
+    {
+      "from": "//tools/policy:sources",
+      "to": "//tools/policy:runtime.nix",
+      "fromPath": "tools/policy",
+      "toPath": "tools/policy/runtime.nix"
+    },
+    {
+      "from": "//tools/policy:sources",
+      "to": "//tools/policy:runtime.test.sh",
+      "fromPath": "tools/policy",
+      "toPath": "tools/policy/runtime.test.sh"
+    },
+    {
+      "from": "//tools/policy:sources",
+      "to": "//tools/policy:sessionstart-boundary.d.mts",
+      "fromPath": "tools/policy",
+      "toPath": "tools/policy/sessionstart-boundary.d.mts"
+    },
+    {
+      "from": "//tools/policy:sources",
+      "to": "//tools/policy:sessionstart-boundary.mjs",
+      "fromPath": "tools/policy",
+      "toPath": "tools/policy/sessionstart-boundary.mjs"
+    },
+    {
+      "from": "//tools/policy:sources",
+      "to": "//tools/policy:sessionstart-boundary.test.sh",
+      "fromPath": "tools/policy",
+      "toPath": "tools/policy/sessionstart-boundary.test.sh"
+    },
+    {
+      "from": "//tools/policy:sources",
+      "to": "//tools/policy:sessionstart-canary.mjs",
+      "fromPath": "tools/policy",
+      "toPath": "tools/policy/sessionstart-canary.mjs"
+    },
+    {
+      "from": "//tools/policy:sources",
+      "to": "//tools/policy:sessionstart-contract.d.mts",
+      "fromPath": "tools/policy",
+      "toPath": "tools/policy/sessionstart-contract.d.mts"
+    },
+    {
+      "from": "//tools/policy:sources",
+      "to": "//tools/policy:sessionstart-contract.mjs",
+      "fromPath": "tools/policy",
+      "toPath": "tools/policy/sessionstart-contract.mjs"
+    },
+    {
+      "from": "//tools/policy:sources",
+      "to": "//tools/policy:sessionstart-response.d.mts",
+      "fromPath": "tools/policy",
+      "toPath": "tools/policy/sessionstart-response.d.mts"
+    },
+    {
+      "from": "//tools/policy:sources",
+      "to": "//tools/policy:sessionstart-response.mjs",
+      "fromPath": "tools/policy",
+      "toPath": "tools/policy/sessionstart-response.mjs"
+    },
+    {
+      "from": "//tools/policy:sources",
+      "to": "//tools/policy:sessionstart.mjs",
+      "fromPath": "tools/policy",
+      "toPath": "tools/policy/sessionstart.mjs"
+    },
+    {
+      "from": "//tools/policy:sources",
+      "to": "//tools/policy:sessionstart.test.sh",
+      "fromPath": "tools/policy",
+      "toPath": "tools/policy/sessionstart.test.sh"
+    },
+    {
+      "from": "//tools/policy:sources",
+      "to": "//:flake.lock",
+      "fromPath": "tools/policy",
+      "toPath": "flake.lock"
+    },
+    {
+      "from": "//tools:extract-service-topology",
+      "to": "//tools:extract-service-topology.mjs",
+      "fromPath": "tools",
+      "toPath": "tools/extract-service-topology.mjs"
+    },
+    {
+      "from": "//tools:electron-runtime-source",
+      "to": "//tools:electron-runtime.mjs",
+      "fromPath": "tools",
+      "toPath": "tools/electron-runtime.mjs"
+    },
+    {
+      "from": "//tools:dev-port-source",
+      "to": "//tools:dev-port.mjs",
+      "fromPath": "tools",
+      "toPath": "tools/dev-port.mjs"
+    },
+    {
+      "from": "//tools:dev-port-source",
+      "to": "//tools:dev-update.mjs",
+      "fromPath": "tools",
+      "toPath": "tools/dev-update.mjs"
+    },
+    {
+      "from": "//tools:desktop-automation-sources",
+      "to": "//tools:desktop-smoke.sh",
+      "fromPath": "tools",
+      "toPath": "tools/desktop-smoke.sh"
+    },
+    {
+      "from": "//tools:desktop-automation-sources",
+      "to": "//tools:desktop-reload-smoke.sh",
+      "fromPath": "tools",
+      "toPath": "tools/desktop-reload-smoke.sh"
+    },
+    {
+      "from": "//tools:desktop-automation-sources",
+      "to": "//tools:desktop-reload-scenario.sh",
+      "fromPath": "tools",
+      "toPath": "tools/desktop-reload-scenario.sh"
+    },
+    {
+      "from": "//tools:desktop-automation-sources",
+      "to": "//tools:desktop-topology-scenario.sh",
+      "fromPath": "tools",
+      "toPath": "tools/desktop-topology-scenario.sh"
+    },
+    {
+      "from": "//tools:desktop-automation-sources",
+      "to": "//tools:desktop-zoom-scenario.sh",
+      "fromPath": "tools",
+      "toPath": "tools/desktop-zoom-scenario.sh"
+    },
+    {
+      "from": "//tools:desktop-automation-sources",
+      "to": "//tools:desktop-zoom-smoke.sh",
+      "fromPath": "tools",
+      "toPath": "tools/desktop-zoom-smoke.sh"
+    },
+    {
+      "from": "//tools:desktop-automation-sources",
+      "to": "//tools:hmr-scenario.sh",
+      "fromPath": "tools",
+      "toPath": "tools/hmr-scenario.sh"
+    },
+    {
+      "from": "//tools:desktop-automation-sources",
+      "to": "//tools:hmr-scenario.test.sh",
+      "fromPath": "tools",
+      "toPath": "tools/hmr-scenario.test.sh"
+    },
+    {
+      "from": "//tools:desktop-automation-sources",
+      "to": "//tools:measure-hmr.sh",
+      "fromPath": "tools",
+      "toPath": "tools/measure-hmr.sh"
+    },
+    {
+      "from": "//tools:desktop-automation-sources",
+      "to": "//tools:virtual-desktop-run.sh",
+      "fromPath": "tools",
+      "toPath": "tools/virtual-desktop-run.sh"
+    },
+    {
+      "from": "//tools:desktop-automation-sources",
+      "to": "//tools:x11-driver.sh",
+      "fromPath": "tools",
+      "toPath": "tools/x11-driver.sh"
+    },
+    {
+      "from": "//tools:agent-rehearsal-sources",
+      "to": "//tools:agent-rehearsal/artifact.mjs",
+      "fromPath": "tools",
+      "toPath": "tools/agent-rehearsal/artifact.mjs"
+    },
+    {
+      "from": "//tools:agent-rehearsal-sources",
+      "to": "//tools:agent-rehearsal/build.mjs",
+      "fromPath": "tools",
+      "toPath": "tools/agent-rehearsal/build.mjs"
+    },
+    {
+      "from": "//tools:agent-rehearsal-sources",
+      "to": "//tools:agent-rehearsal/build.sh",
+      "fromPath": "tools",
+      "toPath": "tools/agent-rehearsal/build.sh"
+    },
+    {
+      "from": "//tools:agent-rehearsal-sources",
+      "to": "//tools:agent-rehearsal/launch.mjs",
+      "fromPath": "tools",
+      "toPath": "tools/agent-rehearsal/launch.mjs"
+    },
+    {
+      "from": "//tools:agent-rehearsal-sources",
+      "to": "//tools:agent-rehearsal/launch.sh",
+      "fromPath": "tools",
+      "toPath": "tools/agent-rehearsal/launch.sh"
+    },
+    {
+      "from": "//tools:agent-rehearsal-sources",
+      "to": "//tools:agent-rehearsal/options.mjs",
+      "fromPath": "tools",
+      "toPath": "tools/agent-rehearsal/options.mjs"
+    },
+    {
+      "from": "//tools:agent-rehearsal-sources",
+      "to": "//tools:agent-rehearsal/scenario.sh",
+      "fromPath": "tools",
+      "toPath": "tools/agent-rehearsal/scenario.sh"
+    },
+    {
+      "from": "//tools:agent-rehearsal-sources",
+      "to": "//tools:agent-rehearsal/smoke.sh",
+      "fromPath": "tools",
+      "toPath": "tools/agent-rehearsal/smoke.sh"
+    },
+    {
+      "from": "//tools:agent-rehearsal-sources",
+      "to": "//tools:agent-rehearsal/virtual-launch.sh",
+      "fromPath": "tools",
+      "toPath": "tools/agent-rehearsal/virtual-launch.sh"
+    },
+    {
+      "from": "//tools:agent-journey-sources",
+      "to": "//tools:agent-journey-dev.mjs",
+      "fromPath": "tools",
+      "toPath": "tools/agent-journey-dev.mjs"
+    },
+    {
+      "from": "//tools:agent-journey-sources",
+      "to": "//tools:agent-journey-dev.sh",
+      "fromPath": "tools",
+      "toPath": "tools/agent-journey-dev.sh"
+    },
+    {
+      "from": "//tools:agent-journey-sources",
+      "to": "//tools:agent-journey-client.mjs",
+      "fromPath": "tools",
+      "toPath": "tools/agent-journey-client.mjs"
+    },
+    {
+      "from": "//tools:agent-journey-sources",
+      "to": "//tools:desktop-agent-scenario.sh",
+      "fromPath": "tools",
+      "toPath": "tools/desktop-agent-scenario.sh"
+    },
+    {
+      "from": "//tools:agent-journey-sources",
+      "to": "//tools:desktop-agent-smoke.sh",
+      "fromPath": "tools",
+      "toPath": "tools/desktop-agent-smoke.sh"
+    },
+    {
+      "from": "//tools:virtual-desktop-smoke-test",
+      "to": "//tools:desktop-smoke",
+      "fromPath": "tools",
+      "toPath": "tools"
+    },
+    {
+      "from": "//tools:virtual-desktop-smoke-test",
+      "to": "//tools:virtual-desktop-smoke.test.sh",
+      "fromPath": "tools",
+      "toPath": "tools/virtual-desktop-smoke.test.sh"
+    },
+    {
+      "from": "//tools:desktop-smoke",
+      "to": "//tools:dev",
+      "fromPath": "tools",
+      "toPath": "tools"
+    },
+    {
+      "from": "//tools:desktop-smoke",
+      "to": "//tools:x11-driver-source",
+      "fromPath": "tools",
+      "toPath": "tools"
+    },
+    {
+      "from": "//tools:desktop-smoke",
+      "to": "//tools:desktop-topology-scenario.sh",
+      "fromPath": "tools",
+      "toPath": "tools/desktop-topology-scenario.sh"
+    },
+    {
+      "from": "//tools:desktop-smoke",
+      "to": "//tools:virtual-desktop-run.sh",
+      "fromPath": "tools",
+      "toPath": "tools/virtual-desktop-run.sh"
+    },
+    {
+      "from": "//tools:desktop-smoke",
+      "to": "//tools:desktop-smoke.sh",
+      "fromPath": "tools",
+      "toPath": "tools/desktop-smoke.sh"
+    },
+    {
+      "from": "//tools:desktop-reload-smoke",
+      "to": "//tools:dev",
+      "fromPath": "tools",
+      "toPath": "tools"
+    },
+    {
+      "from": "//tools:desktop-reload-smoke",
+      "to": "//tools:x11-driver-source",
+      "fromPath": "tools",
+      "toPath": "tools"
+    },
+    {
+      "from": "//tools:desktop-reload-smoke",
+      "to": "//tools:desktop-reload-scenario.sh",
+      "fromPath": "tools",
+      "toPath": "tools/desktop-reload-scenario.sh"
+    },
+    {
+      "from": "//tools:desktop-reload-smoke",
+      "to": "//tools:virtual-desktop-run.sh",
+      "fromPath": "tools",
+      "toPath": "tools/virtual-desktop-run.sh"
+    },
+    {
+      "from": "//tools:desktop-reload-smoke",
+      "to": "//tools:desktop-reload-smoke.sh",
+      "fromPath": "tools",
+      "toPath": "tools/desktop-reload-smoke.sh"
+    },
+    {
+      "from": "//tools:x11-driver-source",
+      "to": "//tools:x11-driver.sh",
+      "fromPath": "tools",
+      "toPath": "tools/x11-driver.sh"
+    },
+    {
+      "from": "//tools:dev",
+      "to": "//tools:dev.sh",
+      "fromPath": "tools",
+      "toPath": "tools/dev.sh"
+    }
+  ]
+}

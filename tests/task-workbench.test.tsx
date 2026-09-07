@@ -68,6 +68,26 @@ async function openSource() {
   await waitFor(() => expect(document.querySelector(".cm-content")?.textContent).toContain("one"));
   return EditorView.findFromDOM(document.querySelector(".cm-editor")!)!;
 }
+
+it("runs the demo palette commands without launching agents or building, and clears only mock surfaces", async () => {
+  const { request } = setup(); render(<App />);
+  await screen.findByRole("button", { name: "Select task task-fixture" });
+  const command = (text: string) => {
+    fireEvent.keyDown(window, { key: "k", ctrlKey: true });
+    const input = screen.getByRole("textbox", { name: "Workspace command" });
+    fireEvent.change(input, { target: { value: text } });
+    fireEvent.keyDown(input, { key: "Enter" });
+  };
+  command("Demo: populate everything");
+  expect(screen.getByRole("region", { name: "Mock agent runs" })).toBeTruthy();
+  expect(screen.getByRole("region", { name: "Mock agent conversation" })).toBeTruthy();
+  expect(screen.getByRole("region", { name: "Mock context" })).toBeTruthy();
+  expect(request.mock.calls.some(([input]) => ["agent.prepare", "agent.launch", "agent.steer", "agent.cancel", "reconciliation.start"].includes(input.type))).toBe(false);
+  command("Demo: clear mock data");
+  expect(screen.queryByRole("region", { name: "Mock agent runs" })).toBeNull();
+  expect(screen.queryByRole("region", { name: "Mock context" })).toBeNull();
+  expect(screen.getByRole("button", { name: "Select task task-fixture" })).toBeTruthy();
+});
 async function selectTask() {
   fireEvent.click(screen.getByRole("button", { name: "Select task task-fixture" }));
   await screen.findByRole("region", { name: "Task details" });
@@ -170,6 +190,44 @@ describe("task inspection in the source cockpit", () => {
     await waitFor(() => expect(document.querySelector(".cm-content")?.textContent).toContain("mine"));
     expect(EditorView.findFromDOM(document.querySelector(".cm-editor")!)!.state.selection.main.head).toBe(3);
     expect(screen.getByRole("button", { name: `Close ${doc}` })).toBeTruthy();
+    const sourceEditor = EditorView.findFromDOM(document.querySelector(".cm-editor")!)!;
+    fireEvent.keyDown(window, { key: "k", ctrlKey: true });
+    const command = screen.getByRole("textbox", { name: "Workspace command" });
+    fireEvent.change(command, { target: { value: "Show system graphs" } });
+    fireEvent.keyDown(command, { key: "Enter" });
+    await waitFor(() => expect(document.activeElement).toBe(document.querySelector(".graphs-grid")));
+    expect(EditorView.findFromDOM(document.querySelector(".cm-editor")!)).toBe(sourceEditor);
+    expect(sourceEditor.state.doc.toString()).toBe("mine\none\ntwo\nthree\n");
+    expect(sourceEditor.state.selection.main.head).toBe(3);
+    expect(document.querySelector(".surface-tab.active .surface-tab-main")?.getAttribute("title")).toBe(source);
+  });
+
+  it("returns from a task-only document to the graph-only layout", async () => {
+    setup(); render(<App />);
+    const row = await screen.findByRole("button", { name: "Select task task-fixture" });
+    fireEvent.doubleClick(row);
+    const document = await screen.findByRole("region", { name: "Task document" });
+    fireEvent.click(within(document).getByRole("button", { name: "Return to source" }));
+    expect(screen.queryByRole("region", { name: "Task document" })).toBeNull();
+    expect(screen.queryByRole("navigation", { name: "Document tabs" })).toBeNull();
+  });
+
+  it("does not display an unadmitted background source while Reveal is pending or revoked", async () => {
+    const test = setup(); render(<App />);
+    await screen.findByRole("button", { name: "Select task task-fixture" });
+    await selectTask();
+    const original = test.request.getMockImplementation()!;
+    let finish!: () => void;
+    test.request.mockImplementation((input) => input.type === "file.read" ? new Promise((resolve) => {
+      finish = () => { void original(input).then(resolve); };
+    }) : original(input));
+    reveal(source, 2); await screen.findByText(`Opening working file ${source}…`);
+    expect(document.querySelector(".source-surface")).toBeNull();
+    fireEvent.keyDown(window, { key: "k", ctrlKey: true });
+    await act(async () => finish());
+    expect(document.querySelector(".source-surface")).toBeNull();
+    fireEvent.keyDown(window, { key: "w", ctrlKey: true });
+    expect(test.request.mock.calls.some(([input]) => input.type === "file.unwatch")).toBe(false);
   });
 
   it.each(["missing", "fifo"])("surfaces actual contained-file broker %s refusal through explicit Reveal", async (kind) => {

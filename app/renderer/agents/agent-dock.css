@@ -1,0 +1,31 @@
+.activity-dock:has(.activity-instruments) { display: flex; flex-direction: column; }
+.activity-dock:has(.activity-instruments) > .dock-header { flex-shrink: 0; }
+.activity-instruments { display: grid; grid-template-columns: minmax(125px, 1fr) minmax(260px, 2fr) minmax(145px, 1fr); flex: 1; min-height: 0; min-width: 0; overflow: auto; }
+.dock-side-panel { min-width: 0; min-height: 0; overflow: auto; padding: 0 12px 10px; }
+.dock-section-heading { padding: 10px 0; font: 10px "DM Mono", monospace; color: #7c9690; }
+.dock-builds > .job { margin-bottom: 8px; }
+.dock-activity > .activity-list { grid-template-columns: minmax(0, 1fr); }
+.agent-interaction-dock { height: 100%; min-height: 0; min-width: 0; display: flex; flex-direction: column; background: #091715; border-inline: 1px solid #284139; container-type: inline-size; }
+.workbench:has(.agent-interaction-dock) { grid-template-rows: var(--topbar-height) minmax(0, 1fr) clamp(180px, 26vh, 320px); }
+.agent-dock-home > .agent-draft { max-width: 900px; margin: 0 auto; }
+.agent-dock-tabs { display: flex; flex-shrink: 0; min-width: 0; overflow-x: auto; border-bottom: 1px solid #284139; background: #0d1b18; }
+.agent-dock-tabs > button { display: flex; align-items: center; gap: 8px; flex-shrink: 0; max-width: 240px; min-height: 34px; padding: 7px 13px; border: 0; border-right: 1px solid #203830; border-bottom: 2px solid transparent; background: transparent; color: #90aaa1; font-size: 11px; text-align: left; }
+.agent-dock-tabs > button > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.agent-dock-tabs > button[aria-selected="true"] { color: #d8e5e1; background: #12251e; border-bottom-color: #57d3ad; }
+.agent-interaction-dock :focus-visible { outline: 2px solid #57d3ad; outline-offset: -2px; }
+.agent-dock-panel { flex: 1; min-height: 0; min-width: 0; overflow: auto; }
+.agent-dock-panel[hidden] { display: none !important; }
+.agent-dock-run { display: flex; flex-direction: column; overflow: hidden; }
+.agent-dock-run > .agent-pane { flex: 1; min-height: 0; }
+.agent-dock-welcome { max-width: 780px; padding: 17px 20px; font-size: 12px; }
+.agent-dock-welcome > strong { color: #d8e5e1; }
+.agent-dock-welcome p { margin: 7px 0; color: #9fb5ab; font-size: 11px; line-height: 1.5; }
+.agent-dock-welcome .agent-primary { width: auto; margin-top: 4px; }
+.agent-dock-welcome .agent-dock-notice { font-size: 10px; color: #8fa297; overflow-wrap: anywhere; }
+.agent-dock-home > .agent-draft { border-top: 0; }
+@container (max-width: 520px) {
+  .agent-dock-run { overflow: auto; }
+  .agent-dock-run > .agent-pane { min-height: 360px; flex-shrink: 0; }
+  .agent-pane-body { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(90px, 1fr) minmax(90px, 1fr); }
+  .agent-controls { border-left: 0; border-top: 1px solid #294139; }
+}

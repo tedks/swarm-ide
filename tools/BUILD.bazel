@@ -126,6 +126,13 @@ sh_binary(
 )
 
 sh_binary(
+    name = "desktop-ui-sprint",
+    srcs = ["desktop-ui-sprint.sh"],
+    data = ["desktop-ui-sprint-scenario.sh", ":dev", ":virtual-desktop-run.sh", ":x11-driver-source"],
+    tags = ["manual"],
+)
+
+sh_binary(
     name = "desktop-smoke",
     srcs = ["desktop-smoke.sh"],
     data = [

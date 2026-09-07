@@ -134,7 +134,8 @@ swarm_window_wait_title "Source fraudcheck.proto"
 capture_window "$artifact_dir/fraudcheck-contract.png"
 
 run_command "Show system graphs"
-swarm_window_wait_title "Graphs"
+# Graph focus no longer closes or replaces the independent text document.
+swarm_window_wait_title "Source fraudcheck.proto"
 swarm_window_wait_title "FraudCheck visible"
 capture_window "$artifact_dir/returned-to-graphs.png"
 

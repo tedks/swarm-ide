@@ -25,6 +25,16 @@ function detailProps(overrides: Partial<TaskDetailProps> = {}): TaskDetailProps 
 }
 
 describe("read-only task panel", () => {
+  it("expands a wrapped title on click and still opens the task document on double-click", () => {
+    const props = panelProps({ onOpen: vi.fn() });
+    render(<TaskPanel {...props} />);
+    const row = screen.getByRole("button", { name: "Select task task-fixture" });
+    expect(row.getAttribute("aria-expanded")).toBe("false");
+    fireEvent.click(row); expect(row.getAttribute("aria-expanded")).toBe("true");
+    expect(props.onSelect).toHaveBeenCalledWith("task-fixture");
+    fireEvent.doubleClick(row); expect(props.onOpen).toHaveBeenCalledWith("task-fixture");
+    fireEvent.click(row); expect(row.getAttribute("aria-expanded")).toBe("false");
+  });
   it("sorts by full identity without mutating metadata and Open includes paused/in-progress but not closed", () => {
     const details = ([ ["z-task", "paused"], ["a-task", "in_progress"], ["c-task", "closed"], ["b-task", "unstarted"] ] as const)
       .map(([id, status]) => TaskDetailSchema.parse({ ...taskDetailFixture(), id, title: "Same title", status }));
