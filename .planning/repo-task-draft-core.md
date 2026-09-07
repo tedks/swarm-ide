@@ -18,10 +18,10 @@ real Git/YAML preparation and separately label deterministic responder behavior.
 
 
 - [x] (2026-09-07) Read shared ROOT authority, accepted full contract/plan, D3 receipts and required workflow skills; confirmed assigned clean worktree and base.
-- [ ] Record baseline regression failures before implementation.
-- [ ] Implement bounded registered task resolver and authoritative context materialization/revalidation.
-- [ ] Implement owned operation disposal and matching production/rehearsal shutdown composition.
-- [ ] Implement task-bearing Prepare's exact 40-second response branch and timeout evidence.
+- [x] (2026-09-07 10:37Z) Baseline23 RED/1345 PASS in four owned test files; unrelated tests passed. Tests-first262b8d8 pushed, draft PR50 opened.
+- [x] (2026-09-07 10:48Z) Concrete registered Git/YAML resolver, canonical materialization, disk/ref bracketing and lifecycle composition implemented; corrected quality1388/100 PASS. Exact initial implementation had TypeScript-only definite-assignment/test-this errors, fixed before behavioral execution.
+- [x] (2026-09-07 10:48Z) Task-bearing Prepare40s branch passes deterministic transport checks; ordinary5s/tasks12s/write behavior unchanged. Separate synthetic late-launch receipt evidence retained.
+- [x] (2026-09-07) Pushed4e19fcf adds no replacement scan while prior owned metadata settles, plus actual worker-cancellation proof. Three-provider council active; extended real late-admission transport proof and final frozen full gates pending.
 - [ ] Run frozen local full gates and provider-aware council to fixpoint; record exact attribution.
 - [ ] Push reviewed increment and normally merge only on ROOT-cleared base; close bounded Ditz issue after actual landing and hand off to ROOT.
 
@@ -33,6 +33,16 @@ and both bundles; no targeted Vitest entry point is supported. Tests will be
 batched to avoid duplicating full executions. D3 deliberately rejects even an
 injected task resolver; replacing that behavior requires positive authority
 checks and preserved absent-resolver failures, not deleting a negative test.
+
+Synchronous abort callbacks can reenter disposal or service shutdown. Shared
+promises must be installed before those callbacks are invoked. Both owner drains
+must start immediately even if one throws synchronously; rejection does not
+permit early storage close. Tests cover both owners and both compositions.
+
+An observation timeout is not proof its trusted resolver has settled. Context
+now refuses new preparation while metadata remains owned, preventing a queue
+of new scans behind a cancelled but not-yet-reaped operation. Tests use held
+callbacks to distinguish bounded response from actual owned settlement.
 
 ## Decision Log
 
@@ -48,9 +58,13 @@ cannot commit, adopt peers, expand scope or create departments.
 ## Outcomes & Retrospective
 
 
-Implementation is in progress. No new successful local verification, merge,
-attachment UI, packaged attachment or model execution is claimed yet. D6 must
-join reviewed D4/D5 and owns parent issue closure.
+The first implementation quality execution passed1388 tests/100 files, type
+checks and both bundles. It includes actual CLI-authored pinned production
+Prepare while launch remains unavailable, and separately deterministic responder
+admission/history with immutable task data. Extra settling/worker/transport tests
+are not attributed to that earlier run. Final full gates and council remain
+in progress; no merge, attachment UI, packaged attachment or model is claimed.
+D6 must join reviewed D4/D5 and owns parent issue closure.
 
 ## Context and Orientation
 

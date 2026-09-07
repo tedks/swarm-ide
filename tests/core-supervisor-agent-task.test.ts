@@ -1,6 +1,10 @@
 // @vitest-environment node
 import { createHash } from "node:crypto";
+import { execFileSync } from "node:child_process";
 import { EventEmitter } from "node:events";
+import { mkdtemp, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { CoreSupervisor } from "../app/electron/core-supervisor";
 import { agentFixtureContext, agentFixtureFrames } from "../fixtures/agents";
@@ -8,7 +12,11 @@ import { TASK_FIXTURE_COMMIT } from "../fixtures/tasks";
 import { initialSnapshot } from "../fixtures/world";
 import { formatAgentContextV2, formatRepositoryTask } from "../protocol/agent-task";
 import { PreparedAgentContextSchema, type AgentResult, type PreparedAgentContext } from "../protocol/agents";
-import { PROTOCOL_VERSION, parseCoreResponseForRequest, type CoreRequest, type CoreResponse } from "../protocol/schema";
+import { PROTOCOL_VERSION, isAgentRequest, parseCoreResponseForRequest, type CoreRequest, type CoreResponse } from "../protocol/schema";
+import { RealWorkspaceProvider } from "../core/provider";
+import { TaskGitReader } from "../core/tasks/git-reader";
+import { advanceTaskFixture, createTaskFixture } from "../tools/task-integration/fixture.mjs";
+import { createRehearsalAgentService, type RehearsalAgentService } from "./support/agent-rehearsal-service";
 
 class FakeCore extends EventEmitter {
   postMessage = vi.fn();
@@ -162,4 +170,106 @@ describe("task-bearing preparation transport deadline", () => {
     expect(settled).toHaveBeenCalledTimes(1); expect(hooks.event).not.toHaveBeenCalled();
     expect(first.postMessage.mock.calls.map(([request]) => request.type)).toEqual(["agent.launch", "agent.read"]);
   });
+
+  it.each(["admitted", "rejected"] as const)("reconciles actual late %s after held CLI metadata revalidation without replay", async (outcome) => {
+    // Real Git, YAML worker, disk context and private durable store; only the
+    // supervisor response clock and a launch-time metadata gate are controlled.
+    vi.useRealTimers();
+    const directory = await mkdtemp(join(tmpdir(), "swarm-supervisor-task-launch-"));
+    let service: RehearsalAgentService | undefined, supervisor: CoreSupervisor | undefined;
+    let release!: () => void, entered!: () => void;
+    const gate = new Promise<void>((resolve) => { release = resolve; });
+    const scanning = new Promise<void>((resolve) => { entered = resolve; });
+    const deliveries = new Map<string, Promise<CoreResponse>>();
+    let restoreScan = () => undefined;
+    try {
+      const fixture = await createTaskFixture(directory);
+      const provider = await RealWorkspaceProvider.create(fixture.root);
+      await provider.observeWorkingWorld(() => undefined);
+      await provider.listRepository({ protocolVersion: PROTOCOL_VERSION, requestId: "source-directory", type: "repo.list",
+        directory: "src", page: 0, filter: "", refresh: true }, () => undefined);
+      const focus = provider.snapshot().graphs[0]!.nodes.find((node) => node.focus.path === fixture.sourcePath)!.focus;
+      const blob = execFileSync("git", ["rev-parse", `${fixture.firstCommit.hex}:.ditz/issue-${fixture.taskId}.yaml`],
+        { cwd: fixture.root, encoding: "utf8" }).trim();
+      const reference = { version: 1 as const, worldId: focus.worldId,
+        repositoryId: `repository:${hash(fixture.root)}`, provider: "ditz" as const, taskId: fixture.taskId,
+        metadataCommit: fixture.firstCommit, issueBlob: { algorithm: "sha1" as const, hex: blob } };
+      service = await createRehearsalAgentService({ root: fixture.root, storeRoot: join(directory, "private"),
+        snapshot: () => provider.snapshot(), emit() {} });
+      const ownedService = service;
+      const transport = setup(); supervisor = transport.supervisor;
+      transport.first.postMessage.mockImplementation((input: CoreRequest | { type: "core.shutdown" }) => {
+        if (!("requestId" in input) || !isAgentRequest(input)) throw new Error("Expected agent request");
+        const delivery = ownedService.request(input).then((result): CoreResponse => {
+          const reply = result.ok ? response(input, result.value)
+            : { protocolVersion: PROTOCOL_VERSION, requestId: input.requestId, ok: false, error: result.error };
+          transport.first.emit("message", reply);
+          return reply;
+        });
+        deliveries.set(input.requestId, delivery);
+      });
+      const prepared = await supervisor.request({ protocolVersion: PROTOCOL_VERSION, requestId: "real-prepare", type: "agent.prepare",
+        worldId: focus.worldId, focus, taskText: "Explain the exact pinned task", taskReference: reference,
+        model: null, effort: null, links: { parentRunId: null, task: null, spec: null } });
+      expect(prepared.ok).toBe(true);
+      if (!prepared.ok || prepared.agent?.kind !== "prepare") throw new Error("Expected real task context");
+      const draft = prepared.agent.draft;
+      const content = formatRepositoryTask(reference, fixture.title, fixture.description);
+      expect(draft.launchContext.repositoryTask).toMatchObject({ reference, content, digest: hash(content) });
+      expect(draft.launchContext.attachments[0]?.content).toBe(fixture.sourceText);
+
+      const originalScan = TaskGitReader.prototype.scan;
+      const scan = vi.spyOn(TaskGitReader.prototype, "scan").mockImplementation(async function (this: TaskGitReader, ...args) {
+        entered(); await gate;
+        return originalScan.apply(this, args);
+      });
+      restoreScan = () => { scan.mockRestore(); return undefined; };
+      // Keep Date and actual I/O real: advancing just timeout scheduling cannot
+      // move the real metadata deadline or make worker timestamps run backwards.
+      vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+      const launch: CoreRequest = { protocolVersion: PROTOCOL_VERSION, requestId: "real-launch", type: "agent.launch",
+        runId: draft.runId, contextHash: draft.contextHash };
+      const settled = vi.fn(), pending = supervisor.request(launch).then(settled);
+      await scanning;
+      await vi.advanceTimersByTimeAsync(4_999); expect(settled).not.toHaveBeenCalled();
+      await vi.advanceTimersByTimeAsync(1); await pending;
+      expect(settled).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({ ok: false,
+        error: expect.objectContaining({ code: "AGENT_OUTCOME_UNKNOWN" }) }));
+      expect(service.diagnostics().totals.start).toBe(0);
+      vi.useRealTimers();
+      if (outcome === "rejected") await advanceTaskFixture(fixture);
+      release();
+      const actual = await deliveries.get(launch.requestId)!;
+      if (outcome === "admitted") expect(actual).toMatchObject({ ok: true, agent: { kind: "launch",
+        receipt: { runId: draft.runId, contextHash: draft.contextHash, status: "admitted" } } });
+      else expect(actual).toMatchObject({ ok: false, error: { code: "STALE_CONTEXT" } });
+      expect(scan).toHaveBeenCalledTimes(1);
+
+      const read = await supervisor.request({ protocolVersion: PROTOCOL_VERSION, requestId: "real-read", type: "agent.read",
+        runId: draft.runId, afterRecord: 0 });
+      const snapshot = await supervisor.request({ protocolVersion: PROTOCOL_VERSION, requestId: "real-snapshot", type: "agent.snapshot" });
+      if (outcome === "admitted") {
+        expect(read).toMatchObject({ ok: true, agent: { kind: "read", run: { launchContext: draft.launchContext } } });
+        expect(snapshot).toMatchObject({ ok: true, agent: { kind: "snapshot", snapshot: { runs: [{ runId: draft.runId }] } } });
+        await vi.waitFor(() => expect(service!.diagnostics().totals.start).toBe(1));
+      } else {
+        expect(read).toMatchObject({ ok: false, error: { code: "RUN_NOT_ACTIVE" } });
+        expect(snapshot).toMatchObject({ ok: true, agent: { kind: "snapshot", snapshot: { runs: [] } } });
+        expect(service.diagnostics().totals.start).toBe(0);
+      }
+      // Even actual rejection and no durable run do not amend the caller's
+      // timed-out result. Only a positive durable read establishes admission.
+      expect(settled).toHaveBeenCalledTimes(1);
+      expect(transport.first.postMessage.mock.calls.map(([request]) => request.type))
+        .toEqual(["agent.prepare", "agent.launch", "agent.read", "agent.snapshot"]);
+      expect(scan).toHaveBeenCalledTimes(1); // History reads never reread metadata.
+    } finally {
+      release(); vi.useRealTimers();
+      await Promise.allSettled(deliveries.values());
+      supervisor?.stop();
+      await service?.shutdown();
+      restoreScan();
+      await rm(directory, { recursive: true, force: true });
+    }
+  }, 30_000);
 });
