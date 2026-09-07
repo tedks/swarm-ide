@@ -5,7 +5,7 @@ import { initialSnapshot } from "../fixtures/world";
 import { contextArtifact } from "./context-fixture";
 import { adaptServiceTopology } from "../core/service-topology";
 vi.mock("@xyflow/react", () => ({
-  Background: () => null, Controls: () => null, Handle: () => null, Position: { Left: "left", Right: "right" },
+  Background: () => null, Controls: () => null, Handle: () => null, MarkerType: { ArrowClosed: "arrowclosed" }, Position: { Left: "left", Right: "right" },
   ReactFlow: ({ nodes, onNodeClick, autoPanOnNodeFocus }: { nodes: Array<{ id: string; data: unknown }>; onNodeClick: (event: unknown, node: unknown) => void; autoPanOnNodeFocus?: boolean }) =>
     <div data-testid="flow" data-auto-pan={String(autoPanOnNodeFocus)}>{nodes.map((node) => <div key={node.id} className="react-flow__node" data-id={node.id} tabIndex={0}
       onClick={(event) => onNodeClick(event, node)}>{node.id}</div>)}</div>,

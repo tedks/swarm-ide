@@ -59,6 +59,33 @@ describe("truthful Context in the mounted workbench", () => {
     next.serviceContext.observedAt = "2026-09-07T04:00:00.000Z"; test.emit(next); await test.finish();
     expect(subject()).toBe("core/files.ts");
   });
+  it("newer inspection supersedes definition completion without stealing the current source", async () => {
+    const test = setup(); render(<App />); await openContextPath("core/files.ts"); await waitFor(() => expect(subject()).toBe("core/files.ts"));
+    test.delay("example/fraudcheck.proto"); fireEvent.click(screen.getByRole("button", { name: "Activate service:fraud-check" }));
+    await screen.findByText("Opening working file example/fraudcheck.proto…");
+    fireEvent.click(screen.getByRole("button", { name: "Inspect interface:payments.authorize" })); await test.finish();
+    expect(subject()).toBe("interface:payments.authorize"); expect(document.querySelector(".source-surface header strong")?.textContent).toBe("core/files.ts");
+  });
+  it("unknown service activation exposes unavailability rather than opening its preferred path", async () => {
+    const test = setup(), graph = test.snapshot.graphs[1]!;
+    graph.nodes.push({ ...graph.nodes[0]!, id: "service:unknown", focus: { ...graph.nodes[0]!.focus, key: "service:unknown", path: "example/fraudcheck.ts" } });
+    render(<App />); fireEvent.click(await screen.findByRole("button", { name: "Activate service:unknown" }));
+    expect(document.querySelector(".tasks-reveal-notice")?.textContent).toContain("no recorded declaration");
+    expect(test.request.mock.calls.some(([r]) => r.type === "file.read")).toBe(false);
+    expect(subject()).toBe("service:unknown");
+  });
+  it("a new publication closes an ambiguity choice and old detached controls cannot open", async () => {
+    const artifact = structuredClone(contextArtifact);
+    artifact.providedInterfaces.push({ ...artifact.providedInterfaces[0]!, id: "interface:fraud-check.second", name: "Second" });
+    artifact.interfaceDeclarationPaths.push({ interfaceId: "interface:fraud-check.second", path: "example/second.proto" });
+    const test = setup(artifact); render(<App />);
+    fireEvent.click(await screen.findByRole("button", { name: "Activate service:fraud-check" }));
+    const oldChoice = await screen.findByRole("button", { name: /example\/second.proto/ });
+    const next = structuredClone(test.snapshot); if (next.serviceContext?.status !== "observed") throw new Error("fixture");
+    next.serviceContext.observedAt = "2026-09-07T04:00:00.000Z"; test.emit(next);
+    expect(screen.queryByRole("dialog")).toBeNull(); fireEvent.click(oldChoice);
+    expect(test.request.mock.calls.some(([r]) => r.type === "file.read")).toBe(false);
+  });
   it("requires an explicit ambiguity choice, never consumes initiating Enter, and cancels deterministically", async () => {
     const artifact = structuredClone(contextArtifact);
     artifact.providedInterfaces.push({ ...artifact.providedInterfaces[0]!, id: "interface:fraud-check.second", name: "Second" });
