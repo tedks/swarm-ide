@@ -25,9 +25,22 @@ async function main() {
   await run(() => { addEventListener("error", (event) => console.error(event.error?.stack ?? event.message)); addEventListener("unhandledrejection", (event) => console.error(event.reason?.stack ?? event.reason)); });
   const paint = () => run(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve(true)))));
   const text = (selector) => run((s) => document.querySelector(s)?.textContent ?? "", selector);
+  const click = async (selector) => {
+    await until(() => run((s) => Boolean(document.querySelector(s)), selector), `visible control ${selector}`);
+    await run((s) => document.querySelector(s).scrollIntoView({ block: "nearest", inline: "nearest" }), selector); await paint();
+    const point = await run((s) => {
+      const node = document.querySelector(s), box = node.getBoundingClientRect();
+      const x = (Math.max(0, box.left) + Math.min(innerWidth, box.right)) / 2, y = (Math.max(0, box.top) + Math.min(innerHeight, box.bottom)) / 2;
+      if (!box.width || !box.height || node.disabled || !node.contains(document.elementFromPoint(x, y))) throw new Error(`Occluded control ${s}`);
+      return { x, y };
+    }, selector);
+    const coordinates = { x: Math.round(point.x * wc.getZoomFactor()), y: Math.round(point.y * wc.getZoomFactor()) };
+    wc.sendInputEvent({ type: "mouseDown", button: "left", clickCount: 1, ...coordinates });
+    wc.sendInputEvent({ type: "mouseUp", button: "left", clickCount: 1, ...coordinates }); await paint();
+  };
   const key = (keyCode, modifiers = []) => { wc.sendInputEvent({ type: "keyDown", keyCode, modifiers }); if (keyCode === "Enter") wc.sendInputEvent({ type: "char", keyCode: "\r", modifiers }); wc.sendInputEvent({ type: "keyUp", keyCode, modifiers }); };
   const command = async (name) => {
-    key("k", ["control"]);
+    await click(".command-trigger"); await click(".command-palette input");
     await until(() => run(() => document.activeElement?.getAttribute("aria-label") === "Workspace command"), "palette input owns native focus");
     key("a", ["control"]); await wc.insertText(name);
     await until(() => run((expected) => document.querySelector(".command-palette input")?.value === expected &&
@@ -88,7 +101,9 @@ async function main() {
     latency: "Explicit saved-source demo tag; authored figures, not production telemetry", elapsedMs: Date.now() - started }));
 }
 main().catch(async (error) => {
-  await fs.writeFile(path.join(evidence, "failure.json"), JSON.stringify({ stage, message: error.stack ?? String(error), rendererErrors }));
+  const contents = BrowserWindow.getAllWindows()[0]?.webContents;
+  const inputState = contents ? await contents.executeJavaScript(`({active: document.activeElement?.outerHTML.slice(0,1024), palette: document.querySelector('.command-palette')?.innerText.slice(0,1024)})`).catch(() => null) : null;
+  await fs.writeFile(path.join(evidence, "failure.json"), JSON.stringify({ stage, message: error.stack ?? String(error), rendererErrors, inputState }));
   const win = BrowserWindow.getAllWindows()[0]; if (win && !win.isDestroyed()) await fs.writeFile(path.join(evidence, "failure.png"), (await win.webContents.capturePage()).toPNG());
   process.exitCode = 1;
 });
