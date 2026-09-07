@@ -45,8 +45,18 @@ async function main() {
     await paint();
     const p = await run((s, t) => {
       const e = [...document.querySelectorAll(s)].find((node) => t === null || node.textContent.trim() === t);
-      const r = e.getBoundingClientRect(), x = r.x + r.width / 2, y = r.y + r.height / 2;
-      if (!r.width || !r.height || !e.contains(document.elementFromPoint(x, y))) throw new Error(`Occluded ${s}: ${t}`);
+      const r = e.getBoundingClientRect();
+      // A source document can be taller than its scrollport. Hit the visible
+      // intersection, not the offscreen middle of the whole CodeMirror document.
+      let left = Math.max(0, r.left), right = Math.min(innerWidth, r.right);
+      let top = Math.max(0, r.top), bottom = Math.min(innerHeight, r.bottom);
+      for (let parent = e.parentElement; parent; parent = parent.parentElement) {
+        const style = getComputedStyle(parent), box = parent.getBoundingClientRect();
+        if (style.overflowX !== "visible") { left = Math.max(left, box.left); right = Math.min(right, box.right); }
+        if (style.overflowY !== "visible") { top = Math.max(top, box.top); bottom = Math.min(bottom, box.bottom); }
+      }
+      const x = (left + right) / 2, y = (top + bottom) / 2;
+      if (right <= left || bottom <= top || !e.contains(document.elementFromPoint(x, y))) throw new Error(`Occluded ${s}: ${t}`);
       return { x, y };
     }, selector, exactText);
     const coordinates = { x: Math.round(p.x * wc.getZoomFactor()), y: Math.round(p.y * wc.getZoomFactor()) };
