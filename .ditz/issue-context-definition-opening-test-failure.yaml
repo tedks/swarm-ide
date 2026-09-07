@@ -87,3 +87,11 @@ log_events:
     Original ungated currently passes, forced-order mechanism is corrected, and this
     historical-occurrence issue remains OPEN. No R3 code consumption, GUI retry, merge
     or preview adoption.'
+- time: 2026-09-07T08:07:38-00:00
+  who: Ted Smith
+  what: commented
+  comment: 'Composition evidence only: exact Q4 source-authority repair plus independently
+    reviewed R3, frozen a4f3918, all13 fresh local suites PASS and quality1305/96.
+    No statistical retry, verifier weakening or source edits during execution. Controlled
+    mechanisms and this attributable aggregate pass do not establish historical scheduling
+    cause; keep this historical occurrence open.'
