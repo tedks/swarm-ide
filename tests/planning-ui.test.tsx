@@ -135,4 +135,15 @@ describe("plan bridge authority", () => {
     expect(() => parseCoreResponseForRequest(build, request)).toThrow();
     expect(() => parseCoreResponseForRequest(plan, buildRequest)).toThrow();
   });
+  it("keeps plan and external-session observation authority separate", () => {
+    const plan = wrap(request, observedPlans());
+    const externalRequest = { protocolVersion: PROTOCOL_VERSION, requestId: request.requestId, type: "externalAgents.snapshot" as const };
+    const external = { kind: "snapshot", snapshot: { status: "unavailable", message: "No registered sessions", observedAt: "2026-09-07T19:00:00.000Z", sessions: [] } };
+    const mixed = { ...plan, external };
+    expect(() => parseCoreResponseForRequest(mixed, request)).toThrow();
+    expect(() => parseCoreResponseForRequest(mixed, externalRequest)).toThrow();
+    expect(parseCoreResponseForRequest({ ...plan, plans: undefined, external }, externalRequest).ok).toBe(true);
+    expect(() => parseCoreResponseForRequest({ ...plan, plans: undefined, external }, request)).toThrow();
+    expect(() => parseCoreResponseForRequest(plan, externalRequest)).toThrow();
+  });
 });

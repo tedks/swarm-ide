@@ -59,6 +59,8 @@ import { ContextPane } from "./context/ContextPane";
 import { declarationPublication, resolveDeclarations, type DeclarationResolution } from "./context/declarations";
 import { DeclarationChooser } from "./context/DeclarationChooser";
 import { sameAgentTaskReference } from "../../protocol/agent-task";
+import { useExternalAgents } from "./external-agents/client";
+import { ExternalAgentRail, ExternalAgentInformation } from "./external-agents/ExternalAgents";
 
 const lensTabs = ["System", "Plan", "Performance", "Refactor"] as const;
 const FRAUDCHECK_IMPLEMENTATION = "examples/checkout-world/services/fraudcheck/fraudcheck.ts";
@@ -135,6 +137,8 @@ export function App() {
   const lastRecoveryRef = useRef(-1);
   const [reloadNotice, setReloadNotice] = useState("");
   const [workspace, setWorkspace] = useState<WorkspaceState>(() => hotCheckpoint?.workspace ?? (restoredNavigation?.snapshot ? loadSnapshot(restoredNavigation.snapshot, -1) : emptyWorkspaceState));
+  const [externalInformation, setExternalInformation] = useState(false);
+  const externalAgents = useExternalAgents(window.swarm, Boolean(workspace.snapshot) && (!window.swarmLifecycle || lifecycle?.core.phase === "ready"), lifecycle?.core.generation ?? 0);
   const [error, setError] = useState<string | null>(null);
   const [activeLens, setActiveLens] = useState<(typeof lensTabs)[number]>(hotCheckpoint?.lens ?? restoredNavigation?.lens ?? "System");
   const [paletteOpen, setPaletteOpen] = useState(false);
@@ -184,6 +188,7 @@ export function App() {
     return JSON.stringify([current?.project.id, current?.world.id, coreGenerationRef.current]);
   }, []);
   const contextEvent = useCallback((event: AttentionEvent) => {
+    setExternalInformation(false);
     attentionRef.current = reduceContextAttention(reduceContextAttention(attentionRef.current, { type: "realm", realm: contextRealm() }), event);
     setAttention(attentionRef.current);
   }, [contextRealm]);
@@ -1232,6 +1237,7 @@ export function App() {
         repositoryName={snapshot.project.name}
         directory={repositoryObservation ? <RepositoryNavigation key={snapshot.project.id} rootLabel={snapshot.project.name} focusedPath={snapshot.focus.path} observation={repositoryObservation} actions={deliberateRepository} onActivate={activateRepositoryEntry} onOpenPath={openLinkedFile} /> : <p className="muted">Observing repository…</p>}
         agents={<>
+        <ExternalAgentRail client={externalAgents} onSelect={() => { ++navigationIntent.current; inspect(null); setExternalInformation(true); setCompactPanel("info"); }} />
         {demo.runs ? <MockRunRail selected={demo.selected} onSelect={demo.select} /> : null}
         <LiveRunRail state={liveAgents} client={agentClient} onSelect={(runId) => { agentClient.select(runId); setAgentDockSelection((value) => value + 1); }} onDraft={() => { setCompactPanel("work"); agentClient.openDraft(snapshot.focus); }} />
         <AgentReloadGuard state={liveAgents} client={agentClient} />
@@ -1283,12 +1289,14 @@ export function App() {
 
       <ResizeDivider label="Resize Context" className="context-divider" container=".workbench" value={contextWidth} minimum={23} maximum={44} initial={30} reverse onChange={setContextWidth} />
       <aside id="information-panel" aria-label="Information panel" className="instrument-panel panel">
+        {externalInformation ? <ExternalAgentInformation client={externalAgents} onReturn={() => { setExternalInformation(false); returnToSourceInformation(); }} onOpen={(path) => { setExternalInformation(false); openLinkedFile(path); }} /> : <>
         {revealNotice ? <p ref={revealNoticeElement} className="tasks-reveal-notice" role="status" tabIndex={0}>{revealNotice}</p> : null}
         {contextSubject?.kind === "task" ? <div className="artifact-context" data-context-kind="task" data-context-subject={contextSubject.id}><TaskDetail returnButtonRef={taskReturnButton} selectedTaskId={contextSubject.id} snapshot={tasks.observation?.snapshot ?? null} detail={tasks.detail?.id === contextSubject.id ? tasks.detail : null} detailRevision={tasks.detailRevision} detailStale={tasks.detailStale || tasks.refreshing || tasks.observation?.status !== "observed" || Boolean(tasks.notice)} reading={tasks.reading} notice={tasks.detailNotice} attachment={taskAttachment(contextSubject.id)} onSelect={selectTask} onReveal={(ref) => { void revealTaskReference(ref); }} onReturnToSource={returnToSourceInformation} onShowDocument={showPinnedTaskDocument} onRefresh={() => { void taskClient.refresh(); }} /></div> : <>
         {tasks.selectedTaskId ? <button className="tasks-show-details" onClick={showTaskDetails}>Show task details</button> : null}
         <ContextPane subject={contextSubject} sections={contextSections} onOpen={openLinkedFile} onTask={(target) => { void inspectBacklink(target); }} onRefreshTasks={() => { void taskClient.refresh(); }} headingRef={sourceInformationHeading} />
         </>}
         {demo.context ? <MockContext focus={contextSubject && "path" in contextSubject ? contextSubject.path : contextSubject && "id" in contextSubject ? contextSubject.id ?? "No task selected" : "Nothing selected"} /> : null}
+        </>}
       </aside>
 
       <section className="activity-dock panel">

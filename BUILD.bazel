@@ -33,6 +33,7 @@ filegroup(
         "//tools/task-integration:sources",
         "//tools/repository-navigation:sources",
         "//tools/demo-plans:sources",
+        "//tools/demo-agents:sources",
         "//tools/build-graph:sources",
     ],
 )
