@@ -18,3 +18,12 @@ log_events:
   who: Ted Smith
   what: started
   comment: ""
+- time: 2026-09-07T03:25:13-00:00
+  who: Ted Smith
+  what: commented
+  comment: 'PR41 executable d53c63f: actual ownership-leak red2/1194, full build34/all13
+    fresh local suites green, quality1212/90, real packaged navigation92.1s and four
+    owned cleanup1/rendererErrors0. Native+Google CLEAN fixpoint after Back-event
+    and provenance-index fixes; Anthropic timeout600s/124 no review. Final docs/normal
+    merge/exact integration pending; parents remain open; hosted ignored, product
+    model turns0.'
