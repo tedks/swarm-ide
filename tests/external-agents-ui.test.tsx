@@ -45,6 +45,49 @@ function setup(handle?: (request: CoreRequest) => Promise<CoreResponse> | undefi
 }
 
 describe("external observer presentation and lifecycle", () => {
+  it("connects real branches with continuing ancestor trunks and last-child elbows, never across roots", () => {
+    const rows = lineageRows([session(1), session(2, 1), session(3, 2), session(4, 2), session(5, 1), session(6, 5), session(7), session(8, 7)]);
+    expect(rows.map(({ session: item, ...geometry }) => ({ id: item.id, ...geometry }))).toEqual([
+      { id: id(1), depth: 0, ancestorTrunks: [], lastSibling: true, hasChildren: true },
+      { id: id(2), depth: 1, ancestorTrunks: [], lastSibling: false, hasChildren: true },
+      { id: id(3), depth: 2, ancestorTrunks: [true], lastSibling: false, hasChildren: false },
+      { id: id(4), depth: 2, ancestorTrunks: [true], lastSibling: true, hasChildren: false },
+      { id: id(5), depth: 1, ancestorTrunks: [], lastSibling: true, hasChildren: true },
+      { id: id(6), depth: 2, ancestorTrunks: [false], lastSibling: true, hasChildren: false },
+      { id: id(7), depth: 0, ancestorTrunks: [], lastSibling: true, hasChildren: true },
+      { id: id(8), depth: 1, ancestorTrunks: [], lastSibling: true, hasChildren: false },
+    ]);
+  });
+
+  it("keeps unknown, cyclic and absent registered parents disconnected without losing sessions", () => {
+    const rows = lineageRows([
+      { ...session(1, 99), ancestry: "unknown-parent" },
+      { ...session(2, 3), ancestry: "cycle" }, { ...session(3, 2), ancestry: "cycle" },
+      session(4, 99), session(5, 6), session(6, 5), session(7, 7),
+    ]);
+    expect(rows).toHaveLength(7);
+    for (const row of rows) expect(row).toMatchObject({ depth: 0, ancestorTrunks: [], hasChildren: false });
+  });
+
+  it("keeps native buttons focused and selection read-only while drawing uncapped connectors", async () => {
+    const chain = Array.from({ length: 12 }, (_, i) => session(i + 1, i ? i : undefined));
+    const client = { snapshot: { status: "observed" as const, observedAt: at, message: "Bounded", sessions: chain }, detail: null, selected: id(12),
+      busy: false, notice: "", read: vi.fn(async () => {}), refresh: vi.fn(async () => {}), handoff: vi.fn(async () => {}) };
+    const onSelect = vi.fn(), view = render(<ExternalAgentRail client={client} onSelect={onSelect} />);
+    const selected = screen.getByRole("button", { name: "Inspect external agent Agent 12" });
+    selected.focus(); expect(document.activeElement).toBe(selected);
+    view.rerender(<ExternalAgentRail client={{ ...client, notice: "Observation refreshed" }} onSelect={onSelect} />);
+    expect(document.activeElement).toBe(selected);
+    expect(selected.getAttribute("aria-pressed")).toBe("true");
+    expect(view.container.querySelectorAll(".external-lineage-branch")).toHaveLength(11);
+    expect(view.container.querySelectorAll(".external-lineage-stem")).toHaveLength(11);
+    expect(view.container.querySelector(`[data-session="${id(12)}"]`)?.getAttribute("style")).toContain("176px");
+    expect(screen.getByRole("list", { name: "Fork lineage" }).parentElement?.className).toBe("external-lineage-scroll");
+    fireEvent.click(selected);
+    expect(onSelect).toHaveBeenCalledTimes(1); expect(client.read).toHaveBeenCalledExactlyOnceWith(id(12));
+    expect(client.handoff).not.toHaveBeenCalled();
+  });
+
   it("renders all 64 ancestry levels without assigning role-based depth or inventing unknown parents", () => {
     const chain = Array.from({ length: 64 }, (_, i) => session(i + 1, i ? i : undefined));
     const rows = lineageRows([...chain].reverse());
@@ -72,7 +115,7 @@ describe("external observer presentation and lifecycle", () => {
     await screen.findByText("Synthetic example — not a real agent run");
     expect(onSelect).toHaveBeenCalledTimes(1);
     expect(request.mock.calls.map(([r]) => r.type)).toEqual(["externalAgents.snapshot", "externalAgents.read"]);
-    expect(screen.getByText("Read-only observation. Managed agent execution remains separate and unavailable.")).toBeTruthy();
+    expect(screen.getByText("Read-only observation. This view observes existing sessions; launching runs is a separate action.")).toBeTruthy();
     const log = screen.getByRole("list", { name: "Recorded agent worklog" });
     expect(within(log).getAllByRole("listitem").map((item) => item.querySelector("p")?.textContent)).toEqual(detail(1).entries.map((entry) => entry.text));
     expect(within(log).queryByRole("button")).toBeNull(); expect(within(log).queryByRole("link")).toBeNull();
