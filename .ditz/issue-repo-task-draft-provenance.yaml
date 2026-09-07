@@ -66,6 +66,16 @@ log_events:
   what: commented
   comment: 'D4 core consumer started on verified PR48 base: pinned metadata resolution,
     owned lifecycle and exact task-Prepare timeout; D5 and D6 remain independent.'
+- time: 2026-09-07T15:40:31-00:00
+  who: Ted Smith
+  what: commented
+  comment: D5 UI consumer completed via normal PR49 merge3b6d166ac15a745dea6c65d309c822f6ad1b8b58
+    on exact approvedD3; tested topic6f6f02b/tree0d4108cb, final34/all13fresh/1404,
+    native+Google convergence CLEAN, Anthropic unavailable. Actual packaged CLI-Ditz100/150
+    Attach/Cancel/Append/duplicate/Remove/Replace preserves independent source/cursor/cameras;
+    attached Prepare truthfully UNSUPPORTED_CONTROL. D4 is independent and must be
+    ROOT-verified; D6 must prove actual joined successful preparation/history. This
+    parent stays OPEN. No master/integration/app/model adoption.
 blocked_by:
 - repo-task-surface
 - repo-task-draft-contract-d2
