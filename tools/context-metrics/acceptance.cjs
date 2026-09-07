@@ -19,18 +19,28 @@ async function main() {
   await app.whenReady(); assert.equal(app.getPath("userData"), process.env.SWARM_CONTEXT_PROFILE);
   await until(() => fs.access(path.join(evidence, "window-selected")).then(() => true, () => false), "owned window", 30000);
   const win = BrowserWindow.getAllWindows()[0]; assert(win && !win.isDestroyed());
-  const wc = win.webContents; win.setContentSize(1600, 1000); win.focus(); wc.focus();
+  const wc = win.webContents; win.setContentSize(1400, 850); win.focus(); wc.focus();
   assert(wc.getURL().startsWith("file:"), "actual packaged renderer");
   const run = (fn, ...args) => wc.executeJavaScript(`(${fn.toString()})(...${JSON.stringify(args)})`, true);
   await run(() => { addEventListener("error", (event) => console.error(event.error?.stack ?? event.message)); addEventListener("unhandledrejection", (event) => console.error(event.reason?.stack ?? event.reason)); });
   const paint = () => run(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve(true)))));
   const text = (selector) => run((s) => document.querySelector(s)?.textContent ?? "", selector);
   const key = (keyCode, modifiers = []) => { wc.sendInputEvent({ type: "keyDown", keyCode, modifiers }); if (keyCode === "Enter") wc.sendInputEvent({ type: "char", keyCode: "\r", modifiers }); wc.sendInputEvent({ type: "keyUp", keyCode, modifiers }); };
+  const command = async (name) => {
+    key("k", ["control"]);
+    await until(() => run(() => document.activeElement?.getAttribute("aria-label") === "Workspace command"), "palette input owns native focus");
+    key("a", ["control"]); await wc.insertText(name);
+    await until(() => run((expected) => document.querySelector(".command-palette input")?.value === expected &&
+      document.querySelector(".command-results button[aria-current='true'] span")?.firstChild?.textContent === expected, name), "filtered command acknowledged");
+    key("Enter");
+  };
   const open = async (source) => {
-    key("k", ["control"]); await until(() => run(() => Boolean(document.querySelector(".command-palette input"))), "palette");
-    key("a", ["control"]); await wc.insertText("Open repository path"); key("Enter");
+    await command("Open repository path");
     await until(() => run(() => document.querySelector(".command-palette input")?.getAttribute("aria-label") === "Exact repository path"), "exact path mode");
-    key("a", ["control"]); await wc.insertText(source); key("Enter");
+    await until(() => run(() => document.activeElement?.getAttribute("aria-label") === "Exact repository path"), "exact path input focus");
+    key("a", ["control"]); await wc.insertText(source);
+    await until(() => run((expected) => document.querySelector(".command-palette input")?.value === expected, source), "exact path text acknowledged");
+    await paint(); key("Enter");
     await until(async () => (await text(".source-surface header strong")) === source && await run((p) => document.querySelector(".artifact-context")?.dataset.contextSubject === p, source), `source/Context ${source}`);
   };
   const state = () => run(() => { const s = document.querySelector(".cm-content")?.cmView?.rootView?.view?.state; return s ? { text: s.doc.toString(), anchor: s.selection.main.anchor, head: s.selection.main.head } : null; });
@@ -46,6 +56,13 @@ async function main() {
   await run(() => document.querySelector(".cm-content").focus()); key("End", ["control"]); await wc.insertText("// unsaved Context proof");
   await until(async () => (await state())?.text === `${fixture.sourceText}// unsaved Context proof`, "dirty source");
   const dirty = await state();
+  await command("Ask an agent about this focus");
+  await until(() => run(() => Boolean(document.querySelector(".agent-draft textarea"))), "fixed-focus draft");
+  await run(() => document.querySelector(".agent-draft textarea").focus());
+  await wc.insertText("Explain the Context relationships; do not execute anything.");
+  const draftState = () => run(() => ({ text: document.querySelector(".agent-draft textarea")?.value, source: document.querySelector(".agent-context-path")?.textContent }));
+  await until(async () => (await draftState()).text?.includes("Explain the Context relationships"), "draft text acknowledged");
+  const draft = await draftState();
   stage = "reverse-membership"; await open("b/data.txt");
   assert((await text("[data-context-section='capture']")).includes("//b:library"));
   assert((await text("[data-context-section='indirect-targets']")).includes("//a:consumer"));
@@ -57,6 +74,7 @@ async function main() {
   assert((await text("[data-context-section='deployments']")).includes("No services"));
   await screenshot("03-empty-context-global.png", ".context-global");
   await open(fixture.sourcePath); assert.deepEqual(await state(), dirty, "dirty text and logical cursor retained");
+  assert.deepEqual(await draftState(), draft, "fixed draft/source association retained across Context switches");
   assert.equal(await fs.readFile(path.join(fixture.root, fixture.sourcePath), "utf8"), fixture.sourceText, "no source write");
   // Inspection/cursor motion does not recreate graph instances or reframe them.
   const cameras = await run(() => { globalThis.__contextGraphs = [...document.querySelectorAll(".react-flow__viewport")]; return globalThis.__contextGraphs.map((node) => node.style.transform); });
@@ -65,7 +83,9 @@ async function main() {
   assert.deepEqual(await run(() => globalThis.__contextGraphs.map((node) => ({ connected: node.isConnected, transform: node.style.transform }))), cameras.map((transform) => ({ connected: true, transform })));
   assert.equal(rendererErrors.length, 0, JSON.stringify(rendererErrors));
   await fs.writeFile(path.join(evidence, "proof.json"), JSON.stringify({ ok: true, realBazel: true, packagedCore: true, sourceCamerasRetained: true, modelTurns: 0, rendererErrors,
-    contexts: [fixture.sourcePath, "b/data.txt", "README.md"], latency: "Explicit saved-source demo tag; authored figures, not production telemetry", elapsedMs: Date.now() - started }));
+    contexts: [fixture.sourcePath, "b/data.txt", "README.md"], draftRetained: true,
+    graphScope: "All mounted graph identities and cameras through final source cursor movement; directory navigation intentionally follows explicit source paths",
+    latency: "Explicit saved-source demo tag; authored figures, not production telemetry", elapsedMs: Date.now() - started }));
 }
 main().catch(async (error) => {
   await fs.writeFile(path.join(evidence, "failure.json"), JSON.stringify({ stage, message: error.stack ?? String(error), rendererErrors }));
