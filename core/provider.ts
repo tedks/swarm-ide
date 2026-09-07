@@ -17,6 +17,8 @@ import {
 import { computeWorkingWorldFingerprint } from "./fingerprint";
 import { registerRepository } from "./repository-registration";
 import { RepositoryReader, RepositoryError } from "./repository";
+import { RepositoryFileSearch } from "./repository-search";
+import type { RepositorySearchRequest, RepositorySearchResult } from "../protocol/repository-search";
 import { RepositoryRequestSchema, repositoryEntryId, type RepositoryObservation, type RepositoryRequest } from "../protocol/repository";
 import { readBoundedRegularFile, readCanonicalWorkspaceBytes, resolveWorkspaceFile } from "./files";
 import {
@@ -322,12 +324,18 @@ export class RealWorkspaceProvider {
   private disposed = false;
   private directoryTimer: ReturnType<typeof setTimeout> | undefined;
   private readonly repository: Pick<RepositoryReader, "list" | "markStale" | "dispose">;
+  private readonly fileSearch: RepositoryFileSearch;
 
   private constructor(
     private readonly workspaceRoot: string,
     private readonly dependencies: ProviderDependencies,
     repositoryId: string,
-  ) { this.repository = dependencies.repository?.(workspaceRoot, repositoryId) ?? new RepositoryReader(workspaceRoot, repositoryId); }
+  ) {
+    this.repository = dependencies.repository?.(workspaceRoot, repositoryId) ?? new RepositoryReader(workspaceRoot, repositoryId);
+    this.fileSearch = new RepositoryFileSearch(workspaceRoot, repositoryId);
+  }
+
+  searchRepository(request: RepositorySearchRequest): Promise<RepositorySearchResult> { return this.fileSearch.search(request); }
 
   static async create(workspaceRoot: string, dependencies: ProviderDependencies = defaultDependencies): Promise<RealWorkspaceProvider> {
     const registration = await (dependencies.register ?? registerRepository)(workspaceRoot);
@@ -400,6 +408,7 @@ export class RealWorkspaceProvider {
   }
 
   markDirectoryStale(publish?: ProviderPublish): void {
+    this.fileSearch.markStale();
     this.repository.markStale();
     const graph = this.snapshotValue.graphs.find((graph) => graph.topologyId === "repo")!;
     if (!graph.directory || graph.directory.state !== "observed") return;
@@ -407,7 +416,7 @@ export class RealWorkspaceProvider {
     publish?.("workspace.changed", this.snapshotValue);
   }
 
-  dispose(): void { this.disposed = true; ++this.navigationGeneration; ++this.currentAttempt; if (this.directoryTimer) clearTimeout(this.directoryTimer); this.repository.dispose(); }
+  dispose(): void { this.disposed = true; ++this.navigationGeneration; ++this.currentAttempt; if (this.directoryTimer) clearTimeout(this.directoryTimer); this.repository.dispose(); this.fileSearch.dispose(); }
 
   /** Explicit observation seam also used by small provider tests. Registration
    * never awaits this; worker observation is independently scheduled. */

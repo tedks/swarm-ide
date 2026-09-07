@@ -259,7 +259,7 @@ describe("workbench shell", () => {
     render(<App />);
     await screen.findByText("swarm-ide");
     fireEvent.keyDown(window, { key: "k", ctrlKey: true });
-    expect(await screen.findByPlaceholderText("Navigate or apply intelligence…")).toBeTruthy();
+    expect(await screen.findByPlaceholderText("Find a filename, path fragment or command…")).toBeTruthy();
   });
 
   it("shows fixed controls, persists 100 to 125, resets, and restores after reload", async () => {
@@ -316,7 +316,7 @@ describe("workbench shell", () => {
     await screen.findByText("swarm-ide");
 
     fireEvent.keyDown(window, { key: "k", code: "KeyK", ctrlKey: true });
-    const input = await screen.findByPlaceholderText("Navigate or apply intelligence…");
+    const input = await screen.findByPlaceholderText("Find a filename, path fragment or command…");
     fireEvent.change(input, { target: { value: "focus remains" } });
     input.focus();
     const callsBeforePlainKey = vi.mocked(bridge.setZoomPercent).mock.calls.length;

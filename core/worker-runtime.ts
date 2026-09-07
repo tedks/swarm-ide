@@ -28,6 +28,7 @@ import { createUnavailableTaskProvider } from "./tasks/unavailable";
 import { parseTaskResultForRequest, type TaskResult } from "../protocol/tasks";
 import { RepositoryError } from "./repository";
 import { type RepositoryResult } from "../protocol/repository";
+import type { RepositorySearchResult } from "../protocol/repository-search";
 
 export interface WorkerDependencies {
   createAgents?: typeof createProductionAgentService;
@@ -89,7 +90,7 @@ function publish(type: CoreEvent["type"], snapshot: WorkspaceSnapshot): void {
   }));
 }
 
-function ok(requestId: string, snapshot: WorkspaceSnapshot, file?: FileResult, agent?: AgentResult, task?: TaskResult, repo?: RepositoryResult): CoreResponse {
+function ok(requestId: string, snapshot: WorkspaceSnapshot, file?: FileResult, agent?: AgentResult, task?: TaskResult, repo?: RepositoryResult, search?: RepositorySearchResult): CoreResponse {
   return CoreResponseSchema.parse({
     protocolVersion: PROTOCOL_VERSION,
     requestId,
@@ -100,6 +101,7 @@ function ok(requestId: string, snapshot: WorkspaceSnapshot, file?: FileResult, a
     ...(agent ? { agent } : {}),
     ...(task ? { task } : {}),
     ...(repo ? { repo } : {}),
+    ...(search ? { search } : {}),
   });
 }
 
@@ -197,6 +199,11 @@ process.parentPort?.on("message", async (event) => {
       return;
     }
     switch (request.type) {
+      case "repo.search": {
+        const search = await provider.searchRepository(request);
+        post(parseCoreResponseForRequest(ok(requestId, provider.snapshot(), undefined, undefined, undefined, undefined, search), request));
+        return;
+      }
       case "repo.list": {
         const observation = await provider.listRepository(request, publish);
         post(parseCoreResponseForRequest(ok(requestId, provider.snapshot(), undefined, undefined, undefined, { kind: "list", observation }), request));

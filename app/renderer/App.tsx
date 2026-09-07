@@ -44,6 +44,9 @@ import type { TaskFileRef } from "../../protocol/tasks";
 import { isRepositoryPath, type RepositoryEntry, type RepositoryRequest } from "../../protocol/repository";
 import { useRepositoryNavigation } from "./repository/navigation";
 import { RepositoryNavigation } from "./repository/RepositoryNavigation";
+import { FileSearchPalette } from "./repository/FileSearchPalette";
+import { useFileSearch } from "./repository/file-search";
+import type { RepositorySearchRequest } from "../../protocol/repository-search";
 import { useStartupTopology } from "./startup-topology";
 import { WorkbenchSidebar } from "./WorkbenchSidebar";
 import { TopologyViews } from "./repository/BuildGraphPane";
@@ -171,6 +174,17 @@ export function App() {
   const queuedZoomRef = useRef<ZoomRequest | null>(null);
   const zoomInitializedRef = useRef(false);
   const commandInput = useRef<HTMLInputElement>(null);
+  const paletteOrigin = useRef<HTMLElement | null>(null);
+  const openPalette = useCallback(() => {
+    paletteOrigin.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    setPalettePathMode(false); setCommandQuery("");
+    setPaletteOpen(true);
+  }, []);
+  const cancelPalette = useCallback(() => {
+    setPaletteOpen(false);
+    const origin = paletteOrigin.current;
+    requestAnimationFrame(() => { if (origin?.isConnected) origin.focus({ preventScroll: true }); });
+  }, []);
   if (hotMemory) hotMemory.workbench = {
     workspace, activeSurface, lens: activeLens,
     files: fileTabs.map((tab) => savesInFlightRef.current.has(tab.path) || tab.status === "saving" ? { ...tab, status: "unknown", message: "Renderer replaced during save; check disk before retrying. Buffer preserved." } : tab),
@@ -330,6 +344,14 @@ export function App() {
   const repositoryObservation = workspace.snapshot?.graphs.find((graph) => graph.topologyId === "repo")?.directory;
   const repository = useRepositoryNavigation(repositoryObservation, coreGenerationRef.current,
     Boolean(window.swarm && (!window.swarmLifecycle || lifecycle?.core.phase === "ready")), requestDirectory);
+  const requestFileSearch = useCallback(async (input: RepositorySearchRequest) => {
+    const generation = coreGenerationRef.current;
+    if (!window.swarm || window.swarmLifecycle && lifecycleRef.current?.core.phase !== "ready") return null;
+    const response = await window.swarm.request(input);
+    return generation === coreGenerationRef.current && (!window.swarmLifecycle || lifecycleRef.current?.core.phase === "ready") ? response : null;
+  }, []);
+  const fileSearch = useFileSearch(workspace.snapshot?.project.id, commandQuery,
+    paletteOpen && !palettePathMode && Boolean(window.swarm && (!window.swarmLifecycle || lifecycle?.core.phase === "ready")), coreGenerationRef.current, requestFileSearch);
 
   const coordinateFileFocus = useCallback((path: string) => {
     setSelectedConnection(null);
@@ -800,7 +822,7 @@ export function App() {
         if (zoomAction === "reset") void resetZoom();
         return;
       }
-      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "k") { event.preventDefault(); interruptPendingReveal(); setPaletteOpen((open) => !open); }
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "k") { event.preventDefault(); interruptPendingReveal(); if (paletteOpen) cancelPalette(); else openPalette(); }
       if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "w") {
         event.preventDefault();
         if (taskDocumentVisible || (taskDocumentOpen && !fileTabsRef.current.some((tab) => tab.path === activeSurface))) { setTaskDocumentVisible(false); setTaskDocumentOpen(false); return; }
@@ -808,14 +830,14 @@ export function App() {
         if (path) closeFile(path);
         return;
       }
-      if (event.key === "Escape") setPaletteOpen(false);
+      if (event.key === "Escape" && paletteOpen) cancelPalette();
     };
     window.addEventListener("keydown", listener);
     return () => window.removeEventListener("keydown", listener);
-  }, [activeSurface, closeFile, interruptPendingReveal, resetZoom, zoomIn, zoomOut, taskDocumentVisible, taskDocumentOpen]);
+  }, [activeSurface, closeFile, interruptPendingReveal, resetZoom, zoomIn, zoomOut, taskDocumentVisible, taskDocumentOpen, paletteOpen, cancelPalette, openPalette]);
 
   useEffect(() => {
-    if (paletteOpen) { setPalettePathMode(false); setCommandQuery(""); requestAnimationFrame(() => commandInput.current?.focus()); }
+    if (paletteOpen) requestAnimationFrame(() => commandInput.current?.focus());
   }, [paletteOpen]);
 
   useEffect(() => {
@@ -901,7 +923,7 @@ export function App() {
       { label: "Repository root", detail: "Browse actual root entries", run: () => { setPaletteOpen(false); void repository.enter(""); } },
       { label: "Repository Up", detail: "Browse the parent directory", run: () => { setPaletteOpen(false); void repository.up(); } },
       { label: "Refresh directory", detail: "Observe current entries without a build", run: () => { setPaletteOpen(false); void repository.refresh(); } },
-      { label: "Open repository path", detail: "Enter an exact relative file path; no recursive search", run: () => { setPalettePathMode(true); setCommandQuery(""); requestAnimationFrame(() => commandInput.current?.focus()); } },
+      { label: "Open repository path", detail: "Exact relative path fallback, independent of captured search coverage", run: () => { setPalettePathMode(true); setCommandQuery(""); requestAnimationFrame(() => commandInput.current?.focus()); } },
     ] : []),
     { label: "Show repository Tasks", detail: "inspect planning metadata without moving source", run: () => { setPaletteOpen(false); setCompactPanel("work"); } },
     { label: "Refresh tasks", detail: "observe local metadata; no fetch, task mutation or dispatch", run: () => { setPaletteOpen(false); setCompactPanel("work"); void taskClient.refresh(); } },
@@ -923,7 +945,7 @@ export function App() {
       <header className="topbar">
         <div className="product-mark"><span className="hmr-probe" />swarm</div>
         <nav className="lens-tabs" aria-label="Workspace lenses">{lensTabs.map((lens) => <button key={lens} className={activeLens === lens ? "active" : ""} onClick={() => setActiveLens(lens)}>{lens}</button>)}</nav>
-        <button className="command-trigger" onClick={() => setPaletteOpen(true)}><span>Search, navigate, direct…</span><kbd>Ctrl K</kbd></button>
+        <button className="command-trigger" onClick={openPalette}><span>Search, navigate, direct…</span><kbd>Ctrl K</kbd></button>
         <div className="zoom-control" role="group" aria-label="Interface zoom" aria-busy={zoomPending}>
           <button aria-label="Zoom out" title="Zoom out (Ctrl+-)" aria-disabled={zoomPercent === INTERFACE_ZOOM_LEVELS[0]} onClick={() => { if (zoomPercent !== INTERFACE_ZOOM_LEVELS[0]) void zoomOut(); }}>−</button>
           <button className="zoom-value" aria-label={zoomPercent === null ? "Reset zoom to 100%. Current zoom unknown" : `Reset zoom to 100%. Current zoom ${zoomPercent}%`} title="Reset zoom (Ctrl+0)" onClick={() => void resetZoom()}>{zoomPercent === null ? "—" : `${zoomPercent}%`}</button>
@@ -1025,7 +1047,9 @@ export function App() {
         />
       </section>
 
-      {paletteOpen ? <div className="palette-scrim" onMouseDown={() => setPaletteOpen(false)}><section className="command-palette" onMouseDown={(event) => event.stopPropagation()}><header><span>⌕</span><input ref={commandInput} aria-label={palettePathMode ? "Exact repository path" : "Workspace command"} value={commandQuery} onChange={(event) => setCommandQuery(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter" && commands[0]) { event.preventDefault(); void commands[0].run(); } }} placeholder={palettePathMode ? "Exact relative path, e.g. core/files.ts" : "Navigate or apply intelligence…"} /><kbd>esc</kbd></header><div className="command-results">{commands.map((command) => <button key={command.label} onClick={() => void command.run()}><span>{command.label}<small>{command.detail}</small></span><kbd>↵</kbd></button>)}</div><footer><span>Current focus: {focusLabel(snapshot.focus)}</span><span>{palettePathMode ? "exact path · file opener" : "scope · action · artifact"}</span></footer></section></div> : null}
+      {paletteOpen ? <FileSearchPalette query={commandQuery} onQuery={setCommandQuery} exact={palettePathMode} commands={commands}
+        inputRef={commandInput} focusLabel={focusLabel(snapshot.focus)} onCancel={cancelPalette} search={fileSearch}
+        onOpen={(path) => { setPaletteOpen(false); openLinkedFile(path); }} /> : null}
       {reloadNotice || lifecycleNotice ? <div className="lifecycle-notice" role="status" tabIndex={0} aria-label="Development status">{reloadNotice || lifecycleNotice}</div> : null}
       {error ? <div className="error-toast">{error}</div> : null}
       {zoomNotice ? <div className="zoom-toast" role="status">{zoomNotice}</div> : null}
