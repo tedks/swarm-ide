@@ -11,11 +11,12 @@ while [[ ! -s "$SWARM_PLANS_EVIDENCE/plans-proof.json" ]]; do
   (( SECONDS < plans_deadline )) || { echo 'Packaged plans proof timed out'; exit 1; }
   sleep 0.1
 done
-node - "$SWARM_PLANS_EVIDENCE/plans-proof.json" <<'JS'
+plans_scripts=$(dirname "$(readlink -f "$0")")
+node - "$SWARM_PLANS_EVIDENCE/plans-proof.json" "$plans_scripts/diagnostics.cjs" <<'JS'
 const fs = require('node:fs');
 const proof = JSON.parse(fs.readFileSync(process.argv[2], 'utf8'));
-if (proof.ok !== true || proof.realDitz !== true || proof.packagedCore !== true || proof.modelTurns !== 0) process.exit(1);
-if (proof.rendererErrors !== undefined && (!Array.isArray(proof.rendererErrors) || proof.rendererErrors.length !== 0)) process.exit(1);
+const diagnostics = require(process.argv[3]).validatePlansProof(proof);
 console.log('Authored plans and real CLI-authored tasks passed through the packaged core, bridge and UI; no model turn.');
+console.log(`Preserved ${diagnostics.acceptedResizeWarnings.length} exact user-accepted resize warnings; zero other renderer errors.`);
 JS
 swarm_window_capture "$SWARM_PLANS_EVIDENCE/plans-window.png"
