@@ -25,8 +25,8 @@ are visibly unavailable. It does not activate agents or create a new scanner.
 - [x] (2026-09-07 02:26Z) Q0 light native design review CLEAN after fixing both
   substantive clarifications; local links, plan sections, scope and whitespace
   checks passed. PR40 owns normal docs landing and the final recap its receipt.
-- [ ] ROOT verifies Q0 landing/handoff, evaluates and dispatches Q1; no
-  implementation is delivered by Q0.
+- [x] (2026-09-07 02:40Z) ROOT verified Q0, approved Q1 and designated the contextual-information worktree.
+- [x] (2026-09-07 02:45Z) Red provider regressions proved ordinary-file and required-declaration ownership leakage: 2 failed, 1194 passed. Frozen log in Q1 step red.log.
 - [ ] Q1 red regressions, typed publication and Context composition.
 - [ ] Q1 actual two-repository packaged acceptance, local gates, review, landing.
 
@@ -287,3 +287,9 @@ Review revision (2026-09-07): the light native pass required explicit directory
 evidence and separate pending-activation versus committed-subject checks. Both
 are incorporated above; source receipt-time honesty and strict receiver
 validation were also made explicit without expanding implementation scope.
+Q1 found `retainDerived` retained the old built graph but would drop the additive
+service observation. ROOT approved only copying that original observation in the
+existing retention branch and focused recovery regressions (step ownership.md).
+The old workbench tests use unconditional legacy widgets as file-opening controls;
+these setup gestures must migrate to deliberate navigation without restoring the
+misleading fallback. Existing behavioral retention assertions remain required.

@@ -35,6 +35,7 @@ export function retainDerived(previous: WorkspaceSnapshot | null, incoming: Work
   return {
     ...incoming,
     revisions: { ...incoming.revisions, built: old.revisions.built },
+    serviceContext: old.serviceContext,
     graphs: incoming.graphs.map((graph) => graph.directory ? graph : {
       ...(old.graphs.find((previousGraph) => previousGraph.topologyId === graph.topologyId) ?? graph),
       nodes: (old.graphs.find((previousGraph) => previousGraph.topologyId === graph.topologyId) ?? graph).nodes.map((node) => ({ ...node, focus: retag(node.focus) })),

@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { posix } from "node:path";
 import { z } from "zod";
+import { ServiceContextObservationSchema, type ServiceContextObservation } from "../protocol/context";
 import {
   PROTOCOL_VERSION,
   type FocusRef,
@@ -88,7 +89,8 @@ export function adaptServiceTopology(
   fingerprint: string,
   epoch: number,
   observedAt: string,
-): { graph: GraphSlice; mappings: NavigationMapping[]; widgets: Widget[] } {
+  repositoryId = "repository:unregistered",
+): { graph: GraphSlice; mappings: NavigationMapping[]; widgets: Widget[]; serviceContext: ServiceContextObservation } {
   const implementationPath = artifact.implementationPaths.find((path) => path.endsWith("fraudcheck.ts")) ?? artifact.implementationPaths[0]!;
   const declarationPaths = new Map(artifact.interfaceDeclarationPaths.map((item) => [item.interfaceId, item.path]));
   const serviceFocus = focus("service", artifact.service.id, fingerprint, implementationPath);
@@ -140,7 +142,13 @@ export function adaptServiceTopology(
     { id: "artifact", title: "Topology artifact", kind: "status", priority: 5, value: `${artifactUri} · artifact sha256:${buildId.slice(0, 12)} · inputs sha256:${artifact.inputDigest.slice(0, 12)}`, provenance },
     { id: "deployment", title: "Deployment", kind: "status", priority: 6, value: "not configured", provenance: { sourceKind: "repo", uri: `repo://${MANIFEST_PATH}`, version: fingerprint, observedAt } },
   ];
+  const context = ServiceContextObservationSchema.safeParse({ repositoryId, worldId: "world:working", status: "observed", artifactUri, buildId,
+    sourceFingerprint: fingerprint, inputDigest: artifact.inputDigest, observedAt,
+    service: { ...artifact.service, owningTarget: artifact.owningTarget, manifestPath: MANIFEST_PATH,
+      implementationPaths: artifact.implementationPaths, interfaceDeclarationPaths: artifact.interfaceDeclarationPaths,
+      providedInterfaces: artifact.providedInterfaces, requiredInterfaces: artifact.requiredInterfaces } });
   return {
+    serviceContext: context.success ? context.data : { repositoryId, worldId: "world:working", status: "unavailable", reason: "Example service context is unsupported or exceeds its bounded publication budget" },
     graph: {
       schemaVersion: PROTOCOL_VERSION,
       topologyId: "service",
