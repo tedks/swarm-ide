@@ -6,10 +6,13 @@ Source, design, tasks, and instructions stay with the repository; separate views
 help you move between them without losing your place.
 
 This is a working prototype, not a general-purpose replacement for your editor.
-Repository browsing, source editing, Ditz task inspection, and disk-context
-preparation are real. Managed agent launch is currently unavailable; labelled
-mock conversations and deterministic rehearsals are not live agent execution.
-Start with the [five-minute walkthrough](docs/demo.md).
+Repository browsing, source editing, Ditz tasks and dependency graphs, authored
+plan hierarchies, per-repository Bazel queries, and disk-context preparation are
+real. Explicitly registered external agent sessions are read-only observations;
+Logical changes contains supervised-generated, recorded summaries. Managed agent
+launch is currently unavailable. Mocks and deterministic rehearsals are not live
+agent execution. Start with [installation and troubleshooting](docs/evaluator-install.md),
+then the [connected walkthrough](docs/demo.md).
 
 ## Linux quick start
 
@@ -24,8 +27,9 @@ Clone using an account that has access to the repository:
 ```bash
 git clone git@github.com:tedks/swarm-ide.git
 cd swarm-ide
+git fetch origin refs/heads/ditz-metadata:refs/heads/ditz-metadata
 nix develop --command pnpm install --frozen-lockfile
-nix develop --command bazel build --jobs=3 //...
+nix develop --command bazel build --jobs=3 //:desktop-bundle
 SWARM_DEV_PORT=55173 nix develop --command bazel run --jobs=3 //:dev
 ```
 
@@ -46,10 +50,11 @@ The target must be an existing Git working-tree root with a committed `HEAD`.
 Relative paths are resolved from the directory where you invoke the command.
 The IDE's dependencies and development output stay in the IDE checkout, not the
 target. A non-Bazel repository can still be browsed; unavailable build or service
-evidence is not replaced by demo data. Use trusted local repositories: building
-a repository can execute its build rules and repository Bazel wrapper. Opening
-an external target does not automatically start that build; choose Build only
-when you intend to execute that repository's tooling.
+evidence is not replaced by demo data. Use trusted local repositories: explicit
+Build can execute their build rules and Bazel wrapper. Opening **Build graph**
+or enabling **Build links** also loads repository-controlled Bazel definitions
+for a query; that is not a security sandbox. Simply opening an external target
+does not automatically start its topology build.
 
 Leave the terminal running. Renderer changes use hot reload; most local-core
 changes recover without replacing the native window. Main-process changes need
@@ -68,7 +73,8 @@ git fetch origin refs/heads/ditz-metadata:refs/heads/ditz-metadata
 git show-ref --verify refs/heads/ditz-metadata
 ```
 
-Then choose **Refresh tasks** in the IDE. For another repository, run the fetch
+The quick-start sequence above already does this fetch. Choose **Refresh tasks**
+in the IDE. For another repository, run the fetch
 there only if it actually uses this Ditz metadata format. A missing branch means
 task information is unavailable, not that the project has no work. Do not force
 an existing divergent metadata branch over local changes; contributors use the
@@ -102,7 +108,8 @@ SWARM_VIRTUAL_DESKTOP_PORT=55174 nix develop --command bazel run --jobs=3 //tool
 To exercise the installation path itself after fetching the local Ditz branch:
 
 ```bash
-nix develop --command bazel run --jobs=3 //tools/demo-install:smoke
+SWARM_VIRTUAL_DISPLAY=:134 SWARM_VIRTUAL_DESKTOP_PORT=55214 \
+  nix develop --command bazel run --jobs=3 //tools/demo-install:smoke
 ```
 
 This creates a fresh local Git clone, materializes its dependencies, and opens
@@ -110,14 +117,16 @@ real files in that checkout and two disposable target repositories on owned
 virtual X11. It checks startup rejection and explicit-build authority, records
 screenshots under `artifacts/demo-install/`, and retains its temporary checkouts
 for inspection. Shared Nix/package download caches are allowed; this is not a
-cold-download benchmark. Run GUI scenarios one at a time.
+cold-download benchmark. Choose a free display/port pair; the harness refuses
+occupied endpoints and never takes another application's window. This target
+runs its own cases sequentially; independent checkouts can use separate pairs.
 
 Automated GUI checks create and clean up their own Xvfb/Openbox desktop; they
 never drive your existing application window. See
 [development and visual verification](docs/development-loop.md) for additional
 scenarios, evidence locations, and reload behavior.
 
-`bazel build //...` produces `bazel-bin/swarm-ide-foundation.tar.gz`: compiled
+`bazel build //:desktop-bundle` produces `bazel-bin/swarm-ide-foundation.tar.gz`: compiled
 Electron main/preload code, local core (including its YAML dependency), and
 renderer assets. **It is not a standalone installer.** It does not include the
 Electron executable, Nix/system runtime, or your repository. The supported
