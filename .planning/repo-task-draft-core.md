@@ -29,7 +29,10 @@ real Git/YAML preparation and separately label deterministic responder behavior.
 - [x] (2026-09-07) Reviewed increment pushed to PR50; final documentation records this outcome. Its final frozen gate, normal merge/parents/tree, Ditz closure and owned cleanup are recorded in the step landing receipt, not presumed from this plan.
 - [x] (2026-09-07) ROOT verified independent D4 `18ab0a5` and D5 normal `3b6d166`; same-child bounded composition authorized. Exact normal merge `aa717df` has those two parents, tree `dde23192b4adb572ed80b786588ddd3562babd57`, with no conflicts.
 - [x] (2026-09-07 16:04Z) Original joined packaged test RED at acceptance.cjs338: expected D3 UNSUPPORTED_CONTROL, but actual rendered draft includes canonical pinned V2 task, disk source, exact prompt and unavailable production policy. Finite28.424s run/cleanup1 archived before correction.
-- [ ] Correct only authorized acceptance Prepare/evidence helpers plus this plan; prove real ordinary UI bytes/hash/confirmation/Remove at100/150 and retain all earlier gates. Frozen full local/delta council and exact-master normal landing follow; parent delivery remains open until broader D6.
+- [x] (2026-09-07) Proof-only correction `8e93864` pushed; actual packaged ordinary UI Prepare at100/150 PASS9.3s, with independent Git/task/disk bytes/hash, initial unconfirmed state, disabled launch even after explicit confirmation, zero runs and Remove retirement. All earlier task retention/negative gates retained.
+- [x] (2026-09-07) Frozen correction build34 PASS1.840s; all13 fresh suites executed288.025s,12PASS/1FAIL. Quality1453/102 and task package8.9s PASS. Unchanged Swarm navigation initial topology-settlement90s predicate failed; raw evidence preserved, no retry or waiver.
+- [x] (2026-09-07) Native/Google composition council CLEAN. New explicit Claude Sonnet attempt timed out420s with no review; honestly unfilled, not retried or substituted. Owned virtual cleanup8/8 and32 recorded process IDs absent; Bazel shutdown requested after archive.
+- [ ] Normal PR50 landing held on full-local navigation gate; issue `repo-navigation-initial-topology-timeout-d4c` records exact bounded follow-up. ROOT must own any next diagnosis/correction; parent stays open for broader D6.
 
 ## Surprises & Discoveries
 
@@ -79,6 +82,47 @@ cannot commit, adopt peers, expand scope or create departments.
 
 ## Outcomes & Retrospective
 
+
+### Bounded D4C composition outcome (2026-09-07)
+
+Reviewed inputs `18ab0a5` and D5 normal `3b6d166` merged without conflict as
+`aa717df82c7f675df076c3a335f47a01cc938956`. Proof-only corrected executable
+`8e938641d83db4c74b8c417f8acc9f3a9018a87d`, tree
+`3ea35c91f715b5529f71acfd605bec353917789d`, changes only the authorized task
+acceptance hunks/helpers and this plan beyond that exact merge. No production
+or dependency edits. The original D3-unavailable expectation failed precisely
+because the joined actual rendered context was prepared; archive retained.
+
+At both100/150 the ordinary UI produced V2 task context matching independent
+owned Git commit/blob/object hashing, literal CLI-authored title/description,
+canonical677-byte task content/hash, full disk attachment/hash and original
+free instructions. Expanded recorded task, attachment and exact prompt details
+agree; prompt SHA256 agrees with displayed context hash. Unsaved text is retained
+in the editor but excluded from context. Initial confirmation is unchecked;
+after a deliberate check, production launch remains disabled with zero runs.
+Remove retires actual context/confirmation/launch control without changing the
+fixed source/free instructions/cursor/draft/graphs/cameras. This is real packaged
+Prepare, not provider execution or broader D6 attachment history/recovery proof.
+
+The full frozen run is NOT green:12/13 pass. Unchanged repository-navigation
+Swarm case `run.mgV200/swarm` failed at acceptance.cjs130 waiting90s for its
+initial topology job to settle. Other three navigation cases pass; this case
+has zero renderer exceptions and cleanup1. Recorded nested Bazel was sleeping
+and its log unavailable/unsafe; underlying cause is not established. No retry,
+timeout extension, assertion weakening, unowned driver edit or merge followed.
+Issue `repo-navigation-initial-topology-timeout-d4c` and step
+`composition-gate-request.md` hold the exact follow-up. Native/Google CLEAN and
+local task success do not waive the failed full-local gate. Sonnet's420s attempt
+returned no review and was not retried. Branch/evidence/session preserved.
+
+Full executable8e93864 archive SHA256:
+`481d660189ff29c123fc7003b8a4fa9517c00088b91f003c13ae7c6fea0d722c`.
+The final documentation-only handoff records this held result; no successful
+normal merge or final-head full-green execution is claimed. Parent delivery
+remains open. All preview/master/shared-integration/provider/credential gates
+remain intact. The earlier independent results below retain their own heads.
+
+### Independent D4 outcome
 
 The corrected executable head `fbd27c7634ed073137b102771753c5bc14912465`, tree
 `5b9d521606fe841cd9f9ce78c594b582b4ba22ba`, passes the34-target build and all13
