@@ -3,7 +3,7 @@ import { indexTaskBacklinks } from "../app/renderer/tasks/backlinks";
 import { taskBacklinkSection } from "../app/renderer/context/task-backlinks";
 import { TaskBridgeClient } from "../app/renderer/tasks/client";
 import { CoreResponseSchema, PROTOCOL_VERSION } from "../protocol/schema";
-import { TASK_LIMITS, TaskBacklinksSchema, TaskBacklinkTargetSchema, TaskSnapshotSchema, TaskResultSchema, TaskRequestSchema, taskBaseSnapshot, type TaskSnapshot } from "../protocol/tasks";
+import { TASK_LIMITS, TaskBacklinksSchema, TaskBacklinkTargetSchema, TaskSnapshotSchema, TaskObservationSchema, TaskResultSchema, TaskRequestSchema, taskBaseSnapshot, type TaskSnapshot } from "../protocol/tasks";
 import { taskObservationFixture } from "../fixtures/tasks";
 import { initialSnapshot } from "../fixtures/world";
 const byteLength = (value: unknown) => new TextEncoder().encode(JSON.stringify(value)).byteLength;
@@ -76,6 +76,37 @@ describe("bounded explicit backlink publication", () => {
     expect(JSON.stringify(response.snapshot)).not.toContain('"backlinks"');
     expect(byteLength(task)).toBeLessThan(TASK_LIMITS.resultBytes);
     expect(byteLength(taskBaseSnapshot(observation.snapshot!))).toBeLessThan(TASK_LIMITS.snapshotBytes);
+  });
+  it("preserves exact 512KiB base capacity with maximal escaped retention wrappers, independently of added backlinks", () => {
+    const observation = taskObservationFixture("unavailable");
+    observation.sequence = Number.MAX_SAFE_INTEGER;
+    observation.worldId = observation.repositoryId = "\\".repeat(256);
+    observation.reason!.message = "\\".repeat(512);
+    observation.checkedAt = "9999-12-31T23:59:59.99999999999Z";
+    observation.localRef = { algorithm: "sha256", hex: "a".repeat(64) };
+    const s = observation.snapshot!;
+    s.worldId = observation.worldId; s.repositoryId = observation.repositoryId;
+    s.metadataCommit = observation.localRef;
+    s.observedAt = observation.checkedAt;
+    const summary = s.summaries[0]!;
+    s.summaries = Array.from({ length: 256 }, (_, i) => ({ ...structuredClone(summary), id: `task-${String(i).padStart(3, "0")}`,
+      title: "x", component: "", blob: { algorithm: "sha256" as const, hex: "b".repeat(64) }, counts: { blocks: 0, blockedBy: 0, fileRefs: 1 } }));
+    const task = { kind: "snapshot" as const, observation };
+    let remaining = TASK_LIMITS.snapshotBytes - byteLength(task);
+    for (const row of s.summaries) {
+      const nul = Math.min(511, Math.floor(remaining / 6)); row.title += "\u0000".repeat(nul); remaining -= nul * 6;
+      const ascii = Math.min(512 - row.title.length, remaining); row.title += "x".repeat(ascii); remaining -= ascii;
+    }
+    expect(remaining).toBe(0); expect(byteLength(task)).toBe(TASK_LIMITS.snapshotBytes);
+    expect(TaskResultSchema.safeParse(task).success).toBe(true);
+    s.backlinks = { status: "complete", entries: s.summaries.map((row) => ({ taskId: row.id, refIndex: 0,
+      path: "p".repeat(850), navigation: "candidate" })) };
+    expect(byteLength(task)).toBeGreaterThan(TASK_LIMITS.snapshotBytes);
+    expect(TaskResultSchema.safeParse(task).success).toBe(true);
+    delete s.backlinks;
+    s.summaries.at(-1)!.title += "x";
+    expect(TaskObservationSchema.safeParse(observation).success).toBe(true);
+    expect(TaskResultSchema.safeParse(task).success).toBe(false);
   });
   it("distinguishes unavailable/overflow and scoped complete empty without inventing no bugs", () => {
     const client = new TaskBridgeClient(), state = client.getSnapshot();

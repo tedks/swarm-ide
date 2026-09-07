@@ -308,6 +308,7 @@ async function main() {
     const { changeBacklinkFixture } = await import(pathToFileURL(path.join(__dirname, "fixture.mjs")));
     const q4Inspect = async (percent, keyboard = false) => {
       stage = `q4-explicit-backlink-${percent}`;
+      const priorPanel = await run(() => document.querySelector(".workbench").dataset.compactPanel);
       await focus(".cm-content");
       await until(async () => await contextSubject() === fixture.sourcePath, "Q4 file attention");
       if (!await run(() => document.querySelector('[aria-label="Toggle information panel"]').getAttribute("aria-expanded") === "true")) await click(label("Toggle information panel"));
@@ -328,6 +329,10 @@ async function main() {
       await click(".artifact-context .task-detail .task-heading button");
       await until(async () => await contextSubject() === fixture.sourcePath, "Q4 return source information");
       await preserved(true);
+      // Restore the enclosing baseline's visible keyboard-navigation surface.
+      // At150%, Information overlays Work; hidden Repository Back cannot receive
+      // native Alt+Left. This is an explicit fixture gesture, not a timed retry.
+      if (priorPanel !== "info") await click(label(priorPanel === "work" ? "Toggle work panel" : "Toggle information panel"));
     };
     await q4Inspect(100, true);
     stage = "file-search-keyboard";

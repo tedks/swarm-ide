@@ -116,6 +116,22 @@ it("rejects a delayed backlink after file A to another source and back to A", as
   expect(document.querySelector(".task-editor-surface")).toBeNull();
 });
 
+it("folds the Tasks consumer without stopping a visible file Context or duplicating its five-second timer", async () => {
+  const intervals = vi.spyOn(globalThis, "setInterval"), cleared = vi.spyOn(globalThis, "clearInterval");
+  const { request } = setup(); render(<App />); await screen.findByRole("button", { name: "Select task task-fixture" });
+  const fiveSecond = () => intervals.mock.calls.flatMap((args, index) => args[1] === 5000 ? [intervals.mock.results[index]!.value] : []);
+  const first = fiveSecond().at(-1); expect(first).toBeDefined();
+  fireEvent.click(screen.getByRole("button", { name: "Tasks" }));
+  expect(cleared.mock.calls.some(([id]) => id === first)).toBe(true);
+  await openContextPath(source);
+  await waitFor(() => expect(fiveSecond().length).toBeGreaterThan(1));
+  const active = fiveSecond().at(-1), scans = request.mock.calls.filter(([r]) => r.type === "tasks.snapshot" && r.refresh).length;
+  fireEvent.click(screen.getByRole("button", { name: "Tasks" }));
+  fireEvent.click(screen.getByRole("button", { name: "Tasks" }));
+  expect(cleared.mock.calls.some(([id]) => id === active)).toBe(false);
+  expect(request.mock.calls.filter(([r]) => r.type === "tasks.snapshot" && r.refresh)).toHaveLength(scans);
+});
+
 it("runs the demo palette commands without launching agents or building, and clears only mock surfaces", async () => {
   const { request } = setup(); render(<App />);
   await screen.findByRole("button", { name: "Select task task-fixture" });
