@@ -20,9 +20,12 @@ the real behavior proof; this lane does not invent another installer.
 - [x] (2026-09-07 21:33Z) Started Ditz issue and unchanged installation smoke on
   owned display :134 / port 55214 with retained evidence.
 - [x] (2026-09-07 21:38Z) Drafted README update and self-contained evaluator guide.
-- [x] (2026-09-07 21:42Z) Smoke exited zero; three real-source cases passed with
+- [x] (2026-09-07 21:38Z) Smoke exited zero; three real-source cases passed with
   owned cleanup, and the checkout source screenshot was visually inspected.
-- [ ] Light native review, documentation checks, pushed ready PR and ROOT handoff.
+- [x] (2026-09-07 21:38Z) Light native documentation review CLEAN, no findings;
+  diff whitespace checks passed and initial documentation commit pushed.
+- [x] (2026-09-07 21:40Z) Draft PR #62 opened; evidence and reviewed documentation
+  complete for ready handoff. ROOT owns merge and final Ditz closure.
 
 ## Surprises & Discoveries
 
@@ -57,7 +60,10 @@ GUI cases (21.1s/20.8s/18.1s after each desktop started). Each case recorded own
 cleanup. The external wrapper stayed unexecuted on opening and executed once on
 explicit Build; all three source trees were clean. This is fresh local source
 with warm download caches, not GitHub authentication or a cold-network test.
-Documentation review and pushed handoff remain. No product code, dependency,
+Native documentation review is CLEAN with no findings. Foreign seats were
+intentionally omitted under the user Codex-only directive; no hosted-CI claim.
+PR #62 carries the documentation; remaining action is ROOT's normal landing.
+No product code, dependency,
 credential, visibility or shared app changes occurred. ROOT owns normal merge
 and final issue closure.
 
@@ -132,5 +138,5 @@ desktop-bundle and demo-install smoke targets, Ditz CLI, and a native Codex revi
 Foreign reviews are intentionally omitted by the current user constraint, not
 claimed clean. Hosted CI is not a gate under the current local-only directive.
 
-Revision note: initial plan records the docs-first bounded scope and running real
-installation proof, without promoting incomplete evidence to a result.
+Revision note: updated with the completed installation evidence and native review;
+the product remains unchanged and ROOT alone will merge the documentation.
