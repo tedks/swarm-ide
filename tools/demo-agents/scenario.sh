@@ -17,12 +17,5 @@ while [[ ! -s "$SWARM_EXTERNAL_EVIDENCE/postclose.json" ]]; do
   (( SECONDS < deadline )) || { echo 'External observer close proof timed out'; exit 1; }
   sleep 0.1
 done
-node - "$SWARM_EXTERNAL_EVIDENCE" <<'JS'
-const fs = require('node:fs'), assert = require('node:assert/strict');
-const root = process.argv[2], proof = JSON.parse(fs.readFileSync(root + '/proof.json'));
-const close = JSON.parse(fs.readFileSync(root + '/postclose.json'));
-assert(proof.ok && proof.synthetic && proof.packaged && proof.modelTurns === 0);
-assert.deepEqual(proof.rendererErrors, []);
-assert(close.observedProcessSurvivedAppClose && close.ownedTmuxCleaned);
-console.log('Packaged external lineage/conversation/handoff passed with synthetic metadata and owned process survival.');
-JS
+scripts=$(dirname "$(readlink -f "$0")")
+node "$scripts/verify.cjs" "$SWARM_EXTERNAL_EVIDENCE"

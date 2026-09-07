@@ -1,5 +1,7 @@
-import { afterEach, describe, expect, it } from "vitest";
-import { mkdtemp, writeFile, mkdir, rm, symlink, chmod } from "node:fs/promises";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import * as fsPromises from "node:fs/promises";
+import { mkdtemp, writeFile, appendFile, mkdir, rm, symlink, chmod } from "node:fs/promises";
+import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import { execFileSync } from "node:child_process";
 import { join } from "node:path";
@@ -7,10 +9,14 @@ import { ExternalAgentService, extractEntry, resolveAncestry } from "../core/ext
 import { PROTOCOL_VERSION, parseCoreRequest, parseCoreResponseForRequest } from "../protocol/schema";
 import { initialSnapshot } from "../fixtures/world";
 import type { ExternalAgentSummary, ExternalRequest } from "../protocol/external-agents";
+vi.mock("node:fs/promises", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("node:fs/promises")>();
+  return { ...actual, open: vi.fn(actual.open) };
+});
 
 const A = "10000000-0000-4000-8000-000000000001", B = "10000000-0000-4000-8000-000000000002";
 const dirs: string[] = [], services: ExternalAgentService[] = [];
-afterEach(async () => { for (const service of services.splice(0)) service.dispose(); for (const dir of dirs.splice(0)) await rm(dir, { recursive: true, force: true }); });
+afterEach(async () => { vi.restoreAllMocks(); for (const service of services.splice(0)) await service.dispose(); for (const dir of dirs.splice(0)) await rm(dir, { recursive: true, force: true }); });
 const request = (type: ExternalRequest["type"], fields = {}): ExternalRequest => parseCoreRequest({ protocolVersion: PROTOCOL_VERSION, requestId: "external-test", type, ...fields }) as ExternalRequest;
 const meta = (id = A, parent?: string) => JSON.stringify({ type: "session_meta", payload: { id, ...(parent ? { forked_from_id: parent } : {}) } }) + "\n";
 const message = (text = "I changed the parser; this is my report, not verified repository evidence.") => JSON.stringify({ timestamp: "2026-09-07T12:00:00Z", type: "response_item", payload: { type: "message", role: "assistant", content: [{ type: "output_text", text }] } }) + "\n";
@@ -101,6 +107,49 @@ describe("operator-registered external observation", () => {
     const { service } = await setup(meta() + message("x".repeat(5000)));
     const result = await service.request(request("externalAgents.read", { sessionId: A }));
     expect(result.kind === "read" && result.detail.entries[0]?.text).toContain("[truncated]");
+  });
+  it("rejects a same-inode same-size session rewrite between metadata and tail reads", async () => {
+    const { service, rollout } = await setup(meta(A) + message("alpha text"));
+    const originalOpen = (await vi.importActual<typeof import("node:fs/promises")>("node:fs/promises")).open;
+    vi.mocked(fsPromises.open).mockImplementation(async (...args) => {
+      const file = await originalOpen(...args);
+      if (args[0] === rollout) {
+        const originalRead = file.read.bind(file); let calls = 0;
+        vi.spyOn(file, "read").mockImplementation(async (...readArgs: Parameters<typeof file.read>) => {
+          if (++calls === 2) await writeFile(rollout, meta(B) + message("bravo text"));
+          return originalRead(...readArgs);
+        });
+      }
+      return file;
+    });
+    const result = await service.request(request("externalAgents.read", { sessionId: A }));
+    expect(result).toMatchObject({ kind: "read", detail: { session: { status: "unavailable" }, entries: [] } });
+  });
+  it("allows ordinary append-only growth while retaining exact metadata identity", async () => {
+    const { service, rollout } = await setup(meta(A) + message("alpha text"));
+    const originalOpen = (await vi.importActual<typeof import("node:fs/promises")>("node:fs/promises")).open;
+    vi.mocked(fsPromises.open).mockImplementation(async (...args) => {
+      const file = await originalOpen(...args);
+      if (args[0] === rollout) {
+        const originalRead = file.read.bind(file); let calls = 0;
+        vi.spyOn(file, "read").mockImplementation(async (...readArgs: Parameters<typeof file.read>) => {
+          if (++calls === 2) await appendFile(rollout, message("later text"));
+          return originalRead(...readArgs);
+        });
+      }
+      return file;
+    });
+    const result = await service.request(request("externalAgents.read", { sessionId: A }));
+    expect(result).toMatchObject({ kind: "read", detail: { session: { status: "observed", id: A }, entries: [{ text: "alpha text" }] } });
+  });
+  it("packaged verifier rejects unsuccessful or missing desktop exit despite successful UI/cleanup booleans", () => {
+    const { verify } = createRequire(import.meta.url)("../tools/demo-agents/verify.cjs");
+    const proof = { ok: true, synthetic: true, packaged: true, modelTurns: 0, rendererErrors: [] };
+    const close = { observedProcessSurvivedAppClose: true, ownedTmuxCleaned: true, desktopCode: 0 };
+    expect(() => verify(proof, close)).not.toThrow();
+    for (const desktopCode of [1, 137, null, undefined]) expect(() => verify(proof, { ...close, desktopCode })).toThrow(/desktop must close successfully/);
+    expect(() => verify({ ...proof, rendererErrors: ["error"] }, close)).toThrow();
+    expect(() => verify(proof, { ...close, ownedTmuxCleaned: false })).toThrow();
   });
   it("metadata ancestry supports arbitrary admitted depth and marks cycles without recursion", () => {
     const sessions: ExternalAgentSummary[] = Array.from({ length: 64 }, (_, i) => ({ id: `10000000-0000-4000-8000-${String(i + 1).padStart(12, "0")}`, label: `agent ${i}`, status: "observed", evidence: "synthetic", parentId: i ? `10000000-0000-4000-8000-${String(i).padStart(12, "0")}` : null, ancestry: "root", observationId: "a".repeat(64), observedAt: "2026-09-07T12:00:00Z", message: "test", contextPaths: [] }));

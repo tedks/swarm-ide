@@ -116,6 +116,13 @@ export class ExternalAgentService {
         result.coverage = { tailBytes: bytesRead, partial, omittedRecords: omitted,
           message: "Bounded recent assistant conversation and named tool events. User prompts, reasoning, arguments and tool output bytes omitted. Not all effective context or repository changes." };
       }
+      // An inode can be truncated and rewritten to another session without
+      // shrinking its final size. Verify the accepted header on this descriptor
+      // again after the tail read, while allowing ordinary append-only growth.
+      const confirmation = Buffer.alloc(newline + 1);
+      const confirmed = await file.read(confirmation, 0, confirmation.length, 0); this.check();
+      if (confirmed.bytesRead !== confirmation.length || !confirmation.equals(header.subarray(0, newline + 1)))
+        throw new Error("Session metadata changed during read");
       const after = await file.stat(), current = await lstat(row.rollout); this.check();
       if (after.size < stat.size || current.ino !== stat.ino || current.dev !== stat.dev || current.isSymbolicLink())
         throw new Error("Transcript rotated or truncated");
