@@ -49,7 +49,7 @@ export function TaskPanel({ observation, refreshing, connected, notice, selected
       {retainedAfterFailure ? <span className="task-warning">Latest check failed or was ignored; retained data is not confirmed current.</span> : null}
     </div>
     <div className="task-toolbar">
-      <input className="task-search-input" type="search" aria-label="Search tasks by title or full ID" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search tasks…" />
+      <label className="task-search"><input type="search" aria-label="Search tasks by title or full ID" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search tasks…" /></label>
       <div className="task-filters" role="group" aria-label="Task filter">
         <button type="button" aria-pressed={filter === "open"} title="Open means not closed, not ready to dispatch." onClick={() => setFilter("open")}>Open</button>
         <button type="button" aria-pressed={filter === "all"} onClick={() => setFilter("all")}>All</button>

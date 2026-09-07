@@ -11,6 +11,11 @@ const props = (overrides: Partial<TaskPanelProps> = {}): TaskPanelProps => ({
 });
 
 describe("task sidebar density without losing authority", () => {
+  it("retains the existing packaged task search control hook", () => {
+    render(<TaskPanel {...props()} />);
+    expect(document.querySelector(".task-search input")).toBe(screen.getByRole("searchbox"));
+  });
+
   it("places secondary provenance and the Open explanation after task titles in one closed native disclosure", () => {
     render(<TaskPanel {...props()} />);
     const list = screen.getByRole("list", { name: "Repository tasks" });
