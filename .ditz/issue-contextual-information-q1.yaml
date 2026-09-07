@@ -5,8 +5,8 @@ type: feature
 component: default
 release:
 reporter: Ted Smith <tedks@riseup.net>
-status: in_progress
-disposition:
+status: closed
+disposition: fixed
 creation_time: 2026-09-07T02:43:41-00:00
 references: []
 log_events:
@@ -27,3 +27,11 @@ log_events:
     and provenance-index fixes; Anthropic timeout600s/124 no review. Final docs/normal
     merge/exact integration pending; parents remain open; hosted ignored, product
     model turns0.'
+- time: 2026-09-07T03:27:48-00:00
+  who: Ted Smith
+  what: 'closed: fixed'
+  comment: Implemented and locally verified PR41 normal8f49e16, topicce91259 (executabled53c63f),
+    exact integrationac5fb54. Full34/all13/1212tests90files; real package92.1s four
+    owned cleanup1/rendererErrors0; native+Google CLEAN, Anthropic600s timeout124.
+    Exact subject/source/buffer/service/capture/task/directory evidence and attention;
+    broad parents/provider/real-agent gaps remain open.
