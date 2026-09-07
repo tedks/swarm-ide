@@ -76,6 +76,16 @@ log_events:
     attached Prepare truthfully UNSUPPORTED_CONTROL. D4 is independent and must be
     ROOT-verified; D6 must prove actual joined successful preparation/history. This
     parent stays OPEN. No master/integration/app/model adoption.
+- time: 2026-09-07T17:31:19-00:00
+  who: Ted Smith
+  what: commented
+  comment: D4 PR50 normal e8ec0f9 is landed after explicit ROOT/user composition and
+    conditional historical-timeout disposition. Exact tested tree1a9f583f, one frozen34/all13fresh/1453tests
+    PASS and native/Google review. Ordinary joined UI V2 Prepare and Remove at100/150
+    are real Git/Ditz/disk proof, not provider delivery. Parent intentionally remains
+    OPEN for broader D6 metadata-change/admission/history/recovery evidence; ROOT
+    intake required before aggregate adoption. Original timeout issue remains OPEN;
+    no policy/model/credential/process or protected app/human55175 changes.
 blocked_by:
 - repo-task-surface
 - repo-task-draft-contract-d2
