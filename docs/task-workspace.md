@@ -27,6 +27,8 @@ attachment. A matching loaded run can show its last eight available output
 excerpts. This is not a search through private agent sessions or complete run
 history. Recorded, synthetic and retained evidence stays labelled; absent
 associations say “No agent activity in this scope.”
+These loaded-run excerpts belong to the existing isolated/rehearsal run model;
+the separate trusted-local conversation is not yet linked into task history.
 
 The task graph initially shows a 16-task overview from the bounded projection.
 **Focus selected task** shows the selected task and its direct recorded
