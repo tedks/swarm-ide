@@ -10,13 +10,18 @@ An evaluator should be able to follow one feature from its authored plan through
 
 - [x] (2026-09-07 21:36Z) Verified assigned branch `docs/connected-demo-tour` at merged baseline `b1db2b9`, read instructions, and started Ditz issue `demo-polish-demo-tour-20260907`.
 - [x] Read actual Ditz records for D2–D6 and current Plan/Prepare controls.
-- [ ] Author connected guide, presenter notes, and task-context briefing/index associations.
-- [ ] Exercise the joined path on an owned virtual X11 desktop using the packaged main/preload/core.
-- [ ] Native review, relevant local checks, pushed ready PR, and ROOT handoff.
+- [x] (2026-09-07 21:39Z) Authored connected guide, presenter notes, briefing and actual D2–D6 associations; opened draft PR61.
+- [x] (2026-09-07 21:54Z) Final owned packaged joined walkthrough passed on `f7bfa27`: actual source/task/Plan/build/Prepare/recorded Activity, retained work, zero renderer errors and model mutations, cleanup confirmed.
+- [x] Native review reached CLEAN through the final proof delta; quality 1,632 tests/117 files and 13 dedicated harness checks passed with attribution below.
+- [ ] Push final status documentation, mark PR61 ready, sync Ditz and hand off to ROOT for merge.
 
 ## Surprises & Discoveries
 
 The old tour denies three features already merged: plan containment, task graph and external-session observation. The task-context component has no task IDs. Actual D4/D6 task descriptions are empty and the inspected D2–D6 records have no file references: source navigation must use the explicit plan source link, not an invented task Reveal. The task graph caps loaded details at 64; the Tasks rail supplies search and an All filter for closed work.
+
+The first new harness failed before the app because Git refused fetching into an unborn checked-out branch; a separate bootstrap branch corrected it. The next failed only its native click helper's offscreen document-center hit test; clipping to the visible scrollport corrected it. Native review found ambient Git redirection risk: ten new negatives failed before rejection was implemented and then passed. The first broad rejection also rejected ordinary GIT_EDITOR/GIT_PAGER; two new positive controls failed before permitting those preferences and removing all inherited Git settings from invoked commands. The Node test filename initially collided with Vitest discovery (1 empty suite failed, all 1,632 product tests passed); a mechanical rename separated the runners.
+
+One later joined proof correctly passed task preparation/retention but sampled build status while refreshing. The final proof now requires current status, the exact focused source and nonempty rendered targets in one observation. Its final run observed 27 targets, 64/160 task details and 96 unread; partial coverage is not missing work fabricated away.
 
 ## Decision Log
 
@@ -24,7 +29,9 @@ Use the task-context feature already implemented in Swarm, not a new sample app.
 
 ## Outcomes & Retrospective
 
-Pending actual walkthrough and review. Prepared context is real local behavior; managed execution remains unavailable. Journal output is supervised-generated but recorded, and optional observation is not task-linked scheduling.
+The connected path is operational and documented. The final packaged GUI scenario took 7.2 seconds (8.2 seconds including virtual startup), with zero renderer exceptions, zero accepted resize warnings, no model mutations and cleanup1. The product's live-policy flag was unavailable independently of the draft confirmation checkbox. The owned checkout uses actual committed Swarm source and local Ditz history, not recreated metadata or a fixture provider. The recorded Journal and human-authored briefing retain their distinct provenance.
+
+Quality on `c1e70fd` passed type checks, 1,632 tests/117 files and Node/renderer builds. Later deltas were confined to the manual proof: 13 launcher checks passed on `9c13f12`, and the final actual packaged tour passed on `f7bfa27`. Native convergence was CLEAN through each relevant delta; foreign seats were intentionally omitted under the Codex-only directive. No unrelated full-suite repeats, hosted CI claims, or managed execution are required for this lane.
 
 ## Context and Orientation
 
@@ -50,8 +57,12 @@ Each GUI run owns a fresh private checkout/profile and a supervisor-validated vi
 
 Operational evidence is under `/tmp/swarm-ide-demo-polish.HjpljW/demo-tour`. No private registry, raw session data or credentials enter tracked output. No routine checksum receipts are required.
 
+Final screenshots and `proof.json` are in `final-current-graph/run.Xr7IMR/`: `01-component-guidance.png`, `05-build-relationships.png`, `06-real-prepared-task.png`, `08-logical-change-main-text.png` and `09-attributed-evidence.png`. The report preserves exact source/metadata observations and the current graph result. Earlier failed or incomplete evidence is retained in sibling run directories and is not retroactively green.
+
 ## Interfaces and Dependencies
 
 Existing typed IPC, real Ditz Git/YAML provider and real prepared-context service remain unchanged. The proof uses Electron native inputs plus read-only DOM/IPC observations and the existing X11 supervisor. It must not replace responses, create synthetic tasks, launch agents or add provider configuration.
 
 Initial plan authored September 7: constrain the work to a connected, truthfully labelled evaluator story and actual joined evidence.
+
+Updated September 7 after actual validation: recorded the narrow harness corrections, review, local gate attribution, screenshots and honest remaining product gaps. ROOT still owns final merge and shared-app adoption.
