@@ -5,8 +5,8 @@ type: feature
 component: swarm-ide
 release:
 reporter: Ted Smith <tedks@riseup.net>
-status: in_progress
-disposition:
+status: closed
+disposition: fixed
 creation_time: 2026-09-07T22:59:45-00:00
 references: []
 log_events:
@@ -28,3 +28,9 @@ log_events:
     telemetry remains illustrative only; existing package startup build recorded separately.
     Follow-ups build-resource-samples-provenance and graph-space-disclosure-keyboard.
     ROOT owns normal merge/close/adoption.
+- time: 2026-09-07T23:24:51-00:00
+  who: Ted Smith
+  what: 'closed: fixed'
+  comment: PR68 normally mergedb951104, native fixpoint, quality1673/focused13 and
+    packaged native keyboard/source-camera retention proof. Clearly illustrative CPU/RSS
+    distributions, real sampling separately tracked; no telemetry claim.
