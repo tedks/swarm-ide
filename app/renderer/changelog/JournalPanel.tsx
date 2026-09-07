@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { PROTOCOL_VERSION, parseCoreResponseForRequest } from "../../../protocol/schema";
 import { ChangelogRequestSchema, entryEvidence, type ChangelogResult } from "../../../protocol/changelog";
 import "./journal.css";
@@ -46,24 +46,30 @@ export function JournalActivity({ state, onOpen }: { state: JournalState; onOpen
   </div>;
 }
 
-export function JournalPanel({ open, state, selectedEntry, onClose, onOpenSource }: {
-  open: boolean; state: JournalState; selectedEntry: string | null; onClose(): void; onOpenSource(path: string): void;
+export function JournalPanel({ open, state, selectedEntry, selectionVersion = 0, onClose, onOpenSource }: {
+  open: boolean; state: JournalState; selectedEntry: string | null; selectionVersion?: number; onClose(): void; onOpenSource(path: string): void;
 }) {
   const { observation, notice, busy, refresh } = state;
   const [filter, setFilter] = useState("");
   const body = useRef<HTMLDivElement>(null);
+  const heading = useRef<HTMLHeadingElement>(null);
+  const [pendingEntry, setPendingEntry] = useState<string | null>(null);
   useEffect(() => {
-    if (!open || !selectedEntry) return;
-    setFilter("");
-    const element = [...(body.current?.querySelectorAll<HTMLDetailsElement>("[data-change-id]") ?? [])].find((node) => node.dataset.changeId === selectedEntry);
-    if (element) { element.open = true; element.scrollIntoView?.({ block: "nearest" }); element.querySelector("summary")?.focus(); }
-  }, [selectedEntry, open, observation?.document.inputDigest]);
+    if (!open) return;
+    if (selectedEntry) { setFilter(""); setPendingEntry(selectedEntry); }
+    else heading.current?.focus();
+  }, [selectedEntry, selectionVersion, open, observation?.document.inputDigest]);
+  useLayoutEffect(() => {
+    if (!open || !pendingEntry || filter) return;
+    const element = [...(body.current?.querySelectorAll<HTMLDetailsElement>("[data-change-id]") ?? [])].find((node) => node.dataset.changeId === pendingEntry);
+    if (element) { element.open = true; element.scrollIntoView?.({ block: "nearest" }); element.querySelector("summary")?.focus(); setPendingEntry(null); }
+  }, [pendingEntry, filter, open, observation?.document.inputDigest]);
 
   const bundle = observation?.bundle;
   const paths = [...new Set(bundle?.evidence.flatMap((item) => item.paths) ?? [])].sort();
   const entries = observation?.document.entries.filter((entry) => !filter || entryEvidence(entry, observation.bundle).some((item) => item.paths.includes(filter))) ?? [];
   return <section className="journal-panel" aria-label="Logical changes" hidden={!open} data-journal-digest={observation?.document.inputDigest ?? ""}>
-    <header className="journal-header"><div><span className="journal-eyebrow">Operator journal</span><h2>Logical changes</h2><p>The work, reconstructed. Evidence one click away.</p></div>
+    <header className="journal-header"><div><span className="journal-eyebrow">Operator journal</span><h2 ref={heading} tabIndex={-1}>Logical changes</h2><p>The work, reconstructed. Evidence one click away.</p></div>
       <div className="journal-controls"><button onClick={() => void refresh()} disabled={busy} aria-label="Refresh logical changes">{busy ? "Reading…" : "Refresh"}</button><button onClick={onClose} aria-label="Close logical changes">×</button></div></header>
     <div className="journal-body" ref={body}>
       {notice ? <p role="status" className="journal-warning">{observation ? "Retained · " : "Unavailable · "}{notice}</p> : null}

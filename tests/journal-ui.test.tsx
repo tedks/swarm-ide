@@ -27,6 +27,23 @@ describe("Activity log logical changes", () => {
     render(<JournalPanel state={{ observation: data, busy: false, notice: "", refresh: vi.fn() }} open selectedEntry="change-a" onClose={vi.fn()} onOpenSource={vi.fn()} />);
     expect(document.querySelector("img")).toBeNull(); expect(screen.getByText(/No agent association/)).toBeTruthy();
   });
+  it("keeps filter/details across refocus, but a selected hidden entry is expanded after filter clearing", async () => {
+    const data = syntheticJournal().result;
+    data.bundle.evidence.push({ ...data.bundle.evidence[0], id: "other", paths: ["src/other.ts"] });
+    data.document.entries.push({ ...data.document.entries[0], id: "other-change", headline: "Other change",
+      intent: { text: "Other", evidenceIds: ["other"] }, outcome: { text: "Other", evidenceIds: ["other"] }, decision: { text: "Other", evidenceIds: ["other"] } });
+    const state = { observation: data, busy: false, notice: "", refresh: vi.fn() }, callbacks = { onClose: vi.fn(), onOpenSource: vi.fn() };
+    const view = render(<JournalPanel state={state} open selectedEntry={null} selectionVersion={0} {...callbacks} />);
+    fireEvent.change(screen.getByLabelText("Affected file"), { target: { value: "src/other.ts" } });
+    const retained = document.querySelector<HTMLDetailsElement>('[data-change-id="other-change"]')!; retained.open = true;
+    view.rerender(<JournalPanel state={state} open selectedEntry={null} selectionVersion={1} {...callbacks} />);
+    expect((screen.getByLabelText("Affected file") as HTMLSelectElement).value).toBe("src/other.ts");
+    expect(document.querySelector('[data-change-id="other-change"]')).toBe(retained); expect(retained.open).toBe(true);
+    view.rerender(<JournalPanel state={state} open selectedEntry="change-a" selectionVersion={2} {...callbacks} />);
+    await waitFor(() => expect(document.querySelector<HTMLDetailsElement>('[data-change-id="change-a"]')?.open).toBe(true));
+    expect((screen.getByLabelText("Affected file") as HTMLSelectElement).value).toBe("");
+    expect(document.activeElement).toBe(document.querySelector('[data-change-id="change-a"]>summary'));
+  });
   it("retains a valid observation on a failed refresh and fences obsolete core replies", async () => {
     let fail = false; let held: ((value: CoreResponse) => void) | null = null; let requestHeld: CoreRequest;
     const request = vi.fn(async (input: CoreRequest) => fail ? { protocolVersion: PROTOCOL_VERSION, requestId: input.requestId, ok: false, error: { code: "JOURNAL_UNAVAILABLE", message: "Invalid citations" } } : reply(input));

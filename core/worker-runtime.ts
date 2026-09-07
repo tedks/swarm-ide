@@ -205,6 +205,7 @@ process.parentPort?.on("message", async (event) => {
     }
     switch (request.type) {
       case "changelog.read": {
+        if (shuttingDown) { post(fail(requestId, "CORE_UNAVAILABLE", "Core is shutting down; no Journal read was sent.")); return; }
         if (request.repositoryId !== provider.snapshot().project.id) {
           post(fail(requestId, "JOURNAL_REPOSITORY_MISMATCH", "Journal requires the opened repository.")); return;
         }

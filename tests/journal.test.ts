@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { mkdtemp, mkdir, readFile, rm, symlink, writeFile } from "node:fs/promises";
+import { chmod, mkdtemp, mkdir, readFile, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { execFileSync } from "node:child_process";
@@ -82,5 +82,21 @@ describe("Journal contained reads and operational authoring", () => {
   it("aborts a Git observation without producing a reply", async () => {
     const root = await scratch(); const controller = new AbortController(); controller.abort();
     await expect(journalGit(root, ["rev-parse", "HEAD"], controller.signal)).rejects.toThrow();
+  });
+  it("awaits actual owned child close after in-flight cancellation, including TERM refusal", async () => {
+    const root = await scratch(), marker = join(root, "ready.pid"), script = join(root, "git");
+    await writeFile(script, `#!${process.execPath}\nprocess.on('SIGTERM', () => {}); require('node:fs').writeFileSync(${JSON.stringify(marker)}, String(process.pid)); setInterval(() => {}, 1000);\n`);
+    await chmod(script, 0o700);
+    const previous = process.env.PATH; process.env.PATH = `${root}:${previous}`;
+    const controller = new AbortController();
+    try {
+      const observation = journalGit(root, ["rev-parse", "HEAD"], controller.signal);
+      const failure = observation.catch((error: unknown) => error);
+      let pid = 0; const end = Date.now() + 2000;
+      while (!pid && Date.now() < end) { pid = Number(await readFile(marker, "utf8").catch(() => "0")); if (!pid) await new Promise((resolve) => setTimeout(resolve, 5)); }
+      expect(pid).toBeGreaterThan(0); controller.abort();
+      expect(await failure).toBeInstanceOf(Error);
+      expect(() => process.kill(pid, 0)).toThrow();
+    } finally { controller.abort(); process.env.PATH = previous; }
   });
 });
