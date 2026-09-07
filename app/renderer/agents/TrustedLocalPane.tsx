@@ -14,6 +14,7 @@ export function TrustedLocalPane({ draft, bridge, generation = 0, connected }: {
   const [confirmed, setConfirmed] = useState(false);
   const [inputKey, setInputKey] = useState<string | null>(null);
   const [message, setMessage] = useState("");
+  const [observing, setObserving] = useState(false);
   const busy = useRef(false), epoch = useRef(0), watermark = useRef(-1);
   const input = draft ? { worldId: draft.focus.worldId, focus: draft.focus, taskText: draft.task,
     model: draft.model.trim() || null, effort: null, links: { parentRunId: null, task: null, spec: null },
@@ -36,23 +37,27 @@ export function TrustedLocalPane({ draft, bridge, generation = 0, connected }: {
     let timer: ReturnType<typeof setTimeout> | undefined;
     if (!connected || !bridge) { setNotice("Local core unavailable. No command will be replayed."); return; }
     const read = async () => {
+      let continueObserving = observing || Boolean(state && ["starting", "ready", "running", "stopping"].includes(state.status));
       try {
         const request = make({ type: "trusted.snapshot" });
         const response = parseCoreResponseForRequest(await bridge.request(request), request);
         if (!alive || epoch.current !== current) return;
         if (response.ok && response.trusted) {
           accept(response.trusted.snapshot, response.sequence);
-          if (["starting", "ready", "running", "stopping"].includes(response.trusted.snapshot.status)) timer = setTimeout(read, 800);
+          if (["closed", "failed"].includes(response.trusted.snapshot.status)) { setObserving(false); continueObserving = false; }
+          else continueObserving = observing || ["starting", "ready", "running", "stopping"].includes(response.trusted.snapshot.status);
         }
         else if (!response.ok) setNotice(response.error.message);
       } catch { if (alive && epoch.current === current) setNotice("Conversation observation unavailable; no command was replayed."); }
+      if (alive && epoch.current === current && continueObserving) timer = setTimeout(read, 800);
     };
     void read();
     return () => { alive = false; clearTimeout(timer); };
-  }, [bridge, connected, generation, state?.runToken]);
+  }, [bridge, connected, generation, state?.runToken, observing]);
   useEffect(() => { setConfirmed(false); }, [key]);
   const dispatch = async (request: TrustedRequest, preparedKey?: string) => {
     if (!bridge || !connected || busy.current) return;
+    if (request.type === "trusted.prepare" || request.type === "trusted.launch") setObserving(true);
     busy.current = true; setPending(true); setNotice("");
     const current = epoch.current;
     try {
@@ -72,6 +77,7 @@ export function TrustedLocalPane({ draft, bridge, generation = 0, connected }: {
   return <section className="trusted-local" aria-label="Trusted-local Codex">
     <header><strong>Codex · trusted local</strong><small>{state?.status ?? "unobserved"}</small></header>
     <p className="trusted-profile">Normal account, tools and approvals. Not the isolated read-only profile.</p>
+    <button type="button" disabled={!connected} onClick={() => setObserving(true)}>Observe conversation</button>
     {state ? <p className="trusted-workspace">Workspace: {state.workspace}</p> : null}
     {!active ? <>
       <button type="button" disabled={!connected || pending || !input || draft?.focus.domain !== "repo" || !draft.focus.path}

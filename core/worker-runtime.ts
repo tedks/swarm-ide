@@ -199,6 +199,7 @@ process.parentPort?.on("message", async (event) => {
         const trusted = await trustedPromise;
         if (!trusted || shuttingDown) throw new Error("Trusted-local context is unavailable for this working repository.");
         const state = await trusted.request(TrustedRequestSchema.parse(request));
+        ++sequence;
         const response = ok(requestId, provider.snapshot());
         if (!response.ok) throw new Error("Snapshot unavailable");
         post(parseCoreResponseForRequest({ ...response, trusted: { kind: "trusted", snapshot: state } }, request));
