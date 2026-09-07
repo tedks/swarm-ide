@@ -5,8 +5,8 @@ type: task
 component: swarm-ide
 release:
 reporter: Ted Smith <tedks@riseup.net>
-status: in_progress
-disposition:
+status: closed
+disposition: fixed
 creation_time: 2026-09-07T10:33:16-00:00
 references: []
 log_events:
@@ -67,3 +67,14 @@ log_events:
   who: Ted Smith
   what: no longer blocked by repo-navigation-initial-topology-timeout-d4c
   comment: ""
+- time: 2026-09-07T17:31:17-00:00
+  who: Ted Smith
+  what: 'closed: fixed'
+  comment: Bounded D4 plus ROOT-authorized D5 composition and diagnostic review normally
+    merged PR50 e8ec0f953071cec9bfeed7555e120aedc4c108dc, exact parents3b6d166 +13f41ba
+    and tested tree1a9f583f. Single final build34/all13fresh/1453tests passed; native/Google
+    CLEAN, Sonnet120s unavailable. Real ordinary UI V2 task Prepare100/150 exact Git/task/disk/prompt
+    hashes, unchecked confirmation, disabled launch/zero runs, Remove retirement and
+    retention/negative/cleanup gates verified. Historical topology timeout remains
+    open under explicit user disposition, not fixed. Broader D6 and unavailable provider/authority
+    remain outside this closure; protected app/master/integration/human55175 untouched.
