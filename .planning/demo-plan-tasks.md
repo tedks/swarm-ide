@@ -20,7 +20,8 @@ The opened workspace is a registered local Git worktree. Ditz summaries and deta
 - [x] Finish the separate authored-Swarm archive case after correcting its exposed controlled-selection feedback loop: actual six-node/three-level committed index and 71 CLI-authored tasks, with 64 read / 7 unread coverage, passed at 8bd8367.
 - [x] Run meaningful local gates and proportional provider-diverse council; push reviewed PR53. Full build42 passed; all18 suites executed,17 passed and quality found two owned test typing options. Test-only correction07317bb passes quality1558/111,109 focused regressions and packaged edge/task/Attach proof; unchanged production covered by the17 other full-suite passes.
 - [x] Compose subsequently ROOT-cleared B1 base fb225596 in normal merge345043b, retaining separate Plan/Build request authority and both projections. Relevant combined gates: build46, quality1577/112, focused111, packaged Plan9.7s and existing two-repository Build proof48.1s all pass. Native composition review CLEAN.
-- [ ] Normal PR merge and Ditz closure: held behind ROOT's reserved H1/PR55 merge-order slot, not an implementation gate. Do not consume later remote master without approval.
+- [x] Compose ROOT-cleared H1/PR55 in normal merge32a2e8a; preserve agent observer, independent Plan/System views and strict result authority. Owned proof accepts configured virtual port; no peer launcher changes. At113f931: build48, quality1612/115, focused113/7, H1 unit33 and actual packaged Plan9.3s pass on owned:122/55202. Native composition review CLEAN.
+- [ ] Normal PR53 merge and Ditz closure: ROOT has cleared H1 and assigned V1 the landing slot; finish narrow composition handoff, with no shared app adoption.
 
 ## Surprises & Discoveries
 
@@ -38,7 +39,7 @@ The 71-task Swarm proof and 70-task small-repository proof exercise real visible
 
 ## Outcomes & Retrospective
 
-The bounded views, strict broker reader, authored Swarm index and maintenance guide are implemented, reviewed and locally verified in PR53. Normal landing remains coordinated by ROOT; B1 is now composed and H1 owns the next landing slot. This step does not implement planning automation, task mutation, live managed providers or orgs' full skill system. Default disposable data is CLI-authored test input; the Swarm case archives committed authored source but creates its own matching task records, not the source repository's metadata branch. Final combined executable345043b adds only reviewed B1 composition beyond the prior frozen implementation: separate bridge authority, retained cameras, live Build wiring and no Build poll demand while Plan hides its consumers. Mixed-authority and mounted consumer-lifetime tests cover those seams. Relevant combined packaged checks pass with two exact accepted resize warnings in the final Plan run and no other renderer errors; prior raw warning counts remain historical evidence, not overwritten claims.
+The bounded views, strict broker reader, authored Swarm index and maintenance guide are implemented, reviewed and locally verified in PR53. ROOT-cleared B1 and H1 are now composed; V1 owns the next landing slot. This step does not implement planning automation, task mutation, live managed providers or orgs' full skill system. Default disposable data is CLI-authored test input; the Swarm case archives committed authored source but creates its own matching task records, not the source repository's metadata branch. Combined executable113f931 retains separate bridge authority, independent cameras, live Build wiring, no Build poll demand while Plan hides its consumers, and H1's external-session observer. Mixed-authority and mounted consumer-lifetime tests cover those seams. The owned Plan proof now validates matching configurable harness ports instead of hardcoding55174. Its actual packaged run on:122/55202 passes with six exact accepted resize warnings and no other renderer errors; prior raw warning counts remain historical evidence, not overwritten claims.
 
 ## Context and Orientation
 
@@ -54,7 +55,7 @@ Finally add a dedicated `tools/demo-plans` packaged acceptance target. It create
 
 ## Concrete Steps
 
-Run commands from this designated worktree. Materialize dependencies with `nix develop --command pnpm install --frozen-lockfile`. Build and test only through Bazel: `nix develop --command bazel test --jobs=3 //tools:quality`, then relevant dedicated targets and one meaningful final full gate serialized with `flock --close /tmp/swarm-ide-overnight.UgO2Aw/virtual.lock`. Launch production proof through its Bazel target on owned virtual display, never inherited DISPLAY:0. Push granular topic commits and open a draft PR early. Hosted CI is ignored by explicit user direction.
+Run commands from this designated worktree. Materialize dependencies with `nix develop --command pnpm install --frozen-lockfile`. Build and test only through Bazel: `nix develop --command bazel test --jobs=3 //tools:quality`, then relevant dedicated targets. Plan proof uses `--test_env=SWARM_VIRTUAL_DISPLAY=:122 --test_env=SWARM_VIRTUAL_DESKTOP_PORT=55202` and the existing owned harness; no global lock is needed for this configurable target. Legacy fixed-port proofs/full suites still retain their shared lock until separately reviewed compatibility lands. Never target inherited DISPLAY:0. Push granular topic commits and open a draft PR early. Hosted CI is ignored by explicit user direction; no repeated full gate just for administrative base movement or documentation.
 
 ## Validation and Acceptance
 
