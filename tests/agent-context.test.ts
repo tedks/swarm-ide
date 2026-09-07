@@ -40,11 +40,10 @@ function value(result: Awaited<ReturnType<RegisteredAgentContextProvider["prepar
 afterEach(async () => { vi.useRealTimers(); vi.restoreAllMocks(); vi.unstubAllEnvs(); await Promise.all(roots.splice(0).map((root) => rm(root, { recursive: true, force: true }))); });
 
 describe("registered disk-only launch context", () => {
-  it.each([false, true])("D3 refuses all task-bearing Prepare even with resolver=%s", async (injected) => {
+  it("refuses task-bearing Prepare without a registered resolver while plain drafts remain usable", async () => {
     const f = await fixture();
     const resolveTask = vi.fn(), checkRevision = vi.fn();
-    const p = await RegisteredAgentContextProvider.create({ ...f.options,
-      ...(injected ? { taskResolver: { resolveTask, checkRevision } } : {}) });
+    const p = await RegisteredAgentContextProvider.create(f.options);
     const taskReference = { version: 1 as const, worldId: f.options.worldId, repositoryId: f.options.repositoryId,
       provider: "ditz" as const, taskId: "one", metadataCommit: { algorithm: "sha1" as const, hex: "a".repeat(40) },
       issueBlob: { algorithm: "sha1" as const, hex: "b".repeat(40) } };

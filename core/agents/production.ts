@@ -8,6 +8,7 @@ import { RegisteredAgentContextProvider } from "./context";
 import { createFileRunStore } from "./file-store";
 import { unavailablePolicyCapabilities } from "./policy";
 import { createAgentService } from "./service";
+import { createAgentTaskResolver } from "../tasks/draft-context";
 
 export interface ProductionAgentService {
   request(input: AgentRequest): Promise<AgentOperation<AgentResult>>;
@@ -31,9 +32,12 @@ export async function createProductionAgentService(options: {
   const root = await realpath(options.root);
   const identity = createHash("sha256").update(root).digest("hex");
   const store = await createFileRunStore(join(options.storeRoot, identity));
+  let context: RegisteredAgentContextProvider | undefined;
   try {
-    const context = await RegisteredAgentContextProvider.create({
-      root, repositoryId: `repository:${identity}`, worldId: options.snapshot().world.id,
+    const repositoryId = `repository:${identity}`, worldId = options.snapshot().world.id;
+    context = await RegisteredAgentContextProvider.create({
+      root, repositoryId, worldId,
+      taskResolver: createAgentTaskResolver({ root, repositoryId, worldId }),
       workingRevision: () => {
         const working = options.snapshot().revisions.working;
         return working.evidence === "observed" ? working.fingerprint || null : null;
@@ -57,6 +61,28 @@ export async function createProductionAgentService(options: {
     });
     const service = await createAgentService({ store, context, adapter: unavailableAdapter,
       capabilities: async () => unavailablePolicyCapabilities(), emit: options.emit });
-    return { request: (request) => service.request(request), async shutdown() { await service.shutdown(); await store.close(); } };
-  } catch (error) { await store.close(); throw error; }
+    const ownedContext = context;
+    let closing: Promise<void> | undefined;
+    return { request: (request) => service.request(request), shutdown() {
+      if (closing) return closing;
+      let resolveClosing!: () => void, rejectClosing!: (error: unknown) => void;
+      closing = new Promise<void>((resolve, reject) => { resolveClosing = resolve; rejectClosing = reject; });
+      const drain = <T>(operation: () => Promise<T>): Promise<T> => {
+        try { return operation(); } catch (error) { return Promise.reject(error); }
+      };
+      // Close both ingress paths immediately; metadata may hold the service's
+      // serial queue. Reserve the shared promise first: an abort callback can
+      // synchronously reenter shutdown. A throw must not skip the other owner.
+      const serviceDrain = drain(() => service.shutdown()), contextDrain = drain(() => ownedContext.dispose());
+      void Promise.allSettled([serviceDrain, contextDrain]).then(async (settlements) => {
+        const [storage] = await Promise.allSettled([drain(() => store.close())]);
+        const failures = [...settlements, storage].filter((result) => result.status === "rejected");
+        if (failures.length) throw new AggregateError(failures.map((result) => result.reason), "Agent shutdown cleanup failed");
+      }).then(resolveClosing, rejectClosing);
+      return closing;
+    } };
+  } catch (error) {
+    try { await context?.dispose(); } finally { await store.close(); }
+    throw error;
+  }
 }

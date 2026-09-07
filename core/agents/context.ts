@@ -2,7 +2,8 @@ import { execFile } from "node:child_process";
 import { createHash, randomUUID } from "node:crypto";
 import { realpath } from "node:fs/promises";
 import { promisify } from "node:util";
-import { formatAgentContextV2, type AgentTaskReference } from "../../protocol/agent-task";
+import { agentTaskBytes, formatAgentContextV2, formatRepositoryTask, sameAgentTaskReference,
+  TASK_CONTEXT_BYTES, taskUtf8Bytes, type AgentTaskReference, type RepositoryTaskMaterialization } from "../../protocol/agent-task";
 import {
   AGENT_LIMITS, AgentCapabilitiesSchema, AgentLinksSchema, AgentPrepareInputSchema,
   PreparedAgentContextSchema, type AgentCapabilities, type AgentError,
@@ -10,6 +11,7 @@ import {
 } from "../../protocol/agents";
 import { readCanonicalWorkspaceBytes, WorkspaceFileError } from "../files";
 import { computeWorkingWorldFingerprint } from "../fingerprint";
+import { TaskReaderError } from "../tasks/git-reader";
 import type { AgentOperation } from "./adapter";
 import type { AgentContextProvider } from "./context-provider";
 import { READ_ONLY_ACCESS, unavailablePolicyCapabilities } from "./policy";
@@ -26,7 +28,7 @@ type Source = LaunchContext["instructionSources"][number];
  * Source links are normalized identifiers, not permission to read their targets.
  */
 export interface AgentContextTarget { attachmentPath: string | null; sourcePaths: readonly string[] }
-/** Future core-only metadata resolver. D3 never invokes this optional seam. */
+/** Core-only registered metadata authority. Its owner supplies cancellation. */
 export interface AgentTaskResolver {
   resolveTask(reference: AgentTaskReference, signal: AbortSignal, deadline: number):
     Promise<{ reference: AgentTaskReference; title: string; description: string }>;
@@ -72,11 +74,14 @@ function rejectGitRedirection(): void {
     stale("Ambient Git redirection is unsupported for a registered agent world.");
   }
 }
-async function bounded<T>(operation: () => Promise<T>, milliseconds: number, code: AgentError["code"]): Promise<T> {
+async function bounded<T>(operation: () => Promise<T>, milliseconds: number, code: AgentError["code"], onTimeout?: () => void): Promise<T> {
   let timer: ReturnType<typeof setTimeout> | undefined;
   try {
     return await Promise.race([operation(), new Promise<never>((_, reject) => {
-      timer = setTimeout(() => reject(new ContextFailure(code, "Context or policy observation exceeded its bounded deadline.")), milliseconds);
+      timer = setTimeout(() => {
+        onTimeout?.();
+        reject(new ContextFailure(code, "Context or policy observation exceeded its bounded deadline."));
+      }, milliseconds);
     })]);
   } finally { clearTimeout(timer); }
 }
@@ -94,6 +99,8 @@ export class RegisteredAgentContextProvider implements AgentContextProvider {
   private preparing = false;
   private closed = false;
   private disposal: Promise<void> | undefined;
+  private readonly observations = new Set<AbortController>();
+  private readonly metadata = new Set<Promise<unknown>>();
   private readonly now: () => number;
   private constructor(private readonly root: string, private readonly options: RegisteredAgentContextOptions) {
     this.now = options.now ?? Date.now;
@@ -116,9 +123,9 @@ export class RegisteredAgentContextProvider implements AgentContextProvider {
       if (!parsed.success) stale("Unsupported or invalid working focus, task or links.");
       this.draft = null;
       const input = parsed.data!;
-      // No injected interface is authority: concrete resolution is a later step.
-      if (input.taskReference !== undefined) throw new ContextFailure("UNSUPPORTED_CONTROL", "Repository-task context is unavailable.");
+      if (input.taskReference !== undefined && !this.options.taskResolver) throw new ContextFailure("UNSUPPORTED_CONTROL", "Repository-task context is unavailable.");
       const preparedAt = this.now();
+      if (!Number.isFinite(preparedAt)) stale("Context clock could not be observed.");
       const capabilities = await this.capabilities();
       if (this.closed) stale("Context provider is closed.");
       const observation = await this.observe(input);
@@ -129,6 +136,7 @@ export class RegisteredAgentContextProvider implements AgentContextProvider {
         taskText: input.taskText, links: input.links, requested: { model: input.model, effort: input.effort },
         attachments: observation.attachments, instructionSources: observation.instructions,
         configurationSources: observation.configuration, diskOnly: true as const, access: READ_ONLY_ACCESS,
+        ...(observation.repositoryTask ? { repositoryTask: observation.repositoryTask } : {}),
       };
       const submittedPrompt = formatAgentContextV2(fields);
       const contextHash = digest(submittedPrompt);
@@ -138,7 +146,8 @@ export class RegisteredAgentContextProvider implements AgentContextProvider {
         launchContext: { ...fields, submittedPrompt, contextHash }, capabilities,
       });
       if (!candidate.success) throw new ContextFailure("OUTPUT_LIMIT", "The launch context exceeds its supported field or total UTF-8 byte bounds.");
-      if (this.closed || this.now() >= preparedAt + AGENT_LIMITS.draftMs) stale("Context preparation expired or closed; prepare a fresh draft.");
+      const finishedAt = this.now();
+      if (this.closed || !Number.isFinite(finishedAt) || finishedAt < preparedAt || finishedAt >= preparedAt + AGENT_LIMITS.draftMs) stale("Context preparation expired or closed; prepare a fresh draft.");
       this.draft = { serialized: JSON.stringify(candidate.data), input, evidence: observation.evidence };
       return { ok: true, value: candidate.data };
     } catch (error) { return failure(error, "prepare"); }
@@ -156,7 +165,7 @@ export class RegisteredAgentContextProvider implements AgentContextProvider {
       const context = parsed.data!;
       const checkTime = () => {
         const now = this.now();
-        if (now < Date.parse(context.preparedAt) || now >= Date.parse(context.expiresAt)) stale("Launch draft expired or its clock moved backwards; prepare it again.");
+        if (!Number.isFinite(now) || now < Date.parse(context.preparedAt) || now >= Date.parse(context.expiresAt)) stale("Launch draft expired or its clock moved backwards; prepare it again.");
       };
       checkTime();
       const capabilities = await this.capabilities();
@@ -177,9 +186,18 @@ export class RegisteredAgentContextProvider implements AgentContextProvider {
   dispose(): Promise<void> {
     this.closed = true;
     this.draft = null;
-    // No owned metadata operation exists in D3. Trusted source callbacks may
-    // finish under the existing response bound, but cannot publish a draft.
-    return this.disposal ??= Promise.resolve();
+    if (this.disposal) return this.disposal;
+    // Each promise is registered BEFORE starting the resolver. Expected bounded
+    // read/cancellation errors still attest settlement; unexpected cleanup
+    // failures must not become successful shutdown evidence.
+    this.disposal = Promise.allSettled([...this.metadata]).then((results) => {
+      if (results.some((result) => result.status === "rejected" &&
+          !(result.reason instanceof TaskReaderError) && !(result.reason instanceof ContextFailure))) {
+        throw new Error("Owned task-context metadata work failed during disposal.");
+      }
+    });
+    for (const observation of this.observations) observation.abort();
+    return this.disposal;
   }
 
   private async capabilities(): Promise<AgentCapabilities> {
@@ -216,16 +234,57 @@ export class RegisteredAgentContextProvider implements AgentContextProvider {
     return { attachments: [{ path, content, digest: digest(content), startLine, endLine }], fileDigest: digest(bytes) };
   }
 
-  private observe(input: AgentPrepareInput) {
+  private async observe(input: AgentPrepareInput) {
     // This operation only produces local observations: after timeout its late
     // completion cannot publish/replace a draft. It does not cancel arbitrary
     // trusted callbacks or kernel I/O; the contained broker must be nonblocking.
-    return bounded(() => this.observeDisk(input), CONTEXT_OBSERVATION_TIMEOUT_MS, "STALE_CONTEXT");
+    const controller = new AbortController();
+    const deadline = Date.now() + CONTEXT_OBSERVATION_TIMEOUT_MS;
+    this.observations.add(controller);
+    try {
+      return await bounded(() => this.observeDisk(input, controller.signal, deadline),
+        CONTEXT_OBSERVATION_TIMEOUT_MS, "STALE_CONTEXT", () => controller.abort());
+    } finally { controller.abort(); this.observations.delete(controller); }
   }
 
-  private async observeDisk(input: AgentPrepareInput) {
+  private active(signal: AbortSignal, deadline: number): void {
+    if (this.closed || signal.aborted || Date.now() >= deadline) stale("Context observation expired or closed; prepare a fresh draft.");
+  }
+
+  private ownMetadata<T>(operation: () => Promise<T>, signal: AbortSignal, deadline: number): Promise<T> {
+    this.active(signal, deadline);
+    // Deferral makes ownership precede even a reentrant/late resolver start.
+    const pending = Promise.resolve().then(() => { this.active(signal, deadline); return operation(); });
+    this.metadata.add(pending);
+    void pending.then(() => this.metadata.delete(pending), () => this.metadata.delete(pending));
+    return pending.then((value) => { this.active(signal, deadline); return value; });
+  }
+
+  private async task(input: AgentPrepareInput, signal: AbortSignal, deadline: number): Promise<RepositoryTaskMaterialization | undefined> {
+    const reference = input.taskReference;
+    if (!reference) return undefined;
+    if (!this.options.taskResolver) throw new ContextFailure("UNSUPPORTED_CONTROL", "Repository-task context is unavailable.");
+    if (reference.worldId !== this.options.worldId || reference.repositoryId !== this.options.repositoryId) stale("Task does not belong to the registered working repository.");
+    let content: string;
+    try {
+      const resolved = await this.ownMetadata(() => this.options.taskResolver!.resolveTask(structuredClone(reference), signal, deadline), signal, deadline);
+      if (!sameAgentTaskReference(reference, resolved.reference)) stale("Task identity changed; refresh and attach it again.");
+      content = formatRepositoryTask(reference, resolved.title, resolved.description);
+    } catch { return stale("Repository-task context changed or is unavailable. Refresh and attach it again."); }
+    const repositoryTask: RepositoryTaskMaterialization = { reference, encoding: "swarm-repository-task-json-v1",
+      content, bytes: taskUtf8Bytes(content), digest: digest(content) };
+    if (agentTaskBytes(input.taskText, repositoryTask) > TASK_CONTEXT_BYTES) {
+      throw new ContextFailure("OUTPUT_LIMIT", "Instructions and attached task exceed the 16 KiB task-context limit.");
+    }
+    return repositoryTask;
+  }
+
+  private async observeDisk(input: AgentPrepareInput, signal: AbortSignal, deadline: number) {
+    this.active(signal, deadline);
     rejectGitRedirection();
     if (input.worldId !== this.options.worldId || input.focus.revisionId !== this.options.workingRevision()) stale("Focus is not in the current registered working world.");
+    const repositoryTask = await this.task(input, signal, deadline);
+    this.active(signal, deadline);
     if (input.links.parentRunId && !(await this.options.knownParent?.(input.links.parentRunId))) stale("Parent run is not known in this local world.");
     if (await realpath(this.options.root) !== this.root) stale("Registered root changed identity.");
     const fingerprint = await computeWorkingWorldFingerprint(this.root);
@@ -237,6 +296,7 @@ export class RegisteredAgentContextProvider implements AgentContextProvider {
       const target = targets[0]!;
       if (target.sourcePaths.length > 32 || target.sourcePaths.some((path) => !normalized(path))) stale("Source links are unsupported or not repository-relative.");
       if (target.attachmentPath === null && input.focus.range) stale("A source range requires one explicit disk file.");
+      if (input.taskReference && target.attachmentPath === null) stale("Attached task requires one explicit supported disk file.");
       return { attachmentPath: target.attachmentPath, sourcePaths: [...target.sourcePaths] };
     };
     const target = await resolve();
@@ -260,8 +320,15 @@ export class RegisteredAgentContextProvider implements AgentContextProvider {
         JSON.stringify(target) !== JSON.stringify(await resolve()) ||
         fingerprint !== await computeWorkingWorldFingerprint(this.root) ||
         input.focus.revisionId !== this.options.workingRevision()) stale("Context changed while being prepared; refresh the draft.");
+    this.active(signal, deadline);
+    if (input.taskReference) {
+      try {
+        await this.ownMetadata(() => this.options.taskResolver!.checkRevision(structuredClone(input.taskReference!), signal, deadline), signal, deadline);
+      } catch { stale("Repository-task revision changed during context observation. Refresh and attach it again."); }
+    }
     const evidence = JSON.stringify({ fingerprint, head, target, ...attached,
+      ...(repositoryTask ? { repositoryTask } : {}),
       instructions: stableSources(first.instructions), configuration: stableSources(first.configuration) });
-    return { fingerprint, head, target, attachments: attached.attachments, ...first, evidence };
+    return { fingerprint, head, target, attachments: attached.attachments, ...first, evidence, repositoryTask };
   }
 }
