@@ -27,7 +27,10 @@ async function main() {
   const current = () => run(() => document.querySelector("[data-build-status]")?.dataset.buildStatus);
   const node = (target) => run((target) => !!document.querySelector(`.build-canvas .react-flow__node[data-id='${target}']`), target);
   const edge = (to) => run((from, to) => !!document.querySelector(`.build-canvas .react-flow__edge[data-id='${from}->${to}']`), fixture.target, to);
-  const screenshot = async (name) => fs.writeFile(path.join(evidence, name), (await wc.capturePage()).toPNG());
+  const screenshot = async (name) => {
+    await run(() => new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done))));
+    await fs.writeFile(path.join(evidence, name), (await wc.capturePage()).toPNG());
+  };
   await clickText("Build graph"); await until(async () => await current() === "current", "actual Bazel graph current");
   assert(await node(fixture.target)); assert(await node("//b:isolated")); assert(await edge("//b:library"));
   if (fixture.kind === "second") assert(!await node("//a:consumer"), "second repository never borrows first graph");

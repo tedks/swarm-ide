@@ -203,7 +203,7 @@ async function main() {
     facts.push("Q1 actual Bazel artifact, ordinary/implementation/provided/required distinction, explicit declaration link, graph inspection without source activation", "Q1 actual owned manifest build failure retains original build identity and historical relationships");
   } else {
     assert((await contextText("services")).includes("unavailable"), "unfamiliar/degraded repository does not invent service facts");
-    assert((await contextText("capture")).includes("No bounded registered capture"));
+    assert((await contextText("capture")).includes("No bounded registered build observation for this repository."));
   }
 
   if (["invalid-name", "fingerprint-budget"].includes(fixture.kind)) {
