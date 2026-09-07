@@ -96,7 +96,7 @@ describe("trusted-local app-server conversation", () => {
   });
   it("supports explicit once-only command approvals with type-distinct IDs and copied snapshots", async () => {
     const f = fixture(); await f.running();
-    const params = { threadId: "thread", turnId: "turn-1", itemId: "cmd", command: "git status", availableDecisions: ["accept", "decline", "acceptForSession"] };
+    const params = { threadId: "thread", turnId: "turn-1", itemId: "cmd", cwd: "/repo", command: "git status", availableDecisions: ["accept", "decline", "acceptForSession"] };
     f.receive({ id: 7, method: "item/commandExecution/requestApproval", params });
     f.receive({ id: "7", method: "item/commandExecution/requestApproval", params: { ...params, itemId: "cmd2" } });
     expect(f.session.snapshot().approvals.map((approval) => approval.id)).toEqual(["number:7", "string:7"]);
@@ -118,6 +118,51 @@ describe("trusted-local app-server conversation", () => {
     f.receive({ id: 2, method: "item/fileChange/requestApproval", params });
     expect(f.session.snapshot().approvals[0]).toMatchObject({ choices: ["accept", "decline"], summary: expect.stringContaining("+new") });
     f.complete(); await expect(f.session.decide("number:2", "accept")).rejects.toThrow("stale");
+  });
+  it("shows the command's actual directory, disables unknown cwd approval, and rejects invalid cwd", async () => {
+    const f = fixture(); await f.running();
+    const params = { threadId: "thread", turnId: "turn-1", itemId: "cmd", command: "pwd", cwd: "/different/repository" };
+    f.receive({ id: 21, method: "item/commandExecution/requestApproval", params });
+    expect(f.session.snapshot().approvals[0]).toMatchObject({ summary: "Working directory: /different/repository\nRun command: pwd", choices: ["accept", "decline"] });
+    await f.session.decide("number:21", "decline");
+    f.receive({ id: 22, method: "item/commandExecution/requestApproval", params: { ...params, cwd: null } });
+    expect(f.session.snapshot().approvals[0]).toMatchObject({ summary: expect.stringContaining("not inferred"), choices: ["decline"] });
+    await f.session.decide("number:22", "decline");
+    f.receive({ id: 23, method: "item/commandExecution/requestApproval", params: { ...params, cwd: "relative/path" } });
+    expect(f.session.snapshot().status).toBe("failed");
+    const g = fixture(); await g.running();
+    g.receive({ id: 24, method: "item/commandExecution/requestApproval", params: { ...params, cwd: "/repo\u202Eevil" } });
+    expect(g.session.snapshot().status).toBe("failed");
+  });
+  it("accepts the full initial prompt budget but bounds follow-up input separately", async () => {
+    const f = fixture(), prompt = "é".repeat(65536);
+    const start = f.session.start(prompt, null);
+    await f.reply("initialize", { userAgent: "codex" });
+    await f.reply("thread/start", { thread: { id: "thread" }, cwd: "/repo" });
+    expect(f.sent.at(-1)!.params.input[0].text).toBe(prompt);
+    await f.reply("turn/start", { turn: { id: "turn-1" } }); await start;
+    await expect(f.session.send("x".repeat(16385))).rejects.toThrow("16384");
+    expect(f.session.snapshot().status).toBe("running"); f.complete();
+  });
+  it("settles invalid initial prompt/model validation without opening transport or staying starting", async () => {
+    for (const [prompt, model] of [["", null], ["x".repeat(131073), null], ["valid", "bad model"], ["nul\0", null]] as const) {
+      const f = fixture(); await expect(f.session.start(prompt, model)).rejects.toThrow("setup failed");
+      await flush(); expect(f.session.snapshot().status).toBe("failed");
+      expect(f.sent).toEqual([]); expect(f.close).not.toHaveBeenCalled();
+      await expect(f.session.start("Retry", null)).rejects.toThrow("cannot be started again");
+      await f.session.stop();
+    }
+  });
+  it("does not bind a new unacknowledged turn to a late approval for a completed turn", async () => {
+    const f = fixture(); await f.running(); f.complete();
+    const next = f.session.send("Follow-up");
+    f.receive({ id: 30, method: "item/commandExecution/requestApproval", params: {
+      threadId: "thread", turnId: "turn-1", itemId: "late-command", command: "pwd", cwd: "/repo",
+    } });
+    expect(f.sent.at(-1)).toEqual({ id: 30, result: { decision: "cancel" } });
+    expect(f.session.snapshot()).toMatchObject({ status: "running", turnId: null, approvals: [] });
+    await f.reply("turn/start", { turn: { id: "turn-2" } }); await next;
+    expect(f.session.snapshot()).toMatchObject({ status: "running", turnId: "turn-2" }); f.complete("turn-2");
   });
   it("rejects foreign/stale approvals and unsupported interactive requests without granting", async () => {
     const f = fixture(); await f.running();

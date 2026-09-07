@@ -45,9 +45,9 @@ const byteTail = (value: string, limit: number): string => {
 };
 const visible = (value: string): string => value.replace(/[\p{Cc}\p{Cf}]/gu, (point) =>
   point === "\n" || point === "\t" ? point : `[U+${point.codePointAt(0)!.toString(16).toUpperCase()}]`);
-const input = (text: string) => {
-  if (typeof text !== "string" || !text.trim() || Buffer.byteLength(text) > 64 * 1024 || text.includes("\0")) {
-    throw new Error("Message must contain between 1 and 65536 UTF-8 bytes, without NUL.");
+const input = (text: string, limit = 16 * 1024) => {
+  if (typeof text !== "string" || !text.trim() || Buffer.byteLength(text) > limit || text.includes("\0")) {
+    throw new Error(`Message must contain between 1 and ${limit} UTF-8 bytes, without NUL.`);
   }
   return [{ type: "text", text, text_elements: [] }];
 };
@@ -145,11 +145,11 @@ export class TrustedLocalSession {
   }
 
   async start(prompt: string, model: string | null): Promise<void> {
-    input(prompt);
-    if (model !== null) identity(model);
     if (this.started || !this.active()) throw new Error("This session cannot be started again.");
     this.started = true; this.busy = true; this.model = model;
     try {
+      input(prompt, 128 * 1024);
+      if (model !== null) identity(model);
       this.transport = this.options.openTransport({
         stdout: (chunk) => {
           if (["closed", "failed"].includes(this.state.status)) return;
@@ -187,15 +187,15 @@ export class TrustedLocalSession {
       if (!this.active()) return;
       if (response.cwd !== this.options.root) throw new Error("Codex returned a different working directory.");
       this.state.threadId = identity(object(response.thread).id);
-      await this.begin(prompt);
+      await this.begin(prompt, 128 * 1024);
     } catch (error) {
       if (this.active()) this.fail(error instanceof Error && error.message === "Codex returned a different working directory."
         ? error.message : "Codex setup failed; no automatic retry was attempted.");
       throw new Error(this.state.message);
     } finally { this.busy = false; }
   }
-  private async begin(text: string): Promise<void> {
-    const content = input(text);
+  private async begin(text: string, limit = 16 * 1024): Promise<void> {
+    const content = input(text, limit);
     if (!this.active()) throw new Error("Session is not active.");
     this.dispatch = { id: null, done: false, early: [], earlyBytes: 0 };
     this.items.clear(); this.clearApprovals(); this.state.turnId = null;
@@ -292,7 +292,7 @@ export class TrustedLocalSession {
       return;
     }
     const params = object(value), turnId = identity(params.turnId), itemId = identity(params.itemId);
-    if (params.threadId !== this.state.threadId || this.state.status !== "running" ||
+    if (this.completedTurns.has(turnId) || params.threadId !== this.state.threadId || this.state.status !== "running" ||
         this.dispatch?.done || (this.dispatch?.id !== null && turnId !== this.dispatch?.id)) {
       this.write({ id, result: { decision: "cancel" } }); return;
     }
@@ -305,12 +305,14 @@ export class TrustedLocalSession {
       (Array.isArray(params.availableDecisions) && params.availableDecisions.includes(decision)));
     if (!choices.includes("decline")) throw new Error("Unsupported approval decisions");
     const network = params.networkApprovalContext === undefined || params.networkApprovalContext === null ? null : object(params.networkApprovalContext);
+    const cwd = params.cwd == null ? null : string(params.cwd, 4096);
+    if (cwd !== null && (!isAbsolute(cwd) || /[\p{Cc}\p{Cf}]/u.test(cwd))) throw new Error("Invalid command working directory");
     const summary = network ? `Network access: ${string(network.protocol, 32)} ${string(network.host, 1024)}` :
-      method.includes("commandExecution") ? `Run command: ${params.command == null ? "Command details unavailable" : string(params.command, 16 * 1024)}` :
+      method.includes("commandExecution") ? `Working directory: ${cwd ?? "Unavailable (not inferred from the session root)"}\nRun command: ${params.command == null ? "Command details unavailable" : string(params.command, 16 * 1024)}` :
         `File changes: ${this.items.get(itemId)?.summary ?? "Change details unavailable"}`;
     const reason = params.reason == null ? "" : `\n${string(params.reason, 4096)}`;
     // No blind accept if the actual command/change proposal was not supplied.
-    const canInspect = network !== null || (method.includes("commandExecution") ? typeof params.command === "string" : Boolean(this.items.get(itemId)?.summary));
+    const canInspect = network !== null || (method.includes("commandExecution") ? typeof params.command === "string" && cwd !== null : Boolean(this.items.get(itemId)?.summary));
     this.approvals.set(approvalId, { wireId: id, turnId, itemId });
     const preview = visible(summary + reason), truncated = Buffer.byteLength(preview) > 16 * 1024;
     this.state.approvals.push({ id: approvalId, method,
