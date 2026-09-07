@@ -358,6 +358,15 @@ async function main() {
         await focus(label("Repository Back")); key("Left", ["alt"]); await directory(fixture.directory); await paint(); await preserved(true);
       }
     }
+    stage = "stale-refresh";
+    await focus(label("Refresh directory"));
+    await until(async () => (await navText()).toLowerCase().includes("stale"), "five-second explicit stale label", 10000);
+    const staleId = observe(await snapshot()).observationId;
+    await sleep(100); assert.equal(observe(await snapshot()).observationId, staleId, "stale timer does not rescan");
+    await click(label("Refresh directory")); await until(async () => observe(await snapshot()).observationId !== staleId, "explicit refresh captures new observation");
+    await preserved(true);
+    facts.push("independent graph cameras", "exact dirty text/cursor/draft and graph DOM retained", "native Alt-Up/Alt-Left with Back camera restore", "100/150 zoom and resize do not refit", "stale state without rescans and explicit Refresh");
+
     if (fixture.kind === "swarm") {
       stage = "q2-retained-service-core-recovery";
       assert(builtServiceEvidence?.status === "observed");
@@ -371,7 +380,9 @@ async function main() {
         await until(async () => { const value = await snapshot(); return value.revisions.working.evidence === "unavailable" && value.reconciliation.message.includes("exceeds the fingerprint bound"); }, "Q2 new core independently rejects oversized input");
         await paint(); await preserved();
         assert.equal(await viewport("repo"), recoveryRepoCamera, "Q2 core recovery cannot reframe repo camera");
-        assert(!(await snapshot()).jobs.some((job) => job.status === "running"), "Q2 core recovery does not replay a build");
+        const recoveredWorld = await snapshot();
+        assert.equal(recoveredWorld.jobs.length, 0, "Q2 new core has no running or completed replay jobs");
+        assert(!recoveredWorld.activity.some((item) => item.kind === "build"), "Q2 no build activity in replacement core");
         await focus(serviceNode("service:fraud-check")); key("Enter", ["shift"]);
         await until(async () => await contextSubject() === "service:fraud-check", "Q2 retained service inspect after recovery");
         const retained = await contextText("services");
@@ -396,26 +407,7 @@ async function main() {
           explicitRestoredDestinationOpened: true, noNavigationReplay: true, modelTurns: 0 }, null, 2));
         facts.push("Q2 actual Swarm core replacement retains original built service evidence as historical while new fingerprint unavailable; explicit declaration revalidates deleted/restored current file; dirty source/cursor/draft/camera retained");
       } finally { await fs.unlink(budgetPath); }
-      await click(label("Repository root")); await directory("");
-      await until(() => run(() => document.querySelector('[aria-label="Repository navigation"]')?.getAttribute("aria-busy") === "false"), "Q2 root entry settled");
-      // The retained tree may still have core expanded. Its row toggles that
-      // disclosure, so deliberately collapse before asking to enter it again.
-      await click(label("Collapse folders"));
-      await click(label(`Enter directory ${fixture.directory}`)); await directory(fixture.directory);
-      await paint();
-      // Core recovery replaced the directory observation. Only explicit entry
-      // above reframes repo; later tests start from that deliberate new camera.
-      await run(() => { globalThis.__navigationProof.repoCamera = document.querySelector("[data-topology='repo'] .react-flow__viewport").style.transform; });
     }
-    stage = "stale-refresh";
-    await focus(label("Refresh directory"));
-    await until(async () => (await navText()).toLowerCase().includes("stale"), "five-second explicit stale label", 10000);
-    const staleId = observe(await snapshot()).observationId;
-    await sleep(100); assert.equal(observe(await snapshot()).observationId, staleId, "stale timer does not rescan");
-    await click(label("Refresh directory")); await until(async () => observe(await snapshot()).observationId !== staleId, "explicit refresh captures new observation");
-    await preserved(true);
-    facts.push("independent graph cameras", "exact dirty text/cursor/draft and graph DOM retained", "native Alt-Up/Alt-Left with Back camera restore", "100/150 zoom and resize do not refit", "stale state without rescans and explicit Refresh");
-
     if (fixture.kind === "unfamiliar") {
       stage = "filesystem-boundaries";
       await click(label("Repository root")); await directory(""); world = await snapshot();

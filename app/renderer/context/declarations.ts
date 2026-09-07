@@ -16,7 +16,8 @@ export function declarationPublication(snapshot: WorkspaceSnapshot | null): stri
   const graph = snapshot?.graphs.find((item) => item.topologyId === "service");
   return JSON.stringify([snapshot?.project.id, snapshot?.world.id, snapshot?.serviceContext,
     snapshot?.revisions.built, snapshot?.revisions.working, snapshot?.reconciliation.epoch,
-    graph?.reconciliation, graph?.inputFingerprint]);
+    graph?.reconciliation, graph?.inputFingerprint,
+    graph?.nodes.map((node) => [node.id, node.focus.domain, node.focus.key, node.focus.worldId])]);
 }
 
 /** Consume a validated bounded Q1 publication. Labels/paths on FocusRef are not authority. */

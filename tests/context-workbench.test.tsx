@@ -85,6 +85,15 @@ describe("truthful Context in the mounted workbench", () => {
     next.serviceContext.observedAt = "2026-09-07T04:00:00.000Z"; test.emit(next); await test.finish();
     expect(subject()).toBe("core/files.ts");
   });
+  it("schema-valid removal of an interface invalidates its delayed declaration activation", async () => {
+    const test = setup(); render(<App />); await openContextPath("core/files.ts"); await waitFor(() => expect(subject()).toBe("core/files.ts"));
+    test.delay("example/payments.proto"); fireEvent.click(screen.getByRole("button", { name: "Activate interface:payments.authorize" }));
+    await screen.findByText("Opening working file example/payments.proto…");
+    const next = structuredClone(test.snapshot), graph = next.graphs[1]!;
+    graph.nodes = graph.nodes.filter((node) => node.id !== "interface:payments.authorize");
+    graph.edges = graph.edges.filter((edge) => ![edge.source, edge.target].includes("interface:payments.authorize"));
+    test.emit(next); await test.finish(); expect(subject()).toBe("core/files.ts");
+  });
   it("newer inspection supersedes definition completion without stealing the current source", async () => {
     const test = setup(); render(<App />); await openContextPath("core/files.ts"); await waitFor(() => expect(subject()).toBe("core/files.ts"));
     test.delay("example/fraudcheck.proto"); fireEvent.click(screen.getByRole("button", { name: "Activate service:fraud-check" }));
