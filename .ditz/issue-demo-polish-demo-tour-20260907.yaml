@@ -40,3 +40,14 @@ log_events:
     directive. Sparse D4 metadata,64/160 task graph coverage and manual task/session
     joins documented. Ready/pushed NOT merged: ROOT owns final merge/adoption; keep
     issue in progress until landing.'
+- time: 2026-09-07T22:03:22-00:00
+  who: Ted Smith
+  what: commented
+  comment: ROOT-cleared combined07f6ec8 (all UI polish plus install docs) normally
+    composed once without conflict ascb4c6e6. Unchanged actual joined packaged tour
+    rebuilt and passed7.2s/8.2s total on owned135/55215 cleanup1, current exact-source
+    build graph, real Ditz Prepare, retained work, zero renderer errors/resize warnings/model
+    mutations. New screenshots joined-delivery/run.FLDZAC. Final43c4935 only updates
+    presenter wording/results and links the merged installer guide. Prior quality/review
+    evidence retains original attribution; no peer-suite replay. PR61 remains ready/pushed,
+    ROOT owns actual merge/adoption; issue remains in progress.
