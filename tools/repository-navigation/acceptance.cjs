@@ -379,10 +379,18 @@ async function main() {
         window.swarm.request({ protocolVersion: 5, requestId: `search-old:${crypto.randomUUID()}`, type: "repo.search", repositoryId, query: "same-match", refresh: true }),
         window.swarm.request({ protocolVersion: 5, requestId: `search-new:${crypto.randomUUID()}`, type: "repo.search", repositoryId, query: "literal [*]", refresh: false }),
       ]), (await snapshot()).project.id);
-      assert(!concurrent[0].ok && concurrent[0].error.code === "REPOSITORY_CANCELLED", "actual older in-flight capture query is superseded");
+      // Renderer concurrency does not force IPC arrival before the first query
+      // completes. Held-request unit tests prove cancellation itself; here both
+      // legitimate transport orderings must retain exact response identity.
+      if (concurrent[0].ok) {
+        assert.equal(concurrent[0].search.query, "same-match");
+        assert.deepEqual(concurrent[0].search.paths, ["search-proof/a/same-match.ts", "search-proof/b/same-match.ts"]);
+      } else {
+        assert.equal(concurrent[0].error.code, "REPOSITORY_CANCELLED", "only supersession may reject the older query");
+      }
       assert(concurrent[1].ok && concurrent[1].search.query === "literal [*]", "actual newer query owns its response");
       assert.deepEqual(concurrent[1].search.paths, ["search-proof/literal [*] $(not-command).txt"]);
-      facts.push("N2 actual Git failure/stale retention and explicit recovery", "N2 actual concurrent typed bridge queries supersede old intent");
+      facts.push("N2 actual Git failure/stale retention and explicit recovery", `N2 actual concurrent typed bridge response identity: older ${concurrent[0].ok ? "completed before newer intent" : "cancelled by newer intent"}`);
       stage = "file-search-partial-capture";
       // Actual filesystem cap, introduced only after the regular journey.
       await fs.mkdir(path.join(fixture.root, "a-capped-search"));

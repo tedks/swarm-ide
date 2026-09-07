@@ -10,8 +10,9 @@ Ctrl+K can find a filename outside the loaded directory, then explicitly open it
 
 - [x] (2026-09-07) Read navigation/UI decisions and inspected the typed bridge, directory and file brokers; selected one bounded vertical.
 - [x] (2026-09-07) Implement runtime contract, cached core inventory/query and palette keyboard journey; draft PR39 pushed.
-- [x] (2026-09-07) Prove failure/race/boundary cases and actual packaged two-repository behavior through089bdb8; final stronger failure/concurrency receipts running.
-- [ ] Run full local gates and provider-diverse review to fixpoint; normal PR/integration merge and push; close Ditz.
+- [x] (2026-09-07) Prove failure/race/boundary cases and actual packaged two-repository behavior, including real Git outage/recovery, owned core replacement, deleted results and visibly partial coverage.
+- [x] (2026-09-07) Full local build (34 targets) and uncached suite (13/13, including quality 1,194 tests / 86 files) passed on 33c1b82. Native and Google production review converged through c084226; final test-ordering correction and its convergence remain below.
+- [ ] Verify the final test/doc delta and normal PR/integration landing; the external step seam and executive recap record final gates, merge/push hashes and Ditz closure without a self-referential post-merge commit.
 
 ## Decision Log
 
@@ -56,7 +57,10 @@ Control/evidence directory: `/tmp/swarm-ide-file-search-n2.MCo2v9`. Reviewed-bas
 
 ## Outcomes & Retrospective
 
-Implementation pending. Repository navigation is already real; this step closes filename finding only. Live build links, service callsites, tiling, richer Context and real-agent policy remain separate, unclosed work.
-Implementation is now complete. Native and Google council convergence passed throughc084226; Anthropic's actual bounded600-second attempt timed out without review and remains an empty seat. The first full34-target build passed56.4s; its13-suite run found a new test-only incomplete Stats double type error (replaced with actual Stats) and an existing native1ms exact-path harness gesture dropping a character under cold build load. The harness now waits for the actual exact-path mode and uses human-paced10ms native input; all source/draft/state assertions remain. Final complete local gates and normal landing are still required. Stronger isolation of kernel-stalled metadata is filed as `repository-search-stalled-metadata`.
+Implementation is complete and the full local suite passed on 33c1b82. Repository navigation was already real; this step closes filename finding only. Live build links, service callsites, tiling, richer Context and real-agent policy remain separate, unclosed work.
 
-Revision: initial bounded contract before implementation, 2026-09-07.
+Native and Google production review converged through c084226. Anthropic's actual bounded 600-second attempt timed out without review and remains an empty seat. The first aggregate run found an incomplete test Stats double (now actual Stats) and an existing 1ms native exact-path gesture dropping a character under cold load. The harness now waits for exact-path mode and uses human-paced 10ms input; all source/draft/state assertions remain. The subsequent 34-target build and all 13 uncached suites passed, including 1,194 quality tests in 86 files.
+
+Final review caught a test assumption: concurrent renderer calls do not guarantee overlapping core arrival. The packaged proof now validates either legitimate first completion or explicit cancellation, always checks both query identities and exact successful paths, and records which ordering actually occurred. Deterministic held-request tests separately prove supersession. Final delta review/local revalidation and normal landing remain to be recorded in the external step seam and executive recap. Stronger isolation of kernel-stalled metadata is filed as `repository-search-stalled-metadata`; bounded responses and one outstanding metadata chain are implemented, syscall cancellation is not claimed.
+
+Revision: bounded contract, implementation discoveries and local full-suite evidence consolidated on 2026-09-07.

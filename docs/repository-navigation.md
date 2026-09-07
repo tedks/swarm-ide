@@ -126,10 +126,10 @@ declared product completion. No independent core/UI builders until these coupled
 semantics work together. [Foundation closure](foundation-closure.md) preserves
 the subsequent order: file finding, contextual information, meaningful views.
 
-Later filename search may reuse canonical entry identity and explicit path
-activation after N1; it needs its own bounded index/query contract and honest
-coverage. Symbol search, global project picker, function/call/service semantic
-drilldown and plugin discovery are not smuggled into N1.
+[N2 filename search](repository-file-search.md) now reuses canonical entry
+identity and explicit path activation with a bounded name inventory/query
+contract and honest coverage. Symbol search, global project picker,
+function/call/service semantic drilldown and plugin discovery remain separate.
 
 ## Implemented coordination details
 
