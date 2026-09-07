@@ -1,0 +1,65 @@
+{
+  "version": 1,
+  "nodes": [
+    {
+      "id": "plan:swarm",
+      "kind": "plan",
+      "title": "Swarm · an engineering organization in a box",
+      "parentId": null,
+      "docs": ["docs/product-foundation.md", "docs/architecture.md"],
+      "sourcePaths": [],
+      "taskIds": ["demo-plans-20260907"],
+      "contextRefs": [{ "kind": "doctrine", "path": "AGENTS.md", "note": "State assumptions; keep truth and authority explicit." }]
+    },
+    {
+      "id": "component:navigation",
+      "kind": "component",
+      "title": "Navigate the working repository",
+      "parentId": "plan:swarm",
+      "docs": ["docs/repository-navigation.md", "docs/contextual-information.md"],
+      "sourcePaths": ["app/renderer/repository/RepositoryNavigation.tsx", "app/renderer/context/ContextPane.tsx"],
+      "taskIds": [],
+      "contextRefs": [{ "kind": "contract", "path": "protocol/repository.ts", "note": "Actual registered repository entries; missing coverage remains unavailable." }]
+    },
+    {
+      "id": "plan:source-authority",
+      "kind": "plan",
+      "title": "Deliberate source navigation, retained work",
+      "parentId": "component:navigation",
+      "docs": ["docs/task-backlinks.md"],
+      "sourcePaths": ["core/files.ts", "app/renderer/EditorPane.tsx"],
+      "taskIds": [],
+      "contextRefs": [{ "kind": "lesson", "path": "docs/task-backlinks.md", "note": "Explicit navigation authority must survive asynchronous reads without stealing later user intent." }]
+    },
+    {
+      "id": "component:task-context",
+      "kind": "component",
+      "title": "Turn repo tasks into bounded agent context",
+      "parentId": "plan:swarm",
+      "docs": ["docs/repo-task-draft.md"],
+      "sourcePaths": ["core/tasks/draft-context.ts", "app/renderer/tasks/TaskDetail.tsx"],
+      "taskIds": [],
+      "contextRefs": [{ "kind": "contract", "path": "protocol/agent-task.ts", "note": "Metadata revision, issue blob and canonical task bytes are separate from working source selection." }]
+    },
+    {
+      "id": "plan:task-blockage",
+      "kind": "plan",
+      "title": "See blockage without inventing dispatch readiness",
+      "parentId": "component:task-context",
+      "docs": ["docs/demo-plans.md"],
+      "sourcePaths": ["app/renderer/tasks/graph.ts", "app/renderer/tasks/TaskGraph.tsx"],
+      "taskIds": ["demo-plans-20260907"],
+      "contextRefs": [{ "kind": "contract", "path": "protocol/tasks.ts", "note": "Pinned Ditz relationships carry missing, cyclic and asymmetric diagnostics." }]
+    },
+    {
+      "id": "component:agent-cockpit",
+      "kind": "component",
+      "title": "Inspect intent, context and agent history",
+      "parentId": "plan:swarm",
+      "docs": ["docs/first-agent-run-contract.md", "docs/live-agent-admission.md"],
+      "sourcePaths": ["app/renderer/agents/AgentDock.tsx", "core/agents/service.ts"],
+      "taskIds": [],
+      "contextRefs": [{ "kind": "contract", "path": "docs/live-agent-admission.md", "note": "Real managed launch remains gated; a deterministic rehearsal is not a live provider." }]
+    }
+  ]
+}

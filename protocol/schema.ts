@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { PlanReadRequestSchema, PlanReadResultSchema } from "./plans";
 import { sameAgentTaskReference } from "./agent-task";
 import { PROTOCOL_VERSION, FocusRefSchema } from "./common";
 import { AgentRequestSchema, AgentResultSchema, AgentFocusSchema, AgentLinksSchema, AgentBoundaryErrorSchema, type AgentRequest } from "./agents";
@@ -285,7 +286,7 @@ const WorkspaceRequestSchema = z.discriminatedUnion("type", [
     path: z.string().min(1).max(4_096),
   }),
 ]);
-export const CoreRequestSchema = z.union([WorkspaceRequestSchema, AgentRequestSchema, TaskRequestSchema, RepositoryRequestSchema, RepositorySearchRequestSchema]);
+export const CoreRequestSchema = z.union([WorkspaceRequestSchema, AgentRequestSchema, TaskRequestSchema, RepositoryRequestSchema, RepositorySearchRequestSchema, PlanReadRequestSchema]);
 export type CoreRequest = z.infer<typeof CoreRequestSchema>;
 
 export const FileResultSchema = z.discriminatedUnion("kind", [
@@ -322,6 +323,7 @@ export const CoreResponseSchema = z.discriminatedUnion("ok", [
     task: TaskResultSchema.optional(),
     repo: RepositoryResultSchema.optional(),
     search: RepositorySearchResultSchema.optional(),
+    plans: PlanReadResultSchema.optional(),
   }).strict(),
   z.object({
     protocolVersion: z.literal(PROTOCOL_VERSION),
@@ -381,6 +383,11 @@ const agentResultKind = {
 export function parseCoreResponseForRequest(input: unknown, request: CoreRequest): CoreResponse {
   const response = parseCoreResponse(input);
   if (response.requestId !== request.requestId) throw new Error("Response request ID mismatch");
+  if (request.type === "plans.read") {
+    if (response.ok && (!response.plans || response.file || response.agent || response.task || response.repo || response.search ||
+      response.snapshot.world.id !== request.worldId || response.snapshot.project.id !== request.repositoryId))
+      throw new Error("Unexpected plan response authority or identity");
+  } else if (response.ok && response.plans) throw new Error("Plan result supplied for a different command");
   if (request.type === "repo.search") {
     if (response.ok) {
       if (response.file || response.agent || response.task || response.repo || response.snapshot.project.id !== request.repositoryId)

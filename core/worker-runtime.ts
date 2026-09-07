@@ -29,6 +29,7 @@ import { parseTaskResultForRequest, type TaskResult } from "../protocol/tasks";
 import { RepositoryError } from "./repository";
 import { type RepositoryResult } from "../protocol/repository";
 import type { RepositorySearchResult } from "../protocol/repository-search";
+import { readPlanIndex } from "./plans";
 
 export interface WorkerDependencies {
   createAgents?: typeof createProductionAgentService;
@@ -199,6 +200,16 @@ process.parentPort?.on("message", async (event) => {
       return;
     }
     switch (request.type) {
+      case "plans.read": {
+        const snapshot = provider.snapshot();
+        if (request.worldId !== snapshot.world.id || request.repositoryId !== snapshot.project.id) {
+          post(fail(requestId, "PLAN_WORLD_MISMATCH", "Plan read requires the registered repository and working world.")); return;
+        }
+        const plans = await readPlanIndex(workspaceRoot);
+        if (shuttingDown) { post(fail(requestId, "CORE_UNAVAILABLE", "Plan read expired during core shutdown.")); return; }
+        post(parseCoreResponseForRequest({ ...ok(requestId, provider.snapshot()), plans }, request));
+        return;
+      }
       case "repo.search": {
         const search = await provider.searchRepository(request);
         post(parseCoreResponseForRequest(ok(requestId, provider.snapshot(), undefined, undefined, undefined, undefined, search), request));

@@ -3,7 +3,7 @@ import { LifecycleSchema, type LifecycleBridge } from "../../lifecycle";
 import { parseCoreResponseForRequest, PROTOCOL_VERSION } from "../../../protocol/schema";
 import {
   sameGitObject, TaskIdSchema, TaskRequestSchema, TaskBacklinkTargetSchema,
-  type GitObjectId, type TaskDetail, type TaskObservation, type TaskRequest, type TaskResult, type TaskSummary, type TaskBacklinkTarget,
+  type GitObjectId, type TaskDetail, type TaskObservation, type TaskRequest, type TaskResult, type TaskSummary, type TaskBacklinkTarget, type TaskSnapshot,
 } from "../../../protocol/tasks";
 import { indexTaskBacklinks, type TaskBacklinkIndex, type TaskBacklinkAssociation } from "./backlinks";
 import { AgentTaskReferenceSchema, type AgentTaskReference } from "../../../protocol/agent-task";
@@ -280,6 +280,46 @@ export class TaskBridgeClient {
         detailStale: true, detailNotice: null });
     }
     this.reconcileDetail(true);
+  }
+
+  /** A graph is an immutable observation, never a second polling/selection owner. */
+  graphCurrent(snapshot: TaskSnapshot): boolean {
+    const state = this.state, current = state.observation?.snapshot;
+    return Boolean(this.bridge && state.connected && !state.notice && state.observation?.status === "observed" &&
+      current && current.worldId === snapshot.worldId && current.repositoryId === snapshot.repositoryId &&
+      sameGitObject(current.metadataCommit, snapshot.metadataCommit));
+  }
+
+  async readGraphDetail(snapshot: TaskSnapshot, taskId: string, signal: AbortSignal): Promise<TaskDetail | null> {
+    const epoch = this.epoch;
+    const summary = snapshot.summaries.find((row) => row.id === taskId);
+    const valid = () => !signal.aborted && this.epoch === epoch && this.graphCurrent(snapshot);
+    if (!summary || !valid()) return null;
+    try {
+      const result = await this.request({ protocolVersion: PROTOCOL_VERSION, requestId: this.id(),
+        type: "tasks.read", worldId: snapshot.worldId, metadataCommit: snapshot.metadataCommit, taskId });
+      if (!valid() || result.kind !== "read" || !result.result.ok || !sameSummary(result.result.detail, summary)) return null;
+      return result.result.detail;
+    } catch { return null; }
+  }
+
+  /** Deliberate graph/plan activation pins the displayed revision, not whatever
+   * task with the same ID happens to exist after a metadata refresh. */
+  async inspectGraphTask(snapshot: TaskSnapshot, taskId: string, stillCurrent: () => boolean = () => true): Promise<boolean> {
+    const summary = snapshot.summaries.find((row) => row.id === taskId);
+    if (!summary || !this.graphCurrent(snapshot) || !stillCurrent()) return false;
+    const epoch = this.epoch, ticket = ++this.detailTicket;
+    this.update({ reading: true, backlinkNotice: null });
+    try {
+      const detail = await this.readGraphDetail(snapshot, taskId, new AbortController().signal);
+      if (epoch !== this.epoch || ticket !== this.detailTicket || !this.graphCurrent(snapshot) || !stillCurrent()) return false;
+      if (!detail) { this.update({ backlinkNotice: expiredLink }); return false; }
+      const pin = TaskBacklinkTargetSchema.parse({ worldId: snapshot.worldId, repositoryId: snapshot.repositoryId,
+        provider: "ditz", metadataCommit: snapshot.metadataCommit, taskId, issueBlob: summary.blob });
+      this.update({ selectedTaskId: taskId, detail, detailRevision: snapshot.metadataCommit, pin,
+        detailStale: this.state.refreshing, detailNotice: null, backlinkNotice: null });
+      return true;
+    } finally { if (epoch === this.epoch && ticket === this.detailTicket) this.update({ reading: false }); }
   }
 
   async inspectPinned(input: TaskBacklinkTarget, association: TaskBacklinkAssociation, stillCurrent: () => boolean): Promise<boolean> {
