@@ -31,6 +31,7 @@ import { RepositoryError } from "./repository";
 import { type RepositoryResult } from "../protocol/repository";
 import type { RepositorySearchResult } from "../protocol/repository-search";
 import { readChangelog } from "./changelog";
+import { readPlanIndex } from "./plans";
 import { ExternalAgentService } from "./external-agents";
 import type { ExternalResult } from "../protocol/external-agents";
 import { BuildGraphProvider } from "./build-graph";
@@ -239,6 +240,16 @@ process.parentPort?.on("message", async (event) => {
         } catch {
           if (!shuttingDown) post(fail(requestId, "JOURNAL_UNAVAILABLE", "Journal unavailable or changed: check the bundle, citations, generation digest and recorded Git ancestry. No summary was replaced."));
         }
+        return;
+      }
+      case "plans.read": {
+        const snapshot = provider.snapshot();
+        if (request.worldId !== snapshot.world.id || request.repositoryId !== snapshot.project.id) {
+          post(fail(requestId, "PLAN_WORLD_MISMATCH", "Plan read requires the registered repository and working world.")); return;
+        }
+        const plans = await readPlanIndex(workspaceRoot);
+        if (shuttingDown) { post(fail(requestId, "CORE_UNAVAILABLE", "Plan read expired during core shutdown.")); return; }
+        post(parseCoreResponseForRequest({ ...ok(requestId, provider.snapshot()), plans }, request));
         return;
       }
       case "buildGraph.observe": {

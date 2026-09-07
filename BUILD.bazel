@@ -11,7 +11,7 @@ filegroup(
         "protocol/**",
         "tests/**",
         "examples/**",
-        ".swarm/changelog*.json",
+        ".swarm/**",
     ]) + [
         "index.html",
         "package.json",
@@ -33,6 +33,7 @@ filegroup(
         "//tools/task-integration:sources",
         "//tools/repository-navigation:sources",
         "//tools/demo-journal:sources",
+        "//tools/demo-plans:sources",
         "//tools/demo-agents:sources",
         "//tools/build-graph:sources",
     ],

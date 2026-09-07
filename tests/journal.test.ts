@@ -41,6 +41,15 @@ describe("Journal contract and evidence boundary", () => {
 });
 
 describe("Journal contained reads and operational authoring", () => {
+  it("uses the shared owned-port guard before the proof listener and excludes an inherited session registry", async () => {
+    const launcher = await readFile("tools/demo-journal/launch.mjs", "utf8");
+    expect(launcher).toContain('import { resolveOwnedVirtualPort } from "../task-integration/owned-port.mjs"');
+    expect(launcher).not.toContain("55174");
+    expect(launcher.indexOf("await resolveOwnedVirtualPort()")).toBeLessThan(launcher.indexOf("server = createServer"));
+    expect(launcher).toContain('server.listen(port, "127.0.0.1", resolve)');
+    expect(launcher).toContain('"SWARM_EXTERNAL_AGENTS_REGISTRY"');
+    expect(launcher).toContain('await rm(scratch, { recursive: true, force: true })');
+  });
   it("exports two ACTUAL disposable Git revisions and validates only a matching candidate", async () => {
     const parent = await scratch(), fixture = await seedJournalProof(parent);
     const first = await readFile(join(parent, "proof-first-bundle.json"), "utf8");

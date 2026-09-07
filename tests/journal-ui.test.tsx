@@ -28,6 +28,12 @@ describe("Activity log logical changes", () => {
     expect(parseCoreResponseForRequest(externalReply, externalRequest)).toEqual(externalReply);
     expect(() => parseCoreResponseForRequest({ ...externalReply, changelog: journal.changelog }, externalRequest)).toThrow();
     expect(() => parseCoreResponseForRequest({ ...journal, external }, request)).toThrow();
+    const planRequest: CoreRequest = { protocolVersion: PROTOCOL_VERSION, requestId: "plan", type: "plans.read", repositoryId: "repo:test", worldId: journal.snapshot.world.id };
+    const plans = { status: "observed", index: { version: 1, nodes: [] }, revision: "a".repeat(64), observedAt: "2026-09-07T12:00:00Z" };
+    const planReply = { ...base, requestId: "plan", plans };
+    expect(parseCoreResponseForRequest(planReply, planRequest)).toEqual(planReply);
+    expect(() => parseCoreResponseForRequest({ ...planReply, changelog: journal.changelog }, planRequest)).toThrow();
+    expect(() => parseCoreResponseForRequest({ ...journal, plans }, request)).toThrow();
   });
   it("shows compact entries and deliberately opens expanded agent/task/action evidence", () => {
     const onOpen = vi.fn(), onSource = vi.fn(); const state = { observation: syntheticJournal().result, busy: false, notice: "", refresh: vi.fn() };

@@ -1,0 +1,37 @@
+.planning-field { grid-column: 1; grid-row: 2; min-width: 0; min-height: 0; display: grid; grid-template-rows: 34px minmax(0, 1fr); padding: 6px; gap: 5px; background: #071011; overflow: hidden; }
+.navigation-field:not(.source-open) > .graphs-grid { grid-column: 1; }
+.navigation-field.source-open > .planning-field { grid-column: 1; grid-row: 2 / span 2; }
+.planning-field[hidden], .planning-projection[hidden] { display: none !important; }
+/* Keep inactive System panes measurable. A display:none round-trip makes the
+   existing directory observer interpret restoration as a fresh viewport. */
+.graphs-grid[hidden] { display: grid !important; visibility: hidden; opacity: 0; pointer-events: none; }
+.graphs-grid[hidden] * { pointer-events: none !important; }
+.planning-tabs { display: flex; gap: 5px; border-bottom: 1px solid #28413d; }
+.planning-field button { border: 1px solid #33504a; border-radius: 4px; background: #102422; color: #c4ded5; padding: 5px 8px; font: 11px system-ui; cursor: pointer; }
+.planning-field button:disabled { opacity: .45; cursor: default; }
+.planning-field button:focus-visible { outline: 2px solid #9dedc9; outline-offset: 2px; }
+.planning-tabs button[aria-pressed="true"] { border-color: #9dedc9; color: #c4ffe6; }
+.planning-projection { min-width: 0; min-height: 0; display: grid; grid-template-rows: auto auto minmax(120px, 1fr) minmax(80px, auto); overflow: auto; border: 1px solid #24413b; border-radius: 5px; }
+.planning-heading { display: flex; flex-wrap: wrap; gap: 6px; padding: 9px; align-items: center; }
+.planning-heading > div { flex: 1 1 150px; }
+.planning-heading strong, .planning-heading small { display: block; }
+.planning-heading strong { font-size: 13px; }
+.planning-heading small { color: #91ada5; margin-top: 4px; font-size: 10px; }
+.planning-status { padding: 0 9px; font-size: 10px; color: #9cb8ae; border-bottom: 1px solid #24413b; overflow-wrap: anywhere; }
+.planning-status p { margin: 5px 0 7px; }
+.planning-canvas { min-height: 0; height: 100%; position: relative; overflow: hidden; background: #091719; }
+.planning-node { width: 208px; min-height: 64px; padding: 10px; border: 1px solid #497970 !important; background: #122c29 !important; color: #d3ebe2 !important; text-align: left; border-radius: 6px; }
+.planning-node strong, .planning-node small { display: block; overflow-wrap: anywhere; }
+.planning-node strong { font: 12px system-ui; font-weight: 600; }
+.planning-node small { margin-top: 6px; font-size: 9px; color: #9bbcb2; }
+.planning-node.selected { border-color: #a3f8d3 !important; box-shadow: 0 0 0 2px #77cdae55 !important; }
+.planning-node.planning-warning { border-style: dashed !important; border-color: #c99555 !important; }
+.planning-inspector { padding: 9px; border-top: 1px solid #24413b; max-height: 220px; overflow: auto; font-size: 11px; overflow-wrap: anywhere; }
+.planning-inspector > strong, .planning-inspector > code { display: block; margin-bottom: 6px; }
+.planning-inspector details { margin-top: 9px; }
+.planning-inspector summary { cursor: pointer; padding: 4px 0; color: #c6e0d5; }
+.planning-inspector ul { list-style: none; padding: 0; margin: 5px 0; }
+.planning-inspector li { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; padding: 4px 0; }
+.planning-inspector li span { color: #94afa5; }
+.planning-empty { padding: 15px; color: #9bb5ac; font-size: 12px; }
+.planning-links { display: flex; gap: 6px; flex-wrap: wrap; margin: 7px 0; }

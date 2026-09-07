@@ -36,8 +36,8 @@ async function main() {
   const win = BrowserWindow.getAllWindows()[0], wc = win.webContents;
   const run = (fn, ...args) => wc.executeJavaScript(`(${fn.toString()})(...${JSON.stringify(args)})`, true);
   await run(() => { addEventListener("error", (event) => console.error(event.error?.stack ?? event.message)); addEventListener("unhandledrejection", (event) => console.error(event.reason?.stack ?? event.reason)); });
-  const click = async (selector) => {
-    const p = await run((s) => { const e = document.querySelector(s); if (!e || e.disabled) throw new Error(`Missing control ${s}`); e.scrollIntoView({ block: "nearest" }); const r = e.getBoundingClientRect(); const x = r.x + r.width / 2, y = r.y + r.height / 2; if (!r.width || !r.height || !e.contains(document.elementFromPoint(x, y))) throw new Error(`Occluded ${s}`); return { x: Math.round(x), y: Math.round(y) }; }, selector);
+  const click = async (selector, label = null) => {
+    const p = await run((s, t) => { const e = [...document.querySelectorAll(s)].find((node) => t === null || node.textContent.trim() === t); if (!e || e.disabled) throw new Error(`Missing control ${s}: ${t}`); e.scrollIntoView({ block: "nearest" }); const r = e.getBoundingClientRect(); const x = r.x + r.width / 2, y = r.y + r.height / 2; if (!r.width || !r.height || !e.contains(document.elementFromPoint(x, y))) throw new Error(`Occluded ${s}`); return { x: Math.round(x), y: Math.round(y) }; }, selector, label);
     wc.sendInputEvent({ type: "mouseDown", ...p, button: "left", clickCount: 1 }); wc.sendInputEvent({ type: "mouseUp", ...p, button: "left", clickCount: 1 }); await delay(60);
   };
   const key = async (keyCode, modifiers = []) => { wc.sendInputEvent({ type: "keyDown", keyCode, modifiers }); wc.sendInputEvent({ type: "keyUp", keyCode, modifiers }); await delay(60); };
@@ -75,6 +75,18 @@ async function main() {
   assert((await text(".agent-draft")).includes("src/receipt.ts"), "explicit evidence source uses the ordinary authoritative source handoff");
   await run(() => { window.__journalRetained = { source: document.querySelector(".cm-content"), draft: document.querySelector(".agent-draft textarea"),
     graphs: [...document.querySelectorAll(".react-flow")] }; });
+  // Joined Plan/Activity composition: deliberately read the actual absent index,
+  // then inspect Activity without hiding Plan or retargeting the open source.
+  await click(".lens-tabs button", "Plan");
+  await click(".planning-tabs button", "Plans & components");
+  await click('[aria-label="Authored plan hierarchy"] button', "Load plan index");
+  await until(() => text('[aria-label="Authored plan hierarchy"] .planning-status').then((value) => value.includes("PLAN_INDEX_UNAVAILABLE")), "real missing plan index stays unavailable beside Activity");
+  await click(".journal-activity-heading");
+  assert(await run(() => !document.querySelector(".planning-field").hidden && !document.querySelector(".journal-panel").hidden), "Plan and Activity main document coexist");
+  assert.equal(await text(".cm-content"), sourceText); assert.equal(await run(() => document.querySelector(".agent-draft textarea").value), draftBefore);
+  await screenshot("03-plan-activity-coexistence.png");
+  await click(".lens-tabs button", "System");
+  assert.deepEqual(await cameras(), baselineCamera, "joined Plan/Activity round-trip retains System cameras");
   await click(".journal-activity-heading");
   await fs.copyFile(path.join(authoring, "proof-second-bundle.json"), path.join(fixture.root, ".swarm/changelog-bundle.json"));
   await click('[aria-label="Refresh logical changes"]');
@@ -102,12 +114,14 @@ async function main() {
   await key("w", ["control"]);
   assert.equal(await text(".cm-content"), sourceText, "closing Activity must not close the source buffer");
   assert.equal(errors.length, 0, `Renderer exceptions: ${JSON.stringify(errors)}`);
+  const productMutations = observedRequests.filter((type) => ["agent.launch", "agent.steer", "agent.cancel"].includes(type));
+  assert.deepEqual(productMutations, [], "Activity/Plan inspection must not launch or steer an agent");
   await fs.writeFile(path.join(evidence, "journal-proof.json"), JSON.stringify({ ok: true, realGit: true, packagedCore: true,
     productModelTurns: 0, supervisedSummarizer: JSON.parse(valid).generator, inputDigest: JSON.parse(valid).inputDigest,
     firstDigest: fixture.firstDigest, secondDigest: fixture.secondDigest,
     actualRawOutputHash: createHash("sha256").update(valid).digest("hex"), sourceRetained: true, draftRetained: true, camerasRetained: true,
     staleRejected: true, unknownCitationRejected: true, timingControlledRealSourceReply: true, serviceCameraRetained: true,
-    productMutations: observedRequests.filter((type) => ["agent.launch", "agent.steer", "agent.cancel"].includes(type)),
+    planActivityCoexistence: true, missingPlanIndexUnavailable: true, productMutations,
     rendererErrors: errors, milliseconds: Date.now() - start }, null, 2));
 }
 void main().catch(async (error) => { releaseSourceRead?.(); await fs.writeFile(path.join(evidence, "journal-failure.json"), JSON.stringify({ error: error.stack, rendererErrors: errors }, null, 2)); console.error(error); });
