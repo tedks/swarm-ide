@@ -1,5 +1,5 @@
 // TEST ONLY: unchanged packaged main/core/preload. No substitute provider or model.
-const { app, BrowserWindow } = require("electron");
+const { app, BrowserWindow, ipcMain } = require("electron");
 const fs = require("node:fs/promises");
 const path = require("node:path");
 const assert = require("node:assert/strict");
@@ -8,6 +8,23 @@ const { createHash } = require("node:crypto");
 const evidence = process.env.SWARM_JOURNAL_EVIDENCE;
 const authoring = process.env.SWARM_JOURNAL_AUTHORING_PROOF;
 const errors = [];
+const observedRequests = [];
+let holdSourceRead = false, releaseSourceRead = null;
+const actualHandle = ipcMain.handle.bind(ipcMain);
+// TEST-ONLY ordering control: hold one real source reply after production has
+// produced it. No result bytes, request identity or provider are substituted.
+ipcMain.handle = (channel, listener) => actualHandle(channel, async (event, input) => {
+  const reply = await listener(event, input);
+  if (channel === "swarm:request") {
+    if (observedRequests.length >= 4096) throw new Error("Journal proof transport bound exceeded");
+    observedRequests.push(input.type);
+    if (holdSourceRead && input.type === "file.read" && input.path === "src/receipt.ts") {
+      holdSourceRead = false;
+      await new Promise((resolve) => { releaseSourceRead = resolve; });
+    }
+  }
+  return reply;
+});
 app.on("web-contents-created", (_event, wc) => wc.on("console-message", (event) => { if (event.level === "error") errors.push(event.message); }));
 require(path.join(process.env.SWARM_JOURNAL_PACKAGE, "app/electron/main.js"));
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -30,9 +47,23 @@ async function main() {
   await click(".journal-activity-entry");
   await until(() => run(() => document.querySelector(".journal-panel:not([hidden]) .journal-card")?.open), "entry expanded in main text area");
   await screenshot("01-activity-log-expanded.png");
+  const serviceCamera = () => run(() => document.querySelector('[data-topology="service"] .react-flow__viewport')?.style.transform ?? null);
+  const beforePan = await serviceCamera();
+  const pan = await run(() => { const rect = document.querySelector('[data-topology="service"] .react-flow__pane').getBoundingClientRect(); return { x: Math.round(rect.x + rect.width * .5), y: Math.round(rect.y + rect.height * .5) }; });
+  wc.sendInputEvent({ type: "mouseMove", ...pan }); wc.sendInputEvent({ type: "mouseDown", ...pan, button: "left", clickCount: 1 });
+  wc.sendInputEvent({ type: "mouseMove", x: pan.x + 37, y: pan.y + 23, movementX: 37, movementY: 23 });
+  wc.sendInputEvent({ type: "mouseUp", x: pan.x + 37, y: pan.y + 23, button: "left", clickCount: 1 });
+  await until(async () => await serviceCamera() !== beforePan, "independent deliberate service camera");
+  const retainedServiceCamera = await serviceCamera();
   await click(".journal-card[open] .journal-evidence > summary");
+  holdSourceRead = true;
   await click(".journal-card[open] .journal-evidence[open] .journal-paths button");
+  await until(() => Boolean(releaseSourceRead), "held actual source reply");
+  assert(await run(() => Boolean(document.querySelector(".journal-panel:not([hidden])"))), "Journal remains visible until authoritative source handoff settles");
+  assert.equal(await serviceCamera(), retainedServiceCamera, "pending first-source handoff cannot reframe unrelated service camera");
+  releaseSourceRead(); releaseSourceRead = null;
   await until(() => run(() => Boolean(document.querySelector(".source-surface:not([hidden]) .cm-content"))), "working file source");
+  assert.equal(await serviceCamera(), retainedServiceCamera, "settled first-source handoff retains unrelated service camera");
   await click(".source-surface:not([hidden]) .cm-content"); await key("End", ["control"]); await wc.insertText("\n// retained operator buffer");
   await until(() => text(".source-surface").then((value) => value.includes("retained operator buffer")), "dirty source text");
   const cameras = () => run(() => [...document.querySelectorAll(".react-flow__viewport")].map((e) => e.style.transform));
@@ -75,6 +106,8 @@ async function main() {
     productModelTurns: 0, supervisedSummarizer: JSON.parse(valid).generator, inputDigest: JSON.parse(valid).inputDigest,
     firstDigest: fixture.firstDigest, secondDigest: fixture.secondDigest,
     actualRawOutputHash: createHash("sha256").update(valid).digest("hex"), sourceRetained: true, draftRetained: true, camerasRetained: true,
-    staleRejected: true, unknownCitationRejected: true, rendererErrors: errors, milliseconds: Date.now() - start }, null, 2));
+    staleRejected: true, unknownCitationRejected: true, timingControlledRealSourceReply: true, serviceCameraRetained: true,
+    productMutations: observedRequests.filter((type) => ["agent.launch", "agent.steer", "agent.cancel"].includes(type)),
+    rendererErrors: errors, milliseconds: Date.now() - start }, null, 2));
 }
-void main().catch(async (error) => { await fs.writeFile(path.join(evidence, "journal-failure.json"), JSON.stringify({ error: error.stack, rendererErrors: errors }, null, 2)); console.error(error); });
+void main().catch(async (error) => { releaseSourceRead?.(); await fs.writeFile(path.join(evidence, "journal-failure.json"), JSON.stringify({ error: error.stack, rendererErrors: errors }, null, 2)); console.error(error); });

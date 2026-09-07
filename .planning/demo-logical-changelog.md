@@ -16,7 +16,7 @@ An operator opens Journal, reads short accounts of meaningful changes, and expan
 
 ## Surprises & Discoveries
 
-The existing `core/files.ts` broker rejects path traversal, symlink aliases, special files and oversized/unstable reads. A first new UI test mistakenly treated `initialSnapshot` as a value, causing TypeScript failure before execution; corrected to call the factory. The next quality checkpoint passed. The supplied initial D4 recap and design status paragraph are historically stale; the summarizer correctly distinguishes those reports from later actual Git merges, rather than quietly overwriting history.
+The existing `core/files.ts` broker rejects path traversal, symlink aliases, special files and oversized/unstable reads. A first new UI test mistakenly treated `initialSnapshot` as a value, causing TypeScript failure before execution; corrected to call the factory. The next quality checkpoint passed. The supplied initial D4 recap and design status paragraph are historically stale; the summarizer correctly distinguishes those reports from later actual Git merges, rather than quietly overwriting history. Native council found that execFile's AbortSignal callback can precede actual child close; the fixed spawn helper waits for close with bounded TERM/KILL escalation, tested against an in-flight TERM-resistant owned process. A subsequent authoritative source callback initially hid Activity too early; an actual packaged controlled-order test at20ff568 failed `Journal remains visible until authoritative source handoff settles` with zero renderer errors/cleanup1. The one-line correction lets existing successful Reveal hide Activity, avoiding a transient no-document graph-reframe transition. This is an introduced controlled-order class, not historical failure attribution.
 
 ## Decision Log
 
@@ -32,7 +32,7 @@ Decision: explicit source citations use the existing authoritative `openLinkedFi
 
 ## Outcomes & Retrospective
 
-In progress. No output generation, UI proof or landing is claimed yet. In-app scheduling, streaming summarization and managed provider activation are explicitly outside this increment.
+In progress. Real supervised output and the initial packaged refresh/retention/negative-citation journey are proved. Native/Google convergence cleared the shutdown/filter fixes; final first-source handoff correction, composed gate and merge disposition remain. In-app scheduling, streaming summarization and managed provider activation are outside this increment. The generated narrative itself surfaced stale task-context documentation; Ditz `task-context-status-doc-drift` records that concrete follow-up. No private transcript was published.
 
 ## Context and Orientation
 

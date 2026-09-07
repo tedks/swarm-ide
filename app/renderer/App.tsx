@@ -1271,7 +1271,7 @@ export function App() {
           </>}
         </section> : null}
         <JournalPanel key={snapshot.project.id} open={journalVisible} state={journal} selectedEntry={journalEntry} selectionVersion={journalSelection}
-          onClose={() => setJournalVisible(false)} onOpenSource={(path) => { setJournalVisible(false); openLinkedFile(path); }} />
+          onClose={() => setJournalVisible(false)} onOpenSource={openLinkedFile} />
         {taskDocumentOpen ? <div className="task-editor-surface" hidden={!textDocumentVisible} onPointerDownCapture={(event) => { if (!(event.target as Element).closest(".task-attach")) inspectTask(tasks.selectedTaskId); }} onFocusCapture={(event) => { if (!(event.target as Element).closest(".task-attach")) inspectTask(tasks.selectedTaskId); }}><TaskDetail surface="editor" selectedTaskId={tasks.selectedTaskId} snapshot={tasks.observation?.snapshot ?? null} detail={tasks.detail} detailRevision={tasks.detailRevision} detailStale={tasks.detailStale || tasks.observation?.status !== "observed" || Boolean(tasks.notice)} reading={tasks.reading} notice={tasks.detailNotice} attachment={taskAttachment(tasks.selectedTaskId)} onRefresh={() => { void taskClient.refresh(); }} onSelect={(id) => openTaskDocument(id)} onReveal={(ref) => { void revealTaskReference(ref); }} onReturnToSource={() => { setTaskDocumentVisible(false); if (!activeFile) setTaskDocumentOpen(false); returnToSourceInformation(); }} /></div> : null}
       </section>
 
