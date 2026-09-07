@@ -44,5 +44,7 @@ log_events:
     unchanged retry, suppression, waiver or production edit. /tmp/swarm-ide-task-journey-d6.Y4wW6r/landing-verification.md
     has hashes/actual evidence/one smallest diagnostic continuation. All harness cleanup1,
     own Bazel shutdown0, no adoption/model.'
-blocked_by:
-- task-rehearsal-resize-observer-d6
+- time: 2026-09-07T19:09:12-00:00
+  who: Ted Smith
+  what: no longer blocked by task-rehearsal-resize-observer-d6
+  comment: ""
