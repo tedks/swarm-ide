@@ -114,8 +114,19 @@ async function main() {
   const attach = await run(() => document.querySelector("[data-task-attachment='append']") ? "append" : "attach");
   await click(`[data-task-attachment='${attach}']`);
   await until(() => has(".agent-task-slot"), "one attached task slot");
-  const draft = await run(() => ({ text: document.querySelector(".agent-draft textarea")?.value, slot: document.querySelector(".agent-task-slot")?.textContent,
-    source: document.querySelector(".agent-draft .agent-context-path")?.textContent }));
+  const draftState = () => run(() => {
+    const slot = document.querySelector(".agent-task-slot");
+    const retainedMessage = "Retained preview; not confirmed in this connection. Refresh tasks and inspect the pin. Core always verifies independently.";
+    const retained = [...slot.querySelectorAll("p")].filter((node) => node.textContent === retainedMessage);
+    const content = slot.cloneNode(true);
+    // This one existing freshness notice is not immutable task content. Retain
+    // and compare every other byte; separately assert its expected appearance.
+    for (const node of content.querySelectorAll("p")) if (node.textContent === retainedMessage) node.remove();
+    return { payload: { text: document.querySelector(".agent-draft textarea")?.value, slot: content.textContent,
+      source: document.querySelector(".agent-draft .agent-context-path")?.textContent }, retainedNotices: retained.length };
+  });
+  const draft = await draftState();
+  assert.equal(draft.retainedNotices, 0, "new attachment is currently inspected at its exact pin");
   stage = "authored-hierarchy";
   await click(".planning-tabs button", "Plans & components"); await click(`${planGraph} button`, "Load plan index");
   await until(async () => (await text(`${planGraph} .planning-status`)).includes(`${fixture.index.nodes.length} authored nodes`), "actual plan index read");
@@ -153,8 +164,9 @@ async function main() {
   assert.deepEqual(await run(() => globalThis.__plansProofNodes.map((node) => ({ connected: node.isConnected, transform: node.style.transform }))),
     before.map((transform) => ({ connected: true, transform })), "all independent graph instances/cameras retained");
   assert.deepEqual(await sourceState(), dirty);
-  assert.deepEqual(await run(() => ({ text: document.querySelector(".agent-draft textarea")?.value, slot: document.querySelector(".agent-task-slot")?.textContent,
-    source: document.querySelector(".agent-draft .agent-context-path")?.textContent })), draft, "draft and attachment retained");
+  const retainedDraft = await draftState();
+  assert.deepEqual(retainedDraft.payload, draft.payload, "all draft, source and attachment content retained");
+  assert.equal(retainedDraft.retainedNotices, Number(linked.taskIds[0] !== "graph-root"), "freshness honestly follows currently inspected task, not attachment mutation");
   stage = "negative-index";
   await fs.writeFile(indexPath, "{broken authored index");
   await click(`${planGraph} button`, "Load plan index");
@@ -166,15 +178,36 @@ async function main() {
   await fs.rename(`${indexPath}.held-proof`, indexPath); await fs.writeFile(indexPath, originalIndex);
   await click(`${planGraph} button`, "Load plan index");
   await until(async () => (await text(`${planGraph} .planning-status`)).includes("authored nodes"), "explicit plan recovery");
+  stage = "bounded-coverage";
+  // Positive over-capacity data is also authored by the real CLI, not renderer
+  // injection. Keep it after the legible five-task screenshot and normal tour.
+  const fixtureHome = path.join(fixture.root, ".fixture-home");
+  for (let i = 0; i < 65; i++) execFileSync(fixture.ditzExecutable, ["add", `Coverage task ${i}`, "--id", `zz-coverage-${String(i).padStart(3, "0")}`,
+    "--type", "task", "--desc", "CLI-authored bounded-coverage demonstration input."], { cwd: fixture.root, timeout: 5000, maxBuffer: 1024 * 1024,
+    env: { PATH: process.env.PATH, HOME: fixtureHome, XDG_CONFIG_HOME: fixtureHome, LANG: "C", LC_ALL: "C", USER: "Fixture", LOGNAME: "Fixture",
+      GIT_CONFIG_GLOBAL: "/dev/null", GIT_CONFIG_NOSYSTEM: "1", GIT_TERMINAL_PROMPT: "0", GIT_AUTHOR_NAME: "Plans fixture",
+      GIT_AUTHOR_EMAIL: "fixture@example.invalid", GIT_COMMITTER_NAME: "Plans fixture", GIT_COMMITTER_EMAIL: "fixture@example.invalid" } });
+  await click(".planning-tabs button", "Task blockage"); await click(`${taskGraph} button`, "Refresh task metadata");
+  const totalTasks = taskSnapshot.task.observation.snapshot.summaries.length + 65;
+  await until(async () => {
+    const current = await request({ type: "tasks.snapshot", worldId: world.snapshot.world.id, refresh: false });
+    return current.ok && current.task.observation.snapshot?.summaries.length === totalTasks;
+  }, "real CLI over-capacity metadata observed");
+  await click(`${taskGraph} button`, "Load dependency graph");
+  await until(async () => (await text(`${taskGraph} .planning-status`)).includes(`64/${totalTasks} details read · ${totalTasks - 64} unread`), "bounded partial graph reports full snapshot denominator");
+  assert((await text(`${taskGraph} .planning-status`)).includes("No known blockers is not permission to dispatch."));
+  assert.deepEqual(await sourceState(), dirty); assert.deepEqual((await draftState()).payload, draft.payload);
+  await screenshot("05-bounded-coverage.png");
   stage = "negative-task-metadata";
   const git = (args) => execFileSync("git", ["-c", "core.hooksPath=/dev/null", ...args], { cwd: fixture.root, encoding: "utf8", timeout: 5000,
     env: { PATH: process.env.PATH, GIT_CONFIG_GLOBAL: "/dev/null", GIT_CONFIG_NOSYSTEM: "1" } }).trim();
-  assert.equal(git(["rev-parse", "refs/heads/ditz-metadata"]), fixture.metadataCommit);
+  const expandedMetadataCommit = git(["rev-parse", "refs/heads/ditz-metadata"]);
+  assert.notEqual(expandedMetadataCommit, fixture.metadataCommit, "real CLI coverage input advanced metadata");
   git(["update-ref", "-d", "refs/heads/ditz-metadata"]); // Explicit owned test fault, not CLI-authored positive metadata.
-  await click(".planning-tabs button", "Task blockage"); await click(`${taskGraph} button`, "Refresh task metadata");
+  await click(`${taskGraph} button`, "Refresh task metadata");
   await until(async () => (await text(`${taskGraph} .planning-status`)).includes("NOT CURRENT"), "retained graph truth after metadata removal");
   assert.equal(await run((selector) => document.querySelector(selector).disabled, label("Open graph task graph-root")), true);
-  git(["update-ref", "refs/heads/ditz-metadata", fixture.metadataCommit]);
+  git(["update-ref", "refs/heads/ditz-metadata", expandedMetadataCommit]);
   await click(`${taskGraph} button`, "Refresh task metadata");
   await until(() => has("[data-task-status='observed']"), "metadata restored by explicit refresh");
   assert.equal(await fs.readFile(path.join(fixture.root, fixture.sourcePath), "utf8"), fixture.sourceText, "source disk unchanged");
@@ -185,6 +218,7 @@ async function main() {
   await fs.writeFile(path.join(evidence, "plans-proof.json"), JSON.stringify({ ok: true, realDitz: true, packagedCore: true,
     kind: fixture.kind, archivedSourceCommit: fixture.archivedSourceCommit, metadataCommit: fixture.metadataCommit,
     planHash: observed.plans.revision, planNodes: fixture.index.nodes.length, taskNodes: graphNodes.length, directedEdges: graphEdges,
+    boundedCoverage: { metadataCommit: expandedMetadataCommit, loaded: 64, total: totalTasks, unread: totalTasks - 64, realDitz: true },
     taskActivation: "native Enter / pinned metadata", sourceDraftCamerasRetained: true, malformedMissingUnavailable: true,
     fixtureFaults: ["malformed/missing owned plan index", "removed/restored owned metadata ref"], modelTurns: 0, rendererErrors, milliseconds: Date.now() - started }));
 }
