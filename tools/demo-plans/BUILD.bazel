@@ -23,7 +23,7 @@ sh_test(
         "//tools:x11-driver-source",
         "//tools/task-integration:sources",
     ],
-    env_inherit = ["SWARM_ELECTRON_BIN", "SWARM_ELECTRON_NO_SANDBOX", "SWARM_SOURCE_WORKSPACE", "SWARM_VIRTUAL_DESKTOP_PORT", "SWARM_PLANS_CASE"],
+    env_inherit = ["SWARM_ELECTRON_BIN", "SWARM_ELECTRON_NO_SANDBOX", "SWARM_SOURCE_WORKSPACE", "SWARM_VIRTUAL_DISPLAY", "SWARM_VIRTUAL_DESKTOP_PORT", "SWARM_PLANS_CASE"],
     tags = ["desktop", "exclusive", "local", "no-sandbox"],
     timeout = "long",
 )

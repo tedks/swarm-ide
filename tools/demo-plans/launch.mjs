@@ -6,6 +6,7 @@ import { dirname, isAbsolute, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { createPlanFixture } from "./fixture.mjs";
 import { resolveElectronRuntimeArguments } from "../electron-runtime.mjs";
+import { resolveOwnedPort } from "./port.cjs";
 
 const scripts = dirname(fileURLToPath(import.meta.url));
 const owner = process.env.SWARM_X11_OWNERSHIP_DIR;
@@ -15,8 +16,7 @@ const ownerStat = await lstat(owner);
 if (!ownerStat.isDirectory() || ownerStat.isSymbolicLink() || ownerStat.uid !== process.getuid() || (ownerStat.mode & 0o077) !== 0 ||
     (await readFile(join(owner, "token"), "utf8")).trim() !== process.env.SWARM_X11_TOKEN) throw new Error("Invalid virtual owner");
 const evidence = await realpath(process.env.SWARM_PLANS_EVIDENCE);
-const port = Number(process.env.SWARM_DEV_PORT);
-if (!Number.isInteger(port) || port !== 55174) throw new Error("Plans proof requires the owned test port 55174");
+const port = resolveOwnedPort(process.env);
 const electron = process.env.SWARM_ELECTRON_BIN;
 if (!electron || !isAbsolute(electron)) throw new Error("Nix Electron required");
 const runfiles = process.env.TEST_SRCDIR || process.env.RUNFILES_DIR;
