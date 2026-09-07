@@ -36,6 +36,8 @@ import { ExternalAgentService } from "./external-agents";
 import type { ExternalResult } from "../protocol/external-agents";
 import { BuildGraphProvider } from "./build-graph";
 import type { BuildGraphObservation } from "../protocol/build-graph";
+import type { TrustedLocalService } from "./agents/trusted-local";
+import { TrustedRequestSchema } from "../protocol/trusted-local";
 
 export interface WorkerDependencies {
   createAgents?: typeof createProductionAgentService;
@@ -51,6 +53,7 @@ let sequence = 0;
 const requestIds = new BoundedRequestIds(512);
 const fileReadGenerations = new Map<string, number>();
 const providerPromise = RealWorkspaceProvider.create(workspaceRoot);
+let trustedPromise: Promise<TrustedLocalService | null> | undefined;
 const buildGraphPromise = providerPromise.then((provider) => new BuildGraphProvider(workspaceRoot, provider.snapshot().project.id, provider.snapshot().world.id));
 let workingWorldObserver: WorkingWorldObserver | null = null;
 let shuttingDown = false;
@@ -168,6 +171,7 @@ process.parentPort?.on("message", async (event) => {
       try {
         await Promise.all([
           externalAgents.dispose(),
+          trustedPromise?.then((service) => service?.shutdown()),
           agentServicePromise.then((service) => service?.shutdown()),
           taskProviderPromise.then((tasks) => tasks.dispose()),
           journalPending?.catch(() => {}),
@@ -188,6 +192,21 @@ process.parentPort?.on("message", async (event) => {
       return;
     }
     const provider = await providerPromise;
+    if (request.type.startsWith("trusted.")) {
+      try {
+        trustedPromise ??= import("./agents/trusted-local").then(({ createTrustedLocalService }) =>
+          createTrustedLocalService(workspaceRoot, () => provider.snapshot())).catch(() => null);
+        const trusted = await trustedPromise;
+        if (!trusted || shuttingDown) throw new Error("Trusted-local context is unavailable for this working repository.");
+        const state = await trusted.request(TrustedRequestSchema.parse(request));
+        const response = ok(requestId, provider.snapshot());
+        if (!response.ok) throw new Error("Snapshot unavailable");
+        post(parseCoreResponseForRequest({ ...response, trusted: { kind: "trusted", snapshot: state } }, request));
+      } catch (error) {
+        post(fail(requestId, "TRUSTED_LOCAL_UNAVAILABLE", error instanceof Error && error.message.length < 512 ? error.message : "Trusted-local operation failed. No automatic retry was sent."));
+      }
+      return;
+    }
     if (isExternalRequest(request)) {
       try {
         if (shuttingDown) throw new Error("Shutting down");
