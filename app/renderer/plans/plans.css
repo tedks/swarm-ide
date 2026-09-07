@@ -1,4 +1,5 @@
-.planning-field { grid-row: 2; min-width: 0; min-height: 0; display: grid; grid-template-rows: 34px minmax(0, 1fr); padding: 6px; gap: 5px; background: #071011; overflow: hidden; }
+.planning-field { grid-column: 1; grid-row: 2; min-width: 0; min-height: 0; display: grid; grid-template-rows: 34px minmax(0, 1fr); padding: 6px; gap: 5px; background: #071011; overflow: hidden; }
+.navigation-field:not(.source-open) > .graphs-grid { grid-column: 1; }
 .navigation-field.source-open > .planning-field { grid-column: 1; grid-row: 2 / span 2; }
 .planning-field[hidden], .planning-projection[hidden] { display: none !important; }
 /* Keep inactive System panes measurable. A display:none round-trip makes the

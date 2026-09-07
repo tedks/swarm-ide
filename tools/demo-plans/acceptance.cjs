@@ -75,6 +75,14 @@ async function main() {
   stage = "real-blockage";
   await click(".lens-tabs button", "Plan"); await click(`${taskGraph} button`, "Load dependency graph");
   await until(async () => (await text(`${taskGraph} .planning-status`)).includes("0 unread"), "all real task details loaded");
+  assert(await run(() => {
+    const system = document.querySelector(".graphs-grid").getBoundingClientRect(), plans = document.querySelector(".planning-field").getBoundingClientRect();
+    return Math.abs(system.left - plans.left) < 2 && Math.abs(system.width - plans.width) < 2;
+  }), "no-document System/Plan share one full navigation column");
+  const initialSystem = await run(() => [...document.querySelectorAll(".graphs-grid .react-flow__viewport")].map((node) => node.style.transform));
+  await click(".lens-tabs button", "System"); await click(".lens-tabs button", "Plan");
+  assert.deepEqual(await run(() => [...document.querySelectorAll(".graphs-grid .react-flow__viewport")].map((node) => node.style.transform)), initialSystem,
+    "no-document lens switch retains System cameras");
   const graphNodes = await run((scope) => [...document.querySelectorAll(`${scope} .react-flow__node`)].map((node) => node.dataset.id), taskGraph);
   assert(graphNodes.includes("graph-isolated"));
   const graphEdges = await run((scope) => [...document.querySelectorAll(`${scope} .react-flow__edge`)].map((edge) => edge.dataset.id), taskGraph);
