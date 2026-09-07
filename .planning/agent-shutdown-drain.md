@@ -14,7 +14,7 @@ independently establish this defect class on the exact pre-Q4 base.
 - [x] (2026-09-07 06:55Z) Verified isolated branch/base 1820e39, parent 650432b,
   original test blob 6537abcd and service blob bee40ff; read recorded RED proof.
 - [x] (2026-09-07 07:05Z) Fresh baseline reproduced exactly 2 RED/1239 PASS;
-  initial repair and 17 additional lifecycle cases pass complete quality.
+  initial repair and 16 additional lifecycle cases pass complete quality.
 - [ ] Prove deterministic adversarial GREEN, full local build/suites, council fixpoint.
 - [ ] Normal standalone PR merge, Ditz synchronization, cleanup and ROOT handoff.
 
@@ -103,10 +103,22 @@ reviewed independently while Q4 diagnoses its separate Context observation.
 
 ## Outcomes & retrospective
 
-Initial repair passes quality (1258 tests). Final frozen full suites and council
-remain required; no merge or historical attribution claimed.
+Initial repair passes quality (1257 tests). Frozen62eefb4 build34 passed and
+12/13 suites passed, including unchanged virtual rehearsal28.7s. The quality
+suite reproduced the separately tracked Context opening-notice failure at
+tests/context-workbench.test.tsx:100; 1256 other tests passed. ROOT notified;
+aggregate landing remains held, no retry/waiver or unowned Context edit.
+
+Native council found two repair-introduced races. Three new assertions reproduce
+them RED on62eefb4 (1257 others pass): terminal-/grace-first reentrant cleanup
+invokes disposal twice, and a resolved handle extending a post-cutoff read queue
+escapes shutdown's wait. Registering cleanup before adapter entry and counting
+resolved handles awaiting registration address these without awaiting unresolved
+setup or arbitrary later read traffic. Convergence and repaired-tree gates remain.
 
 Revision note: initial bounded plan records assumptions, exact ownership and
 the distinction between reproducible defect class and unlocalized history.
 Progress update: reserved shutdown barrier, preexisting cleanup deferral and
 reentrant idempotence preserve ordering without awaiting provider setup.
+Review update: retain original frozen failure and council RED receipts. Count
+correction is documentary; no assertions or verifiers weakened.

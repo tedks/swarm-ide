@@ -36,6 +36,7 @@ export class AgentService {
   private readonly runs = new Map<string, Run>();
   private readonly handles = new Map<string, AgentHandle>();
   private readonly cleaning = new Map<string, Promise<void>>();
+  private registeringHandles = 0;
   private readonly timers = new Map<string, ReturnType<typeof setTimeout>>();
   private queue: Promise<unknown> = Promise.resolve();
   private draft: PreparedAgentContext | null = null;
@@ -275,15 +276,20 @@ export class AgentService {
     }, this.deadline));
     try {
       const handle = await this.options.adapter.start(context, (event) => this.receive(context.runId, event));
-      await this.serial(async () => {
-        this.handles.set(context.runId, handle);
-        const run = this.runs.get(context.runId)!;
-        if (this.closed || this.storageError || isTerminalRunState(run.state)) void this.dispose(run.runId);
-        else if (run.state === "cancelling") {
-          if (this.now() >= (this.cancelUntil.get(run.runId) ?? 0)) void this.dispose(run.runId);
-          else void this.interrupt(run.runId);
-        }
-      });
+      // Count only resolved handles awaiting the queue, never unresolved setup.
+      // A registration can extend a queue snapshot shutdown is already awaiting.
+      this.registeringHandles++;
+      try {
+        await this.serial(async () => {
+          this.handles.set(context.runId, handle);
+          const run = this.runs.get(context.runId)!;
+          if (this.closed || this.storageError || isTerminalRunState(run.state)) void this.dispose(run.runId);
+          else if (run.state === "cancelling") {
+            if (this.now() >= (this.cancelUntil.get(run.runId) ?? 0)) void this.dispose(run.runId);
+            else void this.interrupt(run.runId);
+          }
+        });
+      } finally { this.registeringHandles--; }
     } catch {
       await this.serial(() => this.markUnknown(context.runId, "Adapter setup did not establish whether execution began."));
     }
@@ -481,8 +487,12 @@ export class AgentService {
     if (existing) return existing;
     const handle = this.handles.get(runId);
     if (!handle) return Promise.resolve();
-    const cleaning = this.cleanupHandle(runId, handle);
+    // Register idempotence before entering adapter code: disposal initiated by
+    // ordinary terminal/Stop processing may synchronously re-enter shutdown.
+    let resolve!: () => void, reject!: (reason: unknown) => void;
+    const cleaning = new Promise<void>((accept, fail) => { resolve = accept; reject = fail; });
     this.cleaning.set(runId, cleaning);
+    void this.cleanupHandle(runId, handle).then(resolve, reject);
     return cleaning;
   }
   private async cleanupHandle(runId: string, handle: AgentHandle): Promise<void> {
@@ -552,7 +562,7 @@ export class AgentService {
             // drain. Do not await unresolved adapter.start(): its late handle
             // follows start()'s existing closed-service disposal path.
             const pending = [...this.cleaning.values()].filter((work) => !waited.has(work));
-            if (!pending.length) break;
+            if (!pending.length && this.registeringHandles === 0) break;
             for (const work of pending) waited.add(work);
             await Promise.all(pending);
           }

@@ -195,6 +195,8 @@ it.each(cleanupModes)("retains queued terminal and exit evidence before %s clean
     cleanup: { status: mode === "confirmed" ? "confirmed" : "unknown" },
     processState: mode === "confirmed" ? "exited" : "unknown", exitCode: mode === "confirmed" ? 7 : null });
   expect(detail.page.records).toHaveLength(2);
+  expect(f.updates).toContain("completed:pending");
+  expect(f.updates).toContain(`completed:${mode === "confirmed" ? "confirmed" : "unknown"}`);
   expect(f.updates.indexOf("completed:pending")).toBeLessThan(f.updates.indexOf(`completed:${mode === "confirmed" ? "confirmed" : "unknown"}`));
   expect(f.counts().disposals).toBe(1); expect(vi.getTimerCount()).toBe(0);
 });
@@ -225,6 +227,8 @@ it.each(cleanupModes)("keeps shutdown-interrupted cancellation unknown with %s d
   const detail = value(await f.disk.read(f.prepared.runId, 0));
   expect(detail.run).toMatchObject({ state: "unknown", providerOutcome: { kind: "none" },
     cleanup: { status: mode === "confirmed" ? "confirmed" : "unknown" } });
+  expect(f.updates).toContain("unknown:pending");
+  expect(f.updates).toContain(`unknown:${mode === "confirmed" ? "confirmed" : "unknown"}`);
   expect(f.updates.indexOf("unknown:pending")).toBeLessThan(f.updates.lastIndexOf(`unknown:${mode === "confirmed" ? "confirmed" : "unknown"}`));
   expect(vi.getTimerCount()).toBe(0);
 });
