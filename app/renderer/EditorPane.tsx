@@ -17,7 +17,11 @@ const setSourceFlash = StateEffect.define<SourceFlash | null>();
 
 /** Tab-local memory, not persisted text or filesystem authority. */
 export interface EditorMemory { state: EditorState | null }
-export interface SourceLineNavigation { nonce: number; line: number | null; content: string; focus?: boolean }
+export interface SourceLineNavigation {
+  nonce: number; line: number | null; content: string; focus?: boolean;
+  /** Renderer-local authority, checked at delivery rather than render time. */
+  authorization?: { isCurrent: () => boolean; retire: () => void };
+}
 
 class RemovedTextWidget extends WidgetType {
   constructor(private readonly removed: string) { super(); }
@@ -136,6 +140,11 @@ export function EditorPane({ content, flash, onChange, onSave, memory, navigatio
   useEffect(() => {
     const current = view.current;
     if (!current || !navigation) return;
+    // A committed effect may run after a newer gesture, before new props arrive.
+    // Obsolescence is not a buffer error and must not ask for notice focus.
+    if (navigation.authorization && !navigation.authorization.isCurrent()) {
+      navigation.authorization.retire(); return;
+    }
     if (current.state.doc.toString() !== navigation.content.replace(/\r\n?/g, "\n") ||
         (navigation.line !== null && (!Number.isSafeInteger(navigation.line) || navigation.line < 1 || navigation.line > current.state.doc.lines))) {
       onNavigationRef.current?.(navigation.nonce, false); return;

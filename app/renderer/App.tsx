@@ -148,11 +148,12 @@ export function App() {
   const [noticeFocusRequest, setNoticeFocusRequest] = useState(0);
   const [revealNotice, setRevealNotice] = useState("");
   const [sourceNavigation, setSourceNavigation] = useState<(SourceLineNavigation & { path: string }) | null>(null);
+  const sourceNavigationRef = useRef<typeof sourceNavigation>(null);
   const editorMemories = useRef(new Map<string, EditorMemory>());
   const navigationIntent = useRef(0);
   const pendingRevealIntent = useRef<number | null>(null);
   const mounted = useRef(false);
-  useEffect(() => { mounted.current = true; return () => { mounted.current = false; ++navigationIntent.current; }; }, []);
+  useEffect(() => { mounted.current = true; return () => { mounted.current = false; sourceNavigationRef.current = null; ++navigationIntent.current; }; }, []);
   const [commandQuery, setCommandQuery] = useState("");
   const [hmr, setHmr] = useState({ generation: 0, milliseconds: 0 });
   const [fileTabs, setFileTabs] = useState<FileTab[]>(hotCheckpoint?.files ?? []);
@@ -297,6 +298,20 @@ export function App() {
     setRevealNotice(message);
     setNoticeFocusRequest(navigationIntent.current);
   }, []);
+  const retireSourceNavigation = useCallback((command: NonNullable<typeof sourceNavigation>) => {
+    if (sourceNavigationRef.current !== command) return;
+    sourceNavigationRef.current = null;
+    setSourceNavigation((current) => current === command ? null : current);
+  }, []);
+  const acknowledgeSourceNavigation = useCallback((nonce: number, applied: boolean) => {
+    const command = sourceNavigationRef.current;
+    if (!command || command.nonce !== nonce) return;
+    const reportInvalid = !applied && command.authorization?.isCurrent();
+    // Successful focus synchronously advances intent/attention itself. Identity
+    // still owns retirement; those self-advances do not turn success into error.
+    retireSourceNavigation(command);
+    if (reportInvalid) reportRevealFailure("Working buffer changed before Reveal navigation; cursor retained. Reveal again after reconciling source.");
+  }, [retireSourceNavigation, reportRevealFailure]);
   const interruptPendingReveal = useCallback(() => {
     if (pendingBacklinkIntent.current !== null) { pendingBacklinkIntent.current = null; ++navigationIntent.current; }
     if (pendingRevealIntent.current === null) return;
@@ -540,6 +555,7 @@ export function App() {
       lifecycleRef.current = status;
       if (coreGenerationRef.current !== status.core.generation) {
         ++navigationIntent.current;
+        sourceNavigationRef.current = null;
         setSourceNavigation(null);
         setRevealNotice((notice) => notice.startsWith("Opening working file") ? "CORE_GENERATION_CHANGED: Reveal interrupted; previous source retained." : notice);
         coreGenerationRef.current = status.core.generation;
@@ -753,7 +769,23 @@ export function App() {
       if (declaration) textWasOpen.current = true;
       activateFile(ref.path);
       setRevealNotice(declaration ? `${declaration.notice} ${target.notice}` : target.notice);
-      setSourceNavigation({ path: ref.path, content: tab.content, line: target.line, nonce: intent, focus: true });
+      // The command nonce predates activateFile's legitimate intent/attention
+      // advances. Capture delivery authority only after that activation.
+      const deliveryIntent = navigationIntent.current, deliveryAttention = attentionRef.current.generation;
+      const deliveryRealm = contextRealm(), openGeneration = openGenerationsRef.current.get(ref.path);
+      const command: NonNullable<typeof sourceNavigation> = {
+        path: ref.path, content: tab.content, line: target.line, nonce: intent, focus: true,
+        authorization: {
+          isCurrent: () => sourceNavigationRef.current === command && mounted.current &&
+            activeSurfaceRef.current === ref.path && desiredFilesRef.current.has(ref.path) &&
+            openGenerationsRef.current.get(ref.path) === openGeneration && contextRealm() === deliveryRealm &&
+            navigationIntent.current === deliveryIntent && attentionRef.current.generation === deliveryAttention &&
+            (!window.swarmLifecycle || lifecycleRef.current?.core.phase === "ready"),
+          retire: () => retireSourceNavigation(command),
+        },
+      };
+      sourceNavigationRef.current = command;
+      setSourceNavigation(command);
       // Explicit Reveal alone navigates the repository projection. The file
       // opener remains authoritative; failed/partial listing cannot hide it.
       if (workspaceRef.current.snapshot?.graphs.some((graph) => graph.directory)) void repository.reveal(ref.path);
@@ -762,7 +794,7 @@ export function App() {
       // Never clear a newer Reveal's token when an older read finally settles.
       if (pendingRevealIntent.current === intent) pendingRevealIntent.current = null;
     }
-  }, [activateFile, invoke, openFile, reportRevealFailure, repository.reveal, contextRealm, sourceReceipt]);
+  }, [activateFile, invoke, openFile, reportRevealFailure, repository.reveal, contextRealm, sourceReceipt, retireSourceNavigation]);
 
   const openLinkedFile = useCallback((path: string) => {
     if (!isRepositoryPath(path)) { reportRevealFailure("Use an exact canonical repository-relative file path, without .git or parent segments."); return; }
@@ -1178,7 +1210,7 @@ export function App() {
             {activeFile.revision ? <EditorPane key={activeFile.path} content={activeFile.content} flash={activeFile.flash}
               memory={(() => { let memory = editorMemories.current.get(activeFile.path); if (!memory) { memory = { state: null }; editorMemories.current.set(activeFile.path, memory); } return memory; })()}
               navigation={sourceNavigation?.path === activeFile.path ? sourceNavigation : null}
-              onNavigation={(nonce, applied) => { setSourceNavigation((current) => current?.nonce === nonce ? null : current); if (!applied) reportRevealFailure("Working buffer changed before Reveal navigation; cursor retained. Reveal again after reconciling source."); }} onChange={(content) => {
+              onNavigation={acknowledgeSourceNavigation} onChange={(content) => {
               const update = (tab: FileTab): FileTab => {
               if (tab.path !== activeFile.path) return tab;
               const unresolved = ["conflict", "unknown", "error"].includes(tab.status);
