@@ -6,7 +6,7 @@ type: bugfix
 component: workbench
 release:
 reporter: Ted Smith <tedks@riseup.net>
-status: unstarted
+status: in_progress
 disposition:
 creation_time: 2026-09-07T18:40:11-00:00
 references: []
@@ -32,6 +32,10 @@ log_events:
 - time: 2026-09-07T18:40:15-00:00
   who: Ted Smith
   what: blocks repo-task-draft-integration-d6
+  comment: ""
+- time: 2026-09-07T18:51:50-00:00
+  who: Ted Smith
+  what: started
   comment: ""
 blocks:
 - repo-task-draft-integration-d6
