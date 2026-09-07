@@ -145,10 +145,23 @@ async function main() {
       if (!link) throw new Error("Missing actual required-declaration link"); link.click();
     }, "Payments.Authorize");
     await until(async () => await contextSubject() === required, "explicit built declaration link opens current real source");
+    stage = "q1-retained-failed-publication";
+    const manifestPath = path.join(fixture.root, "examples/checkout-world/services/fraudcheck/service.swarm.json");
+    const manifestBytes = await fs.readFile(manifestPath);
+    try {
+      await fs.writeFile(manifestPath, "{ intentionally invalid owned-test manifest\n");
+      await until(async () => (await snapshot()).revisions.working.fingerprint !== built.revisions.working.fingerprint, "actual working change observed");
+      const epoch = (await snapshot()).reconciliation.epoch;
+      await click("#reconcile-success");
+      await until(async () => { const next = await snapshot(); return next.reconciliation.epoch > epoch && next.reconciliation.status === "red"; }, "actual Bazel failure retains old publication", 90000);
+      assert.deepEqual((await snapshot()).serviceContext, built.serviceContext, "failed publication preserves exact original context evidence");
+      assert.equal(await run(() => document.querySelector("[data-context-section='services'] [data-context-freshness]")?.textContent), "retained");
+      await screenshot("q1-retained-failure.png");
+    } finally { await fs.writeFile(manifestPath, manifestBytes); }
     await openPath(fixture.sourcePath); await until(async () => await contextSubject() === fixture.sourcePath, "return ordinary source attention");
     await directory(fixture.directory);
     await fs.writeFile(path.join(evidence, "q1-context-proof.json"), JSON.stringify({ buildId: built.revisions.built.id, sourceFingerprint: built.revisions.built.sourceFingerprint, inspected, declarationLinkOpened: true, rendererErrors: [] }, null, 2));
-    facts.push("Q1 actual Bazel artifact, ordinary/implementation/provided/required distinction, explicit declaration link, graph inspection without source activation");
+    facts.push("Q1 actual Bazel artifact, ordinary/implementation/provided/required distinction, explicit declaration link, graph inspection without source activation", "Q1 actual owned manifest build failure retains original build identity and historical relationships");
   } else {
     assert((await contextText("services")).includes("unavailable"), "unfamiliar/degraded repository does not invent service facts");
     assert((await contextText("capture")).includes("No bounded registered capture"));

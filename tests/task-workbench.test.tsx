@@ -152,7 +152,9 @@ describe("task inspection in the source cockpit", () => {
     await screen.findByText(/metadata line cannot safely map/);
     expect(editor.state.selection.main.head).toBe(2);
     expect(editor.state.doc.toString()).toContain("unsaved");
-    expect(request.mock.calls.slice(before).map(([input]) => input.type).filter((type) => type !== "tasks.snapshot")).toEqual(["focus.select"]);
+    // Explicit Reveal revalidates the canonical destination even for a dirty
+    // buffer, but neither replaces that buffer nor writes/replays anything.
+    expect(request.mock.calls.slice(before).map(([input]) => input.type).filter((type) => type !== "tasks.snapshot")).toEqual(["file.read", "focus.select"]);
     expect(document.activeElement).toBe(editor.contentDOM);
   });
 

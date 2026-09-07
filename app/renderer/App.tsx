@@ -375,7 +375,12 @@ export function App() {
     }
   }, [contextRealm]);
 
+  const pendingBackContext = useRef<{ intent: number; realm: string; generation: number; destination?: string } | null>(null);
   const requestDirectory = useCallback(async (request: RepositoryRequest) => {
+    // Capture the actual navigation intent synchronously, not the separately
+    // published graph which may still describe the previous directory at ack.
+    const back = pendingBackContext.current;
+    if (back && back.destination === undefined) back.destination = request.directory;
     const generation = coreGenerationRef.current;
     if (!window.swarm) return null;
     const response = await window.swarm.request(request);
@@ -394,11 +399,13 @@ export function App() {
   const enterDirectory = useCallback((path: string) => { inspectDirectory(path); return repository.enter(path); }, [inspectDirectory, repository.enter]);
   const upDirectory = useCallback(() => { inspectDirectory((workspaceRef.current.snapshot?.graphs.find((graph) => graph.directory)?.directory?.directory ?? "").split("/").slice(0, -1).join("/")); return repository.up(); }, [inspectDirectory, repository.up]);
   const backDirectory = useCallback(async () => {
-    ++navigationIntent.current; const intent = navigationIntent.current, realm = contextRealm();
-    if (!await repository.back() || intent !== navigationIntent.current || realm !== contextRealm()) return false;
-    const path = workspaceRef.current.snapshot?.graphs.find((graph) => graph.directory)?.directory?.directory;
-    if (path !== undefined) inspectDirectory(path);
-    return true;
+    const token = { intent: ++navigationIntent.current, realm: contextRealm(), generation: attentionRef.current.generation, destination: undefined as string | undefined };
+    pendingBackContext.current = token;
+    try {
+      if (!await repository.back() || !mounted.current || token.intent !== navigationIntent.current || token.realm !== contextRealm() || token.generation !== attentionRef.current.generation || token.destination === undefined) return false;
+      inspectDirectory(token.destination);
+      return true;
+    } finally { if (pendingBackContext.current === token) pendingBackContext.current = null; }
   }, [repository.back, inspectDirectory, contextRealm]);
   const deliberateRepository = { ...repository, enter: enterDirectory, up: upDirectory, back: backDirectory };
   const requestFileSearch = useCallback(async (input: RepositorySearchRequest) => {
@@ -756,10 +763,18 @@ export function App() {
     setFileTabs((tabs) => tabs.filter((candidate) => candidate.path !== path));
     if (activeSurfaceRef.current === path) {
       const nextPath = remaining.at(-1)?.path;
-      if (nextPath) activateFile(nextPath);
-      else showSurface("graphs");
+      const subject = attentionRef.current.subject;
+      if (!taskDocumentVisible && subject?.kind === "file" && subject.path === path) {
+        if (nextPath) activateFile(nextPath);
+        else showSurface("graphs");
+      } else {
+        // Closing a background document is not a new inspection of whatever
+        // source happens to remain behind the graph/task being inspected.
+        ++navigationIntent.current;
+        activeSurfaceRef.current = nextPath ?? "graphs"; setActiveSurface(nextPath ?? "graphs");
+      }
     }
-  }, [activateFile, invoke, showSurface]);
+  }, [activateFile, invoke, showSurface, taskDocumentVisible]);
 
   const saveFile = useCallback(async (path: string) => {
     if (window.swarmLifecycle && lifecycleRef.current?.core.phase !== "ready") return;
@@ -917,7 +932,7 @@ export function App() {
   const snapshot = workspace.snapshot;
   const publication = snapshot?.serviceContext;
   const serviceIdentity = JSON.stringify([snapshot?.project.id, snapshot?.world.id, coreGenerationRef.current, publication?.status,
-    publication?.status === "observed" ? publication.buildId : publication?.reason]);
+    publication?.status === "observed" ? [publication.buildId, publication.sourceFingerprint, publication.inputDigest, publication.artifactUri, publication.observedAt] : publication?.reason]);
   const serviceIndex = useMemo(() => indexService(publication), [serviceIdentity]);
   const captureIndex = useMemo(() => indexCapture(uiBuildLinks), []);
   const contextSubject = attention.realm === contextRealm() ? attention.subject : null;
