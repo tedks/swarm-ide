@@ -45,3 +45,19 @@ log_events:
     log /tmp/swarm-ide-shutdown-drain-r3.NvxkqK/frozen-tests1.log and frozen1-quality/test.log.
     No Context edits/retries/causal conclusion by R3; ROOT notified for existing Q4
     diagnosis.
+- time: 2026-09-07T07:16:07-00:00
+  who: Ted Smith
+  what: commented
+  comment: 'Renewed exact one-line type correction pushed0a60a704f685de7c62d8d0fe31381aaa0b3bab39/tree83b2c57.
+    ONE frozen Nix/Bazel quality execution: both typechecks PASS; Vitest1271PASS/3FAIL,95files.
+    Two known shutdown reds remain R3-owned/unconsumed. Context original ungated,
+    early and deliberate-source controls PASS; controlled late current handoff FAILS
+    pending notice at line229. Trace: B-read-entry18 < current-A-release19 < real
+    focusin22 < applied-ack24 < cancellation25; newer inspection27 and B-release29
+    retain source/cursor/draft/both graphs/cameras with no other assertion failure.
+    All4 traces overflow0. This proves imposed-order mechanism, NOT historical cause
+    or packaged behavior; original passed with Aack15 before Bactivation17. Raw context-order-resume.log
+    and updated boundary retain prior compile failures. Propose separate ROOT approval
+    for delivery-time handoff authorization/nonce-scoped obsolete retirement in App/EditorPane
+    plus exact tests; no production edits or further runs made. PR44/integration held;
+    canvas protected.'
