@@ -7,8 +7,8 @@ type: feature
 component: default
 release:
 reporter: Ted Smith <tedks@riseup.net>
-status: unstarted
-disposition:
+status: closed
+disposition: fixed
 creation_time: 2026-09-06T16:23:40-00:00
 references: []
 log_events:
@@ -34,5 +34,14 @@ log_events:
     One proposed Q4 owner/packaged proof after ROOT evaluation. Actual backlink UI/provider,
     wiki/instruction navigation and D2 remain unimplemented/open; no model or preview
     adoption.
+- time: 2026-09-07T23:00:48-00:00
+  who: Ted Smith
+  what: 'closed: fixed'
+  comment: PR44 delivers revision-pinned reverse file-to-Ditz links; PR53 adds contained,
+    revision-labelled authored plan/document/source/task and doctrine/contract/lesson
+    navigation; PR61 connects the real D2-D6 documentation/context tour. Current PlanHierarchy
+    opens exact authored references through the source broker. This closes explicit
+    repo knowledge navigation, not inferred links, generated documentation or execution
+    authority.
 blocked_by:
 - contextual-information
