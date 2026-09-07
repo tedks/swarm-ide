@@ -45,6 +45,16 @@ log_events:
   comment: 'D3 started from ROOT-cleared eafe0fe: shared wire/context/store compatibility
     only; all attached Prepare remains unavailable. D4/D5/D6 not started; parent remains
     open.'
+- time: 2026-09-07T10:14:13-00:00
+  who: Ted Smith
+  what: commented
+  comment: D3 base repo-task-draft-base-d3 completed by normal PR48 merge6e11ce42,
+    exact reviewed/tested tree05d04ecf. Wire7/new Prepared V2/strict historical V1
+    and snapshot2 compatibility plus pure task formatter/optional resolver/disposal
+    seams landed. ALL attached Prepare still UNSUPPORTED_CONTROL. Actual resolver
+    D4, deliberate UI D5 and real-data joined D6 proof remain required; parent stays
+    open. ROOT intake gates consumer dispatch. Read /tmp/swarm-ide-task-draft-d3.ymHzPV/consumer-handoff.md
+    and final landing receipt.
 blocked_by:
 - repo-task-surface
 - repo-task-draft-contract-d2
