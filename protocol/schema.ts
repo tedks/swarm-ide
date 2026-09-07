@@ -7,6 +7,7 @@ import { RepositoryObservationSchema, RepositoryPathSchema, RepositoryRequestSch
 import { RepositorySearchRequestSchema, RepositorySearchResultSchema, parseRepositorySearchResult } from "./repository-search";
 import { BuildGraphRequestSchema, BuildGraphObservationSchema } from "./build-graph";
 import { ServiceContextObservationSchema } from "./context";
+import { ExternalRequestSchema, ExternalResultSchema, parseExternalResult, type ExternalRequest } from "./external-agents";
 export { PROTOCOL_VERSION, FocusRefSchema, RevisionKindSchema, type FocusRef, type RevisionKind } from "./common";
 
 export const MAX_EDITABLE_FILE_BYTES = 2 * 1024 * 1024;
@@ -286,7 +287,7 @@ const WorkspaceRequestSchema = z.discriminatedUnion("type", [
     path: z.string().min(1).max(4_096),
   }),
 ]);
-export const CoreRequestSchema = z.union([WorkspaceRequestSchema, AgentRequestSchema, TaskRequestSchema, RepositoryRequestSchema, RepositorySearchRequestSchema, BuildGraphRequestSchema]);
+export const CoreRequestSchema = z.union([WorkspaceRequestSchema, AgentRequestSchema, TaskRequestSchema, RepositoryRequestSchema, RepositorySearchRequestSchema, ExternalRequestSchema, BuildGraphRequestSchema]);
 export type CoreRequest = z.infer<typeof CoreRequestSchema>;
 
 export const FileResultSchema = z.discriminatedUnion("kind", [
@@ -323,6 +324,7 @@ export const CoreResponseSchema = z.discriminatedUnion("ok", [
     task: TaskResultSchema.optional(),
     repo: RepositoryResultSchema.optional(),
     search: RepositorySearchResultSchema.optional(),
+    external: ExternalResultSchema.optional(),
     buildGraph: BuildGraphObservationSchema.optional(),
   }).strict(),
   z.object({
@@ -383,8 +385,14 @@ const agentResultKind = {
 export function parseCoreResponseForRequest(input: unknown, request: CoreRequest): CoreResponse {
   const response = parseCoreResponse(input);
   if (response.requestId !== request.requestId) throw new Error("Response request ID mismatch");
+  if (isExternalRequest(request)) {
+    if (response.ok) {
+      if (response.file || response.agent || response.task || response.repo || response.search || response.buildGraph) throw new Error("Unexpected external observer authority");
+      parseExternalResult(response.external, request);
+    }
+  } else if (response.ok && response.external) throw new Error("External result supplied for a different command");
   if (request.type === "buildGraph.observe") {
-    if (response.ok && (!response.buildGraph || response.file || response.agent || response.task || response.repo || response.search ||
+    if (response.ok && (!response.buildGraph || response.file || response.agent || response.task || response.repo || response.search || response.external ||
         response.snapshot.project.id !== request.repositoryId || response.snapshot.world.id !== request.worldId ||
         response.buildGraph.repositoryId !== request.repositoryId || response.buildGraph.worldId !== request.worldId))
       throw new Error("Build graph response authority mismatch");
@@ -447,6 +455,10 @@ export function isAgentRequest(request: CoreRequest): request is AgentRequest {
 
 export function isTaskRequest(request: CoreRequest): request is TaskRequest {
   return request.type === "tasks.snapshot" || request.type === "tasks.read";
+}
+
+export function isExternalRequest(request: CoreRequest): request is ExternalRequest {
+  return request.type.startsWith("externalAgents.");
 }
 
 export function uncertainMutationCode(request: CoreRequest): "WRITE_OUTCOME_UNKNOWN" | "AGENT_OUTCOME_UNKNOWN" | null {
