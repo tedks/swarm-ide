@@ -7,8 +7,8 @@ type: task
 component: workbench
 release:
 reporter: Ted Smith <tedks@riseup.net>
-status: in_progress
-disposition:
+status: closed
+disposition: fixed
 creation_time: 2026-09-07T08:53:12-00:00
 references: []
 log_events:
@@ -24,5 +24,13 @@ log_events:
   who: Ted Smith
   what: blocks repo-task-draft-provenance
   comment: ""
+- time: 2026-09-07T09:12:27-00:00
+  who: Ted Smith
+  what: 'closed: fixed'
+  comment: Reviewed docs-only D2 contract normal-merged in PR47 eafe0fe2bf5a7e73dc919c8a2f29e4f615e4e239;
+    exact approved9e2f095 + reviewedfffd2de parents and tree equality verified. Explicit
+    single-slot/source/bytes/hash/V1-V2/revalidation/disposal/timeout decisions complete;
+    actual attachment implementation not delivered. Native convergence CLEAN; local
+    docs checks passed; hosted ignored.
 blocks:
 - repo-task-draft-provenance
