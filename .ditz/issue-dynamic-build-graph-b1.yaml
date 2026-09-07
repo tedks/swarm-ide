@@ -5,8 +5,8 @@ type: feature
 component: default
 release:
 reporter: Ted Smith <tedks@riseup.net>
-status: in_progress
-disposition:
+status: closed
+disposition: fixed
 creation_time: 2026-09-07T18:41:41-00:00
 references: []
 log_events:
@@ -49,3 +49,11 @@ log_events:
     held; exact nextgate final-gate-request.md. Own Bazel shutdown successful, GUI/query
     cleanup1/no temporary query dirs. Preserve worktree/session/evidence; no shared
     adoption.'
+- time: 2026-09-07T20:13:07-00:00
+  who: Ted Smith
+  what: 'closed: fixed'
+  comment: NormalPR52 fb225596739fdaaa2348977db38df935cd27f7fc, parents94efa689+483d9a7,
+    mergedtree2efa7d24cdddfa29e65b5e44bf2cacc141c746be. Frozen407cfc4 tree d6917d3b78c7dea27fbdbf2ff3ba14bfb5cb5a9b
+    passedfull43/all17fresh/1498tests106; postgateonly2docs. Real2repo Bazel edges/retention/cleanup/zeroerrors
+    proven. ROOT accepted only originalQ2focus risk; issue staysOPEN. NativeGoogleCLEAN,Sonnet
+    unavailable. No childapp adoption.
