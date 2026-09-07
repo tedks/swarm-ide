@@ -70,13 +70,21 @@ async function main() {
   const tmux = (...args) => execFileSync("tmux", ["-S", fixture.target.socket, ...args], { encoding: "utf8", timeout: 2000 });
   const active = () => tmux("display-message", "-p", "-t", "owned", "#{window_id}").trim();
   assert.equal(active(), fixture.other);
-  await click(label("Inspect external agent Synthetic worker 8"));
+  await run((selector) => { const button = document.querySelector(selector); button.scrollIntoView({ block: "nearest" }); button.focus(); }, label("Inspect external agent Synthetic worker 8"));
+  await wc.sendInputEvent({ type: "keyDown", keyCode: "Enter" });
+  await wc.sendInputEvent({ type: "keyUp", keyCode: "Enter" });
   await until(() => run(() => document.querySelector("[aria-label='External agent information']")?.textContent.includes("Synthetic worker 8: I report")), "actual recorded worklog");
   assert.equal(active(), fixture.other, "mere agent selection does not hand off");
   assert(!(await run(() => document.querySelector("[aria-label='External agent information']").textContent)).includes("PRIVATE_"));
-  await run(() => { const rail = document.querySelector(".external-lineage-scroll"); rail.scrollLeft = 0; document.querySelector(".external-agents").scrollIntoView({ block: "start" }); });
+  // Ordinary folding makes the actual tree visible in the small left rail;
+  // no fixture CSS or detached screenshot-only renderer is substituted.
+  await click(label("Directory")); await click(label("Tasks"));
+  await run(() => { const rail = document.querySelector(".external-lineage-scroll"); rail.scrollLeft = 0; document.querySelector("[aria-label='Fork lineage']").scrollIntoView({ block: "start" }); });
   await run(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
   await fs.writeFile(path.join(evidence, "lineage-worklog.png"), (await wc.capturePage()).toPNG());
+  await run(() => document.querySelector("[aria-label='Inspect external agent Synthetic worker 14']").scrollIntoView({ block: "end" }));
+  await run(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+  await fs.writeFile(path.join(evidence, "lineage-independent-roots.png"), (await wc.capturePage()).toPNG());
   await click(".external-information nav button:last-child");
   await until(() => run(() => document.querySelectorAll("[aria-label='Recorded assistant conversation'] li").length === 2), "actual assistant conversation, not recap replacement");
   await fs.writeFile(path.join(evidence, "conversation.png"), (await wc.capturePage()).toPNG());
