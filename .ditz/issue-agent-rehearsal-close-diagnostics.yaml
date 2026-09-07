@@ -44,3 +44,9 @@ log_events:
     GUI failure. Native test review CLEAN. Minimal next authority proposed for core/agents/service.ts
     plus adaptation of tests/agent-shutdown-order.test.ts; no runtime edit or GUI
     rerun performed.'
+- time: 2026-09-07T06:57:58-00:00
+  who: Ted Smith
+  what: commented
+  comment: R3 independently repairing exact pre-Q4 deterministic accepted-event/early-disposal
+    defect class in isolated service/test scope. Original d328 GUI failure remains
+    unlocalized; no historical cause or fix claimed.
