@@ -203,7 +203,7 @@ async function main() {
     facts.push("Q1 actual Bazel artifact, ordinary/implementation/provided/required distinction, explicit declaration link, graph inspection without source activation", "Q1 actual owned manifest build failure retains original build identity and historical relationships");
   } else {
     assert((await contextText("services")).includes("unavailable"), "unfamiliar/degraded repository does not invent service facts");
-    assert((await contextText("capture")).includes("No bounded registered capture"));
+    assert((await contextText("capture")).includes("No bounded registered build observation for this repository."));
   }
 
   if (["invalid-name", "fingerprint-budget"].includes(fixture.kind)) {
@@ -414,8 +414,36 @@ async function main() {
         const recoveredWorld = await snapshot();
         assert.equal(recoveredWorld.jobs.length, 0, "Q2 new core has no running or completed replay jobs");
         assert(!recoveredWorld.activity.some((item) => item.kind === "build"), "Q2 no build activity in replacement core");
-        await focus(serviceNode("service:fraud-check")); key("Enter", ["shift"]);
-        await until(async () => await contextSubject() === "service:fraud-check", "Q2 retained service inspect after recovery");
+        // ROOT-authorized passive, bounded trace of this existing gesture only.
+        // No text/value capture, event intervention, extra input or retry.
+        await run((selector) => {
+          const describe = (node) => node ? { tag: node.tagName, id: node.id?.slice(0, 80), nodeId: node.dataset?.id?.slice(0, 80),
+            classes: String(node.className).slice(0, 96), tabIndex: node.tabIndex, connected: node.isConnected } : null;
+          const target = document.querySelector(selector), events = []; let dropped = 0;
+          const record = (phase, event) => {
+            const entry = { at: performance.now(), phase, target: describe(event?.target ?? target), active: describe(document.activeElement),
+              sameTarget: document.activeElement === target, key: event?.type === "keydown" ? (["Enter", "Shift", "Control", "Alt", "Meta", "Tab"].includes(event.key) ? event.key : "other") : undefined,
+              shift: Boolean(event?.shiftKey), control: Boolean(event?.ctrlKey), alt: Boolean(event?.altKey), meta: Boolean(event?.metaKey) };
+            if (events.length < 32 && JSON.stringify([...events, entry]).length <= 8192) events.push(entry); else dropped++;
+          };
+          const focusEvent = (event) => record("focusin", event), keyEvent = (event) => record("keydown", event);
+          document.addEventListener("focusin", focusEvent, true); document.addEventListener("keydown", keyEvent, true);
+          globalThis.__q2FocusTrace = { record, finish: () => { document.removeEventListener("focusin", focusEvent, true); document.removeEventListener("keydown", keyEvent, true); return { events, dropped }; } };
+          record("before-focus");
+        }, serviceNode("service:fraud-check"));
+        let gestureFailure;
+        try {
+          await focus(serviceNode("service:fraud-check"));
+          await run(() => globalThis.__q2FocusTrace.record("after-focus"));
+          key("Enter", ["shift"]);
+          await until(async () => await contextSubject() === "service:fraud-check", "Q2 retained service inspect after recovery");
+        } catch (error) { gestureFailure = error; throw error; }
+        finally {
+          try {
+            const trace = await run(() => { const trace = globalThis.__q2FocusTrace; trace.record("after-postcondition"); const result = trace.finish(); delete globalThis.__q2FocusTrace; return result; });
+            await fs.writeFile(path.join(evidence, "q2-focus-trace.json"), JSON.stringify({ ...trace, inspected: !gestureFailure, nativeWindowFocused: win.isFocused(), nativeContentsFocused: wc.isFocused() }));
+          } catch (diagnosticError) { if (!gestureFailure) throw diagnosticError; console.warn("Q2 diagnostic unavailable; original gesture failure preserved"); }
+        }
         const retained = await contextText("services");
         for (const value of [builtServiceEvidence.buildId, builtServiceEvidence.sourceFingerprint, builtServiceEvidence.inputDigest, builtServiceEvidence.observedAt]) assert(retained.includes(value), "Q2 original service provenance remains visible");
         assert.equal(await run(() => document.querySelector("[data-context-section='services'] [data-context-freshness]")?.textContent), "retained");

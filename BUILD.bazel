@@ -23,6 +23,7 @@ filegroup(
         "vitest.config.mts",
     ] + [
         "//tools:dev-port-source",
+        "//tools:dev-entry-sources",
         "//tools:electron-runtime-source",
         "//tools:extract-service-topology",
         "//tools:desktop-automation-sources",
@@ -32,6 +33,7 @@ filegroup(
         "//tools/task-integration:sources",
         "//tools/repository-navigation:sources",
         "//tools/demo-journal:sources",
+        "//tools/build-graph:sources",
     ],
 )
 

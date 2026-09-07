@@ -8,6 +8,7 @@ import type { RepositoryObservation } from "../protocol/repository";
 import { contextArtifact } from "./context-fixture";
 import { adaptServiceTopology } from "../core/service-topology";
 import { openContextPath } from "./context-navigation";
+import { fixtureBuildObservation } from "./support/build-graph-fixture";
 import uiBuildLinks from "../fixtures/ui-build-links.snapshot.json";
 type EditorProps = import("react").ComponentProps<typeof import("../app/renderer/EditorPane").EditorPane>;
 type TraceFields = { path?: string; nonce?: number; held?: boolean; applied?: boolean; request?: string };
@@ -125,6 +126,7 @@ function setup(artifact = contextArtifact) {
   let enterRead!: () => void;
   const readEntered = new Promise<void>((resolve) => { enterRead = resolve; });
   const response = (input: CoreRequest): CoreResponse => ({ protocolVersion: PROTOCOL_VERSION, requestId: input.requestId, ok: true, sequence: 0, snapshot,
+    ...(input.type === "buildGraph.observe" ? { buildGraph: fixtureBuildObservation(snapshot) } : {}),
     ...(input.type === "file.read" ? { file: { kind: "read", path: input.path, content: `source ${input.path}\n`, revision: "c".repeat(64), size: 10 } } : {}) });
   const request = vi.fn(async (input: CoreRequest): Promise<CoreResponse> => {
     handoff.trace?.("request", { request: input.type, ...("path" in input ? { path: input.path } : {}) });
@@ -147,7 +149,7 @@ describe("truthful Context in the mounted workbench", () => {
     test.snapshot.serviceContext.repositoryId = uiBuildLinks.repositoryId;
     render(<App />); await openContextPath("core/files.ts"); await waitFor(() => expect(subject()).toBe("core/files.ts"));
     fireEvent.click(screen.getByRole("button", { name: "Build graph" }));
-    fireEvent.click(screen.getByRole("checkbox", { name: "Follow file" }));
+    fireEvent.click(await screen.findByRole("checkbox", { name: "Follow file" }));
     const camera = await screen.findByTestId("captured-build-camera");
     await waitFor(() => expect(camera.dataset.camera).toBe("fit"));
     fireEvent.click(screen.getByRole("button", { name: "Pan captured build" }));

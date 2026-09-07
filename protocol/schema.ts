@@ -6,6 +6,7 @@ import { TaskRequestSchema, TaskResultSchema, TaskBoundaryErrorSchema, parseTask
 import { ChangelogRequestSchema, ChangelogResultSchema } from "./changelog";
 import { RepositoryObservationSchema, RepositoryPathSchema, RepositoryRequestSchema, RepositoryResultSchema, parseRepositoryResultForRequest } from "./repository";
 import { RepositorySearchRequestSchema, RepositorySearchResultSchema, parseRepositorySearchResult } from "./repository-search";
+import { BuildGraphRequestSchema, BuildGraphObservationSchema } from "./build-graph";
 import { ServiceContextObservationSchema } from "./context";
 export { PROTOCOL_VERSION, FocusRefSchema, RevisionKindSchema, type FocusRef, type RevisionKind } from "./common";
 
@@ -286,7 +287,7 @@ const WorkspaceRequestSchema = z.discriminatedUnion("type", [
     path: z.string().min(1).max(4_096),
   }),
 ]);
-export const CoreRequestSchema = z.union([WorkspaceRequestSchema, AgentRequestSchema, TaskRequestSchema, RepositoryRequestSchema, RepositorySearchRequestSchema, ChangelogRequestSchema]);
+export const CoreRequestSchema = z.union([WorkspaceRequestSchema, AgentRequestSchema, TaskRequestSchema, RepositoryRequestSchema, RepositorySearchRequestSchema, ChangelogRequestSchema, BuildGraphRequestSchema]);
 export type CoreRequest = z.infer<typeof CoreRequestSchema>;
 
 export const FileResultSchema = z.discriminatedUnion("kind", [
@@ -324,6 +325,7 @@ export const CoreResponseSchema = z.discriminatedUnion("ok", [
     repo: RepositoryResultSchema.optional(),
     search: RepositorySearchResultSchema.optional(),
     changelog: ChangelogResultSchema.optional(),
+    buildGraph: BuildGraphObservationSchema.optional(),
   }).strict(),
   z.object({
     protocolVersion: z.literal(PROTOCOL_VERSION),
@@ -384,10 +386,16 @@ export function parseCoreResponseForRequest(input: unknown, request: CoreRequest
   const response = parseCoreResponse(input);
   if (response.requestId !== request.requestId) throw new Error("Response request ID mismatch");
   if (request.type === "changelog.read") {
-    if (response.ok && (!response.changelog || response.file || response.agent || response.task || response.repo || response.search ||
+    if (response.ok && (!response.changelog || response.buildGraph || response.file || response.agent || response.task || response.repo || response.search ||
       response.snapshot.project.id !== request.repositoryId || response.changelog.repositoryId !== request.repositoryId))
       throw new Error("Unexpected Journal response authority");
   } else if (response.ok && response.changelog) throw new Error("Journal result supplied for a different command");
+  if (request.type === "buildGraph.observe") {
+    if (response.ok && (!response.buildGraph || response.changelog || response.file || response.agent || response.task || response.repo || response.search ||
+        response.snapshot.project.id !== request.repositoryId || response.snapshot.world.id !== request.worldId ||
+        response.buildGraph.repositoryId !== request.repositoryId || response.buildGraph.worldId !== request.worldId))
+      throw new Error("Build graph response authority mismatch");
+  } else if (response.ok && response.buildGraph) throw new Error("Build graph supplied for a different command");
   if (request.type === "repo.search") {
     if (response.ok) {
       if (response.file || response.agent || response.task || response.repo || response.snapshot.project.id !== request.repositoryId)

@@ -4,12 +4,25 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { JournalActivity, JournalPanel, useJournal } from "../app/renderer/changelog/JournalPanel";
 import { syntheticJournal } from "./journal-fixture";
 import { initialSnapshot } from "../fixtures/world";
-import { PROTOCOL_VERSION, type CoreRequest, type CoreResponse } from "../protocol/schema";
+import { PROTOCOL_VERSION, parseCoreResponseForRequest, type CoreRequest, type CoreResponse } from "../protocol/schema";
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
 const reply = (request: CoreRequest): CoreResponse => ({ protocolVersion: PROTOCOL_VERSION, requestId: request.requestId, ok: true, sequence: 0,
   snapshot: { ...initialSnapshot(), project: { ...initialSnapshot().project, id: "repo:test" } }, changelog: syntheticJournal().result });
 
 describe("Activity log logical changes", () => {
+  it("keeps joined Journal and build-graph replies under separate request authority", () => {
+    const request: CoreRequest = { protocolVersion: PROTOCOL_VERSION, requestId: "journal", type: "changelog.read", repositoryId: "repo:test" };
+    const journal = reply(request);
+    if (!journal.ok) throw new Error("Synthetic successful reply required");
+    const graph = { repositoryId: "repo:test", worldId: journal.snapshot.world.id, generation: 1, status: "unavailable", message: "Synthetic unavailable graph" };
+    expect(parseCoreResponseForRequest(journal, request)).toEqual(journal);
+    expect(() => parseCoreResponseForRequest({ ...journal, buildGraph: graph }, request)).toThrow();
+    const graphRequest: CoreRequest = { protocolVersion: PROTOCOL_VERSION, requestId: "graph", type: "buildGraph.observe", repositoryId: "repo:test", worldId: journal.snapshot.world.id, refresh: false };
+    const { changelog: _journal, ...base } = journal;
+    const graphReply = { ...base, requestId: "graph", buildGraph: graph };
+    expect(parseCoreResponseForRequest(graphReply, graphRequest)).toEqual(graphReply);
+    expect(() => parseCoreResponseForRequest({ ...graphReply, changelog: journal.changelog }, graphRequest)).toThrow();
+  });
   it("shows compact entries and deliberately opens expanded agent/task/action evidence", () => {
     const onOpen = vi.fn(), onSource = vi.fn(); const state = { observation: syntheticJournal().result, busy: false, notice: "", refresh: vi.fn() };
     render(<><JournalActivity state={state} onOpen={onOpen} /><JournalPanel state={state} open selectedEntry="change-a" onClose={vi.fn()} onOpenSource={onSource} /></>);

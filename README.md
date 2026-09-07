@@ -1,72 +1,137 @@
-# swarm-ide
+# Swarm IDE
 
-`swarm-ide` is a Linux-first development cockpit for understanding a monorepo
-and steering applications of agent intelligence across it. The prototype keeps
-repo and service graphs distinct, coordinates them through a shared focus, and
-shows working, built, and deployed state beside the work changing them.
+A Linux-first development cockpit: navigate a repository, inspect the context
+around a file or service, and prepare a precisely scoped task for an agent.
+Source, design, tasks, and instructions stay with the repository; separate views
+help you move between them without losing your place.
 
-The project is private while prototyping and licensed under GNU AGPLv3.
+This is a working prototype, not a general-purpose replacement for your editor.
+Repository browsing, source editing, Ditz task inspection, and disk-context
+preparation are real. Managed agent launch is currently unavailable; labelled
+mock conversations and deterministic rehearsals are not live agent execution.
+Start with the [five-minute walkthrough](docs/demo.md).
 
-## Prerequisites
+## Linux quick start
 
-- Nix with flakes enabled
-- A Linux host; visual verification creates its own virtual X11 desktop
+You need Git, Nix with `nix-command` and `flakes` enabled, and a working X11
+desktop connection (`DISPLAY` and, where needed, `XAUTHORITY`). Run as your normal
+user, not root. The Electron sandbox must be supported by your host; do not
+disable it to make the demo start. Linux x86_64 is the tested platform. The flake
+also declares aarch64-linux, but that architecture has not been verified.
 
-## Get started
+Clone using an account that has access to the repository:
 
 ```bash
+git clone git@github.com:tedks/swarm-ide.git
+cd swarm-ide
 nix develop --command pnpm install --frozen-lockfile
-nix develop --command bazel build //...
-nix develop --command bazel test //...
-nix develop --command bazel run //:dev
+nix develop --command bazel build --jobs=3 //...
+SWARM_DEV_PORT=55173 nix develop --command bazel run --jobs=3 //:dev
 ```
 
-The development target starts one long-running Electron/Vite session. Renderer
-changes use Vite HMR and do not restart Bazel.
+The pinned flake supplies Electron, Node, pnpm, Bazel, and the desktop tools. The
+first run needs network access to materialize Nix and package dependencies and
+can take longer than subsequent launches. It does not install an agent account
+or ask for model-service credentials.
 
-If the default loopback port `5173` is occupied, select one explicit port for
-the long-running development process and HMR work you perform manually:
+The command opens Swarm's own checkout by default. To browse a different local
+repository, keep running the command **from the Swarm IDE checkout** and select
+the target explicitly:
 
 ```bash
-SWARM_DEV_PORT=55173 nix develop --command bazel run //:dev
+SWARM_DEV_PORT=55173 nix develop --command bazel run --jobs=3 //:dev -- --workspace /path/to/your/repository
 ```
 
-`SWARM_DEV_PORT` must be a decimal integer from `1` through `65535`. When it is
-unset, the default remains `5173`; an invalid or unavailable requested port
-fails rather than selecting another port.
+The target must be an existing Git working-tree root with a committed `HEAD`.
+Relative paths are resolved from the directory where you invoke the command.
+The IDE's dependencies and development output stay in the IDE checkout, not the
+target. A non-Bazel repository can still be browsed; unavailable build or service
+evidence is not replaced by demo data. Use trusted local repositories: building
+a repository can execute its build rules and repository Bazel wrapper. Opening
+an external target does not automatically start that build; choose Build only
+when you intend to execute that repository's tooling.
 
-Run self-contained visual verification with:
+Leave the terminal running. Renderer changes use hot reload; most local-core
+changes recover without replacing the native window. Main-process changes need
+a deliberate restart. Stop with Ctrl-C and rerun the same command. Save work
+before stopping; reload guards are not crash-proof backups.
+
+### Make repository tasks available
+
+Tasks are read locally from `refs/heads/ditz-metadata`, not from an online issue
+tracker or an automatically fetched remote. An ordinary clone usually has only
+the remote-tracking branch. For a **fresh Swarm clone**, create the local
+metadata branch without switching your source checkout:
 
 ```bash
-SWARM_VIRTUAL_DESKTOP_PORT=55174 nix develop --command bazel run //tools:desktop-smoke
-SWARM_VIRTUAL_DESKTOP_PORT=55174 nix develop --command bazel run //tools:desktop-zoom-smoke
-SWARM_VIRTUAL_DESKTOP_PORT=55174 nix develop --command bazel run //tools:measure-hmr
+git fetch origin refs/heads/ditz-metadata:refs/heads/ditz-metadata
+git show-ref --verify refs/heads/ditz-metadata
 ```
 
-Each command creates a private Xauthority file, starts its own Xvfb server and
-Openbox window manager, launches the exact development app inside them, and
-tears down only its recorded process sessions. Inherited `DISPLAY` and
-`XAUTHORITY` values are replaced. Screenshots, logs, timings, ownership records,
-and resource samples are reported under `artifacts/<scenario>/<run>/`; the
-representative Bazel test uses `TEST_UNDECLARED_OUTPUTS_DIR` for CI retention.
+Then choose **Refresh tasks** in the IDE. For another repository, run the fetch
+there only if it actually uses this Ditz metadata format. A missing branch means
+task information is unavailable, not that the project has no work. Do not force
+an existing divergent metadata branch over local changes; contributors use the
+[Ditz workflow](AGENTS.md#issue-tracking-ditz). The Ditz CLI is not required just
+to read existing tasks in the IDE.
 
-The normal cockpit opens the real working tree and leaves service topology
-unobserved until the user runs its fixed Bazel topology build. The checked-in
-demo grounds `FraudCheck.Assess` and its `Payments.Authorize` dependency in
-public Protocol Buffers/gRPC-style service contracts, while Bazel declares the
-owned implementation inputs and produces the deterministic semantic artifact.
-Fixtures remain test-only. See [the product foundation](docs/product-foundation.md),
-[architecture](docs/architecture.md), and
-[development loop](docs/development-loop.md) for the precise boundary.
+### If startup fails
 
-## Structure
+- Port occupied: choose another `SWARM_DEV_PORT`. The default is `5173`; explicit
+  values must be decimal integers in `1..65535`. The launcher fails rather than
+  silently choosing a different port. Leave unrelated services alone.
+- Workspace rejected: pass the working-tree root, not a subdirectory, a bare
+  repository, or an empty Git repository with no commit.
+- Missing dependencies or Electron version mismatch: use the pinned Nix shell
+  and rerun the frozen install; do not substitute a global Electron or update
+  package versions independently.
+- No display or sandbox support: use a supported logged-in Linux/X11 session.
+  Automated verification below owns a virtual desktop and needs no logged-in
+  display. It is not an invitation to bypass the sandbox.
+- Build/service information unavailable: inspect the reported evidence scope.
+  The current service extractor supports Swarm's checked-in example, not every
+  arbitrary repository.
 
-- `app/` — Electron shell and React workbench
-- `core/` — privileged local process and typed providers
-- `protocol/` — runtime-validated shared contracts
-- `fixtures/` — deterministic world states
-- `tests/` — contract and interaction tests
-- `tools/` — development and desktop automation
-- `docs/` — product and architecture decisions
+## Verification and packaging
 
-See [AGENTS.md](AGENTS.md) for contributor and agent instructions.
+```bash
+nix develop --command bazel test --jobs=3 //...
+SWARM_VIRTUAL_DESKTOP_PORT=55174 nix develop --command bazel run --jobs=3 //tools:desktop-smoke
+```
+
+To exercise the installation path itself after fetching the local Ditz branch:
+
+```bash
+nix develop --command bazel run --jobs=3 //tools/demo-install:smoke
+```
+
+This creates a fresh local Git clone, materializes its dependencies, and opens
+real files in that checkout and two disposable target repositories on owned
+virtual X11. It checks startup rejection and explicit-build authority, records
+screenshots under `artifacts/demo-install/`, and retains its temporary checkouts
+for inspection. Shared Nix/package download caches are allowed; this is not a
+cold-download benchmark. Run GUI scenarios one at a time.
+
+Automated GUI checks create and clean up their own Xvfb/Openbox desktop; they
+never drive your existing application window. See
+[development and visual verification](docs/development-loop.md) for additional
+scenarios, evidence locations, and reload behavior.
+
+`bazel build //...` produces `bazel-bin/swarm-ide-foundation.tar.gz`: compiled
+Electron main/preload code, local core (including its YAML dependency), and
+renderer assets. **It is not a standalone installer.** It does not include the
+Electron executable, Nix/system runtime, or your repository. The supported
+interactive entry for this prototype is the Nix/Bazel command above.
+
+## Project map
+
+- `app/`: Electron shell and sandboxed React workbench
+- `core/`: privileged local providers
+- `protocol/`: runtime-validated contracts
+- `fixtures/` and `tests/`: explicitly synthetic worlds and verification
+- `tools/`: supported launch and desktop-verification entry points
+- `docs/`: [product foundation](docs/product-foundation.md),
+  [architecture](docs/architecture.md), and implementation decisions
+
+Licensed under [GNU AGPLv3](LICENSE) (`AGPL-3.0-only`). See
+[AGENTS.md](AGENTS.md) for contributor instructions.
