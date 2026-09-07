@@ -3,8 +3,8 @@
 
 This ExecPlan is a living document maintained under `.planning/PLANS.md`. Its
 Progress, Surprises & Discoveries, Decision Log and Outcomes & Retrospective
-must be updated as work proceeds. Q3 authors the design only. **Do not execute
-Q4 until ROOT evaluates and authorizes this plan.**
+must be updated as work proceeds. Q3 authored the design; ROOT approved its full
+contract and this plan for Q4 at base `650432b` on 2026-09-07.
 
 ## Purpose / Big Picture
 
@@ -28,10 +28,14 @@ not a general knowledge index or agent dispatch feature.
   Normal landing is recorded by the PR and separate landing receipt, not assumed.
 - [x] (2026-09-07 05:05Z) ROOT approved the complete Q3 contract and assigned
   `feature/task-backlinks` at `650432b` in the isolated `task-backlinks` worktree.
-- [ ] Red tests: never-opened provider projection, compact Context observation,
-  and selection pin surviving revision refresh (first two added before code).
-- [ ] Q4 protocol/provider projection and negative boundary evidence.
-- [ ] Q4 client/index/visibility/pinned attention plus Context consumer.
+- [x] (2026-09-07 05:14Z) Compact Context initial-observation and persistent-pin
+  regressions RED. Initial provider test had a malformed fixture (missing nullable
+  line/note); corrected fixture then proves the complete never-read projection.
+- [x] (2026-09-07 05:36Z) Q4 protocol/provider projection and runtime canonical,
+  escaped-byte, original 512 KiB result / 16 MiB cache capacity boundaries pass.
+- [x] (2026-09-07 05:36Z) Client/index/consumer union/pin/Context implemented with
+  negative delayed-read, same-commit, invalid-detail, attention ABA and reconnect
+  tests. ROOT approved only the optional sidebar-fold visibility callback.
 - [ ] Q4 actual packaged CLI-metadata proof, local full gates, substantive review,
   normal merge, Ditz and reviewed integration handoff.
 
@@ -51,6 +55,23 @@ a pinned read and a retained pinned-selection mode. `App.tsx` currently derives
 task visibility from the compact Work pane, insufficient for a file Context
 consumer when the sidebar is hidden. The two path grammars also differ: source
 candidacy alone is not canonical repository-path eligibility.
+
+Q4 native council found two real boundary defects in the first increment:
+unchanged ref checks left pins falsely stale after completion, and a failed
+reconnect could bind retained old projection mode to the new client lifetime.
+Both were fixed with regressions. One shared detail's freshness now changes at
+both request boundaries; only an actually supplied snapshot binds new authority.
+The Google diff-only review missed unchanged local scope and a Boolean effect
+dependency; exact scope established the former was a false positive, and named
+scalar consumer booleans make the latter's semantics explicit. Native and Google
+fix-delta convergence at `28625ca` are CLEAN; Anthropic timed out with no opinion.
+
+The first packaged extension left the compact Information panel open and tried
+to focus the hidden Back control in the original navigation journey. Restoring
+the prior panel explicitly fixed the setup. A second test probe incorrectly
+assumed task attention survives Q1's core-realm reset and threw a renderer
+exception; the corrected proof explicitly revisits the retained task selection.
+Neither failed run is presented as a passed or zero-exception acceptance.
 
 ## Decision Log
 
@@ -73,6 +94,16 @@ means unavailable. New wire data cannot reach strict v5 clients transparently.
 Pinned task inspection retains its commit across refresh; only deliberate
 reselection changes it. Context-only selection avoids forcing a task document
 or moving source. Consumer visibility is a union on the existing client/timer.
+
+Decision (Q4, 2026-09-07): preserve a failed full-scan warning even when a later
+cheap check sees a rollback to the cached commit or movement to another commit.
+Only a successful full observation proves the failed read has recovered. This
+closes a pre-existing provider branch gap needed by the approved freshness rule.
+
+Decision (Q4, 2026-09-07): the 784 KiB result and augmented-cache reserves cannot
+bind before the independent original/projection limits under today's strict
+shape. Tests prove exact original boundaries, escaped projection boundaries and
+whole envelopes without fabricating an otherwise-valid exact-784-KiB payload.
 
 ## Outcomes & Retrospective
 
@@ -333,3 +364,7 @@ retained-selection behavior because neither summary counts nor ID-only selection
 can safely implement a file backlink. ROOT acceptance is a separate gate.
 Light review clarified that existing scalar limits count raw UTF-8 while aggregate
 limits count serialized JSON, and the plan now names the actual packaged harness.
+
+Revision note (Q4, 2026-09-07): ROOT authorized implementation. Progress now
+separates passing runtime/mounted checks from still-pending final packaged/full
+gates; records council fixes and the failed harness evidence without erasing it.

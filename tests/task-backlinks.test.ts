@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { indexTaskBacklinks } from "../app/renderer/tasks/backlinks";
 import { taskBacklinkSection } from "../app/renderer/context/task-backlinks";
+import { composeContext, indexCapture, indexService } from "../app/renderer/context/compose";
 import { TaskBridgeClient } from "../app/renderer/tasks/client";
 import { CoreResponseSchema, PROTOCOL_VERSION } from "../protocol/schema";
 import { TASK_LIMITS, TaskBacklinksSchema, TaskBacklinkTargetSchema, TaskSnapshotSchema, TaskObservationSchema, TaskResultSchema, TaskRequestSchema, taskBaseSnapshot, type TaskSnapshot } from "../protocol/tasks";
@@ -118,6 +119,21 @@ describe("bounded explicit backlink publication", () => {
     expect(taskBacklinkSection(subject, { ...published, notice: "INVALID_CORE_MESSAGE" }).notice).toContain("retained metadata");
     observation.snapshot.backlinks = { status: "unavailable", reason: "projection-limit" };
     expect(taskBacklinkSection(subject, published).notice).toContain("Task browsing remains available");
+    client.dispose();
+  });
+  it("caps only the display at32, exposes total and escapes untrusted title controls", () => {
+    const observation = taskObservationFixture(), value = snapshot(["core/files.ts"]);
+    const first = value.summaries[0]!;
+    value.summaries = Array.from({ length: 35 }, (_, i) => ({ ...first, id: `task-${String(i).padStart(2, "0")}`, title: "literal\u202etitle", status: "closed" }));
+    value.backlinks = { status: "complete", entries: value.summaries.map((row) => ({ taskId: row.id, refIndex: 0, path: "core/files.ts", navigation: "candidate" })) };
+    observation.snapshot = TaskSnapshotSchema.parse(value);
+    const client = new TaskBridgeClient(), tasks = { ...client.getSnapshot(), connected: true, observation, backlinks: indexTaskBacklinks(observation.snapshot) };
+    const sections = composeContext({ kind: "file", path: "core/files.ts", repositoryId: value.repositoryId, worldId: value.worldId }, {
+      snapshot: initialSnapshot(), files: [], service: indexService(undefined), capture: indexCapture(undefined), realm: "test", session: "test", ready: true, tasks });
+    const section = sections.find((item) => item.id === "task-backlinks")!;
+    expect(section.rows).toHaveLength(32); expect(section.total).toBe(35);
+    expect(section.notice).toContain("Showing 32 of 35 tasks");
+    expect(section.rows[0]!.value).toContain("\\u{202e}"); expect(section.rows[0]!.value).not.toContain("\u202e");
     client.dispose();
   });
 });

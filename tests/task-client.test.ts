@@ -106,6 +106,19 @@ describe("explicit backlink selection", () => {
     expect(h.calls.filter((c) => c.request.type === "tasks.read")).toHaveLength(0);
     h.client.setVisible(false); expect(vi.getTimerCount()).toBe(0);
   });
+  it("blocks another inspection after invalid detail evidence until a valid observation is adopted", async () => {
+    const h = await observed(linkedObservation()), index = h.client.getSnapshot().backlinks!;
+    const path = index.references("task-fixture")[0]!.path, target = index.lookup(path)[0]!.target;
+    const promise = h.client.inspectPinned(target, { path, index }, () => true);
+    const bad = taskReadFixture(); if (!bad.result.ok) throw new Error("fixture");
+    bad.result.detail.fileRefs[0]!.path = "wrong.ts";
+    h.read(bad); expect(await promise).toBe(false);
+    expect(h.client.getSnapshot().notice).toContain("INVALID_CORE_MESSAGE");
+    expect(await h.client.inspectPinned(target, { path, index }, () => true)).toBe(false);
+    expect(h.calls.filter((call) => call.request.type === "tasks.read")).toHaveLength(1);
+    void h.client.refresh(); h.snapshot(linkedObservation(2)); await drain();
+    const retry = h.client.inspectPinned(target, { path, index }, () => true); h.read(); expect(await retry).toBe(true);
+  });
   it("invalidates old pending reads across an identical-identity replacement core", async () => {
     const h = harness(true); h.client.setVisible(true); h.status(h.ready(1)); h.snapshot(linkedObservation()); await drain();
     const index = h.client.getSnapshot().backlinks!, path = index.references("task-fixture")[0]!.path;

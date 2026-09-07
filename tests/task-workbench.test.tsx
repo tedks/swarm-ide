@@ -95,6 +95,14 @@ it("inspects a never-opened exact backlink without moving editor, dirty cursor, 
   expect(request.mock.calls.slice(before).map(([r]) => r.type)).toEqual(["tasks.read"]);
   fireEvent.click(screen.getByRole("button", { name: "Show task document" }));
   expect(screen.getByRole("region", { name: "Task document" })).toBeTruthy();
+  const original = request.getMockImplementation()!; let finish!: () => void;
+  request.mockImplementation(async (input) => input.type === "tasks.snapshot" ? new Promise<CoreResponse>((resolve) => {
+    finish = () => { void original(input).then(resolve); };
+  }) : original(input));
+  fireEvent.click(within(screen.getByRole("region", { name: "Task details" })).getByRole("button", { name: "Refresh tasks" }));
+  for (const name of ["Task document", "Task details"]) expect(within(screen.getByRole("region", { name })).getByText(/Retained details/)).toBeTruthy();
+  await act(async () => finish());
+  for (const name of ["Task document", "Task details"]) expect(within(screen.getByRole("region", { name })).queryByText(/Retained details/)).toBeNull();
   fireEvent.click(screen.getByRole("button", { name: "Close task document" }));
   await waitFor(() => expect(document.querySelector(".artifact-context")?.getAttribute("data-context-kind")).toBe("file"));
   expect(editor.state.selection.main.anchor).toBe(3);
