@@ -5,8 +5,8 @@ type: task
 component: renderer
 release:
 reporter: Ted Smith <tedks@riseup.net>
-status: in_progress
-disposition:
+status: closed
+disposition: fixed
 creation_time: 2026-09-07T21:31:52-00:00
 references: []
 log_events:
@@ -26,3 +26,10 @@ log_events:
     real Git/Ditz UI proof passes with dirty source/draft/Plan camera retention, zero
     renderer errors and cleanup1. No model/shared app changes. Leave issue open until
     ROOT merges.
+- time: 2026-09-07T21:50:42-00:00
+  who: Ted Smith
+  what: 'closed: fixed'
+  comment: ROOT normally merged PR58. Selected actions separated from supporting scroll;
+    native convergence/local quality1637/focused15 and actual owned packaged Git/Ditz
+    source-draft-Plan-camera retention proof accepted. Deliberate directory framing
+    is preserved, not a product camera fix.
