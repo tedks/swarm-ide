@@ -38,10 +38,10 @@ describe("Builds & resources instrument", () => {
     expect(within(cpu).getByRole("img").getAttribute("aria-label")).toContain("12 illustrative samples");
     expect(within(cpu).getAllByText("720")).toHaveLength(2);
     expect(within(memory).getByText("1,040")).toBeTruthy();
-    await user.tab();
-    expect(document.activeElement?.textContent).toBe("Profile basis");
-    await user.keyboard("{Enter}");
-    // jsdom does not emulate native details key toggling; actual owned X11 proof does.
+    // user-event/jsdom does not include native summary in its Tab order; the
+    // actual owned X11 proof exercises Tab/Space for this native disclosure.
+    await user.click(within(example).getByText("Profile basis"));
+    expect(example.querySelector("details")?.open).toBe(true);
     expect(example.textContent).toContain("not the current job or repository");
     expect(example.textContent).toContain("p95 equals peak");
     expect(example.textContent).toContain("1,048,576 bytes");

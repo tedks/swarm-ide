@@ -1,0 +1,24 @@
+package(default_visibility = ["//visibility:public"])
+
+filegroup(name = "sources", srcs = glob(["*.sh", "*.mjs", "*.cjs"]))
+
+sh_test(
+    name = "regressions",
+    srcs = ["regressions.sh"],
+    data = ["//:quality_sources"],
+    tags = ["local"],
+)
+
+sh_binary(
+    name = "smoke",
+    srcs = ["smoke.sh"],
+    data = [
+        ":sources",
+        "//:desktop-bundle",
+        "//tools:virtual-desktop-run.sh",
+        "//tools:x11-driver-source",
+        "//tools:electron-runtime-source",
+        "//tools/task-integration:sources",
+    ],
+    tags = ["manual"],
+)
