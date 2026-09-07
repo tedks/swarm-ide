@@ -1,6 +1,6 @@
 import { context } from "esbuild";
 import { execFileSync, spawn } from "node:child_process";
-import { mkdir, readFile, writeFile, rename } from "node:fs/promises";
+import { mkdir, readFile, writeFile, rename, realpath } from "node:fs/promises";
 import { resolve, dirname, relative } from "node:path";
 import { createServer } from "vite";
 import { resolveDevEndpoint } from "./dev-port.mjs";
@@ -8,6 +8,7 @@ import { resolveElectronRuntimeArguments } from "./electron-runtime.mjs";
 import { classifyUpdate } from "./dev-update.mjs";
 
 const workspace = process.cwd();
+const automaticTopology = await realpath(process.env.SWARM_WORKSPACE_ROOT ?? workspace) === await realpath(workspace);
 const outputRoot = resolve(workspace, ".swarm-dev");
 const electronBinary = process.env.SWARM_ELECTRON_BIN;
 const devEndpoint = resolveDevEndpoint();
@@ -123,18 +124,28 @@ const build = await context({
     });
   } }],
 });
-await build.rebuild();
-await build.watch();
-
-const vite = await createServer({
-  configFile: resolve(workspace, "vite.config.mts"),
-  clearScreen: false,
-  server: {
-    host: devEndpoint.host,
-    port: devEndpoint.port,
-  },
-});
-await vite.listen();
+let vite;
+try {
+  await build.rebuild();
+  await build.watch();
+  vite = await createServer({
+    configFile: resolve(workspace, "vite.config.mts"),
+    // Fixed launcher-derived boolean, not a target repository .env/config value.
+    define: { "import.meta.env.SWARM_AUTOMATIC_TOPOLOGY": JSON.stringify(automaticTopology) },
+    clearScreen: false,
+    server: {
+      host: devEndpoint.host,
+      port: devEndpoint.port,
+    },
+  });
+  await vite.listen();
+} catch (error) {
+  // A port can be claimed after the early diagnostic. Strict Vite failure must
+  // release watchers as well as reject, rather than leaving a headless process.
+  await build.dispose();
+  await vite?.close();
+  throw error;
+}
 vite.printUrls();
 
 watchersReady = true;

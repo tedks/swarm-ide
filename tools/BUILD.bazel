@@ -43,6 +43,22 @@ sh_test(
     timeout = "long",
 )
 
+sh_binary(
+    name = "desktop-task-rehearsal-smoke",
+    srcs = ["agent-rehearsal/task-smoke.sh"],
+    data = [":agent-rehearsal-sources", ":agent-rehearsal-bundle", "//tools/task-integration:sources", ":virtual-desktop-run.sh", ":x11-driver-source"],
+    tags = ["manual"],
+)
+
+sh_test(
+    name = "virtual-desktop-task-rehearsal-test",
+    srcs = ["agent-rehearsal/task-smoke.sh"],
+    data = [":agent-rehearsal-sources", ":agent-rehearsal-bundle", "//tools/task-integration:sources", ":virtual-desktop-run.sh", ":x11-driver-source"],
+    env_inherit = ["SWARM_ELECTRON_BIN", "SWARM_ELECTRON_NO_SANDBOX", "SWARM_SOURCE_WORKSPACE", "SWARM_VIRTUAL_DESKTOP_PORT"],
+    tags = ["desktop", "exclusive", "local", "no-sandbox"],
+    timeout = "long",
+)
+
 filegroup(
     name = "agent-journey-sources",
     srcs = ["agent-journey-dev.mjs", "agent-journey-dev.sh", "agent-journey-client.mjs", "desktop-agent-scenario.sh", "desktop-agent-smoke.sh"],
@@ -99,6 +115,19 @@ filegroup(
 sh_binary(
     name = "dev",
     srcs = ["dev.sh"],
+    data = ["dev-entry.mjs", "dev-port.mjs"],
+)
+
+filegroup(
+    name = "dev-entry-sources",
+    srcs = ["dev.sh", "dev.mjs", "dev-entry.mjs", "dev-workspace-check.mjs", "dev-workspace.test.sh"],
+)
+
+sh_test(
+    name = "dev-workspace-test",
+    srcs = ["dev-workspace.test.sh"],
+    data = [":dev-entry-sources", ":dev-port-source"],
+    tags = ["local"],
 )
 
 sh_binary(
