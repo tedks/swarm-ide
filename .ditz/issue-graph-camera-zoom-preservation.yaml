@@ -5,8 +5,8 @@ type: task
 component: interface
 release:
 reporter: Ted Smith <tedks@riseup.net>
-status: unstarted
-disposition:
+status: closed
+disposition: fixed
 creation_time: 2026-09-05T17:48:44-00:00
 references: []
 log_events:
@@ -20,3 +20,10 @@ log_events:
   comment: 'PR #3 re-fits graphs after confirmed shell zoom so constrained views remain
     coherent and reset correctly. Follow up with a semantic camera transform that
     preserves intentional user pan/zoom rather than always fitting.'
+- time: 2026-09-07T23:00:46-00:00
+  who: Ted Smith
+  what: 'closed: fixed'
+  comment: PR27 preserves each mounted graph's deliberate pan/zoom across interface
+    zoom changes while retaining initial and explicit Fit. Its real owned-window proof
+    covered both graph cameras through 100/150/100 percent zoom; current GraphPane
+    retains that behavior. Cross-document refresh persistence remains separate.
