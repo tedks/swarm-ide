@@ -1,0 +1,16 @@
+id: context-redundant-source-path-20260907
+title: Remove repeated source-path and saved-state rows from file Context
+desc: ""
+type: task
+component: ui
+release:
+reporter: Ted Smith <tedks@riseup.net>
+status: unstarted
+disposition:
+creation_time: 2026-09-07T23:42:03-00:00
+references: []
+log_events:
+- time: 2026-09-07T23:42:03-00:00
+  who: Ted Smith
+  what: created
+  comment: ""
