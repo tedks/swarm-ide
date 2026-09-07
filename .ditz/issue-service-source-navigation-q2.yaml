@@ -1,0 +1,17 @@
+id: service-source-navigation-q2
+title: Deliberate service graph to declaration navigation
+desc: Consume Q1 exact provided/required declarations with ambiguity, broker revalidation
+  and retained-service packaged core recovery proof. No callsite or agent activation.
+type: feature
+component: default
+release:
+reporter: Ted Smith <tedks@riseup.net>
+status: unstarted
+disposition:
+creation_time: 2026-09-07T03:47:17-00:00
+references: []
+log_events:
+- time: 2026-09-07T03:47:17-00:00
+  who: Ted Smith
+  what: created
+  comment: ""
