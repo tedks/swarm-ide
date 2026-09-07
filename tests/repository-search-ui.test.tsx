@@ -101,4 +101,16 @@ describe("keyboard file search palette", () => {
     await act(async () => { await vi.advanceTimersByTimeAsync(5001); });
     expect(screen.getByText(/Stale · complete/)).toBeTruthy(); expect(refresh).not.toHaveBeenCalled();
   });
+  it("returns focus to the input on explicit Refresh so arrows and Enter still work", () => {
+    const inputRef = createRef<HTMLInputElement>(), open = vi.fn();
+    function Harness() {
+      const [loading, setLoading] = useState(false);
+      return <FileSearchPalette query="same" onQuery={() => {}} exact={false} commands={[]} inputRef={inputRef}
+        focusLabel="source" onCancel={() => {}} onOpen={open} search={{ loading, result: loading ? undefined : result(), refresh: () => setLoading(true) }} />;
+    }
+    render(<Harness />);
+    const refresh = screen.getByRole("button", { name: "Refresh filenames" }); refresh.focus(); fireEvent.click(refresh);
+    expect(document.activeElement).toBe(inputRef.current); expect(refresh.isConnected).toBe(false);
+    fireEvent.keyDown(inputRef.current!, { key: "Enter" }); expect(open).not.toHaveBeenCalled();
+  });
 });

@@ -1,11 +1,13 @@
 // @vitest-environment node
 import { execFileSync } from "node:child_process";
+import type { Stats } from "node:fs";
 import { mkdir, mkdtemp, rename, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { RepositoryFileSearch } from "../core/repository-search";
 import { queryRepositoryGit } from "../core/repository-boundary";
+import { registerRepository } from "../core/repository-registration";
 import { PROTOCOL_VERSION } from "../protocol/common";
 import { FILE_SEARCH_ENTRIES, FILE_SEARCH_NAME_BYTES, FILE_SEARCH_RESULTS, FILE_SEARCH_STALE_MS,
   type RepositorySearchRequest } from "../protocol/repository-search";
@@ -33,6 +35,14 @@ afterEach(async () => {
 });
 
 describe("real Git/filesystem filename search", () => {
+  it("uses canonical registration when startup is passed a symlinked root", async () => {
+    const root = await repository(); await writeFile(join(root, "safe.ts"), "");
+    await symlink(root, join(root, "root-alias"));
+    const registration = await registerRepository(join(root, "root-alias"));
+    expect(registration.root).toBe(root);
+    const value = new RepositoryFileSearch(registration.root, registration.id); readers.push(value);
+    expect((await value.search(request("safe", { repositoryId: registration.id }))).paths).toEqual(["safe.ts"]);
+  });
   it("captures tracked and nonignored untracked names, including dotfiles and ignored tracked files", async () => {
     const root = await repository();
     await mkdir(join(root, "deep"));
@@ -66,7 +76,7 @@ describe("real Git/filesystem filename search", () => {
     await writeFile(join(root, "new.ts"), "");
     for (const query of ["o", "ol", "new"]) expect((await value.search(request(query))).captureId).toBe(first.captureId);
     expect(git).toHaveBeenCalledTimes(1);
-    expect(git.mock.calls[0]?.[1]).toEqual(["ls-files", "--cached", "--others", "--exclude-standard", "--stage", "-z"]);
+    expect(git.mock.calls[0]?.[1]).toEqual(["ls-files", "--cached", "--others", "--exclude-standard", "-z"]);
     expect(git.mock.calls[0]?.[2]).toMatchObject({ maximumBytes: 2 * 1024 * 1024, timeoutMs: 2_000 });
     now = FILE_SEARCH_STALE_MS;
     expect((await value.search(request("new")))).toMatchObject({ state: "stale", paths: [] });
@@ -148,6 +158,24 @@ describe("real Git/filesystem filename search", () => {
 });
 
 describe("deterministic injected capture bounds and cancellation faults", () => {
+  it("bounds never-settling metadata, does not pile up new work, and cancels on disposal", async () => {
+    const root = await repository(); await writeFile(join(root, "file"), "");
+    const metadata = vi.fn((_path: string): Promise<Stats> => new Promise(() => {}));
+    const value = reader(root, { lstat: metadata, metadataTimeoutMs: 25 });
+    await expect(value.search(request("file"))).rejects.toMatchObject({ code: "REPOSITORY_SEARCH_UNAVAILABLE" });
+    await expect(value.search(request("file"))).rejects.toMatchObject({ code: "REPOSITORY_SEARCH_UNAVAILABLE" });
+    expect(metadata).toHaveBeenCalledTimes(1);
+    const waiting = value.search(request("file"));
+    const cancelled = expect(waiting).rejects.toMatchObject({ code: "REPOSITORY_CANCELLED" });
+    value.dispose(); await cancelled; expect(metadata).toHaveBeenCalledTimes(1);
+  });
+  it("does not convert a tab-containing stage-looking untracked name into a path alias", async () => {
+    const root = await repository();
+    await writeFile(join(root, `100644 ${"a".repeat(40)} 0\talias`), "unsupported name");
+    const result = await reader(root).search(request("alias"));
+    expect(result).toMatchObject({ paths: [], capturedCount: 0 });
+    expect(result.notice).toContain("Unsupported names");
+  });
   it("reports initial bounded Git failures without exposing subprocess details", async () => {
     const root = await repository();
     const value = reader(root, { git: async () => { throw new Error("secret subprocess stderr"); } });
@@ -180,11 +208,10 @@ describe("deterministic injected capture bounds and cancellation faults", () => 
     expect(result).toMatchObject({ complete: true, matchesComplete: false, paths: [] });
   });
 
-  it("deduplicates staged conflict records and rejects an unterminated capture", async () => {
+  it("deduplicates names from staged conflicts and rejects an unterminated capture", async () => {
     const root = await repository();
     await writeFile(join(root, "file"), "");
-    const sha = "a".repeat(40);
-    const bytes = Buffer.from(`100644 ${sha} 1\tfile\0` + `100644 ${sha} 2\tfile\0`);
+    const bytes = Buffer.from("file\0file\0");
     expect(await reader(root, { git: async () => bytes }).search(request())).toMatchObject({ capturedCount: 1, paths: ["file"] });
     await expect(reader(root, { git: async () => Buffer.from("partial") }).search(request())).rejects.toMatchObject({ code: "REPOSITORY_SEARCH_UNAVAILABLE" });
   });

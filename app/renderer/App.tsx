@@ -177,6 +177,7 @@ export function App() {
   const paletteOrigin = useRef<HTMLElement | null>(null);
   const openPalette = useCallback(() => {
     paletteOrigin.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    setPalettePathMode(false); setCommandQuery("");
     setPaletteOpen(true);
   }, []);
   const cancelPalette = useCallback(() => {
@@ -350,7 +351,7 @@ export function App() {
     return generation === coreGenerationRef.current && (!window.swarmLifecycle || lifecycleRef.current?.core.phase === "ready") ? response : null;
   }, []);
   const fileSearch = useFileSearch(workspace.snapshot?.project.id, commandQuery,
-    paletteOpen && !palettePathMode, coreGenerationRef.current, requestFileSearch);
+    paletteOpen && !palettePathMode && Boolean(window.swarm && (!window.swarmLifecycle || lifecycle?.core.phase === "ready")), coreGenerationRef.current, requestFileSearch);
 
   const coordinateFileFocus = useCallback((path: string) => {
     setSelectedConnection(null);
@@ -836,7 +837,7 @@ export function App() {
   }, [activeSurface, closeFile, interruptPendingReveal, resetZoom, zoomIn, zoomOut, taskDocumentVisible, taskDocumentOpen, paletteOpen, cancelPalette, openPalette]);
 
   useEffect(() => {
-    if (paletteOpen) { setPalettePathMode(false); setCommandQuery(""); requestAnimationFrame(() => commandInput.current?.focus()); }
+    if (paletteOpen) requestAnimationFrame(() => commandInput.current?.focus());
   }, [paletteOpen]);
 
   useEffect(() => {

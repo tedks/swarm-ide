@@ -9,13 +9,13 @@ Ctrl+K can find a filename outside the loaded directory, then explicitly open it
 ## Progress
 
 - [x] (2026-09-07) Read navigation/UI decisions and inspected the typed bridge, directory and file brokers; selected one bounded vertical.
-- [ ] Implement runtime contract, cached core inventory/query and palette keyboard journey.
+- [x] (2026-09-07) Implement runtime contract, cached core inventory/query and palette keyboard journey; draft PR39 pushed.
 - [ ] Prove failure/race/boundary cases and actual packaged two-repository behavior.
 - [ ] Run full local gates and provider-diverse review to fixpoint; normal PR/integration merge and push; close Ditz.
 
 ## Decision Log
 
-- Decision: capture Git's tracked plus non-ignored untracked names (including dotfiles) using fixed read-only `ls-files --cached --others --exclude-standard --stage -z`, with the existing sanitized Git runner. Tracked names still appear when ignore rules match. Ignore configuration is data; no fetch/hooks/write/filter command runs. Symlinks, gitlinks, nested repositories, special files and unsupported filename bytes are not actionable matches. Rationale: reuse Git's known boundaries rather than recursively walk the repository on every key. Date: 2026-09-07, N2.
+- Decision: capture Git's tracked plus non-ignored untracked names (including dotfiles) using fixed read-only `ls-files --cached --others --exclude-standard -z`, with the existing sanitized Git runner. Tracked names still appear when ignore rules match. Ignore configuration is data; no fetch/hooks/write/filter command runs. Symlinks, gitlinks, nested repositories, special files and unsupported filename bytes are not actionable matches. The names-only stream avoids ambiguous stage-looking untracked names. Rationale: reuse Git's known boundaries rather than recursively walk the repository on every key. Date: 2026-09-07, N2.
 - Decision: retain one inventory, at most 8,192 names / 1 MiB names, with 2 MiB total Git output and 2-second Git deadline. Entry/name cap yields explicitly partial captured coverage; Git failure/output deadline yields unavailable (or a retained stale capture with a failure notice). Capture only first query or explicit Refresh. Queries are literal case-insensitive fragments, at most 256 characters; basename exact/prefix then path prefix/basename substring/path substring rank, ordinal full-path ties. Return at most 40 matches, examining at most 160 candidate paths per query with a bounded metadata deadline. Any query validation truncation is separately partial. Date: 2026-09-07, N2.
 - Decision: names are advisory candidates; validate parent containment/nested markers and regular-file type before displaying, and always use existing explicit N1 path activation/file broker on Enter. Names can change after validation; open errors preserve prior work. Cache age five seconds or working-world hints marks stale, never triggers automatic rescanning. Core replacement drops client results and provider disposal aborts owned Git work. Date: 2026-09-07, N2.
 - Decision: extend the existing packaged navigation proof for both real repositories rather than duplicate Electron/X11 infrastructure. Hosted CI is ignored by explicit user authority. Date: 2026-09-07, N2.
@@ -23,6 +23,8 @@ Ctrl+K can find a filename outside the loaded directory, then explicitly open it
 ## Surprises & Discoveries
 
 The current palette only activates the first filtered command and exact paths. N1 already provides guarded off-slice activation and safe files, so search should consume that route rather than create another editor/navigation lifecycle. Git output overflow is currently all-or-error; partial entry/name capture is distinguished from transport failure, not disguised as complete.
+
+Initial local quality passed 1,188 tests / 86 files. Actual packaged unfamiliar search passed (including the name cap), but Swarm at 100% zoom exposed a real race: a passive palette-open effect could erase already-typed native input. Initialization now occurs synchronously in the opening action. Native review found that elapsed checks alone do not bound a stalled filesystem await; a hard response deadline and single outstanding metadata chain now prevent accumulation. Node cannot cancel a kernel metadata call: it may remain until it returns or its owned local-core process exits, but disposal rejects waiting queries and starts no additional chain. This is an explicit residual, not a claim of syscall cancellation.
 
 ## Context and Orientation
 

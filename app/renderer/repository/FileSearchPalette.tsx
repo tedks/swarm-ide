@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type RefObject } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type RefObject } from "react";
 import { FILE_SEARCH_STALE_MS, type RepositorySearchResult } from "../../../protocol/repository-search";
 
 interface Command { label: string; detail: string; run(): void }
@@ -11,6 +11,7 @@ export function FileSearchPalette({ query, onQuery, exact, commands, inputRef, f
   const [selection, setSelection] = useState(0);
   const [aged, setAged] = useState(false);
   const list = useRef<HTMLDivElement>(null);
+  const lastResultHeight = useRef(0);
   const result = search.result;
   const paths = exact ? [] : result?.paths ?? [];
   const count = commands.length + paths.length;
@@ -23,6 +24,7 @@ export function FileSearchPalette({ query, onQuery, exact, commands, inputRef, f
     return () => clearTimeout(timer);
   }, [result]);
   useEffect(() => { list.current?.querySelector('[aria-current="true"]')?.scrollIntoView?.({ block: "nearest" }); }, [active]);
+  useLayoutEffect(() => { if (!search.loading) lastResultHeight.current = list.current?.getBoundingClientRect().height ?? 0; }, [search.loading, result, commands.length]);
   const run = (index: number) => {
     const command = commands[index];
     if (command) command.run();
@@ -45,9 +47,10 @@ export function FileSearchPalette({ query, onQuery, exact, commands, inputRef, f
         <span>{search.loading ? "Finding repository filenames…" : search.error ? `Search unavailable: ${search.error}` : result ?
           `${stale ? "Stale" : "Captured"} · ${result.complete ? "complete" : "partial"} Git name inventory · ${result.capturedCount} names · ${new Date(result.capturedAt).toLocaleTimeString()}` : "Filename search unavailable"}</span>
         {result ? <small>{result.notice}{stale && result.state !== "stale" ? " Capture is now stale; Refresh explicitly." : ""}</small> : null}
-        {!search.loading ? <button onClick={search.refresh}>Refresh filenames</button> : null}
+        {!search.loading ? <button onClick={() => { inputRef.current?.focus({ preventScroll: true }); search.refresh(); }}>Refresh filenames</button> : null}
       </div> : null}
-      <div className="command-results" id="workspace-search-results" ref={list} aria-label="Commands and repository files">
+      <div className="command-results" id="workspace-search-results" ref={list} aria-label="Commands and repository files"
+        style={{ minHeight: search.loading ? Math.min(lastResultHeight.current, 320) : undefined }}>
         {commands.map((command, index) => <button id={`workspace-search-${index}`} aria-current={active === index} key={command.label} onClick={() => run(index)}>
           <span>{command.label}<small>{command.detail}</small></span><kbd>↵</kbd></button>)}
         {paths.map((path, offset) => <button id={`workspace-search-${commands.length + offset}`} aria-current={active === commands.length + offset} key={`file:${path}`}

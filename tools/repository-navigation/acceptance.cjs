@@ -338,6 +338,25 @@ async function main() {
       key("Enter"); await until(async () => !await has(".command-palette"), "deleted result explicitly attempted");
       await until(() => run(() => document.querySelector(".task-reveal-notice")?.textContent.includes("No workspace file") || document.querySelector("#root").textContent.includes("No workspace file")), "deleted result is rejected by actual broker");
       await preserved(); assert.equal(await currentDirectory(), "", "failed search activation does not navigate");
+      stage = "file-search-core-replacement";
+      await search("same-match.ts");
+      const previousCapture = await request({ type: "repo.search", repositoryId: (await snapshot()).project.id, query: "same-match.ts", refresh: false });
+      assert(previousCapture.ok);
+      const previousLifecycle = await run(() => window.swarmLifecycle.status());
+      const cores = app.getAppMetrics().filter((metric) => metric.type === "Utility" && metric.serviceName === "swarm-ide-local-core");
+      assert.equal(cores.length, 1, "exact owned packaged core selected, not a user process");
+      const corePid = cores[0].pid;
+      const procStatus = await fs.readFile(`/proc/${corePid}/status`, "utf8");
+      assert.equal(Number(/^PPid:\s+(\d+)$/m.exec(procStatus)?.[1]), process.pid, "owned core is this disposable Electron main child");
+      process.kill(corePid, "SIGTERM");
+      await until(() => run(async (generation) => { const state = await window.swarmLifecycle.status(); return state.core.generation > generation && state.core.phase === "ready"; }, previousLifecycle.core.generation), "actual owned core replacement");
+      await until(() => run(() => document.querySelector(".file-search-status")?.textContent.includes("Git name inventory")), "search recaptured by recovered core");
+      assert.equal(await run(() => document.querySelector('[aria-label="Workspace command"]').value), "same-match.ts", "core replacement retains typed query");
+      const recoveredCapture = await request({ type: "repo.search", repositoryId: (await snapshot()).project.id, query: "same-match.ts", refresh: false });
+      assert(recoveredCapture.ok && recoveredCapture.search.captureId !== previousCapture.search.captureId, "old lifetime capture cannot survive replacement");
+      assert.deepEqual(recoveredCapture.search.paths, ["search-proof/a/same-match.ts", "search-proof/b/same-match.ts"]);
+      await closeSearch(); await preserved();
+      facts.push("N2 actual owned packaged core termination/recovery retains query and work; capture identity replaced");
       stage = "file-search-partial-capture";
       // Actual filesystem cap, introduced only after the regular journey.
       await fs.mkdir(path.join(fixture.root, "a-capped-search"));
