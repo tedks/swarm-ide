@@ -9,8 +9,8 @@ type: feature
 component: default
 release:
 reporter: Ted Smith <tedks@riseup.net>
-status: unstarted
-disposition:
+status: closed
+disposition: fixed
 creation_time: 2026-09-06T21:57:43-00:00
 references: []
 log_events:
@@ -18,3 +18,10 @@ log_events:
   who: Ted Smith
   what: created
   comment: ""
+- time: 2026-09-07T23:00:47-00:00
+  who: Ted Smith
+  what: 'closed: fixed'
+  comment: PR52 replaced the production Swarm-only capture with typed bounded per-repository
+    Bazel declaration observations, exact file/target links and retained freshness/error
+    states. Actual two-repository packaged proof exercised query changes and retention.
+    Generic build/test execution, external/configured closure and metrics remain separate.
