@@ -63,5 +63,7 @@ log_events:
   who: Ted Smith
   what: blocked by repo-navigation-initial-topology-timeout-d4c
   comment: ""
-blocked_by:
-- repo-navigation-initial-topology-timeout-d4c
+- time: 2026-09-07T17:31:16-00:00
+  who: Ted Smith
+  what: no longer blocked by repo-navigation-initial-topology-timeout-d4c
+  comment: ""
