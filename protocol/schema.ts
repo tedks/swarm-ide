@@ -2,6 +2,8 @@ import { z } from "zod";
 import { TrustedRequestSchema, TrustedResultSchema } from "./trusted-local";
 import { PlanReadRequestSchema, PlanReadResultSchema } from "./plans";
 import { sameAgentTaskReference } from "./agent-task";
+import { TaskActivityRequestSchema, TaskActivityResultSchema } from "./task-activity";
+import { sameGitObject } from "./tasks";
 import { PROTOCOL_VERSION, FocusRefSchema } from "./common";
 import { AgentRequestSchema, AgentResultSchema, AgentFocusSchema, AgentLinksSchema, AgentBoundaryErrorSchema, type AgentRequest } from "./agents";
 import { TaskRequestSchema, TaskResultSchema, TaskBoundaryErrorSchema, parseTaskResultForRequest, type TaskRequest } from "./tasks";
@@ -290,7 +292,7 @@ const WorkspaceRequestSchema = z.discriminatedUnion("type", [
     path: z.string().min(1).max(4_096),
   }),
 ]);
-export const CoreRequestSchema = z.union([WorkspaceRequestSchema, AgentRequestSchema, TaskRequestSchema, RepositoryRequestSchema, RepositorySearchRequestSchema, ChangelogRequestSchema, PlanReadRequestSchema, ExternalRequestSchema, BuildGraphRequestSchema, TrustedRequestSchema]);
+export const CoreRequestSchema = z.union([WorkspaceRequestSchema, AgentRequestSchema, TaskRequestSchema, RepositoryRequestSchema, RepositorySearchRequestSchema, ChangelogRequestSchema, PlanReadRequestSchema, ExternalRequestSchema, BuildGraphRequestSchema, TaskActivityRequestSchema, TrustedRequestSchema]);
 export type CoreRequest = z.infer<typeof CoreRequestSchema>;
 
 export const FileResultSchema = z.discriminatedUnion("kind", [
@@ -325,6 +327,7 @@ export const CoreResponseSchema = z.discriminatedUnion("ok", [
     file: FileResultSchema.optional(),
     agent: AgentResultSchema.optional(),
     task: TaskResultSchema.optional(),
+    taskActivity: TaskActivityResultSchema.optional(),
     repo: RepositoryResultSchema.optional(),
     search: RepositorySearchResultSchema.optional(),
     changelog: ChangelogResultSchema.optional(),
@@ -391,8 +394,17 @@ const agentResultKind = {
 export function parseCoreResponseForRequest(input: unknown, request: CoreRequest): CoreResponse {
   const response = parseCoreResponse(input);
   if (response.requestId !== request.requestId) throw new Error("Response request ID mismatch");
+  if (request.type === "taskActivity.read") {
+    if (response.ok) {
+      const result = response.taskActivity;
+      if (!result || response.task || response.agent || response.file || response.repo || response.search || response.changelog || response.plans || response.external || response.buildGraph || response.trusted ||
+          result.worldId !== request.worldId || result.repositoryId !== request.repositoryId || result.taskId !== request.taskId ||
+          !sameGitObject(result.metadataCommit, request.metadataCommit) || response.snapshot.world.id !== request.worldId || response.snapshot.project.id !== request.repositoryId)
+        throw new Error("Task activity response identity mismatch");
+    }
+  } else if (response.ok && response.taskActivity) throw new Error("Task activity supplied for a different command");
   if (request.type.startsWith("trusted.")) {
-    if (response.ok && (!response.trusted || response.agent || response.file || response.task || response.repo || response.search || response.changelog || response.plans || response.external || response.buildGraph)) throw new Error("Unexpected trusted-local response authority");
+    if (response.ok && (!response.trusted || response.agent || response.file || response.task || response.repo || response.search || response.changelog || response.plans || response.external || response.buildGraph || response.taskActivity)) throw new Error("Unexpected trusted-local response authority");
     if (response.ok && "token" in request && response.trusted?.snapshot.runToken !== request.token) throw new Error("Trusted-local conversation identity mismatch");
     return response;
   } else if (response.ok && response.trusted) throw new Error("Trusted-local result supplied for a different command");

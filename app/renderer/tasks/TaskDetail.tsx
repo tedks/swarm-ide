@@ -1,7 +1,7 @@
 import { sameGitObject, type GitObjectId, type TaskDetail as TaskDetailData, type TaskFileRef, type TaskSnapshot } from "../../../protocol/tasks";
 import { canRevealTaskRef, displayTaskText, taskRevisionLabel } from "./display";
 import "./tasks.css";
-import type { Ref } from "react";
+import type { Ref, ReactNode } from "react";
 
 export interface TaskDetailProps {
   selectedTaskId: string | null;
@@ -18,20 +18,22 @@ export interface TaskDetailProps {
   surface?: "information" | "editor";
   onShowDocument?: () => void;
   onRefresh?: () => void;
+  compact?: boolean;
+  afterMetadata?: ReactNode;
   attachment?: { eligible: boolean; alreadyAttached: boolean; notice: string | null; onAttach: (origin: HTMLButtonElement) => void };
 }
 
-function Dependencies({ title, rows, onSelect }: { title: string; rows: TaskDetailData["blocks"]; onSelect: (id: string) => void }) {
+function Dependencies({ title, rows, onSelect, snapshot }: { title: string; rows: TaskDetailData["blocks"]; onSelect: (id: string) => void; snapshot: TaskSnapshot | null }) {
   return <section className="task-detail-section"><h3>{title}</h3>
     {rows.length ? <ul className="task-dependencies">{rows.map((row) => <li key={row.taskId}>
-      <button type="button" onClick={() => onSelect(row.taskId)} aria-label={`Select dependency ${row.taskId}`}>{row.taskId}</button>
+      <button type="button" title={row.taskId} onClick={() => onSelect(row.taskId)} aria-label={`Select dependency ${row.taskId}`}>{displayTaskText(snapshot?.summaries.find((task) => task.id === row.taskId)?.title ?? row.taskId)}</button>
       <span>{row.status ?? "not present in snapshot"}</span>
       {row.diagnostics.length ? <span className="task-warning">Recorded dependency: {row.diagnostics.join(", ")}</span> : null}
     </li>)}</ul> : <p className="task-hint">None recorded.</p>}
   </section>;
 }
 
-export function TaskDetail({ selectedTaskId, snapshot, detail, detailRevision, detailStale, reading, notice, onSelect, onReveal, onReturnToSource, returnButtonRef, surface = "information", onShowDocument, onRefresh, attachment }: TaskDetailProps) {
+export function TaskDetail({ selectedTaskId, snapshot, detail, detailRevision, detailStale, reading, notice, onSelect, onReveal, onReturnToSource, returnButtonRef, surface = "information", onShowDocument, onRefresh, attachment, compact = false, afterMetadata }: TaskDetailProps) {
   // The client validates all wire identities; never display another selection's
   // cached detail during a parent render transition, even for a single frame.
   const selectedDetail = detail?.id === selectedTaskId && detailRevision !== null ? detail : null;
@@ -66,10 +68,11 @@ export function TaskDetail({ selectedTaskId, snapshot, detail, detailRevision, d
         <p>Metadata <code>{taskRevisionLabel(detailRevision)}</code></p>
         <p>Issue blob <code>{taskRevisionLabel(selectedDetail.blob)}</code></p>
       </details>
-      <section className="task-detail-section"><h3>Description</h3><p className="task-literal">{selectedDetail.description ? displayTaskText(selectedDetail.description) : "No description recorded."}</p></section>
+      {afterMetadata}
+      {!compact ? <section className="task-detail-section"><h3>Description</h3><p className="task-literal">{selectedDetail.description ? displayTaskText(selectedDetail.description) : "No description recorded."}</p></section> : null}
       <p className="task-hint">Recorded dependencies describe metadata, not dispatch readiness.</p>
-      <Dependencies title="Blocks" rows={selectedDetail.blocks} onSelect={onSelect} />
-      <Dependencies title="Blocked by" rows={selectedDetail.blockedBy} onSelect={onSelect} />
+      <Dependencies title="Blocking" rows={selectedDetail.blocks} onSelect={onSelect} snapshot={detailRevision && snapshot && sameGitObject(detailRevision, snapshot.metadataCommit) ? snapshot : null} />
+      <Dependencies title="Blocked by" rows={selectedDetail.blockedBy} onSelect={onSelect} snapshot={detailRevision && snapshot && sameGitObject(detailRevision, snapshot.metadataCommit) ? snapshot : null} />
       <section className="task-detail-section"><h3>Explicit file references</h3>
         <p className="task-hint">Opens current working file; link recorded at metadata <code>{taskRevisionLabel(detailRevision)}</code>. A candidate is not proof that the file exists.</p>
         {selectedDetail.fileRefs.length ? <ul className="task-file-refs">{selectedDetail.fileRefs.map((ref, index) => <li key={index}>

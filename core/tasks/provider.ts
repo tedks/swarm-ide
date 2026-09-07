@@ -6,9 +6,10 @@ import {
 } from "../../protocol/tasks";
 import type { CreateTaskProvider, TaskProvider } from "./contracts";
 import { TaskGitReader, TaskReaderError } from "./git-reader";
-import { parseTaskMetadata } from "./metadata";
+import { parseTaskMetadataBatch } from "./metadata";
+import { TaskActivityResultSchema, type TaskActivity } from "../../protocol/task-activity";
 
-type Cache = { snapshot: TaskSnapshot; details: Map<string, TaskDetail> };
+type Cache = { snapshot: TaskSnapshot; details: Map<string, TaskDetail>; activities: Map<string, TaskActivity> };
 type Attempt = Pick<TaskObservation, "status" | "localRef" | "reason" | "checkedAt">;
 const now = () => new Date().toISOString();
 const error = (code: TaskError["code"], message: string): TaskError => ({ code, message });
@@ -70,7 +71,7 @@ export const createDitzTaskProvider: CreateTaskProvider = (context): TaskProvide
       if (!localRef) throw new TaskReaderError("TASK_METADATA_UNAVAILABLE", "Local metadata ref is absent.");
       if (refresh) {
         const blobs = await git.scan(localRef, signal, deadline);
-        const details = await parseTaskMetadata(blobs, signal, deadline);
+        const { details, activities } = await parseTaskMetadataBatch(blobs, signal, deadline);
         const projection = TaskBacklinksSchema.safeParse({ status: "complete", entries:
           [...details].sort((a, b) => a.id < b.id ? -1 : a.id > b.id ? 1 : 0).flatMap((detail) =>
             detail.fileRefs.map(({ path, navigation }, refIndex) => ({ taskId: detail.id, refIndex, path, navigation }))) });
@@ -78,7 +79,7 @@ export const createDitzTaskProvider: CreateTaskProvider = (context): TaskProvide
           backlinks: projection.success ? projection.data : { status: "unavailable", reason: "projection-limit" },
           summaries: details.map(({ description: _description, disposition: _disposition,
             blocks: _blocks, blockedBy: _blockedBy, fileRefs: _fileRefs, ...summary }) => summary) };
-        replacement = { snapshot, details: new Map(details.map((detail) => [detail.id, detail])) };
+        replacement = { snapshot, details: new Map(details.map((detail) => [detail.id, detail])), activities };
         // Include envelope overhead, maximum sequence width, identity and timestamps.
         for (const detail of details) {
           const full = { kind: "read" as const, ...world, metadataCommit: localRef, taskId: detail.id,
@@ -180,6 +181,15 @@ export const createDitzTaskProvider: CreateTaskProvider = (context): TaskProvide
           : !sameGitObject(cache.snapshot.metadataCommit, metadataCommit)
             ? error("TASK_REVISION_EXPIRED", "The requested metadata revision is no longer cached. Refresh task details.")
             : error("TASK_NOT_FOUND", "The requested task is absent from this metadata revision.") } });
+    },
+    async activity(input) {
+      assertOpen();
+      const metadataCommit = GitObjectIdSchema.parse(input.metadataCommit), taskId = TaskIdSchema.parse(input.taskId);
+      const matching = cache && sameGitObject(cache.snapshot.metadataCommit, metadataCommit);
+      const activity = matching && cache ? cache.activities.get(taskId) ?? null : null;
+      // Parse returns a defensive copy just like the existing detail read.
+      return TaskActivityResultSchema.parse({ worldId: world.worldId, repositoryId: world.repositoryId,
+        metadataCommit, taskId, activity, unavailable: activity ? null : !cache ? "not-cached" : !matching ? "revision-expired" : "not-found" });
     },
     dispose() {
       if (!disposal) {

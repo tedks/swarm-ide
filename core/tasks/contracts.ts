@@ -1,4 +1,5 @@
 import type { GitObjectId, TaskObservation, TaskReadResult } from "../../protocol/tasks";
+import type { TaskActivityResult } from "../../protocol/task-activity";
 
 /** Constructor authority comes only from the registered local core world.
  * No renderer-supplied roots, refs, executable names or metadata paths. */
@@ -14,6 +15,7 @@ export interface TaskProvider {
   /** Only the latest complete cache; an old revision must never be silently read
    * from a moving ref. Errors echo the requested identity/revision too. */
   read(input: { metadataCommit: GitObjectId; taskId: string }): Promise<TaskReadResult>;
+  activity?(input: { metadataCommit: GitObjectId; taskId: string }): Promise<TaskActivityResult>;
   /** Idempotent, owned lifetime shutdown. No new operations/late publication. */
   dispose(): Promise<void>;
 }

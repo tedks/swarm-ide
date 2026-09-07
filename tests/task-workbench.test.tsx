@@ -130,7 +130,7 @@ it("inspects a never-opened exact backlink without moving editor, dirty cursor, 
   expect(panel.scrollTop).toBe(0);
   expect(editor.state.doc.toString()).toBe("dirty one\ntwo\nthree\n"); expect(editor.state.selection.main.anchor).toBe(3);
   expect(screen.getAllByTestId("task-graph")).toEqual(graphs); expect(document.querySelector(".task-editor-surface")).toBeNull();
-  expect(request.mock.calls.slice(before).map(([r]) => r.type)).toEqual(["tasks.read"]);
+  expect(request.mock.calls.slice(before).map(([r]) => r.type)).toEqual(["tasks.read", "taskActivity.read"]);
   fireEvent.click(screen.getByRole("button", { name: "Show task document" }));
   expect(screen.getByRole("region", { name: "Task document" })).toBeTruthy();
   const original = request.getMockImplementation()!; let finish!: () => void;
@@ -200,13 +200,13 @@ it("runs the demo palette commands without launching agents or building, and cle
 async function selectTask() {
   fireEvent.click(screen.getByRole("button", { name: "Select task task-fixture" }));
   await screen.findByRole("region", { name: "Task details" });
-  await screen.findByRole("heading", { name: "Inspect a repository task" });
+  await within(screen.getByRole("region", { name: "Task details" })).findByRole("heading", { name: "Inspect a repository task" });
 }
 function showDetails() {
   fireEvent.click(within(document.getElementById("information-panel")!).getByRole("button", { name: "Show task details" }));
 }
 function reveal(path: string, line: number | null) {
-  const button = screen.getByRole("button", { name: `Reveal working file ${path}${line === null ? "" : ` at line ${line}`}` });
+  const button = within(screen.getByRole("region", { name: "Task details" })).getByRole("button", { name: `Reveal working file ${path}${line === null ? "" : ` at line ${line}`}` });
   act(() => button.focus());
   fireEvent.click(button);
 }
@@ -225,7 +225,8 @@ describe("task inspection in the source cockpit", () => {
     const selected = screen.getByRole("button", { name: "Select task task-fixture" }); selected.focus();
     await selectTask();
     expect(document.activeElement).toBe(selected);
-    expect(document.querySelector("main.workbench")?.getAttribute("data-compact-panel")).toBe("work");
+    expect(document.querySelector("main.workbench")?.getAttribute("data-compact-panel")).toBe("none");
+    expect(screen.getByRole("region", { name: "Task document" })).toBeTruthy();
     expect(EditorView.findFromDOM(document.querySelector(".cm-editor")!)).toBe(editor);
     expect(editor.state.doc.toString()).toBe("unsaved\none\ntwo\nthree\n");
     expect(editor.state.selection.main.anchor).toBe(4);
@@ -233,7 +234,7 @@ describe("task inspection in the source cockpit", () => {
     expect((camera as HTMLInputElement).value).toBe("pan 1024,768 zoom 2");
     expect(screen.getByLabelText("Task")).toBe(draft);
     expect((draft as HTMLTextAreaElement).value).toBe("Independent fixed-focus draft");
-    expect(request.mock.calls.slice(before).map(([input]) => input.type).filter((type) => type !== "tasks.snapshot")).toEqual(["tasks.read"]);
+    expect(request.mock.calls.slice(before).map(([input]) => input.type).filter((type) => type !== "tasks.snapshot")).toEqual(["tasks.read", "taskActivity.read"]);
     fireEvent.pointerDown(document.querySelector(".source-surface")!);
     expect(screen.queryByRole("region", { name: "Task details" })).toBeNull();
     expect(screen.getByRole("button", { name: "Select task task-fixture" }).getAttribute("aria-pressed")).toBe("true");
@@ -316,7 +317,7 @@ describe("task inspection in the source cockpit", () => {
   it("returns from a task-only document to the graph-only layout", async () => {
     setup(); render(<App />);
     const row = await screen.findByRole("button", { name: "Select task task-fixture" });
-    fireEvent.doubleClick(row);
+    fireEvent.click(row);
     const document = await screen.findByRole("region", { name: "Task document" });
     fireEvent.click(within(document).getByRole("button", { name: "Return to source" }));
     expect(screen.queryByRole("region", { name: "Task document" })).toBeNull();
@@ -373,13 +374,14 @@ describe("task inspection in the source cockpit", () => {
     expect(request.mock.calls.slice(before).some(([input]) => input.type === "focus.select" || input.type.startsWith("agent.") || input.type.startsWith("file."))).toBe(false);
   });
 
-  it("explicit Show details opens Information and gives the keyboard a destination; row selection does neither", async () => {
+  it("task activation exposes the center document; explicit Show details gives Information a keyboard destination", async () => {
     setup(); render(<App />); await openSource();
     fireEvent.click(screen.getByRole("button", { name: "Toggle work panel" }));
     const row = screen.getByRole("button", { name: "Select task task-fixture" }); row.focus();
     await selectTask();
     expect(document.activeElement).toBe(row);
-    expect(document.querySelector(".workbench")?.getAttribute("data-compact-panel")).toBe("work");
+    expect(document.querySelector(".workbench")?.getAttribute("data-compact-panel")).toBe("none");
+    expect(screen.getByRole("region", { name: "Task document" })).toBeTruthy();
     fireEvent.click(within(screen.getByRole("region", { name: "Tasks" })).getByRole("button", { name: "Show task details" }));
     expect(document.querySelector(".workbench")?.getAttribute("data-compact-panel")).toBe("info");
     await waitFor(() => expect(document.activeElement).toBe(screen.getByRole("button", { name: "Return to source information" })));
