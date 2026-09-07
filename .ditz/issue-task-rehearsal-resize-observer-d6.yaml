@@ -51,3 +51,11 @@ log_events:
     blocking. Removed blocking edge only under that explicit authority. No production
     console filter, no event suppression, no physical-app control. One fresh reviewed
     full checkpoint still required before PR51 landing.
+- time: 2026-09-07T20:27:52-00:00
+  who: Ted Smith
+  what: commented
+  comment: 'V1 recorded same exact accepted ResizeObserver diagnostic during bounded
+    graph expansion: Swarm71tasks emitted34, default70tasks10. Actual source/cursor/attachment/independent
+    cameras, metadata recovery, owned cleanup all passed; no historical cause or repair
+    claimed. PR53 test classifier preserves raw warnings and blocks other errors.
+    Remains noncritical OPEN under user delivery policy.'
