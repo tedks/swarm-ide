@@ -4,7 +4,17 @@
 .external-agents button:focus-visible, .external-information button:focus-visible { outline: 2px solid #77c9bb; outline-offset: 2px; }
 .external-agents header, .external-worklog header { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .external-agents ul { padding: 0; margin: 5px 0; list-style: none; }
-.external-agents li > button { display: flex; align-items: start; gap: 5px; width: 100%; text-align: left; background: transparent; border: 1px solid transparent; padding: 5px; border-radius: 5px; }
+.external-lineage-scroll { overflow-x: auto; padding: 2px; }
+.external-agents li { position: relative; padding-left: calc(var(--lineage-indent) + 20px); }
+.external-agents li > button { display: flex; align-items: start; width: 100%; min-width: 160px; text-align: left; background: transparent; border: 1px solid transparent; padding: 5px; border-radius: 5px; overflow-wrap: anywhere; }
+.external-lineage-lines { position: absolute; inset: 0; pointer-events: none; color: #78a99d; }
+.external-lineage-lines > span { position: absolute; box-sizing: border-box; }
+.external-lineage-trunk { top: 0; bottom: 0; border-left: 1px solid; }
+.external-lineage-branch { top: 0; height: 50%; width: 16px; border-left: 1px solid; border-bottom: 1px solid; }
+.external-lineage-tail, .external-lineage-stem { top: 50%; bottom: 0; border-left: 1px solid; }
+.external-lineage-stem { left: calc(var(--lineage-indent) + 8px); }
+.external-lineage-node { left: calc(var(--lineage-indent) + 8px); top: 50%; width: 5px; height: 5px; transform: translate(-2px, -3px); background: currentColor; border-radius: 50%; }
+.external-lineage-root { width: 7px; height: 7px; transform: translate(-3px, -4px); border: 1px solid currentColor; background: #152822; }
 .external-agents li > button[aria-pressed=true] { border-color: #77c9bb; background: #244039; }
 .external-agents small { display: block; color: #9cafa9; font-size: 10px; }
 .external-caption { color: #a3b1bd; font-size: 11px; line-height: 1.5; }

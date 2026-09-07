@@ -24,8 +24,11 @@ try {
   execFileSync("git", ["-C", root, "add", "README.md"]);
   execFileSync("git", ["-C", root, "-c", "user.name=Swarm proof", "-c", "user.email=proof@example.invalid", "commit", "-qm", "Owned synthetic source"]);
   const sessions = [];
-  for (let i = 1; i <= 8; i++) {
-    const id = `10000000-0000-4000-8000-${String(i).padStart(12, "0")}`, parent = i === 1 ? null : `10000000-0000-4000-8000-${String(i - 1).padStart(12, "0")}`;
+  // The original eight-level chain plus a sibling branch, independent root,
+  // unknown parent and cycle. All files are explicitly authored synthetic data.
+  const parents = [null, 1, 2, 3, 4, 5, 6, 7, 1, null, 10, 99, 14, 13];
+  for (let i = 1; i <= parents.length; i++) {
+    const id = `10000000-0000-4000-8000-${String(i).padStart(12, "0")}`, parent = parents[i - 1] === null ? null : `10000000-0000-4000-8000-${String(parents[i - 1]).padStart(12, "0")}`;
     const rollout = join(scratch, `session-${i}.jsonl`), timestamp = "2026-09-07T12:00:00Z";
     const lines = [
       { type: "session_meta", payload: { id, forked_from_id: parent } },
