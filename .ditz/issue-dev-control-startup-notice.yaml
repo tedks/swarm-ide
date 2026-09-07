@@ -1,0 +1,21 @@
+id: dev-control-startup-notice
+title: Avoid noisy missing dev-control file notice during startup
+desc: 'ROOT-owned merged-preview restart at 2026-09-07 18:54ET on717485e logged Dev
+  update was not applied: ENOENT control-46285.json during initial watch, followed
+  by unchanged-build status. Core48447 and HTTP55176 stayed active. Cause uninvestigated;
+  not attributed to syntax PR63 or claimed user-visible break. Track as noncritical
+  developer-loop noise; investigate narrowly when appropriate, no unchanged retries
+  or broad reload rewrite.'
+type: bugfix
+component: default
+release:
+reporter: Ted Smith <tedks@riseup.net>
+status: unstarted
+disposition:
+creation_time: 2026-09-07T22:57:31-00:00
+references: []
+log_events:
+- time: 2026-09-07T22:57:31-00:00
+  who: Ted Smith
+  what: created
+  comment: ""
