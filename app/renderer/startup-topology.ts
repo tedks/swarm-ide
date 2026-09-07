@@ -12,6 +12,7 @@ export interface StartupTopologyContext {
   observedCoreGeneration: number | null;
   ready: boolean;
   restoredDocument: boolean;
+  automatic?: boolean;
 }
 
 // A document gets one automatic attempt, not one per component mount, source
@@ -23,12 +24,15 @@ if (hot) hot.startupTopology = documentMemory;
 
 /** `start` uses the normal reconciliation request and its existing error UI. */
 export function useStartupTopology(
-  { snapshot, coreGeneration, observedCoreGeneration, ready, restoredDocument }: StartupTopologyContext,
+  { snapshot, coreGeneration, observedCoreGeneration, ready, restoredDocument, automatic = true }: StartupTopologyContext,
   start: () => void,
   memory: StartupTopologyMemory = documentMemory,
 ): void {
   useEffect(() => {
     if (memory.settled) return;
+    // The public launcher with an external target only authorizes browsing.
+    // Consume even before readiness so HMR or recovery cannot revive startup.
+    if (!automatic) { memory.settled = true; return; }
     // Even a replacement that happens before the initial fingerprint arrives
     // is recovery, not permission to launch a new automatic build.
     if (memory.generation !== undefined && memory.generation !== coreGeneration) {
@@ -59,5 +63,5 @@ export function useStartupTopology(
     // replay when React runs effects again. Explicit Build remains available.
     memory.settled = true;
     start();
-  }, [snapshot, coreGeneration, observedCoreGeneration, ready, restoredDocument, start, memory]);
+  }, [snapshot, coreGeneration, observedCoreGeneration, ready, restoredDocument, automatic, start, memory]);
 }

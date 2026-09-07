@@ -1165,7 +1165,8 @@ export function App() {
 
   const startupReconcile = useCallback(() => { void invoke({ type: "reconciliation.start", requestId: requestId(), protocolVersion: PROTOCOL_VERSION, mode: "success" }); }, [invoke]);
   useStartupTopology({ snapshot, coreGeneration: coreGenerationRef.current, observedCoreGeneration,
-    ready: Boolean(window.swarm) && !coreUnavailable, restoredDocument: Boolean(restoredNavigation) }, startupReconcile);
+    ready: Boolean(window.swarm) && !coreUnavailable, restoredDocument: Boolean(restoredNavigation),
+    automatic: import.meta.env.SWARM_AUTOMATIC_TOPOLOGY !== false }, startupReconcile);
 
   const commands = useMemo(() => palettePathMode ? [
     { label: "Open path", detail: "Exact repository-relative file path · not filename search", run: () => { setPaletteOpen(false); openLinkedFile(commandQuery); } },

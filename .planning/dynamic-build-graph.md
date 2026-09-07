@@ -81,4 +81,6 @@ OpenAI native and Google same-session correction/diagnostic deltas CLEAN; Sonnet
 
 At19:53 remote master advanced again to94efa68940a2fc17008b9f2dab62bd76ce89dc13. It has not been consumed. The single next action is ROOT's combined exact reviewed-base clearance and residual-focus-risk disposition (final-gate-request.md), followed only if authorized by one corrected full local gate and normal landing with no new failures. As of19:56 no combined authority exists; return a coherent reviewed bounded hold rather than repeatedly testing or waiting indefinitely. No foundation/issue closure or app adoption is claimed.
 
+At20:02 ROOT completed exact94efa689 intake and explicitly authorized its composition, plus accepted only the precisely documented original Q2 risk as nonblocking under the user's critical-only demo policy. The original issue staysOPEN; recurrence/new failures are not automatically exempt. Automatic normal composition has no conflicts and preserves L1 external-workspace startup suppression. ONE corrected full-local gate follows, using the legacy55174 shared lock as directed by virtual-desktops.md; no extra forensic stage, no unreviewed newer base. This supersedes the earlier authority hold; actual green/landing remains pending its receipt.
+
 Initial plan written before implementation to name authority, input and lifecycle assumptions.
