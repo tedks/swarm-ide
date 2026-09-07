@@ -6,12 +6,16 @@ describe("actual packaged repository navigation proof boundary", () => {
   it("builds the ordinary archive and isolates every desktop and profile", async () => {
     const build = await readFile("tools/repository-navigation/BUILD.bazel", "utf8");
     const launch = await readFile("tools/repository-navigation/launch.mjs", "utf8");
+    const portGuard = await readFile("tools/task-integration/owned-port.mjs", "utf8");
     const smoke = await readFile("tools/repository-navigation/smoke.sh", "utf8");
     expect(build).toContain('"//:desktop-bundle"');
     expect(build).toContain('name = "packaged-navigation-test"');
-    expect(launch).toContain('process.env.DISPLAY === ":0"');
-    expect(launch).toContain('process.env.DISPLAY !== process.env.SWARM_X11_DISPLAY');
-    expect(launch).toContain('Number(process.env.SWARM_DEV_PORT) !== 55174');
+    expect(launch).toContain('const port = await resolveOwnedVirtualPort()');
+    expect(portGuard).toContain('!/^:[1-9][0-9]*$/.test(display ?? "")');
+    expect(portGuard).toContain('display !== environment.SWARM_X11_DISPLAY');
+    expect(portGuard).toContain('environment.SWARM_VIRTUAL_DESKTOP_PORT || "55174"');
+    expect(portGuard).toContain('port !== allocated');
+    expect(launch).toContain('server.listen(port, "127.0.0.1", resolve)');
     expect(launch).toContain('mkdtemp(join(owner, "swarm-navigation-package-"))');
     expect(launch).toContain('`--user-data-dir=${profile}`');
     expect(smoke).toContain('swarm unfamiliar invalid-name fingerprint-budget');
