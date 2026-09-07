@@ -16,7 +16,7 @@ An empty Service canvas should explain whether topology is unobserved, needs a b
 
 ## Surprises & Discoveries
 
-The Service graph has reconciliation colors and provenance but no capability flag or whole-repository coverage declaration. The running-build prop is shared. Therefore neutral copy cannot promise that arbitrary repositories support service extraction; green alone is not proof of a build-backed empty result. Native review also identified `markWorkingWorldUnknown` as a red publication without a build attempt, so red copy must describe observation failure, not assert that a build failed.
+The Service graph has reconciliation colors and provenance but no capability flag or whole-repository coverage declaration. The running-build prop is shared. Therefore neutral copy cannot promise that arbitrary repositories support service extraction; green alone is not proof of a build-backed empty result. Native review also identified `markWorkingWorldUnknown` as a red publication without a build attempt, so red copy must describe observation failure, not assert that a build failed. The real provider's first fingerprint replaces its transient gray bootstrap with yellow epoch 1 without a build; initial smoke assertions incorrectly waited for settled gray. Preserved failure screenshots showed the correct new yellow explanation. The driver now asserts the actual settled state instead of inventing gray startup persistence.
 
 ## Decision Log
 
