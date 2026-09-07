@@ -25,8 +25,9 @@ real Git/YAML preparation and separately label deterministic responder behavior.
 - [x] (2026-09-07) Native full and added-test delta CLEAN; Google same-session full/delta CLEAN. Anthropic single420s attempt returned no review, unavailable rather than substituted.
 - [x] (2026-09-07) Frozen0b3902a build34 PASS57.845s; all13 fresh suites completed240.177s with12 PASS and exact owned test-only TS2719 reply.ok widening failure. Raw output archived before any correction; no GUI failure or unexplained retry.
 - [x] (2026-09-07 15:23Z) Resumed same consumer after user replenished quota. Collected completed jobs; bounded annotation/controlled6s Prepare proof correction continues in existing helper only.
-- [ ] Run frozen local full gates and provider-aware council to fixpoint; record exact attribution.
-- [ ] Push reviewed increment and normally merge only on ROOT-cleared base; close bounded Ditz issue after actual landing and hand off to ROOT.
+- [x] (2026-09-07) Correctedfbd27c7 quality1391/100 and full34 build PASS5.784s; all13 fresh local suites PASS257.952s. Same native/Google fix-delta CLEAN, Anthropic honestly unavailable. Exact archives and actual virtual proof inspected.
+- [x] (2026-09-07) Reviewed increment pushed to PR50; final documentation records this outcome. Its final frozen gate, normal merge/parents/tree, Ditz closure and owned cleanup are recorded in the step landing receipt, not presumed from this plan.
+- [ ] ROOT verifies D4 before D5/D6 aggregate consumption; parent delivery remains open until D6.
 
 ## Surprises & Discoveries
 
@@ -67,16 +68,37 @@ cannot commit, adopt peers, expand scope or create departments.
 ## Outcomes & Retrospective
 
 
-The first implementation quality execution passed1388 tests/100 files, type
-checks and both bundles. It includes actual CLI-authored pinned production
-Prepare while launch remains unavailable, and separately deterministic responder
-admission/history with immutable task data. Extra settling/worker/transport tests
-are not attributed to that earlier run. First frozen aggregate0b3902a was12/13,
-not green; exact test typing correction and controlled actual Prepare timing
-proof require new local execution. Native/Google full and added-test reviews
-were CLEAN, Anthropic unavailable. No merge, attachment UI, packaged attachment
-or model is claimed.
-D6 must join reviewed D4/D5 and owns parent issue closure.
+The corrected executable head `fbd27c7634ed073137b102771753c5bc14912465`, tree
+`5b9d521606fe841cd9f9ce78c594b582b4ba22ba`, passes the34-target build and all13
+fresh local suites: quality1391 tests/100 files, type checks and both bundles.
+Actual CLI-authored pinned production Prepare succeeds with policy-unavailable
+launch and no runs. Separate deterministic responder tests admit immutable task
+context, retain it after metadata changes/removal and acknowledge old receipts
+without another scan or launch. Controlled transport scheduling crosses6000ms
+before releasing genuine Git/YAML Prepare, then5000ms launch uncertainty before
+actual late admission/rejection and real read reconciliation. These are not
+claims about six seconds of measured model execution or packaged attachment UI.
+
+The unchanged packaged navigation proof attests four real filesystem cases,
+Swarm source commitfbd27c7, zero renderer exceptions and model turns; CLI task
+browsing remains real. Ordinary-close rehearsal is explicitly fixture-only,
+with four retained/emitted record counts7/81/2/3, verified hashes, zero timers,
+all responder disposal and active-at-close unknown. Its28.9s pass is unchanged
+close evidence, not a new live provider. Every owned virtual scenario reported
+cleanup1. The full corrected suite took257.952s, separate from shared-lock wait.
+
+Native full and same-reviewer deltas are CLEAN; Google same-session full and
+deltas are CLEAN. Anthropic's one420-second attempt returned no review and stayed
+unfilled. No findings were silently dropped or seats substituted. Earlier
+baseline23RED/1345PASS and0b3902a12/13 failure remain recorded; later negative
+tests were added with implementation and are not invented historical RED.
+
+This final documentation-only update does not change executable sources. Its
+own final frozen logs and actual normal landing/parents/tree/Ditz/cleanup are
+recorded in `/tmp/swarm-ide-task-consumers.jbWXBA/core/landing-verification.md`.
+No merge is presumed before that receipt. D6 must join reviewed D4/D5 and owns
+parent issue closure. Human55175, master/shared integration and app adoption,
+credentials/P7/provider-policy and owned-process authority remain unchanged.
 
 ## Context and Orientation
 
@@ -172,6 +194,14 @@ Raw checks, review, seam and final receipt live in
 recap before peer consumption. Precise historical RED/GREEN attribution belongs
 here as it becomes available, not inferred from later passing tests.
 
+Failed frozen0b3902a archive SHA256:
+`b35faf46b0b0d6739cfac401b3a2ee34a1f785bfb23126a9c222564adb90b604`.
+Corrected frozenfbd27c7 archive SHA256:
+`52c45d0cc35a616bbd4018926711799fd7e58cd6110c29f49abb236b2a04a8a6`.
+Both include exact test logs and owned virtual outputs; neither is silently
+replaced by the other. Corrected navigation runSIeRWJ, task runwU9Spk and
+rehearsal runMislgb are attributable to frozenfbd27c7 only.
+
 ## Interfaces and Dependencies
 
 
@@ -182,3 +212,7 @@ Its registered identities never come from the pin. Reuse `TaskGitReader`,
 `formatAgentContextV2`; no new dependency, protocol or public command is needed.
 
 Revision note: initial bounded D4 execution plan and assumptions recorded before implementation.
+
+Completion revision: record actual core behavior, full corrected local evidence,
+provider-aware fixpoint, precise failed-run/RED history, quota-resume continuity
+and the separate ROOT/D6/adoption boundaries. No parent contract or UI plan edited.
