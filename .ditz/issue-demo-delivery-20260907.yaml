@@ -5,8 +5,8 @@ type: feature
 component: default
 release:
 reporter: Ted Smith <tedks@riseup.net>
-status: in_progress
-disposition:
+status: closed
+disposition: fixed
 creation_time: 2026-09-07T19:26:41-00:00
 references: []
 log_events:
@@ -26,3 +26,11 @@ log_events:
     wrapper0 on open/1 after explicit Build, local Ditz metadata fetch and public
     missing/occupied negative checks passed; native/Google fix-delta CLEAN, Sonnet240s
     unavailable. Normal landing next, no shared adoption.
+- time: 2026-09-07T19:52:38-00:00
+  who: Ted Smith
+  what: 'closed: fixed'
+  comment: Merged PR54 normally as94efa68940a2fc17008b9f2dab62bd76ce89dc13; exact
+    topic/merge tree3cfa6c1c, executable2873d94 local build39/quality1481/105/owned
+    real three-case installation and explicit-wrapper proof passed; native/Google
+    CLEAN, Sonnet unavailable. README/demo docs honest; no shared adoption or provider
+    activation.
