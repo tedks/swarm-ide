@@ -145,6 +145,7 @@ const GraphPaneContent = memo(function GraphPaneContent({ graph, focus, mappings
           zoomOnDoubleClick={!graph.directory}
           nodesConnectable={false}
           elementsSelectable
+          autoPanOnNodeFocus={onActivate ? false : undefined}
           onNodeClick={(event, node) => { const data = node.data as TopologyNodeData; if (onActivate && !event.altKey && ["service", "interface"].includes(data.focus.domain)) onActivate(data.focus, event.currentTarget as HTMLElement); else if (graph.directory && data.kind === "directory" && onInspectFocus) onInspectFocus(data.focus); else onFocus(data.focus); }}
           onNodeDoubleClick={(_event, node) => { const data = node.data as TopologyNodeData; if (graph.directory && data.kind === "directory" && !data.directoryContainer && !data.unavailable && data.focus.path) navigate(data.focus.path); }}
           onSelectionChange={({ edges }) => {
