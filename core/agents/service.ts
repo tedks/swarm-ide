@@ -50,6 +50,7 @@ export class AgentService {
   private overflow = new Set<string>();
   private publishTimer?: ReturnType<typeof setTimeout>;
   private shutdownPromise?: Promise<void>;
+  private shutdownDrained = false;
   private readonly now: () => number;
   private readonly grace: number;
   private readonly deadline: number;
@@ -268,7 +269,7 @@ export class AgentService {
         cleanup: { status: "pending", observedAt: at, detail: "Owned process dispatch is beginning; cleanup is pending." } });
       return saved.ok && !this.closed && !this.storageError;
     });
-    if (!dispatch) return;
+    if (!dispatch || this.closed || this.storageError) return;
     this.timers.set(context.runId, setTimeout(() => {
       void this.serial(() => this.markUnknown(context.runId, "Run deadline exceeded; stopping owned work."));
     }, this.deadline));
@@ -304,7 +305,9 @@ export class AgentService {
   }
   private async event(runId: string, event: AdapterEvent): Promise<void> {
     const run = this.runs.get(runId);
-    if (!run || this.storageError || this.closed) return;
+    // receive() owns the synchronous intake cutoff. Entries already accepted
+    // into the bounded queue still precede shutdown's uncertainty transition.
+    if (!run || this.storageError) return;
     if (event.type === "process-exit") {
       const next = !isTerminalRunState(run.state) ? this.uncertain(run, "Provider process exited without terminal turn evidence.") : run;
       await this.persist({ ...next, updatedAt: this.at(run), processState: "exited", exitCode: event.exitCode });
@@ -410,7 +413,8 @@ export class AgentService {
   private cancelUntil = new Map<string, number>();
   private async interrupt(runId: string): Promise<void> {
     const run = this.runs.get(runId), handle = this.handles.get(runId);
-    if (!run || !handle || !run.providerTurnId || this.interrupted.has(runId) || isTerminalRunState(run.state)) return;
+    if (this.closed || this.storageError || this.cleaning.has(runId) ||
+        !run || !handle || !run.providerTurnId || this.interrupted.has(runId) || isTerminalRunState(run.state)) return;
     this.interrupted.add(runId);
     try { await handle.interrupt(); } catch { /* Ack is not cancellation; the bounded Stop timer owns escalation. */ }
   }
@@ -453,7 +457,7 @@ export class AgentService {
     try {
       // Shutdown can arrive while the pending intent is being fsynced. Recheck
       // immediately before the external call, not only before persistence.
-      reply = this.closed || this.storageError ? { ok: false, error: unknown() } :
+      reply = this.closed || this.storageError || this.cleaning.has(request.runId) ? { ok: false, error: unknown() } :
         await Promise.race([handle.steer(request.expectedTurnId, request.text), unsettled]);
     }
     catch { reply = { ok: false, error: unknown() }; }
@@ -491,14 +495,14 @@ export class AgentService {
       })]);
     } catch { cleanup = { status: "unknown", observedAt: this.at(), detail: "Owned cleanup could not be confirmed." }; }
     finally { clearTimeout(timer); }
-    await this.serial(async () => {
+    const finish = async () => {
       const run = this.runs.get(runId)!;
       const confirmed = cleanup.status === "confirmed";
       const at = this.at(run);
       let next: Run = { ...run, updatedAt: at, processState: confirmed ? "exited" : "unknown", exitCode: confirmed ? run.exitCode : null,
         cleanup: { status: confirmed ? "confirmed" : "unknown", observedAt: at, detail: cleanup.detail } };
       if (!isTerminalRunState(next.state)) {
-        if (run.state === "cancelling" && confirmed) next = { ...next, state: "cancelled", endedAt: at,
+        if (!this.closed && run.state === "cancelling" && confirmed) next = { ...next, state: "cancelled", endedAt: at,
           terminalReason: "Owned process termination was confirmed after cancellation.",
           providerOutcome: { kind: "owned-termination", afterCancellation: true, observedAt: at } };
         else next = this.uncertain(next, "Owned execution ended without terminal outcome evidence.");
@@ -508,7 +512,15 @@ export class AgentService {
       if (this.storageError) this.runs.set(runId, next); else await this.persist(next);
       this.handles.delete(runId);
       await this.publish();
+    };
+    const finished = await this.serial(async () => {
+      // Cleanup may have queued before shutdown, behind a blocked store call.
+      // Yield that position so pre-cutoff terminal evidence drains first. Do
+      // not await the drain inside serial(): it is queued behind this entry.
+      if (this.closed && !this.shutdownDrained) return false;
+      await finish(); return true;
     });
+    if (!finished) await this.serial(finish);
   }
 
   shutdown(): Promise<void> {
@@ -516,16 +528,46 @@ export class AgentService {
     this.closed = true; this.draft = null;
     for (const settle of this.pendingSteers.values()) settle();
     clearTimeout(this.publishTimer);
+    this.publishTimer = undefined;
     for (const timer of this.timers.values()) clearTimeout(timer);
     this.timers.clear();
-    this.shutdownPromise = this.serial(async () => {
-      for (const run of [...this.runs.values()]) {
-        if (!this.storageError) await this.persist(this.uncertain(run, "Core is being replaced; unresolved execution is unknown. Do not replay."));
-      }
-    }).then(async () => {
-      await Promise.all([...this.handles.keys()].map((id) => this.dispose(id)));
-      await this.queue;
+    // Reserve the durable cutoff before disposal: a synchronous dispose throw
+    // can enqueue its cleanup immediately. Quiesce known producers now, not
+    // after waiting for storage. Cleanup itself must never hold the queue lock.
+    const drained = this.serial(async () => {
+      try {
+        for (const run of [...this.runs.values()]) {
+          if (!this.storageError) await this.persist(this.uncertain(run, "Core is being replaced; unresolved execution is unknown. Do not replay."));
+        }
+      } finally { this.shutdownDrained = true; }
     });
+    this.shutdownPromise = (async () => {
+      try { await drained; }
+      finally {
+        try {
+          const waited = new Set<Promise<void>>();
+          for (;;) {
+            await this.queue;
+            // Include cleanup already underway and handles registered during
+            // drain. Do not await unresolved adapter.start(): its late handle
+            // follows start()'s existing closed-service disposal path.
+            const pending = [...this.cleaning.values()].filter((work) => !waited.has(work));
+            if (!pending.length) break;
+            for (const work of pending) waited.add(work);
+            await Promise.all(pending);
+          }
+        } finally {
+          // Drained output/cancel/admission work can create timers after the
+          // initial clear, so the completion boundary clears them once more.
+          clearTimeout(this.publishTimer); this.publishTimer = undefined;
+          for (const timer of this.timers.values()) clearTimeout(timer);
+          this.timers.clear();
+        }
+      }
+    })();
+    // Publish idempotence before invoking external code, including a handle
+    // whose dispose() synchronously re-enters shutdown().
+    for (const id of this.handles.keys()) void this.dispose(id);
     return this.shutdownPromise;
   }
 }
