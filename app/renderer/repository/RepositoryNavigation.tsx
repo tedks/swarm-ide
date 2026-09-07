@@ -23,7 +23,7 @@ export function RepositoryNavigation({ observation, actions, onActivate, onOpenP
   const list = useRef<HTMLOListElement>(null);
   const previousDirectory = useRef(observation.directory);
   const expandedIntent = useRef<number | null>(null);
-  const foldedPending = useRef(new Set<string>());
+  const foldedPending = useRef(new Map<string, number>());
   useEffect(() => { setFilter(observation.filter); }, [observation.observationId, observation.filter]);
   useEffect(() => {
     setCache((prior) => retainDirectory(prior, observation));
@@ -32,7 +32,8 @@ export function RepositoryNavigation({ observation, actions, onActivate, onOpenP
     const explicit = intent && intent.serial !== expandedIntent.current && intent.directory === observation.directory;
     if (previousDirectory.current !== observation.directory || explicit) {
       previousDirectory.current = observation.directory;
-      const suppressed = new Set(foldedPending.current);
+      const serial = explicit ? intent.serial : actions.pendingSerial;
+      const suppressed = new Set([...foldedPending.current].filter(([, request]) => request === serial).map(([path]) => path));
       setExpanded((prior) => {
         const next = new Set(prior);
         for (const crumb of repositoryBreadcrumbs(observation.directory)) {
@@ -45,13 +46,13 @@ export function RepositoryNavigation({ observation, actions, onActivate, onOpenP
     // A fold veto belongs only to the in-flight navigation, never the next
     // explicit Reveal. Refresh/background observations do not unfold folders.
     if (!actions.pending) foldedPending.current.clear();
-  }, [observation, actions.pending, actions.expansionIntent]);
+  }, [observation, actions.pending, actions.pendingSerial, actions.expansionIntent]);
   useEffect(() => { if (focusedPath) setSelected(focusedPath); }, [focusedPath]);
   const tree = repositoryTree(cache, observation, expanded, rootLabel);
   const buttons = () => [...(list.current?.querySelectorAll<HTMLButtonElement>("button[data-tree-key]") ?? [])];
   const focusRow = (key: string) => buttons().find((button) => button.dataset.treeKey === key)?.focus();
   const fold = (row: TreeRow) => {
-    if (actions.pending) foldedPending.current.add(row.key);
+    if (actions.pendingSerial !== null) foldedPending.current.set(row.key, actions.pendingSerial);
     setExpanded((prior) => { const next = new Set(prior); next.delete(row.key); return next; });
   };
   const activate = (row: TreeRow) => {
@@ -91,7 +92,7 @@ export function RepositoryNavigation({ observation, actions, onActivate, onOpenP
       <button aria-label="Repository Back" disabled={!actions.backEnabled} onClick={() => void actions.back()} title="Back · Alt-Left">←</button>
       <button aria-label="Repository Up" disabled={!observation.directory} onClick={() => void actions.up()} title="Up · Alt-Up">↑</button>
       <div className="repository-breadcrumbs">{repositoryBreadcrumbs(observation.directory).map((crumb) => <button key={crumb.path} aria-label={crumb.path ? `Directory ${crumb.path}` : "Repository root"} aria-current={crumb.path === observation.directory ? "location" : undefined} onClick={() => void actions.enter(crumb.path)}>{crumb.label === "/" ? rootLabel : crumb.label}</button>)}</div>
-      <button aria-label="Collapse folders" title="Collapse folders" onClick={() => { if (actions.pending) for (const key of expanded) foldedPending.current.add(key); setExpanded(new Set([""])); }}>⊟</button>
+      <button aria-label="Collapse folders" title="Collapse folders" onClick={() => { if (actions.pendingSerial !== null) for (const key of expanded) foldedPending.current.set(key, actions.pendingSerial); setExpanded(new Set([""])); }}>⊟</button>
       <button aria-label="Refresh directory" title="Refresh current directory" onClick={() => void actions.refresh()}>↻</button>
       <details className="repository-options"><summary aria-label="Repository options" title="Filter and exact path">⋯</summary>
         <div className="repository-query-row"><form onSubmit={(event) => { event.preventDefault(); void actions.filter(filter); }}>

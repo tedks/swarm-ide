@@ -22,7 +22,8 @@ export function useRepositoryNavigation(observation: RepositoryObservation | und
   const intentSerial = useRef(0);
   const history = useRef<DirectoryLocation[]>([]);
   const failed = useRef<Intent | null>(null);
-  const [pending, setPending] = useState(false);
+  const [pendingSerial, setPendingSerial] = useState<number | null>(null);
+  const pending = pendingSerial !== null;
   const [notice, setNotice] = useState("");
   const [historySize, setHistorySize] = useState(0);
   const [cameraIntent, setCameraIntent] = useState<RepositoryCameraIntent | null>(null);
@@ -30,7 +31,7 @@ export function useRepositoryNavigation(observation: RepositoryObservation | und
 
   useEffect(() => {
     ++intentSerial.current;
-    setPending(false);
+    setPendingSerial(null);
     failed.current = null;
     setCameraIntent(null);
     setExpansionIntent(null);
@@ -50,7 +51,7 @@ export function useRepositoryNavigation(observation: RepositoryObservation | und
       ...(!intent.refresh && prior.directory === intent.directory ? { observationId: prior.observationId } : {}),
       ...(intent.revealPath ? { revealPath: intent.revealPath } : {}),
     };
-    setPending(true); setNotice(""); failed.current = null;
+    setPendingSerial(serial); setNotice(""); failed.current = null;
     setCameraIntent(null);
     try {
       const response = await before.request(input);
@@ -72,7 +73,7 @@ export function useRepositoryNavigation(observation: RepositoryObservation | und
       setNotice(`Could not open ${intent.directory || "/"}: ${error instanceof Error ? error.message : "directory unavailable"}. Previous directory retained.`);
       return false;
     } finally {
-      if (serial === intentSerial.current && before.generation === current.current.generation) setPending(false);
+      if (serial === intentSerial.current && before.generation === current.current.generation) setPendingSerial(null);
     }
   }, []);
 
@@ -100,6 +101,6 @@ export function useRepositoryNavigation(observation: RepositoryObservation | und
     return navigate({ directory, page: 0, filter: "", refresh: current.current.observation?.directory !== directory, revealPath: path, expand: true });
   }, [navigate]);
   const retry = useCallback(() => failed.current ? navigate({ ...failed.current, refresh: true }) : Promise.resolve(false), [navigate]);
-  return { pending, notice, cameraIntent, expansionIntent, backEnabled: historySize > 0, retryEnabled: Boolean(failed.current), enter, up, back, refresh, page, filter, reveal, retry };
+  return { pending, pendingSerial, notice, cameraIntent, expansionIntent, backEnabled: historySize > 0, retryEnabled: Boolean(failed.current), enter, up, back, refresh, page, filter, reveal, retry };
 }
 export type RepositoryNavigationActions = ReturnType<typeof useRepositoryNavigation>;

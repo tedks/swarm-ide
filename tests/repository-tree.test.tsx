@@ -16,7 +16,7 @@ function observation(directory = "", entries: RepositoryEntry[] = []): Repositor
 }
 function root() { return observation("", [entry("core", "directory"), entry("docs", "directory"), entry("README.md")]); }
 function actions(): RepositoryNavigationActions {
-  return { pending: false, notice: "", cameraIntent: null, expansionIntent: null, backEnabled: false, retryEnabled: false,
+  return { pending: false, pendingSerial: null, notice: "", cameraIntent: null, expansionIntent: null, backEnabled: false, retryEnabled: false,
     enter: vi.fn(async (_path: string) => true), up: vi.fn(async () => true), back: vi.fn(async () => true),
     refresh: vi.fn(async () => true), page: vi.fn(async (_page: number) => true), filter: vi.fn(async (_filter: string) => true),
     reveal: vi.fn(async (_path: string) => true), retry: vi.fn(async () => true) };
@@ -71,9 +71,9 @@ describe("conventional repository tree interactions", () => {
     const controls = actions(), onActivate = vi.fn(), onOpenPath = vi.fn(), initial = root();
     const view = render(<RepositoryNavigation observation={initial} actions={controls} onActivate={onActivate} onOpenPath={onOpenPath} />);
     fireEvent.click(screen.getByRole("button", { name: "Enter directory core" }));
-    view.rerender(<RepositoryNavigation observation={initial} actions={{ ...controls, pending: true }} onActivate={onActivate} onOpenPath={onOpenPath} />);
+    view.rerender(<RepositoryNavigation observation={initial} actions={{ ...controls, pending: true, pendingSerial: 1 }} onActivate={onActivate} onOpenPath={onOpenPath} />);
     fireEvent.click(screen.getByRole("button", { name: "Enter directory core" }));
-    view.rerender(<RepositoryNavigation observation={observation("core", [entry("core/late.ts")])} actions={controls} onActivate={onActivate} onOpenPath={onOpenPath} />);
+    view.rerender(<RepositoryNavigation observation={observation("core", [entry("core/late.ts")])} actions={{ ...controls, expansionIntent: { directory: "core", serial: 1 } }} onActivate={onActivate} onOpenPath={onOpenPath} />);
     const core = screen.getByRole("button", { name: "Enter directory core" });
     expect(expanded(core)).toBe("false");
     expect(screen.queryByRole("button", { name: "Open file core/late.ts" })).toBeNull();
@@ -90,7 +90,7 @@ describe("conventional repository tree interactions", () => {
     const controls = actions(), onActivate = vi.fn(), onOpenPath = vi.fn();
     const view = render(<RepositoryNavigation observation={root()} actions={controls} onActivate={onActivate} onOpenPath={onOpenPath} />);
     fireEvent.click(screen.getByRole("button", { name: "Enter directory core" }));
-    view.rerender(<RepositoryNavigation observation={root()} actions={{ ...controls, pending: true }} onActivate={onActivate} onOpenPath={onOpenPath} />);
+    view.rerender(<RepositoryNavigation observation={root()} actions={{ ...controls, pending: true, pendingSerial: 1 }} onActivate={onActivate} onOpenPath={onOpenPath} />);
     fireEvent.click(screen.getByRole("button", { name: "Enter directory core" }));
     const captured = observation("core", [entry("core/files.ts")]);
     const completed = { ...controls, expansionIntent: { directory: "core", serial: 1 } };
@@ -103,6 +103,20 @@ describe("conventional repository tree interactions", () => {
     fireEvent.click(screen.getByRole("button", { name: "Enter directory core" }));
     view.rerender(<RepositoryNavigation observation={observation("docs", [entry("docs/readme.md")])} actions={{ ...controls, expansionIntent: { directory: "docs", serial: 3 } }} onActivate={onActivate} onOpenPath={onOpenPath} />);
     view.rerender(<RepositoryNavigation observation={captured} actions={{ ...controls, expansionIntent: { directory: "core", serial: 4 } }} onActivate={onActivate} onOpenPath={onOpenPath} />);
+    expect(screen.getByRole("button", { name: "Open file core/files.ts" })).toBeTruthy();
+  });
+
+  it("does not carry a folded pending request into an overlapping same-directory Reveal", () => {
+    const controls = actions(), onActivate = vi.fn(), onOpenPath = vi.fn(), initial = root();
+    const view = render(<RepositoryNavigation observation={initial} actions={controls} onActivate={onActivate} onOpenPath={onOpenPath} />);
+    fireEvent.click(screen.getByRole("button", { name: "Enter directory core" }));
+    view.rerender(<RepositoryNavigation observation={initial} actions={{ ...controls, pending: true, pendingSerial: 1 }} onActivate={onActivate} onOpenPath={onOpenPath} />);
+    fireEvent.click(screen.getByRole("button", { name: "Enter directory core" }));
+    view.rerender(<RepositoryNavigation observation={initial} actions={{ ...controls, pending: true, pendingSerial: 2 }} onActivate={onActivate} onOpenPath={onOpenPath} />);
+    const captured = observation("core", [entry("core/files.ts")]);
+    view.rerender(<RepositoryNavigation observation={captured} actions={{ ...controls, pending: true, pendingSerial: 2 }} onActivate={onActivate} onOpenPath={onOpenPath} />);
+    expect(screen.getByRole("button", { name: "Open file core/files.ts" })).toBeTruthy();
+    view.rerender(<RepositoryNavigation observation={captured} actions={{ ...controls, expansionIntent: { directory: "core", serial: 2 } }} onActivate={onActivate} onOpenPath={onOpenPath} />);
     expect(screen.getByRole("button", { name: "Open file core/files.ts" })).toBeTruthy();
   });
 

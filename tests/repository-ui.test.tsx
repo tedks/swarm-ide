@@ -169,6 +169,24 @@ describe("bounded repository navigation intent controller", () => {
     await act(async () => { pending[2]!.resolve(result(pending[2]!.input)); await first; });
     expect(view.result.current.pending).toBe(false); expect(view.result.current.cameraIntent).toBeNull();
   });
+  it("publishes a new pending serial before an overlapping same-directory Reveal settles", async () => {
+    const pending: Array<{ input: RepositoryRequest; resolve: (value: CoreResponse) => void }> = [];
+    const request = vi.fn((input: RepositoryRequest) => new Promise<CoreResponse>((resolve) => pending.push({ input, resolve })));
+    const view = renderHook(() => useRepositoryNavigation(observation(), 1, true, request));
+    let first!: Promise<boolean>, second!: Promise<boolean>;
+    act(() => { first = view.result.current.enter("core"); });
+    const oldSerial = view.result.current.pendingSerial;
+    act(() => { second = view.result.current.reveal("core/files.ts"); });
+    const newerSerial = view.result.current.pendingSerial;
+    expect(newerSerial).not.toBeNull(); expect(newerSerial).not.toBe(oldSerial);
+    await act(async () => { pending[0]!.resolve(result(pending[0]!.input)); await first; });
+    expect(view.result.current.pendingSerial).toBe(newerSerial);
+    expect(view.result.current.expansionIntent).toBeNull();
+    await act(async () => { pending[1]!.resolve(result(pending[1]!.input, observation("core", { reveal: { path: "core/files.ts", status: "selected" } }))); await second; });
+    expect(view.result.current.pendingSerial).toBeNull();
+    expect(view.result.current.expansionIntent).toEqual({ directory: "core", serial: newerSerial });
+  });
+
   it("rejects mismatched results, keeps the old observation, and offers an explicit Retry", async () => {
     const observed = observation();
     const request = vi.fn(async (input: RepositoryRequest) => result(input, observation("wrong")));
