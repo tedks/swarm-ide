@@ -43,7 +43,7 @@ export type ContextSubject = { repositoryId: string; worldId: string } & (
 );
 export interface ContextEvidenceRef {
   provider: string; repositoryId: string; worldId: string; origin: string;
-  revisionKind: "source-read" | "buffer" | "directory" | "built" | "capture" | "ditz";
+  revisionKind: "source-read" | "buffer" | "directory" | "built" | "capture" | "build-query" | "ditz";
   revision: string; observedAt: string | null; timeBasis: "producer" | "client receipt" | "local edit" | "unavailable";
   freshness: "current" | "retained" | "CAPTURE"; coverage: string;
 }

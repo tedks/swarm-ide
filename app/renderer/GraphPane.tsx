@@ -47,6 +47,8 @@ interface GraphPaneProps {
   onNavigateDirectory?: (directory: string) => Promise<boolean>;
   onInspectFocus?: (focus: FocusRef) => void;
   buildLinkSnapshot?: BuildLinkSnapshot;
+  onBuildLinksVisibility?: (visible: boolean) => void;
+  buildGraphStatus?: string;
   mockAgents?: boolean;
   mockGraphVersion?: number;
   reframeVersion?: number;
@@ -61,9 +63,10 @@ function RepositoryGraphPane(props: GraphPaneProps) {
   return <GraphPaneContent {...presented} />;
 }
 
-const GraphPaneContent = memo(function GraphPaneContent({ graph, focus, mappings, onFocus, onActivate, onConnectionFocus, onReconcile, reconciliationRunning, repositoryNavigation, repositoryCameraIntent, onNavigateDirectory, onInspectFocus, buildLinkSnapshot, mockAgents = false, mockGraphVersion = 0, reframeVersion = 0 }: GraphPaneProps) {
+const GraphPaneContent = memo(function GraphPaneContent({ graph, focus, mappings, onFocus, onActivate, onConnectionFocus, onReconcile, reconciliationRunning, repositoryNavigation, repositoryCameraIntent, onNavigateDirectory, onInspectFocus, buildLinkSnapshot, onBuildLinksVisibility, buildGraphStatus, mockAgents = false, mockGraphVersion = 0, reframeVersion = 0 }: GraphPaneProps) {
   const adapted = useMemo(() => adaptGraph(graph, focus, mappings), [graph, focus, mappings]);
   const [buildLinksVisible, setBuildLinksVisible] = useState(false);
+  useEffect(() => { onBuildLinksVisibility?.(buildLinksVisible); return () => onBuildLinksVisibility?.(false); }, [buildLinksVisible, onBuildLinksVisibility]);
   const [mockAgentsVisible, setMockAgentsVisible] = useState(false);
   useEffect(() => { setMockAgentsVisible(mockAgents); }, [mockAgents, mockGraphVersion]);
   const [selectedBuildLink, setSelectedBuildLink] = useState<string | null>(null);
@@ -108,9 +111,9 @@ const GraphPaneContent = memo(function GraphPaneContent({ graph, focus, mappings
           : <span className={`truth-dot status-${graph.reconciliation}`} role="status" aria-label={`Topology ${graph.reconciliation === "green" ? "consistent" : graph.reconciliation === "gray" ? "unobserved" : "failed"}`} title={graph.reconciliation === "green" ? "Topology consistent" : graph.reconciliation === "gray" ? "Topology unobserved" : "Topology build failed"} />}</div>
       </header>
       {graph.directory ? <div className="directory-layers" aria-label="Directory map layers">
-        <button aria-pressed={buildLinksVisible} disabled={!buildLinkSnapshot} title={buildLinkSnapshot ? `Captured from Bazel at ${buildLinkSnapshot.revision}; not live build truth` : "No Bazel snapshot captured for this workspace"} onClick={() => { setBuildLinksVisible((shown) => !shown); setSelectedBuildLink(null); }}>{buildLinksVisible ? "☑" : "☐"} Build links</button>
+        <button aria-pressed={buildLinksVisible} disabled={!buildLinkSnapshot && !onBuildLinksVisibility} title={buildLinkSnapshot?.observation ? `Bazel observation ${buildGraphStatus}; not a binary build` : "Show repository-scoped Bazel dependency observations"} onClick={() => { setBuildLinksVisible((shown) => !shown); setSelectedBuildLink(null); }}>{buildLinksVisible ? "☑" : "☐"} Build links</button>
         <button aria-pressed={mockAgentsVisible} onClick={() => setMockAgentsVisible((shown) => !shown)}>♧ Mock agents</button>
-        <span>{!buildLinkSnapshot ? "No captured build links for this workspace" : buildLinksVisible ? `Snapshot ${buildLinkSnapshot.revision} · ${buildEdges.length} visible links · not live` : "Build links off · click to show captured dependencies"}</span>
+        <span>{!buildLinkSnapshot ? `Build graph ${buildGraphStatus ?? "not requested"}` : buildLinksVisible ? `${buildLinkSnapshot.observation ? `Observation ${buildGraphStatus}` : "CAPTURE"} · ${buildEdges.length} visible links · not binary build truth` : "Build links off · click to show dependencies"}</span>
       </div> : null}
       {repositoryNavigation ? <div className="repository-browser-surface" hidden={explorer && repositoryView !== "tree"}>{repositoryNavigation}</div> : null}
       <div className="graph-canvas" ref={canvas}>

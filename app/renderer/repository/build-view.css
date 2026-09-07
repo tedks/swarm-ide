@@ -26,3 +26,9 @@
 .build-selection strong { flex: 1; min-width: 0; overflow-wrap: anywhere; }
 .build-view-empty, .build-empty-hint { padding: 15px; color: #b2ad8b; font: 11px/1.6 monospace; }
 .build-empty-hint { position: absolute; top: 0; left: 0; pointer-events: none; }
+.build-observation { padding: 6px 10px; font-size: 11px; border-bottom: 1px solid #30433a; color: #c4d3ca; }
+.build-observation strong { text-transform: uppercase; }
+.build-observation.status-green strong { color: #83dca4; }
+.build-observation.status-yellow strong { color: #e7c277; }
+.build-observation.status-red strong { color: #ef9690; }
+.build-observation button { margin-left: 10px; }
