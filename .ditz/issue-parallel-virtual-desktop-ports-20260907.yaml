@@ -32,3 +32,10 @@ log_events:
   comment: ROOT accepted exact old Reveal automation residual risk without fix/all-green
     claim. Completing narrow B1 launcher wiring and focused proof; task-rehearsal
     exception found and documented separately. H1 retains merge slot.
+- time: 2026-09-07T20:41:26-00:00
+  who: Ted Smith
+  what: commented
+  comment: 'B1 compatibility completion pushed/reviewed: quality1498/106, helper7,
+    wiring1; one actual nondefault two-repo packaged proof45.2s/bothcleanup1. ROOT
+    accepts prior Reveal residual without fixclaim. PR57 candidate finished; merge
+    waits H1 slot/ROOT handling. Separate task-rehearsal fixedport followup remains.'
