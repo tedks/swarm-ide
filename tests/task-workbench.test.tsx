@@ -74,7 +74,7 @@ async function openSource() {
 it("revokes a held planning-task activation when the user switches lens", async () => {
   const { request } = setup(); render(<App />);
   await screen.findByRole("button", { name: "Select task task-fixture" });
-  fireEvent.click(screen.getByRole("button", { name: "Plan", exact: true }));
+  fireEvent.click(screen.getByRole("button", { name: "Plan" }));
   fireEvent.click(screen.getByRole("button", { name: "Load dependency graph" }));
   await screen.findByText(/1\/1 details read/);
   fireEvent.click(screen.getByText(/Keyboard task outline/));
@@ -84,7 +84,7 @@ it("revokes a held planning-task activation when the user switches lens", async 
   }) : original(input));
   fireEvent.click(screen.getByRole("button", { name: "Open graph task task-fixture" }));
   await waitFor(() => expect(finish).toBeTypeOf("function"));
-  const system = screen.getByRole("button", { name: "System", exact: true });
+  const system = screen.getByRole("button", { name: "System" });
   fireEvent.pointerDown(system); fireEvent.click(system);
   await act(async () => finish());
   expect(document.querySelector(".artifact-context")?.getAttribute("data-context-kind")).not.toBe("task");

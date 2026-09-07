@@ -98,6 +98,12 @@ async function main() {
   await focus(label("Open graph task graph-root")); key("Enter");
   await until(async () => (await text(".task-detail:not(.task-document) .task-selected-id")) === "graph-root", "pinned task opened by keyboard");
   assert((await text(".task-detail:not(.task-document)")).includes(fixture.metadataCommit));
+  await click(`${taskGraph} .planning-inspector summary`, "Recorded edges · 4");
+  await click(`${taskGraph} .planning-inspector details:last-child button`, "graph-left");
+  await until(async () => (await text(".task-detail:not(.task-document) .task-selected-id")) === "graph-left", "dependency edge endpoint opens pinned task");
+  await click(`${taskGraph} .planning-inspector details:last-child button`, "graph-root");
+  await until(async () => (await text(".task-detail:not(.task-document) .task-selected-id")) === "graph-root", "blocker endpoint deliberately opens task for Reveal and Attach");
+  assert((await text(".task-detail:not(.task-document)")).includes(fixture.metadataCommit));
   await click(label(`Reveal working file ${fixture.sourcePath} at line 1`));
   await until(() => has(".cm-content"), "real source editor");
   const sourceState = () => run(() => { const state = document.querySelector(".cm-content")?.cmView?.rootView?.view?.state;
