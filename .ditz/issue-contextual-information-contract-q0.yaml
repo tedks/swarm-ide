@@ -5,8 +5,8 @@ type: task
 component: default
 release:
 reporter: Ted Smith <tedks@riseup.net>
-status: in_progress
-disposition:
+status: closed
+disposition: fixed
 creation_time: 2026-09-07T02:17:20-00:00
 references: []
 log_events:
@@ -26,3 +26,8 @@ log_events:
     fixes. Local documentation links/sections/scope/whitespace passed, no build/GUI/model/hosted
     work. Recommend one Q1 owner for typed retained service publication, explicit
     attention and local Context composition; ROOT must approve before implementation.
+- time: 2026-09-07T02:29:16-00:00
+  who: Ted Smith
+  what: 'closed: fixed'
+  comment: Reviewed design-only PR40 normally merged; implementation gate remains
+    with ROOT.
