@@ -29,7 +29,7 @@ try {
   for (const dir of [root, packaged, profile, privateHome]) await mkdir(dir, { mode: 0o700 });
   const sourceCommit = git(source, "rev-parse", "HEAD");
   const metadataCommit = git(source, "rev-parse", "--verify", "refs/heads/ditz-metadata");
-  git(root, "init", "-b", "tour");
+  git(root, "init", "-b", "proof-bootstrap");
   // Explicit trusted local source only; no remote/network fetch or metadata edits.
   git(root, "-c", "protocol.allow=never", "-c", "protocol.file.allow=always", "fetch", "--no-tags", source,
     `${sourceCommit}:refs/heads/tour`, `${metadataCommit}:refs/heads/ditz-metadata`);

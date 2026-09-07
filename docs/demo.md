@@ -88,7 +88,7 @@ expanded entry lives in the main text area: intent, outcome, decision and
 supporting evidence. Swarm includes supervised-agent-generated, **recorded**
 summaries of this same task-context work. They combine Git observations with
 attributed agent/check reports; opening a card does not rerun checks, and
-reconstructed reasoning is labelled. Expand **Evidence, not authority** and
+reconstructed reasoning is labelled. Inspect **Evidence, not authority** and
 deliberately open an affected file. Your draft remains independent.
 
 The update loop is currently **export evidence → supervised summarizer →
