@@ -14,22 +14,27 @@ The opened workspace is a registered local Git worktree. Ditz summaries and deta
 
 - [x] (2026-09-07) Verified designated clean branch and ROOT-cleared baseline e8ec0f9; consumed exact task and read instructions.
 - [x] Created and started Ditz issue demo-plans-20260907; synchronized metadata.
-- [ ] Add explicit bounded task-dependency projection and mounted Plan lens UI.
-- [ ] Add bounded authored plan reader, linked browser, truthful Swarm index and maintenance instructions.
-- [ ] Prove real CLI-authored disposable metadata and actual packaged UI on owned virtual X11.
+- [x] Add explicit bounded task-dependency projection and mounted Plan lens UI.
+- [x] Add bounded authored plan reader, linked browser, truthful Swarm index and maintenance instructions.
+- [x] Prove real CLI-authored disposable metadata and actual packaged UI on owned virtual X11; default repository passed at 123fa18 with strict source/draft/camera/negative checks and zero renderer exceptions.
+- [ ] Finish the separate authored-Swarm archive case after correcting its exposed controlled-selection feedback loop.
 - [ ] Run meaningful local gates, proportional provider-diverse council, push reviewed PR and normal merge if base remains cleared.
 
 ## Surprises & Discoveries
 
 The current Plan lens is only a label over the System layout. The existing TaskBridgeClient deliberately owns one selected detail; graph reads must not reuse its selection-changing method. TaskDetail already contains complete bounded blocks/blockedBy rows with missing/cyclic/asymmetric diagnostics.
 
+Review found actual late-intent, client-lifetime and aggregate canceled-request-cap holes. Controlled tests failed before those corrections, then passed. Real packaged navigation found measurable graph containers were necessary to avoid System camera restoration drift; opacity plus inert was required because Flow descendants explicitly override visibility/pointer defaults. The three-node default journey then passed in 6.3 seconds. A separate six-node Swarm archive journey exposed selection ping-pong: an internal Flow selection observation can lag the controlled selection prop. Installed Flow source confirms independent node-sync and selection effects. The correction retains explicit click/keyboard/outline authority and does not feed observations back into parent selection. Its dedicated retained-selection regression failed before correction (1 RED / 106 PASS).
+
 ## Decision Log
 
 Task graph reads will be a small read-only method on the existing client, pinned to the currently observed snapshot, with independent cancellation and bounded concurrency. Graph selection will use explicit pinned activation rather than a latest-revision lookup. Plans use a versioned explicit index rather than directory inference. Both views stay mounted across lens switches so source/draft and independent graph cameras survive navigation.
 
+Native review converged on each substantive delta. Anthropic Sonnet produced no review before a bounded stop; Google returned acknowledgements, not reviews, on an initial call and one continuation. Both are recorded as unfilled seats, never as CLEAN. The misleading busy-versus-expired graph notice is a noncritical Ditz follow-up, not hidden. ROOT has explicitly cleared integration base 94efa689 in the demo wave's written integration authority; no later remote tip is implied.
+
 ## Outcomes & Retrospective
 
-Implementation pending. This step does not implement planning automation, task mutation, live managed providers or orgs' full skill system.
+The bounded views, strict broker reader, authored Swarm index and maintenance guide are implemented and pushed in PR53. Final joined local checks and normal landing remain pending. This step does not implement planning automation, task mutation, live managed providers or orgs' full skill system. Default disposable data is CLI-authored test input; the Swarm case archives committed authored source but creates its own matching task records, not the source repository's metadata branch.
 
 ## Context and Orientation
 

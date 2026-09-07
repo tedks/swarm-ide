@@ -130,7 +130,9 @@ async function main() {
   await click(`${planGraph} button`, `Read doc · ${fixture.docPath}`);
   await until(async () => (await sourceState())?.text === fixture.docText, "plan opens exact document through broker");
   const sourcePlan = fixture.index.nodes.find((node) => node.sourcePaths.includes(fixture.sourcePath));
-  await click(label(`Inspect plan ${sourcePlan.id}`)); await click(`${planGraph} button`, `Open source · ${fixture.sourcePath}`);
+  await focus(`${planGraph} .react-flow__node[data-id="${sourcePlan.id}"]`); key("Enter");
+  await until(async () => (await text(`${planGraph} .planning-inspector code`)).startsWith(sourcePlan.id), "native plan node Enter changes inspector");
+  await click(`${planGraph} button`, `Open source · ${fixture.sourcePath}`);
   await until(async () => (await sourceState())?.text === dirty.text, "plan source activation retains dirty buffer");
   assert.deepEqual(await sourceState(), dirty, "source logical cursor retained");
   const linked = fixture.index.nodes.find((node) => node.taskIds.length);

@@ -22,12 +22,19 @@ export function ProjectionCanvas({ label, nodes: input, edges: links, selected, 
       interactionWidth: 24, focusable: true }));
     return { nodes, edges };
   }, [input, links, selected, positions]);
-  return <div className="planning-canvas" aria-label={label}>
+  return <div className="planning-canvas" aria-label={label} onKeyDownCapture={(event) => {
+    if (event.key !== "Enter" && event.key !== " ") return;
+    const target = event.target instanceof Element ? event.target.closest(".react-flow__node[data-id]") : null;
+    const id = target?.getAttribute("data-id");
+    if (!id || !event.currentTarget.contains(target) || !input.some((node) => node.id === id)) return;
+    event.preventDefault(); event.stopPropagation(); onSelect(id);
+  }}>
     <ReactFlow nodes={graph.nodes} edges={graph.edges} fitView fitViewOptions={{ padding: .2, maxZoom: 1 }}
       minZoom={.08} maxZoom={2} nodesConnectable={false} nodesDraggable={false} elementsSelectable
       onNodeClick={(_event, node) => onSelect(node.id)}
-      onNodeDragStop={(_event, node) => setPositions((prior) => new Map(prior).set(node.id, node.position))}
-      onSelectionChange={({ nodes }) => { if (nodes.length === 1 && nodes[0]!.id !== selected) onSelect(nodes[0]!.id); }}>
+      onNodeDragStop={(_event, node) => setPositions((prior) => new Map(prior).set(node.id, node.position))}>
+      {/* Selection has one authority: explicit click/key/outline gestures. A Flow
+          selection observation may still describe the previous controlled nodes. */}
       <Background color="#25413f" gap={22} size={1} /><Controls showInteractive={false} />
     </ReactFlow>
   </div>;
