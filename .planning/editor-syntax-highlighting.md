@@ -13,7 +13,8 @@ parser; unknown paths remain ordinary plain text. Source content is never run.
 
 - [x] (2026-09-07) Verified clean designated branch at 83e53e7 and scoped existing editor.
 - [x] (2026-09-07 22:25Z) Added pinned parsers and compartment-selected highlighting, keeping state6.7.4 override.
-- [ ] Verify focused retention/command/navigation tests and real owned virtual colors.
+- [x] (2026-09-07 22:32Z) Focused syntax/identity/navigation/command/task-workbench tests passed; real packaged TS/JSON/Markdown native edit/tab/save proof passed with owned cleanup and zero renderer errors.
+- [ ] Verify ROOT-approved exact focus-test synchronization and final relevant quality/build.
 - [ ] Native review, push ready PR, Ditz sync and executive handoff.
 
 ## Context and Orientation
@@ -91,6 +92,18 @@ The first packaged proof showed TypeScript token colors and no renderer errors,
 then stopped on the driver's exact native insertion-position check. These are not
 green aggregate results or claims of production correction.
 
+The corrected input proof uses separate native Enter/text/Enter gestures, then
+native Ctrl-Home/End to select a known first-line-end offset. This avoids incorrect
+driver assumptions about multiline insertion and visual Left across an empty
+final line; exact resulting text and cursor are still asserted. The final
+packaged proof passed in2.336s scenario time,3.225s whole run, with cleanup1 and
+zero renderer errors/resize warnings. Screenshots were inspected for all3formats.
+
+ROOT approved exactly waiting for the existing dirty-Reveal focus assertion with
+the existing default waitFor timeout. Notice rendering and passive focus delivery
+are different events. This is a test synchronization correction, not proof of the
+original historical failure's cause, and it changes no production navigation.
+
 ## Decision Log
 
 Use synchronous, bundled maintained parsers for this small set. This avoids
@@ -102,5 +115,9 @@ including failed test/proof boundaries rather than erasing them on correction.
 
 ## Outcomes & Retrospective
 
-Implementation and proof pending. Initial plan records preservation boundaries
-before edits; update this section with actual proof and limits before handoff.
+Implementation and real owned packaged proof complete; final quality/review and
+ready-PR handoff pending. Scope remains source files only, not rendered task docs
+or chat. Tiny proof repo intentionally has no service topology or Ditz branch,
+whose existing failed/unavailable states remain visible. No managed model turn,
+provider claim or shared app adoption. ROOT must materialize reviewed frozen
+dependencies before adopting this renderer enhancement.
