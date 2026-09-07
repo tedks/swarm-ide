@@ -270,6 +270,36 @@ describe("truthful Context in the mounted workbench", () => {
     expect(subject()).toBe("interface:payments.authorize");
     expect(document.querySelector(".source-surface header strong")?.textContent).toBe("core/files.ts");
   });
+  for (const destination of ["draft", "palette"] as const) {
+    it(`an offered source command cannot steal focus after the user enters the ${destination}`, async () => {
+      const trace = beginOrderTrace(`offered-then-${destination}`); handoff.hold = true;
+      setup(); render(<App />);
+      fireEvent.click(await screen.findByRole("button", { name: "Ask an agent about this focus" }));
+      const draft = screen.getByRole("textbox", { name: "Task" }) as HTMLTextAreaElement;
+      fireEvent.change(draft, { target: { value: "Keep this draft" } });
+      await openContextPath("core/files.ts");
+      await waitFor(() => expect(handoff.offered?.navigation).toBeDefined());
+      const nonce = handoff.offered!.navigation.nonce;
+      if (destination === "draft") act(() => draft.focus());
+      else {
+        fireEvent.keyDown(window, { key: "k", ctrlKey: true });
+        const input = await screen.findByRole("textbox", { name: "Workspace command" });
+        await waitFor(() => expect(document.activeElement).toBe(input));
+      }
+      const destinationElement = document.activeElement;
+      trace.mark("user-destination-focused");
+      // Correct cancellation may withdraw the prop. Do not resurrect it; if it
+      // remains offered, only that current object may reach actual delivery.
+      if (handoff.offered) {
+        expect(handoff.offered.navigation.nonce).toBe(nonce); releaseCurrentHandoff();
+      }
+      expect.soft(document.activeElement).toBe(destinationElement);
+      expect.soft(trace.rows.some((row) => row.event === "navigation-ack" && row.nonce === nonce)).toBe(false);
+      expect.soft(trace.rows.some((row) => row.event === "editor-focus-before")).toBe(false);
+      expect(handoff.offered).toBeNull(); expect(draft.value).toBe("Keep this draft");
+      expect(document.querySelector(".source-surface header strong")?.textContent).toBe("core/files.ts");
+    });
+  }
   for (const applied of [false, true]) {
     it(`an old ${applied ? "positive" : "negative"} acknowledgement cannot clear a newer source command`, async () => {
       beginOrderTrace(`stale-${applied ? "positive" : "negative"}-new-command`); handoff.hold = true;
