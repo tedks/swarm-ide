@@ -32,3 +32,15 @@ log_events:
     without reproducing or explaining original failure. Issue remains open; no second
     run, runtime fix, gate waiver or assertion relaxation. Cause is unproved; static
     close-tail/timeout hypotheses are not causal evidence.
+- time: 2026-09-07T06:23:02-00:00
+  who: Ted Smith
+  what: commented
+  comment: 'Bounded ROOT-authorized deterministic continuation: current6806f57 and
+    exact pre-Q4 base650432b plus identical test-only cherry-pick1820e39 both reproduce2
+    unsuppressed rehearsal-oracle failures: pre-close queued2emitted/1retained; emission
+    during shutdown persistence before dispose2/1. In-flight append2/2 and hostile
+    post-close unchanged1/1 pass. Actual baseline quality2FAIL/1239PASS. This proves
+    the mismatch class exists on baseline, NOT cause of historical discarded-profile
+    GUI failure. Native test review CLEAN. Minimal next authority proposed for core/agents/service.ts
+    plus adaptation of tests/agent-shutdown-order.test.ts; no runtime edit or GUI
+    rerun performed.'
