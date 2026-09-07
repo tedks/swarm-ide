@@ -9,14 +9,17 @@ Clicking a repository task should open its read-only document in the central edi
 ## Progress
 
 - [x] (2026-09-07) Read the assigned worktree, shared ownership and relevant existing contracts.
-- [ ] Implement click-to-document, task Context and bounded graph scope with regressions.
-- [ ] Add separately pinned real metadata history if available within the existing bounded reader.
-- [ ] Run focused red/green tests, native review and actual owned virtual task journey.
-- [ ] Push ready PR, record evidence and hand back to ROOT for normal merge/adoption.
+- [x] (2026-09-07 23:08Z) Implemented click-to-document, task Context and bounded graph scope with regressions.
+- [x] (2026-09-07 23:08Z) Added separately pinned metadata history from the same owned YAML parse/cache; immutable details unchanged.
+- [x] (2026-09-07 23:20Z) First full quality 1672/124 and actual packaged task journey passed; native review clean, subsequent narrow graph/readability delta re-reviewed.
+- [x] (2026-09-07 23:25Z) Frozen 79199a4 quality1674/124 and focused14/4 passed; actual polished packaged journey1729ms, zero renderer errors, cleanup1.
+- [x] (2026-09-07 23:27Z) PR66 pushed; native fix-delta convergence CLEAN, documentation/evidence recorded for ROOT normal merge/adoption.
 
 ## Surprises & Discoveries
 
-Existing TaskDetail deliberately has no timestamps/update log. It participates in canonical prepared task bytes, so adding display metadata there would conflate observation with execution context. Task graph currently fits all summary nodes even though only 64 details are read; this makes a large repository hard to read.
+Existing TaskDetail deliberately has no timestamps/update log. It participates in canonical prepared task bytes, so adding display metadata there would conflate observation with execution context. Actual Ditz stores `creation_time` and `log_events` with offset timestamps. The new supplementary cache retains those independently. The graph reads only 64 details, so scope counts must distinguish unread metadata from hidden rendered nodes.
+
+The first regression was red because one click only selected, not opened. The first packaged driver sent input before the palette settled, then separately sent Enter before filename results existed; both failures had zero renderer errors and owned cleanup. Explicitly waiting for the native input and result fixed the test sequence, not an attributed product defect. Selecting another task legitimately adds a retained-preview notice to an attached task; the proof now checks that exact notice separately while preserving every other attachment byte. Native review caught an 88px vertical layer pitch with unbounded title height; task cards now have a 68px cap and accessible full titles.
 
 ## Decision Log
 
@@ -24,7 +27,7 @@ Use one reviewable vertical PR; it is not a PR stack. Keep the shared source edi
 
 ## Outcomes & Retrospective
 
-In progress. ROOT owns merge, managed preview adoption and any later roadmap step.
+PR66 implements the useful task document/Context/graph vertical. Real Git/YAML history and source/draft/camera retention have packaged evidence; recorded Journal and loaded managed-run associations have exact-ID/repository tests, not live-provider claims. The 50/50 central task-and-graph split is filed as `task-workspace-central-split-followon`. ROOT owns merge, managed preview adoption and any later roadmap step.
 
 ## Context and Orientation
 
@@ -55,3 +58,5 @@ Operational handoff files live in `/tmp/swarm-ide-demo-controls.q2i33c/task-work
 Reuse React, existing typed bridge, pinned Git reader and YAML worker, and the existing React Flow canvas. No new runtime dependency or provider/model integration is required. `TaskContext` will accept the existing task client state plus deliberate navigation callbacks and explicitly associated activity. Optional task-only canvas layout/scope inputs must preserve Plan's default behavior.
 
 Initial plan records T4's implementation scope and current assumptions before code changes.
+
+2026-09-07 update: implemented the bounded vertical, documented exact evidence boundaries and the native-review layout correction. Final frozen checks remain explicit rather than treating a prior-head pass as current proof.
