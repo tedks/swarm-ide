@@ -160,6 +160,7 @@ describe("truthful Context in the mounted workbench", () => {
   it("loads exact build references for file Context without opening either build graph", async () => {
     const test = setup(); render(<App />); await openContextPath("core/files.ts");
     await waitFor(() => expect(test.request.mock.calls.some(([request]) => request.type === "buildGraph.observe")).toBe(true));
+    expect(test.request.mock.calls.filter(([request]) => request.type === "buildGraph.observe").every(([request]) => request.type === "buildGraph.observe" && request.refresh === false)).toBe(true);
     expect(screen.queryByTestId("captured-build-camera")).toBeNull();
     await waitFor(() => expect(document.querySelector("[data-context-section='capture']")?.textContent).toContain("//:quality_sources"));
     expect(test.request.mock.calls.some(([request]) => request.type === "reconciliation.start")).toBe(false);

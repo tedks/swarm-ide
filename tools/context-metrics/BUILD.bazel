@@ -21,7 +21,7 @@ sh_test(
         "//tools/build-graph:sources",
         "//tools/task-integration:sources",
     ],
-    env_inherit = ["SWARM_ELECTRON_BIN", "SWARM_ELECTRON_NO_SANDBOX", "SWARM_SOURCE_WORKSPACE", "SWARM_VIRTUAL_DISPLAY", "SWARM_VIRTUAL_DESKTOP_PORT"],
+    env_inherit = ["SWARM_ELECTRON_BIN", "SWARM_ELECTRON_NO_SANDBOX", "SWARM_SOURCE_WORKSPACE", "SWARM_VIRTUAL_DISPLAY", "SWARM_VIRTUAL_DESKTOP_PORT", "SWARM_BAZEL_BIN", "SWARM_BAZEL_JAVA_HOME"],
     tags = ["desktop", "local", "no-sandbox"],
     timeout = "long",
 )
