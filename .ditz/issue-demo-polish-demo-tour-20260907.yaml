@@ -6,8 +6,8 @@ type: task
 component: demo
 release:
 reporter: Ted Smith <tedks@riseup.net>
-status: in_progress
-disposition:
+status: closed
+disposition: fixed
 creation_time: 2026-09-07T21:32:03-00:00
 references: []
 log_events:
@@ -62,3 +62,11 @@ log_events:
     zero renderer errors/resize warnings/model mutations. New screenshots joined-attribution/run.oXgeA3.
     No unrelated/full-suite repeats; prior quality attribution preserved. Ready/pushed
     not merged; ROOT owns landing/adoption.
+- time: 2026-09-07T22:11:39-00:00
+  who: Ted Smith
+  what: 'closed: fixed'
+  comment: ROOT normally merged PR61 after actual combined UI polish tour. Real Swarm
+    source/Ditz/current build graph/Attach/Prepare/recorded Activity, retained work
+    and zero errors/mutations/owned cleanup proved; authored AI briefing attribution
+    corrected. Native relevant reviews/local gates accepted, no live-provider or complete
+    graph claim.
