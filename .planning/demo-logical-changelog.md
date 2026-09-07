@@ -14,7 +14,8 @@ An operator opens Journal, reads short accounts of meaningful changes, and expan
 - [x] (2026-09-07 20:08Z) Implemented existing Activity feed -> main text-area expanded document, explicit source actions and retained error/core-generation fencing tests. Initial quality passed after correcting a test's mistaken fixture-function use. No historical broad RED claim.
 - [x] (2026-09-07 20:29Z) Actual packaged source-handoff controlled RED->GREEN; pending real source reply, independently panned service graph, dirty source/draft and graph DOM retention proved. Native/Google fixpoint clean; Sonnet unavailable.
 - [x] (2026-09-07 20:38Z) Composed ROOT-cleared B1/L1 base in baf6a52. Final local build44, quality1517/108, real packaged Journal4.344s and unchanged ordinary-close rehearsal28.577s passed; both owned desktop cleanups complete. Native/Google composition clean.
-- [ ] Normal PR56 merge remains held by ROOT's H1 landing-slot reservation. Coherent reviewed implementation pushed; no shared app adoption.
+- [x] (2026-09-07 20:43Z) Composed subsequently ROOT-cleared H1 observer in09ed53e. Native/Google composition clean; relevant joined quality1550/111 and actual packaged Journal4.342s passed with cleanup1/zero renderer errors. No unrelated full-suite repeat.
+- [ ] Normal PR56 merge remains held by ROOT's next V1 landing-slot reservation. Coherent reviewed implementation pushed; no shared app adoption.
 
 ## Surprises & Discoveries
 
@@ -36,7 +37,7 @@ Decision: explicit source citations use the existing authoritative `openLinkedFi
 
 Implemented and locally verified on ROOT-cleared B1/L1 composition, awaiting ordered PR56 landing. The existing Activity log opens a readable main-document account with agent/task associations, actions, evidence and deliberate working-source links. One actual supervised model turn produced the included Swarm story and two real disposable Git generations. Actual packaged refresh proved stale/unknown-citation refusal and source/draft/camera retention, including controlled first-source timing. Build44 and quality1517/108 passed; unchanged ordinary-close rehearsal also passed. Native/Google review converged; Sonnet was unavailable, not substituted. No hosted-CI claim or all-suite claim: the final checkpoint intentionally ran relevant local gates rather than every unrelated desktop suite.
 
-In-app scheduling, streaming summarization and managed provider activation remain outside this increment. The generated narrative itself surfaced stale task-context documentation; Ditz `task-context-status-doc-drift` records that concrete follow-up, while `journal-followups-20260907` records deferred presentation/automation work. No private transcript was published. ROOT's H1 landing reservation, not a product test failure, currently prevents normal merge; no shared app was changed.
+In-app scheduling, streaming summarization and managed provider activation remain outside this increment. The generated narrative itself surfaced stale task-context documentation; Ditz `task-context-status-doc-drift` records that concrete follow-up, while `journal-followups-20260907` records deferred presentation/automation work. No private transcript was published. H1 subsequently landed and was ROOT-cleared; its additive composition09ed53e passed relevant quality1550/111 and packaged4.342s with native/Google clean. ROOT's next V1 landing reservation, not a product test failure, currently prevents normal merge; no shared app was changed.
 
 ## Context and Orientation
 
