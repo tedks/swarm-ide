@@ -1,0 +1,7 @@
+.declaration-overlay { position: fixed; inset: 0; z-index: 70; background: #081010b8; display: grid; place-items: center; }
+.declaration-overlay section { background: var(--panel, #122321); color: var(--text, #d5e8df); border: 1px solid #547766; border-radius: 8px; padding: 20px; width: min(760px, 90vw); max-height: 85vh; overflow: auto; }
+.declaration-overlay p { overflow-wrap: anywhere; font-size: 12px; line-height: 1.5; }
+.declaration-overlay ul { list-style: none; padding: 0; }
+.declaration-overlay li button { width: 100%; text-align: left; margin-bottom: 6px; }
+.declaration-overlay strong, .declaration-overlay small { display: block; overflow-wrap: anywhere; }
+.declaration-overlay small { margin-top: 4px; }
