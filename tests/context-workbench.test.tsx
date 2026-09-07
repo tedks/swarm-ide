@@ -14,7 +14,7 @@ type TraceFields = { path?: string; nonce?: number; held?: boolean; applied?: bo
 const handoff = vi.hoisted(() => ({
   hold: false,
   trace: null as null | ((event: string, fields?: TraceFields) => void),
-  offered: null as null | { owner: symbol; navigation: NonNullable<EditorProps["navigation"]>; release: () => void },
+  offered: null as null | { owner: symbol; navigation: NonNullable<EditorProps["navigation"]>; release: () => void; acknowledge: (applied: boolean) => void },
 }));
 vi.mock("../app/renderer/EditorPane", async () => {
   const actual = await vi.importActual<typeof import("../app/renderer/EditorPane")>("../app/renderer/EditorPane");
@@ -28,7 +28,13 @@ vi.mock("../app/renderer/EditorPane", async () => {
     const held = Boolean(handoff.hold && navigation && released !== navigation);
     React.useLayoutEffect(() => {
       if (released && released !== navigation) setReleased(null);
-      const offer = navigation ? { owner: owner.current, navigation, release: () => setReleased(navigation) } : null;
+      const offer = navigation ? { owner: owner.current, navigation, release: () => setReleased(navigation),
+        // Fault-injection handle for a delayed acknowledgement only. It never
+        // delivers an old navigation or fabricates a real EditorPane focus.
+        acknowledge: (applied: boolean) => {
+          handoff.trace?.("injected-delayed-ack", { nonce: navigation.nonce, applied });
+          props.onNavigation?.(navigation.nonce, applied);
+        } } : null;
       handoff.offered = offer;
       const path = navigation && "path" in navigation && typeof navigation.path === "string" ? navigation.path : undefined;
       handoff.trace?.("navigation-offered", { path, nonce: navigation?.nonce, held });
@@ -207,6 +213,8 @@ describe("truthful Context in the mounted workbench", () => {
       if (order !== "late") {
         expect(releaseCurrentHandoff()).toBe(nonce);
         expect(trace.rows.some((row) => row.event === "navigation-ack" && row.nonce === nonce && row.applied)).toBe(true);
+        expect(handoff.offered).toBeNull();
+        expect(document.querySelector(".tasks-reveal-notice")?.textContent).toBe("Opened current working file; no line was recorded.");
       }
       trace.mark("activate-B");
       test.delay("example/fraudcheck.proto"); fireEvent.click(screen.getByRole("button", { name: "Activate service:fraud-check" }));
@@ -214,19 +222,19 @@ describe("truthful Context in the mounted workbench", () => {
       await test.readEntered;
       expect(subject()).toBe("core/files.ts");
       if (order === "late") {
-        // If App withdrew/replaced A, this fails as an inadequate seam; no stale
-        // command may be reconstructed to force the predicted counterexample.
-        expect(handoff.offered?.navigation.nonce).toBe(nonce);
-        expect(releaseCurrentHandoff()).toBe(nonce);
         const entered = trace.rows.find((row) => row.event === "held-read-enter")!.order;
-        const released = trace.rows.find((row) => row.event === "gate-release-current")!.order;
-        const acknowledged = trace.rows.find((row) => row.event === "navigation-ack" && row.nonce === nonce && row.applied)!.order;
-        expect(entered).toBeLessThan(released); expect(released).toBeLessThan(acknowledged);
-        expect(trace.rows.some((row) => row.event === "editor-focus-before" && row.order > released && row.order < acknowledged)).toBe(true);
-        expect(trace.rows.some((row) => row.event === "focusin" && row.focus === "source-editor" && row.order > released && row.order < acknowledged)).toBe(true);
-        // Soft only so the same deterministic case still checks late-result and
-        // source retention after recording this possible authority counterexample.
-        expect.soft(document.querySelector(".tasks-reveal-notice")?.textContent).toBe("Opening working file example/fraudcheck.proto…");
+        // Withdrawal is valid. Otherwise deliver only the still-offered object:
+        // the REAL effect must reject its obsolete authority before focus/ack.
+        if (handoff.offered) {
+          expect(handoff.offered.navigation.nonce).toBe(nonce);
+          expect(releaseCurrentHandoff()).toBe(nonce);
+          expect(entered).toBeLessThan(trace.rows.find((row) => row.event === "gate-release-current")!.order);
+        }
+        expect(handoff.offered).toBeNull();
+        expect(trace.rows.some((row) => row.event === "navigation-ack" && row.nonce === nonce)).toBe(false);
+        expect(trace.rows.some((row) => ["editor-focus-before", "focusin"].includes(row.event) && row.order > entered)).toBe(false);
+        trace.mark("obsolete-handoff-retired", { nonce });
+        expect(document.querySelector(".tasks-reveal-notice")?.textContent).toBe("Opening working file example/fraudcheck.proto…");
       } else if (order === "deliberate-source") {
         trace.mark("deliberate-source-pointer"); fireEvent.pointerDown(editor.contentDOM);
         expect(document.querySelector(".tasks-reveal-notice")?.textContent).toContain("superseded");
@@ -244,6 +252,43 @@ describe("truthful Context in the mounted workbench", () => {
       expect(screen.getByTestId("graph-repo")).toBe(repoGraph);
       cameras.forEach((camera) => { expect(camera.isConnected).toBe(true); expect(camera.value).toBe("retained-camera"); });
       expect((screen.getByRole("textbox", { name: "Task" }) as HTMLTextAreaElement).value).toBe("Preserve this local draft");
+    });
+  }
+  it("an obsolete negative source acknowledgement cannot replace a newer pending notice", async () => {
+    const trace = beginOrderTrace("stale-negative-pending"); handoff.hold = true;
+    const test = setup(); render(<App />); await openContextPath("core/files.ts");
+    await waitFor(() => expect(handoff.offered?.navigation).toBeDefined());
+    const old = handoff.offered!;
+    test.delay("example/fraudcheck.proto"); fireEvent.click(screen.getByRole("button", { name: "Activate service:fraud-check" }));
+    await screen.findByText("Opening working file example/fraudcheck.proto…"); await test.readEntered;
+    const focus = document.activeElement;
+    act(() => old.acknowledge(false));
+    expect(handoff.offered).toBeNull(); expect(document.activeElement).toBe(focus);
+    expect(document.querySelector(".tasks-reveal-notice")?.textContent).toBe("Opening working file example/fraudcheck.proto…");
+    expect(trace.rows.some((row) => row.event === "editor-focus-before")).toBe(false);
+    fireEvent.click(screen.getByRole("button", { name: "Inspect interface:payments.authorize" })); await test.finish();
+    expect(subject()).toBe("interface:payments.authorize");
+    expect(document.querySelector(".source-surface header strong")?.textContent).toBe("core/files.ts");
+  });
+  for (const applied of [false, true]) {
+    it(`an old ${applied ? "positive" : "negative"} acknowledgement cannot clear a newer source command`, async () => {
+      beginOrderTrace(`stale-${applied ? "positive" : "negative"}-new-command`); handoff.hold = true;
+      setup(); render(<App />); await openContextPath("core/files.ts");
+      await waitFor(() => expect(handoff.offered?.navigation).toBeDefined());
+      const old = handoff.offered!;
+      fireEvent.click(screen.getByRole("button", { name: "Activate service:fraud-check" }));
+      await waitFor(() => expect(subject()).toBe("example/fraudcheck.proto"));
+      await waitFor(() => { expect(handoff.offered).not.toBeNull(); expect(handoff.offered?.navigation.nonce).not.toBe(old.navigation.nonce); });
+      const next = handoff.offered!;
+      expect(next.navigation.nonce).not.toBe(old.navigation.nonce);
+      const notice = document.querySelector(".tasks-reveal-notice")?.textContent;
+      act(() => old.acknowledge(applied));
+      expect(handoff.offered).toBe(next);
+      expect(document.querySelector(".tasks-reveal-notice")?.textContent).toBe(notice);
+      expect(releaseCurrentHandoff()).toBe(next.navigation.nonce);
+      expect(handoff.offered).toBeNull();
+      expect(document.querySelector(".tasks-reveal-notice")?.textContent).toBe(notice);
+      expect(document.activeElement?.closest(".cm-editor")).not.toBeNull();
     });
   }
   it("superseding an in-flight definition with the palette gives Escape to the palette", async () => {
