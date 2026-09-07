@@ -1,0 +1,26 @@
+id: agent-owned-process-observer-discrepancy
+title: Investigate confirmed cleanup versus namespace member observation discrepancy
+desc: 'N2 unchanged agent ownership code at topic8355521: full local quality1193/1194
+  failed tests/agent-owned-process.test.ts:152, liveMembers(namespace) reported PID3335140
+  immediately after confirmed cleanup; no afterEach cleanup timeout occurred, PID
+  absent on later readonly check. Saved failure log in N2 control verified-tests.log
+  and stable artifacts. liveMembers compares reusable pid namespace inode and separately
+  reads stat without holding namespace/process-start identity; namespace/PID reuse
+  is plausible but unproved. Owner confirmation already waits namespace wrapper and
+  guardian close, so terminal witness timing alone is not an explanation. Do not weaken
+  assertion or call this fixed; capture inode + PID start/state/command + repeated
+  identity checks in a separately authorized diagnostic slice. Search changes do not
+  alter owner lifecycle; real policy remains unavailable.'
+type: bugfix
+component: default
+release:
+reporter: Ted Smith <tedks@riseup.net>
+status: unstarted
+disposition:
+creation_time: 2026-09-07T01:56:46-00:00
+references: []
+log_events:
+- time: 2026-09-07T01:56:46-00:00
+  who: Ted Smith
+  what: created
+  comment: ""
