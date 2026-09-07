@@ -55,6 +55,11 @@ async function main() {
   await run(() => [...document.querySelectorAll(".external-information button")].find((node) => node.textContent === "Return to source information").click());
   const final = await run(() => ({ source: document.querySelector(".cm-content").cmView.rootView.view.state.doc.toString(), cameras: [...document.querySelectorAll(".react-flow__viewport")].map((n) => n.style.transform), graphInstances: globalThis.__externalGraphNodes.every((node) => node.isConnected), dirty: document.querySelector(".file-state").textContent.includes("dirty") }));
   assert.equal(final.source, retained.source); assert.deepEqual(final.cameras, retained.cameras); assert(final.graphInstances && final.dirty);
+  // The unchanged dirty-buffer guard correctly vetoes app.quit. After proving
+  // retention, deliberately save this owned test repository through ordinary UI.
+  await click(".file-state button");
+  await until(() => run(() => document.querySelector(".file-state").classList.contains("file-saved")), "ordinary save before close");
+  assert.equal(await fs.readFile(path.join(fixture.root, "README.md"), "utf8"), retained.source);
   const agent = await run(async () => window.swarm.request({ protocolVersion: 7, requestId: `proof:${crypto.randomUUID()}`, type: "agent.snapshot" }));
   assert(agent.ok && !agent.agent.snapshot.capabilities.controls.launch && agent.agent.snapshot.runs.length === 0);
   assert.deepEqual(rendererErrors, []);

@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { mkdtemp, writeFile, mkdir, rm, symlink, chmod } from "node:fs/promises";
 import { tmpdir } from "node:os";
+import { execFileSync } from "node:child_process";
 import { join } from "node:path";
 import { ExternalAgentService, extractEntry, resolveAncestry } from "../core/external-agents";
 import { PROTOCOL_VERSION, parseCoreRequest, parseCoreResponseForRequest } from "../protocol/schema";
@@ -78,6 +79,28 @@ describe("operator-registered external observation", () => {
     const pending = service.request(request("externalAgents.snapshot")); service.dispose();
     await expect(pending).rejects.toThrow("disposed");
     await expect(service.request(request("externalAgents.snapshot"))).rejects.toThrow("disposed");
+  });
+  it("rejects a FIFO without blocking or acquiring ownership of its writer", async () => {
+    const { service, rollout } = await setup(); await rm(rollout); execFileSync("mkfifo", [rollout]);
+    const started = Date.now();
+    expect(await service.request(request("externalAgents.read", { sessionId: A }))).toMatchObject({ detail: { session: { status: "unavailable" }, entries: [] } });
+    expect(Date.now() - started).toBeLessThan(1000);
+  });
+  it("context paths require exact operator repository scope and cannot be absolute or parent escapes", async () => {
+    const { service, registry, root, rollout } = await setup();
+    const row = { id: A, label: "context", rollout, contextPaths: ["docs/guide.md"] };
+    expect(await service.request(request("externalAgents.read", { sessionId: A }))).toMatchObject({ detail: { session: { contextPaths: [] } } });
+    await writeFile(registry, JSON.stringify({ version: 1, sessions: [{ ...row, contextRoot: root }] }));
+    expect(await service.request(request("externalAgents.read", { sessionId: A }))).toMatchObject({ detail: { session: { contextPaths: ["docs/guide.md"] } } });
+    for (const path of ["../private.json", "/private.json", ".git/config"]) {
+      await writeFile(registry, JSON.stringify({ version: 1, sessions: [{ ...row, contextRoot: root, contextPaths: [path] }] }));
+      expect(await service.request(request("externalAgents.snapshot"))).toMatchObject({ snapshot: { status: "unavailable" } });
+    }
+  });
+  it("marks truncated assistant text rather than silently presenting it as complete", async () => {
+    const { service } = await setup(meta() + message("x".repeat(5000)));
+    const result = await service.request(request("externalAgents.read", { sessionId: A }));
+    expect(result.kind === "read" && result.detail.entries[0]?.text).toContain("[truncated]");
   });
   it("metadata ancestry supports arbitrary admitted depth and marks cycles without recursion", () => {
     const sessions: ExternalAgentSummary[] = Array.from({ length: 64 }, (_, i) => ({ id: `10000000-0000-4000-8000-${String(i + 1).padStart(12, "0")}`, label: `agent ${i}`, status: "observed", evidence: "synthetic", parentId: i ? `10000000-0000-4000-8000-${String(i).padStart(12, "0")}` : null, ancestry: "root", observationId: "a".repeat(64), observedAt: "2026-09-07T12:00:00Z", message: "test", contextPaths: [] }));
