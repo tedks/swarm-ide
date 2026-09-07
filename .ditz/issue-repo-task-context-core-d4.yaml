@@ -1,0 +1,16 @@
+id: repo-task-context-core-d4
+title: Prepare authoritative pinned repository-task context
+desc: ""
+type: task
+component: swarm-ide
+release:
+reporter: Ted Smith <tedks@riseup.net>
+status: unstarted
+disposition:
+creation_time: 2026-09-07T10:33:16-00:00
+references: []
+log_events:
+- time: 2026-09-07T10:33:16-00:00
+  who: Ted Smith
+  what: created
+  comment: ""
