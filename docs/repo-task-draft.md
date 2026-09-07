@@ -301,6 +301,8 @@ revalidation can produce `AGENT_OUTCOME_UNKNOWN` at that boundary, even if core
 later rejects or admits. Do not upgrade it to certain rejection because it
 looked like metadata work. Reconcile through existing reads, never replay launch.
 Tests must cover a >5-second bounded Prepare success and late launch outcomes.
+A durable run proves admission; an absent receipt, even after a late internal
+rejection, does not prove rejection to the timed-out caller. Keep it unresolved.
 
 Any changed commit (even unrelated issue changes), mismatched blob/ID, missing
 task/ref/object, malformed/limited metadata, expired read or changed

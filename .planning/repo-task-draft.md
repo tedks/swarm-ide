@@ -22,7 +22,8 @@ deterministic rehearsal for admission/history/recovery evidence, not model work.
 
 - [x] (2026-09-07 08:53Z) D2 verified designated clean branch at ROOT-approved PR44 normal 9e2f095; read planning rules, task contract, closure ledger, UI decisions and ROOT landing receipt; inspected actual prepare/context/store/task/client seams.
 - [x] (2026-09-07 08:54Z) Created/started design subissue `repo-task-draft-contract-d2`; parent `repo-task-draft-provenance` remains open. Drafted this plan and product contract without implementation changes.
-- [ ] D2 independent light design review, local documentation checks and reviewed normal PR landing; actual outcome must be recorded before claiming design completion.
+- [x] (2026-09-07 09:09Z) Independent light native review: one Important disposal-seam finding corrected; lifecycle delta and focused timeout delta both CLEAN. Local whitespace, nine relative links, required plan headings/spacing and exact four-doc scope checked. No implementation tests run or claimed.
+- [ ] D2 normal PR47 landing and Ditz closure; actual merge receipt is required before design completion is claimed.
 - [ ] ROOT evaluates D2, then dispatches D3 shared-contract/compatibility base.
 - [ ] D3 lands and is ROOT-verified before D4 core and D5 UI consumers.
 - [ ] D4/D5 independently reviewed increments; neither alone closes delivered behavior.
@@ -102,9 +103,17 @@ Do not add a seventh agent command or widen permission scope.
 ## Outcomes & Retrospective
 
 
-D2 currently provides a grounded design and prospective implementation sequence,
-not a shipped attachment button or executable schema. Local checks and review
-are recorded below when actually complete. Real task browsing/backlinks and
+D2 provides a grounded design and prospective implementation sequence,
+not a shipped attachment button or executable schema. Draft PR47 contains only
+the four owned documentation files. Independent OpenAI native review identified
+one Important missing context-disposal seam; the explicit lifecycle correction
+converged CLEAN, as did a focused Electron Prepare timeout correction. Foreign
+reviewers were not requested for this proportional docs-only gate. Local
+whitespace, nine relative Markdown links, 12 required plan sections with correct
+heading spacing, actual referenced proof-target names and exact owned scope
+passed; no code/build/GUI/model execution occurred. The final normal merge and
+clean pushed branch are separately recorded in the PR and step landing receipt.
+Real task browsing/backlinks and
 source-handoff/shutdown fixes are already merged at the approved base; their
 prior 34-target build/all 13 suites/1,305 tests belong to that tree, not to a new
 execution here. Historical discarded GUI/Context failures remain unlocalized.
@@ -278,6 +287,8 @@ actual result; a late/disconnected prepare cannot refill newer UI state. Launch
 still has its existing five-second mutation timeout: delayed revalidation may
 surface AGENT_OUTCOME_UNKNOWN, not a manufactured rejection. Prove actual late
 reject/admit outcomes are handled by existing receipt reads without replay.
+A durable run proves admission; absence of a receipt, including after late
+internal rejection, leaves the caller's timed-out operation unresolved.
 The timeout is a response limit, not a guarantee that queued work finishes.
 
 ### D5 — deliberate draft interaction, no core/store ownership
@@ -500,3 +511,9 @@ Boundary revision (2026-09-07, D2): grounded the nested observation budget in th
 actual Electron timeout and assigned only task-bearing Prepare's 40-second
 response branch; preserve existing five-second launch uncertainty. No timeout
 or code changed during D2.
+
+Review outcome (2026-09-07, D2): actual native convergence was CLEAN on the
+lifecycle delta and separately on the narrow timeout delta. Preserved the
+reviewer's explicit absent-receipt-is-not-rejection test requirement. These
+reviews attest the design correction only. ROOT still evaluates the contract
+before any implementation dispatch.
