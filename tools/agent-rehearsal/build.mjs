@@ -1,7 +1,7 @@
 import { build } from "esbuild";
 import { build as buildRenderer } from "vite";
 import { resolve } from "node:path";
-import { mkdir, writeFile } from "node:fs/promises";
+import { copyFile, mkdir, writeFile } from "node:fs/promises";
 
 const [output] = process.argv.slice(2);
 if (!output) throw new Error("Owned Bazel build output required");
@@ -19,4 +19,8 @@ plugins: [{ name: "fixed-rehearsal-core-observer", setup(builder) {
   });
 } }], });
 await writeFile(resolve(output, "rehearsal-inputs.json"), JSON.stringify(Object.keys(result.metafile.inputs).sort(), null, 2));
+// The same owned YAML worker as production resolves this archive-local module.
+await build({ entryPoints: ["node_modules/yaml/dist/index.js"], bundle: true, platform: "node", format: "cjs",
+  target: "node22", outfile: resolve(output, "core/node_modules/yaml/index.js") });
+await copyFile("node_modules/yaml/LICENSE", resolve(output, "core/node_modules/yaml/LICENSE"));
 await buildRenderer({ configFile: resolve("vite.config.mts"), base: "./", build: { outDir: resolve(output, "renderer"), emptyOutDir: true } });

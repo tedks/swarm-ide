@@ -11,8 +11,8 @@ A person can attach an explicitly chosen Ditz task to a fixed-source draft, prep
 
 
 - [x] (2026-09-07 17:51Z) Verified designated clean `feature/task-draft-integration` at reviewed PR50 normal `e8ec0f953071cec9bfeed7555e120aedc4c108dc`; consumed exact compacted ROOT-fork task and accepted design/scope.
-- [x] (2026-09-07 17:54Z) Created/started Ditz `repo-task-draft-integration-d6`, commented open parent `repo-task-draft-provenance`, synced; frozen dependency materialization passed without upgrades.
-- [ ] Extend real CLI-authored production proof with unrelated metadata change and deliberate fresh preparation at100/150.
+- [x] (2026-09-07 17:53Z) Created/started Ditz `repo-task-draft-integration-d6`, commented open parent `repo-task-draft-provenance`, synced; frozen dependency materialization passed without upgrades.
+- [x] (2026-09-07 17:57Z) New worker-composition assertion RED with1 failure/1454 passing. Exact real Tasks composition and archive-local YAML then added. Actual production package metadata-change/re-attach/reprepare at100/150 PASS16.117s, errors0/cleanup1; ordinary existing assertions retained. No deterministic admitted proof claimed yet.
 - [ ] Add separate task-bearing deterministic packaged admission/history/recovery proof and exact adversarial coverage map.
 - [ ] Review to clean fixpoint, run one frozen integrated build/full local suite, preserve raw evidence and normally merge only on ROOT-cleared base.
 - [ ] Close/sync bounded Ditz issue after actual merge; parent closes only with complete accepted coverage.

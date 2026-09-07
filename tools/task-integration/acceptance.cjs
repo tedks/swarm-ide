@@ -10,6 +10,7 @@ const { execFile } = require("node:child_process");
 const { promisify } = require("node:util");
 const evidence = process.env.SWARM_TASK_EVIDENCE;
 const packaged = process.env.SWARM_TASK_PACKAGE;
+const transport = require("./observe-transport.cjs");
 require(path.join(packaged, "app/electron/main.js"));
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 async function until(check, label, ms = 15000) {
@@ -140,6 +141,8 @@ async function main() {
     prepareLabel: document.querySelector(".agent-draft .agent-primary")?.textContent ?? null,
     prepareDisabled: document.querySelector(".agent-draft .agent-primary")?.disabled ?? null,
   }));
+  const agentCommands = () => transport().requests.filter((entry) =>
+    ["agent.prepare", "agent.launch", "agent.steer", "agent.cancel"].includes(entry.type));
   // Independent readonly oracle: owned CLI-authored repository + disk bytes,
   // never the task preview, a substituted Prepare request, or production helpers.
   const hash = (value, algorithm = "sha256") => createHash(algorithm).update(value).digest("hex");
@@ -159,7 +162,7 @@ async function main() {
     await until(() => run((s) => document.querySelector(s).open, selector), `ordinary expanded ${title}`);
     return selector;
   };
-  const preparedTaskProof = async (expectedReference, originalInstructions, percent) => {
+  const preparedTaskProof = async (expectedReference, originalInstructions, percent, confirm = true) => {
     const algorithm = await readGitText("rev-parse", "--show-object-format");
     const commit = await readGitText("rev-parse", "--verify", "refs/heads/ditz-metadata");
     const blob = await readGitText("rev-parse", "--verify", `${commit}:.ditz/issue-${fixture.taskId}.yaml`);
@@ -167,7 +170,6 @@ async function main() {
     assert.equal(hash(Buffer.concat([Buffer.from(`blob ${yamlBytes.length}\0`), yamlBytes]), algorithm), blob);
     const reference = { version: 1, worldId: "world:working", repositoryId: `repository:${hash(fixture.root)}`,
       provider: "ditz", metadataCommit: { algorithm, hex: commit }, taskId: fixture.taskId, issueBlob: { algorithm, hex: blob } };
-    assert.deepEqual(reference.metadataCommit, fixture.firstCommit);
     assert.deepEqual(expectedReference, reference, "preview pin agrees with independent owned Git identity");
     const content = canonical({ kind: "repository-task-data", version: 1, trust: "untrusted", reference,
       title: fixture.title, description: fixture.description });
@@ -221,8 +223,8 @@ async function main() {
     assert((await text(".agent-draft")).includes("ADAPTER_POLICY_UNAVAILABLE"));
     // Explicit confirmation still cannot enable production launch; Remove below
     // must retire both this actual preparation and the user's confirmation.
-    await nativeAttachmentClick(".agent-draft .agent-confirm input");
-    assert.equal((await attachmentPreparation()).confirmed, true);
+    if (confirm) await nativeAttachmentClick(".agent-draft .agent-confirm input");
+    assert.equal((await attachmentPreparation()).confirmed, confirm);
     assert.equal(await run((s) => document.querySelector(s).disabled, launch), true);
     const snapshot = await request({ type: "agent.snapshot" });
     assert(snapshot.ok && snapshot.agent.kind === "snapshot");
@@ -230,7 +232,7 @@ async function main() {
     assert.equal(snapshot.agent.snapshot.capabilities.controls.launch, false);
     await screenshot(`05-task-attachment-${percent}-prepared-policy.png`);
     return { contextVersion: context.contextVersion, reference, repositoryTask, attachment, taskText: context.taskText,
-      submittedPrompt, contextHash, initiallyConfirmed: false, explicitlyConfirmedBeforeRemoval: true,
+      submittedPrompt, contextHash, initiallyConfirmed: false, explicitlyConfirmedBeforeRemoval: confirm,
       launchDisabledEvenAfterConfirmation: true, observedRuns: snapshot.agent.snapshot.runs.length };
   };
   const attachmentPreview = async (selector, expectedReference) => {
@@ -359,6 +361,8 @@ async function main() {
 
   const layouts = [];
   const attachments = [];
+  const revisionJourneys = [];
+  let currentCommit = fixture.firstCommit;
   for (const percent of [150, 100]) {
     // Real ordinary zoom button, not direct native setZoomFactor or DOM resizing.
     if (percent === 150) {
@@ -388,7 +392,7 @@ async function main() {
     // UI. Production launch stays unavailable; this is not a model run.
     const expectedReference = { version: 1, worldId: first.task.observation.snapshot.worldId,
       repositoryId: first.task.observation.snapshot.repositoryId, provider: first.task.observation.snapshot.provider,
-      metadataCommit: fixture.firstCommit, taskId: fixture.taskId, issueBlob: detail.task.result.detail.blob };
+      metadataCommit: currentCommit, taskId: fixture.taskId, issueBlob: detail.task.result.detail.blob };
     const attach = ".task-detail:not(.task-document) .task-attach button";
     const proposal = '.agent-task-proposal[aria-label="Review task attachment"]';
     const originalInstructions = await run(() => globalThis.__taskProof.draftValue);
@@ -433,8 +437,49 @@ async function main() {
     await nativeAttachmentClick(".agent-draft .agent-primary");
     await until(async () => await has(".agent-draft .agent-launch-context") &&
       await run(() => !document.querySelector(".agent-draft .agent-primary").disabled), "actual ordinary UI attached Prepare succeeds");
-    const prepared = await preparedTaskProof(expectedReference, originalInstructions, percent);
+    const prepared = await preparedTaskProof(expectedReference, originalInstructions, percent, false);
     await attachmentPreview(".agent-task-slot", expectedReference); await preserved();
+    // A different task changes the full metadata revision, not this issue blob.
+    // Neither ref observation nor an explicit list refresh may rewrite this draft.
+    const beforeAdvanceCommands = agentCommands();
+    const beforeAdvancePreparation = await attachmentPreparation();
+    const advancedUnrelated = await fixtures.advanceUnrelatedTaskFixture(fixture);
+    assert.notDeepEqual(advancedUnrelated, currentCommit);
+    await until(async () => await status() === "stale", "unrelated CLI change is observed stale", 10000);
+    await attachmentPreview(".agent-task-slot", expectedReference);
+    assert.deepEqual(await attachmentPreparation(), beforeAdvancePreparation);
+    await preserved();
+    await refresh("observed");
+    assert.equal(await snapshotRevision(), `${advancedUnrelated.algorithm}:${advancedUnrelated.hex}`);
+    await click(button(`Select task ${fixture.taskId}`)); await showDetails();
+    await until(() => run((s) => !document.querySelector(s)?.disabled, attach), "fresh task eligible only for explicit reattachment");
+    await attachmentPreview(".agent-task-slot", expectedReference);
+    assert.deepEqual(await attachmentPreparation(), beforeAdvancePreparation, "list refresh cannot upgrade preparation or confirmation");
+    assert.deepEqual(agentCommands(), beforeAdvanceCommands, "unrelated metadata, reads and selection issue no agent commands");
+    await preserved(); await screenshot(`07-task-${percent}-old-pin-after-refresh.png`);
+    await nativeAttachmentClick(attach);
+    await until(() => has(proposal), "new revision requires explicit replacement review");
+    const newReference = { ...expectedReference, metadataCommit: advancedUnrelated };
+    await attachmentPreview(proposal, newReference);
+    assert((await text(`${proposal} [data-task-attachment='append']`)).includes("replace attached task"));
+    await nativeAttachmentClick(`${proposal} [data-task-attachment='append']`);
+    await until(async () => !await has(proposal), "explicit new revision accepted");
+    await attachmentPreview(".agent-task-slot", newReference);
+    assert.equal((await attachmentPreparation()).prepared, null);
+    assert.equal((await attachmentPreparation()).confirmed, null);
+    assert.deepEqual(agentCommands(), beforeAdvanceCommands, "attachment replacement is not preparation or dispatch");
+    await nativeAttachmentClick(".agent-draft .agent-primary");
+    await until(() => has(".agent-draft .agent-launch-context"), "explicit fresh task preparation");
+    const fresh = await preparedTaskProof(newReference, originalInstructions, `${percent}-refreshed`);
+    assert.deepEqual(fresh.reference.issueBlob, prepared.reference.issueBlob, "unrelated edit preserves raw primary issue blob");
+    assert.notEqual(fresh.repositoryTask.digest, prepared.repositoryTask.digest, "canonical task includes the new full revision");
+    assert.notEqual(fresh.contextHash, prepared.contextHash);
+    assert.deepEqual(agentCommands().slice(beforeAdvanceCommands.length).map((entry) => entry.type), ["agent.prepare"]);
+    revisionJourneys.push({ percent, old: prepared, fresh, retainedUntilExplicitReplacement: true,
+      backgroundAgentCommands: 0, explicitAgentCommands: ["agent.prepare"] });
+    currentCommit = advancedUnrelated;
+    Object.assign(expectedReference, newReference);
+    await preserved();
     await nativeAttachmentClick(".agent-task-slot [data-task-attachment='remove']");
     await until(async () => !await has(".agent-task-slot"), "Remove deletes only the task slot");
     const retired = await attachmentPreparation();
@@ -480,7 +525,7 @@ async function main() {
   await click(button("Toggle work panel"));
   const advanced = await fixtures.advanceTaskFixture(fixture);
   await until(async () => await status() === "stale", "visible ref-only stale check", 10000);
-  assert.equal(await snapshotRevision(), `${fixture.firstCommit.algorithm}:${fixture.firstCommit.hex}`);
+  assert.equal(await snapshotRevision(), `${currentCommit.algorithm}:${currentCommit.hex}`);
   await refresh("observed");
   assert.equal(await snapshotRevision(), `${advanced.algorithm}:${advanced.hex}`);
   const expired = await request({ type: "tasks.read", worldId: "world:working", metadataCommit: fixture.firstCommit, taskId: fixture.taskId });
@@ -509,9 +554,12 @@ async function main() {
   assert(lastAgent.ok && lastAgent.agent.snapshot.runs.length === 0 && !lastAgent.agent.snapshot.capabilities.controls.launch);
   assert.equal(await fs.readFile(path.join(fixture.root, fixture.sourcePath), "utf8"), fixture.sourceText);
   assert.deepEqual(rendererErrors, [], "renderer exceptions are failures, even if a later browser fallback restores final state");
+  assert.equal(transport().overflow, false);
+  assert(transport().generations >= 1, "actual utility-process requests were observed");
+  assert.deepEqual(agentCommands().map((entry) => entry.type), Array(4).fill("agent.prepare"));
   await fs.writeFile(path.join(evidence, "task-proof.json"), JSON.stringify({ ok: true, realDitz: true, packagedCore: true,
     modelTurns: 0, ditzVersion: fixture.ditzVersion, firstRevision: fixture.firstCommit, advancedRevision: advanced,
-    invalidGitStructureRevision: invalid, issueBlob: detail.task.result.detail.blob, layouts, attachments, rendererErrors, elapsedMs: Date.now() - started,
+    invalidGitStructureRevision: invalid, issueBlob: detail.task.result.detail.blob, layouts, attachments, revisionJourneys, transport: transport(), rendererErrors, elapsedMs: Date.now() - started,
     facts: ["file URL production assets", "archive-local YAML plus missing-parser negative", "real preload/main/core tasks",
       "literal hostile text", "explicit line Reveal", "dirty cursor/text/draft/graphs retained", "missing file typed error",
       "cheap stale and explicit adoption", "expired pinned detail", "retained malformed/unavailable and recovery", "source disk unchanged",
