@@ -10,7 +10,7 @@ const reply = (request: CoreRequest): CoreResponse => ({ protocolVersion: PROTOC
   snapshot: { ...initialSnapshot(), project: { ...initialSnapshot().project, id: "repo:test" } }, changelog: syntheticJournal().result });
 
 describe("Activity log logical changes", () => {
-  it("keeps joined Journal and build-graph replies under separate request authority", () => {
+  it("keeps joined Journal, build-graph and external-observer replies under separate request authority", () => {
     const request: CoreRequest = { protocolVersion: PROTOCOL_VERSION, requestId: "journal", type: "changelog.read", repositoryId: "repo:test" };
     const journal = reply(request);
     if (!journal.ok) throw new Error("Synthetic successful reply required");
@@ -22,6 +22,12 @@ describe("Activity log logical changes", () => {
     const graphReply = { ...base, requestId: "graph", buildGraph: graph };
     expect(parseCoreResponseForRequest(graphReply, graphRequest)).toEqual(graphReply);
     expect(() => parseCoreResponseForRequest({ ...graphReply, changelog: journal.changelog }, graphRequest)).toThrow();
+    const external = { kind: "snapshot", snapshot: { status: "unavailable", message: "Synthetic unavailable registry", observedAt: "2026-09-07T12:00:00Z", sessions: [] } };
+    const externalRequest: CoreRequest = { protocolVersion: PROTOCOL_VERSION, requestId: "external", type: "externalAgents.snapshot" };
+    const externalReply = { ...base, requestId: "external", external };
+    expect(parseCoreResponseForRequest(externalReply, externalRequest)).toEqual(externalReply);
+    expect(() => parseCoreResponseForRequest({ ...externalReply, changelog: journal.changelog }, externalRequest)).toThrow();
+    expect(() => parseCoreResponseForRequest({ ...journal, external }, request)).toThrow();
   });
   it("shows compact entries and deliberately opens expanded agent/task/action evidence", () => {
     const onOpen = vi.fn(), onSource = vi.fn(); const state = { observation: syntheticJournal().result, busy: false, notice: "", refresh: vi.fn() };
