@@ -288,6 +288,20 @@ or close storage ahead of accepted writes. Failed owned cleanup is not success.
 The rehearsal composition must use the same ownership ordering. Require a held
 prepare/revalidate → shutdown regression and repeated-dispose/late-start cases.
 
+Account for the actual bridge deadline. Currently
+`app/electron/core-supervisor.ts` gives task reads 12 seconds and every agent
+request 5 seconds. D4 owns ONLY a task-bearing `agent.prepare` timeout branch
+of **40 seconds** (5-second capability observation + shared 30-second context
+budget + response margin) and its regression. Plain Prepare, other reads,
+mutations and task-only 12-second rules are unchanged. This is a response bound,
+not a promise to finish arbitrary queued/store work. Timeout or core loss
+discards the pending prepare result and requires explicit action; no auto-retry.
+Keep launch's existing five-second unknown-outcome timeout and receipts: slower
+revalidation can produce `AGENT_OUTCOME_UNKNOWN` at that boundary, even if core
+later rejects or admits. Do not upgrade it to certain rejection because it
+looked like metadata work. Reconcile through existing reads, never replay launch.
+Tests must cover a >5-second bounded Prepare success and late launch outcomes.
+
 Any changed commit (even unrelated issue changes), mismatched blob/ID, missing
 task/ref/object, malformed/limited metadata, expired read or changed
 world/source/mapping/config returns `STALE_CONTEXT` with a fixed actionable

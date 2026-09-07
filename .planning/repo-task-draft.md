@@ -60,6 +60,12 @@ preparation. A cancellation promise without that hook is incomplete. The design
 now assigns an optional idempotent context dispose seam and exact production
 ordering, plus a held-prepare/shutdown regression, without changing R3 internals.
 
+Focused read-only follow-up found `app/electron/core-supervisor.ts:197` allows
+12 seconds for task reads but only five for all agent requests. Metadata can
+legitimately take ten seconds; the next consumer therefore needs an exact
+task-bearing Prepare response-budget hunk and regression, not a global timeout
+change. Mutation uncertainty stays unchanged.
+
 ## Decision Log
 
 
@@ -261,6 +267,18 @@ Tests hold prepare and revalidate during metadata work, trigger shutdown and
 assert abort, settlement, no late draft publication and unchanged store-drain
 ordering. Cover repeated dispose and abort-before-child-start as well. D6 uses
 that same ordering in the exact rehearsal composition, not a new service API.
+
+D4 additionally owns only the timeout-selection hunk in
+`app/electron/core-supervisor.ts` and its exact regression: task-bearing
+agent.prepare gets 40 seconds (capability 5 + context 30 + margin); plain
+Prepare/other agent requests retain five seconds, task reads retain 12 seconds.
+No changes to uncertainMutationCode, request identities, request queue, retry
+policy or error correlation. A bounded >5-second task prepare must return its
+actual result; a late/disconnected prepare cannot refill newer UI state. Launch
+still has its existing five-second mutation timeout: delayed revalidation may
+surface AGENT_OUTCOME_UNKNOWN, not a manufactured rejection. Prove actual late
+reject/admit outcomes are handled by existing receipt reads without replay.
+The timeout is a response limit, not a guarantee that queued work finishes.
 
 ### D5 — deliberate draft interaction, no core/store ownership
 
@@ -477,3 +495,8 @@ disposal/shutdown ordering explicit, including precise ownership and held-work
 tests. Also corrected the inherited task smoke label to the actual existing
 `//tools/task-integration:smoke` target. These are design corrections, not
 implemented cleanup or newly executed GUI evidence.
+
+Boundary revision (2026-09-07, D2): grounded the nested observation budget in the
+actual Electron timeout and assigned only task-bearing Prepare's 40-second
+response branch; preserve existing five-second launch uncertainty. No timeout
+or code changed during D2.
