@@ -90,6 +90,14 @@ async function main() {
   assert.deepEqual(await draftState(), draft, "fixed draft/source association retained across Context switches");
   assert.equal(await fs.readFile(path.join(fixture.root, fixture.sourcePath), "utf8"), fixture.sourceText, "no source write");
   // Inspection/cursor motion does not recreate graph instances or reframe them.
+  // Explicit file opening separately loads the directory and schedules its
+  // deliberate camera fit across two animation frames. Settle that navigation
+  // before measuring the unrelated cursor gesture, not while it is in flight.
+  await until(() => run(() => {
+    const graph = document.querySelector("[data-topology='repo']");
+    return graph?.dataset.directory === "a" && graph.dataset.observationState !== "loading";
+  }), "explicit return directory loaded");
+  await paint(); await paint();
   const cameras = await run(() => { globalThis.__contextGraphs = [...document.querySelectorAll(".react-flow__viewport")]; return globalThis.__contextGraphs.map((node) => node.style.transform); });
   assert(cameras.length > 0);
   await run(() => document.querySelector(".cm-content").focus()); key("ArrowLeft"); await paint();
