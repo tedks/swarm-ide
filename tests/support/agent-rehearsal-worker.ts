@@ -1,8 +1,10 @@
 /** Fixed TEST-ONLY composition; no private settlement endpoint. */
 import { startCoreWorker } from "../../core/worker-runtime";
 import { createRehearsalAgentService } from "./agent-rehearsal-service";
+import { createDitzTaskProvider } from "../../core/tasks/provider";
 
 startCoreWorker({
+  createTasks: createDitzTaskProvider,
   async createAgents(options) {
     const service = await createRehearsalAgentService(options);
     return { request: (request) => service.request(request), async shutdown() {

@@ -10,7 +10,7 @@ const fixedFields = Object.freeze({
   sourcePath: "src/task-target.ts", sourceLine: 3,
   missingPath: "src/missing-task-target.ts", docPath: "docs/task-note.md",
   title: '<img src=x onerror="globalThis.__taskLiteralExecuted=true"> literal task',
-  description: '<script>globalThis.__taskLiteralExecuted=true</script>\nLiteral metadata, not executable instructions.\nOnly explicit file references are navigable.',
+  description: '<script>globalThis.__taskLiteralExecuted=true</script>\nLiteral metadata: réponse 🧪 "quoted", not executable instructions.\nOnly explicit file references are navigable.',
   sourceText: "export const taskFixture = true;\n\nexport function taskTarget() {\n  return \"current working source\";\n}\n",
 });
 
@@ -136,6 +136,16 @@ export async function resumeTaskFixture(serialized, ownedParent) {
 export async function advanceTaskFixture(fixture) {
   const { git, ditz, validRevisions } = state(fixture);
   await ditz(["set", fixture.taskId, "--title", "Updated CLI-authored primary task", "--status", "in_progress"]);
+  const result = await revision(git);
+  validRevisions.add(result.hex);
+  return result;
+}
+
+/** CLI-authored unrelated edit: the primary issue blob stays exactly unchanged. */
+export async function advanceUnrelatedTaskFixture(fixture) {
+  const { git, ditz, validRevisions } = state(fixture);
+  const previous = await revision(git);
+  await ditz(["comment", fixture.secondId, `Unrelated metadata advancement after ${previous.hex}; réponse 🧪 "literal".`]);
   const result = await revision(git);
   validRevisions.add(result.hex);
   return result;
