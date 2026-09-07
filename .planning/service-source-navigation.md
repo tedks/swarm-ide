@@ -17,10 +17,14 @@ require a choice; failed or superseded navigation leaves existing work intact.
 
 
 - [x] (2026-09-07) Read Q1 contract, ROOT acceptance, and personally steered UI decisions; confirmed designated clean branch at `8f49e16` and materialized frozen dependencies.
-- [ ] Add failing candidate and deliberate-activation regressions.
-- [ ] Implement bounded resolver, explicit graph gesture, and chooser.
-- [ ] Prove actual packaged declarations and retained-service core recovery.
-- [ ] Run full local gates, review to fixpoint, Ditz, normal merge and exact integration.
+- [x] (2026-09-07 03:47Z) Initial deliberate-activation regression RED: 1 failed, 1,212 existing tests passed; exact red.log retained.
+- [x] (2026-09-07 03:54Z) Resolver, guarded explicit gesture, chooser and initial mounted tests pushed in draft PR42.
+- [x] (2026-09-07 04:08Z) Native/Google council converged CLEAN after grid, keyboard-ownership and removed-interface identity fixes. Anthropic attempted once, timeout 300s / exit 124, no opinion.
+- [x] (2026-09-07 04:13Z) Frozen `85e6dc6` full 34-target build and all 13 fresh local suites PASSED; quality 1,237 tests / 92 files; real four-case packaged navigation and combined retained-service recovery passed.
+
+Landing follows this evidence update through normal PR42, the exact leased
+integration/push and Ditz close/sync. The final executive receipt records actual
+hashes and completion; they are not inferred here from successful tests.
 
 ## Surprises & Discoveries
 
@@ -30,6 +34,25 @@ interfaces may name different paths or the same path. The existing file Reveal
 already revalidates dirty open files through the broker. Its attention/core/open
 generation guards need an additional optional publication guard for this consumer.
 Q1 service retention and packaged core recovery were previously separate proofs.
+
+The first real package exposed the hint as a third child of a two-row grid,
+collapsing the service canvas. It now lives in the existing header. A separate
+new gesture-test mock omitted MarkerType; the mock was completed without changing
+production dependencies. Later test restaging clicked an expanded folder and
+folded it, then its added directory return invalidated the older camera baseline.
+The final journey preserves all original stale-refresh/camera checks first, then
+runs the new disruptive core-replacement proof last; no original assertion was
+removed or timeout increased. Intermediate failures remain independently saved.
+
+Native review caught Ctrl+K reaching a hidden palette under the chooser, and a
+superseded in-flight definition retaining Escape ownership. The modal now owns
+its keyboard and interruption retires the exact pending owner synchronously.
+The token copies the Reveal intent, rather than ignoring it after choosing.
+Another schema-valid case can remove an interface node while retaining the same
+service record; graph identity membership now participates in token validity.
+Focused chooser invalidation restores only its own keyboard focus. Each reviewed
+finding has a mounted regression. Final proof uses frozen source; a nonfrozen
+iteration's pending-notice observation is not substituted for final evidence.
 
 ## Decision Log
 
@@ -43,11 +66,43 @@ Decision (2026-09-07): Graph activation is a separate callback from graph
 inspection. Passive mappings and publications cannot accidentally open files.
 Keep an explicit inspection gesture available and reuse the existing Reveal.
 
+Decision (2026-09-07): Do not expand the provider for package-only ambiguity.
+The actual artifact has FraudCheck and two interface nodes, not a Payments service
+node. Ambiguity/external-service activation and populated captured Build-camera
+retention use mounted fixtures; real declaration bytes and recovery use the
+unchanged packaged main/preload/core and actual Bazel output. Captures are not live.
+
 ## Outcomes & Retrospective
 
 
-Implementation and verification remain pending. This closes only Q2, not the
-broader service/call navigation or Context foundation requirements.
+Q2 implements click/Enter declaration navigation and Alt-click/Shift+Enter
+inspection without changing the graph layout or source editor architecture.
+One path opens once; several require choice; unsupported associations remain
+unavailable. Broker checks retain dirty bytes/cursor and reject deleted current
+destinations. Old build provenance never becomes current source or callsite proof.
+
+At frozen `85e6dc6fd5d66f9e8dcd1ed23366f036c5d737a6`, all 34 build targets passed
+in 57.151s and all 13 fresh local suites passed in 249.790s. Quality passed 1,237
+tests / 92 files. Packaged navigation passed in 93.4s; its Swarm journey took
+71.067s and unfamiliar journey 13.436s. Two additional cases prove invalid filenames and unavailable
+fingerprint budgets without fabricated green authority. All four owned virtual
+sessions report cleanup_complete=1, zero renderer exceptions and zero model turns.
+
+The actual Swarm replacement core advances generation 1->2 under a real oversized
+working input. Its own fingerprint is unavailable and it has no recorded jobs or
+build activity; the renderer retains the original build ID, source fingerprint,
+input digest and observation time as stale. Explicit activation rejects a renamed
+current declaration, then opens its restored actual bytes; dirty source, logical
+cursor, independent draft and graph cameras survive. This combination was not
+previously packaged proof in Q1. The independent original two-repository journey
+and 100/150 percent retention assertions remain intact.
+
+Native and Google reviews reached CLEAN on `6f0c1a6..85e6dc6`. Anthropic timed out
+after 300 seconds without a review; no substitution or three-provider approval.
+Hosted CI was intentionally ignored. These are reviewed local proofs, not real
+agent or deployed-runtime activation. PR42's final executive receipt records
+actual normal/integration hashes and Ditz completion. This closes only Q2, not
+the broader service/call navigation or Context foundation requirements.
 
 ## Context and Orientation
 
@@ -137,6 +192,13 @@ Step evidence and concise milestone seam live at
 rewritable Bazel outputs. The final recap distinguishes executable evidence reuse
 from a newly executed aggregate tree and records exact hashes and unavailable seats.
 
+Frozen evidence is independently copied in `evidence-85e6dc6/testlogs` with
+extracted navigation at `evidence-85e6dc6/navigation/repository-navigation/run.ClLWdk`.
+Swarm has `q2-declaration-proof.json`, `q2-recovery-proof.json`, provided-definition
+and retained-recovery screenshots, plus the aggregate navigation receipt. Earlier
+failure evidence remains in `evidence-d513fa4`, `evidence-78e407f`, and
+`evidence-6f0c1a6`; the final passing run does not erase those records.
+
 ## Interfaces and Dependencies
 
 
@@ -144,3 +206,8 @@ Reuse React, existing `FocusRef`, `WorkspaceSnapshot`, Q1 `ServiceContextObserva
 and broker-backed Reveal. Add a pure declaration-candidate result with path,
 relation labels and publication identity. No protocol/provider/dependency changes.
 ROOT owns successors and runtime adoption; production agent policy stays unavailable.
+
+Revision note (2026-09-07): recorded implementation, fixpoint review and frozen
+local/real-package evidence. The recovery proof was moved after existing checks
+to preserve their baseline instead of restaging it. No broader provider, source
+write, live agent, dependency, graph layout engine or preview adoption was added.
