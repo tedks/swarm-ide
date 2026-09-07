@@ -43,11 +43,26 @@ not a general knowledge index or agent dispatch feature.
 - [x] (2026-09-07 05:54Z) Native and Google code/fix-delta council CLEAN;
   Anthropic unavailable after a bounded 180-second timeout. Quality 1,267/94
   passes including the approved diagnostic-only extension at `5003dfe`.
+- [x] (2026-09-07 07:13Z) ROOT-authorized controlled source-handoff evidence at
+  `0a60a70`: late still-offered A cancelled newer B after real focus/ack; early,
+  deliberate-source and original ungated controls passed. Two prior compiler
+  failures remain recorded. This proves an imposed-order mechanism, not the
+  historical scheduler cause; the pre-Q4-based R3 occurrence is not a pristine
+  baseline or code-consumption authority.
+- [x] (2026-09-07 07:40Z) Separately committed renderer authority repair and
+  regressions. Initial guard green at `e06240e`; native council found a second
+  offer-to-draft/palette gap, proved RED at `9858d7e`, fixed at `e9efa90`.
+  Frozen final quality: both typechecks pass, 1,284 tests pass, only the two
+  unchanged R3-owned shutdown oracles fail. Separate full build passes34.
+  OpenAI native and Google warm delta convergence CLEAN; Anthropic missing
+  after actual 240-second review timeout, not substituted.
 - [ ] Aggregate local gate: frozen build passed34, full tests passed12/13;
   existing rehearsal ordinary-close proof failed. ROOT approved safe diagnostic
   codes and one bounded owned diagnostic run, which passed28.6s at5003dfe but
   did not reproduce/explain the original failure. No runtime fix or waiver.
 - [ ] Normal merge, Ditz slice closure and reviewed integration handoff.
+- [ ] ROOT-reviewed composition with independently repaired R3 and fresh
+  aggregate/GUI evidence. No peer code consumed or merge/adoption lease used.
 
 ## Surprises & Discoveries
 
@@ -91,6 +106,18 @@ test-support files to add finite safe failure codes only; no runtime predicate,
 read, cleanup, retry or timeout changes. Four classification/non-disclosure
 regressions were RED while the other1,263 passed, then all1,267 passed.
 
+The Context opening-notice failure was subsequently observed on pre-Q4-based
+R3 code too, but that branch includes service/shutdown changes and is not a
+pristine baseline. A controlled real-EditorPane gate established a narrower
+mechanism: a command still offered after B started could focus A and cancel B.
+Neither this forced order nor a later ungated pass explains the old scheduler.
+
+The first renderer repair passed all new tests, but native council identified
+that a completed read's offered handoff escaped cancellation when the user
+focused a draft or opened the palette. Two added real-gesture tests were RED
+before the small cancellation delta. Their GREEN result after that delta is
+separate from the original historical occurrence, which remains open.
+
 ## Decision Log
 
 
@@ -123,6 +150,16 @@ bind before the independent original/projection limits under today's strict
 shape. Tests prove exact original boundaries, escaped projection boundaries and
 whole envelopes without fabricating an otherwise-valid exact-784-KiB payload.
 
+Decision (ROOT-authorized source repair, 2026-09-07): keep command identity
+separate from delivery authority captured after activateFile. The real editor
+checks current ownership, destination lifetime, realm, intent and attention
+before selection/focus. Obsolete delivery retires only its own command, silently;
+only a currently authorized invalid-content/line acknowledgement may publish an
+error. Valid focus advances its own counters before successful identity-based
+retirement. Generic user interaction also revokes offered commands after the
+read token is gone; source focus retains sourceInformation's existing authority
+advancement, preserving legitimate self-focus and real-user cancellation.
+
 ## Outcomes & Retrospective
 
 
@@ -143,6 +180,16 @@ Evidence is retained under `/tmp/swarm-ide-task-backlinks-q4.NP4JSm`, especially
 `frozen-tests.log`, `frozen-tests/run.ixP5Uj` (successful Q4 package),
 `frozen-tests/run.aGiXty` (failed close), `rehearsal-ownership.md` and
 `review-summary.md`. PR44 and the final landing receipt record actual disposition.
+
+The narrow source repair is now a pushed, reviewed increment, not a landed
+aggregate. Production commits `32920a3` and `e9efa90` are separate from test
+commits `e06240e` and `9858d7e` and this plan update. Mounted tests use the
+previously authorized diagnostic scaffold; the new standalone real-EditorPane
+authorization test is independent of that scaffold. No claim is made that a
+cherry-pick onto another department's base is conflict-free. ROOT owns reviewed
+composition. Exact evidence is `source-handoff-boundary.md` and repair-only
+council receipts in the existing control directory; the two shutdown reds and
+historical Context issue are not waived or closed by this increment.
 
 ## Context and Orientation
 
