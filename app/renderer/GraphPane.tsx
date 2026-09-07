@@ -22,7 +22,7 @@ function EmptyServiceGraph({ graph, running }: { graph: GraphSlice; running: boo
         ? ["Building service topology", "A topology build is in progress. Results will appear here when an observation is available."]
         : ["Service topology needs a build", "The working state has changed. Use the existing Build control to request a fresh topology observation."]
       : graph.reconciliation === "red"
-        ? ["Service topology build failed", "Check Build output for details. No usable graph is available here; this is not an observed empty result."]
+        ? ["Service observation failed", "Topology reconciliation failed. No usable observation is available here; an empty view does not mean the repository has no services."]
         : graph.provenance.some((item) => item.sourceKind === "build")
           ? ["No services in this observation", "The recorded build contains no service nodes for this scope, not the entire repository or its deployments."]
           : ["Service topology unavailable", "No build-backed service observation is available for this scope. An empty canvas does not establish that no services exist."];

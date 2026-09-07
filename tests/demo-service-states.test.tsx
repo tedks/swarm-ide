@@ -38,7 +38,7 @@ describe("Service graph explains absent observations without inferring services"
     ["gray", false, "Service topology not observed"],
     ["yellow", false, "Service topology needs a build"],
     ["yellow", true, "Building service topology"],
-    ["red", false, "Service topology build failed"],
+    ["red", false, "Service observation failed"],
   ] as const)("explains %s / running=%s without starting a build", (status, running, title) => {
     const onReconcile = vi.fn(); render(pane(empty(status), running, onReconcile));
     expect(screen.getByRole("status", { name: "Service graph availability" }).textContent).toContain(title);
@@ -51,6 +51,13 @@ describe("Service graph explains absent observations without inferring services"
     const status = screen.getByRole("status", { name: "Service graph availability" });
     expect(status.textContent).toContain("No services in this observation");
     expect(status.textContent).toContain("not the entire repository");
+  });
+
+  it("does not infer that a build ran when red can mean working-state observation failure", () => {
+    render(pane(empty("red")));
+    const status = screen.getByRole("status", { name: "Service graph availability" });
+    expect(status.textContent).toContain("Service observation failed");
+    expect(status.textContent).not.toMatch(/build failed|Build output/);
   });
 
   it.each(["repo", "runtime", "mock"] as const)("does not promote %s provenance into an empty build observation", (kind) => {

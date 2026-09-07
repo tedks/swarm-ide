@@ -16,7 +16,7 @@ An empty Service canvas should explain whether topology is unobserved, needs a b
 
 ## Surprises & Discoveries
 
-The Service graph has reconciliation colors and provenance but no capability flag or whole-repository coverage declaration. The running-build prop is shared. Therefore neutral copy cannot promise that arbitrary repositories support service extraction; green alone is not proof of a build-backed empty result.
+The Service graph has reconciliation colors and provenance but no capability flag or whole-repository coverage declaration. The running-build prop is shared. Therefore neutral copy cannot promise that arbitrary repositories support service extraction; green alone is not proof of a build-backed empty result. Native review also identified `markWorkingWorldUnknown` as a red publication without a build attempt, so red copy must describe observation failure, not assert that a build failed.
 
 ## Decision Log
 
