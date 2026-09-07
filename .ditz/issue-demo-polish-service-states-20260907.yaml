@@ -5,8 +5,8 @@ type: task
 component: default
 release:
 reporter: Ted Smith <tedks@riseup.net>
-status: in_progress
-disposition:
+status: closed
+disposition: fixed
 creation_time: 2026-09-07T21:32:43-00:00
 references: []
 log_events:
@@ -26,3 +26,9 @@ log_events:
     passed; actual owned :133/55213 dev UI proof 5.0s, real Git/source opening, zero
     renderer errors, cleanup1. Final bundle check completing. Ready handoff will leave
     issue open until ROOT normal merge; no app/provider changes.
+- time: 2026-09-07T21:47:49-00:00
+  who: Ted Smith
+  what: 'closed: fixed'
+  comment: ROOT normally merged PR59. Prop-only empty Service explanation; populated/retained
+    graphs preserved. Quality1644/focused19/native convergence and actual owned dev-UI
+    source-opening/cleanup proof accepted, synthetic other-state tests honestly scoped.
