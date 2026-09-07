@@ -1,129 +1,110 @@
-# A five-minute tour
+# Five minutes: a feature, its context, and its logical history
 
-Start with the [Linux quick start](../README.md#linux-quick-start), targeting
-Swarm's own checkout. Fetch its local Ditz metadata branch as described there
-if you want the task portion of the tour. You do not need a model account to
-browse source or prepare disk context.
+Swarm is an engineering organization you can inspect from the inside. This
+tour follows Swarm's own task-context feature: why it exists, how it was divided
+into work, what an implementing agent would receive, and what changed.
 
-The idea is simple: move from a system to its implementation and the task that
-changes it, then inspect the exact context you would give an agent. Keep the
-source visible while the surrounding instruments explain it.
+Start with the [Linux quick start](../README.md#linux-quick-start), opening
+Swarm's checkout and fetching its local `ditz-metadata` branch as described
+there. No model account or external-session registry is needed for the core
+tour. Use a disposable checkout for experimental edits. The
+[installation guide](evaluator-install.md) covers prerequisites and recovery;
+the [presenter guide](demo/presenter-guide.md) covers timing and evidence boundaries.
 
-## 1. Move through the real repository
+## 1. Intent → component → context
 
-Expand **Directory** and enter `core`, then `tasks`. Open `draft-context.ts` in
-the source editor. These are actual working-tree entries and file bytes, not a
-demo-only directory tree.
+Choose **Plan → Plans & components → Load plan index**. Select **Turn repo tasks
+into bounded agent context** in the graph or its keyboard outline. Its parent
+is the product plan; the links are authored in `.swarm/plans.json`, not an LLM's
+current guess about the repository.
 
-Press **Ctrl-K**, type `fraudcheck.proto`, and deliberately select the matching
-file result. Search reports when its Git filename inventory was captured and
-whether coverage is complete. It is filename/path search, not full-text search.
-Use **Open repository path** from the same palette as an exact-path fallback;
-for example, enter:
+Open **Read doc · docs/demo/task-context-briefing.md**, then choose **Why this
+context?** to reach the supporting guidance. The briefing connects intent,
+contract and implementation lessons.
+The full design is **Read doc · docs/repo-task-draft.md**; its opening status
+paragraph still describes the historical D3-only stage, not today's Prepare.
+**contract · protocol/agent-task.ts** opens the shared contract. These are
+ordinary working files and navigable guidance, not proof a provider loaded them
+or permission to execute.
 
-```text
-examples/checkout-world/services/fraudcheck/fraudcheck.proto
-```
+## 2. Component → actual work → source
 
-Notice that selecting another surface does not silently replace your open
-source tabs. The **Context** pane follows what you inspect, not an inferred
-global selection. You can edit and save actual files with **Ctrl-S**; make
-experimental edits in a disposable checkout rather than someone else's work.
+Expand **Tasks** and **Refresh tasks** if needed. From the component, activate
+**Inspect task · repo-task-context-core-d4**. This is the actual closed task
+“Prepare authoritative pinned repository-task context.” Adjacent D2–D6 links
+show design, common contract, core, UI and integration as separate records.
+To find them in the rail, select **All** and search the full ID.
 
-## 2. Read evidence across views
+**Show task document** reads the task in the main area. **Plan → Task blockage →
+Load dependency graph** shows recorded dependencies, separately from plan
+containment. Read its coverage counter: it loads at most 64 details, and
+missing/unread edges are not inferred. The rail's search does not filter the
+graph. This is recorded work, not a scheduler or readiness score.
 
-Swarm includes a small, real Bazel-owned Payments/FraudCheck service example.
-After its topology build succeeds, inspect the service graph, interface, and
-source declaration links. **Build repository service topology** in Ctrl-K
-requests that fixed example build. Its result is not a general service detector
-for arbitrary languages or repositories.
+Return to the component's **Open source · core/tasks/draft-context.ts**. The
+historical D4–D6 records have no explicit file references, so this authored source
+link is the connection—not a fabricated task Reveal. Records that do have file
+references expose **Reveal working file**. **Ctrl-K → Open repository path** is
+the exact-path fallback.
 
-Use the Context pane's **Evidence** disclosures to distinguish a working file
-from a build-derived observation. A retained result can remain visible while
-new work is in progress or an observation has failed; it must not imply fresh
-evidence. Unconfigured deployments and metrics are unavailable, not zero.
+## 3. Source → build relationships → a fixed-source draft
 
-The separate **Build graph** now queries the registered repository's local Bazel
-declarations on demand. Open it, or enable directory **Build links**, then use
-**Refresh build graph** to retry or deliberately resample. Observed local BUILD,
-`.bzl`, module and filename-membership changes trigger refresh while a consumer
-is visible; the previous graph remains labelled while new work runs or fails.
-These are declaration observations, not successful binary builds. Unsupported
-roots/runtimes are unavailable, never replaced with a historical Swarm capture.
-See [Build graph coverage and limits](dynamic-build-graph.md) for pinned Bazel 7,
-partial/external/ignored-input limits. In compact layouts, scroll the Build pane
-to expose its graph or controls; source and draft remain independent.
+Switch to **System** and open **Build graph**. It queries local Bazel declarations
+on demand; **Refresh build graph** deliberately resamples. Directory **Build
+links** connects observed source membership to targets. A fresh declaration
+query is not a successful binary build. Missing or retained evidence stays
+labelled; see [coverage and limits](dynamic-build-graph.md).
 
-## 3. Go from task to source without losing your place
+Return to `core/tasks/draft-context.ts`. Choose **Ctrl-K → Ask an agent about
+this focus** and enter:
 
-Expand **Tasks**, choose **Refresh tasks**, and inspect an issue. Its description,
-status, **Blocks** / **Blocked by** relationships, and metadata revision are read
-from the local Ditz branch. A dependency entry records planning information; it
-does not authorize dispatch or prove that a task is ready.
+> Explain this module's task revision checks and identify the tests that defend
+> them. Do not change files.
 
-Use **Show task document** to read the task beside source. If it records an
-explicit file reference, **Reveal working file** opens that path only when you
-activate it. **Return to source** returns to your source surface. A file's
-Context can also show explicit task backlinks when that metadata is available.
-No link means “none recorded in this evidence,” not “nothing is related.”
+The draft captures that source focus. Browsing another document or graph does
+not retarget it. An unsaved edit in a disposable checkout can demonstrate buffer
+retention, but preparation reads disk, not unsaved editor text.
 
-## 4. Inspect what an agent would receive
+## 4. Actual task → bounded prepared context
 
-With a source file selected, choose **Ask an agent about this focus** in Ctrl-K.
-The launch draft captures that source focus; subsequent navigation does not
-retarget it. Write a small instruction such as “Explain this module's task
-revision checks and identify the tests that defend them.”
+Inspect `repo-task-context-core-d4` again and choose **Attach this task to draft**.
+Review the proposal and choose **Append — keep instructions**. There is one
+read-only task slot; attaching does not paste task prose over your request.
 
-To include a repository task, inspect a current task and select **Attach this
-task to draft**. Review the proposed source and metadata pin, then explicitly
-keep or clear your existing instructions. There is one read-only task slot;
-the task description is not silently pasted over your instructions.
+Choose **Prepare disk context**. Open **Recorded repository task · immutable**,
+**Disk attachments**, and **Exact submitted prompt**. These show real local
+Git/YAML materialization and disk reads. Task metadata and working source remain
+separate. A blank historical description remains blank; no agent report is
+silently substituted for it.
 
-Choose **Prepare disk context**. Inspect the source attachment, exact prompt,
-context hash, and, when attached, the task's metadata commit, issue-blob hash,
-and core-materialized content. Preparation reads disk, not unsaved editor text.
-If inputs change, refresh and explicitly reattach/reprepare rather than treating
-an old preview as new authority.
+Preparation does **not** run a model. **Launch read-only run** remains disabled
+under the current unverified effective-policy gate. Linked designs are not
+automatically included: inspect the exact submitted prompt. If source or task
+metadata changes, refresh, explicitly reattach when needed, and prepare again.
 
-Preparation does not execute a model turn. **Managed agent launch remains
-unavailable** until the provider's effective policy is verified. Instruction
-source observations are not proof of every instruction a provider might load,
-and a selected context manifest is not a filesystem-security boundary.
+## 5. Work → logical outcome, not another wall of logs
 
-## 5. Close the explanation with a real change
+In **Recent activity**, open **Logical changes** or one of its entries. The
+expanded entry lives in the main text area: intent, outcome, decision and
+supporting evidence. Swarm includes supervised-agent-generated, **recorded**
+summaries of this same task-context work. They combine Git observations with
+attributed agent/check reports; opening a card does not rerun checks, and
+reconstructed reasoning is labelled. Inspect **Evidence, not authority** and
+deliberately open an affected file. Your draft remains independent.
 
-Return to `core/tasks/draft-context.ts` and the corresponding tests under
-`tests/`. The running prototype's pinned task-context implementation is itself
-an example of the work being explained. To inspect its actual commit history,
-use your normal terminal in the checkout:
+The update loop is currently **export evidence → supervised summarizer →
+validate → Refresh**, not an in-app scheduler.
+[Logical changelog](logical-changelog.md) documents the authoring path.
 
-```bash
-git log --oneline -- core/tasks/draft-context.ts
-```
+Optional, on an operator-configured installation: **Agent runs → External
+sessions → Refresh external sessions** shows fork ancestry, **Conversation ·
+read-only** and **Worklog**. **Open conversation in tmux** requires a checked live target.
+A private registry is required and is not shipped. D4/D5/D6 labels in a report
+are not verified session IDs and do not automatically select an agent; choose a
+known registration manually or skip this segment. See
+[external observations](demo-agents.md).
 
-Select a commit there and inspect it with `git show <commit>`; do not call a
-mock activity row evidence of that change. Implementation can currently be
-performed through a separately supervised Codex/Claude session in the same
-workflow, then observed in the repository. That external harness is not a
-managed agent launched by this prototype.
-
-The orgs-inspired principle is **selected, traceable context**: give a bounded
-task its relevant design, interface contract, operating instructions, and prior
-lessons; connect the resulting change and verification back to that task.
-Repo-authored instructions and task references make that reasoning inspectable.
-This is a workflow intention supported by the visible evidence, not a claim
-that every document is automatically loaded or that a particular productivity
-improvement has been measured.
-
-## Keep the demonstration honest
-
-The **Demo:** palette commands are optional UI mocks and say so. Deterministic
-agent rehearsals exercise product transport and recovery with synthetic runs;
-they are not live-provider demonstrations. The current tour does not promise a
-browsable plan hierarchy, a task-dependency graph canvas, or imported external
-agent ancestry/conversations. Those should appear in a release tour only when
-their integrations are actually available and verified.
-
-Use the labels on screen: working versus built, captured versus current,
-retained versus refreshed, observed versus unavailable. They are part of the
-product, not incidental troubleshooting text.
+The result is one inspectable story across distinct views—not one universal
+graph. Useful local browsing and preparation work without credentials. Live
+managed execution, automatic task-to-session linking and autonomous
+summarization are not part of this demo.
