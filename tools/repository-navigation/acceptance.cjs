@@ -68,7 +68,7 @@ async function main() {
     await wc.insertText(value);
     await until(() => run((s, v) => document.querySelector(s).value === v, selector, value), "exact native field value");
   };
-  const request = (input) => run((body) => window.swarm.request({ protocolVersion: 6, requestId: `navigation-proof:${crypto.randomUUID()}`, ...body }), input);
+  const request = (input) => run((body) => window.swarm.request({ protocolVersion: 7, requestId: `navigation-proof:${crypto.randomUUID()}`, ...body }), input);
   const snapshot = async () => { const result = await request({ type: "workspace.snapshot" }); assert(result.ok); return result.snapshot; };
   const observe = (world) => world.graphs.find((graph) => graph.topologyId === "repo").directory;
   const currentDirectory = () => run(() => document.querySelector("[data-topology='repo']")?.dataset.directory);
@@ -551,8 +551,8 @@ async function main() {
       await until(() => run(() => { const text = document.querySelector(".file-search-status")?.textContent ?? ""; return text.includes("Git name inventory") && !text.includes("Refresh failed"); }), "explicit recovery after real Git failure");
       await closeSearch(); await preserved();
       const concurrent = await run(async (repositoryId) => Promise.all([
-        window.swarm.request({ protocolVersion: 6, requestId: `search-old:${crypto.randomUUID()}`, type: "repo.search", repositoryId, query: "same-match", refresh: true }),
-        window.swarm.request({ protocolVersion: 6, requestId: `search-new:${crypto.randomUUID()}`, type: "repo.search", repositoryId, query: "literal [*]", refresh: false }),
+        window.swarm.request({ protocolVersion: 7, requestId: `search-old:${crypto.randomUUID()}`, type: "repo.search", repositoryId, query: "same-match", refresh: true }),
+        window.swarm.request({ protocolVersion: 7, requestId: `search-new:${crypto.randomUUID()}`, type: "repo.search", repositoryId, query: "literal [*]", refresh: false }),
       ]), (await snapshot()).project.id);
       // Renderer concurrency does not force IPC arrival before the first query
       // completes. Held-request unit tests prove cancellation itself; here both
@@ -650,7 +650,7 @@ main().catch(async (error) => {
   const win = BrowserWindow.getAllWindows()[0];
   if (win && !win.isDestroyed()) {
     await fs.writeFile(path.join(evidence, "failure-focus.json"), JSON.stringify(await win.webContents.executeJavaScript(`(async () => {
-      const result = await window.swarm.request({protocolVersion:6,requestId:'failure-focus:'+crypto.randomUUID(),type:'workspace.snapshot'});
+      const result = await window.swarm.request({protocolVersion:7,requestId:'failure-focus:'+crypto.randomUUID(),type:'workspace.snapshot'});
       return {focus:result.ok?result.snapshot.focus:null,agentNotice:document.querySelector('.agent-rail')?.textContent,
         draft:document.querySelector('.agent-draft')?.textContent,askDisabled:document.querySelector('.agent-rail .agent-primary')?.disabled,
         clickTrace:globalThis.__navigationClickTrace,

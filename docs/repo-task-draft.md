@@ -1,7 +1,10 @@
 # Attach a pinned repository task to a source draft
 
-Status: D2 design contract, not implemented attachment behavior. ROOT must accept
-this contract and dispatch the implementation base before builders proceed.
+Status: ROOT accepted D2. D3's shared format/compatibility base is implemented
+and locally verified; landing attribution is recorded in the execution plan
+and PR48 receipt. This does not implement attachment behavior: every task-bearing
+Prepare still returns `UNSUPPORTED_CONTROL`, even with an injected resolver.
+D4/D5 consumers require ROOT verification of the landed base before they proceed.
 The [execution plan](../.planning/repo-task-draft.md) specifies the bounded steps.
 This extends [task browsing](repo-task-surface.md), not the live-provider gate.
 

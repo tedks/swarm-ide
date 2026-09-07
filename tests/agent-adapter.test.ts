@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { fixtureV2Draft } from "../fixtures/agent-context-v2";
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -17,13 +18,13 @@ const caps: AdapterCapabilities = { provider: "codex", version: CODEX_ADAPTER_VE
   available: true, reason: null, supports: { steer: true, interrupt: true, readOnly: true } };
 function draft(): PreparedAgentContext {
   const focus = { worldId: "local", revisionKind: "working" as const, revisionId: "working", domain: "repo" as const, key: "file", path: "src/file.ts" };
-  return { runId: "11111111-1111-4111-8111-111111111111", contextHash: digest, preparedAt: at, expiresAt: "2026-09-06T01:05:00.000Z",
+  return fixtureV2Draft({ runId: "11111111-1111-4111-8111-111111111111", contextHash: digest, preparedAt: at, expiresAt: "2026-09-06T01:05:00.000Z",
     capabilities: { availability: "available", reason: null, provider: "codex", version: CODEX_ADAPTER_VERSION,
       controls: { launch: true, steer: true, cancel: true }, policy: "verified-read-only" },
     launchContext: { worldId: "local", repositoryId: "repo", root, head: "a".repeat(40), workingFingerprint: digest, focus,
       taskText: "Explain this interface", links: { parentRunId: null, task: null, spec: null }, requested: { model: "chosen-model", effort: null },
       attachments: [], instructionSources: [], configurationSources: [], submittedPrompt: "Exact submitted bytes é", contextHash: digest, diskOnly: true,
-      access: { policy: "read-only", toolNetwork: false, approvals: "never", hostConfidentiality: false, sendsSelectedContentToProvider: true } } };
+      access: { policy: "read-only", toolNetwork: false, approvals: "never", hostConfidentiality: false, sendsSelectedContentToProvider: true } } });
 }
 const hello = { userAgent: "codex-cli/0.153.4", codexHome: "/private/not-exported", platformFamily: "unix", platformOs: "linux" };
 const thread = { thread: { id: "thread-a" }, model: "observed-model", modelProvider: "openai", cwd: root,
@@ -282,7 +283,7 @@ readline.createInterface({input: process.stdin}).on('line', line => {
 `, { mode: 0o700 });
       const input = draft(); input.launchContext.root = directory;
       const adapter = createCodexAppServerAdapter({ root: directory, executable: program, probe: async () => ({ ...caps, executable: program }) });
-      handle = await adapter.start(input, (event) => events.push(event));
+      handle = await adapter.start(fixtureV2Draft(input), (event) => events.push(event));
       await vi.waitFor(() => expect(events.some((e) => e.type === "process-exit")).toBe(true));
       expect(events).toContainEqual(expect.objectContaining({ type: "terminal", outcome: expect.objectContaining({ status: "completed" }) }));
       expect(events.at(-1)).toMatchObject({ type: "process-exit", exitCode: 0 });

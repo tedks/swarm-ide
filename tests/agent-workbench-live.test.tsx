@@ -3,6 +3,7 @@ import { openContextPath } from "./context-navigation";
 import { act, cleanup, fireEvent, render, renderHook, screen, waitFor } from "@testing-library/react";
 import { StrictMode } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { fixtureV2Draft } from "../fixtures/agent-context-v2";
 import { AGENT_LIMITS, AgentSnapshotSchema, PreparedAgentContextSchema } from "../protocol/agents";
 import { PROTOCOL_VERSION, type CoreRequest, type CoreResponse, type GraphSlice } from "../protocol/schema";
 import { initialSnapshot, paymentsFileFocus } from "../fixtures/world";
@@ -88,7 +89,7 @@ describe("live workbench presentation", () => {
   it("requires context inspection and honestly disables unsupported reasoning", () => {
     const state = runningState();
     const context = state.run!.launchContext;
-    const prepared = PreparedAgentContextSchema.parse({ runId: state.run!.runId, contextHash: context.contextHash,
+    const prepared = fixtureV2Draft({ runId: state.run!.runId, contextHash: context.contextHash,
       preparedAt: "2026-09-06T00:00:00.000Z", expiresAt: "2026-09-06T00:05:00.000Z", launchContext: context, capabilities: available });
     state.draft = { focus: paymentsFileFocus, task: context.taskText, model: "requested-model", prepared, preparing: false, confirmed: false };
     state.snapshot = AgentSnapshotSchema.parse({ runs: [], activeRunId: null, tail: [], capabilities: available });
@@ -96,7 +97,7 @@ describe("live workbench presentation", () => {
     const view = render(<PreparedLaunchDraft state={state} client={client} dirtyPaths={[]} />);
     expect((screen.getByRole("button", { name: "Launch read-only run" }) as HTMLButtonElement).disabled).toBe(true);
     expect((screen.getByLabelText("Requested reasoning") as HTMLSelectElement).disabled).toBe(true);
-    expect(screen.getByText(/not a frozen filesystem/)).toBeTruthy();
+    expect(screen.getByText(/not a frozen filesystem/, { selector: "p" })).toBeTruthy();
     expect(screen.getByText(/not a host confidentiality sandbox/)).toBeTruthy();
     view.rerender(<PreparedLaunchDraft state={{ ...state, draft: { ...state.draft, confirmed: true } }} client={client} dirtyPaths={[]} />);
     expect((screen.getByRole("button", { name: "Launch read-only run" }) as HTMLButtonElement).disabled).toBe(false);

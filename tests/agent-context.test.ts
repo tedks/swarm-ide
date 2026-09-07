@@ -40,6 +40,37 @@ function value(result: Awaited<ReturnType<RegisteredAgentContextProvider["prepar
 afterEach(async () => { vi.useRealTimers(); vi.restoreAllMocks(); vi.unstubAllEnvs(); await Promise.all(roots.splice(0).map((root) => rm(root, { recursive: true, force: true }))); });
 
 describe("registered disk-only launch context", () => {
+  it.each([false, true])("D3 refuses all task-bearing Prepare even with resolver=%s", async (injected) => {
+    const f = await fixture();
+    const resolveTask = vi.fn(), checkRevision = vi.fn();
+    const p = await RegisteredAgentContextProvider.create({ ...f.options,
+      ...(injected ? { taskResolver: { resolveTask, checkRevision } } : {}) });
+    const taskReference = { version: 1 as const, worldId: f.options.worldId, repositoryId: f.options.repositoryId,
+      provider: "ditz" as const, taskId: "one", metadataCommit: { algorithm: "sha1" as const, hex: "a".repeat(40) },
+      issueBlob: { algorithm: "sha1" as const, hex: "b".repeat(40) } };
+    expect(await p.prepare({ ...f.input(), taskText: "", taskReference })).toMatchObject({ ok: false, error: { code: "UNSUPPORTED_CONTROL" } });
+    expect(resolveTask).not.toHaveBeenCalled(); expect(checkRevision).not.toHaveBeenCalled();
+    expect(value(await p.prepare(f.input())).launchContext).toMatchObject({ contextVersion: 2, sourceLinks: ["source.ts"] });
+    await p.dispose();
+  });
+  it.each(["prepare", "revalidate"] as const)("closes intake and rejects held %s publication after idempotent disposal", async (operation) => {
+    const f = await fixture(); let held = false, release!: () => void, enter!: () => void;
+    const entered = new Promise<void>((resolve) => { enter = resolve; });
+    const gate = new Promise<void>((resolve) => { release = resolve; });
+    const p = await RegisteredAgentContextProvider.create({ ...f.options, capabilities: async () => verifiedFixture,
+      resolveFocus: async (focus) => {
+        if (held) { enter(); await gate; }
+        return [{ attachmentPath: focus.path ?? null, sourcePaths: [] }];
+      } });
+    const old = value(await p.prepare(f.input())); held = true;
+    const pending = operation === "prepare" ? p.prepare(f.input()) : p.revalidate(old);
+    await entered;
+    const disposal = p.dispose(); expect(p.dispose()).toBe(disposal); await disposal;
+    expect(await p.prepare(f.input())).toMatchObject({ ok: false, error: { code: "STALE_CONTEXT" } });
+    expect(await p.revalidate(old)).toMatchObject({ ok: false, error: { code: "STALE_CONTEXT" } });
+    release(); expect(await pending).toMatchObject({ ok: false, error: { code: "STALE_CONTEXT" } });
+    expect(await p.revalidate(old)).toMatchObject({ ok: false, error: { code: "STALE_CONTEXT" } });
+  });
   it("captures exact UTF-8/range, identity, hashes, normalized opaque links and honest provenance", async () => {
     const f = await fixture();
     const provider = await RegisteredAgentContextProvider.create(f.options);

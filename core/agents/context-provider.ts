@@ -9,4 +9,7 @@ export type { AgentPrepareInput, PreparedAgentContext } from "../../protocol/age
 export interface AgentContextProvider {
   prepare(input: AgentPrepareInput): Promise<AgentOperation<PreparedAgentContext>>;
   revalidate(context: PreparedAgentContext): Promise<AgentOperation<PreparedAgentContext>>;
+  /** Closes intake synchronously. Providers without owned resources may omit.
+   * Concrete owned metadata abort/settlement belongs to its implementing owner. */
+  dispose?(): Promise<void>;
 }

@@ -23,8 +23,13 @@ deterministic rehearsal for admission/history/recovery evidence, not model work.
 - [x] (2026-09-07 08:53Z) D2 verified designated clean branch at ROOT-approved PR44 normal 9e2f095; read planning rules, task contract, closure ledger, UI decisions and ROOT landing receipt; inspected actual prepare/context/store/task/client seams.
 - [x] (2026-09-07 08:54Z) Created/started design subissue `repo-task-draft-contract-d2`; parent `repo-task-draft-provenance` remains open. Drafted this plan and product contract without implementation changes.
 - [x] (2026-09-07 09:09Z) Independent light native review: one Important disposal-seam finding corrected; lifecycle delta and focused timeout delta both CLEAN. Local whitespace, nine relative links, required plan headings/spacing and exact four-doc scope checked. No implementation tests run or claimed.
-- [ ] D2 normal PR47 landing and Ditz closure; actual merge receipt is required before design completion is claimed.
-- [ ] ROOT evaluates D2, then dispatches D3 shared-contract/compatibility base.
+- [x] (2026-09-07 09:16Z) D2 normal PR47 eafe0fe landed, Ditz design issue closed/synced; ROOT verified parents/tree/docs/review/cleanup in the D2 root-verification receipt.
+- [x] (2026-09-07 09:22Z) ROOT accepted D2 and dispatched D3 alone in task-draft-base at eafe0fe; created/started `repo-task-draft-base-d3`, parent remains open.
+- [x] (2026-09-07 09:30Z) D3 bounded baseline RED: wire7/attached instructions, legacy new-preparation rejection and snapshot2 acceptance fail; 1,305 existing tests pass. Raw baseline-red.log retained in D3 step directory.
+- [x] (2026-09-07 09:44Z) D3 owns strict V1/V2 formats, shared canonical serializer, next-write outer2 promotion, all attached Prepare unavailable, optional resolver/disposal interfaces and late-publication protection. Added exact integrity/byte/browser/legacy/receipt/disposal tests; compatibility adjustments and final gates underway, not yet landed.
+- [x] (2026-09-07 09:58Z) Frozen21c3400 build34 passed56.203s; full local13 executed in641.439s with11 PASS and exactly navigation/task packaged failures. Actual logs identify old CJS wire6 requests rejected by required7. Full archive retained; ROOT approved five literal corrections and exact boundary/tripwire only. New tripwire RED:2 failed/1340 passed before correction.
+- [x] (2026-09-07 09:58Z) Native council CLEAN. Google withdrew two false positives after exact installed Zod4.5.4 and Array.isArray guard evidence, SAME-session recheck CLEAN. Anthropic no review before420s timeout, explicitly unavailable; not backfilled. Exact wire correction now in convergence/final local gates, not yet a green aggregate or merge claim.
+- [x] (2026-09-07 10:05Z) Corrected frozen6eaf9e8 build34 PASS5.474s; all13 fresh local suites PASS256.284s, quality1342/98. Actual packaged four-case navigation100.4s, CLI-authored task browsing8.9s and unchanged ordinary-close fixture rehearsal28.7s passed on owned X11 :90/55174 with cleanup1. Native and same-session Google fix-delta convergence CLEAN; Anthropic remains honestly unfilled. No model turn or attachment-resolution proof claimed.
 - [ ] D3 lands and is ROOT-verified before D4 core and D5 UI consumers.
 - [ ] D4/D5 independently reviewed increments; neither alone closes delivered behavior.
 - [ ] D6 reviewed packaged real-data integration and separate deterministic rehearsal proof; only then close implementation parent.
@@ -32,13 +37,34 @@ deterministic rehearsal for admission/history/recovery evidence, not model work.
 ## Surprises & Discoveries
 
 
-`protocol/common.ts` is already wire version 6. `AgentLinksSchema.task` is a
+D3 found that the read-only rehearsal-close verifier itself required outer
+snapshot 1. ROOT granted only strict outer1/V1 and outer2/mixed validation,
+V2 task digest verification and exact compatibility regressions. All original
+count/byte/receipt/cleanup/private-file/leak checks remain; no GUI retry or
+runtime authority was granted. The initial compatibility run identified old
+synthetic prompt/hash constructors, not an observed production failure. In
+particular the external-process fixture's launch request had to use the new
+constructed draft hash rather than the old local task-only hash. That exact
+cause is preserved with the failing run, not classified as namespace failure.
+
+The frozen packaged test exposed a separate mechanical omission: five explicit
+CJS acceptance requests still sent wire6. The core rejected them with expected7;
+the navigation driver then reached its existing120-second bound. ROOT approved
+only four navigation and one task-driver literal changes plus drift/boundary
+tests. Original all13 execution (11 PASS/2 FAIL), four owned navigation cases,
+task failure and cleanup evidence are preserved in
+`/tmp/swarm-ide-task-draft-d3.ymHzPV/frozen21c3400-testlogs.tar.gz`; SHA256 is
+`4e59395c4cc597f3c466cc2029340112c4c4c7e8e9b69a12aeb030a05dec0ae1`.
+This is concrete request-version evidence, not a claim about old discarded GUI
+failures. No timeout, selector, acceptance assertion or renderer code changed.
+
+At the inspected D2 base, `protocol/common.ts` was wire version 6. `AgentLinksSchema.task` is a
 normalized source path, not task identity; Q4's `TaskBacklinkTargetSchema`
 already expresses world/repository/provider/full ID/commit/blob. Reuse its
 validators rather than invent task IDs that resemble files.
 
-`core/agents/file-store.ts` has strict snapshot version 1, while
-`LaunchContextSchema` has no context version. Its hash validation checks
+At that base, `core/agents/file-store.ts` had strict snapshot version 1, while
+`LaunchContextSchema` had no context version. Its hash validation checked
 submittedPrompt and attachment digests, not reconstruction of the prompt from
 every context field. A task extension needs explicit legacy decoding and V2
 materialization/prompt consistency together, not just an optional UI field.
@@ -69,6 +95,20 @@ change. Mutation uncertainty stays unchanged.
 
 ## Decision Log
 
+
+Decision (2026-09-07, D3): use a strict V2 Prepared schema and mixed Run schema;
+the existing service already acknowledges admitted history before draft
+validation, so no service/R3 logic edit is required. Authoritative digest
+validation stays in the existing core store; the shared module is pure and
+actually browser-bundled/executed in a test. Source-linked V2 fields are bound
+by exact canonical prompt reconstruction; legacy contexts are not rebuilt.
+
+Decision (2026-09-07, D3): reject every attached Prepare even if a resolver
+interface is injected. The optional resolver is a type seam only. Disposal
+closes intake and drops draft authority synchronously; trusted source callbacks
+may settle under the old deadline but cannot publish. D4 alone implements
+owned metadata cancellation, production shutdown composition and the 40-second
+task-Prepare bridge branch.
 
 Decision (2026-09-07, D2): one read-only task slot next to editable instructions.
 Append keeps exact text and replaces/fills that slot; Replace clears text and
@@ -102,6 +142,36 @@ Do not add a seventh agent command or widen permission scope.
 
 ## Outcomes & Retrospective
 
+
+D3 implements the reviewed shared base, not attachment behavior. New tests cover
+exact task bytes, V2 prompt consistency, unchanged V1 values across ordinary
+write/restart, old receipt acknowledgement without provider/revalidation calls,
+fail-closed attachments and held source callbacks across disposal. All attached
+Prepare remains `UNSUPPORTED_CONTROL`; injected resolver types are not authority.
+No service queue/drain/control/policy logic changed. Source callbacks are not
+claimed cancellable; the new optional disposal seam closes intake and prevents
+late draft publication. D4 owns actual metadata resolution and lifecycle wiring;
+D5 owns user intent/UI; D6 owns joined attachment proof and parent closure.
+
+Frozen implementation head `6eaf9e8be544d885abea109ab9734819886df4f0`, tree
+`134d9e9190e6a9df55aad992b239c6c6803b1fc2`, passed the34-target build and all13
+fresh local suites (quality1,342 tests/98 files). Native and same-session Google
+full/fix-delta reviews converged CLEAN; Anthropic returned no review before its
+420-second timeout and stayed unfilled. The next commit records only these docs;
+its final frozen check/normal merge/parents/tree are recorded separately in
+`/tmp/swarm-ide-task-draft-d3.ymHzPV/landing-verification.md`. No unchecked docs
+tree is represented as the earlier tested tree. PR48 and Ditz closure require
+actual local landing gates, not this future receipt path.
+
+Both failed and corrected full test outputs are preserved. The successful
+`frozen6eaf9e8-testlogs.tar.gz` archive SHA256 is
+`f5721cab797ec650df31f1392a35ac408110c977a56799ef046a386c7d842688`.
+The real packaged navigation and CLI-authored task-browsing journeys attest
+unchanged existing behavior, not task attachments; ordinary-close rehearsal is
+explicitly fixture execution, not a live model. Every owned virtual scenario
+reported cleanup1. No human canvas, master, integration or app was adopted.
+The one-way ordinary-write snapshot2 boundary above remains required before
+future adoption; V1 values are preserved, not reformatted for display.
 
 D2 provides a grounded design and prospective implementation sequence,
 not a shipped attachment button or executable schema. Draft PR47 contains only
@@ -523,3 +593,12 @@ lifecycle delta and separately on the narrow timeout delta. Preserved the
 reviewer's explicit absent-receipt-is-not-rejection test requirement. These
 reviews attest the design correction only. ROOT still evaluates the contract
 before any implementation dispatch.
+
+D3 revision (2026-09-07): recorded actual baseline and compatibility findings,
+ROOT-approved verifier ownership, V2-only fresh preparation and D4-held seams.
+No prior aggregate proof is attributed to these new changes.
+
+D3 bounded correction (2026-09-07): recorded the original frozen aggregate and
+ROOT-approved packaged wire fix, with two new RED assertions before correction.
+Current outcome/merge attribution remains in the step's final receipt; the
+parent cannot close before D6. Hosted CI remains ignored, not called green.

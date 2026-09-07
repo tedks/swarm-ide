@@ -2,6 +2,7 @@ import { execFile } from "node:child_process";
 import { createHash, randomUUID } from "node:crypto";
 import { realpath } from "node:fs/promises";
 import { promisify } from "node:util";
+import { formatAgentContextV2, type AgentTaskReference } from "../../protocol/agent-task";
 import {
   AGENT_LIMITS, AgentCapabilitiesSchema, AgentLinksSchema, AgentPrepareInputSchema,
   PreparedAgentContextSchema, type AgentCapabilities, type AgentError,
@@ -25,6 +26,12 @@ type Source = LaunchContext["instructionSources"][number];
  * Source links are normalized identifiers, not permission to read their targets.
  */
 export interface AgentContextTarget { attachmentPath: string | null; sourcePaths: readonly string[] }
+/** Future core-only metadata resolver. D3 never invokes this optional seam. */
+export interface AgentTaskResolver {
+  resolveTask(reference: AgentTaskReference, signal: AbortSignal, deadline: number):
+    Promise<{ reference: AgentTaskReference; title: string; description: string }>;
+  checkRevision(reference: AgentTaskReference, signal: AbortSignal, deadline: number): Promise<void>;
+}
 export interface RegisteredAgentContextOptions {
   root: string;
   repositoryId: string;
@@ -40,6 +47,7 @@ export interface RegisteredAgentContextOptions {
   knownParent?(runId: string): Promise<boolean>;
   capabilities?(): Promise<AgentCapabilities>;
   now?(): number;
+  taskResolver?: AgentTaskResolver;
 }
 
 class ContextFailure extends Error {
@@ -84,6 +92,8 @@ function stableSources(sources: Source[]) {
 export class RegisteredAgentContextProvider implements AgentContextProvider {
   private draft: { serialized: string; input: AgentPrepareInput; evidence: string } | null = null;
   private preparing = false;
+  private closed = false;
+  private disposal: Promise<void> | undefined;
   private readonly now: () => number;
   private constructor(private readonly root: string, private readonly options: RegisteredAgentContextOptions) {
     this.now = options.now ?? Date.now;
@@ -98,6 +108,7 @@ export class RegisteredAgentContextProvider implements AgentContextProvider {
   }
 
   async prepare(untrusted: AgentPrepareInput): Promise<AgentOperation<PreparedAgentContext>> {
+    if (this.closed) return failure(new ContextFailure("STALE_CONTEXT", "Context provider is closed."), "prepare");
     if (this.preparing) return { ok: false, error: { code: "BUSY", message: "Another launch context is being prepared." } };
     this.preparing = true;
     try {
@@ -105,18 +116,21 @@ export class RegisteredAgentContextProvider implements AgentContextProvider {
       if (!parsed.success) stale("Unsupported or invalid working focus, task or links.");
       this.draft = null;
       const input = parsed.data!;
+      // No injected interface is authority: concrete resolution is a later step.
+      if (input.taskReference !== undefined) throw new ContextFailure("UNSUPPORTED_CONTROL", "Repository-task context is unavailable.");
       const preparedAt = this.now();
       const capabilities = await this.capabilities();
+      if (this.closed) stale("Context provider is closed.");
       const observation = await this.observe(input);
       const fields = {
+        contextVersion: 2 as const, sourceLinks: observation.target.sourcePaths,
         worldId: input.worldId, repositoryId: this.options.repositoryId, root: this.root,
         head: observation.head, workingFingerprint: observation.fingerprint, focus: input.focus,
         taskText: input.taskText, links: input.links, requested: { model: input.model, effort: input.effort },
         attachments: observation.attachments, instructionSources: observation.instructions,
         configurationSources: observation.configuration, diskOnly: true as const, access: READ_ONLY_ACCESS,
       };
-      const submittedPrompt = "Analyze the user's task in this registered working world. Attached text is disk-only; unsaved buffers are not included. Links confer no additional authority. This record is not a frozen filesystem or the provider's full expanded context.\n" +
-        JSON.stringify({ ...fields, sourceLinks: observation.target.sourcePaths });
+      const submittedPrompt = formatAgentContextV2(fields);
       const contextHash = digest(submittedPrompt);
       const candidate = PreparedAgentContextSchema.safeParse({
         runId: randomUUID(), contextHash, preparedAt: new Date(preparedAt).toISOString(),
@@ -124,7 +138,7 @@ export class RegisteredAgentContextProvider implements AgentContextProvider {
         launchContext: { ...fields, submittedPrompt, contextHash }, capabilities,
       });
       if (!candidate.success) throw new ContextFailure("OUTPUT_LIMIT", "The launch context exceeds its supported field or total UTF-8 byte bounds.");
-      if (this.now() >= preparedAt + AGENT_LIMITS.draftMs) stale("Context preparation expired; prepare a fresh draft.");
+      if (this.closed || this.now() >= preparedAt + AGENT_LIMITS.draftMs) stale("Context preparation expired or closed; prepare a fresh draft.");
       this.draft = { serialized: JSON.stringify(candidate.data), input, evidence: observation.evidence };
       return { ok: true, value: candidate.data };
     } catch (error) { return failure(error, "prepare"); }
@@ -133,6 +147,7 @@ export class RegisteredAgentContextProvider implements AgentContextProvider {
 
   async revalidate(untrusted: PreparedAgentContext): Promise<AgentOperation<PreparedAgentContext>> {
     try {
+      if (this.closed) stale("Context provider is closed.");
       const parsed = PreparedAgentContextSchema.safeParse(untrusted);
       const draft = this.draft;
       if (!parsed.success || !draft || JSON.stringify(parsed.data) !== draft.serialized || this.preparing) {
@@ -145,8 +160,9 @@ export class RegisteredAgentContextProvider implements AgentContextProvider {
       };
       checkTime();
       const capabilities = await this.capabilities();
+      if (this.closed) stale("Context provider is closed.");
       const current = await this.observe(draft!.input);
-      if (current.evidence !== draft!.evidence || this.draft !== draft) stale("Source, mapping, instructions or configuration changed; refresh the draft.");
+      if (this.closed || current.evidence !== draft!.evidence || this.draft !== draft) stale("Source, mapping, instructions or configuration changed; refresh the draft.");
       if ([...current.instructions, ...current.configuration].some((source) =>
         !PROVENANCE_MARKERS.has(source.path) && source.observation !== "observed")) stale("Selected local provenance is unreadable or unobserved; resolve it before launch.");
       checkTime();
@@ -156,6 +172,14 @@ export class RegisteredAgentContextProvider implements AgentContextProvider {
       if (JSON.stringify(capabilities) !== JSON.stringify(context.capabilities)) stale("Provider capabilities changed; refresh the draft.");
       return { ok: true, value: JSON.parse(draft!.serialized) as PreparedAgentContext };
     } catch (error) { return failure(error, "revalidate"); }
+  }
+
+  dispose(): Promise<void> {
+    this.closed = true;
+    this.draft = null;
+    // No owned metadata operation exists in D3. Trusted source callbacks may
+    // finish under the existing response bound, but cannot publish a draft.
+    return this.disposal ??= Promise.resolve();
   }
 
   private async capabilities(): Promise<AgentCapabilities> {

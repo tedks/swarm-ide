@@ -5,6 +5,7 @@ import { chmod, link, mkdir, mkdtemp, readFile, readdir, rename, rm, stat, symli
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
+import { fixtureV2Draft } from "../fixtures/agent-context-v2";
 import { createFileRunStore, type FileRunStore, type FileRunStoreOptions } from "../core/agents/file-store";
 import type { AgentOperation } from "../core/agents/adapter";
 import { unavailableAgentSnapshot } from "../core/agents/unavailable";
@@ -22,7 +23,7 @@ function value<T>(result: AgentOperation<T>): T {
 function draft(runId = randomUUID()): PreparedAgentContext {
   const prompt = "Explain the contract.";
   const digest = hash(prompt);
-  return {
+  return fixtureV2Draft({
     runId, contextHash: digest, preparedAt: at, expiresAt: "2026-09-06T04:05:00.000Z",
     capabilities: unavailableAgentSnapshot().capabilities,
     launchContext: {
@@ -34,7 +35,7 @@ function draft(runId = randomUUID()): PreparedAgentContext {
       instructionSources: [], configurationSources: [], submittedPrompt: prompt, contextHash: digest, diskOnly: true,
       access: { policy: "read-only", toolNetwork: false, approvals: "never", hostConfidentiality: false, sendsSelectedContentToProvider: true },
     },
-  };
+  });
 }
 async function root() { const path = await mkdtemp(join(tmpdir(), "swarm-agent-store-")); roots.push(path); return path; }
 async function openStore(path: string, extra: FileRunStoreOptions = {}) {
@@ -96,7 +97,7 @@ describe("durable private agent store", () => {
   it("captures input before the serial queue and refuses invalid context hashes and expired drafts", async () => {
     const directory = join(await root(), "private"); const store = await openStore(directory);
     const invalid = draft(); invalid.launchContext.attachments[0]!.digest = "f".repeat(64);
-    expect(await store.admit(invalid)).toMatchObject({ ok: false, error: { code: "STORAGE_UNAVAILABLE" } });
+    expect(await store.admit(fixtureV2Draft(invalid))).toMatchObject({ ok: false, error: { code: "STORAGE_UNAVAILABLE" } });
     const expired = draft(); expired.preparedAt = "2026-09-06T03:55:00.000Z"; expired.expiresAt = at;
     expect(await store.admit(expired)).toMatchObject({ ok: false, error: { code: "STALE_CONTEXT" } });
     const context = draft(); const pending = store.admit(context); context.launchContext.taskText = "edited after call";
@@ -153,7 +154,7 @@ describe("durable private agent store", () => {
     await Promise.all(names.map((name) => writeFile(join(directory, name), "incomplete", { mode: 0o600 })));
     await expect(createFileRunStore(directory, options)).rejects.toThrow();
     expect(await readdir(directory)).toHaveLength(129);
-    expect(await readFile(join(directory, "snapshot.json"), "utf8")).toBe(JSON.stringify({ version: 1, entries: [] }));
+    expect(await readFile(join(directory, "snapshot.json"), "utf8")).toBe(JSON.stringify({ version: 2, entries: [] }));
   });
 
   it("recovers active state and pending delivery as durable unknown without replay", async () => {
@@ -343,7 +344,7 @@ describe("durable private agent store", () => {
     const repo = join(base, "repo"); await mkdir(join(repo, ".git"), { recursive: true });
     await expect(createFileRunStore(join(repo, "private"))).rejects.toThrow();
     const store = await openStore(join(base, "valid")); const context = draft(); context.launchContext.root = base;
-    expect(await store.admit(context)).toMatchObject({ ok: false, error: { code: "STALE_CONTEXT" } });
+    expect(await store.admit(fixtureV2Draft(context))).toMatchObject({ ok: false, error: { code: "STALE_CONTEXT" } });
   });
 
   it.each(["symlink", "hardlink", "fifo", "public", "oversize", "utf8", "json"])("rejects unsafe %s snapshots without following, blocking, or destructive repair", async (kind) => {
@@ -357,7 +358,7 @@ describe("durable private agent store", () => {
     if (kind === "utf8") await writeFile(path, Buffer.from([0xff]), { mode: 0o600 });
     if (kind === "json") await writeFile(path, "{", { mode: 0o600 });
     await expect(createFileRunStore(directory)).rejects.toThrow("could not be safely opened");
-    expect(await readFile(target, "utf8")).toBe(JSON.stringify({ version: 1, entries: [] }));
+    expect(await readFile(target, "utf8")).toBe(JSON.stringify({ version: 2, entries: [] }));
   });
 
   it.each(["duplicate", "receipt", "hash", "records", "bytes", "extra", "instruction-turn", "instruction-time"])("validates cross-record %s invariants on reload", async (kind) => {

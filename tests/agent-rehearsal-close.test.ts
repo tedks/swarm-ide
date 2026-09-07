@@ -6,7 +6,9 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { agentFixtureContext, agentFixtureFrames, agentFixtureRecords } from "../fixtures/agents";
-import { AGENT_LIMITS, RunSchema, utf8Bytes, type Run } from "../protocol/agents";
+import { fixtureV2Draft } from "../fixtures/agent-context-v2";
+import { AGENT_LIMITS, LaunchContextV1Schema, RunSchema, utf8Bytes, type Run } from "../protocol/agents";
+import { AgentTaskReferenceSchema, formatAgentContextV2, formatRepositoryTask } from "../protocol/agent-task";
 import { verifyRehearsalClose } from "./support/agent-rehearsal-close";
 
 const roots: string[] = [];
@@ -24,7 +26,7 @@ async function fixture() {
   context.launchContext.root = workspace;
   context.launchContext.submittedPrompt = `Synthetic unit fixture context, not filesystem observation: ${workspace}`;
   context.contextHash = context.launchContext.contextHash = hash(context.launchContext.submittedPrompt);
-  const frames = agentFixtureFrames(context), records = agentFixtureRecords();
+  const frames = agentFixtureFrames(fixtureV2Draft(context)), records = agentFixtureRecords();
   const runIds = { first: randomUUID(), second: randomUUID(), third: randomUUID(), activeAtClose: randomUUID() };
   const entries = roles.map((role) => {
     const template = role === "second" ? frames["completed-cleaned"] : role === "activeAtClose" ? frames["recovered-unknown"] : frames.cancelled;
@@ -35,7 +37,7 @@ async function fixture() {
     return { run: RunSchema.parse(run), records: structuredClone(records), receipt: {
       runId: run.runId, contextHash: run.launchContext.contextHash, admittedAt: run.createdAt, status: "admitted" as const } };
   });
-  const snapshot = { version: 1, entries };
+  const snapshot = { version: 2, entries };
   const diagnostics = { fixture: "TEST-ONLY autonomous in-process rehearsal / R2 service / E1 disk context", externalProcesses: 0,
     totals: { start: 4, steer: 2, interrupt: 2, dispose: 4 }, runs: roles.map((role) => ({
       runId: runIds[role], activeTimers: 0, peakTimers: 3, emittedRecords: records.length,
@@ -50,13 +52,50 @@ async function fixture() {
 }
 
 describe("read-only post-core-exit rehearsal close proof", () => {
+  it.each(["legacy", "mixed"])("reads %s contexts without rewriting old values", async (kind) => {
+    const f = await fixture(); f.snapshot.version = kind === "legacy" ? 1 : 2;
+    for (const row of kind === "legacy" ? f.snapshot.entries : f.snapshot.entries.slice(0, 1)) {
+      const { contextVersion: _version, sourceLinks: _links, ...context } = row.run.launchContext as ReturnType<typeof agentFixtureContext>["launchContext"];
+      context.submittedPrompt = "Legacy exact payload\ufeffé\r\n"; context.contextHash = hash(context.submittedPrompt);
+      row.run.launchContext = LaunchContextV1Schema.parse(context); row.receipt.contextHash = context.contextHash;
+    }
+    await f.save(); const before = await readFile(f.path);
+    expect(await verifyRehearsalClose(f.options)).toMatchObject({ verified: true });
+    expect(await readFile(f.path)).toEqual(before);
+  });
+  it.each(["outer1-v2", "unknown-version", "unknown-context", "legacy-smuggling", "task-digest", "task-content"])("rejects %s without weakening close evidence", async (kind) => {
+    const f = await fixture(); const row = f.snapshot.entries[0]!;
+    const context: any = row.run.launchContext;
+    if (kind === "outer1-v2") f.snapshot.version = 1;
+    if (kind === "unknown-version") f.snapshot.version = 3;
+    if (kind === "unknown-context") context.contextVersion = 3;
+    if (kind === "legacy-smuggling") delete context.contextVersion;
+    if (kind.startsWith("task-")) {
+      const reference = AgentTaskReferenceSchema.parse({ version: 1, worldId: context.worldId, repositoryId: context.repositoryId,
+        provider: "ditz", taskId: "synthetic", metadataCommit: { algorithm: "sha1", hex: "a".repeat(40) }, issueBlob: { algorithm: "sha1", hex: "b".repeat(40) } });
+      const content = formatRepositoryTask(reference, "Synthetic title", "Exact untrusted \r\n data");
+      context.repositoryTask = { reference, encoding: "swarm-repository-task-json-v1", content, bytes: utf8Bytes(content), digest: hash(content) };
+      if (kind === "task-digest") context.repositoryTask.digest = "f".repeat(64);
+      if (kind === "task-content") context.repositoryTask.content += " ";
+    }
+    context.submittedPrompt = formatAgentContextV2(context);
+    context.contextHash = row.receipt.contextHash = hash(context.submittedPrompt);
+    await f.save(); const before = await readFile(f.path);
+    await expect(verifyRehearsalClose(f.options)).rejects.toThrow("close proof failed");
+    expect(await readFile(f.path)).toEqual(before);
+  });
   it.each(["diagnostics-schema", "retained-record-count", "retained-text-bytes", "retained-consistency"])("reports only the fixed %s failure code", async (code) => {
     const f = await fixture();
     if (code === "diagnostics-schema") f.diagnostics.runs[0]!.activeTimers = 1;
     if (code === "retained-record-count") f.diagnostics.runs[0]!.emittedRecords++;
     if (code === "retained-text-bytes") f.diagnostics.runs[0]!.emittedBytes++;
     if (code === "retained-consistency") {
-      f.snapshot.entries[0]!.run.launchContext.submittedPrompt = "PRIVATE untrusted prompt must not appear in a diagnostic";
+      // Structurally valid prompt; isolate the original integrity phase by
+      // changing only its hash, not V2 canonical reconstruction.
+      const context = f.snapshot.entries[0]!.run.launchContext;
+      context.taskText = "PRIVATE untrusted prompt must not appear in a diagnostic";
+      context.submittedPrompt = formatAgentContextV2(context);
+      context.contextHash = "f".repeat(64);
       await f.save();
     }
     const before = await readFile(f.path);
