@@ -27,6 +27,10 @@ describe("build resource statistics", () => {
       mean: Number.MAX_VALUE, median: Number.MAX_VALUE, p95: Number.MAX_VALUE, peak: Number.MAX_VALUE });
   });
 
+  it("keeps the mean finite when rounding three extreme divided values would overflow", () => {
+    expect(summarizeSamples([Number.MAX_VALUE, Number.MAX_VALUE, Number.MAX_VALUE])?.mean).toBe(Number.MAX_VALUE);
+  });
+
   it("has declared synthetic CPU/core and memory/MiB series, not job-derived history", () => {
     expect(EXAMPLE_BUILD_PROFILE.target).toBe("//demo:build");
     expect(EXAMPLE_BUILD_PROFILE.cpuPercent).toHaveLength(12);

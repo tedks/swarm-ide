@@ -15,7 +15,7 @@ export function summarizeSamples(samples: readonly (number | null | undefined)[]
   const middle = Math.floor(count / 2);
   return {
     count,
-    mean: sorted.reduce((mean, value) => mean + value / count, 0),
+    mean: sorted.reduce((mean, value, index) => mean + (value - mean) / (index + 1), 0),
     median: count % 2 ? sorted[middle] : sorted[middle - 1] / 2 + sorted[middle] / 2,
     p95: sorted[Math.ceil(count * 0.95) - 1],
     peak: sorted[count - 1],

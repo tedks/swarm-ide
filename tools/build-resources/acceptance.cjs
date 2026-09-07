@@ -37,6 +37,10 @@ async function main() {
   const paint = () => run(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve(true)))));
   const key = async (keyCode, modifiers = []) => {
     wc.sendInputEvent({ type: "keyDown", keyCode, modifiers });
+    // Chromium activates native buttons/details on the character event. Match
+    // real keyboard delivery rather than down/up-only synthetic keypresses.
+    if (keyCode === "Enter") wc.sendInputEvent({ type: "char", keyCode: "\r", modifiers });
+    if (keyCode === "Space") wc.sendInputEvent({ type: "char", keyCode: " ", modifiers });
     wc.sendInputEvent({ type: "keyUp", keyCode, modifiers }); await paint();
   };
   const click = async (selector) => {
@@ -131,6 +135,7 @@ async function main() {
   for (const label of [/illustrative/i, /CPU/, /Memory/, /median/i, /p95/i, /peak/i, /sample/i]) assert.match(exampleText, label);
   assert.equal(await run(() => document.querySelectorAll(".resource-example svg").length), 2, "separate CPU and memory sparklines");
   await retained();
+  await run(() => document.querySelector(".resource-example").scrollIntoView({ block: "start" }));
   await shot("02-example-profile.png");
   await tabTo(".resource-example summary");
   assert.equal(await text(".resource-example summary"), "Profile basis");
@@ -154,12 +159,14 @@ async function main() {
   const resourceRequests = interactionRequests.filter((request) => !backgroundRequests.includes(request));
   const productMutations = requests.filter((request) => /^(agent\.(launch|steer|cancel)|reconciliation\.start|fixture\.reset|file\.write)$/.test(request.type));
   assert.deepEqual(resourceRequests, [], "example controls make no core/provider requests");
-  assert.deepEqual(productMutations, [], "no build, source save, or model turn");
+  assert.deepEqual(productMutations, [], "no explicit build, source save, or model-turn request");
   assert.deepEqual(errors, [], "strict renderer error gate");
   await fs.writeFile(path.join(evidence, "proof.json"), JSON.stringify({ ok: true, packagedCore: true, keyboard: true,
     retained: true, actualSource: repository.sourcePath, unsavedSourceMatchesDisk: false, sourceDiskUnchanged: true,
     graphCount: cameras.length, example: "illustrative only; no current utilization asserted", exampleText,
-    resourceRequests, backgroundRequests, productMutations, rendererErrors: errors, milliseconds: Date.now() - started }, null, 2));
+    resourceRequests, backgroundRequests, productMutations, rendererErrors: errors,
+    buildBoundary: "No explicit build request; existing source-change reconciliation may attempt background topology extraction.",
+    milliseconds: Date.now() - started }, null, 2));
 }
 main().catch(async (error) => {
   if (currentWindow && !currentWindow.isDestroyed()) {
