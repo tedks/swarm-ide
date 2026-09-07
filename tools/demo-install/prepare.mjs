@@ -26,8 +26,8 @@ const taskFiles = git(checkout, ["ls-tree", "-r", "--name-only", "refs/heads/dit
 if (!taskFiles.some((path) => path.endsWith(".yaml"))) throw new Error("Fetched Ditz branch lacks actual YAML records");
 await mkdir(join(target, "src"), { recursive: true }); await mkdir(join(target, "tools"));
 await writeFile(join(target, "src", "hello.ts"), '// Actual file in the selected non-Bazel repository.\nexport const message = "Hello from the chosen repository";\n');
-await writeFile(join(target, "tools", "dev.sh"), "#!/bin/sh\nexit 93 # must never be executed by the IDE launcher\n", { mode: 0o755 });
-await writeFile(join(target, "tools", "bazel"), "#!/bin/sh\nexit 94 # selected repo is data, not launcher code\n", { mode: 0o755 });
+await writeFile(join(target, "tools", "dev.sh"), "#!/bin/sh\ntouch target-wrapper-ran\nexit 93 # must never be executed by the IDE launcher\n", { mode: 0o755 });
+await writeFile(join(target, "tools", "bazel"), "#!/bin/sh\ntouch target-wrapper-ran\nexit 94 # selected repo is data, not launcher code\n", { mode: 0o755 });
 git(target, ["init", "-q"]); git(target, ["add", "."]);
 git(target, ["-c", "user.name=Swarm installation proof", "-c", "user.email=proof@example.invalid", "commit", "-qm", "Actual disposable non-Bazel repository"]);
 await writeFile(join(evidence, "installation-inputs.json"), JSON.stringify({

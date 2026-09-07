@@ -123,18 +123,26 @@ const build = await context({
     });
   } }],
 });
-await build.rebuild();
-await build.watch();
-
-const vite = await createServer({
-  configFile: resolve(workspace, "vite.config.mts"),
-  clearScreen: false,
-  server: {
-    host: devEndpoint.host,
-    port: devEndpoint.port,
-  },
-});
-await vite.listen();
+let vite;
+try {
+  await build.rebuild();
+  await build.watch();
+  vite = await createServer({
+    configFile: resolve(workspace, "vite.config.mts"),
+    clearScreen: false,
+    server: {
+      host: devEndpoint.host,
+      port: devEndpoint.port,
+    },
+  });
+  await vite.listen();
+} catch (error) {
+  // A port can be claimed after the early diagnostic. Strict Vite failure must
+  // release watchers as well as reject, rather than leaving a headless process.
+  await build.dispose();
+  await vite?.close();
+  throw error;
+}
 vite.printUrls();
 
 watchersReady = true;

@@ -9,7 +9,13 @@ export SWARM_INSTALL_EVIDENCE
 SWARM_INSTALL_EVIDENCE=$(mktemp -d "$evidence_root/run.XXXXXX")
 export SWARM_INSTALL_SCRATCH
 SWARM_INSTALL_SCRATCH=$(mktemp -d /tmp/swarm-demo-install.XXXXXX)
-trap 'echo "Owned disposable checkout retained for evidence: $SWARM_INSTALL_SCRATCH"' EXIT
+cleanup_checkout() {
+  if [[ -d "$SWARM_INSTALL_SCRATCH/checkout/.git" ]]; then
+    (cd "$SWARM_INSTALL_SCRATCH/checkout" && nix develop --command bazel shutdown) >>"$SWARM_INSTALL_EVIDENCE/cleanup.log" 2>&1 || true
+  fi
+  echo "Owned disposable checkout retained for evidence: $SWARM_INSTALL_SCRATCH"
+}
+trap cleanup_checkout EXIT
 node "$scripts/prepare.mjs" "$source_root"
 export SWARM_INSTALL_CHECKOUT="$SWARM_INSTALL_SCRATCH/checkout"
 export SWARM_INSTALL_TARGET="$SWARM_INSTALL_SCRATCH/target repo"
@@ -36,5 +42,5 @@ done
 git -C "$SWARM_INSTALL_CHECKOUT" status --porcelain >"$SWARM_INSTALL_EVIDENCE/checkout-status.txt"
 git -C "$SWARM_INSTALL_TARGET" status --porcelain >"$SWARM_INSTALL_EVIDENCE/target-status.txt"
 [[ ! -s "$SWARM_INSTALL_EVIDENCE/checkout-status.txt" && ! -s "$SWARM_INSTALL_EVIDENCE/target-status.txt" ]]
-[[ ! -e "$SWARM_INSTALL_SCRATCH/target-wrapper-ran" ]]
+[[ ! -e "$SWARM_INSTALL_TARGET/target-wrapper-ran" ]]
 echo "Actual clean-checkout dev launch and second repository passed: $SWARM_INSTALL_EVIDENCE"
