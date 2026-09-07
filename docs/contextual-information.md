@@ -11,7 +11,8 @@ Open `core/files.ts`, then
 `examples/checkout-world/services/fraudcheck/fraudcheck.ts`. Context identifies
 each exact file and its observed source state. Only the second receives the
 service relationships supported by the built example artifact. Neither receives
-invented deployments, latency, bugs, or lessons. The first may have separate,+visibly dated captured Bazel references; these are not current ownership.
+invented deployments, latency, bugs, or lessons. The first may have separate,
+visibly dated captured Bazel references; these are not current ownership.
 
 Context is composed from intrinsic facts and relationships to independently
 meaningful artifacts. It does not make files, tasks, builds, and services one
