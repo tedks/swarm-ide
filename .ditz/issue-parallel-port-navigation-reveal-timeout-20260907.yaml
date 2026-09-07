@@ -1,0 +1,21 @@
+id: parallel-port-navigation-reveal-timeout-20260907
+title: Local packaged unfamiliar task Reveal timed out during independent-port proof
+desc: 'S1 PR57 executable67ef71f: one actual concurrent navigation/task run proved
+  :126/55206 and :127/55207 overlap. Task and 3/4 navigation cases passed; unfamiliar
+  task-offslice-reveal acceptance.cjs505 timed out awaiting src. All5 cleanup1, rendererErrors
+  empty. Final focus Return to source information; no event-target trace or cause
+  proof, no retry/waiver. Evidence /tmp/swarm-ide-demo-release.GY8Uwv/virtual-ports/boundary.md.
+  ROOT disposition required; keep separate from B1 old Q2 focus issue.'
+type: bugfix
+component: default
+release:
+reporter: Ted Smith <tedks@riseup.net>
+status: unstarted
+disposition:
+creation_time: 2026-09-07T20:14:49-00:00
+references: []
+log_events:
+- time: 2026-09-07T20:14:49-00:00
+  who: Ted Smith
+  what: created
+  comment: ""
