@@ -15,8 +15,9 @@ D5 adds a deliberate task-to-draft interaction. A person inspecting an authorita
 - [x] (2026-09-07 10:46Z) Current-detail selector, source-independent generation-bound proposal, one-slot form, explicit original history and narrow ROOT-approved dock reveal implemented. Quality1 passed 1,400 tests/100 files; scoped packaged driver was authored alongside, not yet executed.
 - [x] (2026-09-07 10:52Z) Frozen bd9eb84 build34 PASS56.170s and all13 fresh local suites PASS260.734s, quality1403/100. Actual CLI-Ditz packaged attachment journey passed9.1s with cleanup1/zero renderer errors at100/150 compact, retaining source/cursor/cameras through each intentional instruction edit. Google full review CLEAN; native found one held-launch retirement race; Anthropic timed out420s without review, unavailable.
 - [x] (2026-09-07 15:25Z) Resumed same D5 after user quota replenishment; preserved existing work and completed evidence. Exact held-launch regression RED1/1403PASS before narrow existing closeDraft retirement correction. Screenshot-only additions expose the actual review/slot in the existing dock, without changing layout or old assertions. Corrected frozen gates/convergence pending.
-- [ ] Prove actual owned virtual interaction, strict local full suite and provider-aware council convergence.
-- [ ] Push and normally land only on ROOT-cleared base; hand off D4/D6 limits.
+- [x] (2026-09-07 15:30Z) Corrected3e83c82 build34 PASS5.724s and all13 fresh local suites PASS, quality1404/100. Real packaged CLI-Ditz attachment100/150 passed9.1s with visible review/slot captures, zero renderer errors and cleanup1. Existing native and same-session Google fix-delta reviews CLEAN; Anthropic remains unavailable without substitution.
+- [x] (2026-09-07 15:30Z) Implementation and correction pushed to ready PR49. Final documentation/head gate and actual normal merge/parents/tree are recorded separately in PR49 and the step landing receipt; no automatic peer consumption.
+- [ ] ROOT intake of actual landing, then D4/D6 reviewed composition; parent task-to-draft issue remains open.
 
 ## Surprises & Discoveries
 
@@ -35,7 +36,13 @@ Decision (2026-09-07, D5): keep preview text outside the wire request. Use D3's 
 ## Outcomes & Retrospective
 
 
-Implementation and verification are pending. Production policy stays unavailable. Human canvas55175, master/shared integration and existing user buffers are untouched.
+The bounded UI consumer is implemented and verified, not the joined feature. Current complete task detail offers Attach; a supported existing source draft stays fixed, otherwise an independently selected open working file is required. The proposal binds client/task/draft/source observation authority. Append preserves every free-text character, Replace clears it explicitly, Cancel is inert, and Remove changes only the one slot. Exact full pins are idempotent; newer revisions require review. Pending/late prepares and retired launch drafts cannot regain authority through old proposals. Model/source/instructions remain separate from untrusted readonly metadata. Only taskReference crosses the wire; core materialization is not renderer-supplied. Memory recovery retains intent but invalidates preparation and preview currency; history displays original V2 materialization or the explicit frozen legacy label.
+
+Two targeted regression histories are exact: four UI gaps before presentation implementation (1396 passing), and one review-discovered held-launch resurrection before its retirement correction (1403 passing). Other new client/selector negative tests were added alongside implementation and are not called historical RED. The initial UI baseline had a disclosed mechanical test-type edit during startup, not a final frozen-tree claim. Final executable3e83c82 passed the34-target build and all13 fresh local suites with1404 tests/100 files; the next documentation-only head has separately recorded exact gates/landing in PR49 and `/tmp/swarm-ide-task-consumers.jbWXBA/ui/landing-verification.md`.
+
+Actual disposable CLI-Ditz metadata flowed through the unchanged production package, bridge, task provider and UI at100/150 compact. Each intermediate Append/Replace/Remove/Cancel preserves source bytes, logical cursor, graph/editor/draft identities and cameras as appropriate; original instructions are restored only after checking intentional Replace emptiness. Deliberate Prepare reports genuine D3 UNSUPPORTED_CONTROL, with zero admitted runs and launch unavailable observed before/after. This is not successful task materialization or real-provider delivery. Prepared/history successes in mounted tests are labelled schema fixtures. Existing malformed/missing/stale/expired/parser-absent and ordinary-close rehearsal assertions remain intact. Screenshots contain deliberately hostile literal task text and existing negative-topology/file evidence, not executable markup.
+
+Provider-aware council converged with OpenAI native and Google same-session reviews CLEAN on the correction. Anthropic's initial420-second attempt yielded no review and remains unfilled; no duplicate exhausted seat or same-provider substitution. Hosted CI is ignored. The quota outage was resumed in the same fork without replay or duplicate jobs. Production policy stays unavailable. Human canvas55175, master/shared integration and existing user buffers are untouched. D4 must be independently ROOT-verified; D6 alone proves actual successful joined preparation/lifecycle and closes the parent.
 
 ## Context and Orientation
 
@@ -72,4 +79,4 @@ ROOT authority: `/tmp/swarm-ide-task-consumers.jbWXBA/common.md`. Verified base 
 
 Reuse React, the typed bridge and pure `protocol/agent-task.ts` formatter/reference types. No dependency or protocol change. Task candidate validity and proposal validity are local observation guards, not a frozen Git/filesystem promise. Core independently revalidates pins; D4 owns that implementation, D6 owns reviewed joined acceptance. Production remains ADAPTER_POLICY_UNAVAILABLE.
 
-Revision note (2026-09-07): initialized bounded UI consumer plan before implementation; no delivery claim.
+Revision note (2026-09-07): initialized bounded UI consumer plan before implementation; then recorded precise UI baseline, reviewed held-launch counterexample/correction, actual packaged proof and separate remaining D4/D6 boundaries. Final landing attribution is external to this pre-landing document, not inferred from a green earlier tree.
