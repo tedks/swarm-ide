@@ -99,7 +99,8 @@ describe("GitHub PR fixed scope and validation", () => {
     const command = vi.fn(async () => { throw new BuildQueryCleanupError("unknown"); });
     const provider = new GithubPrProvider("/unused", "repo", "world", command, async () => "git@github.com:example/project.git\n");
     await expect(provider.refresh()).rejects.toThrow("unknown");
-    await expect(provider.refresh()).rejects.toThrow("cleanup unconfirmed"); expect(command).toHaveBeenCalledTimes(1); await provider.dispose();
+    await expect(provider.refresh()).rejects.toThrow("cleanup unconfirmed"); expect(command).toHaveBeenCalledTimes(1);
+    await expect(provider.dispose()).rejects.toThrow("cleanup remains unconfirmed");
   });
   it("actual GitHub command owner survives caller SIGKILL only long enough to kill the held command and detached descendant", async () => {
     const root = await mkdtemp(join(tmpdir(), "github-pr-core-death-")); owned.push(root);

@@ -76,5 +76,8 @@ export class GithubPrProvider {
       .finally(() => { clearTimeout(deadline); this.lifetime.signal.removeEventListener("abort", cancel); this.pending = null; });
     return this.pending;
   }
-  async dispose(): Promise<void> { this.lifetime.abort(); await this.pending?.catch(() => {}); }
+  async dispose(): Promise<void> {
+    this.lifetime.abort(); await this.pending?.catch(() => {});
+    if (this.cleanupBlocked) throw new BuildQueryCleanupError("GitHub command cleanup remains unconfirmed");
+  }
 }

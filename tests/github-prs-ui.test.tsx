@@ -6,6 +6,9 @@ import { initialSnapshot } from "../fixtures/world";
 import { PROTOCOL_VERSION, type CoreRequest } from "../protocol/schema";
 import { JournalActivity, JournalPanel } from "../app/renderer/changelog/JournalPanel";
 import { syntheticJournal } from "./journal-fixture";
+import { AgentDock } from "../app/renderer/agents/AgentDock";
+import { AgentBridgeClient } from "../app/renderer/agents/bridge-client";
+import { emptyLiveAgentState } from "../app/renderer/agents/live-state";
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
 const snapshot = initialSnapshot();
 const reply = (request: CoreRequest, title = "Synthetic PR") => ({ protocolVersion: PROTOCOL_VERSION, requestId: request.requestId, ok: true, sequence: 0, snapshot,
@@ -53,4 +56,23 @@ it("drops both decorative headings while retaining recorded entry activation", (
   expect(screen.queryByText("Logical changes")).toBeNull(); expect(screen.queryByText(/The work, reconstructed/)).toBeNull();
   expect(screen.getByRole("heading", { name: "Activity log" })).toBeTruthy();
   fireEvent.click(screen.getByRole("button", { name: /Synthetic change/ })); expect(onOpen).toHaveBeenCalledExactlyOnceWith("change-a");
+});
+it("the actual dock heading opens Activity without choosing or preparing a run", () => {
+  const state = emptyLiveAgentState(), client = new AgentBridgeClient(state), onOpen = vi.fn(), onDraft = vi.fn();
+  const select = vi.spyOn(client, "select");
+  render(<AgentDock state={state} client={client} onDraft={onDraft} onOpenActivity={onOpen} runContent={null} draftContent={null} jobsContent={null} activityContent={null} />);
+  fireEvent.click(screen.getByRole("button", { name: "Recent Activity" }));
+  expect(onOpen).toHaveBeenCalledTimes(1); expect(onDraft).not.toHaveBeenCalled(); expect(select).not.toHaveBeenCalled();
+});
+it("keeps PRs separate from recorded changes and reveals an explicitly selected entry", async () => {
+  const state = { observation: syntheticJournal().result, busy: false, notice: "", refresh: vi.fn() };
+  const pullRequests = { observation: null, busy: false, notice: "", stale: false, refresh: vi.fn() };
+  const props = { state, pullRequests, onClose: vi.fn(), onOpenSource: vi.fn() };
+  const view = render(<JournalPanel open selectedEntry={null} {...props} />);
+  expect(screen.getByText("Synthetic change")).toBeTruthy();
+  fireEvent.click(screen.getByRole("button", { name: "Pull requests" }));
+  expect(screen.getByRole("button", { name: "Refresh pull requests" })).toBeTruthy(); expect(pullRequests.refresh).not.toHaveBeenCalled();
+  view.rerender(<JournalPanel open selectedEntry="change-a" selectionVersion={1} {...props} />);
+  await waitFor(() => expect(screen.getByRole("button", { name: "Changes" }).getAttribute("aria-pressed")).toBe("true"));
+  expect(document.querySelector<HTMLDetailsElement>("[data-change-id]")!.open).toBe(true);
 });
