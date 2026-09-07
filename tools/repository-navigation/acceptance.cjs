@@ -76,6 +76,18 @@ async function main() {
   const navText = () => run(() => document.querySelector("[aria-label='Repository navigation']")?.textContent ?? "");
   const viewport = (topology) => run((id) => document.querySelector(`[data-topology='${id}'] .react-flow__viewport`).style.transform, topology);
   const paint = () => run(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve(true)))));
+  const replaceOwnedCore = async (name) => {
+    const before = await run(() => window.swarmLifecycle.status());
+    const metrics = app.getAppMetrics();
+    await fs.writeFile(path.join(evidence, `${name}-owned-core-metrics.json`), JSON.stringify(metrics));
+    const cores = metrics.filter((metric) => metric.type === "Utility" && (metric.name === "swarm-ide-local-core" || metric.serviceName === "swarm-ide-local-core"));
+    assert.equal(cores.length, 1, "exact owned packaged core selected, not a user process");
+    const pid = cores[0].pid, procStatus = await fs.readFile(`/proc/${pid}/status`, "utf8");
+    assert.equal(Number(/^PPid:\s+(\d+)$/m.exec(procStatus)?.[1]), process.pid, "owned core is this disposable Electron main child");
+    process.kill(pid, "SIGTERM");
+    await until(() => run(async (generation) => { const state = await window.swarmLifecycle.status(); return state.core.generation > generation && state.core.phase === "ready"; }, before.core.generation), "actual owned core replacement");
+    return { terminatedOwnedPid: pid, before, after: await run(() => window.swarmLifecycle.status()) };
+  };
   const screenshot = async (name) => { await paint(); await fs.writeFile(path.join(evidence, name), (await wc.capturePage()).toPNG()); };
   const openPath = async (value) => {
     if (!await run(() => document.querySelector(".repository-options").open)) await click(".repository-options > summary");
@@ -108,6 +120,10 @@ async function main() {
   assert(agent.ok && agent.agent.snapshot.runs.length === 0 && !agent.agent.snapshot.capabilities.controls.launch);
   const facts = ["actual archive main/preload/core", "actual committed repository root and directory activation", "native Enter opens exact source", "zero agent runs"];
   facts.push("Q1 exact foreground file identity and actual broker content receipt");
+  let builtServiceEvidence;
+  const providedDeclaration = "examples/checkout-world/services/fraudcheck/fraudcheck.proto";
+  const requiredDeclaration = "examples/checkout-world/services/payments/payments.proto";
+  const serviceNode = (id) => `[data-topology='service'] .react-flow__node[data-id=${JSON.stringify(id)}]`;
 
   if (fixture.kind === "swarm") {
     stage = "q1-real-service-context";
@@ -117,6 +133,7 @@ async function main() {
       await until(async () => (await snapshot()).reconciliation.status === "green", "actual package Bazel service artifact", 90000);
     }
     const built = await snapshot();
+    builtServiceEvidence = built.serviceContext;
     assert.equal(built.serviceContext?.status, "observed");
     assert.equal(built.serviceContext.repositoryId, built.project.id);
     assert.equal(built.serviceContext.buildId, built.revisions.built.id);
@@ -137,7 +154,7 @@ async function main() {
       await screenshot(`q1-${path.basename(file)}.png`);
     }
     const beforeLink = await contextSubject();
-    await click("[data-topology='service'] .react-flow__node[data-id='service:fraud-check']");
+    await focus(serviceNode("service:fraud-check")); key("Enter", ["shift"]);
     await until(async () => await contextSubject() === "service:fraud-check", "explicit graph inspection owns Context while source stays visible");
     assert.equal(await run(() => document.querySelector(".source-surface header strong").textContent), beforeLink);
     await run((destination) => {
@@ -145,6 +162,28 @@ async function main() {
       if (!link) throw new Error("Missing actual required-declaration link"); link.click();
     }, "Payments.Authorize");
     await until(async () => await contextSubject() === required, "explicit built declaration link opens current real source");
+    stage = "q2-real-definition-activation";
+    const declarationGestures = [];
+    for (const [id, destination, role, gesture] of [
+      ["service:fraud-check", provided, "provided", "click"],
+      ["interface:payments.authorize", required, "required", "keyboard"],
+      ["interface:fraud-check.assess", provided, "provided", "keyboard"],
+    ]) {
+      const camera = await viewport("service");
+      if (gesture === "click") await click(serviceNode(id)); else { await focus(serviceNode(id)); key("Enter"); }
+      await until(async () => await contextSubject() === destination, `Q2 actual ${id} declaration`);
+      await until(() => run((expected) => document.querySelector(".tasks-reveal-notice")?.textContent.includes(expected), role === "provided" ? "Provided interface declarations" : "Required interface declarations"), "Q2 role notice");
+      const bytes = await fs.readFile(path.join(fixture.root, destination), "utf8");
+      assert.equal(await run(() => document.querySelector(".cm-content").cmView.rootView.view.state.doc.toString()), bytes);
+      await directory(path.dirname(destination)); await paint();
+      assert.equal(await viewport("service"), camera, "definition navigation preserves service camera");
+      const notice = await run(() => document.querySelector(".tasks-reveal-notice").textContent);
+      if (role === "required") assert(notice.includes("external implementation unavailable"));
+      declarationGestures.push({ id, destination, role, gesture, notice });
+    }
+    await screenshot("q2-provided-declaration.png");
+    await fs.writeFile(path.join(evidence, "q2-declaration-proof.json"), JSON.stringify({ declarationGestures, actualBazel: true, actualBrokerBytes: true, callsites: false, externalServiceNode: "mounted-only", ambiguity: "mounted-only" }, null, 2));
+    facts.push("Q2 actual service click and interface Enter open recorded provided/required declarations through package broker; service camera preserved; no callsite or external implementation claim");
     stage = "q1-retained-failed-publication";
     const manifestPath = path.join(fixture.root, "examples/checkout-world/services/fraudcheck/service.swarm.json");
     const manifestBytes = await fs.readFile(manifestPath);
@@ -312,6 +351,12 @@ async function main() {
       await returnSource();
       await focus(label("Repository Back")); key("Left", ["alt"]); await directory(fixture.directory); await paint(); await preserved(true);
       await screenshot(`02-source-retained-${percent}.png`);
+      if (fixture.kind === "swarm") {
+        await focus(serviceNode("interface:payments.authorize")); key("Enter");
+        await until(async () => await contextSubject() === requiredDeclaration, "Q2 declaration at interface zoom");
+        await directory(path.dirname(requiredDeclaration)); await returnSource();
+        await focus(label("Repository Back")); key("Left", ["alt"]); await directory(fixture.directory); await paint(); await preserved(true);
+      }
     }
     stage = "stale-refresh";
     await focus(label("Refresh directory"));
@@ -322,6 +367,47 @@ async function main() {
     await preserved(true);
     facts.push("independent graph cameras", "exact dirty text/cursor/draft and graph DOM retained", "native Alt-Up/Alt-Left with Back camera restore", "100/150 zoom and resize do not refit", "stale state without rescans and explicit Refresh");
 
+    if (fixture.kind === "swarm") {
+      stage = "q2-retained-service-core-recovery";
+      assert(builtServiceEvidence?.status === "observed");
+      const budgetPath = path.join(fixture.root, "q2-fingerprint-budget.bin");
+      const oversized = await fs.open(budgetPath, "wx");
+      try { await oversized.truncate(64 * 1024 * 1024 + 1); } finally { await oversized.close(); }
+      try {
+        await until(async () => { const value = await snapshot(); return value.revisions.working.evidence === "unavailable" && value.reconciliation.message.includes("exceeds the fingerprint bound"); }, "Q2 actual unavailable fingerprint before replacement");
+        const recoveryRepoCamera = await viewport("repo");
+        const recovery = await replaceOwnedCore("q2");
+        await until(async () => { const value = await snapshot(); return value.revisions.working.evidence === "unavailable" && value.reconciliation.message.includes("exceeds the fingerprint bound"); }, "Q2 new core independently rejects oversized input");
+        await paint(); await preserved();
+        assert.equal(await viewport("repo"), recoveryRepoCamera, "Q2 core recovery cannot reframe repo camera");
+        const recoveredWorld = await snapshot();
+        assert.equal(recoveredWorld.jobs.length, 0, "Q2 new core has no running or completed replay jobs");
+        assert(!recoveredWorld.activity.some((item) => item.kind === "build"), "Q2 no build activity in replacement core");
+        await focus(serviceNode("service:fraud-check")); key("Enter", ["shift"]);
+        await until(async () => await contextSubject() === "service:fraud-check", "Q2 retained service inspect after recovery");
+        const retained = await contextText("services");
+        for (const value of [builtServiceEvidence.buildId, builtServiceEvidence.sourceFingerprint, builtServiceEvidence.inputDigest, builtServiceEvidence.observedAt]) assert(retained.includes(value), "Q2 original service provenance remains visible");
+        assert.equal(await run(() => document.querySelector("[data-context-section='services'] [data-context-freshness]")?.textContent), "retained");
+        assert(await run(() => !document.querySelector(".global-truth.status-green") && !document.querySelector("[data-topology='service'] .status-green")), "unavailable fingerprint never green");
+        await screenshot("q2-retained-service-recovery.png");
+        const destination = path.join(fixture.root, providedDeclaration), held = `${destination}.q2-held`;
+        await fs.rename(destination, held);
+        try {
+          await click(serviceNode("service:fraud-check"));
+          await until(() => run(() => document.querySelector(".tasks-reveal-notice")?.textContent.includes("No workspace file")), "Q2 retained link revalidates deleted current destination");
+          assert.equal(await contextSubject(), "service:fraud-check"); await preserved();
+        } finally { await fs.rename(held, destination); }
+        await click(serviceNode("service:fraud-check"));
+        await until(async () => await contextSubject() === providedDeclaration, "Q2 explicit retained declaration after recovery");
+        assert.equal(await run(() => document.querySelector(".cm-content").cmView.rootView.view.state.doc.toString()), await fs.readFile(destination, "utf8"));
+        assert((await run(() => document.querySelector(".tasks-reveal-notice").textContent)).includes("Retained built artifact"));
+        await returnSource();
+        await fs.writeFile(path.join(evidence, "q2-recovery-proof.json"), JSON.stringify({ recovery, originalEvidence: builtServiceEvidence, retainedContextText: retained,
+          currentCore: (await snapshot()).revisions, sourceDraftCursorAndServiceCameraRetained: true, deletedCurrentDestinationRejected: true,
+          explicitRestoredDestinationOpened: true, noNavigationReplay: true, modelTurns: 0 }, null, 2));
+        facts.push("Q2 actual Swarm core replacement retains original built service evidence as historical while new fingerprint unavailable; explicit declaration revalidates deleted/restored current file; dirty source/cursor/draft/camera retained");
+      } finally { await fs.unlink(budgetPath); }
+    }
     if (fixture.kind === "unfamiliar") {
       stage = "filesystem-boundaries";
       await click(label("Repository root")); await directory(""); world = await snapshot();
@@ -410,17 +496,8 @@ async function main() {
       await search("same-match.ts");
       const previousCapture = await request({ type: "repo.search", repositoryId: (await snapshot()).project.id, query: "same-match.ts", refresh: false });
       assert(previousCapture.ok);
-      const previousLifecycle = await run(() => window.swarmLifecycle.status());
       const previousCoreRepoCamera = await viewport("repo");
-      const metrics = app.getAppMetrics();
-      await fs.writeFile(path.join(evidence, "owned-core-metrics.json"), JSON.stringify(metrics));
-      const cores = metrics.filter((metric) => metric.type === "Utility" && (metric.name === "swarm-ide-local-core" || metric.serviceName === "swarm-ide-local-core"));
-      assert.equal(cores.length, 1, "exact owned packaged core selected, not a user process");
-      const corePid = cores[0].pid;
-      const procStatus = await fs.readFile(`/proc/${corePid}/status`, "utf8");
-      assert.equal(Number(/^PPid:\s+(\d+)$/m.exec(procStatus)?.[1]), process.pid, "owned core is this disposable Electron main child");
-      process.kill(corePid, "SIGTERM");
-      await until(() => run(async (generation) => { const state = await window.swarmLifecycle.status(); return state.core.generation > generation && state.core.phase === "ready"; }, previousLifecycle.core.generation), "actual owned core replacement");
+      await replaceOwnedCore("n2");
       await until(() => run(() => document.querySelector(".file-search-status")?.textContent.includes("Git name inventory")), "search recaptured by recovered core");
       assert.equal(await run(() => document.querySelector('[aria-label="Workspace command"]').value), "same-match.ts", "core replacement retains typed query");
       const recoveredCapture = await request({ type: "repo.search", repositoryId: (await snapshot()).project.id, query: "same-match.ts", refresh: false });

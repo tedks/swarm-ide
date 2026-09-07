@@ -55,6 +55,8 @@ import type { ContextSubject } from "../../protocol/context";
 import { emptyContextAttention, permitsContextActivation, reduceContextAttention, subjectFromFocus, type AttentionEvent } from "./context/attention";
 import { composeContext, indexCapture, indexService, type SourceReceipt } from "./context/compose";
 import { ContextPane } from "./context/ContextPane";
+import { declarationPublication, resolveDeclarations, type DeclarationResolution } from "./context/declarations";
+import { DeclarationChooser } from "./context/DeclarationChooser";
 
 const lensTabs = ["System", "Plan", "Performance", "Refactor"] as const;
 const FRAUDCHECK_IMPLEMENTATION = "examples/checkout-world/services/fraudcheck/fraudcheck.ts";
@@ -166,6 +168,9 @@ export function App() {
   const activeSurfaceRef = useRef<string>(activeSurface);
   const [attention, setAttention] = useState(emptyContextAttention);
   const attentionRef = useRef(attention);
+  type DefinitionIntent = { resolution: DeclarationResolution; realm: string; generation: number; intent: number; choosing: boolean; origin?: HTMLElement };
+  const [definition, setDefinition] = useState<DefinitionIntent | null>(null);
+  const definitionRef = useRef<DefinitionIntent | null>(null);
   const lastGraphSubject = useRef<ContextSubject | null>(null);
   const [contextSession] = useState(() => crypto.randomUUID());
   const contextRealm = useCallback(() => {
@@ -275,6 +280,7 @@ export function App() {
   const interruptPendingReveal = useCallback(() => {
     if (pendingRevealIntent.current === null) return;
     pendingRevealIntent.current = null;
+    definitionRef.current = null; setDefinition(null);
     ++navigationIntent.current;
     setRevealNotice((notice) => notice.startsWith("Opening working file")
       ? "Reveal superseded by a newer interaction; previous source retained." : notice);
@@ -656,11 +662,12 @@ export function App() {
     return fileTabsRef.current.find((tab) => tab.path === path) ?? null;
   }, [activateFile, invoke, showSurface, sourceReceipt]);
 
-  const revealTaskReference = useCallback(async (ref: TaskFileRef, origin: "task" | "repository" = "task") => {
+  const revealTaskReference = useCallback(async (ref: TaskFileRef, origin: "task" | "repository" = "task", declaration?: { valid: () => boolean; started: (intent: number) => void; notice: string }) => {
     // Task metadata has a deliberately narrower display/link policy. An exact
     // repository path is not metadata or a URL; the file broker owns access.
     if (origin === "repository" ? !isRepositoryPath(ref.path) : !validTaskReference(ref)) { reportRevealFailure("Unsupported reference: only canonical relative working-file paths can be revealed."); return; }
     const intent = ++navigationIntent.current;
+    declaration?.started(intent);
     const activation = { realm: contextRealm(), generation: attentionRef.current.generation, intent, path: ref.path };
     pendingRevealIntent.current = intent;
     try {
@@ -674,11 +681,11 @@ export function App() {
         const eventSequenceBeforeRead = fileEventsRef.current.get(ref.path)?.sequence ?? 0;
         if (prior.status === "error") {
           const watch = await invoke({ type: "file.watch", requestId: requestId(), protocolVersion: PROTOCOL_VERSION, path: ref.path });
-          if (intent !== navigationIntent.current || coreGeneration !== coreGenerationRef.current) return;
+          if (intent !== navigationIntent.current || coreGeneration !== coreGenerationRef.current || declaration && !declaration.valid()) return;
           if (!watch?.ok) { reportRevealFailure(watch && !watch.ok ? `${watch.error.code}: ${watch.error.message}` : "CORE_UNAVAILABLE: source observation interrupted."); return; }
         }
         const response = await invoke({ type: "file.read", requestId: requestId(), protocolVersion: PROTOCOL_VERSION, path: ref.path });
-        if (intent !== navigationIntent.current || coreGeneration !== coreGenerationRef.current ||
+        if (intent !== navigationIntent.current || coreGeneration !== coreGenerationRef.current || declaration && !declaration.valid() ||
             openGenerationsRef.current.get(ref.path) !== openGeneration || !desiredFilesRef.current.has(ref.path)) return;
         if (!response?.ok || response.file?.kind !== "read") {
           reportRevealFailure(response && !response.ok ? `${response.error.code}: ${response.error.message}` : "CORE_UNAVAILABLE: source read was interrupted."); return;
@@ -714,14 +721,17 @@ export function App() {
         setFileTabs((tabs) => tabs.filter((item) => item.path !== ref.path));
         void invoke({ type: "file.unwatch", requestId: requestId(), protocolVersion: PROTOCOL_VERSION, path: ref.path });
       }
-      if (intent !== navigationIntent.current || coreGeneration !== coreGenerationRef.current) return;
+      if (intent !== navigationIntent.current || coreGeneration !== coreGenerationRef.current || declaration && !declaration.valid()) return;
       if (!tab || !tab.revision || tab.status === "error" && !protectsBuffer(tab)) {
         reportRevealFailure(tab?.message ?? "CORE_UNAVAILABLE: source opening was interrupted; previous source retained."); return;
       }
       const target = taskLineTarget(tab, ref.line);
       if (!mounted.current || !permitsContextActivation(attentionRef.current, activation, navigationIntent.current, contextRealm(), ref.path)) return;
+      // A definition gesture deliberately moves the repo view, not the service
+      // camera. Do not trigger the generic first-document graph reframe.
+      if (declaration) textWasOpen.current = true;
       activateFile(ref.path);
-      setRevealNotice(target.notice);
+      setRevealNotice(declaration ? `${declaration.notice} ${target.notice}` : target.notice);
       setSourceNavigation({ path: ref.path, content: tab.content, line: target.line, nonce: intent, focus: true });
       // Explicit Reveal alone navigates the repository projection. The file
       // opener remains authoritative; failed/partial listing cannot hide it.
@@ -987,6 +997,49 @@ export function App() {
     const loaded = repoGraph?.nodes.find((node) => node.focus.key === focus.key && node.focus.path === focus.path);
     if (focus.path && focus.domain === "repo" && loaded?.kind === "file") openLinkedFile(focus.path);
   }, [invoke, openFile, inspectGraph, activateRepositoryEntry, enterDirectory, openLinkedFile]);
+  const definitionValid = useCallback((token: DefinitionIntent) => definitionRef.current === token && mounted.current &&
+    token.realm === contextRealm() && token.generation === attentionRef.current.generation &&
+    token.resolution.publication === declarationPublication(workspaceRef.current.snapshot) &&
+    token.intent === navigationIntent.current, [contextRealm]);
+  const cancelDefinition = useCallback(() => {
+    const previous = definitionRef.current;
+    definitionRef.current = null; setDefinition(null);
+    ++navigationIntent.current; pendingRevealIntent.current = null;
+    setRevealNotice("Definition navigation cancelled; previous source retained.");
+    if (previous?.origin?.isConnected) previous.origin.focus({ preventScroll: true });
+  }, []);
+  const chooseDefinition = useCallback((token: DefinitionIntent, path: string) => {
+    if (!definitionValid(token) || !token.resolution.candidates.some((candidate) => candidate.path === path)) return;
+    token.choosing = false; setDefinition(null);
+    void revealTaskReference({ path, line: null, note: null, navigation: "candidate" }, "repository", {
+      valid: () => definitionValid(token), started: (intent) => { token.intent = intent; }, notice: token.resolution.notice,
+    }).finally(() => { if (definitionRef.current === token) definitionRef.current = null; });
+  }, [definitionValid, revealTaskReference]);
+  const activateDefinition = useCallback((focus: FocusRef, origin?: HTMLElement) => {
+    ++navigationIntent.current;
+    setSelectedConnection(null);
+    const current = workspaceRef.current.snapshot;
+    if (!current) return;
+    const resolution = resolveDeclarations(current, focus);
+    const token: DefinitionIntent = { resolution, realm: contextRealm(), generation: attentionRef.current.generation, intent: navigationIntent.current, choosing: true, origin };
+    definitionRef.current = token; setDefinition(null);
+    if (!resolution.candidates.length) { definitionRef.current = null; inspectGraph(focus); reportRevealFailure(resolution.notice); return; }
+    void invoke({ type: "focus.select", requestId: requestId(), protocolVersion: PROTOCOL_VERSION, focus });
+    if (resolution.candidates.length === 1) chooseDefinition(token, resolution.candidates[0]!.path);
+    else setDefinition(token);
+  }, [invoke, inspectGraph, contextRealm, chooseDefinition, reportRevealFailure]);
+  useEffect(() => {
+    const token = definitionRef.current;
+    if (token && !definitionValid(token)) {
+      const ownedFocus = token.choosing && document.activeElement?.closest('[aria-label="Choose interface declaration"]');
+      definitionRef.current = null; setDefinition(null);
+      setRevealNotice((notice) => notice.startsWith("Opening working file") || token.choosing ? "Definition navigation superseded; activate again using the current evidence." : notice);
+      if (ownedFocus) {
+        const destination = token.origin?.isConnected ? token.origin : document.querySelector<HTMLElement>(".graphs-grid");
+        destination?.focus({ preventScroll: true });
+      }
+    }
+  }, [workspace.snapshot, attention.generation, definitionValid]);
   const selectConnection = useCallback((connection: GraphConnectionFocus, topologyId: string) => {
     ++navigationIntent.current;
     const current = workspaceRef.current.snapshot;
@@ -1033,7 +1086,7 @@ export function App() {
 
   if (!snapshot) return <main className="loading-screen"><div className="loading-mark hmr-probe" />Opening the working world…{error ? <strong>{error}</strong> : null}<small>{lifecycleNotice}</small><AgentReloadGuard state={liveAgents} client={agentClient} /></main>;
   return (
-    <main className="workbench" onPointerDownCapture={interruptPendingReveal} onFocusCapture={interruptPendingReveal} data-compact-panel={compactPanel ?? "none"} style={{ "--context-width": `${contextWidth}%`, ...(agents.selected || liveAgents.paneOpen ? { gridTemplateRows: `var(--topbar-height) minmax(0, 1fr) calc(160px + (clamp(180px, 40vh, 448px) - 160px) * ${Math.min(1, Math.max(0, ((liveAgents.paneOpen ? liveAgents.height : agentPaneHeight) - 230) / 190))})` } : {}) } as CSSProperties}>
+    <main className="workbench" onPointerDownCapture={interruptPendingReveal} onFocusCapture={interruptPendingReveal} onKeyDownCapture={(event) => { if (event.key === "Escape" && definitionRef.current) { event.preventDefault(); event.stopPropagation(); cancelDefinition(); } }} data-compact-panel={compactPanel ?? "none"} style={{ "--context-width": `${contextWidth}%`, ...(agents.selected || liveAgents.paneOpen ? { gridTemplateRows: `var(--topbar-height) minmax(0, 1fr) calc(160px + (clamp(180px, 40vh, 448px) - 160px) * ${Math.min(1, Math.max(0, ((liveAgents.paneOpen ? liveAgents.height : agentPaneHeight) - 230) / 190))})` } : {}) } as CSSProperties}>
       <header className="topbar">
         <div className="product-mark"><span className="hmr-probe" />swarm</div>
         <nav className="lens-tabs" aria-label="Workspace lenses">{lensTabs.map((lens) => <button key={lens} className={activeLens === lens ? "active" : ""} onClick={() => setActiveLens(lens)}>{lens}</button>)}</nav>
@@ -1074,7 +1127,7 @@ export function App() {
           {taskDocumentOpen ? <div className={`surface-tab ${textDocumentVisible ? "active" : ""}`}><button className="surface-tab-main" onClick={() => { setTaskDocumentVisible(true); inspectTask(tasks.selectedTaskId); }} title={tasks.selectedTaskId ?? "Task"}>▤ {tasks.detail?.title ?? "Task document"}</button><button className="surface-tab-close" aria-label="Close task document" onClick={() => { setTaskDocumentOpen(false); setTaskDocumentVisible(false); if (contextSubject?.kind === "task") sourceInformation(); }}>×</button></div> : null}
         </nav> : null}
         <div tabIndex={-1} className={`graphs-grid ${textOpen ? "is-sidebar" : "is-active"}`}>{snapshot.graphs.map((graph) => {
-          const pane = <GraphPane key={graph.topologyId} graph={graph} mockAgents={demo.graphs} mockGraphVersion={demo.graphVersion} buildLinkSnapshot={graph.directory && snapshot.project.id === uiBuildLinks.repositoryId ? uiBuildLinks : undefined} focus={snapshot.focus} mappings={snapshot.mappings} reframeVersion={graphReframe} interfaceZoom={zoomPercent} onFocus={selectFocus} onInspectFocus={(focus) => { ++navigationIntent.current; inspectGraph(focus); setSelectedConnection(null); void invoke({ type: "focus.select", requestId: requestId(), protocolVersion: PROTOCOL_VERSION, focus }); }} onNavigateDirectory={graph.directory ? enterDirectory : undefined} onConnectionFocus={(connection) => selectConnection(connection, graph.topologyId)} onReconcile={() => { void reconcile(); }} reconciliationRunning={reconciliationRunning} repositoryCameraIntent={graph.directory ? repository.cameraIntent : undefined} />;
+          const pane = <GraphPane key={graph.topologyId} graph={graph} mockAgents={demo.graphs} mockGraphVersion={demo.graphVersion} buildLinkSnapshot={graph.directory && snapshot.project.id === uiBuildLinks.repositoryId ? uiBuildLinks : undefined} focus={snapshot.focus} mappings={snapshot.mappings} reframeVersion={graphReframe} interfaceZoom={zoomPercent} onFocus={selectFocus} onActivate={graph.topologyId === "service" ? activateDefinition : undefined} onInspectFocus={(focus) => { ++navigationIntent.current; inspectGraph(focus); setSelectedConnection(null); void invoke({ type: "focus.select", requestId: requestId(), protocolVersion: PROTOCOL_VERSION, focus }); }} onNavigateDirectory={graph.directory ? enterDirectory : undefined} onConnectionFocus={(connection) => selectConnection(connection, graph.topologyId)} onReconcile={() => { void reconcile(); }} reconciliationRunning={reconciliationRunning} repositoryCameraIntent={graph.directory ? repository.cameraIntent : undefined} />;
           return graph.topologyId === "service" ? <TopologyViews key={graph.topologyId} service={pane} focusedFile={snapshot.focus.domain === "repo" && snapshot.focus.path && snapshot.focus.key === `file:${snapshot.focus.path}` ? snapshot.focus.path : activeFile?.path ?? null} showBuildVersion={showBuildVersion} capture={snapshot.project.id === uiBuildLinks.repositoryId ? uiBuildLinks : undefined} mockAgents={demo.graphs} mockVersion={demo.graphVersion} onOpenBuild={openLinkedFile} reframeVersion={graphReframe} /> : pane;
         })}</div>
         {textOpen ? <ResizeDivider label="Resize graphs and text" className="text-divider" container=".navigation-field" value={graphShare} minimum={25} maximum={70} initial={43} onChange={setGraphShare} /> : null}
@@ -1135,6 +1188,7 @@ export function App() {
       {paletteOpen ? <FileSearchPalette query={commandQuery} onQuery={setCommandQuery} exact={palettePathMode} commands={commands}
         inputRef={commandInput} focusLabel={focusLabel(snapshot.focus)} onCancel={cancelPalette} search={fileSearch}
         onOpen={(path) => { setPaletteOpen(false); openLinkedFile(path); }} /> : null}
+      {definition ? <DeclarationChooser resolution={definition.resolution} onChoose={(path) => chooseDefinition(definition, path)} onCancel={cancelDefinition} /> : null}
       {reloadNotice || lifecycleNotice ? <div className="lifecycle-notice" role="status" tabIndex={0} aria-label="Development status">{reloadNotice || lifecycleNotice}</div> : null}
       {error ? <div className="error-toast">{error}</div> : null}
       {zoomNotice ? <div className="zoom-toast" role="status">{zoomNotice}</div> : null}

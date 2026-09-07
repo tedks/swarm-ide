@@ -8,8 +8,18 @@ import type { RepositoryObservation } from "../protocol/repository";
 import { contextArtifact } from "./context-fixture";
 import { adaptServiceTopology } from "../core/service-topology";
 import { openContextPath } from "./context-navigation";
-vi.mock("../app/renderer/GraphPane", () => ({ GraphPane: ({ graph, onFocus }: { graph: GraphSlice; onFocus: (focus: FocusRef) => void }) => <section data-testid={`graph-${graph.topologyId}`}>
-  {graph.nodes.map((node) => <button key={node.id} onClick={() => onFocus(node.focus)}>Inspect {node.id}</button>)}
+import uiBuildLinks from "../fixtures/ui-build-links.snapshot.json";
+vi.mock("@xyflow/react", async () => {
+  const React = await import("react");
+  return { Background: () => null, Controls: () => null, Handle: () => null, Position: { Left: "left", Right: "right" }, MarkerType: { ArrowClosed: "arrowclosed" },
+    ReactFlow: ({ onInit }: { onInit?: (instance: { fitView: () => Promise<boolean> }) => void }) => {
+      const [camera, setCamera] = React.useState("initial"), [instance] = React.useState(() => ({ fitView: async () => { setCamera("fit"); return true; } }));
+      React.useEffect(() => { onInit?.(instance); }, [instance]);
+      return <div data-testid="captured-build-camera" data-camera={camera}><button onClick={() => setCamera("deliberate")}>Pan captured build</button></div>;
+    } };
+});
+vi.mock("../app/renderer/GraphPane", () => ({ GraphPane: ({ graph, onFocus, onActivate }: { graph: GraphSlice; onFocus: (focus: FocusRef) => void; onActivate?: (focus: FocusRef) => void }) => <section data-testid={`graph-${graph.topologyId}`}>
+  {graph.nodes.map((node) => <span key={node.id}><button onClick={() => onFocus(node.focus)}>Inspect {node.id}</button><button onClick={() => (onActivate ?? onFocus)(node.focus)}>Activate {node.id}</button></span>)}
   <input aria-label={`Camera ${graph.topologyId}`} defaultValue="unchanged" />
 </section> }));
 import { App } from "../app/renderer/App";
@@ -20,12 +30,12 @@ beforeAll(() => {
 afterEach(() => { cleanup(); vi.restoreAllMocks(); window.sessionStorage.clear(); window.localStorage.clear(); delete window.swarm; delete window.swarmView; delete window.swarmLifecycle; });
 const subject = () => document.querySelector(".artifact-context")?.getAttribute("data-context-subject");
 const serviceText = () => document.querySelector("[data-context-section='services']")?.textContent ?? "";
-function setup() {
+function setup(artifact = contextArtifact) {
   const snapshot = initialSnapshot(); snapshot.revisions.working = { id: "a".repeat(64), fingerprint: "a".repeat(64), evidence: "observed" };
   snapshot.revisions.built = { id: "b".repeat(64), sourceFingerprint: "a".repeat(64) };
   snapshot.focus = { ...snapshot.focus, revisionId: snapshot.revisions.working.id };
   snapshot.reconciliation = { ...snapshot.reconciliation, status: "green", inputFingerprint: snapshot.revisions.working.id, lastConsistentFingerprint: snapshot.revisions.working.id };
-  const adapted = adaptServiceTopology(contextArtifact, "bazel://test-artifact", snapshot.revisions.built.id, snapshot.revisions.working.id, snapshot.reconciliation.epoch, "2026-09-07T03:00:00.000Z", snapshot.project.id);
+  const adapted = adaptServiceTopology(artifact, "bazel://test-artifact", snapshot.revisions.built.id, snapshot.revisions.working.id, snapshot.reconciliation.epoch, "2026-09-07T03:00:00.000Z", snapshot.project.id);
   const repo = snapshot.graphs[0]!;
   snapshot.graphs = [{ ...repo, inputFingerprint: snapshot.revisions.working.id, provenance: repo.provenance.map((item) => ({ ...item, version: snapshot.revisions.working.id })), nodes: repo.nodes.map((node) => ({ ...node, focus: { ...node.focus, revisionId: snapshot.revisions.working.id } })) }, adapted.graph];
   snapshot.serviceContext = adapted.serviceContext; snapshot.mappings = []; snapshot.widgets = [];
@@ -44,6 +54,126 @@ function setup() {
   return { snapshot, emit, request, delay: (path: string) => { delayPath = path; }, fail: (path: string) => { failPath = path; }, finish: async () => { if (!delayed) throw new Error("No delayed read"); const held = delayed; await act(async () => held.resolve(response(held.request))); } };
 }
 describe("truthful Context in the mounted workbench", () => {
+  it("definition activation preserves a mounted captured Build camera and its manually selected view", async () => {
+    const test = setup(); test.snapshot.project.id = uiBuildLinks.repositoryId;
+    if (test.snapshot.serviceContext?.status !== "observed") throw new Error("fixture");
+    test.snapshot.serviceContext.repositoryId = uiBuildLinks.repositoryId;
+    render(<App />); await openContextPath("core/files.ts"); await waitFor(() => expect(subject()).toBe("core/files.ts"));
+    fireEvent.click(screen.getByRole("button", { name: "Build graph" }));
+    fireEvent.click(screen.getByRole("checkbox", { name: "Follow file" }));
+    const camera = await screen.findByTestId("captured-build-camera");
+    await waitFor(() => expect(camera.dataset.camera).toBe("fit"));
+    fireEvent.click(screen.getByRole("button", { name: "Pan captured build" }));
+    fireEvent.click(screen.getByRole("button", { name: "Service" }));
+    fireEvent.click(screen.getByRole("button", { name: "Activate service:fraud-check" }));
+    await waitFor(() => expect(subject()).toBe("example/fraudcheck.proto"));
+    expect(screen.getByTestId("captured-build-camera")).toBe(camera); expect(camera.dataset.camera).toBe("deliberate");
+    expect((screen.getByRole("checkbox", { name: "Follow file", hidden: true }) as HTMLInputElement).checked).toBe(false);
+  });
+  it("holds prior file through a pending definition and Escape rejects its late activation", async () => {
+    const test = setup(); render(<App />); await openContextPath("core/files.ts"); await waitFor(() => expect(subject()).toBe("core/files.ts"));
+    test.delay("example/fraudcheck.proto"); fireEvent.click(screen.getByRole("button", { name: "Activate service:fraud-check" }));
+    await screen.findByText("Opening working file example/fraudcheck.proto…"); expect(subject()).toBe("core/files.ts");
+    fireEvent.keyDown(document.querySelector(".workbench")!, { key: "Escape" }); await test.finish();
+    expect(subject()).toBe("core/files.ts"); expect(document.querySelector(".source-surface header strong")?.textContent).toBe("core/files.ts");
+  });
+  it("a changed service publication invalidates an in-flight definition even with the same path", async () => {
+    const test = setup(); render(<App />); await openContextPath("core/files.ts"); await waitFor(() => expect(subject()).toBe("core/files.ts"));
+    test.delay("example/fraudcheck.proto"); fireEvent.click(screen.getByRole("button", { name: "Activate service:fraud-check" }));
+    await waitFor(() => expect(document.querySelector(".tasks-reveal-notice")?.textContent).toBe("Opening working file example/fraudcheck.proto…"));
+    const next = structuredClone(test.snapshot); if (next.serviceContext?.status !== "observed") throw new Error("fixture");
+    next.serviceContext.observedAt = "2026-09-07T04:00:00.000Z"; test.emit(next); await test.finish();
+    expect(subject()).toBe("core/files.ts");
+  });
+  it("schema-valid removal of an interface invalidates its delayed declaration activation", async () => {
+    const test = setup(); render(<App />); await openContextPath("core/files.ts"); await waitFor(() => expect(subject()).toBe("core/files.ts"));
+    test.delay("example/payments.proto"); fireEvent.click(screen.getByRole("button", { name: "Activate interface:payments.authorize" }));
+    await screen.findByText("Opening working file example/payments.proto…");
+    const next = structuredClone(test.snapshot), graph = next.graphs[1]!;
+    graph.nodes = graph.nodes.filter((node) => node.id !== "interface:payments.authorize");
+    graph.edges = graph.edges.filter((edge) => ![edge.source, edge.target].includes("interface:payments.authorize"));
+    test.emit(next); await test.finish(); expect(subject()).toBe("core/files.ts");
+  });
+  it("newer inspection supersedes definition completion without stealing the current source", async () => {
+    const test = setup(); render(<App />); await openContextPath("core/files.ts"); await waitFor(() => expect(subject()).toBe("core/files.ts"));
+    test.delay("example/fraudcheck.proto"); fireEvent.click(screen.getByRole("button", { name: "Activate service:fraud-check" }));
+    await screen.findByText("Opening working file example/fraudcheck.proto…");
+    fireEvent.click(screen.getByRole("button", { name: "Inspect interface:payments.authorize" })); await test.finish();
+    expect(subject()).toBe("interface:payments.authorize"); expect(document.querySelector(".source-surface header strong")?.textContent).toBe("core/files.ts");
+  });
+  it("superseding an in-flight definition with the palette gives Escape to the palette", async () => {
+    const test = setup(); render(<App />); await openContextPath("core/files.ts"); await waitFor(() => expect(subject()).toBe("core/files.ts"));
+    test.delay("example/fraudcheck.proto"); fireEvent.click(screen.getByRole("button", { name: "Activate service:fraud-check" }));
+    await screen.findByText("Opening working file example/fraudcheck.proto…");
+    fireEvent.keyDown(window, { key: "k", ctrlKey: true });
+    const palette = await screen.findByRole("textbox", { name: "Workspace command" });
+    fireEvent.focus(palette); fireEvent.keyDown(palette, { key: "Escape" });
+    expect(screen.queryByRole("textbox", { name: "Workspace command" })).toBeNull();
+    await test.finish(); expect(subject()).toBe("core/files.ts");
+  });
+  it("mounted external service activation opens only its required declaration", async () => {
+    const test = setup(), graph = test.snapshot.graphs[1]!;
+    graph.nodes.push({ ...graph.nodes[0]!, id: "service:payments", focus: { ...graph.nodes[0]!.focus, key: "service:payments" } });
+    render(<App />); fireEvent.click(await screen.findByRole("button", { name: "Activate service:payments" }));
+    await waitFor(() => expect(subject()).toBe("example/payments.proto"));
+    expect(document.querySelector(".tasks-reveal-notice")?.textContent).toContain("external implementation unavailable");
+    expect(serviceText()).not.toContain("Implementation member of");
+  });
+  it("unknown service activation exposes unavailability rather than opening its preferred path", async () => {
+    const test = setup(), graph = test.snapshot.graphs[1]!;
+    graph.nodes.push({ ...graph.nodes[0]!, id: "service:unknown", focus: { ...graph.nodes[0]!.focus, key: "service:unknown", path: "example/fraudcheck.ts" } });
+    render(<App />); fireEvent.click(await screen.findByRole("button", { name: "Activate service:unknown" }));
+    expect(document.querySelector(".tasks-reveal-notice")?.textContent).toContain("no recorded declaration");
+    expect(test.request.mock.calls.some(([r]) => r.type === "file.read")).toBe(false);
+    expect(subject()).toBe("service:unknown");
+  });
+  it("a new publication closes an ambiguity choice and old detached controls cannot open", async () => {
+    const artifact = structuredClone(contextArtifact);
+    artifact.providedInterfaces.push({ ...artifact.providedInterfaces[0]!, id: "interface:fraud-check.second", name: "Second" });
+    artifact.interfaceDeclarationPaths.push({ interfaceId: "interface:fraud-check.second", path: "example/second.proto" });
+    const test = setup(artifact); render(<App />);
+    fireEvent.click(await screen.findByRole("button", { name: "Activate service:fraud-check" }));
+    const oldChoice = await screen.findByRole("button", { name: /example\/second.proto/ });
+    const next = structuredClone(test.snapshot); if (next.serviceContext?.status !== "observed") throw new Error("fixture");
+    next.serviceContext.observedAt = "2026-09-07T04:00:00.000Z"; test.emit(next);
+    expect(screen.queryByRole("dialog")).toBeNull(); expect(document.activeElement).toBe(document.querySelector(".graphs-grid")); fireEvent.click(oldChoice);
+    expect(test.request.mock.calls.some(([r]) => r.type === "file.read")).toBe(false);
+  });
+  it("requires an explicit ambiguity choice, never consumes initiating Enter, and cancels deterministically", async () => {
+    const artifact = structuredClone(contextArtifact);
+    artifact.providedInterfaces.push({ ...artifact.providedInterfaces[0]!, id: "interface:fraud-check.second", name: "Second" });
+    artifact.interfaceDeclarationPaths.push({ interfaceId: "interface:fraud-check.second", path: "example/second.proto" });
+    const test = setup(artifact); render(<App />); await openContextPath("core/files.ts"); await waitFor(() => expect(subject()).toBe("core/files.ts"));
+    const readCount = () => test.request.mock.calls.filter(([r]) => r.type === "file.read").length;
+    const prior = readCount(); fireEvent.click(screen.getByRole("button", { name: "Activate service:fraud-check" }));
+    const chooser = await screen.findByRole("dialog", { name: "Choose interface declaration" });
+    fireEvent.keyDown(chooser, { key: "k", ctrlKey: true }); expect(screen.queryByRole("textbox", { name: "Workspace command" })).toBeNull();
+    fireEvent.keyDown(chooser, { key: "Enter" }); expect(readCount()).toBe(prior); expect(subject()).toBe("core/files.ts");
+    fireEvent.keyDown(chooser, { key: "Escape" }); expect(screen.queryByRole("dialog")).toBeNull(); expect(readCount()).toBe(prior);
+    fireEvent.click(screen.getByRole("button", { name: "Activate service:fraud-check" }));
+    fireEvent.click(await screen.findByRole("button", { name: /example\/second.proto/ }));
+    await waitFor(() => expect(subject()).toBe("example/second.proto")); expect(readCount()).toBe(prior + 1);
+  });
+  it("repeated interface activation revalidates without overwriting dirty bytes or logical cursor", async () => {
+    const test = setup(); render(<App />); await openContextPath("example/payments.proto"); await waitFor(() => expect(subject()).toBe("example/payments.proto"));
+    const editor = EditorView.findFromDOM(document.querySelector(".cm-editor")!)!;
+    act(() => editor.dispatch({ changes: { from: 0, insert: "unsaved " }, selection: { anchor: 3 } }));
+    const graph = screen.getByTestId("graph-service"), text = editor.state.doc.toString();
+    for (let n = 0; n < 2; n++) {
+      fireEvent.click(screen.getByRole("button", { name: "Activate interface:payments.authorize" }));
+      await waitFor(() => expect(document.querySelector(".tasks-reveal-notice")?.textContent).toContain("Required interface declarations"));
+      expect(editor.state.doc.toString()).toBe(text); expect(editor.state.selection.main.anchor).toBe(3);
+      expect(screen.getByTestId("graph-service")).toBe(graph);
+    }
+    test.fail("example/payments.proto"); fireEvent.click(screen.getByRole("button", { name: "Activate interface:payments.authorize" }));
+    await screen.findByText("FILE_NOT_FOUND: No file"); expect(editor.state.doc.toString()).toBe(text); expect(editor.state.selection.main.anchor).toBe(3);
+  });
+  it("deliberate service activation opens its declaration, not implementation", async () => {
+    const test = setup(); render(<App />);
+    fireEvent.click(await screen.findByRole("button", { name: "Activate service:fraud-check" }));
+    await waitFor(() => expect(subject()).toBe("example/fraudcheck.proto"));
+    expect(test.request.mock.calls.filter(([r]) => r.type === "file.read").map(([r]) => "path" in r ? r.path : null)).toEqual(["example/fraudcheck.proto"]);
+  });
   it("accepts unchanged artifact bytes with a newly built repository fingerprint", async () => {
     const test = setup(); render(<App />); await openContextPath("example/fraudcheck.ts"); await waitFor(() => expect(subject()).toBe("example/fraudcheck.ts"));
     expect(serviceText()).toContain("Implementation member of");
