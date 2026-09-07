@@ -9,14 +9,14 @@ An operator opens Journal, reads short accounts of meaningful changes, and expan
 ## Progress
 
 - [x] (2026-09-07) Verified clean designated branch `feature/demo-logical-changelog` at ROOT-cleared `c3128715a785c2fd42011e4cf5941038b268335c`; read instructions and wave ownership.
-- [ ] Implement strict bundle/output contracts, bounded contained reader and export/validate workflow.
-- [ ] Obtain actual supervised summarizer output for a sanitized recorded task-context span and a new disposable Git change.
-- [ ] Implement visible expandable Journal, explicit refresh/evidence activation and retention/error tests.
+- [x] (2026-09-07 20:00Z) Implemented strict bundle/output contracts, bounded contained reader and export/validate workflow; actual Git spans exported.
+- [x] (2026-09-07 20:02Z) One native gpt-6-astra summarizer authored three actual raw outputs: Swarm task-context span and two generations from a new real disposable Git repo. Input/instructions digests retained. Swarm and first proof materialized through Bazel validation; second enters packaged update proof next.
+- [x] (2026-09-07 20:08Z) Implemented existing Activity feed -> main text-area expanded document, explicit source actions and retained error/core-generation fencing tests. Initial quality passed after correcting a test's mistaken fixture-function use. No historical broad RED claim.
 - [ ] Run owned packaged loop proof, proportional local gates and converged council; push, normal-merge if cleared, and hand off.
 
 ## Surprises & Discoveries
 
-No findings yet. The existing `core/files.ts` broker already rejects path traversal, symlink aliases, special files and oversized/unstable reads; reuse it instead of adding a second filesystem authority.
+The existing `core/files.ts` broker rejects path traversal, symlink aliases, special files and oversized/unstable reads. A first new UI test mistakenly treated `initialSnapshot` as a value, causing TypeScript failure before execution; corrected to call the factory. The next quality checkpoint passed. The supplied initial D4 recap and design status paragraph are historically stale; the summarizer correctly distinguishes those reports from later actual Git merges, rather than quietly overwriting history.
 
 ## Decision Log
 
@@ -25,6 +25,8 @@ Decision: use a versioned repo-local evidence bundle plus generated Journal, joi
 Decision: one bounded PR, not a PR stack. Rationale: the contract, reader, renderer and executable authoring loop are a single independently usable vertical. Additive seams only; unrelated peers remain independent. Date/author: 2026-09-07 J1.
 
 Decision: distinguish artifact observation, agent report and inferred reconstruction in visible text. Validation proves structure/citation membership, not the truth of generated prose. Date/author: 2026-09-07 J1.
+
+Decision: user steering places compact logical changes in the EXISTING Activity log, with selection opening an expanded Activity document in the main text area. No separate topbar Journal or floating overlay. Expanded entries identify explicit agent/task associations and code actions; unknown associations stay unknown. Date/author: 2026-09-07 user/J1.
 
 ## Outcomes & Retrospective
 
@@ -40,13 +42,13 @@ An evidence bundle is a bounded list of source observations identified by stable
 
 First define browser-safe strict schemas and cross-citation validation. Use an external Bazel export tool to capture fixed-argv bounded Git commit/file observations and explicit sanitized repo-local reports. The CLI validates/materializes output only for its current input. The core reader handles fixed `.swarm/changelog-bundle.json` and `.swarm/changelog.json` paths through the existing broker and validates digest and references before publication.
 
-Next add a small Journal entry in App and a module-local pane. Cards show headline, intent/outcome and decision; expandable evidence shows kind, source revision, exact paths and gaps. Prose remains React text, never HTML or process commands. Explicit source activation calls the existing ordinary source opener; Journal focus does not imply source or agent execution.
+Next add compact logical changes to the existing Activity content slot in App and a module-local main text-area document. Cards show headline, intent/outcome and decision; expandable evidence shows explicit agent/task association, kind, source revision, exact paths and gaps. Prose remains React text, never HTML or process commands. Explicit source activation calls the existing ordinary source opener without camera coordination; Journal focus does not imply source or agent execution.
 
 Then generate a real recorded Swarm task-context story using the allowed merged commits and sanitized supplied recaps. One native summarizer receives only the exported bundle and checked-in instructions and produces output; preserve its raw output and generator provenance. For the operational proof, create a disposable real Git repository/change, export it, ask the same summarizer to update its output, validate it and show the change via ordinary packaged UI Refresh on owned virtual X11.
 
 ## Concrete Steps
 
-Work only in `/home/tedks/Projects/swarm-ide/demo-logical-changelog`. Run `nix develop --command pnpm install --frozen-lockfile` for dependencies. Use `nix develop --command bazel test --jobs=3 //tools:quality` for TypeScript, tests and build checks. Add `//tools/demo-journal:export`, `:validate` and `:smoke` entry points with exact usage in `docs/logical-changelog.md`. Serialize heavy suites and all GUI with `flock --close /tmp/swarm-ide-overnight.UgO2Aw/virtual.lock`; only owned X11 :90 / port55174. No physical desktop automation or shared app adoption.
+Work only in `/home/tedks/Projects/swarm-ide/demo-logical-changelog`. Run `nix develop --command pnpm install --frozen-lockfile` for dependencies. Use `nix develop --command bazel test --jobs=3 //tools:quality` for TypeScript, tests and build checks. `//tools/demo-journal:author -- export ROOT FROM TO` exports and `-- validate ROOT` materializes, as documented in `docs/logical-changelog.md`. `:author -- seed-proof OWNED_EVIDENCE_DIRECTORY` creates the real disposable Git proof input. After actual supervised summary output is supplied, run `:smoke` with `SWARM_JOURNAL_AUTHORING_PROOF` pointing there. Serialize heavy suites and all GUI with `flock --close /tmp/swarm-ide-overnight.UgO2Aw/virtual.lock`; only owned X11 :90 / port55174. No physical desktop automation or shared app adoption.
 
 ## Validation and Acceptance
 

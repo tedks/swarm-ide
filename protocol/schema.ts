@@ -3,6 +3,7 @@ import { sameAgentTaskReference } from "./agent-task";
 import { PROTOCOL_VERSION, FocusRefSchema } from "./common";
 import { AgentRequestSchema, AgentResultSchema, AgentFocusSchema, AgentLinksSchema, AgentBoundaryErrorSchema, type AgentRequest } from "./agents";
 import { TaskRequestSchema, TaskResultSchema, TaskBoundaryErrorSchema, parseTaskResultForRequest, type TaskRequest } from "./tasks";
+import { ChangelogRequestSchema, ChangelogResultSchema } from "./changelog";
 import { RepositoryObservationSchema, RepositoryPathSchema, RepositoryRequestSchema, RepositoryResultSchema, parseRepositoryResultForRequest } from "./repository";
 import { RepositorySearchRequestSchema, RepositorySearchResultSchema, parseRepositorySearchResult } from "./repository-search";
 import { ServiceContextObservationSchema } from "./context";
@@ -285,7 +286,7 @@ const WorkspaceRequestSchema = z.discriminatedUnion("type", [
     path: z.string().min(1).max(4_096),
   }),
 ]);
-export const CoreRequestSchema = z.union([WorkspaceRequestSchema, AgentRequestSchema, TaskRequestSchema, RepositoryRequestSchema, RepositorySearchRequestSchema]);
+export const CoreRequestSchema = z.union([WorkspaceRequestSchema, AgentRequestSchema, TaskRequestSchema, RepositoryRequestSchema, RepositorySearchRequestSchema, ChangelogRequestSchema]);
 export type CoreRequest = z.infer<typeof CoreRequestSchema>;
 
 export const FileResultSchema = z.discriminatedUnion("kind", [
@@ -322,6 +323,7 @@ export const CoreResponseSchema = z.discriminatedUnion("ok", [
     task: TaskResultSchema.optional(),
     repo: RepositoryResultSchema.optional(),
     search: RepositorySearchResultSchema.optional(),
+    changelog: ChangelogResultSchema.optional(),
   }).strict(),
   z.object({
     protocolVersion: z.literal(PROTOCOL_VERSION),
@@ -381,6 +383,11 @@ const agentResultKind = {
 export function parseCoreResponseForRequest(input: unknown, request: CoreRequest): CoreResponse {
   const response = parseCoreResponse(input);
   if (response.requestId !== request.requestId) throw new Error("Response request ID mismatch");
+  if (request.type === "changelog.read") {
+    if (response.ok && (!response.changelog || response.file || response.agent || response.task || response.repo || response.search ||
+      response.snapshot.project.id !== request.repositoryId || response.changelog.repositoryId !== request.repositoryId))
+      throw new Error("Unexpected Journal response authority");
+  } else if (response.ok && response.changelog) throw new Error("Journal result supplied for a different command");
   if (request.type === "repo.search") {
     if (response.ok) {
       if (response.file || response.agent || response.task || response.repo || response.snapshot.project.id !== request.repositoryId)

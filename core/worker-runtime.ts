@@ -29,6 +29,7 @@ import { parseTaskResultForRequest, type TaskResult } from "../protocol/tasks";
 import { RepositoryError } from "./repository";
 import { type RepositoryResult } from "../protocol/repository";
 import type { RepositorySearchResult } from "../protocol/repository-search";
+import { readChangelog } from "./changelog";
 
 export interface WorkerDependencies {
   createAgents?: typeof createProductionAgentService;
@@ -45,6 +46,8 @@ const fileReadGenerations = new Map<string, number>();
 const providerPromise = RealWorkspaceProvider.create(workspaceRoot);
 let workingWorldObserver: WorkingWorldObserver | null = null;
 let shuttingDown = false;
+const journalLifetime = new AbortController();
+let journalPending: ReturnType<typeof readChangelog> | null = null;
 const taskProviderPromise: Promise<TaskProvider> = providerPromise.then(async (provider) => {
   const snapshot = provider.snapshot();
   const context = { root: workspaceRoot, worldId: snapshot.world.id, repositoryId: snapshot.project.id };
@@ -150,11 +153,13 @@ process.parentPort?.on("message", async (event) => {
   if (event.data?.type === "core.shutdown") {
     if (!shuttingDown) {
       shuttingDown = true;
+      journalLifetime.abort();
       void providerPromise.then((provider) => provider.dispose());
       try {
         await Promise.all([
           agentServicePromise.then((service) => service?.shutdown()),
           taskProviderPromise.then((tasks) => tasks.dispose()),
+          journalPending?.catch(() => {}),
         ]);
         process.parentPort?.postMessage({ type: "core.shutdown.ready" });
       } catch { /* No successful shutdown attestation; supervisor's deadline owns fallback. */ }
@@ -199,6 +204,20 @@ process.parentPort?.on("message", async (event) => {
       return;
     }
     switch (request.type) {
+      case "changelog.read": {
+        if (request.repositoryId !== provider.snapshot().project.id) {
+          post(fail(requestId, "JOURNAL_REPOSITORY_MISMATCH", "Journal requires the opened repository.")); return;
+        }
+        try {
+          journalPending ??= readChangelog(workspaceRoot, request.repositoryId, journalLifetime.signal).finally(() => { journalPending = null; });
+          const changelog = await journalPending;
+          if (shuttingDown) return;
+          post(parseCoreResponseForRequest({ ...ok(requestId, provider.snapshot()), changelog }, request));
+        } catch {
+          if (!shuttingDown) post(fail(requestId, "JOURNAL_UNAVAILABLE", "Journal unavailable or changed: check the bundle, citations, generation digest and recorded Git ancestry. No summary was replaced."));
+        }
+        return;
+      }
       case "repo.search": {
         const search = await provider.searchRepository(request);
         post(parseCoreResponseForRequest(ok(requestId, provider.snapshot(), undefined, undefined, undefined, undefined, search), request));
