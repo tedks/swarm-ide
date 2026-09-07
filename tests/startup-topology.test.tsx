@@ -41,6 +41,22 @@ function setup(initial = context(), memory: StartupTopologyMemory = {}) {
 afterEach(cleanup);
 
 describe("one-shot startup topology reconciliation", () => {
+  it("does not build an externally selected repository without automatic authority", () => {
+    const h = setup({ ...context(), automatic: false });
+    expect(h.start).not.toHaveBeenCalled();
+    expect(h.memory.settled).toBe(true);
+  });
+
+  it("denied startup is consumed before readiness and cannot revive through rerender, HMR or core recovery", () => {
+    const h = setup({ ...context({ ready: false, snapshot: null }), automatic: false });
+    h.rerender(context());
+    h.unmount();
+    const remount = setup(context(), h.memory);
+    remount.rerender(context({ coreGeneration: 2, observedCoreGeneration: 2 }));
+    expect(h.start).not.toHaveBeenCalled();
+    expect(remount.start).not.toHaveBeenCalled();
+  });
+
   it("builds the first observed yellow repository once under StrictMode and ordinary updates", () => {
     const state = snapshot();
     const h = setup(context({ snapshot: state }));
