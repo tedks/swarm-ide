@@ -77,9 +77,11 @@ synthesis but does not establish an autonomous in-app summarizer.
    an exact affected file. Refresh reads a newer validated artifact when one
    has been authored; it never launches an agent or submits a draft.
 
-The included account was actually produced by one supervised gpt-6-astra
-summarizer from bounded exported Git observations and explicitly supplied,
-sanitized reports. Its run and input provenance are in the document itself.
+The included account was initially produced by a supervised gpt-6-astra
+summarizer, then rewritten for clarity by the native Codex summarizer identified
+in the document. Both used the same bounded exported Git observations and
+explicitly supplied, sanitized reports; citation membership was preserved.
+The current author's run and input provenance are in the document itself.
 The generated account even notes an older design-status paragraph; that is a
 recorded documentation discrepancy, not something the summarizer silently fixed.
 

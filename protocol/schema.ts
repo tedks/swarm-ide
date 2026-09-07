@@ -5,6 +5,7 @@ import { PROTOCOL_VERSION, FocusRefSchema } from "./common";
 import { AgentRequestSchema, AgentResultSchema, AgentFocusSchema, AgentLinksSchema, AgentBoundaryErrorSchema, type AgentRequest } from "./agents";
 import { TaskRequestSchema, TaskResultSchema, TaskBoundaryErrorSchema, parseTaskResultForRequest, type TaskRequest } from "./tasks";
 import { ChangelogRequestSchema, ChangelogResultSchema } from "./changelog";
+import { GithubPrRequestSchema, GithubPrObservationSchema } from "./github-prs";
 import { RepositoryObservationSchema, RepositoryPathSchema, RepositoryRequestSchema, RepositoryResultSchema, parseRepositoryResultForRequest } from "./repository";
 import { RepositorySearchRequestSchema, RepositorySearchResultSchema, parseRepositorySearchResult } from "./repository-search";
 import { BuildGraphRequestSchema, BuildGraphObservationSchema } from "./build-graph";
@@ -289,7 +290,7 @@ const WorkspaceRequestSchema = z.discriminatedUnion("type", [
     path: z.string().min(1).max(4_096),
   }),
 ]);
-export const CoreRequestSchema = z.union([WorkspaceRequestSchema, AgentRequestSchema, TaskRequestSchema, RepositoryRequestSchema, RepositorySearchRequestSchema, ChangelogRequestSchema, PlanReadRequestSchema, ExternalRequestSchema, BuildGraphRequestSchema]);
+export const CoreRequestSchema = z.union([WorkspaceRequestSchema, AgentRequestSchema, TaskRequestSchema, RepositoryRequestSchema, RepositorySearchRequestSchema, ChangelogRequestSchema, PlanReadRequestSchema, ExternalRequestSchema, BuildGraphRequestSchema, GithubPrRequestSchema]);
 export type CoreRequest = z.infer<typeof CoreRequestSchema>;
 
 export const FileResultSchema = z.discriminatedUnion("kind", [
@@ -330,6 +331,7 @@ export const CoreResponseSchema = z.discriminatedUnion("ok", [
     plans: PlanReadResultSchema.optional(),
     external: ExternalResultSchema.optional(),
     buildGraph: BuildGraphObservationSchema.optional(),
+    githubPrs: GithubPrObservationSchema.optional(),
   }).strict(),
   z.object({
     protocolVersion: z.literal(PROTOCOL_VERSION),
@@ -389,6 +391,12 @@ const agentResultKind = {
 export function parseCoreResponseForRequest(input: unknown, request: CoreRequest): CoreResponse {
   const response = parseCoreResponse(input);
   if (response.requestId !== request.requestId) throw new Error("Response request ID mismatch");
+  if (request.type === "githubPrs.refresh") {
+    if (response.ok && (!response.githubPrs || response.file || response.agent || response.task || response.repo || response.search || response.changelog || response.plans || response.external || response.buildGraph ||
+      response.snapshot.project.id !== request.repositoryId || response.snapshot.world.id !== request.worldId ||
+      response.githubPrs.repositoryId !== request.repositoryId || response.githubPrs.worldId !== request.worldId))
+      throw new Error("Unexpected GitHub PR response authority or identity");
+  } else if (response.ok && response.githubPrs) throw new Error("GitHub PR result supplied for a different command");
   if (request.type === "changelog.read") {
     if (response.ok && (!response.changelog || response.plans || response.external || response.buildGraph || response.file || response.agent || response.task || response.repo || response.search ||
       response.snapshot.project.id !== request.repositoryId || response.changelog.repositoryId !== request.repositoryId))

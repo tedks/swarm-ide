@@ -1,0 +1,10 @@
+package(default_visibility = ["//visibility:public"])
+
+filegroup(name = "sources", srcs = glob(["*.sh", "*.mjs", "*.cjs"]))
+
+sh_binary(
+    name = "smoke",
+    srcs = ["smoke.sh"],
+    data = [":sources", "//:desktop-bundle", "//:quality_sources", "//tools/task-integration:sources", "//tools:virtual-desktop-run.sh", "//tools:x11-driver-source", "//tools:electron-runtime-source"],
+    tags = ["manual"],
+)

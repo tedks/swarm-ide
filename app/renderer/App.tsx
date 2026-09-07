@@ -60,6 +60,7 @@ import { declarationPublication, resolveDeclarations, type DeclarationResolution
 import { DeclarationChooser } from "./context/DeclarationChooser";
 import { sameAgentTaskReference } from "../../protocol/agent-task";
 import { JournalActivity, JournalPanel, useJournal } from "./changelog/JournalPanel";
+import { useGithubPullRequests } from "./changelog/GithubPullRequests";
 import { useExternalAgents } from "./external-agents/client";
 import { ExternalAgentRail, ExternalAgentInformation } from "./external-agents/ExternalAgents";
 
@@ -144,6 +145,8 @@ export function App() {
   const [workspace, setWorkspace] = useState<WorkspaceState>(() => hotCheckpoint?.workspace ?? (restoredNavigation?.snapshot ? loadSnapshot(restoredNavigation.snapshot, -1) : emptyWorkspaceState));
   const [externalInformation, setExternalInformation] = useState(false);
   const externalAgents = useExternalAgents(window.swarm, Boolean(workspace.snapshot) && (!window.swarmLifecycle || lifecycle?.core.phase === "ready"), lifecycle?.core.generation ?? 0);
+  const githubPrs = useGithubPullRequests(workspace.snapshot?.project.id ?? null, workspace.snapshot?.world.id ?? null,
+    !window.swarmLifecycle || lifecycle?.core.phase === "ready" ? lifecycle?.core.generation ?? 0 : null);
   const [error, setError] = useState<string | null>(null);
   const [activeLens, setActiveLens] = useState<(typeof lensTabs)[number]>(hotCheckpoint?.lens ?? restoredNavigation?.lens ?? "System");
   const [paletteOpen, setPaletteOpen] = useState(false);
@@ -1265,7 +1268,7 @@ export function App() {
           <button id="reconcile-success" className="build-button" onClick={() => void reconcile()} disabled={reconciliationRunning || coreUnavailable}>▶ Build topology</button>
         </div>
         {textOpen ? <nav className="surface-tabs" aria-label="Document tabs">
-          {journalOpen ? <div className={`surface-tab ${journalVisible ? "active" : ""}`}><button className="surface-tab-main" onClick={() => showJournal()}>Logical changes</button><button className="surface-tab-close" aria-label="Close activity document" onClick={() => { setJournalOpen(false); setJournalVisible(false); }}>×</button></div> : null}
+          {journalOpen ? <div className={`surface-tab ${journalVisible ? "active" : ""}`}><button className="surface-tab-main" onClick={() => showJournal()}>Activity log</button><button className="surface-tab-close" aria-label="Close activity document" onClick={() => { setJournalOpen(false); setJournalVisible(false); }}>×</button></div> : null}
           {fileTabs.map((tab) => <div key={tab.path} className={`surface-tab ${activeFile?.path === tab.path && !textDocumentVisible && !journalVisible ? "active" : ""}`}><button className="surface-tab-main" onClick={() => activateFile(tab.path)} title={tab.path}><span className={`tab-state status-${tab.status}`}>{tab.status === "dirty" ? "●" : tab.status === "saving" ? "◌" : tab.status === "conflict" || tab.status === "error" ? "!" : "◇"}</span>{tab.path.split("/").at(-1)}</button><button className="surface-tab-close" aria-label={`Close ${tab.path}`} onClick={() => closeFile(tab.path)}>×</button></div>)}
           {taskDocumentOpen ? <div className={`surface-tab ${textDocumentVisible ? "active" : ""}`}><button className="surface-tab-main" onClick={() => { setTaskDocumentVisible(true); inspectTask(tasks.selectedTaskId); }} title={tasks.selectedTaskId ?? "Task"}>▤ {tasks.detail?.title ?? "Task document"}</button><button className="surface-tab-close" aria-label="Close task document" onClick={closeTaskDocument}>×</button></div> : null}
         </nav> : null}
@@ -1296,7 +1299,7 @@ export function App() {
             }} onSave={() => void saveFile(activeFile.path)} /> : <div className="source-message source-error">{activeFile.message}</div>}
           </>}
         </section> : null}
-        <JournalPanel key={snapshot.project.id} open={journalVisible} state={journal} selectedEntry={journalEntry} selectionVersion={journalSelection}
+        <JournalPanel key={snapshot.project.id} open={journalVisible} state={journal} selectedEntry={journalEntry} selectionVersion={journalSelection} pullRequests={githubPrs}
           onClose={() => setJournalVisible(false)} onOpenSource={openLinkedFile} />
         {taskDocumentOpen ? <div className="task-editor-surface" hidden={!textDocumentVisible} onPointerDownCapture={(event) => { if (!(event.target as Element).closest(".task-attach")) inspectTask(tasks.selectedTaskId); }} onFocusCapture={(event) => { if (!(event.target as Element).closest(".task-attach")) inspectTask(tasks.selectedTaskId); }}><TaskDetail surface="editor" selectedTaskId={tasks.selectedTaskId} snapshot={tasks.observation?.snapshot ?? null} detail={tasks.detail} detailRevision={tasks.detailRevision} detailStale={tasks.detailStale || tasks.observation?.status !== "observed" || Boolean(tasks.notice)} reading={tasks.reading} notice={tasks.detailNotice} attachment={taskAttachment(tasks.selectedTaskId)} onRefresh={() => { void taskClient.refresh(); }} onSelect={(id) => openTaskDocument(id)} onReveal={(ref) => { void revealTaskReference(ref); }} onReturnToSource={() => { setTaskDocumentVisible(false); if (!activeFile) setTaskDocumentOpen(false); returnToSourceInformation(); }} /></div> : null}
       </section>
@@ -1315,7 +1318,7 @@ export function App() {
 
       <section className="activity-dock panel">
         <div className="dock-header"><div><span className="eyebrow">activity / jobs</span><strong>Changes entering the world</strong></div><span className="ignored-events">{workspace.ignoredEvents} stale events rejected</span></div>
-        <AgentDock state={liveAgents} client={agentClient} selectionVersion={agentDockSelection} fixtureSelectionVersion={fixtureDockSelection}
+        <AgentDock state={liveAgents} client={agentClient} selectionVersion={agentDockSelection} fixtureSelectionVersion={fixtureDockSelection} onOpenActivity={() => showJournal()}
           mockConversation={demo.conversation ? { tabs: MOCK_AGENTS, selected: demo.selected, onSelect: demo.select, selectionVersion: demo.selectionVersion, content: <MockConversation selected={demo.selected} /> } : undefined}
           onDraft={() => agentClient.openDraft(snapshot.focus)}
           draftContent={<PreparedLaunchDraft state={liveAgents} client={agentClient} previewCurrent={taskAttachment(tasks.selectedTaskId).alreadyAttached} dirtyPaths={fileTabs.filter((tab) => protectsBuffer(tab)).map((tab) => tab.path)} />}
