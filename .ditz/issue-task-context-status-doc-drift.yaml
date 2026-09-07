@@ -21,3 +21,13 @@ log_events:
     status paragraph still describing D3-only UNSUPPORTED_CONTROL while later PR49/50/51
     are merged. This is recorded documentation drift, not a new product runtime failure.
     Update status/proof distinctions without calling deterministic execution live.
+- time: 2026-09-07T23:02:40-00:00
+  who: Ted Smith
+  what: commented
+  comment: 'PM reconciliation at merged PR63: the stale D3-only opening still exists
+    in docs/repo-task-draft.md. Related docs/foundation-closure.md also still says
+    attachment implementation remains future and lists repo-task-draft-provenance
+    among unclosed gates, although PR49-51 and the newer connected tour record the
+    completed bounded attachment/revalidation journey. Reconcile these related status
+    claims together while preserving the deterministic-versus-real-provider distinction;
+    no runtime bug or new feature request implied.'
