@@ -5,8 +5,8 @@ type: feature
 component: default
 release:
 reporter: Ted Smith <tedks@riseup.net>
-status: in_progress
-disposition:
+status: closed
+disposition: fixed
 creation_time: 2026-09-07T22:20:59-00:00
 references: []
 log_events:
@@ -25,3 +25,8 @@ log_events:
     quality1694/122, desktop bundle, native review and actual owned TS/JSON/Markdown
     edit/tab/save proof passed; cleanup1 zero renderer errors/model requests. Leave
     in_progress until ROOT landing; shared app/dependencies not adopted.
+- time: 2026-09-07T22:54:07-00:00
+  who: Ted Smith
+  what: 'closed: fixed'
+  comment: PR63 normally merged717485e after native fixpoint, quality1694, packaged
+    syntax/edit/save proof; ROOT adopting frozen dependencies.
