@@ -73,3 +73,8 @@ their saved process/runtime identities. That unresolved acceptance failure is
 tracked as `parallel-port-navigation-reveal-timeout-20260907`: concurrency is
 proved, but this run is not evidence of a fully green navigation suite or of
 the cause of that failure.
+
+The B1 completion separately passed its unchanged two-repository packaged
+build-graph journey on `:126/55206` (45.2 seconds for the test), with both
+desktop cleanups complete. This proves the third launcher's nondefault-port
+integration; it does not rerun or erase the earlier navigation failure.
