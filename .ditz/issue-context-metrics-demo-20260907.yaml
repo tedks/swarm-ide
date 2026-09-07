@@ -1,0 +1,16 @@
+id: context-metrics-demo-20260907
+title: Context metrics and file relationships demo
+desc: ""
+type: feature
+component: renderer
+release:
+reporter: Ted Smith <tedks@riseup.net>
+status: unstarted
+disposition:
+creation_time: 2026-09-07T22:58:35-00:00
+references: []
+log_events:
+- time: 2026-09-07T22:58:35-00:00
+  who: Ted Smith
+  what: created
+  comment: ""
