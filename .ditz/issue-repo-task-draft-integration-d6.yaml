@@ -5,8 +5,8 @@ type: task
 component: core
 release:
 reporter: Ted Smith <tedks@riseup.net>
-status: in_progress
-disposition:
+status: closed
+disposition: fixed
 creation_time: 2026-09-07T17:51:45-00:00
 references: []
 log_events:
@@ -57,3 +57,14 @@ log_events:
     checks block. Targeted1479/105 and native+Google delta CLEAN; original explicit
     Sonnet unfilled. ONE authorized frozen full35 build/fresh14 local underway; no
     B1 consumption, physical app, production filter/model or broader scope.
+- time: 2026-09-07T19:24:05-00:00
+  who: Ted Smith
+  what: 'closed: fixed'
+  comment: PR51 normal c3128715a785c2fd42011e4cf5941038b268335c; exact tested tree
+    d68bfd2733e45e805ce7fe86386292084e8772e0. Final35 targets/all14 fresh suites PASS295.703s,1479/105;
+    native+Google CLEAN, explicit Sonnet unavailable. Real CLI production metadata
+    refresh/reattach/reprepare100/150 and deterministic-only admitted81-record immutable
+    history/reload/core-recovery/close verified, zero renderer errors/warnings, cleanup1.
+    Exact ResizeObserver warning remains OPEN under direct user nonblocking-risk acceptance;
+    original topology timeout also OPEN. No live model, production policy or physical
+    adoption. Full receipt /tmp/swarm-ide-task-journey-d6.Y4wW6r/accepted-final-verification.md.
