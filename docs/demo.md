@@ -97,7 +97,7 @@ validate → Refresh**, not an in-app scheduler.
 
 Optional, on an operator-configured installation: **Agent runs → External
 sessions → Refresh external sessions** shows fork ancestry, **Conversation ·
-read-only** and **Worklog**. **Open tmux window** requires a checked live target.
+read-only** and **Worklog**. **Open conversation in tmux** requires a checked live target.
 A private registry is required and is not shipped. D4/D5/D6 labels in a report
 are not verified session IDs and do not automatically select an agent; choose a
 known registration manually or skip this segment. See

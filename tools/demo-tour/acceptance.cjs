@@ -115,6 +115,7 @@ async function main() {
     document.querySelector("[data-build-status]")?.textContent !== "unavailable · No build-graph observation requested."), "bounded build query settlement", 45000);
   // Query status is evidence, never invented graph data or a successful build.
   const buildStatus = await text("[data-build-status]");
+  await run(() => document.querySelector(".build-canvas")?.scrollIntoView({ block: "nearest" }));
   await shot("05-build-relationships.png");
 
   stage = "fixed-source-draft";
@@ -138,8 +139,13 @@ async function main() {
   await until(() => has(".agent-launch-context"), "real pinned task preparation", 20000);
   assert((await text(".agent-launch-context")).includes(repository.metadataCommit));
   assert((await text(".agent-launch-context")).includes(taskId));
+  const agent = await run(() => window.swarm.request({ protocolVersion: 7, type: "agent.snapshot", requestId: `tour-policy:${crypto.randomUUID()}` }));
+  assert(agent.ok && agent.agent.snapshot.capabilities.controls.launch === false,
+    "actual core policy disables launch independently of the confirmation checkbox");
+  assert.equal(agent.agent.snapshot.runs.length, 0);
   assert(await run(() => [...document.querySelectorAll(".agent-draft button")].find((e) => e.textContent === "Launch read-only run")?.disabled));
   await click(".agent-launch-context summary", "Recorded repository task · immutable");
+  await run(() => document.querySelector(".agent-launch-context details[open] pre")?.scrollIntoView({ block: "nearest" }));
   await shot("06-real-prepared-task.png");
   await click(".agent-launch-context summary", "Exact submitted prompt");
   const exactPrompt = await text(".agent-launch-context details:last-child pre");
@@ -184,7 +190,8 @@ async function main() {
   const diagnostics = classifyRendererDiagnostics(errors); assert.deepEqual(diagnostics.blockingErrors, []);
   await fs.writeFile(path.join(evidence, "proof.json"), JSON.stringify({ ok: true, actualTaskMetadata: true,
     sourceCommit: repository.sourceCommit, metadataCommit: repository.metadataCommit, taskId, packagedCore: true,
-    prepared: true, retained: true, graphCoverage, buildStatus, journal: "recorded supervised output; not rerun",
+    prepared: true, retained: true, graphCoverage, buildStatus, managedLaunchAvailable: agent.agent.snapshot.capabilities.controls.launch,
+    journal: "recorded supervised output; not rerun",
     observer: "not configured; omitted, no synthetic substitute", productMutations, rendererErrors: errors,
     ...diagnostics, milliseconds: Date.now() - started }, null, 2));
 }

@@ -8,6 +8,13 @@ import { fileURLToPath } from "node:url";
 import { resolveOwnedVirtualPort } from "../task-integration/owned-port.mjs";
 import { resolveElectronRuntimeArguments } from "../electron-runtime.mjs";
 
+// Git environment overrides ignore cwd and can redirect init/fetch/checkout
+// outside scratch. This manual proof accepts none, including empty overrides.
+// Reject before invoking Git or performing owned launch/setup work; do not echo
+// caller-controlled paths or injected configuration values.
+if (Object.keys(process.env).some((name) => name.startsWith("GIT_")))
+  throw new Error("Ambient Git environment is unsupported for the disposable tour");
+
 const scripts = dirname(fileURLToPath(import.meta.url));
 const port = await resolveOwnedVirtualPort();
 const owner = process.env.SWARM_X11_OWNERSHIP_DIR;
