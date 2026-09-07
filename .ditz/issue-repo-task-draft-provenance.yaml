@@ -8,8 +8,8 @@ type: feature
 component: workbench
 release:
 reporter: Ted Smith <tedks@riseup.net>
-status: unstarted
-disposition:
+status: closed
+disposition: fixed
 creation_time: 2026-09-06T06:15:54-00:00
 references: []
 log_events:
@@ -103,6 +103,18 @@ log_events:
     New task-rehearsal-resize-observer-d6 holds D6. One immutable35 build and13/14fresh
     local, quality1470. Exact bounded diagnostic continuation only, no provider/adoption
     authority; prior historical topology timeout separately open.
+- time: 2026-09-07T19:24:07-00:00
+  who: Ted Smith
+  what: 'closed: fixed'
+  comment: 'Accepted D2-D6 task-context vertical complete through normal PR51 c3128715:
+    actual fixed-source one-slot UI and real core materialization/revalidation, explicit
+    metadata refresh/re-attach/reprepare, full pin/canonical-byte/hash proof, immutable
+    admitted history/reload/core recovery/ordinary close with no replay. Final reviewed
+    full35/all14fresh local GREEN at exact tree d68bfd2733e45e805ce7fe86386292084e8772e0;
+    production activation intentionally unavailable, deterministic execution labelled
+    and never claimed real provider. User accepted exact known ResizeObserver warning
+    risk; bug and historical timeout remain open. Earlier repo-task-surface tracking
+    is not closed or broadened by this D6 completion.'
 blocked_by:
 - repo-task-surface
 - repo-task-draft-contract-d2
