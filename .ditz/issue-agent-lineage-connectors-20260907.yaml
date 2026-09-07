@@ -18,3 +18,12 @@ log_events:
   who: Ted Smith
   what: started
   comment: ""
+- time: 2026-09-07T23:06:39-00:00
+  who: Ted Smith
+  what: commented
+  comment: PR65 implements solid registered-parent trunks/elbows, independent unknown/cyclic
+    roots and uncapped depth with horizontal scrolling. Initial exact tests 4 RED/32
+    PASS; corrected observer suite36 PASS and quality1663/120 PASS. Native initial
+    and capture-only delta reviews CLEAN; final trusted keyboard driver convergence
+    and owned virtual framing proof underway. ROOT owns merge/closure; no runtime
+    authority or managed app change.
