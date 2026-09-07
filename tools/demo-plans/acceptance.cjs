@@ -7,6 +7,7 @@ const assert = require("node:assert/strict");
 const { createHash } = require("node:crypto");
 const path = require("node:path");
 const { pathToFileURL } = require("node:url");
+const { classifyRendererDiagnostics } = require("./diagnostics.cjs");
 const evidence = process.env.SWARM_PLANS_EVIDENCE, packaged = process.env.SWARM_PLANS_PACKAGE;
 const rendererErrors = []; let stage = "startup";
 app.on("web-contents-created", (_event, contents) => {
@@ -213,14 +214,16 @@ async function main() {
   assert.equal(await fs.readFile(path.join(fixture.root, fixture.sourcePath), "utf8"), fixture.sourceText, "source disk unchanged");
   const agents = await request({ type: "agent.snapshot" });
   assert(agents.ok && agents.agent.snapshot.runs.length === 0 && !agents.agent.snapshot.capabilities.controls.launch);
-  assert.equal(rendererErrors.length, 0, JSON.stringify(rendererErrors));
   await screenshot("04-retained-work.png");
+  const diagnostics = classifyRendererDiagnostics(rendererErrors);
+  assert.equal(diagnostics.blockingErrors.length, 0, JSON.stringify(rendererErrors));
   await fs.writeFile(path.join(evidence, "plans-proof.json"), JSON.stringify({ ok: true, realDitz: true, packagedCore: true,
     kind: fixture.kind, archivedSourceCommit: fixture.archivedSourceCommit, metadataCommit: fixture.metadataCommit,
     planHash: observed.plans.revision, planNodes: fixture.index.nodes.length, taskNodes: graphNodes.length, directedEdges: graphEdges,
     boundedCoverage: { metadataCommit: expandedMetadataCommit, loaded: 64, total: totalTasks, unread: totalTasks - 64, realDitz: true },
     taskActivation: "native Enter / pinned metadata", sourceDraftCamerasRetained: true, malformedMissingUnavailable: true,
-    fixtureFaults: ["malformed/missing owned plan index", "removed/restored owned metadata ref"], modelTurns: 0, rendererErrors, milliseconds: Date.now() - started }));
+    fixtureFaults: ["malformed/missing owned plan index", "removed/restored owned metadata ref"], modelTurns: 0, rendererErrors, diagnostics,
+    acceptedResizePolicy: "Exact user-accepted warning remains OPEN; not suppressed or called repaired.", milliseconds: Date.now() - started }));
 }
 main().catch(async (error) => {
   const win = BrowserWindow.getAllWindows()[0];

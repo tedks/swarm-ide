@@ -59,3 +59,5 @@ Limits: 64 KiB index bytes, 128 nodes, 128-byte IDs, 256-byte titles, 16 documen
 ## Local proof
 
 Use the Nix shell and Bazel targets documented in the repository. `//tools/demo-plans:packaged-plans-test` owns a disposable virtual desktop and a real local Git/Ditz demonstration repository. The CLI-authored positive data is test input, not a production fixture provider; malformed metadata cases are explicit faults. It exercises actual packaged main/preload/core and ordinary UI navigation, source/draft retention and no provider launch. Full release instructions are maintained separately in the public demo documentation.
+
+The proof also authors 65 extra tasks to exercise visible partial coverage rather than only testing the cap in isolation. A separate `SWARM_PLANS_CASE=swarm` run archives the committed Swarm source/index and creates disposable matching task records; it does not copy the original repository's Ditz branch. Exact renderer diagnostics are retained in the evidence. The previously accepted `ResizeObserver loop completed with undelivered notifications.` warning remains a tracked noncritical limitation; every other renderer error still fails the proof.
