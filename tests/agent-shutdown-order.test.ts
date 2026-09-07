@@ -308,3 +308,31 @@ it("remains idempotent even when dispose synchronously re-enters shutdown", asyn
   const closing = f.service.shutdown(); expect(nested).toBe(closing); expect(f.service.shutdown()).toBe(closing);
   await closing; expect(f.counts().disposals).toBe(1); expect(vi.getTimerCount()).toBe(0);
 });
+
+it.each(["terminal", "grace"] as const)("registers cleanup before %s disposal can re-enter shutdown", async (cause) => {
+  const f = await fixture(), entered = deferred(); let closing: Promise<void> | undefined;
+  f.controls.dispose = () => {
+    closing = f.service.shutdown(); entered.resolve(); return Promise.resolve(f.confirmed());
+  };
+  if (cause === "terminal") f.event(terminal);
+  else { value(await f.cancel()); await vi.advanceTimersByTimeAsync(5000); }
+  await entered.promise; await closing;
+  expect(f.counts().disposals).toBe(1);
+  expect(value(await f.disk.read(f.prepared.runId, 0)).run).toMatchObject({
+    state: cause === "terminal" ? "completed" : "unknown", cleanup: { status: "confirmed" } });
+  expect(vi.getTimerCount()).toBe(0);
+});
+
+it("awaits a resolved handle whose registration extends a post-cutoff queue snapshot", async () => {
+  const f = await fixture({ delayedHandle: true }), gate = f.pause("read"), cleanup = deferred();
+  releases.push(cleanup.resolve);
+  f.controls.dispose = async () => { await cleanup.promise; return f.confirmed(); };
+  let done = false; const closing = f.close().then(() => { done = true; });
+  const reading = f.read(); await gate.entered; // Read follows the shutdown uncertainty barrier.
+  f.returnHandle(); await vi.advanceTimersByTimeAsync(0); // Registration extends the queue behind this read.
+  gate.release(); value(await reading); value(await f.read());
+  expect(f.counts().disposals).toBe(1); expect(done).toBe(false);
+  cleanup.resolve(); await closing;
+  expect(value(await f.disk.read(f.prepared.runId, 0)).run.cleanup.status).toBe("confirmed");
+  expect(vi.getTimerCount()).toBe(0);
+});
