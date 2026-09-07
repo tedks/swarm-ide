@@ -36,12 +36,13 @@ async function main() {
   });
   const paint = () => run(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve(true)))));
   const key = async (keyCode, modifiers = []) => {
-    wc.sendInputEvent({ type: "keyDown", keyCode, modifiers });
+    const nativeKey = keyCode === "Space" ? " " : keyCode;
+    wc.sendInputEvent({ type: "keyDown", keyCode: nativeKey, modifiers });
     // Chromium activates native buttons/details on the character event. Match
     // real keyboard delivery rather than down/up-only synthetic keypresses.
     if (keyCode === "Enter") wc.sendInputEvent({ type: "char", keyCode: "\r", modifiers });
     if (keyCode === "Space") wc.sendInputEvent({ type: "char", keyCode: " ", modifiers });
-    wc.sendInputEvent({ type: "keyUp", keyCode, modifiers }); await paint();
+    wc.sendInputEvent({ type: "keyUp", keyCode: nativeKey, modifiers }); await paint();
   };
   const click = async (selector) => {
     await run((s) => {
@@ -128,6 +129,12 @@ async function main() {
   stage = "keyboard-navigation";
   await tabTo(toggle);
   stage = "resource-interactions";
+  await run(() => {
+    globalThis.__resourceProofKeys = [];
+    for (const type of ["keydown", "keyup", "keypress"]) addEventListener(type, (event) => {
+      if (globalThis.__resourceProofKeys.length < 60) globalThis.__resourceProofKeys.push({ type, key: event.key, target: event.target.tagName });
+    });
+  });
   await key("Enter");
   await until(() => has(".resource-example"), "keyboard expanded example");
   assert.equal(await run((s) => document.querySelector(s).getAttribute("aria-expanded"), toggle), "true");
@@ -165,6 +172,7 @@ async function main() {
     retained: true, actualSource: repository.sourcePath, unsavedSourceMatchesDisk: false, sourceDiskUnchanged: true,
     graphCount: cameras.length, example: "illustrative only; no current utilization asserted", exampleText,
     resourceRequests, backgroundRequests, productMutations, rendererErrors: errors,
+    keys: await run(() => globalThis.__resourceProofKeys),
     buildBoundary: "No explicit build request; existing source-change reconciliation may attempt background topology extraction.",
     milliseconds: Date.now() - started }, null, 2));
 }
