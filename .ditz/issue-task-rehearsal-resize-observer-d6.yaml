@@ -15,3 +15,17 @@ log_events:
   who: Ted Smith
   what: created
   comment: ""
+- time: 2026-09-07T18:40:13-00:00
+  who: Ted Smith
+  what: commented
+  comment: 'D6 PR51 exact frozen0a72bab/treefd4d5cbd full35 build passed; one fresh
+    all14 suite ran298.195s,13 passed, task-only rehearsal failed26.6s with exactly
+    ResizeObserver loop completed with undelivered notifications. Evidence /tmp/swarm-ide-task-journey-d6.Y4wW6r/final-task-rehearsal/task-rehearsal/run.xKVIS4;
+    cleanup1, one Prepare/Launch,2 core generations, no replay. Error collection has
+    no phase/target/source stack, so original mechanism not localized. All task/history/paged
+    recovery assertions and100/150 screenshots reached before final errors[] rejection;
+    final corrected postclose proof did NOT run. No GUI retry/suppression or production
+    fix attempted. Smallest next slice: passive phase/error and resize-target diagnostics,
+    at most one owned virtual run, deterministic reproduction before a narrow authorized
+    UI correction. This is distinct from older OPEN topology timeout and not covered
+    by its historical waiver.'
