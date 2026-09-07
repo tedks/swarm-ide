@@ -10,6 +10,9 @@ export function DeclarationChooser({ resolution, onChoose, onCancel }: {
   useLayoutEffect(() => { panel.current?.focus(); }, []);
   return <div className="declaration-overlay"><section ref={panel} role="dialog" aria-modal="true" aria-label="Choose interface declaration" tabIndex={-1}
     onKeyDown={(event) => {
+      // This modal owns keyboard intent. In particular Ctrl+K must not focus a
+      // hidden palette behind it, whose Enter could navigate without a choice.
+      event.stopPropagation();
       if (event.key === "Escape") { event.preventDefault(); event.stopPropagation(); onCancel(); }
       if (event.key === "Enter" && (event.repeat || event.target === event.currentTarget)) { event.preventDefault(); event.stopPropagation(); }
       if (event.key === "Tab") {

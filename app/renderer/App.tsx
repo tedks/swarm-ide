@@ -280,6 +280,7 @@ export function App() {
   const interruptPendingReveal = useCallback(() => {
     if (pendingRevealIntent.current === null) return;
     pendingRevealIntent.current = null;
+    definitionRef.current = null; setDefinition(null);
     ++navigationIntent.current;
     setRevealNotice((notice) => notice.startsWith("Opening working file")
       ? "Reveal superseded by a newer interaction; previous source retained." : notice);
@@ -661,11 +662,12 @@ export function App() {
     return fileTabsRef.current.find((tab) => tab.path === path) ?? null;
   }, [activateFile, invoke, showSurface, sourceReceipt]);
 
-  const revealTaskReference = useCallback(async (ref: TaskFileRef, origin: "task" | "repository" = "task", declaration?: { valid: () => boolean; notice: string }) => {
+  const revealTaskReference = useCallback(async (ref: TaskFileRef, origin: "task" | "repository" = "task", declaration?: { valid: () => boolean; started: (intent: number) => void; notice: string }) => {
     // Task metadata has a deliberately narrower display/link policy. An exact
     // repository path is not metadata or a URL; the file broker owns access.
     if (origin === "repository" ? !isRepositoryPath(ref.path) : !validTaskReference(ref)) { reportRevealFailure("Unsupported reference: only canonical relative working-file paths can be revealed."); return; }
     const intent = ++navigationIntent.current;
+    declaration?.started(intent);
     const activation = { realm: contextRealm(), generation: attentionRef.current.generation, intent, path: ref.path };
     pendingRevealIntent.current = intent;
     try {
@@ -998,7 +1000,7 @@ export function App() {
   const definitionValid = useCallback((token: DefinitionIntent) => definitionRef.current === token && mounted.current &&
     token.realm === contextRealm() && token.generation === attentionRef.current.generation &&
     token.resolution.publication === declarationPublication(workspaceRef.current.snapshot) &&
-    (!token.choosing || token.intent === navigationIntent.current), [contextRealm]);
+    token.intent === navigationIntent.current, [contextRealm]);
   const cancelDefinition = useCallback(() => {
     const previous = definitionRef.current;
     definitionRef.current = null; setDefinition(null);
@@ -1010,7 +1012,7 @@ export function App() {
     if (!definitionValid(token) || !token.resolution.candidates.some((candidate) => candidate.path === path)) return;
     token.choosing = false; setDefinition(null);
     void revealTaskReference({ path, line: null, note: null, navigation: "candidate" }, "repository", {
-      valid: () => definitionValid(token), notice: token.resolution.notice,
+      valid: () => definitionValid(token), started: (intent) => { token.intent = intent; }, notice: token.resolution.notice,
     }).finally(() => { if (definitionRef.current === token) definitionRef.current = null; });
   }, [definitionValid, revealTaskReference]);
   const activateDefinition = useCallback((focus: FocusRef, origin?: HTMLElement) => {
@@ -1029,8 +1031,13 @@ export function App() {
   useEffect(() => {
     const token = definitionRef.current;
     if (token && !definitionValid(token)) {
+      const ownedFocus = token.choosing && document.activeElement?.closest('[aria-label="Choose interface declaration"]');
       definitionRef.current = null; setDefinition(null);
       setRevealNotice((notice) => notice.startsWith("Opening working file") || token.choosing ? "Definition navigation superseded; activate again using the current evidence." : notice);
+      if (ownedFocus) {
+        const destination = token.origin?.isConnected ? token.origin : document.querySelector<HTMLElement>(".graphs-grid");
+        destination?.focus({ preventScroll: true });
+      }
     }
   }, [workspace.snapshot, attention.generation, definitionValid]);
   const selectConnection = useCallback((connection: GraphConnectionFocus, topologyId: string) => {

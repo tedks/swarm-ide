@@ -66,6 +66,24 @@ describe("truthful Context in the mounted workbench", () => {
     fireEvent.click(screen.getByRole("button", { name: "Inspect interface:payments.authorize" })); await test.finish();
     expect(subject()).toBe("interface:payments.authorize"); expect(document.querySelector(".source-surface header strong")?.textContent).toBe("core/files.ts");
   });
+  it("superseding an in-flight definition with the palette gives Escape to the palette", async () => {
+    const test = setup(); render(<App />); await openContextPath("core/files.ts"); await waitFor(() => expect(subject()).toBe("core/files.ts"));
+    test.delay("example/fraudcheck.proto"); fireEvent.click(screen.getByRole("button", { name: "Activate service:fraud-check" }));
+    await screen.findByText("Opening working file example/fraudcheck.proto…");
+    fireEvent.keyDown(window, { key: "k", ctrlKey: true });
+    const palette = await screen.findByRole("textbox", { name: "Workspace command" });
+    fireEvent.focus(palette); fireEvent.keyDown(palette, { key: "Escape" });
+    expect(screen.queryByRole("textbox", { name: "Workspace command" })).toBeNull();
+    await test.finish(); expect(subject()).toBe("core/files.ts");
+  });
+  it("mounted external service activation opens only its required declaration", async () => {
+    const test = setup(), graph = test.snapshot.graphs[1]!;
+    graph.nodes.push({ ...graph.nodes[0]!, id: "service:payments", focus: { ...graph.nodes[0]!.focus, key: "service:payments" } });
+    render(<App />); fireEvent.click(await screen.findByRole("button", { name: "Activate service:payments" }));
+    await waitFor(() => expect(subject()).toBe("example/payments.proto"));
+    expect(document.querySelector(".tasks-reveal-notice")?.textContent).toContain("external implementation unavailable");
+    expect(serviceText()).not.toContain("Implementation member of");
+  });
   it("unknown service activation exposes unavailability rather than opening its preferred path", async () => {
     const test = setup(), graph = test.snapshot.graphs[1]!;
     graph.nodes.push({ ...graph.nodes[0]!, id: "service:unknown", focus: { ...graph.nodes[0]!.focus, key: "service:unknown", path: "example/fraudcheck.ts" } });
@@ -83,7 +101,7 @@ describe("truthful Context in the mounted workbench", () => {
     const oldChoice = await screen.findByRole("button", { name: /example\/second.proto/ });
     const next = structuredClone(test.snapshot); if (next.serviceContext?.status !== "observed") throw new Error("fixture");
     next.serviceContext.observedAt = "2026-09-07T04:00:00.000Z"; test.emit(next);
-    expect(screen.queryByRole("dialog")).toBeNull(); fireEvent.click(oldChoice);
+    expect(screen.queryByRole("dialog")).toBeNull(); expect(document.activeElement).toBe(document.querySelector(".graphs-grid")); fireEvent.click(oldChoice);
     expect(test.request.mock.calls.some(([r]) => r.type === "file.read")).toBe(false);
   });
   it("requires an explicit ambiguity choice, never consumes initiating Enter, and cancels deterministically", async () => {
@@ -94,6 +112,7 @@ describe("truthful Context in the mounted workbench", () => {
     const readCount = () => test.request.mock.calls.filter(([r]) => r.type === "file.read").length;
     const prior = readCount(); fireEvent.click(screen.getByRole("button", { name: "Activate service:fraud-check" }));
     const chooser = await screen.findByRole("dialog", { name: "Choose interface declaration" });
+    fireEvent.keyDown(chooser, { key: "k", ctrlKey: true }); expect(screen.queryByRole("textbox", { name: "Workspace command" })).toBeNull();
     fireEvent.keyDown(chooser, { key: "Enter" }); expect(readCount()).toBe(prior); expect(subject()).toBe("core/files.ts");
     fireEvent.keyDown(chooser, { key: "Escape" }); expect(screen.queryByRole("dialog")).toBeNull(); expect(readCount()).toBe(prior);
     fireEvent.click(screen.getByRole("button", { name: "Activate service:fraud-check" }));
