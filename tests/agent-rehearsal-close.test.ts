@@ -50,6 +50,23 @@ async function fixture() {
 }
 
 describe("read-only post-core-exit rehearsal close proof", () => {
+  it.each(["diagnostics-schema", "retained-record-count", "retained-text-bytes", "retained-consistency"])("reports only the fixed %s failure code", async (code) => {
+    const f = await fixture();
+    if (code === "diagnostics-schema") f.diagnostics.runs[0]!.activeTimers = 1;
+    if (code === "retained-record-count") f.diagnostics.runs[0]!.emittedRecords++;
+    if (code === "retained-text-bytes") f.diagnostics.runs[0]!.emittedBytes++;
+    if (code === "retained-consistency") {
+      f.snapshot.entries[0]!.run.launchContext.submittedPrompt = "PRIVATE untrusted prompt must not appear in a diagnostic";
+      await f.save();
+    }
+    const before = await readFile(f.path);
+    const message = await verifyRehearsalClose(f.options).then(() => "unexpected success", (error: unknown) => error instanceof Error ? error.message : "unexpected rejection");
+    expect(message).toBe(`Rehearsal close proof failed: [${code}] owned shutdown diagnostics and retained run history did not agree; no successful cleanup claim was published.`);
+    expect(message).not.toContain(f.profile); expect(message).not.toContain(f.workspace);
+    expect(message).not.toContain("PRIVATE"); expect(message).not.toContain(f.snapshot.entries[0]!.run.runId);
+    expect(await readFile(f.path)).toEqual(before);
+  });
+
   it("joins all four retained outcomes and sanitized timer evidence without mutating or recovering history", async () => {
     const f = await fixture(), before = await readFile(f.path);
     const proof = await verifyRehearsalClose(f.options);
