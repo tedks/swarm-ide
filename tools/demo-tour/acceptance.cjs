@@ -111,10 +111,18 @@ async function main() {
   stage = "build-observation";
   await click(".lens-tabs button", "System");
   await click('[aria-label="Component graph lenses"] button', "Build graph");
-  await until(() => run(() => ["current", "error", "unavailable"].includes(document.querySelector("[data-build-status]")?.dataset.buildStatus) &&
-    document.querySelector("[data-build-status]")?.textContent !== "unavailable · No build-graph observation requested."), "bounded build query settlement", 45000);
-  // Query status is evidence, never invented graph data or a successful build.
-  const buildStatus = await text("[data-build-status]");
+  let buildObservation;
+  await until(async () => {
+    // Observe status and the rendered file-owner slice together. Initial
+    // unavailable is not query settlement; a later refresh is not retroactive
+    // evidence that the earlier observation was current.
+    buildObservation = await run(() => ({ status: document.querySelector("[data-build-status]")?.dataset.buildStatus,
+      message: document.querySelector("[data-build-status]")?.textContent,
+      file: document.querySelector(".build-graph-view")?.dataset.fileFocus,
+      targets: [...document.querySelectorAll(".build-canvas .react-flow__node")].map((e) => e.dataset.id) }));
+    return buildObservation.status === "current" && buildObservation.file === sourcePath && buildObservation.targets.length > 0;
+  }, "current actual file-owner build graph", 45000);
+  const buildStatus = buildObservation.message;
   await run(() => document.querySelector(".build-canvas")?.scrollIntoView({ block: "nearest" }));
   await shot("05-build-relationships.png");
 
@@ -190,7 +198,7 @@ async function main() {
   const diagnostics = classifyRendererDiagnostics(errors); assert.deepEqual(diagnostics.blockingErrors, []);
   await fs.writeFile(path.join(evidence, "proof.json"), JSON.stringify({ ok: true, actualTaskMetadata: true,
     sourceCommit: repository.sourceCommit, metadataCommit: repository.metadataCommit, taskId, packagedCore: true,
-    prepared: true, retained: true, graphCoverage, buildStatus, managedLaunchAvailable: agent.agent.snapshot.capabilities.controls.launch,
+    prepared: true, retained: true, graphCoverage, buildStatus, buildObservation, managedLaunchAvailable: agent.agent.snapshot.capabilities.controls.launch,
     journal: "recorded supervised output; not rerun",
     observer: "not configured; omitted, no synthetic substitute", productMutations, rendererErrors: errors,
     ...diagnostics, milliseconds: Date.now() - started }, null, 2));
