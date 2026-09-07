@@ -2,8 +2,29 @@ import { describe, expect, it } from "vitest";
 import { initialSnapshot } from "../fixtures/world";
 import { retainDerived, staleSnapshot, NavigationSchema } from "../app/renderer/recovery";
 import { WorkspaceSnapshotSchema } from "../protocol/schema";
+import { RealWorkspaceProvider } from "../core/provider";
+import { contextDependencies } from "./context-fixture";
+import { composeContext, indexCapture, indexService } from "../app/renderer/context/compose";
 
 describe("retained derived navigation", () => {
+  it("retains exact optional Context through registration/listing/observation without promoting it", async () => {
+    const provider = await RealWorkspaceProvider.create("/unused", contextDependencies);
+    const registration = provider.snapshot(); await provider.startReconciliation(() => undefined);
+    const previous = provider.snapshot(); provider.dispose();
+    let retained = previous;
+    for (const incoming of [registration, structuredClone(registration), { ...registration, revisions: { ...registration.revisions, working: previous.revisions.working }, focus: previous.focus, reconciliation: { ...registration.reconciliation, inputFingerprint: previous.revisions.working.id } }]) {
+      retained = WorkspaceSnapshotSchema.parse(retainDerived(retained, incoming));
+      expect(retained.serviceContext).toEqual(previous.serviceContext);
+      const sections = composeContext({ repositoryId: retained.project.id, worldId: retained.world.id, kind: "service", id: "service:fraud-check" }, {
+        snapshot: retained, service: indexService(retained.serviceContext), capture: indexCapture(undefined), files: [], realm: "new core", session: "new", ready: true,
+      });
+      expect(sections.find((item) => item.id === "services")?.evidence?.freshness).toBe("retained");
+    }
+    expect(retainDerived(retained, previous)).toEqual(previous);
+    expect(retainDerived(previous, { ...registration, project: { ...registration.project, id: "other" } }).serviceContext).toBeUndefined();
+    const otherWorld = WorkspaceSnapshotSchema.parse({ ...registration, world: { id: "world:other", label: "Other world" }, focus: { ...registration.focus, worldId: "world:other" } });
+    expect(retainDerived(previous, otherWorld)).toBe(otherWorld);
+  });
   it("retains built service evidence across registration, initial listing and source observation", () => {
     const previous = initialSnapshot();
     const base = structuredClone(previous);

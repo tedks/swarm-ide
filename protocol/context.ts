@@ -38,7 +38,7 @@ export type ContextSubject = { repositoryId: string; worldId: string } & (
   | { kind: "file" | "directory"; path: string }
   | { kind: "service" | "interface"; id: string }
   | { kind: "edge"; id: string; topologyId: string }
-  | { kind: "task"; id: string }
+  | { kind: "task"; id: string | null }
 );
 export interface ContextEvidenceRef {
   provider: string; repositoryId: string; worldId: string; origin: string;

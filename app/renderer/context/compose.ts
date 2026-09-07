@@ -41,7 +41,7 @@ export interface ContextObservations {
   capture: ReturnType<typeof indexCapture>; realm: string; session: string; ready: boolean;
 }
 const bounded = (value: string) => value.length > 512 ? `${value.slice(0, 511)}…` : value;
-export function contextLabel(subject: ContextSubject | null): string { return subject ? "path" in subject ? subject.path || "/" : subject.id : "Nothing selected"; }
+export function contextLabel(subject: ContextSubject | null): string { return subject ? "path" in subject ? subject.path || "/" : subject.id ?? "No task selected" : "Nothing selected"; }
 function buildEvidence(p: ObservedServiceContext, current: boolean): ContextEvidenceRef {
   return { provider: "Bazel service artifact", repositoryId: p.repositoryId, worldId: p.worldId, origin: p.artifactUri,
     revisionKind: "built", revision: `${p.buildId} · source ${p.sourceFingerprint} · inputs ${p.inputDigest}`, observedAt: p.observedAt,

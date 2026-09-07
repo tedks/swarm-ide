@@ -100,9 +100,59 @@ async function main() {
   await until(() => run((text) => document.querySelector(".cm-content").cmView.rootView.view.state.doc.toString() === text, fixture.sourceText), "exact source bytes");
   const sourceRead = await request({ type: "file.read", path: fixture.sourcePath });
   assert(sourceRead.ok && sourceRead.file.content === fixture.sourceText);
+  const contextSubject = () => run(() => document.querySelector(".artifact-context")?.dataset.contextSubject);
+  const contextText = (section) => run((id) => document.querySelector(`[data-context-section='${id}']`)?.textContent ?? "", section);
+  await until(async () => await contextSubject() === fixture.sourcePath, "Q1 exact foreground source attention");
+  assert((await contextText("source-read")).includes(sourceRead.file.revision), "Q1 broker source receipt hash, not build revision");
   const agent = await request({ type: "agent.snapshot" });
   assert(agent.ok && agent.agent.snapshot.runs.length === 0 && !agent.agent.snapshot.capabilities.controls.launch);
   const facts = ["actual archive main/preload/core", "actual committed repository root and directory activation", "native Enter opens exact source", "zero agent runs"];
+  facts.push("Q1 exact foreground file identity and actual broker content receipt");
+
+  if (fixture.kind === "swarm") {
+    stage = "q1-real-service-context";
+    await until(async () => !(await snapshot()).jobs.some((job) => job.status === "running"), "initial topology attempt settled", 90000);
+    if ((await snapshot()).reconciliation.status !== "green") {
+      await click("#reconcile-success");
+      await until(async () => (await snapshot()).reconciliation.status === "green", "actual package Bazel service artifact", 90000);
+    }
+    const built = await snapshot();
+    assert.equal(built.serviceContext?.status, "observed");
+    assert.equal(built.serviceContext.repositoryId, built.project.id);
+    assert.equal(built.serviceContext.buildId, built.revisions.built.id);
+    assert(!(await contextText("services")).includes("Implementation member of"), "ordinary core/files.ts must not inherit FraudCheck ownership");
+    assert((await contextText("services")).includes("other service coverage unavailable"));
+    await screenshot("q1-ordinary-source.png");
+    const implementation = "examples/checkout-world/services/fraudcheck/fraudcheck.ts";
+    const provided = "examples/checkout-world/services/fraudcheck/fraudcheck.proto";
+    const required = "examples/checkout-world/services/payments/payments.proto";
+    const inspected = [];
+    for (const [file, relation, owns] of [[implementation, "Implementation member of", true], [provided, "Declares provided interface", true], [required, "Declares required interface", false]]) {
+      await openPath(file); await until(async () => await contextSubject() === file, `Q1 inspected ${file}`);
+      const bytes = await fs.readFile(path.join(fixture.root, file), "utf8");
+      assert.equal(await run(() => document.querySelector(".cm-content").cmView.rootView.view.state.doc.toString()), bytes);
+      const serviceText = await contextText("services");
+      assert(serviceText.includes(relation)); assert.equal(serviceText.includes("Implementation member of"), owns);
+      inspected.push({ file, relation, owns, serviceText });
+      await screenshot(`q1-${path.basename(file)}.png`);
+    }
+    const beforeLink = await contextSubject();
+    await click("[data-topology='service'] .react-flow__node[data-id='service:fraud-check']");
+    await until(async () => await contextSubject() === "service:fraud-check", "explicit graph inspection owns Context while source stays visible");
+    assert.equal(await run(() => document.querySelector(".source-surface header strong").textContent), beforeLink);
+    await run((destination) => {
+      const link = [...document.querySelectorAll("[data-context-section='services'] .source-link")].find((node) => node.textContent.includes(destination));
+      if (!link) throw new Error("Missing actual required-declaration link"); link.click();
+    }, "Payments.Authorize");
+    await until(async () => await contextSubject() === required, "explicit built declaration link opens current real source");
+    await openPath(fixture.sourcePath); await until(async () => await contextSubject() === fixture.sourcePath, "return ordinary source attention");
+    await directory(fixture.directory);
+    await fs.writeFile(path.join(evidence, "q1-context-proof.json"), JSON.stringify({ buildId: built.revisions.built.id, sourceFingerprint: built.revisions.built.sourceFingerprint, inspected, declarationLinkOpened: true, rendererErrors: [] }, null, 2));
+    facts.push("Q1 actual Bazel artifact, ordinary/implementation/provided/required distinction, explicit declaration link, graph inspection without source activation");
+  } else {
+    assert((await contextText("services")).includes("unavailable"), "unfamiliar/degraded repository does not invent service facts");
+    assert((await contextText("capture")).includes("No bounded registered capture"));
+  }
 
   if (["invalid-name", "fingerprint-budget"].includes(fixture.kind)) {
     const failureReason = fixture.kind === "invalid-name" ? "not valid UTF-8" : "exceeds the fingerprint bound";
@@ -318,10 +368,12 @@ async function main() {
       stage = "task-offslice-reveal";
       await until(() => has("[data-task-status='observed']"), "real Ditz task reference");
       await click(label("Select task navigation-reveal"));
+      await until(async () => await contextSubject() === "navigation-reveal", "Q1 actual task attention");
       if (!await run(() => document.querySelector(".task-show-details").getBoundingClientRect().width > 0)) await click(label("Toggle work panel"));
       await focus(".task-show-details"); key("Enter"); await until(() => has(".task-detail .task-title"), "explicit task details");
       assert.equal(await currentDirectory(), "", "task details alone do not navigate");
       await click(label("Reveal working file src/main.ts at line 2")); await directory("src"); await preserved();
+      assert.equal(await contextSubject(), "src/main.ts", "Q1 successful foreground task Reveal transfers attention");
       await click(label("Repository root")); await directory("");
       stage = "deleted-refresh";
       const beforeDelete = observe(await snapshot()).observationId;
@@ -336,9 +388,11 @@ async function main() {
       await search("untracked-match");
       assert.deepEqual(await searchPaths(), ["search-proof/untracked-match.txt"]);
       await fs.unlink(path.join(fixture.root, "search-proof/untracked-match.txt"));
+      const priorRejectedAttention = await contextSubject();
       key("Enter"); await until(async () => !await has(".command-palette"), "deleted result explicitly attempted");
       await until(() => run(() => document.querySelector(".task-reveal-notice")?.textContent.includes("No workspace file") || document.querySelector("#root").textContent.includes("No workspace file")), "deleted result is rejected by actual broker");
       await preserved(); assert.equal(await currentDirectory(), "", "failed search activation does not navigate");
+      assert.equal(await contextSubject(), priorRejectedAttention, "Q1 rejected destination preserves deliberate attention");
       stage = "file-search-core-replacement";
       await search("same-match.ts");
       const previousCapture = await request({ type: "repo.search", repositoryId: (await snapshot()).project.id, query: "same-match.ts", refresh: false });

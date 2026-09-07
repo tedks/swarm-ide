@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { openContextPath } from "./context-navigation";
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { EditorView } from "@codemirror/view";
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
@@ -64,7 +65,7 @@ function setup(refs: TaskFileRef[] = [{ path: source, line: 2, note: "Explicit s
 }
 async function openSource() {
   await screen.findByRole("button", { name: "Select task task-fixture" });
-  fireEvent.click(screen.getAllByRole("button", { name: source })[0]!);
+  await openContextPath(source);
   await waitFor(() => expect(document.querySelector(".cm-content")?.textContent).toContain("one"));
   return EditorView.findFromDOM(document.querySelector(".cm-editor")!)!;
 }

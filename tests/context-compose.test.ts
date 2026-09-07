@@ -2,7 +2,7 @@
 import { describe, expect, it } from "vitest";
 import { composeContext, indexCapture, indexService, type ContextObservations } from "../app/renderer/context/compose";
 import { RealWorkspaceProvider } from "../core/provider";
-import { contextDependencies } from "./context-contract.test";
+import { contextDependencies } from "./context-fixture";
 import { fileBuildTargets } from "../app/renderer/repository/build-view";
 import type { ContextSubject } from "../protocol/context";
 
