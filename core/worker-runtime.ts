@@ -32,6 +32,8 @@ import { type RepositoryResult } from "../protocol/repository";
 import type { RepositorySearchResult } from "../protocol/repository-search";
 import { ExternalAgentService } from "./external-agents";
 import type { ExternalResult } from "../protocol/external-agents";
+import { BuildGraphProvider } from "./build-graph";
+import type { BuildGraphObservation } from "../protocol/build-graph";
 
 export interface WorkerDependencies {
   createAgents?: typeof createProductionAgentService;
@@ -47,6 +49,7 @@ let sequence = 0;
 const requestIds = new BoundedRequestIds(512);
 const fileReadGenerations = new Map<string, number>();
 const providerPromise = RealWorkspaceProvider.create(workspaceRoot);
+const buildGraphPromise = providerPromise.then((provider) => new BuildGraphProvider(workspaceRoot, provider.snapshot().project.id, provider.snapshot().world.id));
 let workingWorldObserver: WorkingWorldObserver | null = null;
 let shuttingDown = false;
 const taskProviderPromise: Promise<TaskProvider> = providerPromise.then(async (provider) => {
@@ -94,7 +97,7 @@ function publish(type: CoreEvent["type"], snapshot: WorkspaceSnapshot): void {
   }));
 }
 
-function ok(requestId: string, snapshot: WorkspaceSnapshot, file?: FileResult, agent?: AgentResult, task?: TaskResult, repo?: RepositoryResult, search?: RepositorySearchResult, external?: ExternalResult): CoreResponse {
+function ok(requestId: string, snapshot: WorkspaceSnapshot, file?: FileResult, agent?: AgentResult, task?: TaskResult, repo?: RepositoryResult, search?: RepositorySearchResult, external?: ExternalResult, buildGraph?: BuildGraphObservation): CoreResponse {
   return CoreResponseSchema.parse({
     protocolVersion: PROTOCOL_VERSION,
     requestId,
@@ -107,6 +110,7 @@ function ok(requestId: string, snapshot: WorkspaceSnapshot, file?: FileResult, a
     ...(repo ? { repo } : {}),
     ...(search ? { search } : {}),
     ...(external ? { external } : {}),
+    ...(buildGraph ? { buildGraph } : {}),
   });
 }
 
@@ -161,6 +165,7 @@ process.parentPort?.on("message", async (event) => {
           externalAgents.dispose(),
           agentServicePromise.then((service) => service?.shutdown()),
           taskProviderPromise.then((tasks) => tasks.dispose()),
+          buildGraphPromise.then((graph) => graph.dispose()),
         ]);
         process.parentPort?.postMessage({ type: "core.shutdown.ready" });
       } catch { /* No successful shutdown attestation; supervisor's deadline owns fallback. */ }
@@ -216,6 +221,15 @@ process.parentPort?.on("message", async (event) => {
       return;
     }
     switch (request.type) {
+      case "buildGraph.observe": {
+        if (request.repositoryId !== provider.snapshot().project.id || request.worldId !== provider.snapshot().world.id) {
+          post(fail(requestId, "BUILD_GRAPH_IDENTITY", "Build graph requires the registered repository and world.")); return;
+        }
+        const graph = await buildGraphPromise;
+        if (shuttingDown) { post(fail(requestId, "CORE_UNAVAILABLE", "Core is shutting down.")); return; }
+        post(parseCoreResponseForRequest(ok(requestId, provider.snapshot(), undefined, undefined, undefined, undefined, undefined, undefined, graph.observe(request.refresh)), request));
+        return;
+      }
       case "repo.search": {
         const search = await provider.searchRepository(request);
         post(parseCoreResponseForRequest(ok(requestId, provider.snapshot(), undefined, undefined, undefined, undefined, search), request));
@@ -307,6 +321,7 @@ void providerPromise.then(async (provider) => {
 });
 
 process.on("exit", () => {
+  void buildGraphPromise.then((graph) => graph.dispose());
   void providerPromise.then((provider) => provider.dispose());
   workingWorldObserver?.close();
   fileWatchers.closeAll();

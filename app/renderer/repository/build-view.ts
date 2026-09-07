@@ -3,6 +3,7 @@ import type { BuildLinkSnapshot } from "./layers";
 export const BUILD_VIEW_LIMIT = 80;
 export const BUILD_PATTERN_LIMIT = 8;
 export function buildTargets(snapshot: BuildLinkSnapshot): string[] {
+  if (snapshot.targets) return snapshot.targets.filter((target) => target.kind === "rule" || target.kind === "unresolved").map((target) => target.label).sort();
   return [...new Set(snapshot.links.flatMap((link) => [
     ...(link.from.slice(2).split(":")[0] === link.fromPath ? [link.from] : []),
     ...(link.to.slice(2).split(":")[0] === link.toPath ? [link.to] : []),
@@ -31,7 +32,7 @@ export function matchBuildTargets(input: string, targets: readonly string[]): st
 /** Bounded display traversal of a capture; never evaluates or builds targets. */
 export function selectBuildView(snapshot: BuildLinkSnapshot, roots: string[], transitive: boolean) {
   const allTargets = buildTargets(snapshot), targets = new Set(allTargets);
-  const links = snapshot.links.filter((link) => targets.has(link.from) && targets.has(link.to));
+  const links = (snapshot.graphEdges ?? snapshot.links).filter((link) => targets.has(link.from) && targets.has(link.to));
   const depths = new Map<string, number>();
   let truncated = roots.length > BUILD_PATTERN_LIMIT;
   for (const pattern of roots.slice(0, BUILD_PATTERN_LIMIT)) {
@@ -64,7 +65,7 @@ export function fileBuildTargets(snapshot: BuildLinkSnapshot, path: string): str
 export function selectFileBuildView(snapshot: BuildLinkSnapshot, path: string, transitive: boolean) {
   const owners = fileBuildTargets(snapshot, path);
   const targets = new Set(buildTargets(snapshot));
-  const links = snapshot.links.filter((link) => targets.has(link.from) && targets.has(link.to));
+  const links = (snapshot.graphEdges ?? snapshot.links).filter((link) => targets.has(link.from) && targets.has(link.to));
   const depths = new Map(owners.slice(0, BUILD_VIEW_LIMIT).map((label) => [label, 0]));
   let truncated = owners.length > BUILD_VIEW_LIMIT;
   const visited = { dependencies: new Set(depths.keys()), dependents: new Set(depths.keys()) };
