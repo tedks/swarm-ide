@@ -9,9 +9,9 @@ Opening Build graph must show dependencies queried from whichever repository is 
 ## Progress
 
 - [x] (2026-09-07) Verified clean `feature/dynamic-build-graph` baseline e8ec0f9 and consumed exact assignment.
-- [ ] Implement bounded typed query/cache and tests.
-- [ ] Connect existing graph, directory links and Context without resetting navigation.
-- [ ] Prove actual two-repository packaged edge changes and retention on owned virtual desktop.
+- [x] Implement bounded typed query/cache and tests (a7b2938; quality1469/103).
+- [x] Connect existing graph, directory links and Context without resetting navigation.
+- [x] Prove actual two-repository packaged edge changes and retention on owned virtual desktop (21.6s each, cleanup1, zero exceptions). A later compact-canvas assertion is pending the final frozen run.
 - [ ] Council convergence, one frozen local full gate, normal landing or precise base hold.
 
 ## Assumptions and Failure Modes
@@ -53,7 +53,11 @@ Use existing TypeScript, Zod, Node child-process/filesystem and Bazel facilities
 
 ## Surprises & Discoveries
 
-The shell does not expose ripgrep outside Nix; initial discovery used ordinary filesystem tools. No product finding yet.
+The first real query exposed two runtime facts: ignoring rc files also removes Nix's Java selection, and the wrapper can consult repository tools/bazel. ROOT approved only the two explicit pinned runtime declarations (no dependency version/lock changes). A finite production-module trace then proved Bazel exited0 with valid data but stdout EOF waited for owner closure. The corrected collector starts owner close on exit, drains late bytes and waits confirmed cleanup; it does not weaken ownership or retry a timed-out query to claim causality.
+
+The first parser experiment using deps(//...) required external setup beyond this vertical. The implemented //...:* query honestly reports local declaration coverage and unresolved external endpoints, without inventing closure. The first quality run exposed seven tests relying on the old capture or query ordering; explicit labelled mocks and demand restricted to graph consumers repaired those setups. A later native finding had an exact 1RED/1462PASS reproduction for initial error state being hidden by passive demand. The correction preserves error and explicit retry. New collector/input/queued-refresh tests were added alongside fixes and are not claimed as pre-fix RED.
+
+The first successful graph mutation proof exposed a test-input issue: native insertion appended to the prefilled draft. A following Ctrl+A gesture did not establish selection. The proof now establishes DOM text selection before native insertion and checks exact draft text before mutation; it never assigns React state or weakens retention checks. Initial actual graph/edge screenshots and failed runs remain preserved.
 
 ## Artifacts and Notes
 
@@ -61,6 +65,8 @@ Step evidence lives at `/tmp/swarm-ide-build-graph-b1.MFmmXC`; `consumed.md` rec
 
 ## Outcomes & Retrospective
 
-Implementation in progress; no live query or packaged proof claimed yet.
+At 19:25 UTC, implementation a7b2938 has OpenAI native and same-session Google fix-delta CLEAN. Anthropic explicitly Sonnet timed out240s without a review and is unfilled, not CLEAN. Both complete actual packaged repository journeys passed21.6s each with cleanup1 and zero renderer exceptions. Screenshot: /tmp/swarm-ide-build-graph-b1.MFmmXC/packaged-selection-fix/run.MMLuuS/first/03-added-edges-retained-work.png. Narrow runtime-declaration/invalid-path tests subsequently passed in quality-runtime-proof.log (1470/103). Screenshot inspection exposed a tiny canvas under accumulated controls; the focused correction keeps a160px canvas in a scrollable Build pane. A new actual geometry assertion accompanies that correction; this is not claimed as an independently executed pre-fix RED test.
+
+Remote master advanced to c3128715a785c2fd42011e4cf5941038b268335c. Exact ROOT clearance is requested before any peer consumption or normal landing. No shared app/master/integration adoption has occurred. Final frozen full local gates, compact-canvas proof, Ditz closure and landing are not yet claimed. See docs/dynamic-build-graph.md for exact supported triggers/limits and residual scope.
 
 Initial plan written before implementation to name authority, input and lifecycle assumptions.

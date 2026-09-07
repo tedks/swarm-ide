@@ -1,9 +1,9 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { mkdtemp, mkdir, writeFile, rm, symlink, unlink } from "node:fs/promises";
+import { mkdtemp, mkdir, readFile, writeFile, rm, symlink, unlink } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { execFileSync } from "node:child_process";
-import { BuildGraphProvider, BuildQueryCleanupError, buildInputDigest, collectBuildQuery, parseBuildQuery } from "../core/build-graph";
+import { BUILD_QUERY_ARGS, BuildGraphProvider, BuildQueryCleanupError, buildInputDigest, collectBuildQuery, parseBuildQuery, queryBuildGraph } from "../core/build-graph";
 import type { CodexTransportSink } from "../core/agents/codex-app-server";
 import { BUILD_GRAPH_LIMITS, BuildGraphDataSchema, BuildGraphRequestSchema } from "../protocol/build-graph";
 import { buildTargets, fileBuildTargets, selectBuildView } from "../app/renderer/repository/build-view";
@@ -18,6 +18,20 @@ const paths: string[] = [];
 afterEach(async () => { await Promise.all(paths.splice(0).map((path) => rm(path, { recursive: true, force: true }))); });
 
 const cleanupEvidence = { status: "confirmed" as const, observedAt: "2026-09-07T18:00:00.000Z", detail: "Controlled owner cleanup" };
+it("declares pinned runtime paths and rejects missing or repository-controlled Bazel configuration", async () => {
+  const flake = await readFile("flake.nix", "utf8");
+  expect(flake).toContain('SWARM_BAZEL_BIN = "${pkgs.bazel_7}/bin/bazel-${pkgs.bazel_7.version}-linux-');
+  expect(flake).toContain('SWARM_BAZEL_JAVA_HOME = "${pkgs.jdk21_headless}"');
+  expect(BUILD_QUERY_ARGS).toContain("--repository_disable_download");
+  expect(BUILD_QUERY_ARGS.at(-1)).toBe("//...:*");
+  try {
+    vi.stubEnv("SWARM_BAZEL_JAVA_HOME", "/nix/store/fixed-java");
+    for (const path of ["", "/tmp/repository/tools/bazel", "/nix/store/fixed/bin/bazel", "/nix/store/../tmp/bazel-7.6.0-linux-x86_64"]) {
+      vi.stubEnv("SWARM_BAZEL_BIN", path);
+      await expect(queryBuildGraph("/unused-root", new AbortController().signal)).rejects.toThrow(/Configured pinned Bazel 7/);
+    }
+  } finally { vi.unstubAllEnvs(); }
+});
 it("closes the owner on exit, then drains late stdout and waits for confirmed cleanup", async () => {
   let sink!: CodexTransportSink, release!: (value: typeof cleanupEvidence) => void;
   const close = vi.fn(() => new Promise<typeof cleanupEvidence>((done) => { release = done; }));

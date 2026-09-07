@@ -32,6 +32,7 @@ async function main() {
   assert(await node(fixture.target)); assert(await node("//b:isolated")); assert(await edge("//b:library"));
   if (fixture.kind === "second") assert(!await node("//a:consumer"), "second repository never borrows first graph");
   const before = await read(); assert.equal(before.repositoryId, project.id); assert.equal(before.graph.repositoryId, project.id);
+  assert(await run(() => document.querySelector(".build-canvas").getBoundingClientRect().height >= 160), "compact build controls must not crush the graph canvas");
   await screenshot("01-live-build-graph.png");
   // Ordinary repository/source activation and an unsent, fixed-source draft.
   await click("[aria-label='Enter directory a']"); await until(() => run(() => !!document.querySelector("[aria-label='Open file a/input.txt']")), "source listing");
@@ -40,7 +41,10 @@ async function main() {
   await clickText("Prepare an agent draft"); await until(() => run(() => !!document.querySelector(".agent-draft textarea")), "ordinary draft");
   await run(() => document.querySelector(".agent-draft textarea").focus());
   await until(() => run(() => document.activeElement === document.querySelector(".agent-draft textarea")), "draft focus before native input");
-  wc.sendInputEvent({ type: "keyDown", keyCode: "A", modifiers: ["control"] }); wc.sendInputEvent({ type: "keyUp", keyCode: "A", modifiers: ["control"] });
+  // Select the existing draft through the DOM selection API, not by assigning
+  // its value or React state. Native insertText still performs the actual edit.
+  await run(() => document.querySelector(".agent-draft textarea").select());
+  await until(() => run(() => { const draft = document.querySelector(".agent-draft textarea"); return draft.selectionStart === 0 && draft.selectionEnd === draft.value.length; }), "draft selection before native edit");
   await wc.insertText("Preserve this unsent draft");
   await until(() => run(() => document.querySelector(".agent-draft textarea").value === "Preserve this unsent draft"), "exact draft input before graph mutation");
   await click(".build-target-controls input[type='checkbox']"); // Disable Follow file to keep isolated rules in the manual graph.
@@ -70,6 +74,7 @@ async function main() {
   await until(async () => await current() === "current", "explicit refreshed current");
   const after = await read(); assert.notEqual(after.graph.inputDigest, removed.graph.inputDigest);
   const finalRetention = await retained(); assert(Object.values(finalRetention).every(Boolean), JSON.stringify(finalRetention));
+  await run(() => document.querySelector(".build-canvas").scrollIntoView({ block: "nearest" }));
   await screenshot("03-added-edges-retained-work.png");
   const agents = await request({ type: "agent.snapshot" }); assert(agents.ok && agents.agent.snapshot.runs.length === 0 && !agents.agent.snapshot.capabilities.controls.launch);
   assert.deepEqual(rendererErrors, []);
@@ -77,6 +82,6 @@ async function main() {
 }
 main().catch(async (error) => {
   const contents = BrowserWindow.getAllWindows()[0]?.webContents;
-  const diagnostics = contents ? await contents.executeJavaScript(`({status: document.querySelector('[data-build-status]')?.textContent, body: document.body.innerText.slice(0,12000)})`).catch(() => null) : null;
+  const diagnostics = contents ? await contents.executeJavaScript(`({status: document.querySelector('[data-build-status]')?.textContent, draft: document.querySelector('.agent-draft textarea')?.value, body: document.body.innerText.slice(0,12000)})`).catch(() => null) : null;
   await fs.writeFile(path.join(evidence, "build-graph-failure.json"), JSON.stringify({ error: error.stack, rendererErrors, diagnostics }));
 });
