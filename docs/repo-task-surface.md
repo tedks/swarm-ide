@@ -157,6 +157,11 @@ Multiple refs are individual choices, never an inferred default attachment.
 
 ## Later explicit task-to-draft contract gate
 
+The bounded D2 decisions and subsequent implementation gates are now specified
+in [Attach a pinned repository task to a source draft](repo-task-draft.md) and
+its [execution plan](../.planning/repo-task-draft.md). These are design, not
+delivered attachment behavior; ROOT evaluates them before builders proceed.
+
 First release stops before draft enrichment: no inert “Dispatch” button. The
 next gesture will be **Attach this task to draft**. It captures the user's fixed
 working-source target, independently of task selection; if there is no unique
