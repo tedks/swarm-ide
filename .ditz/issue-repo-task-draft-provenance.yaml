@@ -31,6 +31,14 @@ log_events:
   who: Ted Smith
   what: blocked by repo-task-draft-contract-d2
   comment: ""
+- time: 2026-09-07T09:12:30-00:00
+  who: Ted Smith
+  what: commented
+  comment: D2 design contract completed in PR47 normal eafe0fe2bf5a7e73dc919c8a2f29e4f615e4e239.
+    docs/repo-task-draft.md and .planning/repo-task-draft.md define D3 shared compatibility
+    base before at most D4 core/D5 UI, then D6 real packaged metadata/draft plus separately
+    labelled deterministic rehearsal proof. ROOT must evaluate before dispatch. This
+    implementation parent stays OPEN; no attachment/provider/credential/app changes.
 blocked_by:
 - repo-task-surface
 - repo-task-draft-contract-d2
