@@ -23,7 +23,7 @@ Replace the noisy duplicated directory list and node diagram with a familiar exp
 - [x] Local quality and owned virtual command/source-open/source-close rehearsal passed; human HMR canvas retained.
 - [x] Pushed initial checkpoints 844d47b and 3787e4c and opened draft PR #38.
 - [x] Pushed map/dock checkpoint 1fe8f23.
-- [ ] Push the next personally steered checkpoint and complete proportional council convergence before landing; this is not the end of the sprint.
+- [x] User concluded the personal sprint and requested CTO handoff. All UI checkpoints pushed to PR38; OpenAI native + foreign Google council reached CLEAN fixpoint through code head 8b31a0f. Anthropic unavailable due to credits. ROOT owns final intake/normal merge and adoption; this child has no integration lease.
 - [ ] Pending user request: service click opens its definition; call-edge click opens the implementation and highlights evidence-backed call locations. Current demo has a declared Payments.Authorize dependency but no corresponding call expression. Do not manufacture a call-site highlight.
 
 ## Surprises & Discoveries
@@ -95,6 +95,14 @@ Follow file defaults on. Adding a manual target pauses it, retaining the previou
 Local `//tools:quality` passed: 1,151 tests / 83 files plus typechecks and node/renderer builds. Added exact-reference, bidirectional traversal, no-sibling-flood, multi-owner/cycle/bounds, follow/manual retention, camera/hidden-lens and actual App sidebar/source-tab tests with dirty-buffer/cursor preservation. The owned virtual UI rehearsal passed on :90/55174 in 6.235s total, cleanup_complete=1 and no renderer exceptions. `/tmp/swarm-ide-file-build-check.WoU9kF/document-context.png` visibly shows `core/files.ts`, one direct file target and its 16-target neighborhood; this is captured build evidence with mock agent overlays, not live extraction or real runs. HMR updated the existing human canvas. PR38 remains draft pending the eventual full landing gate; the personally steered sprint continues.
 
 ## Interfaces and Dependencies
+
+### End-of-sprint review and handback
+
+The final review preserves independent document selection when focusing graphs, prevents background Reveal candidates becoming visible before admission, closes a task-only text view on Return, and scopes folder-collapse vetoes to the exact active navigation request (including overlapping Reveal). Clearing mock data resets graph-local sprite toggles too. Regression coverage includes explicit source/cursor retention, unadmitted background reads, same-request fold suppression and newer-request expansion.
+
+The expanded owned-virtual checks exposed obsolete input assumptions after the redesign: hidden repository options, pan gestures hitting directory nodes, and a graph-focus command expected to replace the text document. The harness now opens visible controls and pans genuinely blank points; task preservation diagnostics name each facet without dropping assertions. Local quality passes 1,156 tests across 83 files. Exact final all-target build/test outcomes and screenshots are recorded in the CTO seam `/tmp/swarm-ide-ui-sprint.Pmyccs/seam.md`; do not infer hosted CI success. Hosted checks are ignored/nonblocking by user directive.
+
+Explicit followups: `ui-service-source-navigation`, `ui-live-build-links`, `ui-artifact-tiling`, `ui-context-linkages`, `ui-cross-graph-file-navigation`, and review nit `ui-mock-message-submit` (multiline semantics retained pending a UX choice). Captured query data and all mock agent/telemetry surfaces remain honestly labeled, not live capabilities. The 55175 human canvas remains owned by this worktree and is handed back alive to preserve possible buffers; master and other app instances were not adopted or restarted.
 
 Reuse React, existing runtime-validated repository observations, CodeMirror and ReactFlow. New display-only cache/tree helpers must not call filesystem APIs or confer file authority. Bound cache size and rendered rows; only requested folders are read. All build initiation goes through the existing typed `reconciliation.start` request. No dependencies are added.
 
