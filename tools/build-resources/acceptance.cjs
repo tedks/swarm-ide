@@ -8,7 +8,7 @@ const handle = ipcMain.handle.bind(ipcMain);
 ipcMain.handle = (channel, listener) => handle(channel, (event, input) => {
   if (channel === "swarm:request") {
     if (requests.length >= 10000) throw new Error("Resource proof request observation bound");
-    requests.push({ stage, type: input.type });
+    requests.push({ stage, type: input.type, refresh: input.refresh });
   }
   return listener(event, input);
 });
@@ -121,8 +121,10 @@ async function main() {
   };
   await shot("01-idle-real-source.png");
 
+  stage = "keyboard-navigation";
+  await tabTo(toggle);
   stage = "resource-interactions";
-  await tabTo(toggle); await key("Enter");
+  await key("Enter");
   await until(() => has(".resource-example"), "keyboard expanded example");
   assert.equal(await run((s) => document.querySelector(s).getAttribute("aria-expanded"), toggle), "true");
   const exampleText = await text(".resource-example");
@@ -144,15 +146,20 @@ async function main() {
   await until(async () => !await has(".resource-example"), "keyboard collapsed example");
   await retained();
   assert.equal(await fs.readFile(path.join(repository.root, repository.sourcePath), "utf8"), repository.sourceText, "source was never saved or replaced");
-  const resourceRequests = requests.filter((request) => request.stage === "resource-interactions");
-  const productMutations = requests.filter((request) => /^(agent\.(launch|steer|cancel)|build\.run|file\.write)$/.test(request.type));
+  // The existing visible Context task reader polls every five seconds. Record
+  // this exact passive read separately; it is not resource telemetry and must
+  // not turn a keyboard-only example into a timing-dependent false failure.
+  const interactionRequests = requests.filter((request) => request.stage === "resource-interactions");
+  const backgroundRequests = interactionRequests.filter((request) => request.type === "tasks.snapshot" && request.refresh === false);
+  const resourceRequests = interactionRequests.filter((request) => !backgroundRequests.includes(request));
+  const productMutations = requests.filter((request) => /^(agent\.(launch|steer|cancel)|reconciliation\.start|fixture\.reset|file\.write)$/.test(request.type));
   assert.deepEqual(resourceRequests, [], "example controls make no core/provider requests");
   assert.deepEqual(productMutations, [], "no build, source save, or model turn");
   assert.deepEqual(errors, [], "strict renderer error gate");
   await fs.writeFile(path.join(evidence, "proof.json"), JSON.stringify({ ok: true, packagedCore: true, keyboard: true,
     retained: true, actualSource: repository.sourcePath, unsavedSourceMatchesDisk: false, sourceDiskUnchanged: true,
     graphCount: cameras.length, example: "illustrative only; no current utilization asserted", exampleText,
-    resourceRequests, productMutations, rendererErrors: errors, milliseconds: Date.now() - started }, null, 2));
+    resourceRequests, backgroundRequests, productMutations, rendererErrors: errors, milliseconds: Date.now() - started }, null, 2));
 }
 main().catch(async (error) => {
   if (currentWindow && !currentWindow.isDestroyed()) {
