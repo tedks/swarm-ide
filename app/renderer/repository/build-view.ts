@@ -3,7 +3,7 @@ import type { BuildLinkSnapshot } from "./layers";
 export const BUILD_VIEW_LIMIT = 80;
 export const BUILD_PATTERN_LIMIT = 8;
 export function buildTargets(snapshot: BuildLinkSnapshot): string[] {
-  if (snapshot.targets) return snapshot.targets.filter((target) => target.kind === "rule").map((target) => target.label).sort();
+  if (snapshot.targets) return snapshot.targets.filter((target) => target.kind === "rule" || target.kind === "unresolved").map((target) => target.label).sort();
   return [...new Set(snapshot.links.flatMap((link) => [
     ...(link.from.slice(2).split(":")[0] === link.fromPath ? [link.from] : []),
     ...(link.to.slice(2).split(":")[0] === link.toPath ? [link.to] : []),

@@ -38,7 +38,11 @@ async function main() {
   await click("[aria-label='Open file a/input.txt']"); await until(() => run(() => !!document.querySelector(".cm-content")), "source editor");
   await run(() => document.querySelector(".cm-content").focus()); await wc.insertText("unsaved ");
   await clickText("Prepare an agent draft"); await until(() => run(() => !!document.querySelector(".agent-draft textarea")), "ordinary draft");
-  await run(() => document.querySelector(".agent-draft textarea").focus()); await wc.insertText("Preserve this unsent draft");
+  await run(() => document.querySelector(".agent-draft textarea").focus());
+  await until(() => run(() => document.activeElement === document.querySelector(".agent-draft textarea")), "draft focus before native input");
+  wc.sendInputEvent({ type: "keyDown", keyCode: "A", modifiers: ["control"] }); wc.sendInputEvent({ type: "keyUp", keyCode: "A", modifiers: ["control"] });
+  await wc.insertText("Preserve this unsent draft");
+  await until(() => run(() => document.querySelector(".agent-draft textarea").value === "Preserve this unsent draft"), "exact draft input before graph mutation");
   await click(".build-target-controls input[type='checkbox']"); // Disable Follow file to keep isolated rules in the manual graph.
   await run(() => new Promise((done) => setTimeout(done, 500)));
   await run(() => { const source = document.querySelector(".cm-content"), editor = source.cmView.rootView.view;
@@ -71,4 +75,8 @@ async function main() {
   assert.deepEqual(rendererErrors, []);
   await fs.writeFile(path.join(evidence, "build-graph-proof.json"), JSON.stringify({ ok: true, case: fixture.kind, elapsedMs: Date.now() - started, realBazel: true, packagedCore: true, modelTurns: 0, repositoryId: project.id, before, removed, after, retention, finalRetention, rendererErrors }));
 }
-main().catch(async (error) => { await fs.writeFile(path.join(evidence, "build-graph-failure.json"), JSON.stringify({ error: error.stack, rendererErrors })); });
+main().catch(async (error) => {
+  const contents = BrowserWindow.getAllWindows()[0]?.webContents;
+  const diagnostics = contents ? await contents.executeJavaScript(`({status: document.querySelector('[data-build-status]')?.textContent, body: document.body.innerText.slice(0,12000)})`).catch(() => null) : null;
+  await fs.writeFile(path.join(evidence, "build-graph-failure.json"), JSON.stringify({ error: error.stack, rendererErrors, diagnostics }));
+});

@@ -7,7 +7,7 @@ const text = z.string().min(1).max(512);
 const digest = z.string().regex(/^[a-f0-9]{64}$/);
 const label = text.regex(/^(?:@@?[^/\s]+)?\/\/[^\s:]*:[^\s:]+$/);
 export const BuildTargetSchema = z.object({
-  label, kind: z.enum(["rule", "source", "generated", "package-group", "environment-group"]),
+  label, kind: z.enum(["rule", "source", "generated", "package-group", "environment-group", "unresolved"]),
   ruleClass: text.optional(),
   /** Null for external labels; never map them into the registered filesystem. */
   path: z.string().max(4096).refine((p) => isRepositoryPath(p, true)).nullable(),

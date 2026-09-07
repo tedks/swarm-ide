@@ -32,3 +32,8 @@
 .build-observation.status-yellow strong { color: #e7c277; }
 .build-observation.status-red strong { color: #ef9690; }
 .build-observation button { margin-left: 10px; }
+.build-observation button { color: #c0d7c9; background: #193b2e; border: 1px solid #47705b; border-radius: 3px; font: 10px monospace; padding: 3px 7px; }
+.build-observation button:disabled { opacity: .55; }
+.build-observation { padding: 4px 8px; font-size: 10px; }
+.build-capture-caption:not(details) { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.build-capture-caption[open] { max-height: 80px; overflow: auto; }

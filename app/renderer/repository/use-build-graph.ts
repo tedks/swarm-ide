@@ -8,23 +8,34 @@ export function useBuildGraph(repositoryId: string | undefined, worldId: string 
   const [observation, setObservation] = useState<BuildGraphObservation>();
   const current = useRef({ repositoryId, worldId, realm, enabled });
   current.current = { repositoryId, worldId, realm, enabled };
-  const serial = useRef(0), pending = useRef(false);
+  const serial = useRef(0), pending = useRef(false), queued = useRef(false);
   const refresh = useCallback(async (force = true) => {
-    if (!repositoryId || !worldId || !window.swarm || pending.current || !current.current.enabled) return;
+    if (!repositoryId || !worldId || !window.swarm || !current.current.enabled) return;
+    if (pending.current) { if (force) queued.current = true; return; }
     const identity = current.current, generation = ++serial.current;
     pending.current = true;
     try {
       const request = { protocolVersion: PROTOCOL_VERSION, requestId: `build-graph:${crypto.randomUUID()}`, type: "buildGraph.observe" as const, repositoryId, worldId, refresh: force };
       const response = parseCoreResponseForRequest(await window.swarm.request(request), request);
       if (current.current.repositoryId !== identity.repositoryId || current.current.worldId !== identity.worldId || current.current.realm !== identity.realm || serial.current !== generation) return;
-      if (response.ok && response.buildGraph) setObservation(response.buildGraph);
+      if (response.ok && response.buildGraph) setObservation((old) => {
+        const next = response.buildGraph!;
+        if (old?.repositoryId === next.repositoryId && old.worldId === next.worldId && old.generation === next.generation &&
+            old.status === next.status && old.message === next.message && old.graph?.observedAt === next.graph?.observedAt && old.graph?.inputDigest === next.graph?.inputDigest) return old;
+        return next;
+      });
       else if (!response.ok) setObservation((old) => ({ repositoryId, worldId, generation: old?.generation ?? 0, graph: old?.repositoryId === repositoryId && old?.worldId === worldId ? old.graph : undefined, status: "error", message: response.error.message.slice(0, 512) }));
     } catch {
       if (serial.current === generation) setObservation((old) => ({ repositoryId, worldId, generation: old?.generation ?? 0, graph: old?.repositoryId === repositoryId && old?.worldId === worldId ? old.graph : undefined, status: "error", message: "Build graph response unavailable; retained data is not current." }));
-    } finally { if (serial.current === generation) pending.current = false; }
+    } finally {
+      if (serial.current === generation) {
+        pending.current = false;
+        if (queued.current) { queued.current = false; void refresh(true); }
+      }
+    }
   }, [repositoryId, worldId, realm]);
   useEffect(() => {
-    ++serial.current; pending.current = false;
+    ++serial.current; pending.current = false; queued.current = false;
     setObservation((old) => old && old.repositoryId === repositoryId && old.worldId === worldId ? { ...old, status: "stale", message: "Core/view lifetime changed; observation requires revalidation." } : undefined);
     if (!enabled) return;
     void refresh(false);
