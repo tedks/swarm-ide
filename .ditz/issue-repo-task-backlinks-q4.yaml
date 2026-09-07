@@ -37,3 +37,13 @@ log_events:
     reproduce/explain original failure. Clarification: verifier pre-existed, failure
     is NOT proven pre-existing or unrelated. Normal merge/integration held; exact
     handoff in step diagnostic-boundary.md. Slice remains in_progress.'
+- time: 2026-09-07T06:23:08-00:00
+  who: Ted Smith
+  what: commented
+  comment: Q4 remains unmerged/held. New test-only diagnostic6806f57 pushed to PR44;
+    exact same test on pre-Q4 audit baseline1820e39 reproduces close-order mismatch
+    class, historical GUI failure still unlocalized. Native proportional review CLEAN,
+    intentionally red equality assertions retained. Additional current mounted Context
+    observation failure tracked context-definition-opening-test-failure. No runtime
+    fix, GUI rerun, model, master/integration or human canvas changes; ROOT owns next
+    authority.
