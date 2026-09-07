@@ -6,8 +6,10 @@ import { taskDetailFixture, taskObservationFixture, TASK_FIXTURE_COMMIT } from "
 import { initialSnapshot } from "../fixtures/world";
 import { PROTOCOL_VERSION, type CoreRequest, type CoreResponse } from "../protocol/schema";
 import { syntheticJournal } from "./journal-fixture";
-import { agentFixtureFrames } from "../fixtures/agents";
-import { type LaunchContextV2 } from "../protocol/agents";
+import { agentFixtureContext, agentFixtureFrames } from "../fixtures/agents";
+import { fixtureV2Draft } from "../fixtures/agent-context-v2";
+import { formatRepositoryTask } from "../protocol/agent-task";
+import { createHash } from "node:crypto";
 afterEach(() => { cleanup(); delete window.swarm; });
 const props = (): TaskContextProps => ({ selectedTaskId: "task-fixture", detail: taskDetailFixture(), snapshot: taskObservationFixture().snapshot,
   detailRevision: TASK_FIXTURE_COMMIT, detailStale: false, reading: false, notice: null, onSelect: vi.fn(), onReveal: vi.fn(), onReturnToSource: vi.fn(),
@@ -59,13 +61,16 @@ it("renders only a loaded run's explicitly attached task output, not task-label 
   const input = props(), run = agentFixtureFrames().streaming.run;
   const reference = { version: 1 as const, worldId: input.snapshot!.worldId, repositoryId: input.snapshot!.repositoryId,
     provider: "ditz" as const, taskId: "task-fixture", metadataCommit: TASK_FIXTURE_COMMIT, issueBlob: input.detail!.blob };
-  // Controlled presentation fixture, not a valid provider launch or run proof.
-  run.launchContext = { ...run.launchContext, contextVersion: 2, sourceLinks: [], repositoryTask: { reference } } as LaunchContextV2;
+  // Valid synthetic context, not a provider launch or live execution proof.
+  const base = agentFixtureContext(), content = formatRepositoryTask(reference, input.detail!.title, input.detail!.description);
+  run.launchContext = fixtureV2Draft({ ...base, launchContext: { ...base.launchContext,
+    worldId: reference.worldId, repositoryId: reference.repositoryId, focus: { ...base.launchContext.focus, worldId: reference.worldId },
+    contextVersion: 2, sourceLinks: [], repositoryTask: { reference, encoding: "swarm-repository-task-json-v1", content,
+      bytes: Buffer.byteLength(content), digest: createHash("sha256").update(content).digest("hex") } } }).launchContext;
   const records = [{ recordId: 1, timestamp: "2026-09-07T12:00:00Z", kind: "message" as const, providerItemId: null, text: "Synthetic explicitly attached run output" }];
   const view = render(<TaskContext {...input} run={run} runRecords={records} runRetained />);
   expect(screen.getByText("Synthetic explicitly attached run output")).toBeTruthy();
   expect(screen.getByText(/Loaded run.*retained observation/)).toBeTruthy();
-  reference.taskId = "another-task";
-  view.rerender(<TaskContext {...input} run={run} runRecords={records} />);
+  view.rerender(<TaskContext {...input} selectedTaskId="another-task" detail={{ ...input.detail!, id: "another-task" }} run={run} runRecords={records} />);
   expect(screen.queryByText("Synthetic explicitly attached run output")).toBeNull();
 });
