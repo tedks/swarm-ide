@@ -5,8 +5,8 @@ type: feature
 component: swarm-ide
 release:
 reporter: Ted Smith <tedks@riseup.net>
-status: in_progress
-disposition:
+status: closed
+disposition: fixed
 creation_time: 2026-09-07T22:57:16-00:00
 references: []
 log_events:
@@ -37,3 +37,10 @@ log_events:
     source/cameras retained, zero renderer errors/model turns, cleanup1. Quality1663/120
     and observer36 passed. GUI and owned Bazel cleaned; branch/worktree/evidence retained.
     No app adoption.'
+- time: 2026-09-07T23:13:57-00:00
+  who: Ted Smith
+  what: 'closed: fixed'
+  comment: PR65 normally mergedbe67634. Registered solid fork trunks/elbows, independent
+    roots and uncapped supported depth; native fixpoint, quality1663, observer36 and
+    actual packaged synthetic geometry/keyboard/handoff/retention proof passed. Observed
+    sessions remain read-only.
