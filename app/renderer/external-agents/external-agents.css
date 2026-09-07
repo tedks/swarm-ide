@@ -1,11 +1,14 @@
 .external-agents { border-bottom: 1px solid #33404a; padding: 8px; font-size: 12px; }
+.external-agents button, .external-information button { font: inherit; color: #c6ded9; background: #152822; border: 1px solid #3b5b51; padding: 5px 8px; border-radius: 4px; cursor: pointer; }
+.external-agents button:disabled, .external-information button:disabled { opacity: .5; cursor: default; }
+.external-agents button:focus-visible, .external-information button:focus-visible { outline: 2px solid #77c9bb; outline-offset: 2px; }
 .external-agents header, .external-worklog header { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .external-agents ul { padding: 0; margin: 5px 0; list-style: none; }
 .external-agents li > button { display: flex; align-items: start; gap: 5px; width: 100%; text-align: left; background: transparent; border: 1px solid transparent; padding: 5px; border-radius: 5px; }
 .external-agents li > button[aria-pressed=true] { border-color: #77c9bb; background: #244039; }
 .external-agents small { display: block; color: #9cafa9; font-size: 10px; }
 .external-caption { color: #a3b1bd; font-size: 11px; line-height: 1.5; }
-.external-information { padding: 15px; overflow-wrap: anywhere; }
+.external-information { padding: 15px; overflow-wrap: anywhere; font-size: 12px; }
 .external-information h2 { font-size: 20px; font-weight: 500; margin: 5px 0 12px; }
 .external-information dl { display: grid; grid-template-columns: 82px minmax(0, 1fr); gap: 7px; font-size: 11px; line-height: 1.5; }
 .external-information dt { color: #93aaa5; }.external-information dd { margin: 0; }

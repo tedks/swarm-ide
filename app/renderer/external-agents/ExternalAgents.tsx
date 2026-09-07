@@ -47,12 +47,15 @@ export function ExternalAgentInformation({ client, onReturn, onOpen }: { client:
     {client.busy ? <p role="status">Observing…</p> : null}
     {client.notice ? <p role="status">{client.notice}</p> : null}
     {session ? <>
-      <dl><dt>Evidence</dt><dd>{session.evidence === "synthetic" ? "Synthetic example — not a real agent run" : "Registered local JSONL — recorded, not live telemetry"}</dd>
+      <p className="external-caption">{session.evidence === "synthetic" ? "Synthetic example — not a real agent run" : "Registered local JSONL — recorded, not live telemetry"}</p>
+      <details className="external-provenance"><summary>Fork ancestry & provenance · {session.parentId ? `parent ${session.parentId.slice(0, 8)}…` : "no recorded parent"}</summary>
+      <dl><dt>Evidence</dt><dd>{session.evidence}</dd>
         <dt>Session</dt><dd>{session.id}</dd><dt>Forked from</dt><dd>{session.parentId ?? (session.status === "observed" ? "No parent in metadata" : "Unavailable")}</dd>
         {session.role ? <><dt>Authored role</dt><dd>{session.role} · not parentage</dd></> : null}
         {session.task ? <><dt>Authored task link</dt><dd>{session.task}</dd></> : null}
         <dt>Observed</dt><dd>{session.observedAt}</dd></dl>
       <p className="external-caption">{session.message}</p>
+      </details>
       <div className="external-actions"><button disabled={client.busy} onClick={() => { void client.refresh(); }}>Refresh observation</button>
         <button disabled={client.busy || detail.handoff !== "available"} onClick={() => { void client.handoff(); }}>Open conversation in tmux</button></div>
       <p className="external-caption">{detail.handoff === "available" ? "Existing target checked; checked again on Open. No keys, prompts or replacement launches." : "Interactive handoff unavailable; the recorded conversation below remains read-only."}</p>

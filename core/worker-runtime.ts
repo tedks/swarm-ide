@@ -155,10 +155,10 @@ process.parentPort?.on("message", async (event) => {
   if (event.data?.type === "core.shutdown") {
     if (!shuttingDown) {
       shuttingDown = true;
-      externalAgents.dispose();
       void providerPromise.then((provider) => provider.dispose());
       try {
         await Promise.all([
+          externalAgents.dispose(),
           agentServicePromise.then((service) => service?.shutdown()),
           taskProviderPromise.then((tasks) => tasks.dispose()),
         ]);

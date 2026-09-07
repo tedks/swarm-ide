@@ -12,6 +12,7 @@ const HEADER = 65536, TAIL = 262144, MAX_ENTRIES = 120;
 const Registration = z.object({ id: ExternalSessionId, label: z.string().min(1).max(120),
   rollout: z.string().min(1).max(4096), evidence: z.enum(["local", "synthetic"]).default("local"),
   role: z.string().max(120).optional(), task: z.string().max(200).optional(),
+  contextRoot: z.string().max(4096).optional(),
   contextPaths: z.array(z.string().max(512).refine((p) => isRepositoryPath(p) && p !== "")).max(12).default([]),
   tmux: TmuxTargetSchema.optional(),
 }).strict();
@@ -21,7 +22,7 @@ const Registry = z.object({ version: z.literal(1), sessions: z.array(Registratio
 type Registered = z.infer<typeof Registration>;
 const Meta = z.object({ type: z.literal("session_meta"), payload: z.object({ id: ExternalSessionId,
   forked_from_id: ExternalSessionId.nullable().optional() }) });
-const safe = (text: string, size = 4096) => text.slice(0, size).replace(/[\p{Cf}\p{Cc}]/gu,
+const safe = (text: string, size = 4096) => (text.length > size ? text.slice(0, size - 16) + " … [truncated]" : text).replace(/[\p{Cf}\p{Cc}]/gu,
   (c) => c === "\n" || c === "\t" ? c : "�");
 const within = (root: string, path: string) => { const r = relative(root, path); return r === "" || r !== ".." && !r.startsWith("../") && !isAbsolute(r); };
 
@@ -31,8 +32,12 @@ export class ExternalAgentService {
   private disposed = false;
   private controller = new AbortController();
   private pending = 0;
+  private drained: (() => void)[] = [];
   constructor(private readonly root: string, private readonly registryPath: string | undefined) {}
-  dispose() { this.disposed = true; this.controller.abort(); }
+  dispose(): Promise<void> {
+    this.disposed = true; this.controller.abort();
+    return this.pending ? new Promise((resolve) => this.drained.push(resolve)) : Promise.resolve();
+  }
   private check() { if (this.disposed) throw new Error("Observer disposed"); }
   private async regular(path: string, maxSize: number, privateRegistry = false): Promise<FileHandle> {
     this.check();
@@ -57,7 +62,12 @@ export class ExternalAgentService {
       this.check();
       if (bytesRead > HEADER) throw new Error("Registry grew beyond bound");
       const registry = Registry.parse(JSON.parse(bytes.subarray(0, bytesRead).toString("utf8")));
-      for (const session of registry.sessions) if (!session.rollout.endsWith(".jsonl")) throw new Error("Not a rollout");
+      for (const session of registry.sessions) {
+        if (!session.rollout.endsWith(".jsonl")) throw new Error("Not a rollout");
+        // Authored path links have authority only in their explicitly named
+        // registered repository, never merely because another repo has the path.
+        if (session.contextRoot !== root) session.contextPaths = [];
+      }
       return registry.sessions;
     } finally { await file.close(); }
   }
@@ -149,7 +159,7 @@ export class ExternalAgentService {
       return { kind: "handoff", sessionId: row.id, status: opened ? "opened" : "unavailable", message: opened
         ? "Selected the existing registered tmux conversation. No message or agent command was sent."
         : "Existing conversation identity is unavailable or changed. Nothing was launched or resumed." };
-    } finally { this.pending--; }
+    } finally { if (--this.pending === 0) for (const done of this.drained.splice(0)) done(); }
   }
 }
 
