@@ -79,6 +79,10 @@ async function main() {
     const system = document.querySelector(".graphs-grid").getBoundingClientRect(), plans = document.querySelector(".planning-field").getBoundingClientRect();
     return Math.abs(system.left - plans.left) < 2 && Math.abs(system.width - plans.width) < 2;
   }), "no-document System/Plan share one full navigation column");
+  assert(await run(() => {
+    const system = document.querySelector(".graphs-grid");
+    return system.inert && getComputedStyle(system).opacity === "0";
+  }), "measurable inactive System is inert and fully transparent even for explicitly visible Flow nodes");
   const initialSystem = await run(() => [...document.querySelectorAll(".graphs-grid .react-flow__viewport")].map((node) => node.style.transform));
   await click(".lens-tabs button", "System"); await click(".lens-tabs button", "Plan");
   assert.deepEqual(await run(() => [...document.querySelectorAll(".graphs-grid .react-flow__viewport")].map((node) => node.style.transform)), initialSystem,

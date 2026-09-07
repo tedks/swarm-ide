@@ -4,7 +4,8 @@
 .planning-field[hidden], .planning-projection[hidden] { display: none !important; }
 /* Keep inactive System panes measurable. A display:none round-trip makes the
    existing directory observer interpret restoration as a fresh viewport. */
-.graphs-grid[hidden] { display: grid !important; visibility: hidden; pointer-events: none; }
+.graphs-grid[hidden] { display: grid !important; visibility: hidden; opacity: 0; pointer-events: none; }
+.graphs-grid[hidden] * { pointer-events: none !important; }
 .planning-tabs { display: flex; gap: 5px; border-bottom: 1px solid #28413d; }
 .planning-field button { border: 1px solid #33504a; border-radius: 4px; background: #102422; color: #c4ded5; padding: 5px 8px; font: 11px system-ui; cursor: pointer; }
 .planning-field button:disabled { opacity: .45; cursor: default; }
