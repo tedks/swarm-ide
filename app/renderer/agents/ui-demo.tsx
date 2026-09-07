@@ -14,7 +14,7 @@ export function useUiDemo() {
   const [selected, setSelected] = useState<string>("aster"), [selectionVersion, setSelectionVersion] = useState(0);
   const select = (id: string) => { setSelected(id); setConversation(true); setSelectionVersion((n) => n + 1); };
   const command = (action: DemoCommand) => {
-    if (action === "clear") { setRuns(false); setConversation(false); setGraphs(false); setContext(false); return; }
+    if (action === "clear") { setRuns(false); setConversation(false); setGraphs(false); setGraphVersion((n) => n + 1); setContext(false); return; }
     if (["runs", "conversation", "all"].includes(action)) setRuns(true);
     if (["conversation", "all"].includes(action)) { setConversation(true); setSelectionVersion((n) => n + 1); }
     if (["graphs", "all"].includes(action)) { setGraphs(true); setGraphVersion((n) => n + 1); }

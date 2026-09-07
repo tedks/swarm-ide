@@ -157,7 +157,7 @@ async function rendererAction(input: Action): Promise<unknown> {
     if (!flow) throw new Error("Expected graph to pan");
     const rect = flow.getBoundingClientRect();
     // Pick a genuinely blank pane point, not a node, edge, or toolbar.
-    for (const fy of [0.2, 0.4, 0.6, 0.8]) for (const fx of [0.2, 0.35, 0.5, 0.65]) {
+    for (const fy of [0.02, 0.05, 0.2, 0.4, 0.6, 0.8, 0.95]) for (const fx of [0.02, 0.05, 0.2, 0.35, 0.5, 0.65, 0.95]) {
       const x = Math.round(rect.left + rect.width * fx); const y = Math.round(rect.top + rect.height * fy);
       if (document.elementFromPoint(x, y)?.classList.contains("react-flow__pane") && x + 35 < rect.right && y + 20 < rect.bottom)
         return { x, y };

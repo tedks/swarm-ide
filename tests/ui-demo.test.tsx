@@ -21,6 +21,9 @@ it("separately enables each mock surface and clears only its own state", () => {
   expect(result.current.graphVersion).toBe(before + 1);
   act(() => result.current.command("clear"));
   expect(result.current.runs || result.current.graphs || result.current.context || result.current.conversation).toBe(false);
+  expect(result.current.graphVersion).toBe(before + 2);
+  act(() => result.current.command("clear"));
+  expect(result.current.graphVersion).toBe(before + 3); // Reset manually enabled graph layers too.
 });
 it("shares mock run identity with conversations, retaining per-agent unsent text and explicitly scripted replies", () => {
   const select = vi.fn();

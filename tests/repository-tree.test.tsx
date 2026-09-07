@@ -16,7 +16,7 @@ function observation(directory = "", entries: RepositoryEntry[] = []): Repositor
 }
 function root() { return observation("", [entry("core", "directory"), entry("docs", "directory"), entry("README.md")]); }
 function actions(): RepositoryNavigationActions {
-  return { pending: false, notice: "", cameraIntent: null, backEnabled: false, retryEnabled: false,
+  return { pending: false, notice: "", cameraIntent: null, expansionIntent: null, backEnabled: false, retryEnabled: false,
     enter: vi.fn(async (_path: string) => true), up: vi.fn(async () => true), back: vi.fn(async () => true),
     refresh: vi.fn(async () => true), page: vi.fn(async (_page: number) => true), filter: vi.fn(async (_filter: string) => true),
     reveal: vi.fn(async (_path: string) => true), retry: vi.fn(async () => true) };
@@ -84,6 +84,26 @@ describe("conventional repository tree interactions", () => {
     expect(screen.getByRole("button", { name: "Open file core/late.ts" })).toBeTruthy();
     expect(onActivate).toHaveBeenCalledTimes(2);
     expect(onOpenPath).not.toHaveBeenCalled();
+  });
+
+  it("expires pending-fold suppression and unfolds a later same-directory Reveal, but not Refresh", () => {
+    const controls = actions(), onActivate = vi.fn(), onOpenPath = vi.fn();
+    const view = render(<RepositoryNavigation observation={root()} actions={controls} onActivate={onActivate} onOpenPath={onOpenPath} />);
+    fireEvent.click(screen.getByRole("button", { name: "Enter directory core" }));
+    view.rerender(<RepositoryNavigation observation={root()} actions={{ ...controls, pending: true }} onActivate={onActivate} onOpenPath={onOpenPath} />);
+    fireEvent.click(screen.getByRole("button", { name: "Enter directory core" }));
+    const captured = observation("core", [entry("core/files.ts")]);
+    const completed = { ...controls, expansionIntent: { directory: "core", serial: 1 } };
+    view.rerender(<RepositoryNavigation observation={captured} actions={completed} onActivate={onActivate} onOpenPath={onOpenPath} />);
+    expect(screen.queryByRole("button", { name: "Open file core/files.ts" })).toBeNull();
+    view.rerender(<RepositoryNavigation observation={{ ...captured, observationId: "refresh" }} actions={completed} onActivate={onActivate} onOpenPath={onOpenPath} />);
+    expect(screen.queryByRole("button", { name: "Open file core/files.ts" })).toBeNull();
+    view.rerender(<RepositoryNavigation observation={captured} actions={{ ...controls, expansionIntent: { directory: "core", serial: 2 } }} onActivate={onActivate} onOpenPath={onOpenPath} />);
+    expect(screen.getByRole("button", { name: "Open file core/files.ts" })).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Enter directory core" }));
+    view.rerender(<RepositoryNavigation observation={observation("docs", [entry("docs/readme.md")])} actions={{ ...controls, expansionIntent: { directory: "docs", serial: 3 } }} onActivate={onActivate} onOpenPath={onOpenPath} />);
+    view.rerender(<RepositoryNavigation observation={captured} actions={{ ...controls, expansionIntent: { directory: "core", serial: 4 } }} onActivate={onActivate} onOpenPath={onOpenPath} />);
+    expect(screen.getByRole("button", { name: "Open file core/files.ts" })).toBeTruthy();
   });
 
   it("navigates an off-slice ancestor through an explicit recipe, never source activation", () => {

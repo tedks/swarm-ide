@@ -22,20 +22,30 @@ export function RepositoryNavigation({ observation, actions, onActivate, onOpenP
   const [selected, setSelected] = useState<string>(focusedPath ?? observation.directory);
   const list = useRef<HTMLOListElement>(null);
   const previousDirectory = useRef(observation.directory);
+  const expandedIntent = useRef<number | null>(null);
   const foldedPending = useRef(new Set<string>());
   useEffect(() => { setFilter(observation.filter); }, [observation.observationId, observation.filter]);
   useEffect(() => {
     setCache((prior) => retainDirectory(prior, observation));
-    if (observation.state === "loading" || previousDirectory.current === observation.directory) return;
-    previousDirectory.current = observation.directory;
-    setExpanded((prior) => {
-      const next = new Set(prior);
-      for (const crumb of repositoryBreadcrumbs(observation.directory)) {
-        if (!foldedPending.current.has(crumb.path)) next.add(crumb.path);
-      }
-      return next;
-    });
-  }, [observation]);
+    if (observation.state === "loading") return;
+    const intent = actions.expansionIntent;
+    const explicit = intent && intent.serial !== expandedIntent.current && intent.directory === observation.directory;
+    if (previousDirectory.current !== observation.directory || explicit) {
+      previousDirectory.current = observation.directory;
+      const suppressed = new Set(foldedPending.current);
+      setExpanded((prior) => {
+        const next = new Set(prior);
+        for (const crumb of repositoryBreadcrumbs(observation.directory)) {
+          if (!suppressed.has(crumb.path)) next.add(crumb.path);
+        }
+        return next;
+      });
+    }
+    if (explicit) expandedIntent.current = intent.serial;
+    // A fold veto belongs only to the in-flight navigation, never the next
+    // explicit Reveal. Refresh/background observations do not unfold folders.
+    if (!actions.pending) foldedPending.current.clear();
+  }, [observation, actions.pending, actions.expansionIntent]);
   useEffect(() => { if (focusedPath) setSelected(focusedPath); }, [focusedPath]);
   const tree = repositoryTree(cache, observation, expanded, rootLabel);
   const buttons = () => [...(list.current?.querySelectorAll<HTMLButtonElement>("button[data-tree-key]") ?? [])];
