@@ -12,6 +12,10 @@ export function TaskGraph({ client, state, visible, onOpen }: {
   const [loading, setLoading] = useState(false), [selected, setSelected] = useState<string | null>(null);
   const [notice, setNotice] = useState("");
   const current = useRef<AbortController | null>(null);
+  const canvasWasShown = useRef(false);
+  // First fit must see the completed bounded projection, not the transient
+  // isolated-node stack while details arrive. Later reads preserve the camera.
+  if (loaded && !loading) canvasWasShown.current = true;
   const snapshot = state.observation?.snapshot ?? null;
   const fresh = loaded && client.graphCurrent(loaded.snapshot);
   const read = async () => {
@@ -56,7 +60,8 @@ export function TaskGraph({ client, state, visible, onOpen }: {
       <p>{notice || state.notice || state.observation?.reason?.message || "Relations are recorded declarations. No known blockers is not permission to dispatch."}</p>
     </div>
     {projection ? <>
-      <ProjectionCanvas label="Task blockage canvas" nodes={nodes} edges={edges} selected={selected} onSelect={setSelected} />
+      {canvasWasShown.current ? <ProjectionCanvas label="Task blockage canvas" nodes={nodes} edges={edges} selected={selected} onSelect={setSelected} />
+        : <div className="planning-empty">Reading bounded relations before framing the graph…</div>}
       <div className="planning-inspector">
         {picked ? <><strong>{picked.title}</strong><code>{picked.id}</code><button disabled={!fresh || picked.missing} onClick={() => { void open(picked.id); }}>Open task details</button></> : <p>Select a task, then explicitly open its pinned detail.</p>}
         <details><summary>Keyboard task outline · {projection.nodes.length} shown</summary><ul>{projection.nodes.map((node) => <li key={node.id}>

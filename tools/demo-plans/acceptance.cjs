@@ -90,8 +90,10 @@ async function main() {
   const sourceState = () => run(() => { const state = document.querySelector(".cm-content")?.cmView?.rootView?.view?.state;
     return state ? { text: state.doc.toString(), anchor: state.selection.main.anchor, head: state.selection.main.head } : null; });
   await until(async () => (await sourceState())?.text === fixture.sourceText, "exact actual source bytes");
-  await focus(".cm-content"); key("End", ["control"]); await wc.insertText("\n// unsaved planning proof\n");
-  await until(async () => (await sourceState())?.text === `${fixture.sourceText}\n// unsaved planning proof\n`, "native dirty source input");
+  await focus(".cm-content"); key("End", ["control"]);
+  await until(async () => (await sourceState())?.anchor === fixture.sourceText.length, "native end of source acknowledged");
+  await wc.insertText("// unsaved planning proof");
+  await until(async () => (await sourceState())?.text === `${fixture.sourceText}// unsaved planning proof`, "native dirty source input");
   const dirty = await sourceState();
   await click(label("Open graph task graph-root"));
   await until(async () => await has(".task-detail:not(.task-document) .task-attach button:not(:disabled)"), "current task Attach");
@@ -173,8 +175,12 @@ async function main() {
     fixtureFaults: ["malformed/missing owned plan index", "removed/restored owned metadata ref"], modelTurns: 0, rendererErrors, milliseconds: Date.now() - started }));
 }
 main().catch(async (error) => {
-  await fs.writeFile(path.join(evidence, "plans-failure.json"), JSON.stringify({ stage, message: error.stack ?? String(error), rendererErrors }));
   const win = BrowserWindow.getAllWindows()[0];
+  const sourceState = win && !win.isDestroyed() ? await win.webContents.executeJavaScript(`(() => {
+    const state = document.querySelector('.cm-content')?.cmView?.rootView?.view?.state;
+    return state ? { text: state.doc.toString(), anchor: state.selection.main.anchor, head: state.selection.main.head, focus: document.activeElement?.className } : null;
+  })()`).catch(() => null) : null;
+  await fs.writeFile(path.join(evidence, "plans-failure.json"), JSON.stringify({ stage, message: error.stack ?? String(error), rendererErrors, sourceState }));
   if (win && !win.isDestroyed()) await fs.writeFile(path.join(evidence, "failure.png"), (await win.webContents.capturePage()).toPNG());
   process.exitCode = 1;
 });
