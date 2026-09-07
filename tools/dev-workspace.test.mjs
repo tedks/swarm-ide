@@ -5,6 +5,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { execFileSync } from "node:child_process";
 import { createServer } from "node:net";
+import { fileURLToPath } from "node:url";
 import { resolveDevWorkspace, checkDevPort } from "./dev-entry.mjs";
 
 const scratch = await mkdtemp(join(tmpdir(), "swarm-dev-workspace-"));
@@ -34,6 +35,19 @@ test("unknown, duplicate and incomplete arguments reject", async () => {
 });
 test("ambient Git override cannot substitute another repository", async () => {
   await assert.rejects(resolveDevWorkspace(["--workspace", empty], repo, scratch, { ...process.env, GIT_DIR: join(repo, ".git"), GIT_WORK_TREE: empty }), /Git working-tree root/);
+});
+test("public shell forwards arguments and reports startup errors before runtime imports", () => {
+  const entry = fileURLToPath(new URL("./dev.sh", import.meta.url));
+  const ide = fileURLToPath(new URL("../", import.meta.url));
+  const env = { ...process.env, BUILD_WORKSPACE_DIRECTORY: ide, BUILD_WORKING_DIRECTORY: scratch, SWARM_ELECTRON_BIN: "", SWARM_DEV_PORT: "0" };
+  const attempt = (args) => {
+    try { execFileSync("bash", [entry, ...args], { cwd: "/", env, stdio: "pipe" }); assert.fail("Expected startup rejection"); }
+    catch (error) { assert.equal(error.status, 2); return String(error.stderr); }
+  };
+  assert.match(attempt(["--workspace", "real repo"]), /SWARM_DEV_PORT must be/);
+  assert.match(attempt(["--workspace", "absent"]), /existing directory/);
+  assert.match(attempt(["--workspace"]), /Usage:/);
+  assert.match(execFileSync("bash", [entry, "--help"], { cwd: "/", env, encoding: "utf8" }), /committed Git HEAD/);
 });
 test("occupied port yields actionable error and leaves its listener alive; free port check releases its socket", async () => {
   const server = createServer(); await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
