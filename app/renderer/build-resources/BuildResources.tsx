@@ -46,7 +46,7 @@ function JobCard({ job }: { job: Job }) {
 export function BuildResources({ jobs }: { jobs: readonly Job[] }) {
   const [example, setExample] = useState(false);
   const id = useId();
-  // React Flow's documented input guard also recognizes .nokey. Without it,
+  // React Flow's input guard also recognizes .nokey. Without it,
   // its window-level Space pan shortcut cancels native <summary> activation.
   return <div className="build-resources nokey">
     {jobs.length ? <div className="resource-jobs">{jobs.map((job) => <JobCard job={job} key={job.id} />)}</div>

@@ -171,15 +171,21 @@ async function main() {
   const backgroundRequests = interactionRequests.filter((request) => request.type === "tasks.snapshot" && request.refresh === false);
   const resourceRequests = interactionRequests.filter((request) => !backgroundRequests.includes(request));
   const productMutations = requests.filter((request) => /^(agent\.(launch|steer|cancel)|reconciliation\.start|fixture\.reset|file\.write)$/.test(request.type));
+  // This packaged base requests one automatic topology reconciliation at
+  // startup. Preserve that evidence; it is not a resource-control action. No
+  // later build request, file write, fixture mutation or model turn is allowed.
+  const startupBuildRequests = productMutations.filter((request) => request.stage === "startup" && request.type === "reconciliation.start");
+  const unexpectedMutations = productMutations.filter((request) => !startupBuildRequests.includes(request));
   assert.deepEqual(resourceRequests, [], "example controls make no core/provider requests");
-  assert.deepEqual(productMutations, [], "no explicit build, source save, or model-turn request");
+  assert(startupBuildRequests.length <= 1, "at most the existing single startup reconciliation");
+  assert.deepEqual(unexpectedMutations, [], "no user build, source save, or model-turn request");
   assert.deepEqual(errors, [], "strict renderer error gate");
   await fs.writeFile(path.join(evidence, "proof.json"), JSON.stringify({ ok: true, packagedCore: true, keyboard: true,
     retained: true, actualSource: repository.sourcePath, unsavedSourceMatchesDisk: false, sourceDiskUnchanged: true,
     graphCount: cameras.length, example: "illustrative only; no current utilization asserted", exampleText,
-    resourceRequests, backgroundRequests, productMutations, rendererErrors: errors,
+    resourceRequests, backgroundRequests, productMutations, startupBuildRequests, unexpectedMutations, rendererErrors: errors,
     keys: await run(() => globalThis.__resourceProofKeys),
-    buildBoundary: "No explicit build request; existing source-change reconciliation may attempt background topology extraction.",
+    buildBoundary: "Existing packaged startup reconciliation recorded separately; no build request from resource controls. Source changes may also cause existing background extraction.",
     milliseconds: Date.now() - started }, null, 2));
 }
 main().catch(async (error) => {
