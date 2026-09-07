@@ -51,6 +51,16 @@ log_events:
     local Ditz metadata through real packaged core. Parent remains open: D2 task-to-draft
     provenance, broader navigation and reader limits/followups are separate; no agent
     dispatch/model capability claimed.'
+- time: 2026-09-07T23:01:42-00:00
+  who: Ted Smith
+  what: commented
+  comment: 'PM reconciliation 2026-09-07: original T0-T3 read-only Ditz browsing/source
+    Reveal landed in PR28/31/32/35; later PR47-51 also complete the separately tracked
+    pinned task attachment/revalidation journey. The only still-open recorded direct
+    blocker is repo-task-browser-followups: current core/tasks/provider.ts:25 still
+    incorrectly says the default worker does not install the real reader. Retained
+    this umbrella because that explicit blocker remains. No missing real-provider
+    authority is a blocker for its read-only T0-T3 scope.'
 blocks:
 - repo-task-draft-provenance
 blocked_by:
