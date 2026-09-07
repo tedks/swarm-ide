@@ -114,7 +114,9 @@ Use exact artifact membership, not labels or preferred paths. Keep the one-recor
 64 implementation/64 declaration/32+32 interface ceilings, a 256 KiB serialized
 context cap, canonical paths and 512-character display text bounds. Optional
 context overflow/unsupported data reports unavailable, not a whole-navigation
-failure. No public request, worker process, new dependency, source scan, or
+failure. Construct that unavailable value in the producer; malformed incoming
+bridge messages still fail strict validation. No public request, worker process,
+new dependency, source scan, or
 capability is added. Existing IPC snapshot validators carry the additive field.
 
 ### Milestone 2: bind Context and reuse navigation
@@ -131,12 +133,15 @@ foreground successor or explicit graph subject, never a hidden last-file fallbac
 
 Composition produces Source, Service relationships, and dated Captured build
 references sections for files, existing literal TaskDetail for task attention,
-matching observed directory facts for directory attention, and a compact notice
+matching observed directory facts (with directory observation ID/page coverage)
+for directory attention, and a compact notice
 for unsupported knowledge/runtime/deployment facts. Remove the unconditional
 snapshot.widgets/Truth source fallback from real Context; do not change separate
 mock-command semantics or graph/lens layout. Keep mocks visibly isolated.
 
-Each section inherits one compatible evidence reference or is split. Retained
+Each section inherits one compatible evidence reference or is split. For file-read
+responses without producer timestamps, label client receipt time explicitly;
+restored receipt times are not new observations. Retained
 build evidence retains original build hash/input fingerprint; green requires
 observed matching working evidence and matching green publication. Dirty buffers,
 file observation loss/deletion, failed builds and unavailable fingerprint prevent
@@ -147,8 +152,13 @@ limited artifact/capture, not globally no relationships.
 Index once per accepted publication/capture, replace old indexes, and drop them
 on disposal. Cap capture input at 4,096 links/1 MiB, render at most 32 links per
 section with explicit partial-display counts. No per-file unbounded cache,
-cursor-triggered work, or new timer. Preserve existing core/navigation generations;
-async results must match repository/world, request intent, and current subject.
+cursor-triggered work, or new timer. Preserve existing core/navigation generations.
+Pending Reveal B keeps A active until its captured attention generation, pending
+destination/navigation intent, repository/world and live core generation validate.
+It need not match active A; any newer deliberate inspection invalidates it.
+After successful activation, fact population must separately match committed B
+and its observation identity/core generation. This distinguishes activation
+authorization from evidence population and prevents late focus stealing.
 Restore neither current evidence authority nor green status from old HMR memory.
 
 Source links use exact validated paths through existing broker-backed Reveal.
@@ -265,3 +275,8 @@ global instructions, or unrelated UI files are part of this ownership.
 Revision note (2026-09-07): Q0 initial contract chooses one publication/composition
 vertical instead of another asynchronous query layer, to correct misleading
 Context with the minimum independently provable product change.
+
+Review revision (2026-09-07): the light native pass required explicit directory
+evidence and separate pending-activation versus committed-subject checks. Both
+are incorporated above; source receipt-time honesty and strict receiver
+validation were also made explicit without expanding implementation scope.

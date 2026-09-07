@@ -118,7 +118,9 @@ graph and built revision, retains its original evidence during working changes,
 and does not retag it through `retagSnapshot`. Declared manifest identity must
 come from the existing validated producer, not renderer path guessing. Invalid
 or oversized contextual material yields a typed unavailable observation without
-claiming coverage or destroying unrelated browsing. No second filesystem read,
+claiming coverage or destroying unrelated browsing. This is producer-side
+construction/failure handling, not permission to accept malformed bridge payloads;
+receiver validation remains strict. No second filesystem read,
 Bazel invocation, Git scan, context RPC, or worker is necessary.
 
 Each fact/link inherits a section evidence reference only when all its values
@@ -126,7 +128,11 @@ share that reference. Separate sections when they do not. Evidence must name
 provider, repository/world, origin URI or artifact identity, revision kind/value,
 observation time, availability/freshness, and coverage scope/completeness.
 Permitted evidence kinds are broker source observation, local buffer generation,
+repository directory-page observation (its observation ID and page coverage),
 built artifact plus its source fingerprint, dated capture, and Ditz commit/blob.
+Where the existing file-read response has no producer timestamp, record and label
+client receipt time, not a fictional exact read time; carry the time basis with
+the reference. Persisted receipt time never becomes a fresh observation on reload.
 An unsupported section has a reason, no invented revision/value. Capture coverage
 is explicitly unknown outside its recorded entries. A declared target's complete
 artifact is not complete repository coverage. An empty row set is “known empty”
@@ -160,10 +166,14 @@ existing bounded TaskBridgeClient. No new timers, asynchronous lookups, scans,
 or requests are driven by focus/cursor changes, so there is no new cancellation
 protocol. Disposing/replacing the view drops its indexes and subscriptions.
 
-The subject reducer increments an attention generation. Existing async source
-activation/detail results must match repository/world, subject identity, request
-intent, and live core generation before they can change attention or populate
-it. Pure composition rechecks the subject on every render; an old A result never
+The subject reducer increments an attention generation on deliberate inspection.
+Pending Reveal B leaves subject A active. To commit B, validate its captured
+attention generation, pending destination and navigation intent, repository/world,
+and live core generation; B need not equal A. Any newer deliberate inspection
+invalidates that pending activation. Only after successful commit may B's facts
+populate the panel. Result population separately matches the committed subject,
+its observation identity and current core generation. Pure composition rechecks
+the subject on every render; an old A result never
 fills B, including A→B→A and source/task switches. A different repository/core
 generation clears current authority; retained historical evidence is explicitly
 stale until current inputs have been revalidated. HMR/restored state is not new
