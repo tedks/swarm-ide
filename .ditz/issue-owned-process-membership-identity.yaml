@@ -24,3 +24,13 @@ log_events:
     diagnostic: pin namespace FD and retain PID/start/state/NSpid through unchanged
     immediate assertion; requires ROOT ownership approval. Evidence /tmp/swarm-ide-demo-controls.q2i33c/activity-prs/quality-boundary.md.
     Shared owner/service/test unedited.'
+- time: 2026-09-07T23:48:47-00:00
+  who: Ted Smith
+  what: commented
+  comment: ROOT reviewed exact J2 PID690372 failure alongside earlier X1 assertion
+    class (owned-namespace-member-witness-20260907). Both remain OPEN; no common cause
+    or false-positive/fix established. Exact historical uncertainty accepted as nonblocking
+    for reviewed J2 demo scope, not new-failure waiver; separate J2 owned-command
+    tests and actual packaged cleanup passed. Future bounded identity instrumentation
+    should pin namespace and capture PID/start time/role without weakening immediate
+    cleanup assertion. No diagnostic edit authorized in J2 delivery.
