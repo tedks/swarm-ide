@@ -9,6 +9,38 @@ import { contextArtifact } from "./context-fixture";
 import { adaptServiceTopology } from "../core/service-topology";
 import { openContextPath } from "./context-navigation";
 import uiBuildLinks from "../fixtures/ui-build-links.snapshot.json";
+type EditorProps = import("react").ComponentProps<typeof import("../app/renderer/EditorPane").EditorPane>;
+type TraceFields = { path?: string; nonce?: number; held?: boolean; applied?: boolean; request?: string };
+const handoff = vi.hoisted(() => ({
+  hold: false,
+  trace: null as null | ((event: string, fields?: TraceFields) => void),
+  offered: null as null | { owner: symbol; navigation: NonNullable<EditorProps["navigation"]>; release: () => void },
+}));
+vi.mock("../app/renderer/EditorPane", async () => {
+  const actual = await vi.importActual<typeof import("../app/renderer/EditorPane")>("../app/renderer/EditorPane");
+  const React = await import("react");
+  return { ...actual, EditorPane: function ObservedEditor(props: EditorProps) {
+    const owner = React.useRef(Symbol("mounted-editor"));
+    const [released, setReleased] = React.useState<EditorProps["navigation"]>(null);
+    const navigation = props.navigation;
+    // Delay only the currently offered object. Withdrawal/replacement/remount
+    // cannot replay an earlier command, even if its nonce happens to repeat.
+    const held = Boolean(handoff.hold && navigation && released !== navigation);
+    React.useLayoutEffect(() => {
+      if (released && released !== navigation) setReleased(null);
+      const offer = navigation ? { owner: owner.current, navigation, release: () => setReleased(navigation) } : null;
+      handoff.offered = offer;
+      const path = navigation && "path" in navigation && typeof navigation.path === "string" ? navigation.path : undefined;
+      handoff.trace?.("navigation-offered", { path, nonce: navigation?.nonce, held });
+      return () => { if (handoff.offered === offer) handoff.offered = null; };
+    }, [navigation, held, released]);
+    return <actual.EditorPane {...props} navigation={held ? null : navigation}
+      onNavigation={handoff.trace ? (nonce, applied) => {
+        handoff.trace?.("navigation-ack", { nonce, applied });
+        props.onNavigation?.(nonce, applied);
+      } : props.onNavigation} />;
+  } };
+});
 vi.mock("@xyflow/react", async () => {
   const React = await import("react");
   return { Background: () => null, Controls: () => null, Handle: () => null, Position: { Left: "left", Right: "right" }, MarkerType: { ArrowClosed: "arrowclosed" },
@@ -27,9 +59,52 @@ beforeAll(() => {
   Object.defineProperty(Range.prototype, "getClientRects", { configurable: true, value: () => [] });
   Object.defineProperty(Range.prototype, "getBoundingClientRect", { configurable: true, value: () => new DOMRect() });
 });
-afterEach(() => { cleanup(); vi.restoreAllMocks(); window.sessionStorage.clear(); window.localStorage.clear(); delete window.swarm; delete window.swarmView; delete window.swarmLifecycle; });
+let finishOrderTrace: (() => void) | null = null;
+afterEach(() => { finishOrderTrace?.(); cleanup(); handoff.hold = false; handoff.offered = null; vi.restoreAllMocks(); window.sessionStorage.clear(); window.localStorage.clear(); delete window.swarm; delete window.swarmView; delete window.swarmLifecycle; });
 const subject = () => document.querySelector(".artifact-context")?.getAttribute("data-context-subject");
 const serviceText = () => document.querySelector("[data-context-section='services']")?.textContent ?? "";
+function beginOrderTrace(label: string) {
+  const rows: Array<TraceFields & { order: number; event: string; subject: string | null; notice: string; focus: string }> = [];
+  let overflow = 0;
+  const mark = (event: string, fields: TraceFields = {}) => {
+    if (rows.length >= 128) { overflow++; return; }
+    const active = document.activeElement;
+    rows.push({ order: rows.length, event, ...fields, subject: subject() ?? null,
+      notice: (document.querySelector(".tasks-reveal-notice")?.textContent ?? "").slice(0, 240),
+      focus: active?.closest(".cm-editor") ? "source-editor" : active?.tagName ?? "none" });
+  };
+  handoff.trace = mark;
+  const originalFocus = EditorView.prototype.focus;
+  vi.spyOn(EditorView.prototype, "focus").mockImplementation(function (this: EditorView) {
+    mark("editor-focus-before"); originalFocus.call(this); mark("editor-focus-after");
+  });
+  const onFocus = () => mark("focusin"); document.addEventListener("focusin", onFocus);
+  let prior = "";
+  const observer = new MutationObserver(() => {
+    const current = JSON.stringify([subject(), document.querySelector(".tasks-reveal-notice")?.textContent]);
+    if (current !== prior) { prior = current; mark("visible-state"); }
+  });
+  observer.observe(document.body, { subtree: true, childList: true, characterData: true, attributes: true });
+  finishOrderTrace = () => {
+    mark("final"); observer.disconnect(); document.removeEventListener("focusin", onFocus);
+    handoff.trace = null; finishOrderTrace = null;
+    console.log("Q4_CONTEXT_ORDER " + JSON.stringify({ label, overflow, rows }));
+  };
+  return { rows, mark };
+}
+function releaseCurrentHandoff() {
+  const offered = handoff.offered;
+  if (!offered) throw new Error("No currently offered editor navigation");
+  // Read path from the current mounted source; never save a source component or
+  // a command for later replay. The wrapper also checks identity on re-render.
+  const path = document.querySelector(".source-surface header strong")?.textContent ?? "no-source";
+  act(() => {
+    if (handoff.offered !== offered) throw new Error("Navigation offer changed before release");
+    handoff.trace?.("gate-release-current", { path, nonce: offered.navigation.nonce });
+    offered.release();
+  });
+  return offered.navigation.nonce;
+}
 function setup(artifact = contextArtifact) {
   const snapshot = initialSnapshot(); snapshot.revisions.working = { id: "a".repeat(64), fingerprint: "a".repeat(64), evidence: "observed" };
   snapshot.revisions.built = { id: "b".repeat(64), sourceFingerprint: "a".repeat(64) };
@@ -41,17 +116,23 @@ function setup(artifact = contextArtifact) {
   snapshot.serviceContext = adapted.serviceContext; snapshot.mappings = []; snapshot.widgets = [];
   let delayed: { path: string; resolve: (response: CoreResponse) => void; request: CoreRequest } | undefined;
   let delayPath = "", failPath = "";
+  let enterRead!: () => void;
+  const readEntered = new Promise<void>((resolve) => { enterRead = resolve; });
   const response = (input: CoreRequest): CoreResponse => ({ protocolVersion: PROTOCOL_VERSION, requestId: input.requestId, ok: true, sequence: 0, snapshot,
     ...(input.type === "file.read" ? { file: { kind: "read", path: input.path, content: `source ${input.path}\n`, revision: "c".repeat(64), size: 10 } } : {}) });
   const request = vi.fn(async (input: CoreRequest): Promise<CoreResponse> => {
-    if (input.type === "file.read" && input.path === delayPath) return new Promise((resolve) => { delayed = { path: input.path, resolve, request: input }; });
+    handoff.trace?.("request", { request: input.type, ...("path" in input ? { path: input.path } : {}) });
+    if (input.type === "file.read" && input.path === delayPath) return new Promise((resolve) => {
+      delayed = { path: input.path, resolve, request: input };
+      handoff.trace?.("held-read-enter", { path: input.path }); enterRead();
+    });
     if ((input.type === "file.read" || input.type === "file.watch") && input.path === failPath) return { protocolVersion: PROTOCOL_VERSION, requestId: input.requestId, ok: false, error: { code: "FILE_NOT_FOUND", message: "No file" } };
     return response(input);
   });
   const listeners = new Set<(event: CoreEvent) => void>(); let sequence = 0;
   const emit = (value: WorkspaceSnapshot) => act(() => { const valid = WorkspaceSnapshotSchema.parse(value); for (const listener of listeners) listener({ protocolVersion: PROTOCOL_VERSION, sequence: ++sequence, type: "workspace.changed", epoch: valid.reconciliation.epoch, emittedAt: "2026-09-07T03:00:00.000Z", snapshot: valid }); });
   window.swarm = { request, onEvent: (listener) => { listeners.add(listener); return () => { listeners.delete(listener); }; } }; window.swarmView = { setZoomPercent: async () => ({ ok: true, percent: 100 }) };
-  return { snapshot, emit, request, delay: (path: string) => { delayPath = path; }, fail: (path: string) => { failPath = path; }, finish: async () => { if (!delayed) throw new Error("No delayed read"); const held = delayed; await act(async () => held.resolve(response(held.request))); } };
+  return { snapshot, emit, request, readEntered, delay: (path: string) => { delayPath = path; }, fail: (path: string) => { failPath = path; }, finish: async () => { if (!delayed) throw new Error("No delayed read"); const held = delayed; handoff.trace?.("held-read-release", { path: held.path }); await act(async () => held.resolve(response(held.request))); } };
 }
 describe("truthful Context in the mounted workbench", () => {
   it("definition activation preserves a mounted captured Build camera and its manually selected view", async () => {
@@ -95,12 +176,76 @@ describe("truthful Context in the mounted workbench", () => {
     test.emit(next); await test.finish(); expect(subject()).toBe("core/files.ts");
   });
   it("newer inspection supersedes definition completion without stealing the current source", async () => {
+    const trace = beginOrderTrace("original-ungated");
     const test = setup(); render(<App />); await openContextPath("core/files.ts"); await waitFor(() => expect(subject()).toBe("core/files.ts"));
+    trace.mark("activate-B");
     test.delay("example/fraudcheck.proto"); fireEvent.click(screen.getByRole("button", { name: "Activate service:fraud-check" }));
     await screen.findByText("Opening working file example/fraudcheck.proto…");
+    await test.readEntered; trace.mark("inspect-newer");
     fireEvent.click(screen.getByRole("button", { name: "Inspect interface:payments.authorize" })); await test.finish();
     expect(subject()).toBe("interface:payments.authorize"); expect(document.querySelector(".source-surface header strong")?.textContent).toBe("core/files.ts");
   });
+  for (const order of ["early", "late", "deliberate-source"] as const) {
+    it(`controlled ${order} current source handoff retains newer definition authority`, async () => {
+      const trace = beginOrderTrace(order); handoff.hold = true;
+      const test = setup(); render(<App />);
+      fireEvent.click(await screen.findByRole("button", { name: "Ask an agent about this focus" }));
+      const draft = screen.getByRole("textbox", { name: "Task" }) as HTMLTextAreaElement;
+      fireEvent.change(draft, { target: { value: "Preserve this local draft" } });
+      await openContextPath("core/files.ts"); await waitFor(() => expect(subject()).toBe("core/files.ts"));
+      await waitFor(() => expect(handoff.offered?.navigation).toBeDefined());
+      await waitFor(() => expect(EditorView.findFromDOM(document.querySelector(".cm-editor") ?? document.body)).toBeInstanceOf(EditorView));
+      const editorElement = document.querySelector(".cm-editor")!;
+      const editor = EditorView.findFromDOM(editorElement)!;
+      act(() => editor.dispatch({ selection: { anchor: 3 } }));
+      const source = editor.state.doc.toString(), graph = screen.getByTestId("graph-service");
+      const repoGraph = screen.getByTestId("graph-repo");
+      const cameras = ["Camera repo", "Camera service"].map((name) => screen.getByRole("textbox", { name }) as HTMLInputElement);
+      cameras.forEach((camera) => fireEvent.change(camera, { target: { value: "retained-camera" } }));
+      const nonce = handoff.offered!.navigation.nonce;
+      expect(trace.rows.some((row) => row.event === "navigation-ack")).toBe(false);
+      if (order !== "late") {
+        expect(releaseCurrentHandoff()).toBe(nonce);
+        expect(trace.rows.some((row) => row.event === "navigation-ack" && row.nonce === nonce && row.applied)).toBe(true);
+      }
+      trace.mark("activate-B");
+      test.delay("example/fraudcheck.proto"); fireEvent.click(screen.getByRole("button", { name: "Activate service:fraud-check" }));
+      await screen.findByText("Opening working file example/fraudcheck.proto…");
+      await test.readEntered;
+      expect(subject()).toBe("core/files.ts");
+      if (order === "late") {
+        // If App withdrew/replaced A, this fails as an inadequate seam; no stale
+        // command may be reconstructed to force the predicted counterexample.
+        expect(handoff.offered?.navigation.nonce).toBe(nonce);
+        expect(releaseCurrentHandoff()).toBe(nonce);
+        const entered = trace.rows.find((row) => row.event === "held-read-enter")!.order;
+        const released = trace.rows.find((row) => row.event === "gate-release-current")!.order;
+        const acknowledged = trace.rows.find((row) => row.event === "navigation-ack" && row.nonce === nonce && row.applied)!.order;
+        expect(entered).toBeLessThan(released); expect(released).toBeLessThan(acknowledged);
+        expect(trace.rows.some((row) => row.event === "editor-focus-before" && row.order > released && row.order < acknowledged)).toBe(true);
+        expect(trace.rows.some((row) => row.event === "focusin" && row.focus === "source-editor" && row.order > released && row.order < acknowledged)).toBe(true);
+        // Soft only so the same deterministic case still checks late-result and
+        // source retention after recording this possible authority counterexample.
+        expect.soft(document.querySelector(".tasks-reveal-notice")?.textContent).toBe("Opening working file example/fraudcheck.proto…");
+      } else if (order === "deliberate-source") {
+        trace.mark("deliberate-source-pointer"); fireEvent.pointerDown(editor.contentDOM);
+        expect(document.querySelector(".tasks-reveal-notice")?.textContent).toContain("superseded");
+      } else {
+        expect(trace.rows.find((row) => row.event === "navigation-ack")!.order).toBeLessThan(trace.rows.find((row) => row.event === "held-read-enter")!.order);
+        expect(document.querySelector(".tasks-reveal-notice")?.textContent).toBe("Opening working file example/fraudcheck.proto…");
+      }
+      trace.mark("inspect-newer"); fireEvent.click(screen.getByRole("button", { name: "Inspect interface:payments.authorize" }));
+      await test.finish();
+      expect(subject()).toBe("interface:payments.authorize");
+      expect(document.querySelector(".source-surface header strong")?.textContent).toBe("core/files.ts");
+      expect(document.querySelector(".cm-editor")).toBe(editorElement);
+      expect(editor.state.doc.toString()).toBe(source); expect(editor.state.selection.main.anchor).toBe(3);
+      expect(screen.getByTestId("graph-service")).toBe(graph);
+      expect(screen.getByTestId("graph-repo")).toBe(repoGraph);
+      cameras.forEach((camera) => { expect(camera.isConnected).toBe(true); expect(camera.value).toBe("retained-camera"); });
+      expect((screen.getByRole("textbox", { name: "Task" }) as HTMLTextAreaElement).value).toBe("Preserve this local draft");
+    });
+  }
   it("superseding an in-flight definition with the palette gives Escape to the palette", async () => {
     const test = setup(); render(<App />); await openContextPath("core/files.ts"); await waitFor(() => expect(subject()).toBe("core/files.ts"));
     test.delay("example/fraudcheck.proto"); fireEvent.click(screen.getByRole("button", { name: "Activate service:fraud-check" }));
