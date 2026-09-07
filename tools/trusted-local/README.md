@@ -23,3 +23,35 @@ renderer exceptions. `proof.json`, `wire.json` and screenshots are retained
 under `artifacts/trusted-local-proof/run.*`; `supervisor.log` records
 `cleanup_complete=1`. The disposable app profile, repository, and process owner
 live under the supervisor's private temporary directory and are removed at exit.
+
+## Separately authorized live smoke (manual; never part of deterministic smoke)
+
+`//tools/trusted-local:live-bundle` only compiles the proof. Building it does not
+start Codex. The separate `//tools/trusted-local:live-smoke` entry must receive
+native/local review and explicit operator authorization before execution. Do not
+run it as routine validation, through `//...`, or after an uncertain result.
+
+The live entry requires `SWARM_TRUSTED_LIVE_SMOKE=1`,
+`SWARM_TRUSTED_LIVE_CODEX=/tmp/swarm-ide-codex-runtime.70xtjj/codex`, and
+`SWARM_TRUSTED_LIVE_EVIDENCE` naming an existing private, owned absolute directory.
+After review and authorization, its entry point is
+`nix develop --command bazel run //tools/trusted-local:live-smoke` with those
+explicit environment values. No default provider executable or evidence path is
+accepted. The exclusive `one-turn-consumed.json` marker is never removed: a
+repeat invocation with the same evidence directory fails before provider start.
+An uncertain result requires renewed authorization, not a new evidence directory
+or removal of the marker to bypass the consumed attempt.
+
+It creates a fresh empty disposable working directory and uses the actual
+`TrustedLocalSession` and PID-namespace owner. It inherits ordinary authentication,
+configuration, permissions and model selection without reading/copying
+credentials, injecting policy overrides or attaching source files. The one and
+only prompt is “Reply Swarm IDE launch verified; do not read or modify files or
+use tools”. The proof never sends a second turn and never answers an approval.
+Any approval, failure, operator signal or 75-second deadline stops the session;
+successful turn completion also immediately stops it. This is not a filesystem
+sandbox promise: the prompt asks the normally configured provider not to use
+tools. Evidence contains only bounded, control-character-sanitized conversation
+output, outcome and owner cleanup status, never raw provider diagnostics. The
+disposable workspace is removed after owned Stop; auth/configuration and the
+consumed marker are preserved.
