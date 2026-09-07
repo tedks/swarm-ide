@@ -20,5 +20,12 @@ log_events:
   who: Ted Smith
   what: blocked by contextual-information
   comment: ""
+- time: 2026-09-07T04:45:31-00:00
+  who: Ted Smith
+  what: commented
+  comment: Q3 design-only file-to-Ditz backlinks underway. Exact explicit file_refs
+    at one metadata commit, complete-or-unavailable bounded projection and deliberate
+    pinned task inspection. No docs renderer, instruction inference, draft dispatch
+    or parent closure.
 blocked_by:
 - contextual-information
