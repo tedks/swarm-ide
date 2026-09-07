@@ -42,6 +42,7 @@ import { GraphPane } from "../app/renderer/GraphPane";
 import { App } from "../app/renderer/App";
 import { BuildGraphPane, TopologyViews } from "../app/renderer/repository/BuildGraphPane";
 import { buildTargets, selectFileBuildView } from "../app/renderer/repository/build-view";
+import { fixtureBuildObservation } from "./support/build-graph-fixture";
 import buildCapture from "../fixtures/ui-build-links.snapshot.json";
 
 const date = "2026-09-06T12:00:00.000Z";
@@ -68,7 +69,7 @@ it("follows file targets, preserves a pinned manual pattern, and reports unmappe
   expect(screen.getAllByRole("button", { name: /^Graph node / })).toHaveLength(buildTargets(buildCapture).length);
   fireEvent.click(screen.getByRole("checkbox", { name: "Follow file" }));
   expect(screen.queryAllByRole("button", { name: /^Graph node / })).toHaveLength(0);
-  expect(screen.getByText(/No captured target references this file/)).toBeTruthy();
+  expect(screen.getByText(/No observed target references this file/)).toBeTruthy();
   fireEvent.click(screen.getByRole("checkbox", { name: "Follow file" }));
   expect(screen.getByRole("button", { name: "//... ×" })).toBeTruthy();
   expect(input.onOpenBuild).not.toHaveBeenCalled();
@@ -94,6 +95,8 @@ it("adds and removes //... as one build-view pattern without invoking a source a
   render(<BuildGraphPane capture={buildCapture} mockAgents={true} mockVersion={1} onOpenBuild={open} />);
   const input = screen.getByRole("combobox", { name: "Bazel target" });
   const add = screen.getByRole("button", { name: "Add target" });
+  fireEvent.click(screen.getByRole("button", { name: "//... ×" }));
+  fireEvent.change(input, { target: { value: "//:desktop-bundle" } }); fireEvent.click(add);
   const before = screen.getAllByRole("button", { name: /^Graph node / }).length;
   fireEvent.change(input, { target: { value: "//..." } });
   expect((add as HTMLButtonElement).disabled).toBe(false);
@@ -104,7 +107,7 @@ it("adds and removes //... as one build-view pattern without invoking a source a
   expect(screen.getAllByRole("button", { name: /^Graph node / })).toHaveLength(before);
   fireEvent.change(input, { target: { value: "//missing/..." } });
   expect((add as HTMLButtonElement).disabled).toBe(true);
-  expect(screen.getByRole("status").textContent).toContain("No captured rule targets match");
+  expect(document.querySelector("#build-pattern-feedback")?.textContent).toContain("No observed rule targets match");
   expect(open).not.toHaveBeenCalled();
 });
 function observation(directory = "", patch: Partial<RepositoryObservation> = {}): RepositoryObservation {
@@ -323,7 +326,7 @@ describe("repository controls and coordinated cameras", () => {
     // Repository props are published on the next frame; await that below.
     return waitFor(() => expect((build as HTMLButtonElement).disabled).toBe(false)).then(() => {
       fireEvent.click(build);
-      expect(screen.getByText(/Snapshot reference · 1 visible links · not live/)).toBeTruthy();
+      expect(screen.getByText(/CAPTURE · 1 visible links · not binary build truth/)).toBeTruthy();
       fireEvent.click(screen.getByRole("button", { name: /Mock agents/ }));
       expect(screen.getByText(/MOCK ACTIVITY · visual only · no agents launched/)).toBeTruthy();
       fireEvent.click(screen.getByRole("button", { name: /Mock agents/ }));
@@ -393,6 +396,7 @@ describe("actual App repository navigation wiring", () => {
       }
       if (input.type === "focus.select") { snapshot = { ...snapshot, focus: input.focus }; publish(); }
       return { protocolVersion: PROTOCOL_VERSION, requestId: input.requestId, ok: true, sequence, snapshot,
+        ...(input.type === "buildGraph.observe" ? { buildGraph: fixtureBuildObservation(snapshot) } : {}),
         ...(input.type === "agent.snapshot" ? { agent: { kind: "snapshot" as const, snapshot: emptyAgentWorkbench().snapshot } } : {}),
         ...(input.type === "file.read" ? { file: { kind: "read" as const, path: input.path, content: "one\ntwo\nthree\n", revision: "a".repeat(64), size: 14 } } : {}) };
     });
@@ -431,7 +435,7 @@ describe("actual App repository navigation wiring", () => {
     }
     expect(validTaskReference({ path: "core/https:reference.ts", navigation: "candidate", line: null, note: null })).toBe(false);
     fireEvent.click(screen.getByRole("button", { name: /^Build graph$/ }));
-    const build = screen.getByRole("region", { name: "Bazel build graph" });
+    const build = await screen.findByRole("region", { name: "Bazel build graph" });
     expect(build.getAttribute("data-file-focus")).toBe("core/naïve.ts");
     fireEvent.click(within(screen.getByRole("navigation", { name: "Document tabs" })).getByTitle("core/files.ts"));
     await waitFor(() => expect(build.getAttribute("data-file-focus")).toBe("core/files.ts"));

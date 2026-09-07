@@ -23,7 +23,7 @@ export function indexService(publication: ServiceContextObservation | undefined)
 }
 export function indexCapture(capture: BuildLinkSnapshot | undefined) {
   const paths = new Map<string, string[]>();
-  if (!capture || capture.links.length > 4096 || new TextEncoder().encode(JSON.stringify(capture)).byteLength > 1024 * 1024 ||
+  if (!capture || capture.links.length > (capture.observation ? 8000 : 4096) || new TextEncoder().encode(JSON.stringify(capture)).byteLength > (capture.observation ? 4 : 1) * 1024 * 1024 ||
       [capture.repositoryId, capture.revision, capture.command].some((item) => !item || item.length > 512) || !Number.isFinite(Date.parse(capture.capturedAt))) return { capture: undefined, paths };
   const targets = new Set(buildTargets(capture));
   // Same exact-reference relation as fileBuildTargets; invert it once for all
@@ -106,10 +106,10 @@ export function composeContext(subject: ContextSubject | null, input: ContextObs
   if (subject.kind === "file") {
     const c = capture.capture;
     const labels = c?.repositoryId === subject.repositoryId ? capture.paths.get(subject.path) ?? [] : undefined;
-    sections.push(labels && c ? { id: "capture", title: "Direct references in CAPTURE", rows: labels.map((label) => ({ label: "Captured target", value: label })), evidence: {
-      provider: "Captured Bazel query", repositoryId: c.repositoryId, worldId: subject.worldId, origin: c.command, revisionKind: "capture", revision: c.revision,
-      observedAt: c.capturedAt, timeBasis: "producer", freshness: "CAPTURE", coverage: "Recorded entries only; unknown outside this dated capture",
-    }, notice: labels.length ? "Captured references are not current ownership." : "No direct references in this capture; current target ownership unavailable." } : { id: "capture", title: "Captured build references", notice: "No bounded registered capture for this repository.", rows: [] });
+    sections.push(labels && c ? { id: "capture", title: c.observation ? "Declared build references" : "Direct references in CAPTURE", rows: labels.map((label) => ({ label: c.observation ? "Referencing rule" : "Captured target", value: label })), evidence: {
+      provider: c.observation ? "Repository Bazel query" : "Captured Bazel query", repositoryId: c.repositoryId, worldId: subject.worldId, origin: c.command, revisionKind: c.observation ? "build-query" : "capture", revision: c.revision,
+      observedAt: c.capturedAt, timeBasis: "producer", freshness: c.observation ? input.ready && c.observation.status === "current" ? "current" : "retained" : "CAPTURE", coverage: c.observation?.coverage ?? "Recorded entries only; unknown outside this dated capture",
+    }, notice: c.observation ? `Local declaration observation ${c.observation.status}; ${labels.length ? "references, not exclusive ownership or binary build evidence" : "no references in returned scope; omitted scope remains unknown"}.` : labels.length ? "Captured references are not current ownership." : "No direct references in this capture; current target ownership unavailable." } : { id: "capture", title: "Build references", notice: "No bounded registered build observation for this repository.", rows: [] });
   }
   if (subject.kind === "file") sections.push(taskBacklinkSection(subject, input.tasks));
   sections.push({ id: "unsupported", title: "Providers not available", rows: [], notice: "Inferred bug, design and lesson links; deployment, runtime and function metrics are unavailable. Missing evidence is not zero." });
