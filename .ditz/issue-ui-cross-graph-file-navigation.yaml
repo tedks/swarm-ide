@@ -1,0 +1,20 @@
+id: ui-cross-graph-file-navigation
+title: Audit explicit source-tab navigation across directory and service projections
+desc: File tabs coordinate source focus and Build graph now follows exact captured
+  file references. User also requested corresponding repo/component graph recentering
+  when switching files. Audit cross-directory tab selection and available service
+  mappings; implement deliberate explicit navigation without background camera jumps
+  or invented mappings, retaining dirty source and cursor.
+type: task
+component: default
+release:
+reporter: Ted Smith <tedks@riseup.net>
+status: unstarted
+disposition:
+creation_time: 2026-09-07T00:20:20-00:00
+references: []
+log_events:
+- time: 2026-09-07T00:20:20-00:00
+  who: Ted Smith
+  what: created
+  comment: ""
