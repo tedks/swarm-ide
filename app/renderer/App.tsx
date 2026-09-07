@@ -37,10 +37,11 @@ import { useUiDemo, MockRunRail, MockConversation, MockContext, MOCK_AGENTS, typ
 import { protectsAgentIntent } from "./agents/live-state";
 import "./agents/agents.css";
 import { TaskBridgeClient } from "./tasks/client";
+import { PlanWorkspace } from "./plans/PlanWorkspace";
 import { TaskPanel } from "./tasks/TaskPanel";
 import { TaskDetail } from "./tasks/TaskDetail";
 import { taskLineTarget, validTaskReference } from "./tasks/reveal";
-import type { TaskFileRef, TaskBacklinkTarget } from "../../protocol/tasks";
+import type { TaskFileRef, TaskBacklinkTarget, TaskSnapshot } from "../../protocol/tasks";
 import { isRepositoryPath, type RepositoryEntry, type RepositoryRequest } from "../../protocol/repository";
 import { useRepositoryNavigation } from "./repository/navigation";
 import { RepositoryNavigation } from "./repository/RepositoryNavigation";
@@ -268,17 +269,27 @@ export function App() {
     const media = window.matchMedia?.("(max-width: 1100px)");
     const update = () => taskClient.setVisible(Boolean(workspace.snapshot) && (
       taskSidebarVisible && (!media?.matches || compactPanel === "work") ||
-      taskDocumentConsumer || taskContextConsumer && (!media?.matches || compactPanel === "info")));
+      activeLens === "Plan" || taskDocumentConsumer || taskContextConsumer && (!media?.matches || compactPanel === "info")));
     update();
     media?.addEventListener("change", update);
     return () => { media?.removeEventListener("change", update); };
-  }, [taskClient, compactPanel, Boolean(workspace.snapshot), taskSidebarVisible, taskDocumentConsumer, taskContextConsumer]);
+  }, [taskClient, compactPanel, Boolean(workspace.snapshot), taskSidebarVisible, taskDocumentConsumer, taskContextConsumer, activeLens]);
 
   const selectTask = useCallback((id: string) => {
     ++navigationIntent.current;
     setRevealNotice("");
     taskClient.select(id);
     inspectTask(id);
+  }, [taskClient, inspectTask]);
+  const openPlanningTask = useCallback(async (snapshot: TaskSnapshot, id: string): Promise<boolean> => {
+    const intent = ++navigationIntent.current;
+    pendingBacklinkIntent.current = intent;
+    try {
+      const opened = await taskClient.inspectGraphTask(snapshot, id, () => navigationIntent.current === intent && mounted.current);
+      if (!opened || navigationIntent.current !== intent || !mounted.current) return false;
+      setRevealNotice(""); inspectTask(id); setCompactPanel("info");
+      return true;
+    } finally { if (pendingBacklinkIntent.current === intent) pendingBacklinkIntent.current = null; }
   }, [taskClient, inspectTask]);
   const sourceInformation = useCallback(() => {
     ++navigationIntent.current;
@@ -1014,7 +1025,7 @@ export function App() {
   const serviceIndex = useMemo(() => indexService(publication), [serviceIdentity]);
   const [buildGraphVisible, setBuildGraphVisible] = useState(false), [directoryBuildVisible, setDirectoryBuildVisible] = useState(false);
   const buildGraph = useBuildGraph(snapshot?.project.id, snapshot?.world.id, contextRealm(),
-    (buildGraphVisible || directoryBuildVisible) && (!window.swarmLifecycle || lifecycle?.core.phase === "ready"));
+    activeLens !== "Plan" && (buildGraphVisible || directoryBuildVisible) && (!window.swarmLifecycle || lifecycle?.core.phase === "ready"));
   const buildLinks = useMemo(() => buildGraphLinks(buildGraph.observation), [buildGraph.observation]);
   const captureIndex = useMemo(() => indexCapture(buildLinks), [buildLinks]);
   const contextSubject = attention.realm === contextRealm() ? attention.subject : null;
@@ -1188,6 +1199,7 @@ export function App() {
     ] : []),
     { label: "Open repository path", detail: "Exact relative path fallback, independent of captured search coverage", run: () => { setPalettePathMode(true); setCommandQuery(""); requestAnimationFrame(() => commandInput.current?.focus()); } },
     { label: "Show repository Tasks", detail: "inspect planning metadata without moving source", run: () => { setPaletteOpen(false); setCompactPanel("work"); } },
+    { label: "Show planning graphs", detail: "Real Ditz blockage and repo-authored plans · selection does not execute", run: () => { setPaletteOpen(false); setActiveLens("Plan"); } },
     { label: "Refresh tasks", detail: "observe local metadata; no fetch, task mutation or dispatch", run: () => { setPaletteOpen(false); setCompactPanel("work"); void taskClient.refresh(); } },
     { label: "Show task details", detail: "retained task selection in Information", run: () => { setPaletteOpen(false); showTaskDetails(); } },
     { label: "Ask an agent about this focus", detail: "inspect disk context before explicit read-only launch", run: () => { setPaletteOpen(false); setCompactPanel("work"); if (workspaceRef.current.snapshot) agentClient.openDraft(workspaceRef.current.snapshot.focus); } },
@@ -1245,10 +1257,13 @@ export function App() {
           {fileTabs.map((tab) => <div key={tab.path} className={`surface-tab ${activeFile?.path === tab.path && !textDocumentVisible ? "active" : ""}`}><button className="surface-tab-main" onClick={() => activateFile(tab.path)} title={tab.path}><span className={`tab-state status-${tab.status}`}>{tab.status === "dirty" ? "●" : tab.status === "saving" ? "◌" : tab.status === "conflict" || tab.status === "error" ? "!" : "◇"}</span>{tab.path.split("/").at(-1)}</button><button className="surface-tab-close" aria-label={`Close ${tab.path}`} onClick={() => closeFile(tab.path)}>×</button></div>)}
           {taskDocumentOpen ? <div className={`surface-tab ${textDocumentVisible ? "active" : ""}`}><button className="surface-tab-main" onClick={() => { setTaskDocumentVisible(true); inspectTask(tasks.selectedTaskId); }} title={tasks.selectedTaskId ?? "Task"}>▤ {tasks.detail?.title ?? "Task document"}</button><button className="surface-tab-close" aria-label="Close task document" onClick={closeTaskDocument}>×</button></div> : null}
         </nav> : null}
-        <div tabIndex={-1} className={`graphs-grid ${textOpen ? "is-sidebar" : "is-active"}`}>{snapshot.graphs.map((graph) => {
+        <div hidden={activeLens === "Plan"} inert={activeLens === "Plan"} tabIndex={-1} className={`graphs-grid ${textOpen ? "is-sidebar" : "is-active"}`}>{snapshot.graphs.map((graph) => {
           const pane = <GraphPane key={graph.topologyId} graph={graph} mockAgents={demo.graphs} mockGraphVersion={demo.graphVersion} buildLinkSnapshot={graph.directory ? buildLinks : undefined} onBuildLinksVisibility={graph.directory ? setDirectoryBuildVisible : undefined} buildGraphStatus={buildGraph.observation?.status} focus={snapshot.focus} mappings={snapshot.mappings} reframeVersion={graphReframe} interfaceZoom={zoomPercent} onFocus={selectFocus} onActivate={graph.topologyId === "service" ? activateDefinition : undefined} onInspectFocus={(focus) => { ++navigationIntent.current; inspectGraph(focus); setSelectedConnection(null); void invoke({ type: "focus.select", requestId: requestId(), protocolVersion: PROTOCOL_VERSION, focus }); }} onNavigateDirectory={graph.directory ? enterDirectory : undefined} onConnectionFocus={(connection) => selectConnection(connection, graph.topologyId)} onReconcile={() => { void reconcile(); }} reconciliationRunning={reconciliationRunning} repositoryCameraIntent={graph.directory ? repository.cameraIntent : undefined} />;
           return graph.topologyId === "service" ? <TopologyViews key={graph.topologyId} service={pane} focusedFile={snapshot.focus.domain === "repo" && snapshot.focus.path && snapshot.focus.key === `file:${snapshot.focus.path}` ? snapshot.focus.path : activeFile?.path ?? null} showBuildVersion={showBuildVersion} capture={buildLinks} observation={buildGraph.observation} onRefresh={() => { void buildGraph.refresh(); }} onVisibility={setBuildGraphVisible} mockAgents={demo.graphs} mockVersion={demo.graphVersion} onOpenBuild={openLinkedFile} reframeVersion={graphReframe} /> : pane;
         })}</div>
+        <PlanWorkspace key={`${snapshot.project.id}:${snapshot.world.id}`} visible={activeLens === "Plan"} worldId={snapshot.world.id} repositoryId={snapshot.project.id}
+          generation={coreGenerationRef.current} connected={!coreUnavailable && Boolean(window.swarm)} tasks={tasks} client={taskClient}
+          onOpenFile={openLinkedFile} onOpenTask={openPlanningTask} />
         {textOpen ? <ResizeDivider label="Resize graphs and text" className="text-divider" container=".navigation-field" value={graphShare} minimum={25} maximum={70} initial={43} onChange={setGraphShare} /> : null}
         {activeFile ? <section hidden={textDocumentVisible} onPointerDown={sourceInformation} onFocusCapture={sourceInformation} className={`source-surface ${["conflict", "unknown", "error"].includes(activeFile.status) ? "has-banner" : ""}`}>
           <header><div><span className="eyebrow">source observatory</span><strong>{activeFile.path}</strong></div><div className={`file-state file-${activeFile.status}`}><i />{activeFile.status}<button onClick={() => void saveFile(activeFile.path)} disabled={activeFile.status !== "dirty" || coreUnavailable}>Save <kbd>Ctrl S</kbd></button></div></header>
