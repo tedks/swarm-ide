@@ -5,7 +5,7 @@ import { join } from "node:path";
 const source = await realpath(process.argv[2]);
 const scratch = await realpath(process.env.SWARM_INSTALL_SCRATCH);
 const evidence = await realpath(process.env.SWARM_INSTALL_EVIDENCE);
-const checkout = join(scratch, "checkout"), target = join(scratch, "target repo");
+const checkout = join(scratch, "checkout"), target = join(scratch, "target repo"), bazelTarget = join(scratch, "bazel target");
 const git = (cwd, args) => execFileSync("git", ["-c", "core.hooksPath=/dev/null", ...args], {
   cwd, encoding: "utf8", timeout: 60000, stdio: ["ignore", "pipe", "pipe"],
   env: { ...process.env, GIT_CONFIG_GLOBAL: "/dev/null", GIT_CONFIG_NOSYSTEM: "1", GIT_TERMINAL_PROMPT: "0" },
@@ -30,7 +30,14 @@ await writeFile(join(target, "tools", "dev.sh"), "#!/bin/sh\ntouch target-wrappe
 await writeFile(join(target, "tools", "bazel"), "#!/bin/sh\ntouch target-wrapper-ran\nexit 94 # selected repo is data, not launcher code\n", { mode: 0o755 });
 git(target, ["init", "-q"]); git(target, ["add", "."]);
 git(target, ["-c", "user.name=Swarm installation proof", "-c", "user.email=proof@example.invalid", "commit", "-qm", "Actual disposable non-Bazel repository"]);
+await mkdir(join(bazelTarget, "src"), { recursive: true }); await mkdir(join(bazelTarget, "tools"));
+await writeFile(join(bazelTarget, "src", "hello.ts"), '// Actual Bazel-root browsing must not execute its wrapper on open.\nexport const explicitBuildOnly = true;\n');
+await writeFile(join(bazelTarget, "MODULE.bazel"), 'module(name = "owned_installation_probe")\n');
+await writeFile(join(bazelTarget, ".gitignore"), '/target-wrapper-ran\n');
+await writeFile(join(bazelTarget, "tools", "bazel"), '#!/bin/sh\nprintf "controlled wrapper invoked\\n" >> target-wrapper-ran\nexit 94\n', { mode: 0o755 });
+git(bazelTarget, ["init", "-q"]); git(bazelTarget, ["add", "."]);
+git(bazelTarget, ["-c", "user.name=Swarm installation proof", "-c", "user.email=proof@example.invalid", "commit", "-qm", "Owned Bazel wrapper authority sentinel"]);
 await writeFile(join(evidence, "installation-inputs.json"), JSON.stringify({
-  head, source, checkout, target, taskBranch, taskYamlFiles: taskFiles.filter((path) => path.endsWith(".yaml")).length,
+  head, source, checkout, target, bazelTarget, taskBranch, taskYamlFiles: taskFiles.filter((path) => path.endsWith(".yaml")).length,
   sourceTransport: "local Git clone --no-local; committed source only", dependencies: "new node_modules; shared warm Nix/pnpm download stores allowed", modelTurns: 0,
 }, null, 2));

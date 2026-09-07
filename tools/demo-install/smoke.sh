@@ -10,10 +10,16 @@ SWARM_INSTALL_EVIDENCE=$(mktemp -d "$evidence_root/run.XXXXXX")
 export SWARM_INSTALL_SCRATCH
 SWARM_INSTALL_SCRATCH=$(mktemp -d /tmp/swarm-demo-install.XXXXXX)
 cleanup_checkout() {
+  local status=$?
+  trap - EXIT
   if [[ -d "$SWARM_INSTALL_SCRATCH/checkout/.git" ]]; then
-    (cd "$SWARM_INSTALL_SCRATCH/checkout" && nix develop --command bazel shutdown) >>"$SWARM_INSTALL_EVIDENCE/cleanup.log" 2>&1 || true
+    if ! (cd "$SWARM_INSTALL_SCRATCH/checkout" && nix develop --command bazel shutdown) >>"$SWARM_INSTALL_EVIDENCE/cleanup.log" 2>&1; then
+      echo 'Owned checkout Bazel shutdown failed; see cleanup.log' >&2
+      status=1
+    fi
   fi
   echo "Owned disposable checkout retained for evidence: $SWARM_INSTALL_SCRATCH"
+  exit "$status"
 }
 trap cleanup_checkout EXIT
 node "$scripts/prepare.mjs" "$source_root"
@@ -28,8 +34,9 @@ export SWARM_INSTALL_TARGET="$SWARM_INSTALL_SCRATCH/target repo"
   nix develop --command bazel build --jobs=3 //:desktop-bundle
   nix develop --command bazel test --jobs=3 //tools:dev-workspace-test
 ) >"$SWARM_INSTALL_EVIDENCE/materialization.log" 2>&1
+node "$scripts/negative.mjs"
 
-for install_case in checkout target; do
+for install_case in checkout target bazel-target; do
   export SWARM_INSTALL_CASE="$install_case"
   export SWARM_ARTIFACT_DIR="$SWARM_INSTALL_EVIDENCE/$install_case"
   mkdir -p "$SWARM_ARTIFACT_DIR"
@@ -43,4 +50,6 @@ git -C "$SWARM_INSTALL_CHECKOUT" status --porcelain >"$SWARM_INSTALL_EVIDENCE/ch
 git -C "$SWARM_INSTALL_TARGET" status --porcelain >"$SWARM_INSTALL_EVIDENCE/target-status.txt"
 [[ ! -s "$SWARM_INSTALL_EVIDENCE/checkout-status.txt" && ! -s "$SWARM_INSTALL_EVIDENCE/target-status.txt" ]]
 [[ ! -e "$SWARM_INSTALL_TARGET/target-wrapper-ran" ]]
+git -C "$SWARM_INSTALL_SCRATCH/bazel target" status --porcelain >"$SWARM_INSTALL_EVIDENCE/bazel-target-status.txt"
+[[ ! -s "$SWARM_INSTALL_EVIDENCE/bazel-target-status.txt" ]]
 echo "Actual clean-checkout dev launch and second repository passed: $SWARM_INSTALL_EVIDENCE"

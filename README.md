@@ -47,7 +47,9 @@ Relative paths are resolved from the directory where you invoke the command.
 The IDE's dependencies and development output stay in the IDE checkout, not the
 target. A non-Bazel repository can still be browsed; unavailable build or service
 evidence is not replaced by demo data. Use trusted local repositories: building
-a repository can execute its build rules.
+a repository can execute its build rules and repository Bazel wrapper. Opening
+an external target does not automatically start that build; choose Build only
+when you intend to execute that repository's tooling.
 
 Leave the terminal running. Renderer changes use hot reload; most local-core
 changes recover without replacing the native window. Main-process changes need

@@ -5,6 +5,13 @@ filegroup(
     srcs = glob(["*.sh", "*.mjs"]),
 )
 
+sh_test(
+    name = "startup-guard-test",
+    srcs = ["startup-test.sh"],
+    data = ["//:quality_sources"],
+    tags = ["local"],
+)
+
 sh_binary(
     name = "smoke",
     srcs = ["smoke.sh"],
