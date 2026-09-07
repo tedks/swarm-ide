@@ -272,6 +272,22 @@ discard late callbacks using the existing preparation/lifetime guard. No queue
 of background scans. A ref-only check never launders a prior failed full scan
 into accepted materialization.
 
+Make shutdown executable, not just a timer promise. Add optional
+`dispose(): Promise<void>` to the core `AgentContextProvider` interface and an
+idempotent implementation on RegisteredAgentContextProvider. Disposal immediately
+closes context intake, invalidates its draft and aborts registered metadata
+operations; its promise waits for those owned Git children/parser workers to
+settle. Register ownership before starting work, including late-start/abort races.
+Existing trusted source callbacks are not claimed cancellable; their existing
+bounded response and no-late-publication rules still apply. D4 owns the narrow
+production composition: synchronously call `service.shutdown()` to close service
+ingress, immediately call `context.dispose()` before awaiting either, then await
+both settlements before `store.close()`. Observe both failures without an early
+rejection leaving the other drain unobserved. Do not edit R3 service internals
+or close storage ahead of accepted writes. Failed owned cleanup is not success.
+The rehearsal composition must use the same ownership ordering. Require a held
+prepare/revalidate → shutdown regression and repeated-dispose/late-start cases.
+
 Any changed commit (even unrelated issue changes), mismatched blob/ID, missing
 task/ref/object, malformed/limited metadata, expired read or changed
 world/source/mapping/config returns `STALE_CONTEXT` with a fixed actionable

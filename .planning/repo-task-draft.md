@@ -54,6 +54,12 @@ worker. A new core-only resolver can reuse those primitives without silently
 refreshing task selection or creating another parser. A full bounded scan is
 acceptable only at explicit Prepare/revalidation, never typing or focus changes.
 
+The independent native review found that AgentContextProvider has no disposal
+hook and production shutdown waits on a service queue that can be awaiting
+preparation. A cancellation promise without that hook is incomplete. The design
+now assigns an optional idempotent context dispose seam and exact production
+ordering, plus a held-prepare/shutdown regression, without changing R3 internals.
+
 ## Decision Log
 
 
@@ -202,6 +208,13 @@ UNSUPPORTED_CONTROL, never drops data. No-task preparation and legacy history
 must still work. Base acceptance is exact red/green schema/formatter/store
 evidence and no visible feature claim. ROOT verifies this base before consumers.
 
+D3 also owns optional `dispose(): Promise<void>` on AgentContextProvider and
+the RegisteredAgentContextProvider disposal interface, with no-op compatibility
+for context providers that own no asynchronous resources. Its concrete D4
+implementation must invalidate drafts and close intake synchronously, abort
+registered metadata operations, then await owned Git/parser settlement. Add
+interface/closed-intake tests now; D4 proves actual process cleanup.
+
 ### D4 — core materialization, no renderer ownership
 
 
@@ -233,7 +246,21 @@ observation. Cache eviction alone does not authorize or fabricate a result;
 core independently reads a pin, and UI must refresh before accepting stale
 preview. Missing/changed/malformed/limited metadata returns STALE_CONTEXT with
 fixed safe diagnostics; byte overflow is OUTPUT_LIMIT. Do not change agent
-policy, admission, receipt, shutdown or process-control logic.
+policy, admission, receipt, R3 service shutdown internals or process-control logic.
+
+D4 owns the narrow production shutdown composition as well: invoke
+service.shutdown() to synchronously close ingress, then context.dispose()
+immediately, without awaiting either call first. Observe both settlements before
+closing the store, including rejection paths; no unobserved drain or storage
+close ahead of accepted writes. Register owned metadata operations before entry
+so disposal cannot miss a late-starting child. Repeated dispose is idempotent;
+it waits only for its owned metadata work and makes no claim to cancel arbitrary
+trusted source callbacks or kernel I/O. Existing bounded-response and stale-
+publication rules remain. Failed owned cleanup is not reported successful.
+Tests hold prepare and revalidate during metadata work, trigger shutdown and
+assert abort, settlement, no late draft publication and unchanged store-drain
+ordering. Cover repeated dispose and abort-before-child-start as well. D6 uses
+that same ordering in the exact rehearsal composition, not a new service API.
 
 ### D5 — deliberate draft interaction, no core/store ownership
 
@@ -339,11 +366,11 @@ docs worktree. Materialize dependencies and execute only Bazel-owned gates:
     nix develop --command bazel build //... --jobs=3
     flock --close /tmp/swarm-ide-overnight.UgO2Aw/virtual.lock nix develop --command bazel test //... --jobs=3 --nocache_test_results
 
-D6's supported existing evidence entry points are `//tools:desktop-tasks-smoke`
+D6's supported existing evidence entry points are `//tools/task-integration:smoke`
 and `//tools:desktop-agent-rehearsal-smoke`; their scenarios must first be
 extended with this contract's assertions. Run with the owned harness, e.g.:
 
-    flock --close /tmp/swarm-ide-overnight.UgO2Aw/virtual.lock env SWARM_VIRTUAL_DESKTOP_PORT=55174 nix develop --command bazel run //tools:desktop-tasks-smoke --jobs=3
+    flock --close /tmp/swarm-ide-overnight.UgO2Aw/virtual.lock env SWARM_VIRTUAL_DESKTOP_PORT=55174 nix develop --command bazel run //tools/task-integration:smoke --jobs=3
 
 The unchanged command alone is not task-attachment proof. Archive frozen-head
 logs/evidence and exact tree attribution. Hosted CI is ignored, never labelled
@@ -444,3 +471,9 @@ Revision note (2026-09-07, D2): initial design grounds one-slot attachment,
 independent source target, exact canonical budgets/hash, explicit V1/V2
 compatibility and conservative metadata revalidation in the landed code.
 All implementation milestones remain unstarted pending ROOT decisions.
+
+Review revision (2026-09-07, D2): an independent Important finding made context
+disposal/shutdown ordering explicit, including precise ownership and held-work
+tests. Also corrected the inherited task smoke label to the actual existing
+`//tools/task-integration:smoke` target. These are design corrections, not
+implemented cleanup or newly executed GUI evidence.
