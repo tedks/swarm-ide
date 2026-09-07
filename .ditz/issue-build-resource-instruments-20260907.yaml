@@ -18,3 +18,13 @@ log_events:
   who: Ted Smith
   what: started
   comment: ""
+- time: 2026-09-07T23:21:12-00:00
+  who: Ted Smith
+  what: commented
+  comment: R4 ready PR68 executable ce1456e, docs47f889c. Native Codex fixpoint CLEAN;
+    local quality1673/122 plus focused13, typechecks/node/renderer/package builds
+    passed. Actual owned virtual:140/55220 keyboard example/basis, exact dirty source/cursor
+    and2graph retention proof PASS2.621s total/cleanup1/zero renderer errors. Real
+    telemetry remains illustrative only; existing package startup build recorded separately.
+    Follow-ups build-resource-samples-provenance and graph-space-disclosure-keyboard.
+    ROOT owns normal merge/close/adoption.
