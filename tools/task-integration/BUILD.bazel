@@ -1,5 +1,11 @@
 package(default_visibility = ["//visibility:public"])
 
+sh_test(
+    name = "owned-port-test",
+    srcs = ["owned-port.test.sh"],
+    data = [":sources"],
+)
+
 filegroup(
     name = "sources",
     srcs = glob(["*.mjs", "*.cjs", "*.mts", "*.sh"]),

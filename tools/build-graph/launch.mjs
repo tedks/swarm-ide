@@ -1,20 +1,16 @@
 import { execFileSync, spawn } from "node:child_process";
 import { createServer } from "node:http";
-import { access, lstat, mkdir, mkdtemp, readFile, realpath, rm, writeFile } from "node:fs/promises";
+import { access, mkdir, mkdtemp, readFile, realpath, rm, writeFile } from "node:fs/promises";
 import { dirname, isAbsolute, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { createBuildGraphFixture } from "./fixture.mjs";
 import { resolveElectronRuntimeArguments } from "../electron-runtime.mjs";
+import { resolveOwnedVirtualPort } from "../task-integration/owned-port.mjs";
 
 const scripts = dirname(fileURLToPath(import.meta.url));
 const owner = process.env.SWARM_X11_OWNERSHIP_DIR;
-if (!owner || !isAbsolute(owner) || process.env.DISPLAY === ":0" || process.env.DISPLAY !== process.env.SWARM_X11_DISPLAY)
-  throw new Error("Owned virtual X11 required");
-const ownerStat = await lstat(owner);
-if (!ownerStat.isDirectory() || ownerStat.isSymbolicLink() || ownerStat.uid !== process.getuid() || (ownerStat.mode & 0o077) !== 0 ||
-    (await readFile(join(owner, "token"), "utf8")).trim() !== process.env.SWARM_X11_TOKEN) throw new Error("Invalid virtual owner");
+const port = await resolveOwnedVirtualPort();
 const evidence = await realpath(process.env.SWARM_BUILD_GRAPH_EVIDENCE);
-if (Number(process.env.SWARM_DEV_PORT) !== 55174) throw new Error("BuildGraph proof requires owned test port 55174");
 const electron = process.env.SWARM_ELECTRON_BIN;
 if (!electron || !isAbsolute(electron)) throw new Error("Nix Electron required");
 const runfiles = process.env.TEST_SRCDIR || process.env.RUNFILES_DIR;
@@ -32,7 +28,7 @@ try {
   const fixture = await createBuildGraphFixture(scratch, process.env.SWARM_BUILD_GRAPH_CASE, process.cwd());
   await writeFile(join(evidence, "fixture.json"), JSON.stringify(fixture));
   server = createServer((_request, response) => { response.writeHead(200); response.end("owned packaged build-graph proof"); });
-  await new Promise((resolve, reject) => { server.once("error", reject); server.listen(55174, "127.0.0.1", resolve); });
+  await new Promise((resolve, reject) => { server.once("error", reject); server.listen(port, "127.0.0.1", resolve); });
   const environment = { ...process.env, NODE_PATH: "", SWARM_BUILD_GRAPH_PACKAGE: extracted, SWARM_BUILD_GRAPH_PROFILE: profile };
   for (const name of ["SWARM_RENDERER_URL", "SWARM_DEV_CONTROL", "SWARM_WORKSPACE_ROOT", "SWARM_AGENT_STORE_ROOT", "NODE_OPTIONS", "ELECTRON_RUN_AS_NODE"])
     delete environment[name];

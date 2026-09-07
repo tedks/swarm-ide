@@ -1,18 +1,23 @@
 package(default_visibility = ["//visibility:public"])
 filegroup(name = "sources", srcs = glob(["*.mjs", "*.cjs", "*.sh"]))
+sh_test(
+    name = "owned-port-test",
+    srcs = ["owned-port.test.sh"],
+    data = [":sources"],
+)
 sh_binary(name = "probe-build", srcs = ["probe-build.sh"])
 genrule(name = "probe-module", srcs = ["//:quality_sources", "//:package.json"], outs = ["probe.cjs"], cmd = "$(location :probe-build) $@ $(location //:package.json)", tools = [":probe-build"], local = True)
 sh_binary(name = "probe", srcs = ["probe.sh"], data = [":sources", ":probe-module", "//:desktop-bundle"], tags = ["manual"])
 sh_test(
     name = "packaged-build-graph-test",
     srcs = ["smoke.sh"],
-    data = [":sources", "//:desktop-bundle", "//tools:virtual-desktop-run.sh", "//tools:x11-driver-source"],
+    data = [":sources", "//:desktop-bundle", "//tools:virtual-desktop-run.sh", "//tools:x11-driver-source", "//tools/task-integration:sources"],
     env_inherit = ["SWARM_ELECTRON_BIN", "SWARM_ELECTRON_NO_SANDBOX", "SWARM_SOURCE_WORKSPACE", "SWARM_VIRTUAL_DESKTOP_PORT", "SWARM_BAZEL_BIN", "SWARM_BAZEL_JAVA_HOME"],
     tags = ["desktop", "exclusive", "local", "no-sandbox"],
     timeout = "long",
 )
 sh_binary(
     name = "smoke", srcs = ["smoke.sh"],
-    data = [":sources", "//:desktop-bundle", "//tools:virtual-desktop-run.sh", "//tools:x11-driver-source"],
+    data = [":sources", "//:desktop-bundle", "//tools:virtual-desktop-run.sh", "//tools:x11-driver-source", "//tools/task-integration:sources"],
     tags = ["manual"],
 )
