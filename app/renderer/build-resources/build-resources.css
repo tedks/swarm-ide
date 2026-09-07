@@ -1,0 +1,50 @@
+.build-resources { min-width: 0; container-type: inline-size; color: #b9cec5; font-size: 10px; }
+.build-resources :focus-visible { outline: 2px solid #62d9ad; outline-offset: 2px; }
+.resource-idle { margin: 0 0 8px; color: #8ca59a; font-size: 10px; }
+.resource-muted { color: #7d948a; font-size: 9px; }
+.resource-jobs { display: grid; gap: 8px; margin-bottom: 8px; }
+.resource-job { min-width: 0; border-left: 2px solid currentColor; padding: 1px 0 1px 8px; }
+.resource-job > header { display: flex; align-items: baseline; gap: 8px; }
+.resource-job > header strong { flex: 1; min-width: 0; color: #c8d9d0; overflow-wrap: anywhere; font: 500 10px "DM Mono", monospace; }
+.resource-job > header span { flex-shrink: 0; font-size: 9px; }
+.resource-progress-row { display: flex; align-items: center; gap: 8px; padding: 5px 0; font: 9px "DM Mono", monospace; color: #9cafaa; }
+.resource-progress-row progress { width: 100%; height: 3px; appearance: none; border: 0; background: #203831; accent-color: #58c79e; }
+.resource-progress-row progress::-webkit-progress-bar { background: #203831; }
+.resource-progress-row progress::-webkit-progress-value { background: #58c79e; }
+.resource-job.status-red progress::-webkit-progress-value { background: #e9957a; }
+.resource-job-message { margin: 0 0 4px; color: #9cb4a8; font-size: 9px; line-height: 1.45; overflow-wrap: anywhere; white-space: pre-wrap; }
+.resource-job.status-red .resource-job-message { color: #e7a18b; }
+.resource-example-toggle { display: flex; align-items: center; gap: 5px; width: 100%; border: 1px solid #30463b; border-radius: 4px; background: #10231b; padding: 5px 7px; text-align: left; color: #b8d5c3; font-size: 10px; cursor: pointer; }
+.resource-example-toggle:hover { background: #193126; border-color: #537b62; }
+.resource-example-toggle small { margin-left: auto; color: #a8b68b; font-size: 8px; }
+.resource-example { padding: 9px 0 0; }
+.resource-example-heading { display: flex; flex-wrap: wrap; gap: 4px 8px; align-items: baseline; justify-content: space-between; }
+.resource-example-heading strong { color: #d0ded5; font-size: 10px; font-weight: 500; }
+.resource-example-heading code { color: #9fb491; font: 9px "DM Mono", monospace; overflow-wrap: anywhere; }
+.resource-example-basis { margin: 4px 0 8px; font-size: 8px; color: #91a395; }
+.resource-distribution { border-top: 1px solid #243c30; padding: 6px 0; }
+.resource-distribution > header { display: flex; gap: 5px; justify-content: space-between; align-items: baseline; }
+.resource-distribution > header strong { font-size: 10px; color: #bed3c4; }
+.resource-distribution > header > span { color: #829b8c; font-size: 8px; }
+.resource-distribution-body { display: grid; grid-template-columns: minmax(55px, .9fr) minmax(120px, 1.5fr); align-items: center; gap: 9px; margin-top: 3px; }
+.resource-distribution svg { width: 100%; min-width: 0; height: 31px; overflow: visible; color: #62d9ad; }
+.resource-memory svg { color: #bdc788; }
+.resource-distribution svg polyline { stroke: currentColor; stroke-width: 1.5; vector-effect: non-scaling-stroke; fill: none; stroke-linejoin: round; }
+.resource-distribution .resource-baseline { stroke: #365142; stroke-width: 1; }
+.resource-distribution dl { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; margin: 0; }
+.resource-distribution dt { font-size: 8px; color: #8ca598; }
+.resource-distribution dd { margin: 3px 0 0; font: 10px "DM Mono", monospace; color: #d1e1d5; overflow-wrap: anywhere; }
+.resource-distribution dd small { display: block; margin-top: 2px; color: #7f9989; font-size: 7px; }
+.resource-profile-basis, .resource-snapshot { margin-top: 4px; font-size: 9px; color: #829b8c; }
+.resource-profile-basis summary, .resource-snapshot summary { width: fit-content; cursor: pointer; padding: 3px 0; }
+.resource-profile-basis p, .resource-snapshot p { font-size: 9px; line-height: 1.55; overflow-wrap: anywhere; margin: 6px 0; }
+.resource-snapshot dl { display: flex; flex-wrap: wrap; gap: 12px; margin: 5px 0; }
+.resource-snapshot dl > div { display: flex; gap: 6px; }
+.resource-snapshot dd { margin: 0; color: #bdcfc5; }
+@container (max-width: 240px) {
+  .resource-distribution-body { grid-template-columns: minmax(0, 1fr); gap: 4px; }
+  .resource-distribution svg { height: 22px; }
+  .resource-distribution > header { flex-wrap: wrap; }
+  .resource-example-toggle { flex-wrap: wrap; }
+  .resource-example-toggle small { margin-left: 0; }
+}
