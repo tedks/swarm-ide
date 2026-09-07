@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { openContextPath } from "./context-navigation";
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { EditorView } from "@codemirror/view";
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
@@ -64,7 +65,7 @@ function setup(refs: TaskFileRef[] = [{ path: source, line: 2, note: "Explicit s
 }
 async function openSource() {
   await screen.findByRole("button", { name: "Select task task-fixture" });
-  fireEvent.click(screen.getAllByRole("button", { name: source })[0]!);
+  await openContextPath(source);
   await waitFor(() => expect(document.querySelector(".cm-content")?.textContent).toContain("one"));
   return EditorView.findFromDOM(document.querySelector(".cm-editor")!)!;
 }
@@ -151,7 +152,9 @@ describe("task inspection in the source cockpit", () => {
     await screen.findByText(/metadata line cannot safely map/);
     expect(editor.state.selection.main.head).toBe(2);
     expect(editor.state.doc.toString()).toContain("unsaved");
-    expect(request.mock.calls.slice(before).map(([input]) => input.type).filter((type) => type !== "tasks.snapshot")).toEqual(["focus.select"]);
+    // Explicit Reveal revalidates the canonical destination even for a dirty
+    // buffer, but neither replaces that buffer nor writes/replays anything.
+    expect(request.mock.calls.slice(before).map(([input]) => input.type).filter((type) => type !== "tasks.snapshot")).toEqual(["file.read", "focus.select"]);
     expect(document.activeElement).toBe(editor.contentDOM);
   });
 

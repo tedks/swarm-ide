@@ -444,7 +444,9 @@ export class RealWorkspaceProvider {
     this.snapshotValue = WorkspaceSnapshotSchema.parse({
       ...this.snapshotValue,
       focus: selected,
-      widgets: [...sourceWidget, ...(this.serviceWidgets.length ? this.serviceWidgets : initialWidgets(this.snapshotValue.revisions.working.id, this.dependencies.now()))],
+      // Legacy widgets have no subject/coverage contract. Files must not inherit
+      // the example service's ownership; Context uses the exact publication.
+      widgets: selected.domain === "repo" && selected.key.startsWith("file:") ? sourceWidget : [...sourceWidget, ...(this.serviceWidgets.length ? this.serviceWidgets : initialWidgets(this.snapshotValue.revisions.working.id, this.dependencies.now()))],
     });
     return this.snapshotValue;
   }
@@ -568,7 +570,7 @@ export class RealWorkspaceProvider {
         throw new Error("working source changed during the build; refusing stale green publication");
       }
       const buildId = artifactBuildId(bytes);
-      const adapted = adaptServiceTopology(artifact, `bazel://${SERVICE_TOPOLOGY_ARTIFACT}`, buildId, beforeFingerprint, epoch, this.dependencies.now());
+      const adapted = adaptServiceTopology(artifact, `bazel://${SERVICE_TOPOLOGY_ARTIFACT}`, buildId, beforeFingerprint, epoch, this.dependencies.now(), this.snapshotValue.project.id);
       this.serviceMappings = adapted.mappings;
       this.serviceWidgets = adapted.widgets;
       const repoGraph = this.snapshotValue.graphs.find((graph) => graph.topologyId === "repo")!;
@@ -581,6 +583,7 @@ export class RealWorkspaceProvider {
         graphs: [repoGraph, adapted.graph],
         mappings: rebindRepositoryMappings(adapted.mappings, repoGraph),
         widgets: adapted.widgets,
+        serviceContext: adapted.serviceContext,
         jobs: this.snapshotValue.jobs.map((job) => ({ ...job, status: "succeeded" as const, progress: 1, message: `Published artifact sha256:${buildId.slice(0, 12)}` })),
         activity: [{ id: `activity:topology:${epoch}:green`, at: this.dependencies.now(), kind: "system", summary: `FraudCheck topology published from ${SERVICE_TOPOLOGY_TARGET}`, status: "green" }, ...this.snapshotValue.activity].slice(0, 32),
         reconciliation: {

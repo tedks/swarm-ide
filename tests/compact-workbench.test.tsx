@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { openContextPath } from "./context-navigation";
 import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { EditorView } from "@codemirror/view";
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
@@ -53,7 +54,7 @@ async function open() {
   return request;
 }
 async function source() {
-  fireEvent.click(screen.getAllByRole("button", { name: paymentsFileFocus.path! })[0]!);
+  await openContextPath(paymentsFileFocus.path!);
   await waitFor(() => expect(document.querySelector(".cm-content")?.textContent).toContain("disk source"));
   return EditorView.findFromDOM(document.querySelector(".cm-editor")!)!;
 }

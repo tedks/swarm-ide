@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { openContextPath } from "./context-navigation";
 import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { StrictMode } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -87,7 +88,7 @@ describe("agent intent at the actual document/preload refresh boundary", () => {
 
   it("discarding agent text never discards a dirty source buffer or bypasses its refresh guard", async () => {
     const h = shell(); await openApp();
-    fireEvent.click(screen.getAllByRole("button", { name: paymentsFileFocus.path! })[0]!);
+    await openContextPath(paymentsFileFocus.path!);
     const source = await screen.findByLabelText("Source buffer");
     fireEvent.change(source, { target: { value: "PRIVATE SOURCE BUFFER" } });
     draft(); h.update({ reload: "pending" }); discard();

@@ -1,9 +1,10 @@
 # Context: facts about this thing, links to its evidence
 
-Q0 is a design-only gate based on PR39, `0313fa7`. It does not deliver these
-instruments. ROOT must approve the Q1 implementation described below before
-dispatch. [The executable plan](../.planning/contextual-information.md) supplies
-the next slice; [foundation accounting](foundation-closure.md) remains open.
+Q0 specified this contract on PR39, `0313fa7`; ROOT approved its Q1 implementation.
+PR41 delivers the first file-specific instruments and explicit attention described
+below. [The executable plan](../.planning/contextual-information.md) records actual
+local/packaged evidence and review; [foundation accounting](foundation-closure.md)
+remains open for broader providers and interactions, not silently completed.
 
 ## The first useful result
 
@@ -211,9 +212,9 @@ implementation. Keep `ui-service-source-navigation` open. A call highlight
 requires a real source digest and range provider plus revalidation; declaration
 edges cannot satisfy it.
 
-## Implementation decision for ROOT
+## Accepted implementation boundary
 
-Approve **one Q1 owner** for publication, attention, panel, and its packaged
+ROOT approved **one Q1 owner** for publication, attention, panel, and its packaged
 acceptance. These changes share `App.tsx`, snapshot validation, and selection
 semantics; a contract-only base followed by nominally parallel consumers would
 add an integration round without an independent useful result. Narrow read-only

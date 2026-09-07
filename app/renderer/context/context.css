@@ -1,0 +1,9 @@
+.artifact-context h2, .context-section { overflow-wrap: anywhere; }
+.context-section p { font-size: 11px; line-height: 1.5; color: #acbfb7; }
+.context-section dl { margin: 6px 0; font-size: 11px; }
+.context-section dt { color: #81988c; margin-top: 8px; }
+.context-section dd { margin: 3px 0 0; white-space: pre-wrap; }
+.context-section details { font-size: 10px; margin-top: 12px; color: #acbfb7; }
+.context-section summary { cursor: pointer; }
+.context-section [data-context-freshness="CAPTURE"] { color: #ddbc7e; }
+.context-section [data-context-freshness="retained"] { color: #e1b376; }

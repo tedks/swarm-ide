@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { openContextPath } from "./context-navigation";
 import { act, cleanup, fireEvent, render, renderHook, screen, waitFor } from "@testing-library/react";
 import { StrictMode } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -65,7 +66,7 @@ describe("live workbench presentation", () => {
     render(<App />);
     expect(await screen.findAllByText(/ADAPTER_POLICY_UNAVAILABLE: Effective hooks/)).toHaveLength(2); // Sidebar and agent dock remain independently useful.
     expect(screen.queryByText("Preview agent fixture")).toBeNull();
-    fireEvent.click(screen.getAllByRole("button", { name: paymentsFileFocus.path! })[0]!);
+    await openContextPath(paymentsFileFocus.path!);
     const source = await screen.findByLabelText("Source buffer");
     const graph = screen.getAllByTestId("live-graph")[0];
     fireEvent.change(source, { target: { value: "PRIVATE UNSAVED BUFFER" } });

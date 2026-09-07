@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { openContextPath } from "./context-navigation";
 import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { AgentSnapshotSchema, RunSchema, utf8Bytes } from "../protocol/agents";
@@ -145,7 +146,7 @@ describe("run-specific presentation", () => {
     window.swarmView = { setZoomPercent: async () => ({ ok: true, percent: 100 }) };
     render(<App />);
     await screen.findByRole("button", { name: "Preview agent fixture" });
-    fireEvent.click(screen.getAllByRole("button", { name: paymentsFileFocus.path! })[0]!);
+    await openContextPath(paymentsFileFocus.path!);
     const source = await screen.findByLabelText("Source buffer");
     fireEvent.change(source, { target: { value: "UNSAVED PRIVATE BUFFER" } });
     const graph = screen.getAllByTestId("agent-test-graph")[0]!;

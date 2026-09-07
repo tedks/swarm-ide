@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { openContextPath } from "./context-navigation";
 import { StrictMode } from "react";
 import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
@@ -126,8 +127,7 @@ it("preserves an outstanding save as unknown across a structural component remou
     return { request, path, disk: (text: string) => { disk = text; }, event: (sequence: number) => act(() => listener?.({ protocolVersion: PROTOCOL_VERSION, type: "workspace.changed", sequence, epoch: snapshot.reconciliation.epoch, emittedAt: "2026-09-06T00:00:00.000Z", snapshot })) };
   }
   async function open(path: string) {
-    await screen.findByText("Implementation sources");
-    fireEvent.click(screen.getAllByRole("button", { name: path })[0]!);
+    await openContextPath(path);
     await waitFor(() => expect(document.querySelector(".cm-content")?.textContent).toContain("base"));
     return EditorView.findFromDOM(document.querySelector(".cm-editor")!)!;
   }
@@ -237,11 +237,13 @@ describe("workbench shell", () => {
     expect(screen.getByText("Repository topology")).toBeTruthy();
     expect(screen.getByText("Service calls")).toBeTruthy();
     expect(screen.getByText("Changes entering the world")).toBeTruthy();
-    expect(screen.getByText("Relevant bugs")).toBeTruthy();
+    expect(screen.queryByText("Relevant bugs")).toBeNull();
+    expect(screen.getByRole("heading", { name: "Nothing selected" })).toBeTruthy();
 
     fireEvent.click(screen.getByRole("button", { name: "Inspect connection service-e1" }));
-    await waitFor(() => expect(document.querySelector(".connection-widget")?.textContent).toContain("Gateway→Checkout"));
-    expect(screen.getByRole("heading", { name: "CreateOrder" })).toBeTruthy();
+    await waitFor(() => expect(document.querySelector(".artifact-context")?.getAttribute("data-context-subject")).toBe("service-e1"));
+    expect(screen.getByRole("heading", { name: "service-e1" })).toBeTruthy();
+    expect(document.querySelector("[data-context-section='services']")?.textContent).toContain("Service artifact unavailable");
 
     fireEvent.click(screen.getByRole("button", { name: /Build topology/ }));
     await waitFor(() => expect(requests.some((item) => item.type === "reconciliation.start")).toBe(true));
@@ -436,13 +438,12 @@ describe("workbench shell", () => {
     });
     installViewBridge();
     render(<App />);
-    await screen.findByText("Implementation sources");
-    fireEvent.click(screen.getAllByRole("button", { name: paths[0] })[0]!);
+    await openContextPath(paths[0]);
     await waitFor(() => expect(document.querySelector(".cm-content")?.textContent).toContain("old"));
     expect(screen.getAllByTestId("graph-pane")).toHaveLength(2);
     expect(document.querySelector(".navigation-field.source-open")).toBeTruthy();
     expect(document.querySelector(".graphs-grid.is-sidebar")).toBeTruthy();
-    fireEvent.click(screen.getAllByRole("button", { name: paths[1] })[0]!);
+    await openContextPath(paths[1]);
     await waitFor(() => expect(document.querySelectorAll(".surface-tab-main")).toHaveLength(2)); // Documents only; graphs have their own surface.
     expect(request.mock.calls.some(([input]) => input.type === "focus.select" && input.focus.path === paths[1])).toBe(true);
     const surfaceTabs = [...document.querySelectorAll<HTMLButtonElement>(".surface-tabs > button, .surface-tab-main")];
@@ -483,9 +484,8 @@ describe("workbench shell", () => {
     Object.defineProperty(window, "swarm", { configurable: true, value: { request, onEvent: () => () => undefined } });
     installViewBridge();
     render(<App />);
-    await screen.findByText("Implementation sources");
-    fireEvent.click(screen.getAllByRole("button", { name: paths[0] })[0]!);
-    fireEvent.click(screen.getAllByRole("button", { name: paths[1] })[0]!);
+    await openContextPath(paths[0]);
+    await openContextPath(paths[1]);
     await waitFor(() => expect(screen.getByRole("button", { name: `Close ${paths[0]}` })).toBeTruthy());
     await waitFor(() => expect(screen.getByRole("button", { name: `Close ${paths[1]}` })).toBeTruthy());
     act(() => {
@@ -533,8 +533,7 @@ describe("workbench shell", () => {
     });
     installViewBridge();
     render(<App />);
-    await screen.findByText("Implementation sources");
-    fireEvent.click(screen.getAllByRole("button", { name: path })[0]!);
+    await openContextPath(path);
     await waitFor(() => expect(document.querySelector(".cm-content")?.textContent).toContain("one"));
     const editor = EditorView.findFromDOM(document.querySelector(".cm-editor")!);
     if (!editor) throw new Error("CodeMirror editor was not mounted");
@@ -560,7 +559,7 @@ describe("workbench shell", () => {
     act(() => editor.dispatch({ changes: { from: editor.state.doc.length, insert: "still mine\n" } }));
     expect(document.querySelector(".file-state")?.classList.contains("file-conflict")).toBeTruthy();
     fireEvent.keyDown(editor.contentDOM, { key: "s", code: "KeyS", ctrlKey: true });
-    expect(screen.getByText("The working file changed; your local buffer is preserved.")).toBeTruthy();
+    expect(document.querySelector(".source-surface")?.textContent).toContain("The working file changed; your local buffer is preserved.");
     expect(editor.state.doc.toString()).toContain("my unsaved line");
     expect(editor.state.doc.toString()).toContain("still mine");
     fireEvent.keyDown(window, { key: "w", ctrlKey: true });
@@ -593,14 +592,13 @@ describe("workbench shell", () => {
     Object.defineProperty(window, "swarm", { configurable: true, value: { request, onEvent: (next: (event: CoreEvent | FileEvent) => void) => { listener = next; return () => undefined; } } });
     installViewBridge();
     render(<App />);
-    await screen.findByText("Implementation sources");
-    fireEvent.click(screen.getAllByRole("button", { name: path })[0]!);
+    await openContextPath(path);
     await waitFor(() => expect(document.querySelector(".cm-content")?.textContent).toContain("base"));
     const editor = EditorView.findFromDOM(document.querySelector(".cm-editor")!);
     if (!editor) throw new Error("CodeMirror editor was not mounted");
     act(() => editor.dispatch({ changes: { from: editor.state.doc.length, insert: "mine\n" } }));
     fireEvent.keyDown(editor.contentDOM, { key: "s", ctrlKey: true });
-    await waitFor(() => expect(screen.getByText(/can be retried/)).toBeTruthy());
+    await waitFor(() => expect(document.querySelector(".field-toolbar")?.textContent).toMatch(/can be retried/));
     expect(document.querySelector(".file-state")?.classList.contains("file-dirty")).toBeTruthy();
     fireEvent.keyDown(window, { key: "w", ctrlKey: true });
     expect(screen.getByRole("button", { name: `Close ${path}` })).toBeTruthy();
@@ -651,8 +649,7 @@ describe("workbench shell", () => {
     });
     installViewBridge();
     render(<App />);
-    await screen.findByText("Implementation sources");
-    fireEvent.click(screen.getAllByRole("button", { name: path })[0]!);
+    await openContextPath(path);
     await waitFor(() => expect(document.querySelector(".cm-content")?.textContent).toContain("initial"));
     expect(requests.filter((type) => type.startsWith("file.")).slice(0, 2)).toEqual(["file.watch", "file.read"]);
     act(() => {
@@ -696,9 +693,8 @@ describe("workbench shell", () => {
     Object.defineProperty(window, "swarm", { configurable: true, value: { request, onEvent: (next: (event: CoreEvent | FileEvent) => void) => { listener = next; return () => undefined; } } });
     installViewBridge();
     render(<App />);
-    await screen.findByText("Implementation sources");
-    fireEvent.click(screen.getAllByRole("button", { name: path })[0]!);
-    await screen.findByText("Loading the canonical working file…");
+    await openContextPath(path);
+    await screen.findByText(`Opening working file ${path}…`);
     act(() => listener?.({ protocolVersion: PROTOCOL_VERSION, type: "file.changed", sequence: 1, emittedAt: "2026-09-05T12:03:00.000Z", path, revision: "b".repeat(64), change: "modified" }));
     releaseInitial(response("initial", "initial\n", "a".repeat(64)));
     await waitFor(() => expect(document.querySelector(".cm-content")?.textContent).toContain("newest"));
@@ -736,9 +732,8 @@ describe("workbench shell", () => {
     Object.defineProperty(window, "swarm", { configurable: true, value: { request, onEvent: (next: (event: CoreEvent | FileEvent) => void) => { listener = next; return () => undefined; } } });
     installViewBridge();
     render(<App />);
-    await screen.findByText("Implementation sources");
-    fireEvent.click(screen.getAllByRole("button", { name: path })[0]!);
-    await screen.findByText("Loading the canonical working file…");
+    await openContextPath(path);
+    await screen.findByText(`Opening working file ${path}…`);
     await act(async () => {
       releaseInitial(response("initial", "initial\n", "a".repeat(64)));
       await Promise.resolve();
@@ -780,14 +775,13 @@ describe("workbench shell", () => {
     Object.defineProperty(window, "swarm", { configurable: true, value: { request, onEvent: (next: (event: CoreEvent | FileEvent) => void) => { listener = next; return () => undefined; } } });
     installViewBridge();
     render(<App />);
-    await screen.findByText("Implementation sources");
-    fireEvent.click(screen.getAllByRole("button", { name: path })[0]!);
+    await openContextPath(path);
     await waitFor(() => expect(document.querySelector(".cm-content")?.textContent).toContain("initial"));
     act(() => listener?.({ protocolVersion: PROTOCOL_VERSION, type: "file.changed", sequence: 1, emittedAt: "2026-09-05T12:04:00.000Z", path, revision: "b".repeat(64), change: "modified" }));
     await waitFor(() => expect(readCount).toBe(2));
     fireEvent.click(screen.getByRole("button", { name: `Close ${path}` }));
     await waitFor(() => expect(screen.queryByRole("button", { name: `Close ${path}` })).toBeNull());
-    fireEvent.click(screen.getAllByRole("button", { name: path })[0]!);
+    await openContextPath(path);
     await waitFor(() => expect(document.querySelector(".cm-content")?.textContent).toContain("reopened"));
     releaseOldLifecycle(response("old-lifecycle", "stale\n", "b".repeat(64)));
     await act(async () => { await oldLifecycleRead; });
