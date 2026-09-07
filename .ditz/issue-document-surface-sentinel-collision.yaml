@@ -1,0 +1,20 @@
+id: document-surface-sentinel-collision
+title: Replace ambiguous graphs document-surface sentinel with typed identity
+desc: Q1 Google council found existing activeSurface string can collide with a real
+  repository file named graphs. Requires separately bounded document navigation/persistence
+  compatibility work. Q1 does not add a persistent migration or change graph/document
+  lifetimes; source inspection uses actual open tab identity, but general sentinel
+  collision remains.
+type: bugfix
+component: default
+release:
+reporter: Ted Smith <tedks@riseup.net>
+status: unstarted
+disposition:
+creation_time: 2026-09-07T03:13:34-00:00
+references: []
+log_events:
+- time: 2026-09-07T03:13:34-00:00
+  who: Ted Smith
+  what: created
+  comment: ""
