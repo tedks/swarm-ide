@@ -8,8 +8,8 @@ type: task
 component: default
 release:
 reporter: Ted Smith <tedks@riseup.net>
-status: in_progress
-disposition:
+status: closed
+disposition: fixed
 creation_time: 2026-09-06T19:02:13-00:00
 references: []
 log_events:
@@ -79,3 +79,13 @@ log_events:
     lease or master adoption; keep the 55175 canvas and user buffers. Remaining explicit
     requests tracked in ui-service-source-navigation, ui-live-build-links, ui-artifact-tiling,
     ui-context-linkages, ui-cross-graph-file-navigation, ui-mock-message-submit.
+- time: 2026-09-07T00:46:50-00:00
+  who: Ted Smith
+  what: 'closed: fixed'
+  comment: User concluded personal UI sprint; all checkpoints pushed as PR38 head
+    f27c570. Final frozen-head Bazel build34 and all13 uncached suites pass; quality1156
+    tests83 files. Native OpenAI + foreign Google fixpoint CLEAN, Anthropic credits
+    unavailable. Root owns normal merge/integration/adoption; no child integration
+    lease. Canvas55175 retained alive with possible buffers. Explicit remaining service/call
+    navigation, live Bazel, tiling and Context gaps filed separately; fixtures are
+    not real agent execution.
