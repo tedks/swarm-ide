@@ -6,6 +6,11 @@ import { parseTaskMetadata, parseTaskMetadataBatch } from "../core/tasks/metadat
 import { TaskActivityResultSchema } from "../protocol/task-activity";
 import { parseCoreResponseForRequest, PROTOCOL_VERSION } from "../protocol/schema";
 import { initialSnapshot } from "../fixtures/world";
+import { execFileSync } from "node:child_process";
+import { mkdtemp, mkdir, writeFile, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { createDitzTaskProvider } from "../core/tasks/provider";
 const blob = { algorithm: "sha1" as const, hex: "a".repeat(40) };
 const event = { time: "2026-09-06T02:31:53-00:00", who: "Fixture operator", what: "commented", comment: "Literal <script>not markup</script>" };
 it("keeps actual offset timestamps, source order and duplicate log events", () => {
@@ -44,4 +49,35 @@ it("response is bound to exact world, repository, metadata revision and task", (
   for (const delta of [{ worldId: "elsewhere" }, { repositoryId: "elsewhere" }, { taskId: "elsewhere" }, { metadataCommit: { ...blob, hex: "b".repeat(40) } }])
     expect(() => parseCoreResponseForRequest({ ...response, taskActivity: { ...result, ...delta } }, request)).toThrow();
   expect(() => parseCoreResponseForRequest(response, { type: "workspace.snapshot", requestId: "activity", protocolVersion: PROTOCOL_VERSION })).toThrow();
+});
+
+it("reads only its cached pinned Git/YAML history, retains old data on ref movement and awaits disposal", async () => {
+  const root = await mkdtemp(join(tmpdir(), "task-activity-test-"));
+  const git = (...args: string[]) => execFileSync("git", ["-c", "core.hooksPath=/dev/null", ...args], { cwd: root, encoding: "utf8",
+    env: { ...process.env, GIT_CONFIG_GLOBAL: "/dev/null", GIT_CONFIG_NOSYSTEM: "1", GIT_AUTHOR_NAME: "Fixture", GIT_AUTHOR_EMAIL: "fixture@example.invalid", GIT_COMMITTER_NAME: "Fixture", GIT_COMMITTER_EMAIL: "fixture@example.invalid" } }).trim();
+  let provider: Awaited<ReturnType<typeof createDitzTaskProvider>> | undefined;
+  try {
+    git("init", "-b", "ditz-metadata"); await mkdir(join(root, ".ditz"));
+    await writeFile(join(root, ".ditz/project.yaml"), stringify({ name: "fixture", version: "0.1", components: [{ name: "core" }], releases: [] }));
+    const issue = { id: "task", title: "Task", desc: "Instructions", type: "task", component: "core", status: "unstarted", disposition: null, log_events: [event] };
+    await writeFile(join(root, ".ditz/issue-task.yaml"), stringify(issue)); git("add", "."); git("commit", "-m", "Test metadata");
+    const first = { algorithm: "sha1" as const, hex: git("rev-parse", "HEAD") };
+    provider = await createDitzTaskProvider({ root, worldId: "world", repositoryId: "repo" });
+    expect((await provider.activity!({ metadataCommit: first, taskId: "task" })).unavailable).toBe("not-cached");
+    await provider.snapshot({ refresh: true });
+    const observed = await provider.activity!({ metadataCommit: first, taskId: "task" });
+    expect(observed.activity?.events[0]?.comment).toBe(event.comment);
+    observed.activity!.events[0]!.comment = "mutated renderer copy";
+    await writeFile(join(root, ".ditz/issue-task.yaml"), stringify({ ...issue, log_events: [{ ...event, comment: "New revision" }] }));
+    git("add", "."); git("commit", "-m", "Advance test metadata");
+    const second = { algorithm: "sha1" as const, hex: git("rev-parse", "HEAD") };
+    expect((await provider.snapshot({ refresh: false })).status).toBe("stale");
+    expect((await provider.activity!({ metadataCommit: first, taskId: "task" })).activity?.events[0]?.comment).toBe(event.comment);
+    expect((await provider.activity!({ metadataCommit: second, taskId: "task" })).unavailable).toBe("revision-expired");
+    await provider.snapshot({ refresh: true });
+    expect((await provider.activity!({ metadataCommit: first, taskId: "task" })).unavailable).toBe("revision-expired");
+    expect((await provider.activity!({ metadataCommit: second, taskId: "task" })).activity?.events[0]?.comment).toBe("New revision");
+    await provider.dispose();
+    await expect(provider.activity!({ metadataCommit: second, taskId: "task" })).rejects.toThrow("disposed");
+  } finally { await provider?.dispose(); await rm(root, { recursive: true, force: true }); }
 });

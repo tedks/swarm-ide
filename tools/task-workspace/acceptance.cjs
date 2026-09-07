@@ -47,9 +47,11 @@ async function main() {
     addEventListener("unhandledrejection", (e) => console.error(e.reason?.stack ?? e.reason)); });
   await until(() => has("[data-task-status='observed']"), "actual Ditz observation");
   stage = "source";
-  key("P", ["control"]);
+  key("K", ["control"]);
   await until(() => has(".command-palette input"), "palette");
-  await wc.insertText(fixture.sourcePath); key("Enter");
+  await wc.insertText(fixture.sourcePath);
+  await until(() => has(`[data-file-search-path='${fixture.sourcePath}']`), "exact filename result");
+  key("Enter");
   await until(async () => (await sourceState())?.text === fixture.sourceText, "real source");
   await run(() => document.querySelector(".cm-content").focus()); key("End", ["control"]);
   await until(async () => (await sourceState())?.anchor === fixture.sourceText.length, "end of source");

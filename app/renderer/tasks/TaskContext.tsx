@@ -49,7 +49,7 @@ export function TaskContext(props: TaskContextProps) {
           {activity.events.length ? <ol className="task-update-log">{[...activity.events].reverse().map((event) => <li key={event.ordinal}>
             <strong>{displayTaskText(event.what)}</strong><small><time>{event.time}</time> · {displayTaskText(event.who)}</small>
             {event.comment ? <p className="task-literal">{displayTaskText(event.comment)}</p> : null}
-          </li>)}</ol> : <p className="task-empty">No recorded updates.</p>}
+          </li>)}</ol> : activity.status === "complete" ? <p className="task-empty">No recorded updates.</p> : null}
         </> : <p className="task-empty">{!connected ? "Update history unavailable while disconnected." : history?.key === key ? history.notice : "No update history loaded."}</p>}
       </section>
       <section className="task-detail-section"><h3>Agent log & linked activity</h3>
