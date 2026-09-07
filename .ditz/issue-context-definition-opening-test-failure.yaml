@@ -76,3 +76,14 @@ log_events:
     PASS does not explain the discarded Q4 historical close failure. Existing Q4 controlled-mechanism
     result0a60a70 and its one-run bound unchanged; no new tests or code changes. Context
     issue remains open; PR44/integration held and human55175 protected.'
+- time: 2026-09-07T07:45:05-00:00
+  who: Ted Smith
+  what: commented
+  comment: 'Source-handoff delivery mechanism now has a separate reviewed repair tracked
+    in source-handoff-delivery-authorization: e9efa90 code, plan-only3de1af8; final1284PASS/2known
+    shutdown FAIL and34-target buildPASS. Available council seats CLEAN after additional
+    draft/palette red/green. This DOES NOT explain historical ungated failure or turn
+    the ROOT-attested pre-Q4-based R3 occurrence into pristine baseline/causal evidence.
+    Original ungated currently passes, forced-order mechanism is corrected, and this
+    historical-occurrence issue remains OPEN. No R3 code consumption, GUI retry, merge
+    or preview adoption.'
