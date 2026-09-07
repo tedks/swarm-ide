@@ -12,7 +12,7 @@ parser; unknown paths remain ordinary plain text. Source content is never run.
 ## Progress
 
 - [x] (2026-09-07) Verified clean designated branch at 83e53e7 and scoped existing editor.
-- [ ] Add compatible parser packages and a small path-selected extension.
+- [x] (2026-09-07 22:25Z) Added pinned parsers and compartment-selected highlighting, keeping state6.7.4 override.
 - [ ] Verify focused retention/command/navigation tests and real owned virtual colors.
 - [ ] Native review, push ready PR, Ditz sync and executive handoff.
 
@@ -77,11 +77,28 @@ The baseline editor has no history extension; the change must not silently add a
 editing subsystem. Tests can install history to prove compartment reconfiguration
 preserves it, while existing behavior remains otherwise unchanged.
 
+The parser packages expose both languages and richer support helpers. The helpers
+would install JSX auto-closing and Markdown key bindings; use language exports
+only. Existing default commands may use the maintained languages' indentation and
+comment metadata, but this change installs no additional command or completion
+bindings. New transitive lint/view packages are package-declaration dependencies;
+all installed state resolutions remain6.7.4, verified by an executable graph walk.
+
+Initial quality caught a missing SourceFlash test id, then two own test oracle
+errors (JSX quoted escapes and Markdown delimiter expectations). It also reported
+an existing task-workbench dirty-Reveal focus expectation; attribution pending.
+The first packaged proof showed TypeScript token colors and no renderer errors,
+then stopped on the driver's exact native insertion-position check. These are not
+green aggregate results or claims of production correction.
+
 ## Decision Log
 
 Use synchronous, bundled maintained parsers for this small set. This avoids
 asynchronous resolution races and extra infrastructure in a tightly bounded UI
 enhancement. Do not add formats outside the requested set in this increment.
+
+Revision 2026-09-07: recorded parser-only scope and first concrete gate evidence,
+including failed test/proof boundaries rather than erasing them on correction.
 
 ## Outcomes & Retrospective
 

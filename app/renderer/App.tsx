@@ -1281,7 +1281,7 @@ export function App() {
           <header><div><span className="eyebrow">source observatory</span><strong>{activeFile.path}</strong></div><div className={`file-state file-${activeFile.status}`}><i />{activeFile.status}<button onClick={() => void saveFile(activeFile.path)} disabled={activeFile.status !== "dirty" || coreUnavailable}>Save <kbd>Ctrl S</kbd></button></div></header>
           {activeFile.status === "loading" ? <div className="source-message">Loading the canonical working file…</div> : <>
             {["conflict", "unknown", "error"].includes(activeFile.status) ? <div className="source-message source-error source-banner"><span>{activeFile.message}</span><button disabled={coreUnavailable || savesInFlightRef.current.has(activeFile.path)} onClick={() => void reloadFile(activeFile.path)}>{activeFile.status === "unknown" ? "Check disk" : "Reload disk"}</button></div> : null}
-            {activeFile.revision ? <EditorPane key={activeFile.path} content={activeFile.content} flash={activeFile.flash}
+            {activeFile.revision ? <EditorPane key={activeFile.path} path={activeFile.path} content={activeFile.content} flash={activeFile.flash}
               memory={(() => { let memory = editorMemories.current.get(activeFile.path); if (!memory) { memory = { state: null }; editorMemories.current.set(activeFile.path, memory); } return memory; })()}
               navigation={sourceNavigation?.path === activeFile.path ? sourceNavigation : null}
               onNavigation={acknowledgeSourceNavigation} onChange={(content) => {

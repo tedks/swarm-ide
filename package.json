@@ -6,8 +6,13 @@
   "packageManager": "pnpm@11.22.0",
   "dependencies": {
     "@codemirror/commands": "6.10.3",
+    "@codemirror/lang-javascript": "6.2.5",
+    "@codemirror/lang-json": "6.0.2",
+    "@codemirror/lang-markdown": "6.5.2",
+    "@codemirror/language": "6.12.4",
     "@codemirror/state": "6.7.4",
     "@codemirror/view": "6.38.6",
+    "@lezer/highlight": "1.2.3",
     "@xyflow/react": "12.11.6",
     "react": "19.2.8",
     "react-dom": "19.2.8",
