@@ -47,3 +47,15 @@ log_events:
     peer before D4 consumes it. No merge/rebase/adoption. Exact clearance request
     and final evidence in task-consumers.jbWXBA/core. Bounded issue remains in progress
     until actual landing; parent D6 remains open.
+- time: 2026-09-07T16:17:06-00:00
+  who: Ted Smith
+  what: commented
+  comment: D4C ROOT-authorized exact18ab0a5+D5normal3b6d166 composition aa717df no
+    conflicts; proof-only8e93864 pushed PR50. Actual ordinary UI Prepare100/150 independent
+    pin/canonical task677bytes/source/instructions hashes, initial unconfirmed, confirmed
+    launch disabled/zero runs, Remove retirement passed standalone9.3s and full8.9s.
+    Full34 build PASS; all13fresh12PASS/1FAIL288.025s, quality1453/102. Held on unchanged
+    navigation initial topology-settlement90s failure, tracked repo-navigation-initial-topology-timeout-d4c;
+    cause not established, no retry/waiver/unowned edits. Native+Google CLEAN; explicit
+    Sonnet420s timeout unfilled. Normal merge remains held; parent open; protected
+    apps untouched.
