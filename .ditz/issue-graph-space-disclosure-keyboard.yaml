@@ -14,3 +14,11 @@ log_events:
   who: Ted Smith
   what: created
   comment: ""
+- time: 2026-09-07T23:18:57-00:00
+  who: Ted Smith
+  what: commented
+  comment: 'R4 actual owned X11 Space on SUMMARY was cancelled by React Flow useKeyPress
+    pan shortcut. Controlled actual-hook test RED before local .nokey ancestor guard,
+    GREEN after; resource widget now protected. Follow-up: audit other native summary/disclosure
+    controls outside graph panes. Do not weaken graph shortcuts globally; installed
+    @xyflow/system isInputDOMNode recognizes .nokey. No other widgets changed in PR68.'
