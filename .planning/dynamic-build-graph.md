@@ -12,7 +12,7 @@ Opening Build graph must show dependencies queried from whichever repository is 
 - [x] Implement bounded typed query/cache and tests (a7b2938; quality1469/103).
 - [x] Connect existing graph, directory links and Context without resetting navigation.
 - [x] Prove actual two-repository packaged edge changes and retention on owned virtual desktop, including160px compact canvas in frozen eb46f55 (21.6s/23.6s; cleanup1, zero exceptions).
-- [ ] Council convergence, one frozen local full gate, normal landing or precise base hold.
+- [x] Council convergence and corrected frozen local full gate complete; normal landing and exact parent/tree receipt recorded through PR52 and the step verification handoff.
 
 ## Assumptions and Failure Modes
 
@@ -82,5 +82,11 @@ OpenAI native and Google same-session correction/diagnostic deltas CLEAN; Sonnet
 At19:53 remote master advanced again to94efa68940a2fc17008b9f2dab62bd76ce89dc13. It has not been consumed. The single next action is ROOT's combined exact reviewed-base clearance and residual-focus-risk disposition (final-gate-request.md), followed only if authorized by one corrected full local gate and normal landing with no new failures. As of19:56 no combined authority exists; return a coherent reviewed bounded hold rather than repeatedly testing or waiting indefinitely. No foundation/issue closure or app adoption is claimed.
 
 At20:02 ROOT completed exact94efa689 intake and explicitly authorized its composition, plus accepted only the precisely documented original Q2 risk as nonblocking under the user's critical-only demo policy. The original issue staysOPEN; recurrence/new failures are not automatically exempt. Automatic normal composition has no conflicts and preserves L1 external-workspace startup suppression. ONE corrected full-local gate follows, using the legacy55174 shared lock as directed by virtual-desktops.md; no extra forensic stage, no unreviewed newer base. This supersedes the earlier authority hold; actual green/landing remains pending its receipt.
+
+### Corrected final result
+
+Frozen407cfc4f885492c6539a06d3e2e3c7d4b52ca2bf, parentsa65950c+94efa689, treed6917d3b78c7dea27fbdbf2ff3ba14bfb5cb5a9b: full43buildPASS7.311s; all17freshlocal suitesPASS382.833s; quality1498/106PASS45.3s. Actual B1 two-repository edge-change/retention/cleanup/zero-error proof passed46.9s (first18.6s, second24.6s); corrected navigation106.6s, task19.2s, ordinary-close34.9s and task rehearsal28.8s passed. Rehearsals remain deterministic fixtures, not model runs. Current navigation positive evidence does not establish original Q2 causality; its accepted-risk issue remainsOPEN.
+
+Final evidence in /tmp/swarm-ide-build-graph-b1.MFmmXC/corrected-final-{build,tests,quality,package}.log and corrected-final-package/build-graph/run.2mmyTq; screenshot03 shows actual added edges beside retained dirty source/draft. Only evidence-status and obsolete demo-guide wording change after this frozen gate, reviewed as documentation, with no executable/test change or unnecessary full rerun. PR52's normal merge and subsequent exact parent/tree/Ditz/cleanup receipt are verified separately in verification.md at the step directory. ROOT, not B1, adopts the managed preview after that receipt.
 
 Initial plan written before implementation to name authority, input and lifecycle assumptions.

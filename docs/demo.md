@@ -43,10 +43,16 @@ from a build-derived observation. A retained result can remain visible while
 new work is in progress or an observation has failed; it must not imply fresh
 evidence. Unconfigured deployments and metrics are unavailable, not zero.
 
-The separate **Build** graph currently consumes a labelled capture, not a live
-query for every checkout. A fresh or unrelated checkout may have no eligible
-capture. Do not present that absence as an empty dependency graph or relabel a
-capture as current. The repository and service views remain useful independently.
+The separate **Build graph** now queries the registered repository's local Bazel
+declarations on demand. Open it, or enable directory **Build links**, then use
+**Refresh build graph** to retry or deliberately resample. Observed local BUILD,
+`.bzl`, module and filename-membership changes trigger refresh while a consumer
+is visible; the previous graph remains labelled while new work runs or fails.
+These are declaration observations, not successful binary builds. Unsupported
+roots/runtimes are unavailable, never replaced with a historical Swarm capture.
+See [Build graph coverage and limits](dynamic-build-graph.md) for pinned Bazel 7,
+partial/external/ignored-input limits. In compact layouts, scroll the Build pane
+to expose its graph or controls; source and draft remain independent.
 
 ## 3. Go from task to source without losing your place
 
