@@ -56,7 +56,7 @@ async function main() {
     await wc.insertText(value);
     await until(() => run((s, expected) => document.querySelector(s).value === expected, selector, value), "exact user input");
   };
-  const request = (input) => run((body) => window.swarm.request({ protocolVersion: 5, requestId: `task-proof:${crypto.randomUUID()}`, ...body }), input);
+  const request = (input) => run((body) => window.swarm.request({ protocolVersion: 6, requestId: `task-proof:${crypto.randomUUID()}`, ...body }), input);
   const status = () => run(() => document.querySelector("[data-task-status]")?.getAttribute("data-task-status"));
   const snapshotRevision = () => run(() => document.querySelector(".task-panel .task-revision code")?.textContent);
   const refresh = async (expected) => {

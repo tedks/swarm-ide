@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { RepositoryPathSchema } from "./repository";
+import type { TaskBacklinkTarget } from "./tasks";
 
 export const CONTEXT_BYTES = 256 * 1024;
 export const CONTEXT_ROWS = 32;
@@ -46,7 +47,7 @@ export interface ContextEvidenceRef {
   revision: string; observedAt: string | null; timeBasis: "producer" | "client receipt" | "local edit" | "unavailable";
   freshness: "current" | "retained" | "CAPTURE"; coverage: string;
 }
-export type ContextLink = { kind: "source"; path: string } | { kind: "graph"; topologyId: string; id: string } | { kind: "task"; id: string; commit: string; blob: string };
+export type ContextLink = { kind: "source"; path: string } | { kind: "graph"; topologyId: string; id: string } | { kind: "task"; target: TaskBacklinkTarget };
 export interface ContextSection {
   id: string; title: string; evidence?: ContextEvidenceRef; notice?: string;
   rows: Array<{ label: string; value: string; link?: ContextLink }>; total?: number;

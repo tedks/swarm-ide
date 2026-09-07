@@ -1,0 +1,92 @@
+import { describe, expect, it } from "vitest";
+import { indexTaskBacklinks } from "../app/renderer/tasks/backlinks";
+import { taskBacklinkSection } from "../app/renderer/context/task-backlinks";
+import { TaskBridgeClient } from "../app/renderer/tasks/client";
+import { CoreResponseSchema, PROTOCOL_VERSION } from "../protocol/schema";
+import { TASK_LIMITS, TaskBacklinksSchema, TaskBacklinkTargetSchema, TaskSnapshotSchema, TaskResultSchema, TaskRequestSchema, taskBaseSnapshot, type TaskSnapshot } from "../protocol/tasks";
+import { taskObservationFixture } from "../fixtures/tasks";
+import { initialSnapshot } from "../fixtures/world";
+const byteLength = (value: unknown) => new TextEncoder().encode(JSON.stringify(value)).byteLength;
+function snapshot(paths = ["core/files.ts", "core/files.ts", "other/files.ts", "../outside", ".git/config", "literal*.ts"]): TaskSnapshot {
+  const value = taskObservationFixture().snapshot!;
+  value.summaries[0]!.counts.fileRefs = paths.length;
+  value.backlinks = { status: "complete", entries: paths.map((path, refIndex) => ({
+    taskId: "task-fixture", refIndex, path, navigation: path.startsWith("../") ? "unsupported" : "candidate",
+  })) };
+  return TaskSnapshotSchema.parse(value);
+}
+describe("bounded explicit backlink publication", () => {
+  it("accepts optional absence only as unpublished, with explicit v5/v6 rejection", () => {
+    const value = taskObservationFixture().snapshot!;
+    expect(TaskSnapshotSchema.parse(value).backlinks).toBeUndefined();
+    expect(PROTOCOL_VERSION).toBe(6);
+    expect(TaskRequestSchema.safeParse({ type: "tasks.snapshot", requestId: "test", worldId: "world", refresh: true, protocolVersion: 5 }).success).toBe(false);
+    expect(CoreResponseSchema.safeParse({ protocolVersion: 5, requestId: "test", ok: true, sequence: 1, snapshot: initialSnapshot() }).success).toBe(false);
+  });
+  it("requires exact canonical count/ordinal/task coverage, even for unsupported or duplicate references", () => {
+    const value = snapshot();
+    expect(value.backlinks?.status).toBe("complete");
+    const mutations = [
+      (s: TaskSnapshot) => { if (s.backlinks?.status === "complete") s.backlinks.entries.pop(); },
+      (s: TaskSnapshot) => { if (s.backlinks?.status === "complete") s.backlinks.entries[1]!.refIndex = 0; },
+      (s: TaskSnapshot) => { if (s.backlinks?.status === "complete") s.backlinks.entries.reverse(); },
+      (s: TaskSnapshot) => { if (s.backlinks?.status === "complete") s.backlinks.entries[0]!.taskId = "foreign"; },
+      (s: TaskSnapshot) => { if (s.backlinks?.status === "complete") s.backlinks.entries[3]!.navigation = "candidate"; },
+      (s: TaskSnapshot) => { s.summaries[0]!.counts.fileRefs++; },
+    ];
+    for (const mutate of mutations) { const bad = structuredClone(value); mutate(bad); expect(TaskSnapshotSchema.safeParse(bad).success).toBe(false); }
+    expect(TaskBacklinksSchema.safeParse({ status: "unavailable", reason: "projection-limit", entries: [] }).success).toBe(false);
+  });
+  it("indexes literal grammar intersection once, deduplicates refs, and includes closed tasks", () => {
+    const value = snapshot(); value.summaries[0]!.status = "closed";
+    const index = indexTaskBacklinks(value);
+    expect(index.lookup("core/files.ts")[0]?.refCount).toBe(2);
+    expect(index.lookup("core/files.ts")[0]?.summary.status).toBe("closed");
+    expect(index.lookup("files.ts")).toHaveLength(0); expect(index.lookup("CORE/files.ts")).toHaveLength(0);
+    expect(index.lookup(".git/config")).toHaveLength(0); expect(index.lookup("../outside")).toHaveLength(0);
+    expect(index.lookup("literal*.ts")).toHaveLength(1); expect(index.lookup("literalA.ts")).toHaveLength(0);
+    expect(index.lookup("core/files.ts")).toBe(index.lookup("core/files.ts"));
+    expect(index.references("task-fixture")).toHaveLength(6);
+    const target = index.lookup("core/files.ts")[0]!.target;
+    expect(TaskBacklinkTargetSchema.parse(target)).toEqual(target);
+    expect(TaskBacklinkTargetSchema.safeParse({ ...target, issueBlob: { algorithm: "sha256", hex: "b".repeat(64) } }).success).toBe(false);
+  });
+  it("enforces exact serialized projection boundary including escaping, not raw path bytes", () => {
+    const entries = Array.from({ length: 180 }, (_, index) => ({ taskId: `task-${index}`, refIndex: 0, path: "\\".repeat(650), navigation: "unsupported" as const }));
+    const projection = { status: "complete" as const, entries };
+    while (byteLength(projection) < TASK_LIMITS.backlinkBytes - 1100) entries.push({ taskId: `task-${entries.length}`, refIndex: 0, path: "\\".repeat(500), navigation: "unsupported" });
+    const remaining = TASK_LIMITS.backlinkBytes - byteLength(projection);
+    entries[0]!.path += "x".repeat(remaining);
+    // If the final scalar would exceed 1024, distribute the padding instead.
+    if (entries[0]!.path.length > 1024) {
+      const excess = entries[0]!.path.slice(1024); entries[0]!.path = entries[0]!.path.slice(0, 1024); entries[1]!.path += excess;
+    }
+    expect(byteLength(projection)).toBe(TASK_LIMITS.backlinkBytes);
+    expect(TaskBacklinksSchema.safeParse(projection).success).toBe(true);
+    entries[2]!.path += "x";
+    expect(TaskBacklinksSchema.safeParse(projection).success).toBe(false);
+  });
+  it("accounts for the full task result and independent workspace exactly once", () => {
+    const observation = taskObservationFixture(); observation.snapshot = snapshot();
+    const task = TaskResultSchema.parse({ kind: "snapshot", observation });
+    const response = CoreResponseSchema.parse({ protocolVersion: PROTOCOL_VERSION, requestId: "backlinks-size", ok: true, sequence: Number.MAX_SAFE_INTEGER, snapshot: initialSnapshot(), task });
+    if (!response.ok) throw new Error("fixture response");
+    const { task: _task, ...base } = response;
+    expect(byteLength(response) - byteLength(base)).toBe(byteLength(task) + ',"task":'.length);
+    expect(JSON.stringify(response.snapshot)).not.toContain('"backlinks"');
+    expect(byteLength(task)).toBeLessThan(TASK_LIMITS.resultBytes);
+    expect(byteLength(taskBaseSnapshot(observation.snapshot!))).toBeLessThan(TASK_LIMITS.snapshotBytes);
+  });
+  it("distinguishes unavailable/overflow and scoped complete empty without inventing no bugs", () => {
+    const client = new TaskBridgeClient(), state = client.getSnapshot();
+    const subject = { kind: "file" as const, path: "unmatched.ts", repositoryId: "project:swarm-ide", worldId: "world:working" };
+    expect(taskBacklinkSection(subject, state).notice).toContain("not been observed");
+    const observation = taskObservationFixture(); observation.snapshot = snapshot();
+    const published = { ...state, connected: true, observation, backlinks: indexTaskBacklinks(observation.snapshot) };
+    expect(taskBacklinkSection(subject, published).notice).toContain("No explicit file references in observed metadata sha1:");
+    expect(taskBacklinkSection(subject, { ...published, notice: "INVALID_CORE_MESSAGE" }).notice).toContain("retained metadata");
+    observation.snapshot.backlinks = { status: "unavailable", reason: "projection-limit" };
+    expect(taskBacklinkSection(subject, published).notice).toContain("Task browsing remains available");
+    client.dispose();
+  });
+});

@@ -26,7 +26,10 @@ not a general knowledge index or agent dispatch feature.
 - [x] (2026-09-07 04:54Z) Q3 independent native light design review CLEAN after
   scalar-byte clarification; actual whitespace/link/plan/scope checks passed.
   Normal landing is recorded by the PR and separate landing receipt, not assumed.
-- [ ] ROOT evaluation of the landed Q3 decisions; Q4 owner/worktree authorization.
+- [x] (2026-09-07 05:05Z) ROOT approved the complete Q3 contract and assigned
+  `feature/task-backlinks` at `650432b` in the isolated `task-backlinks` worktree.
+- [ ] Red tests: never-opened provider projection, compact Context observation,
+  and selection pin surviving revision refresh (first two added before code).
 - [ ] Q4 protocol/provider projection and negative boundary evidence.
 - [ ] Q4 client/index/visibility/pinned attention plus Context consumer.
 - [ ] Q4 actual packaged CLI-metadata proof, local full gates, substantive review,

@@ -8,6 +8,8 @@ export const TASK_LIMITS = {
   idBytes: 256, componentBytes: 256, titleBytes: 512, descriptionBytes: 16 * 1024,
   dependencies: 32, fileRefs: 32, pathBytes: 1024, noteBytes: 512,
   snapshotBytes: 512 * 1024, detailBytes: 64 * 1024,
+  backlinkEntries: 8192, backlinkBytes: 256 * 1024,
+  resultBytes: 784 * 1024, augmentedCacheBytes: 16 * 1024 * 1024 + 272 * 1024,
   commandMs: 5000, observationMs: 10000,
 } as const;
 export const TASK_METADATA_REF = "refs/heads/ditz-metadata" as const;
@@ -20,6 +22,11 @@ const identity = text(256, 1).refine((value) => !/[\p{White_Space}\p{Cc}\p{Cf}]/
 const date = z.string().max(32).datetime();
 const sequence = z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER);
 const boundedJson = (value: unknown, max: number) => bytes(JSON.stringify(value)) <= max;
+/** Strip only the optional projection, never fields from the original capacity. */
+export const taskBaseSnapshot = <T extends { backlinks?: unknown }>(snapshot: T) => {
+  const { backlinks: _backlinks, ...base } = snapshot;
+  return base;
+};
 export const TaskIdSchema = z.string().min(1).max(TASK_LIMITS.idBytes).regex(/^[A-Za-z0-9_-]+$/);
 export const GitObjectIdSchema = z.discriminatedUnion("algorithm", [
   z.object({ algorithm: z.literal("sha1"), hex: z.string().regex(/^[a-f0-9]{40}$/) }).strict(),
@@ -81,15 +88,42 @@ export const TaskDetailSchema = TaskSummarySchema.extend({
 });
 export type TaskDetail = z.infer<typeof TaskDetailSchema>;
 const world = { worldId: identity, repositoryId: identity, provider: z.literal("ditz") };
+export const TaskBacklinkEntrySchema = z.object({
+  taskId: TaskIdSchema, refIndex: z.number().int().min(0).max(TASK_LIMITS.fileRefs - 1),
+  path: text(TASK_LIMITS.pathBytes), navigation: z.enum(["candidate", "unsupported"]),
+}).strict().refine((entry) => (entry.navigation === "candidate") === isTaskSourcePath(entry.path),
+  "Backlink classification must match its literal path");
+export const TaskBacklinksSchema = z.discriminatedUnion("status", [
+  z.object({ status: z.literal("complete"), entries: z.array(TaskBacklinkEntrySchema).max(TASK_LIMITS.backlinkEntries) }).strict(),
+  z.object({ status: z.literal("unavailable"), reason: z.literal("projection-limit") }).strict(),
+]).refine((value) => boundedJson(value, TASK_LIMITS.backlinkBytes), "Task backlink projection byte limit exceeded");
+export type TaskBacklinks = z.infer<typeof TaskBacklinksSchema>;
+export type TaskBacklinkEntry = z.infer<typeof TaskBacklinkEntrySchema>;
+export const TaskBacklinkTargetSchema = z.object({ ...world, metadataCommit: GitObjectIdSchema,
+  taskId: TaskIdSchema, issueBlob: GitObjectIdSchema }).strict().refine((target) =>
+  target.metadataCommit.algorithm === target.issueBlob.algorithm, "Backlink object algorithms must match");
+export type TaskBacklinkTarget = z.infer<typeof TaskBacklinkTargetSchema>;
 export const TaskSnapshotSchema = z.object({
   ...world, metadataCommit: GitObjectIdSchema, observedAt: date,
   summaries: z.array(TaskSummarySchema).max(TASK_LIMITS.issues),
+  backlinks: TaskBacklinksSchema.optional(),
 }).strict().superRefine((snapshot, ctx) => {
   if (new Set(snapshot.summaries.map((item) => item.id)).size !== snapshot.summaries.length)
     ctx.addIssue({ code: "custom", message: "Task identities must be unique" });
   if (snapshot.summaries.some((item) => item.blob.algorithm !== snapshot.metadataCommit.algorithm))
     ctx.addIssue({ code: "custom", message: "Task object algorithms must match the metadata commit" });
-  if (!boundedJson(snapshot, TASK_LIMITS.snapshotBytes)) ctx.addIssue({ code: "custom", message: "Task snapshot byte limit exceeded" });
+  if (snapshot.backlinks?.status === "complete") {
+    const expected = [...snapshot.summaries].sort((a, b) => a.id < b.id ? -1 : a.id > b.id ? 1 : 0);
+    let offset = 0;
+    for (const summary of expected) for (let refIndex = 0; refIndex < summary.counts.fileRefs; refIndex++) {
+      const entry = snapshot.backlinks.entries[offset++];
+      if (!entry || entry.taskId !== summary.id || entry.refIndex !== refIndex)
+        ctx.addIssue({ code: "custom", message: "Complete backlinks require canonical exact reference coverage" });
+    }
+    if (offset !== snapshot.backlinks.entries.length) ctx.addIssue({ code: "custom", message: "Unexpected backlink associations" });
+  }
+  if (!boundedJson(taskBaseSnapshot(snapshot), TASK_LIMITS.snapshotBytes) || !boundedJson(snapshot, TASK_LIMITS.resultBytes))
+    ctx.addIssue({ code: "custom", message: "Task snapshot byte limit exceeded" });
 });
 export type TaskSnapshot = z.infer<typeof TaskSnapshotSchema>;
 export const TaskObservationStatusSchema = z.enum(["unobserved", "loading", "observed", "stale", "unavailable", "malformed", "limited", "error"]);
@@ -115,7 +149,8 @@ export const TaskObservationSchema = z.object({
   const allowed = allowedReasons[value.status];
   if (allowed && value.reason && !allowed.includes(value.reason.code)) issue("Attempt reason must agree with its status");
   if (value.status === "loading" && value.reason !== null) issue("Loading has not failed");
-  if (!boundedJson(value, TASK_LIMITS.snapshotBytes)) issue("Task observation byte limit exceeded");
+  if (!boundedJson({ ...value, snapshot: snapshot ? taskBaseSnapshot(snapshot) : null }, TASK_LIMITS.snapshotBytes) ||
+      !boundedJson(value, TASK_LIMITS.resultBytes)) issue("Task observation byte limit exceeded");
 });
 export type TaskObservation = z.infer<typeof TaskObservationSchema>;
 
@@ -140,7 +175,9 @@ export const TaskReadResultSchema = z.object({
 export type TaskReadResult = z.infer<typeof TaskReadResultSchema>;
 export const TaskResultSchema = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("snapshot"), observation: TaskObservationSchema }).strict()
-    .refine((value) => boundedJson(value, TASK_LIMITS.snapshotBytes), "Task snapshot response byte limit exceeded"),
+    .refine((value) => boundedJson({ ...value, observation: { ...value.observation,
+      snapshot: value.observation.snapshot ? taskBaseSnapshot(value.observation.snapshot) : null } }, TASK_LIMITS.snapshotBytes) &&
+      boundedJson(value, TASK_LIMITS.resultBytes), "Task snapshot response byte limit exceeded"),
   TaskReadResultSchema,
 ]);
 export type TaskResult = z.infer<typeof TaskResultSchema>;

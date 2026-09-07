@@ -50,7 +50,7 @@ const requests: AgentRequest[] = [
 ];
 describe("strict agent contract v3", () => {
   it("accepts the six frozen payloads and refuses extra authority at any depth", () => {
-    expect(PROTOCOL_VERSION).toBe(5);
+    expect(PROTOCOL_VERSION).toBe(6);
     for (const request of requests) {
       expect(CoreRequestSchema.parse(request)).toEqual(request);
       expect(() => CoreRequestSchema.parse({ ...request, cwd: "/escape" })).toThrow();

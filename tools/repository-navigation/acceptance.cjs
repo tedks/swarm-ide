@@ -68,7 +68,7 @@ async function main() {
     await wc.insertText(value);
     await until(() => run((s, v) => document.querySelector(s).value === v, selector, value), "exact native field value");
   };
-  const request = (input) => run((body) => window.swarm.request({ protocolVersion: 5, requestId: `navigation-proof:${crypto.randomUUID()}`, ...body }), input);
+  const request = (input) => run((body) => window.swarm.request({ protocolVersion: 6, requestId: `navigation-proof:${crypto.randomUUID()}`, ...body }), input);
   const snapshot = async () => { const result = await request({ type: "workspace.snapshot" }); assert(result.ok); return result.snapshot; };
   const observe = (world) => world.graphs.find((graph) => graph.topologyId === "repo").directory;
   const currentDirectory = () => run(() => document.querySelector("[data-topology='repo']")?.dataset.directory);
@@ -305,6 +305,31 @@ async function main() {
       await run(() => { globalThis.__navigationProof.editor = document.querySelector(".cm-content"); });
       await preserved();
     };
+    const { changeBacklinkFixture } = await import(pathToFileURL(path.join(__dirname, "fixture.mjs")));
+    const q4Inspect = async (percent, keyboard = false) => {
+      stage = `q4-explicit-backlink-${percent}`;
+      await focus(".cm-content");
+      await until(async () => await contextSubject() === fixture.sourcePath, "Q4 file attention");
+      if (!await run(() => document.querySelector('[aria-label="Toggle information panel"]').getAttribute("aria-expanded") === "true")) await click(label("Toggle information panel"));
+      await until(() => has(label("Inspect linked task q4-linked")), "Q4 previously unopened explicit reference");
+      assert(await has(label("Inspect linked task q4-closed")), "closed task appears independently of sidebar Open filter");
+      assert(!await has(label("Inspect linked task q4-basename")) && !await has(label("Inspect linked task q4-prose")), "literal path only, no basename/prose inference");
+      assert((await contextText("task-backlinks")).includes("2 recorded"), "duplicate references counted in one row");
+      assert((await contextText("task-backlinks")).includes(fixture.backlinks.commit));
+      assert((await contextText("task-backlinks")).includes(fixture.backlinks.blob));
+      await preserved(true);
+      if (keyboard) { await focus(label("Inspect linked task q4-linked")); key("Enter"); }
+      else await click(label("Inspect linked task q4-linked"));
+      await until(async () => await contextSubject() === "q4-linked", "Q4 exact pin admitted");
+      assert(!await has(".task-editor-surface"), "Context inspection alone does not create a document tab");
+      const text = await run(() => document.querySelector(".artifact-context .task-detail").textContent);
+      assert(text.includes(fixture.backlinks.commit) && text.includes(fixture.backlinks.blob) && text.includes("q4-linked"));
+      await preserved(true); await screenshot(`q4-pinned-${percent}.png`);
+      await click(".artifact-context .task-detail .task-heading button");
+      await until(async () => await contextSubject() === fixture.sourcePath, "Q4 return source information");
+      await preserved(true);
+    };
+    await q4Inspect(100, true);
     stage = "file-search-keyboard";
     await focus(".agent-draft textarea");
     await search(fixture.searchPath);
@@ -344,6 +369,7 @@ async function main() {
       else await click(".zoom-value");
       await until(() => wc.getZoomFactor() === percent / 100, `zoom${percent}`);
       win.setSize(percent === 150 ? 1280 : 1480, percent === 150 ? 800 : 940); await paint(); await preserved(true);
+      await q4Inspect(percent);
       stage = `file-search-${percent}`;
       await search(fixture.searchPath); await preserved(true); key("Enter");
       await directory(fixture.searchPath.split("/").slice(0, -1).join("/"));
@@ -520,8 +546,8 @@ async function main() {
       await until(() => run(() => { const text = document.querySelector(".file-search-status")?.textContent ?? ""; return text.includes("Git name inventory") && !text.includes("Refresh failed"); }), "explicit recovery after real Git failure");
       await closeSearch(); await preserved();
       const concurrent = await run(async (repositoryId) => Promise.all([
-        window.swarm.request({ protocolVersion: 5, requestId: `search-old:${crypto.randomUUID()}`, type: "repo.search", repositoryId, query: "same-match", refresh: true }),
-        window.swarm.request({ protocolVersion: 5, requestId: `search-new:${crypto.randomUUID()}`, type: "repo.search", repositoryId, query: "literal [*]", refresh: false }),
+        window.swarm.request({ protocolVersion: 6, requestId: `search-old:${crypto.randomUUID()}`, type: "repo.search", repositoryId, query: "same-match", refresh: true }),
+        window.swarm.request({ protocolVersion: 6, requestId: `search-new:${crypto.randomUUID()}`, type: "repo.search", repositoryId, query: "literal [*]", refresh: false }),
       ]), (await snapshot()).project.id);
       // Renderer concurrency does not force IPC arrival before the first query
       // completes. Held-request unit tests prove cancellation itself; here both
@@ -547,6 +573,58 @@ async function main() {
       await screenshot("04-file-search-partial.png"); await closeSearch(); await preserved();
       facts.push("N2 actual deleted candidate denied on activation without source loss", "N2 actual 8192-name capture cap visibly partial; empty subset is not absence");
     }
+    stage = "q4-revision-failure-recovery";
+    await returnSource(); await focus(".cm-content");
+    if (!await has(label("Inspect linked task q4-linked"))) await click(label("Toggle information panel"));
+    await until(() => has(label("Inspect linked task q4-linked")), "Q4 retained file links after baseline journey");
+    await click(label("Inspect linked task q4-linked"));
+    await until(async () => await contextSubject() === "q4-linked", "Q4 pin before revision change");
+    const newer = await changeBacklinkFixture(fixture, "advance");
+    await click(".artifact-context .task-detail > button:last-of-type");
+    await until(() => run((commit) => document.querySelector(".task-revision")?.textContent.includes(commit), newer), "Q4 explicit refresh adopts newer roster");
+    assert((await run(() => document.querySelector(".artifact-context .task-detail").textContent)).includes(fixture.backlinks.commit), "successful pin remains at M after refresh to N");
+    assert((await run(() => document.querySelector(".artifact-context .task-detail").textContent)).includes("Retained details"));
+    await preserved();
+    await click(".artifact-context .task-detail > button:first-of-type");
+    await until(() => has(".task-editor-surface"), "Q4 explicit Show document");
+    assert((await run(() => document.querySelector(".task-document").textContent)).includes(fixture.backlinks.commit), "document shares retained pin, not newer selection");
+    await preserved();
+    await click(label("Close task document"));
+    await until(() => has(label("Inspect linked task q4-linked")), "Q4 close returns source attention");
+    await click(label("Inspect linked task q4-linked"));
+    await until(() => run(() => document.querySelector(".artifact-context .task-title")?.textContent === "Q4 deliberately newer task"), "Q4 deliberate reselection adopts N");
+    await click(".artifact-context .task-detail .task-heading button");
+    const faults = [];
+    for (const operation of ["malformed", "missing", "overflow", "restore"]) {
+      const commit = await changeBacklinkFixture(fixture, operation);
+      await click("[data-context-section='task-backlinks'] > button");
+      await until(() => run((operation) => {
+        const section = document.querySelector("[data-context-section='task-backlinks']"), text = section?.textContent ?? "";
+        const checking = document.querySelector(".task-observation")?.textContent.includes("Checking tasks");
+        return !checking && (operation === "restore" ? text.includes("observed metadata") && Boolean(section?.querySelector('[aria-label="Inspect linked task q4-linked"]'))
+          : operation === "overflow" ? text.includes("projection-limit") : text.includes(operation === "missing" ? "unavailable" : "malformed"));
+      }, operation), `Q4 actual ${operation} metadata`);
+      const text = await contextText("task-backlinks");
+      assert(!text.includes("No explicit file references"), "unavailable evidence is not an empty success");
+      if (operation === "overflow") {
+        const observed = await request({ type: "tasks.snapshot", worldId: (await snapshot()).world.id, refresh: false });
+        assert(observed.ok && observed.task.observation.status === "observed" && observed.task.observation.snapshot.metadataCommit.hex === commit);
+        assert.deepEqual(observed.task.observation.snapshot.backlinks, { status: "unavailable", reason: "projection-limit" });
+        const detail = await request({ type: "tasks.read", worldId: (await snapshot()).world.id, metadataCommit: observed.task.observation.snapshot.metadataCommit, taskId: "q4-linked" });
+        assert(detail.ok && detail.task.result.ok, "projection overflow preserves usable task roster and cached detail");
+      }
+      faults.push({ operation, commit, context: text }); await preserved();
+    }
+    await click(label("Inspect linked task q4-linked")); await until(async () => await contextSubject() === "q4-linked", "Q4 pin before owned core recovery");
+    const recovery = await replaceOwnedCore("q4");
+    await until(() => run(() => document.querySelector(".task-observation")?.textContent.includes("Tasks observed")), "Q4 one reconnected full task observation");
+    assert((await run(() => document.querySelector(".artifact-context .task-detail").textContent)).includes(fixture.backlinks.commit));
+    await preserved(); await screenshot("q4-revision-and-recovery.png");
+    await click(".artifact-context .task-detail .task-heading button");
+    await fs.writeFile(path.join(evidence, "q4-backlinks-proof.json"), JSON.stringify({ actualCliAuthored: true, first: fixture.backlinks, newer,
+      exactPinAndExplicitReselection: true, sourceCursorDraftCamerasRetained: true, faults, recovery, modelTurns: 0 }, null, 2));
+    facts.push("Q4 actual CLI-authored unopened exact backlinks, duplicate counts, closed/open-filter independence and basename/prose negatives",
+      "Q4 exact metadata pin survives explicit refresh; Show document and explicit reselection; real malformed/missing/overflow/restore and owned core recovery; source/cursor/draft/cameras retained at100/150");
     assert.equal(await fs.readFile(path.join(fixture.root, fixture.sourcePath), "utf8"), fixture.sourceText, "dirty editor never wrote disk");
   }
   const lastAgent = await request({ type: "agent.snapshot" });
@@ -561,7 +639,7 @@ main().catch(async (error) => {
   const win = BrowserWindow.getAllWindows()[0];
   if (win && !win.isDestroyed()) {
     await fs.writeFile(path.join(evidence, "failure-focus.json"), JSON.stringify(await win.webContents.executeJavaScript(`(async () => {
-      const result = await window.swarm.request({protocolVersion:5,requestId:'failure-focus:'+crypto.randomUUID(),type:'workspace.snapshot'});
+      const result = await window.swarm.request({protocolVersion:6,requestId:'failure-focus:'+crypto.randomUUID(),type:'workspace.snapshot'});
       return {focus:result.ok?result.snapshot.focus:null,agentNotice:document.querySelector('.agent-rail')?.textContent,
         draft:document.querySelector('.agent-draft')?.textContent,askDisabled:document.querySelector('.agent-rail .agent-primary')?.disabled,
         clickTrace:globalThis.__navigationClickTrace,

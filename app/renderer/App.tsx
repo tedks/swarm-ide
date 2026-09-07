@@ -40,7 +40,7 @@ import { TaskBridgeClient } from "./tasks/client";
 import { TaskPanel } from "./tasks/TaskPanel";
 import { TaskDetail } from "./tasks/TaskDetail";
 import { taskLineTarget, validTaskReference } from "./tasks/reveal";
-import type { TaskFileRef } from "../../protocol/tasks";
+import type { TaskFileRef, TaskBacklinkTarget } from "../../protocol/tasks";
 import { isRepositoryPath, type RepositoryEntry, type RepositoryRequest } from "../../protocol/repository";
 import { useRepositoryNavigation } from "./repository/navigation";
 import { RepositoryNavigation } from "./repository/RepositoryNavigation";
@@ -159,6 +159,8 @@ export function App() {
   const [activeSurface, setActiveSurface] = useState<string>(hotCheckpoint?.activeSurface ?? "graphs");
   const [taskDocumentOpen, setTaskDocumentOpen] = useState(false);
   const [taskDocumentVisible, setTaskDocumentVisible] = useState(false);
+  const [taskSidebarVisible, setTaskSidebarVisible] = useState(true);
+  const pendingBacklinkIntent = useRef<number | null>(null);
   const [selectedConnection, setSelectedConnection] = useState<GraphConnectionFocus | null>(null);
   const workspaceRef = useRef<WorkspaceState>(workspace);
   // Attention's layout-phase realm reset must see this render's accepted world,
@@ -245,11 +247,15 @@ export function App() {
     // Mirrors the existing compact breakpoint, including Electron's CSS zoom.
     // Checking panel visibility does not make source/build changes scan tasks.
     const media = window.matchMedia?.("(max-width: 1100px)");
-    const update = () => taskClient.setVisible(Boolean(workspace.snapshot) && (!media?.matches || compactPanel === "work"));
+    const update = () => taskClient.setVisible(Boolean(workspace.snapshot) && (
+      taskSidebarVisible && (!media?.matches || compactPanel === "work") ||
+      taskDocumentOpen && (taskDocumentVisible || !fileTabs.some((tab) => tab.path === activeSurface)) ||
+      ["file", "task"].includes(attention.subject?.kind ?? "") && (!media?.matches || compactPanel === "info")));
     update();
     media?.addEventListener("change", update);
     return () => { media?.removeEventListener("change", update); };
-  }, [taskClient, compactPanel, Boolean(workspace.snapshot)]);
+  }, [taskClient, compactPanel, Boolean(workspace.snapshot), taskSidebarVisible, taskDocumentOpen,
+    taskDocumentVisible, Boolean(fileTabs.some((tab) => tab.path === activeSurface)), attention.subject?.kind]);
 
   const selectTask = useCallback((id: string) => {
     ++navigationIntent.current;
@@ -278,6 +284,7 @@ export function App() {
     setNoticeFocusRequest(navigationIntent.current);
   }, []);
   const interruptPendingReveal = useCallback(() => {
+    if (pendingBacklinkIntent.current !== null) { pendingBacklinkIntent.current = null; ++navigationIntent.current; }
     if (pendingRevealIntent.current === null) return;
     pendingRevealIntent.current = null;
     definitionRef.current = null; setDefinition(null);
@@ -947,7 +954,24 @@ export function App() {
   const captureIndex = useMemo(() => indexCapture(uiBuildLinks), []);
   const contextSubject = attention.realm === contextRealm() ? attention.subject : null;
   const contextSections = snapshot ? composeContext(contextSubject, { snapshot, files: fileTabs, service: serviceIndex, capture: captureIndex,
-    realm: contextRealm(), session: contextSession, ready: observedCoreGeneration === coreGenerationRef.current && (!window.swarmLifecycle || lifecycle?.core.phase === "ready") }) : [];
+    realm: contextRealm(), session: contextSession, tasks, ready: observedCoreGeneration === coreGenerationRef.current && (!window.swarmLifecycle || lifecycle?.core.phase === "ready") }) : [];
+  const inspectBacklink = async (target: TaskBacklinkTarget) => {
+    const subject = contextSubject, index = tasks.backlinks;
+    if (subject?.kind !== "file" || !index || subject !== attentionRef.current.subject) return;
+    const token = { realm: contextRealm(), generation: attentionRef.current.generation, intent: ++navigationIntent.current, path: subject.path };
+    pendingBacklinkIntent.current = token.intent;
+    const valid = () => mounted.current && attentionRef.current.subject === subject &&
+      permitsContextActivation(attentionRef.current, token, navigationIntent.current, contextRealm(), subject.path);
+    try {
+      if (await taskClient.inspectPinned(target, { path: subject.path, index }, valid) && valid()) inspectTask(target.taskId);
+    } finally { if (pendingBacklinkIntent.current === token.intent) pendingBacklinkIntent.current = null; }
+  };
+  const showPinnedTaskDocument = () => {
+    if (!tasks.detail || !tasks.detailRevision) return;
+    ++navigationIntent.current;
+    setTaskDocumentOpen(true); setTaskDocumentVisible(true); setCompactPanel(null);
+    inspectTask(tasks.selectedTaskId);
+  };
   const activeFile = fileTabs.find((tab) => tab.path === activeSurface);
   const textDocumentVisible = taskDocumentVisible || (taskDocumentOpen && !activeFile);
   const textOpen = Boolean(activeFile || textDocumentVisible);
@@ -1104,6 +1128,7 @@ export function App() {
       </header>
 
       <WorkbenchSidebar
+        onTasksVisibility={setTaskSidebarVisible}
         repositoryName={snapshot.project.name}
         directory={repositoryObservation ? <RepositoryNavigation key={snapshot.project.id} rootLabel={snapshot.project.name} focusedPath={snapshot.focus.path} observation={repositoryObservation} actions={deliberateRepository} onActivate={activateRepositoryEntry} onOpenPath={openLinkedFile} /> : <p className="muted">Observing repository…</p>}
         agents={<>
@@ -1156,9 +1181,9 @@ export function App() {
       <ResizeDivider label="Resize Context" className="context-divider" container=".workbench" value={contextWidth} minimum={23} maximum={44} initial={30} reverse onChange={setContextWidth} />
       <aside id="information-panel" aria-label="Information panel" className="instrument-panel panel">
         {revealNotice ? <p ref={revealNoticeElement} className="tasks-reveal-notice" role="status" tabIndex={0}>{revealNotice}</p> : null}
-        {contextSubject?.kind === "task" ? <div className="artifact-context" data-context-kind="task" data-context-subject={contextSubject.id}><TaskDetail returnButtonRef={taskReturnButton} selectedTaskId={contextSubject.id} snapshot={tasks.observation?.snapshot ?? null} detail={tasks.detail?.id === contextSubject.id ? tasks.detail : null} detailRevision={tasks.detailRevision} detailStale={tasks.detailStale || tasks.observation?.status !== "observed" || Boolean(tasks.notice)} reading={tasks.reading} notice={tasks.detailNotice} onSelect={selectTask} onReveal={(ref) => { void revealTaskReference(ref); }} onReturnToSource={returnToSourceInformation} /></div> : <>
+        {contextSubject?.kind === "task" ? <div className="artifact-context" data-context-kind="task" data-context-subject={contextSubject.id}><TaskDetail returnButtonRef={taskReturnButton} selectedTaskId={contextSubject.id} snapshot={tasks.observation?.snapshot ?? null} detail={tasks.detail?.id === contextSubject.id ? tasks.detail : null} detailRevision={tasks.detailRevision} detailStale={tasks.detailStale || tasks.refreshing || tasks.observation?.status !== "observed" || Boolean(tasks.notice)} reading={tasks.reading} notice={tasks.detailNotice} onSelect={selectTask} onReveal={(ref) => { void revealTaskReference(ref); }} onReturnToSource={returnToSourceInformation} onShowDocument={showPinnedTaskDocument} onRefresh={() => { void taskClient.refresh(); }} /></div> : <>
         {tasks.selectedTaskId ? <button className="tasks-show-details" onClick={showTaskDetails}>Show task details</button> : null}
-        <ContextPane subject={contextSubject} sections={contextSections} onOpen={openLinkedFile} headingRef={sourceInformationHeading} />
+        <ContextPane subject={contextSubject} sections={contextSections} onOpen={openLinkedFile} onTask={(target) => { void inspectBacklink(target); }} onRefreshTasks={() => { void taskClient.refresh(); }} headingRef={sourceInformationHeading} />
         </>}
         {demo.context ? <MockContext focus={contextSubject && "path" in contextSubject ? contextSubject.path : contextSubject && "id" in contextSubject ? contextSubject.id ?? "No task selected" : "Nothing selected"} /> : null}
       </aside>
