@@ -1,0 +1,67 @@
+# Make logical changes readable across artifact and agent streams
+
+This living ExecPlan follows `.planning/PLANS.md` and must retain its Progress, Surprises & Discoveries, Decision Log, and Outcomes & Retrospective sections.
+
+## Purpose / Big Picture
+
+An operator opens Journal, reads short accounts of meaningful changes, and expands evidence instead of reconstructing work from agent transcripts. An actual supervised summarizer writes the first account from bounded Git evidence and attributed reports. Refresh reads a validated repo-local artifact; it never invokes a provider. Source links open through the existing file broker without replacing dirty buffers or moving graph cameras.
+
+## Progress
+
+- [x] (2026-09-07) Verified clean designated branch `feature/demo-logical-changelog` at ROOT-cleared `c3128715a785c2fd42011e4cf5941038b268335c`; read instructions and wave ownership.
+- [ ] Implement strict bundle/output contracts, bounded contained reader and export/validate workflow.
+- [ ] Obtain actual supervised summarizer output for a sanitized recorded task-context span and a new disposable Git change.
+- [ ] Implement visible expandable Journal, explicit refresh/evidence activation and retention/error tests.
+- [ ] Run owned packaged loop proof, proportional local gates and converged council; push, normal-merge if cleared, and hand off.
+
+## Surprises & Discoveries
+
+No findings yet. The existing `core/files.ts` broker already rejects path traversal, symlink aliases, special files and oversized/unstable reads; reuse it instead of adding a second filesystem authority.
+
+## Decision Log
+
+Decision: use a versioned repo-local evidence bundle plus generated Journal, joined by a SHA-256 input digest. Rationale: a reproducible external authoring loop supplies genuine model synthesis without enabling production agent execution. Date/author: 2026-09-07 J1.
+
+Decision: one bounded PR, not a PR stack. Rationale: the contract, reader, renderer and executable authoring loop are a single independently usable vertical. Additive seams only; unrelated peers remain independent. Date/author: 2026-09-07 J1.
+
+Decision: distinguish artifact observation, agent report and inferred reconstruction in visible text. Validation proves structure/citation membership, not the truth of generated prose. Date/author: 2026-09-07 J1.
+
+## Outcomes & Retrospective
+
+In progress. No output generation, UI proof or landing is claimed yet. In-app scheduling, streaming summarization and managed provider activation are explicitly outside this increment.
+
+## Context and Orientation
+
+`app/renderer/App.tsx` owns persistent source buffers and independent graph views. `protocol/schema.ts` validates all renderer-to-core requests. `core/worker-runtime.ts` dispatches requests inside a privileged utility process. `core/files.ts` reads canonical regular repo files safely. New `protocol/changelog.ts`, `core/changelog.ts` and `app/renderer/changelog/` contain this feature. New `tools/demo-journal/` owns Bazel entry points and packaged verification. Existing production agent policy and peer modules are unchanged.
+
+An evidence bundle is a bounded list of source observations identified by stable IDs, with a recorded revision span, coverage limits and selected attributed reports. Generated entries cite those IDs. A digest is SHA-256 over the exact exported bundle bytes, binding output to its actual input. A stale or malformed update is visible; the last valid observation is retained and labelled, not silently called current.
+
+## Plan of Work
+
+First define browser-safe strict schemas and cross-citation validation. Use an external Bazel export tool to capture fixed-argv bounded Git commit/file observations and explicit sanitized repo-local reports. The CLI validates/materializes output only for its current input. The core reader handles fixed `.swarm/changelog-bundle.json` and `.swarm/changelog.json` paths through the existing broker and validates digest and references before publication.
+
+Next add a small Journal entry in App and a module-local pane. Cards show headline, intent/outcome and decision; expandable evidence shows kind, source revision, exact paths and gaps. Prose remains React text, never HTML or process commands. Explicit source activation calls the existing ordinary source opener; Journal focus does not imply source or agent execution.
+
+Then generate a real recorded Swarm task-context story using the allowed merged commits and sanitized supplied recaps. One native summarizer receives only the exported bundle and checked-in instructions and produces output; preserve its raw output and generator provenance. For the operational proof, create a disposable real Git repository/change, export it, ask the same summarizer to update its output, validate it and show the change via ordinary packaged UI Refresh on owned virtual X11.
+
+## Concrete Steps
+
+Work only in `/home/tedks/Projects/swarm-ide/demo-logical-changelog`. Run `nix develop --command pnpm install --frozen-lockfile` for dependencies. Use `nix develop --command bazel test --jobs=3 //tools:quality` for TypeScript, tests and build checks. Add `//tools/demo-journal:export`, `:validate` and `:smoke` entry points with exact usage in `docs/logical-changelog.md`. Serialize heavy suites and all GUI with `flock --close /tmp/swarm-ide-overnight.UgO2Aw/virtual.lock`; only owned X11 :90 / port55174. No physical desktop automation or shared app adoption.
+
+## Validation and Acceptance
+
+Tests must reject unknown citations, traversal/symlinks/special files, oversized fields/files, digest mismatch, invalid revision/IDs, stale async results and arbitrary renderer paths. Mounted tests prove text-only rendering, explicit evidence/source activation and retained valid observation on errors. Packaged acceptance opens a real disposable repository, sees an actually agent-generated entry, refreshes an actual new generation, follows a source citation while retaining source/draft/cameras, and observes malformed output refusal. Synthetic schema fixtures are labelled and cannot stand in for actual summarization. Capture screenshot and concise walkthrough. Council uses native OpenAI, foreign Google and explicit Sonnet, with unavailable seats recorded and fix-delta convergence. Hosted CI is ignored under task-specific authority.
+
+## Idempotence and Recovery
+
+Export and validation are explicit operator commands, not background mutation. Refuse malformed input before replacing output; write staged files and rename atomically. Failures keep the last valid UI observation marked retained. Disposable proof repos/profiles/processes are owned and cleaned; preserve source, branch and evidence. Do not merge later peer bases without ROOT clearance. Record remaining noncritical issues in Ditz rather than expanding the slice.
+
+## Artifacts and Notes
+
+Operational handoff: `/tmp/swarm-ide-demo-release.GY8Uwv/journal/`. The final recap distinguishes supervised summarizer generation, real Git/structured observations, agent-reported rationale and deterministic test fixtures. No private transcript or absolute personal path is committed as demo content.
+
+## Interfaces and Dependencies
+
+Use existing Zod, React and Node dependencies. Export `ChangelogBundleSchema`, `ChangelogDocumentSchema` and validated view types from `protocol/changelog.ts`. `readChangelog(root)` returns only bounded validated document/evidence with explicit unavailable or stale state. The browser sends a fixed read request, never paths. Additive core request/response dispatch does not change managed agent admission or global wire version. The renderer receives a typed `onOpenSource(path)` callback; no new process or filesystem interface is exposed.
+
+Initial plan authored 2026-09-07 for one demo vertical; update this document as actual evidence accumulates.
