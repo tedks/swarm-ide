@@ -14,3 +14,12 @@ log_events:
   who: Ted Smith
   what: created
   comment: ""
+- time: 2026-09-07T20:19:58-00:00
+  who: Ted Smith
+  what: commented
+  comment: 'J1 bounded increment: no autonomous summarizer/stream scheduler, observed
+    external-session linking awaits H1 integration; consider richer per-claim links
+    and compact density after demo. Council static caveat-index-key nit deferred:
+    lists are immutable under entry digest, contain no stateful children or reorder
+    operation; stable explicit IDs would expand generated schema without present behavior
+    benefit.'
