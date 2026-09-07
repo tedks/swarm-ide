@@ -24,3 +24,10 @@ log_events:
   comment: Q0 design-only contract will ground first file-specific Context facts/links
     and exact next slice; no contextual UI implementation or live provider is delivered
     by the design.
+- time: 2026-09-07T02:29:19-00:00
+  who: Ted Smith
+  what: commented
+  comment: Q0 design PR40 merged4242048, exact file/artifact relationships and attention/provenance
+    contract specified. Parent stays OPEN. Reverse Ditz/docs links, service-click/callsite
+    consumers and live build provider remain separate future gates; captured links
+    are not live.
