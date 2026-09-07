@@ -18,3 +18,11 @@ log_events:
   who: Ted Smith
   what: started
   comment: ""
+- time: 2026-09-07T02:29:15-00:00
+  who: Ted Smith
+  what: commented
+  comment: Q0 completed as docs-only PR40 normal merge 424204850258d3b929806d2b8bd2fdb288dbc98f,
+    topic15f5228; exact matching tree2eda6733. Light native review CLEAN after directory-evidence/pending-activation
+    fixes. Local documentation links/sections/scope/whitespace passed, no build/GUI/model/hosted
+    work. Recommend one Q1 owner for typed retained service publication, explicit
+    attention and local Context composition; ROOT must approve before implementation.
