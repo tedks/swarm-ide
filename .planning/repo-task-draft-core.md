@@ -51,6 +51,20 @@ cases plus prior lifecycle/security tests. At most one newly instrumented
 packaged navigation run follows. This explains missing capture, NOT the90s
 topology timeout; original full gate stays held and no new review is authorized.
 
+The ONE newly instrumented targeted navigation run on diagnostic executable
+`52e164d73326946e28e2f9eeaf25cdc6a9038775` PASSED101.5s (Bazel107.185s),
+all four cases, run.jGRSqB. Swarm capture now selects its actual private fixture
+and reads the matching nested output base. End-of-scenario phase is unclassified,
+lock_wait_observed=false, error_line_observed=true, elapsed0.131s. This scenario
+deliberately tests a manifest build failure later than initial settlement; the
+end capture cannot explain the original90s timeout. Thus missing-log selection
+is diagnosed/corrected, but timeout diagnosis ends at a negative boundary.
+All four rendererErrors arrays empty/modelTurns0, cleanup4/4 and16 recorded PIDs
+absent. No second instrumented run, full suite, production correction, new council
+or merge. Diagnostic code remains unreviewed pending ROOT; PR50/full gate held.
+The smallest next diagnostic is phase-pinned capture at initial build settlement/
+failure before the later intentional build fault, requiring explicit ownership.
+
 The existing quality target intentionally runs all unit tests, type checking
 and both bundles; no targeted Vitest entry point is supported. Tests will be
 batched to avoid duplicating full executions. D3 deliberately rejects even an
