@@ -20,3 +20,11 @@ log_events:
   who: Ted Smith
   what: created
   comment: ""
+- time: 2026-09-07T19:48:39-00:00
+  who: Ted Smith
+  what: commented
+  comment: 'Visual follow-up: current Build pane preserves at least160px canvas and
+    scrolls, but dense controls can still need scrolling in compact source+draft layouts.
+    Directory edge-detail popover also retains legacy snapshot/not-live phrasing,
+    conservatively not claiming a binary build but worth harmonizing with observation/current/retained
+    terminology. Do not conflate this polish with missing actual provider data.'
