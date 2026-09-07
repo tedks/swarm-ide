@@ -61,3 +61,18 @@ log_events:
     for delivery-time handoff authorization/nonce-scoped obsolete retirement in App/EditorPane
     plus exact tests; no production edits or further runs made. PR44/integration held;
     canvas protected.'
+- time: 2026-09-07T07:18:12-00:00
+  who: Ted Smith
+  what: commented
+  comment: 'Evidence-only cross-branch occurrence: read ROOT root-r3-context-evidence.md
+    and its expressly permitted frozen log /tmp/swarm-ide-shutdown-drain-r3.NvxkqK/frozen-tests1.log.
+    The preserved R3 run at ROOT-attested frozen62eefb4e77878ef92560a4493891774c06eb5abb
+    completed12/13 suites; sole quality failure is the unchanged Context opening-notice
+    assertion tests/context-workbench.test.tsx:100, missing Opening working file example/fraudcheck.proto.
+    Quality1256PASS/1FAIL across93files. ROOT verified pre-Q4 base650432b ancestry
+    and complete diff limited to service/shutdown-test/plan, with no Q4 implementation
+    consumed; I did not inspect or consume R3 code. This is pre-Q4-based R3, NOT pristine
+    baseline or proof of a focus/ack order or historical cause. R3 rehearsal28.7s
+    PASS does not explain the discarded Q4 historical close failure. Existing Q4 controlled-mechanism
+    result0a60a70 and its one-run bound unchanged; no new tests or code changes. Context
+    issue remains open; PR44/integration held and human55175 protected.'
