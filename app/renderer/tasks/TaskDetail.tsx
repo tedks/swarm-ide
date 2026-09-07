@@ -18,6 +18,7 @@ export interface TaskDetailProps {
   surface?: "information" | "editor";
   onShowDocument?: () => void;
   onRefresh?: () => void;
+  attachment?: { eligible: boolean; alreadyAttached: boolean; notice: string | null; onAttach: (origin: HTMLButtonElement) => void };
 }
 
 function Dependencies({ title, rows, onSelect }: { title: string; rows: TaskDetailData["blocks"]; onSelect: (id: string) => void }) {
@@ -30,7 +31,7 @@ function Dependencies({ title, rows, onSelect }: { title: string; rows: TaskDeta
   </section>;
 }
 
-export function TaskDetail({ selectedTaskId, snapshot, detail, detailRevision, detailStale, reading, notice, onSelect, onReveal, onReturnToSource, returnButtonRef, surface = "information", onShowDocument, onRefresh }: TaskDetailProps) {
+export function TaskDetail({ selectedTaskId, snapshot, detail, detailRevision, detailStale, reading, notice, onSelect, onReveal, onReturnToSource, returnButtonRef, surface = "information", onShowDocument, onRefresh, attachment }: TaskDetailProps) {
   // The client validates all wire identities; never display another selection's
   // cached detail during a parent render transition, even for a single frame.
   const selectedDetail = detail?.id === selectedTaskId && detailRevision !== null ? detail : null;
@@ -41,6 +42,12 @@ export function TaskDetail({ selectedTaskId, snapshot, detail, detailRevision, d
     {selectedTaskId === null ? <p className="task-empty">Select a task in Work to inspect its metadata.</p> : <code className="task-selected-id">{displayTaskText(selectedTaskId)}</code>}
     {selectedDetail && onShowDocument ? <button type="button" onClick={onShowDocument}>Show task document</button> : null}
     {onRefresh ? <button type="button" onClick={onRefresh}>Refresh tasks</button> : null}
+    {selectedDetail && attachment ? <div className="task-attach">
+      <button type="button" disabled={!attachment.eligible || attachment.alreadyAttached} onClick={(event) => attachment.onAttach(event.currentTarget)}>
+        {attachment.alreadyAttached ? "Already attached" : "Attach this task to draft"}</button>
+      {!attachment.eligible ? <p className="task-warning">Attachment unavailable: Refresh tasks and inspect a current complete detail. Retained previews are not attachment authority.</p> : null}
+      {attachment.notice ? <p role="status" className="task-warning">{attachment.notice}</p> : null}
+    </div> : null}
     <div role="status" className="task-detail-status">
       {reading ? <p>Reading selected task…</p> : null}
       {notice ? <p className="task-warning">{displayTaskText(notice)}</p> : null}
