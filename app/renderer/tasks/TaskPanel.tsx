@@ -48,19 +48,13 @@ export function TaskPanel({ observation, refreshing, connected, notice, selected
       {notice ? <span>{displayTaskText(notice)}</span> : null}
       {retainedAfterFailure ? <span className="task-warning">Latest check failed or was ignored; retained data is not confirmed current.</span> : null}
     </div>
-    {snapshot ? <details className="task-revision"><summary>Snapshot · {snapshot.metadataCommit.hex.slice(0, 8)}</summary>
-      <p>Observed at <code>{taskRevisionLabel(snapshot.metadataCommit)}</code></p>
-      <p>Observed {snapshot.observedAt}</p>
-      <p>Local ref checked {observation?.checkedAt ?? "not checked"}</p>
-      <p>Repository {displayTaskText(snapshot.repositoryId)} · provider {snapshot.provider}</p>
-      {status !== "observed" || retainedAfterFailure ? <p>Retained snapshot; the latest attempt does not establish that it is current.</p> : null}
-    </details> : null}
-    <label className="task-search">Search tasks by title or full ID<input type="search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Title or full ID" /></label>
-    <div className="task-filters" role="group" aria-label="Task filter">
-      <button type="button" aria-pressed={filter === "open"} onClick={() => setFilter("open")}>Open</button>
-      <button type="button" aria-pressed={filter === "all"} onClick={() => setFilter("all")}>All</button>
+    <div className="task-toolbar">
+      <input className="task-search-input" type="search" aria-label="Search tasks by title or full ID" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search tasks…" />
+      <div className="task-filters" role="group" aria-label="Task filter">
+        <button type="button" aria-pressed={filter === "open"} title="Open means not closed, not ready to dispatch." onClick={() => setFilter("open")}>Open</button>
+        <button type="button" aria-pressed={filter === "all"} onClick={() => setFilter("all")}>All</button>
+      </div>
     </div>
-    <p className="task-hint">Open means not closed, not ready to dispatch.</p>
     {snapshot ? <>
       <p className="task-count">{visible.length} shown · {summaries!.length} in snapshot</p>
       {selectedTaskId !== null && !selectedPresent ? <p className="task-warning">Selected task {displayTaskText(selectedTaskId)} is not present in this revision.</p>
@@ -74,5 +68,15 @@ export function TaskPanel({ observation, refreshing, connected, notice, selected
           </li>)}</ul>}
     </> : <p className="task-empty">No task snapshot has been loaded.</p>}
     <button className="task-show-details" type="button" disabled={selectedTaskId === null} onClick={onShowDetails}>Show task details</button>
+    <details className="task-revision"><summary>{snapshot ? `Snapshot · ${snapshot.metadataCommit.hex.slice(0, 8)}` : "About task filters"}</summary>
+      <p className="task-hint">Open means not closed, not ready to dispatch.</p>
+      {snapshot ? <>
+        <p>Observed at <code>{taskRevisionLabel(snapshot.metadataCommit)}</code></p>
+        <p>Observed {snapshot.observedAt}</p>
+        <p>Local ref checked {observation?.checkedAt ?? "not checked"}</p>
+        <p>Repository {displayTaskText(snapshot.repositoryId)} · provider {snapshot.provider}</p>
+        {status !== "observed" || retainedAfterFailure ? <p>Retained snapshot; the latest attempt does not establish that it is current.</p> : null}
+      </> : null}
+    </details>
   </section>;
 }

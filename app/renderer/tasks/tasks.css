@@ -53,3 +53,18 @@
 .task-ui .task-file-refs li p { margin: 0; }
 .instrument-panel .tasks-reveal-notice { margin: 10px 13px; padding: 8px; border: 1px solid #5b4c30; border-radius: 4px; background: #242016; color: #e4bd77; font: 10px/1.5 "DM Mono", monospace; overflow-wrap: anywhere; }
 .instrument-panel .tasks-show-details { max-width: calc(100% - 26px); margin: 10px 13px; padding: 5px 7px; border: 1px solid #31504a; border-radius: 4px; background: #10221d; color: #b6d8cb; font: 10px/1.5 "DM Mono", monospace; text-align: left; overflow-wrap: anywhere; }
+
+/* Tasks get the first screenful; provenance remains keyboard-accessible below. */
+.task-panel .task-heading { margin-bottom: 3px; }
+.task-panel .task-heading button { padding: 2px 6px; }
+.task-panel .task-observation { margin: 3px 0; gap: 2px; font-size: 9px; }
+.task-panel .task-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; margin: 4px 0; }
+.task-panel .task-search-input { flex: 1 1 90px; width: 90px; padding: 3px 5px; background: #081613; }
+.task-panel .task-filters { flex: none; gap: 3px; }
+.task-panel .task-filters button { padding: 3px 5px; }
+.task-panel .task-count { margin: 2px 0; }
+.task-panel .task-list { margin: 3px 0; }
+.task-panel .task-select { min-height: 28px; padding-block: 3px; }
+.task-panel .task-select strong { font-size: 10px; }
+.task-panel .task-show-details { margin-top: 3px; padding: 3px 6px; }
+.task-panel .task-revision { margin-top: 5px; padding-top: 5px; border-top: 1px solid #21382f; }
