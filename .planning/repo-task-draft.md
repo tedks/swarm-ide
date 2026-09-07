@@ -29,6 +29,7 @@ deterministic rehearsal for admission/history/recovery evidence, not model work.
 - [x] (2026-09-07 09:44Z) D3 owns strict V1/V2 formats, shared canonical serializer, next-write outer2 promotion, all attached Prepare unavailable, optional resolver/disposal interfaces and late-publication protection. Added exact integrity/byte/browser/legacy/receipt/disposal tests; compatibility adjustments and final gates underway, not yet landed.
 - [x] (2026-09-07 09:58Z) Frozen21c3400 build34 passed56.203s; full local13 executed in641.439s with11 PASS and exactly navigation/task packaged failures. Actual logs identify old CJS wire6 requests rejected by required7. Full archive retained; ROOT approved five literal corrections and exact boundary/tripwire only. New tripwire RED:2 failed/1340 passed before correction.
 - [x] (2026-09-07 09:58Z) Native council CLEAN. Google withdrew two false positives after exact installed Zod4.5.4 and Array.isArray guard evidence, SAME-session recheck CLEAN. Anthropic no review before420s timeout, explicitly unavailable; not backfilled. Exact wire correction now in convergence/final local gates, not yet a green aggregate or merge claim.
+- [x] (2026-09-07 10:05Z) Corrected frozen6eaf9e8 build34 PASS5.474s; all13 fresh local suites PASS256.284s, quality1342/98. Actual packaged four-case navigation100.4s, CLI-authored task browsing8.9s and unchanged ordinary-close fixture rehearsal28.7s passed on owned X11 :90/55174 with cleanup1. Native and same-session Google fix-delta convergence CLEAN; Anthropic remains honestly unfilled. No model turn or attachment-resolution proof claimed.
 - [ ] D3 lands and is ROOT-verified before D4 core and D5 UI consumers.
 - [ ] D4/D5 independently reviewed increments; neither alone closes delivered behavior.
 - [ ] D6 reviewed packaged real-data integration and separate deterministic rehearsal proof; only then close implementation parent.
@@ -57,13 +58,13 @@ task failure and cleanup evidence are preserved in
 This is concrete request-version evidence, not a claim about old discarded GUI
 failures. No timeout, selector, acceptance assertion or renderer code changed.
 
-`protocol/common.ts` is already wire version 6. `AgentLinksSchema.task` is a
+At the inspected D2 base, `protocol/common.ts` was wire version 6. `AgentLinksSchema.task` is a
 normalized source path, not task identity; Q4's `TaskBacklinkTargetSchema`
 already expresses world/repository/provider/full ID/commit/blob. Reuse its
 validators rather than invent task IDs that resemble files.
 
-`core/agents/file-store.ts` has strict snapshot version 1, while
-`LaunchContextSchema` has no context version. Its hash validation checks
+At that base, `core/agents/file-store.ts` had strict snapshot version 1, while
+`LaunchContextSchema` had no context version. Its hash validation checked
 submittedPrompt and attachment digests, not reconstruction of the prompt from
 every context field. A task extension needs explicit legacy decoding and V2
 materialization/prompt consistency together, not just an optional UI field.
@@ -142,12 +143,35 @@ Do not add a seventh agent command or widen permission scope.
 ## Outcomes & Retrospective
 
 
-D3 implementation is in progress, not yet a landing claim. New tests cover
+D3 implements the reviewed shared base, not attachment behavior. New tests cover
 exact task bytes, V2 prompt consistency, unchanged V1 values across ordinary
 write/restart, old receipt acknowledgement without provider/revalidation calls,
-fail-closed attachments and held source callbacks across disposal. Final local
-gates, review and merge evidence will be recorded before D3 is closed. The
-attachment UI and real metadata context resolution remain D4/D5/D6 work.
+fail-closed attachments and held source callbacks across disposal. All attached
+Prepare remains `UNSUPPORTED_CONTROL`; injected resolver types are not authority.
+No service queue/drain/control/policy logic changed. Source callbacks are not
+claimed cancellable; the new optional disposal seam closes intake and prevents
+late draft publication. D4 owns actual metadata resolution and lifecycle wiring;
+D5 owns user intent/UI; D6 owns joined attachment proof and parent closure.
+
+Frozen implementation head `6eaf9e8be544d885abea109ab9734819886df4f0`, tree
+`134d9e9190e6a9df55aad992b239c6c6803b1fc2`, passed the34-target build and all13
+fresh local suites (quality1,342 tests/98 files). Native and same-session Google
+full/fix-delta reviews converged CLEAN; Anthropic returned no review before its
+420-second timeout and stayed unfilled. The next commit records only these docs;
+its final frozen check/normal merge/parents/tree are recorded separately in
+`/tmp/swarm-ide-task-draft-d3.ymHzPV/landing-verification.md`. No unchecked docs
+tree is represented as the earlier tested tree. PR48 and Ditz closure require
+actual local landing gates, not this future receipt path.
+
+Both failed and corrected full test outputs are preserved. The successful
+`frozen6eaf9e8-testlogs.tar.gz` archive SHA256 is
+`f5721cab797ec650df31f1392a35ac408110c977a56799ef046a386c7d842688`.
+The real packaged navigation and CLI-authored task-browsing journeys attest
+unchanged existing behavior, not task attachments; ordinary-close rehearsal is
+explicitly fixture execution, not a live model. Every owned virtual scenario
+reported cleanup1. No human canvas, master, integration or app was adopted.
+The one-way ordinary-write snapshot2 boundary above remains required before
+future adoption; V1 values are preserved, not reformatted for display.
 
 D2 provides a grounded design and prospective implementation sequence,
 not a shipped attachment button or executable schema. Draft PR47 contains only
