@@ -28,22 +28,22 @@ describe("exact Context composition", () => {
     const freshness = () => composeContext(subject, input).find((item) => item.id === "services")?.evidence?.freshness;
     expect(freshness()).toBe("current");
     input.files[0]!.content = "unsaved";
-    expect(composeContext(subject, input).find((item) => item.id === "buffer")?.notice).toMatch(/not represented/);
+    expect(composeContext(subject, input).find((item) => item.id === "source")?.notice).toMatch(/not represented/);
     expect(freshness()).toBe("current"); // Disk build, with separate buffer warning.
     input.snapshot.revisions.working.evidence = "unavailable"; expect(freshness()).toBe("retained");
     input.snapshot.revisions.working.evidence = "observed"; input.snapshot.reconciliation.status = "red"; expect(freshness()).toBe("retained");
     input.snapshot.reconciliation.status = "green"; input.session = "restored"; expect(freshness()).toBe("retained");
-    const source = composeContext(subject, input).find((item) => item.id === "source-read")!;
+    const source = composeContext(subject, input).find((item) => item.id === "source")!;
     expect(source.evidence).toMatchObject({ freshness: "retained", observedAt: "2026-09-07T03:01:00.000Z", timeBasis: "client receipt" });
     input.session = "session"; input.files[0]!.status = "error"; expect(freshness()).toBe("retained");
   });
   it("does not fill B from A or another repository and handles old optional snapshots honestly", async () => {
     const { subject, input } = await setup("example/fraudcheck.ts");
     const b = { ...subject, kind: "file" as const, path: "core/files.ts" };
-    expect(composeContext(b, input).find((item) => item.id === "source-read")).toBeUndefined();
+    expect(composeContext(b, input).find((item) => item.id === "source")?.evidence).toBeUndefined();
     expect(composeContext({ ...subject, repositoryId: "other" }, input)[0]?.id).toBe("unavailable");
     input.service = indexService(undefined);
-    expect(composeContext(subject, input).find((item) => item.id === "services")?.notice).toMatch(/unavailable/);
+    expect(composeContext(subject, input).find((item) => item.id === "services")?.notice).toBe("No matching service observation.");
   });
   it("indexes exact capture references once with helper-equivalent semantics and bounded partial display", async () => {
     const { subject, input } = await setup("example/fraudcheck.ts");

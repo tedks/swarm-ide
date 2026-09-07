@@ -8,7 +8,9 @@ import { tmpdir } from "node:os";
 import { GithubPrProvider, githubOrigin, githubPrCommand, githubOwnerOptions, parseGithubPrs } from "../core/github-prs";
 import { BuildQueryCleanupError } from "../core/build-graph";
 import { GithubPrRequestSchema } from "../protocol/github-prs";
-import { PROTOCOL_VERSION, parseCoreResponseForRequest } from "../protocol/schema";
+import { PROTOCOL_VERSION, parseCoreRequest, parseCoreResponseForRequest } from "../protocol/schema";
+import { TaskActivityResultSchema } from "../protocol/task-activity";
+import { TrustedResultSchema } from "../protocol/trusted-local";
 import { initialSnapshot } from "../fixtures/world";
 
 const raw = () => [{ number: 3, title: "Make task navigation direct", state: "OPEN", isDraft: true, author: { login: "operator", id: "ignored" },
@@ -59,6 +61,38 @@ describe("GitHub PR fixed scope and validation", () => {
     expect(() => parseCoreResponseForRequest({ ...reply, file: { kind: "read", path: "src/a", content: "", size: 0, revision: "a".repeat(64) } }, request)).toThrow();
     expect(() => parseCoreResponseForRequest(reply, { protocolVersion: PROTOCOL_VERSION, requestId: "prs", type: "workspace.snapshot" })).toThrow();
     expect(GithubPrRequestSchema.safeParse({ ...request, repository: "other/repo", shell: "gh secret" }).success).toBe(false);
+  });
+  it("keeps joined PR, task activity and trusted results exclusive without losing identity correlation", () => {
+    const snapshot = initialSnapshot(), token = "11111111-1111-4111-8111-111111111111";
+    const common = { protocolVersion: PROTOCOL_VERSION, requestId: "joined", repositoryId: snapshot.project.id, worldId: snapshot.world.id };
+    const metadataCommit = { algorithm: "sha1", hex: "a".repeat(40) };
+    const requests = [
+      parseCoreRequest({ ...common, type: "githubPrs.refresh" }),
+      parseCoreRequest({ ...common, type: "taskActivity.read", taskId: "task", metadataCommit }),
+      parseCoreRequest({ protocolVersion: PROTOCOL_VERSION, requestId: "joined", type: "trusted.send", token, text: "Instructions" }),
+    ];
+    const githubPrs = parseGithubPrs(JSON.stringify(raw()), common.repositoryId, common.worldId, "example/project");
+    const taskActivity = TaskActivityResultSchema.parse({ repositoryId: common.repositoryId, worldId: common.worldId, taskId: "task", metadataCommit, activity: null, unavailable: "not-cached" });
+    const trusted = TrustedResultSchema.parse({ kind: "trusted", snapshot: { instanceId: token, profile: "trusted-local", workspace: "/fixture",
+      preparation: null, runToken: token, status: "ready", threadId: null, turnId: null, output: "", message: "", approvals: [] } });
+    const results = [{ githubPrs }, { taskActivity }, { trusted }];
+    const base = { protocolVersion: PROTOCOL_VERSION, requestId: "joined", ok: true, sequence: 1, snapshot };
+    requests.forEach((request, index) => {
+      expect(parseCoreResponseForRequest({ ...base, ...results[index] }, request).ok).toBe(true);
+      expect(() => parseCoreResponseForRequest(base, request)).toThrow();
+      results.forEach((foreign, other) => {
+        if (other === index) return;
+        expect(() => parseCoreResponseForRequest({ ...base, ...foreign }, request)).toThrow();
+        expect(() => parseCoreResponseForRequest({ ...base, ...results[index], ...foreign }, request)).toThrow();
+      });
+    });
+    expect(() => parseCoreResponseForRequest({ ...base, trusted: { ...trusted, snapshot: { ...trusted.snapshot, runToken: "22222222-2222-4222-8222-222222222222" } } }, requests[2]!)).toThrow(/identity/);
+    for (const request of requests.slice(0, 2)) {
+      const result = request.type === "githubPrs.refresh" ? { githubPrs } : { taskActivity };
+      for (const changed of [{ ...snapshot, world: { ...snapshot.world, id: "foreign" } }, { ...snapshot, project: { ...snapshot.project, id: "foreign" } }]) {
+        expect(() => parseCoreResponseForRequest({ ...base, ...result, snapshot: changed }, request)).toThrow();
+      }
+    }
   });
   it("fences a moved origin and shares one pending read", async () => {
     const git = vi.fn().mockResolvedValueOnce("git@github.com:example/project.git\n").mockResolvedValueOnce("git@github.com:other/repo.git\n");

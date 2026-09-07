@@ -37,6 +37,8 @@ import type { ExternalResult } from "../protocol/external-agents";
 import { BuildGraphProvider } from "./build-graph";
 import type { BuildGraphObservation } from "../protocol/build-graph";
 import { GithubPrProvider, GithubPrReadError } from "./github-prs";
+import type { TrustedLocalService } from "./agents/trusted-local";
+import { TrustedRequestSchema } from "../protocol/trusted-local";
 
 export interface WorkerDependencies {
   createAgents?: typeof createProductionAgentService;
@@ -52,6 +54,7 @@ let sequence = 0;
 const requestIds = new BoundedRequestIds(512);
 const fileReadGenerations = new Map<string, number>();
 const providerPromise = RealWorkspaceProvider.create(workspaceRoot);
+let trustedPromise: Promise<TrustedLocalService | null> | undefined;
 const buildGraphPromise = providerPromise.then((provider) => new BuildGraphProvider(workspaceRoot, provider.snapshot().project.id, provider.snapshot().world.id));
 const githubPrsPromise = providerPromise.then((provider) => new GithubPrProvider(workspaceRoot, provider.snapshot().project.id, provider.snapshot().world.id));
 let workingWorldObserver: WorkingWorldObserver | null = null;
@@ -170,6 +173,7 @@ process.parentPort?.on("message", async (event) => {
       try {
         await Promise.all([
           externalAgents.dispose(),
+          trustedPromise?.then((service) => service?.shutdown()),
           agentServicePromise.then((service) => service?.shutdown()),
           taskProviderPromise.then((tasks) => tasks.dispose()),
           journalPending?.catch(() => {}),
@@ -191,6 +195,22 @@ process.parentPort?.on("message", async (event) => {
       return;
     }
     const provider = await providerPromise;
+    if (request.type.startsWith("trusted.")) {
+      try {
+        trustedPromise ??= import("./agents/trusted-local").then(({ createTrustedLocalService }) =>
+          createTrustedLocalService(workspaceRoot, () => provider.snapshot())).catch(() => null);
+        const trusted = await trustedPromise;
+        if (!trusted || shuttingDown) throw new Error("Trusted-local context is unavailable for this working repository.");
+        const state = await trusted.request(TrustedRequestSchema.parse(request));
+        ++sequence;
+        const response = ok(requestId, provider.snapshot());
+        if (!response.ok) throw new Error("Snapshot unavailable");
+        post(parseCoreResponseForRequest({ ...response, trusted: { kind: "trusted", snapshot: state } }, request));
+      } catch (error) {
+        post(fail(requestId, "TRUSTED_LOCAL_UNAVAILABLE", error instanceof Error && error.message.length < 512 ? error.message : "Trusted-local operation failed. No automatic retry was sent."));
+      }
+      return;
+    }
     if (isExternalRequest(request)) {
       try {
         if (shuttingDown) throw new Error("Shutting down");
@@ -200,6 +220,22 @@ process.parentPort?.on("message", async (event) => {
       } catch {
         post(fail(requestId, "EXTERNAL_OBSERVER_UNAVAILABLE", "External observation or existing-window identity is unavailable. No agent was launched or messaged."));
       }
+      return;
+    }
+    if (request.type === "taskActivity.read") {
+      if (shuttingDown || request.worldId !== provider.snapshot().world.id || request.repositoryId !== provider.snapshot().project.id) {
+        post(fail(requestId, "TASK_WORLD_MISMATCH", "Task activity requires the registered working repository.")); return;
+      }
+      try {
+        const tasks = await taskProviderPromise;
+        if (shuttingDown) throw new Error("Shutting down");
+        const taskActivity = tasks.activity ? await tasks.activity(request) : {
+          worldId: request.worldId, repositoryId: request.repositoryId, metadataCommit: request.metadataCommit,
+          taskId: request.taskId, activity: null, unavailable: "unsupported" as const,
+        };
+        if (shuttingDown) throw new Error("Shutting down");
+        post(parseCoreResponseForRequest({ ...ok(requestId, provider.snapshot()), taskActivity }, request));
+      } catch { post(fail(requestId, "TASK_OBSERVATION_FAILED", "Task activity is unavailable in this core lifetime.")); }
       return;
     }
     if (isTaskRequest(request)) {

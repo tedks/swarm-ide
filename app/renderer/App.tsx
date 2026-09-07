@@ -30,8 +30,10 @@ import { useAgentWorkbench } from "./agents/use-agent-workbench";
 import { LiveRunRail } from "./agents/LiveRunRail";
 import { LiveRunPane } from "./agents/LiveRunPane";
 import { PreparedLaunchDraft } from "./agents/PreparedLaunchDraft";
+import { TrustedLocalPane } from "./agents/TrustedLocalPane";
 import { AgentReloadGuard } from "./agents/AgentReloadGuard";
 import { AgentDock } from "./agents/AgentDock";
+import { BuildResources } from "./build-resources/BuildResources";
 import { buildGraphLinks, useBuildGraph } from "./repository/use-build-graph";
 import { useUiDemo, MockRunRail, MockConversation, MockContext, MOCK_AGENTS, type DemoCommand } from "./agents/ui-demo";
 import { protectsAgentIntent } from "./agents/live-state";
@@ -40,6 +42,7 @@ import { TaskBridgeClient } from "./tasks/client";
 import { PlanWorkspace } from "./plans/PlanWorkspace";
 import { TaskPanel } from "./tasks/TaskPanel";
 import { TaskDetail } from "./tasks/TaskDetail";
+import { TaskContext } from "./tasks/TaskContext";
 import { taskLineTarget, validTaskReference } from "./tasks/reveal";
 import type { TaskFileRef, TaskBacklinkTarget, TaskSnapshot } from "../../protocol/tasks";
 import { isRepositoryPath, type RepositoryEntry, type RepositoryRequest } from "../../protocol/repository";
@@ -56,6 +59,7 @@ import type { ContextSubject } from "../../protocol/context";
 import { emptyContextAttention, permitsContextActivation, reduceContextAttention, subjectFromFocus, type AttentionEvent } from "./context/attention";
 import { composeContext, indexCapture, indexService, type SourceReceipt } from "./context/compose";
 import { ContextPane } from "./context/ContextPane";
+import { GlobalContext } from "./context/GlobalContext";
 import { declarationPublication, resolveDeclarations, type DeclarationResolution } from "./context/declarations";
 import { DeclarationChooser } from "./context/DeclarationChooser";
 import { sameAgentTaskReference } from "../../protocol/agent-task";
@@ -298,7 +302,8 @@ export function App() {
     try {
       const opened = await taskClient.inspectGraphTask(snapshot, id, () => navigationIntent.current === intent && mounted.current);
       if (!opened || navigationIntent.current !== intent || !mounted.current) return false;
-      setRevealNotice(""); inspectTask(id); setCompactPanel("info");
+      setRevealNotice(""); inspectTask(id); setCompactPanel(null);
+      setJournalVisible(false); setTaskDocumentOpen(true); setTaskDocumentVisible(true);
       return true;
     } finally { if (pendingBacklinkIntent.current === intent) pendingBacklinkIntent.current = null; }
   }, [taskClient, inspectTask]);
@@ -1038,11 +1043,11 @@ export function App() {
     publication?.status === "observed" ? [publication.buildId, publication.sourceFingerprint, publication.inputDigest, publication.artifactUri, publication.observedAt] : publication?.reason]);
   const serviceIndex = useMemo(() => indexService(publication), [serviceIdentity]);
   const [buildGraphVisible, setBuildGraphVisible] = useState(false), [directoryBuildVisible, setDirectoryBuildVisible] = useState(false);
-  const buildGraph = useBuildGraph(snapshot?.project.id, snapshot?.world.id, contextRealm(),
-    activeLens !== "Plan" && (buildGraphVisible || directoryBuildVisible) && (!window.swarmLifecycle || lifecycle?.core.phase === "ready"));
-  const buildLinks = useMemo(() => buildGraphLinks(buildGraph.observation), [buildGraph.observation]);
-  const captureIndex = useMemo(() => indexCapture(buildLinks), [buildLinks]);
   const contextSubject = attention.realm === contextRealm() ? attention.subject : null;
+  const buildGraph = useBuildGraph(snapshot?.project.id, snapshot?.world.id, contextRealm(),
+    (activeLens !== "Plan" && (buildGraphVisible || directoryBuildVisible) || !externalInformation && contextSubject?.kind === "file") && (!window.swarmLifecycle || lifecycle?.core.phase === "ready"));
+  const buildLinks = useMemo(() => buildGraphLinks(buildGraph.observation), [buildGraph.observation]);
+  const captureIndex = useMemo(() => indexCapture(buildLinks, buildGraph.observation?.worldId), [buildLinks, buildGraph.observation?.worldId]);
   const contextSections = snapshot ? composeContext(contextSubject, { snapshot, files: fileTabs, service: serviceIndex, capture: captureIndex,
     realm: contextRealm(), session: contextSession, tasks, ready: observedCoreGeneration === coreGenerationRef.current && (!window.swarmLifecycle || lifecycle?.core.phase === "ready") }) : [];
   const inspectBacklink = async (target: TaskBacklinkTarget) => {
@@ -1264,7 +1269,6 @@ export function App() {
       <section className={`navigation-field ${textOpen ? "source-open" : ""}`} style={{ "--graph-share": `${graphShare}%` } as CSSProperties}>
         <div className="field-toolbar">
           <div><span className="eyebrow">central navigation</span><strong>{journalVisible ? "Activity log" : textDocumentVisible ? tasks.detail?.title ?? "Task document" : activeFile?.path ?? focusLabel(snapshot.focus)}</strong><small tabIndex={0}>{activeFile ? `${activeFile.status} · ${activeFile.message}` : `${snapshot.focus.domain} · ${snapshot.focus.revisionId.slice(0, 12)}`}</small></div>
-          <div className="world-chips"><span>working <b>{snapshot.revisions.working.id.slice(0, 8)}</b></span><span>built <b>{snapshot.revisions.built.id.slice(0, 8) || "—"}</b></span><span>deployed <b>{snapshot.revisions.deployed.environment}</b></span></div>
           <button id="reconcile-success" className="build-button" onClick={() => void reconcile()} disabled={reconciliationRunning || coreUnavailable}>▶ Build topology</button>
         </div>
         {textOpen ? <nav className="surface-tabs" aria-label="Document tabs">
@@ -1284,7 +1288,7 @@ export function App() {
           <header><div><span className="eyebrow">source observatory</span><strong>{activeFile.path}</strong></div><div className={`file-state file-${activeFile.status}`}><i />{activeFile.status}<button onClick={() => void saveFile(activeFile.path)} disabled={activeFile.status !== "dirty" || coreUnavailable}>Save <kbd>Ctrl S</kbd></button></div></header>
           {activeFile.status === "loading" ? <div className="source-message">Loading the canonical working file…</div> : <>
             {["conflict", "unknown", "error"].includes(activeFile.status) ? <div className="source-message source-error source-banner"><span>{activeFile.message}</span><button disabled={coreUnavailable || savesInFlightRef.current.has(activeFile.path)} onClick={() => void reloadFile(activeFile.path)}>{activeFile.status === "unknown" ? "Check disk" : "Reload disk"}</button></div> : null}
-            {activeFile.revision ? <EditorPane key={activeFile.path} content={activeFile.content} flash={activeFile.flash}
+            {activeFile.revision ? <EditorPane key={activeFile.path} path={activeFile.path} content={activeFile.content} flash={activeFile.flash}
               memory={(() => { let memory = editorMemories.current.get(activeFile.path); if (!memory) { memory = { state: null }; editorMemories.current.set(activeFile.path, memory); } return memory; })()}
               navigation={sourceNavigation?.path === activeFile.path ? sourceNavigation : null}
               onNavigation={acknowledgeSourceNavigation} onChange={(content) => {
@@ -1306,9 +1310,10 @@ export function App() {
 
       <ResizeDivider label="Resize Context" className="context-divider" container=".workbench" value={contextWidth} minimum={23} maximum={44} initial={30} reverse onChange={setContextWidth} />
       <aside id="information-panel" aria-label="Information panel" className="instrument-panel panel">
+        <GlobalContext snapshot={snapshot} ready={observedCoreGeneration === coreGenerationRef.current && (!window.swarmLifecycle || lifecycle?.core.phase === "ready")} />
         {externalInformation ? <ExternalAgentInformation client={externalAgents} onReturn={() => { setExternalInformation(false); returnToSourceInformation(); }} onOpen={(path) => { setExternalInformation(false); openLinkedFile(path); }} /> : <>
         {revealNotice ? <p ref={revealNoticeElement} className="tasks-reveal-notice" role="status" tabIndex={0}>{revealNotice}</p> : null}
-        {contextSubject?.kind === "task" ? <div className="artifact-context" data-context-kind="task" data-context-subject={contextSubject.id}><TaskDetail returnButtonRef={taskReturnButton} selectedTaskId={contextSubject.id} snapshot={tasks.observation?.snapshot ?? null} detail={tasks.detail?.id === contextSubject.id ? tasks.detail : null} detailRevision={tasks.detailRevision} detailStale={tasks.detailStale || tasks.refreshing || tasks.observation?.status !== "observed" || Boolean(tasks.notice)} reading={tasks.reading} notice={tasks.detailNotice} attachment={taskAttachment(contextSubject.id)} onSelect={selectTask} onReveal={(ref) => { void revealTaskReference(ref); }} onReturnToSource={returnToSourceInformation} onShowDocument={showPinnedTaskDocument} onRefresh={() => { void taskClient.refresh(); }} /></div> : <>
+        {contextSubject?.kind === "task" ? <div className="artifact-context" data-context-kind="task" data-context-subject={contextSubject.id}><TaskContext returnButtonRef={taskReturnButton} selectedTaskId={contextSubject.id} snapshot={tasks.observation?.snapshot ?? null} detail={tasks.detail?.id === contextSubject.id ? tasks.detail : null} detailRevision={tasks.detailRevision} detailStale={tasks.detailStale || tasks.refreshing || tasks.observation?.status !== "observed" || Boolean(tasks.notice)} reading={tasks.reading} notice={tasks.detailNotice} attachment={taskAttachment(contextSubject.id)} onSelect={openTaskDocument} onReveal={(ref) => { void revealTaskReference(ref); }} onReturnToSource={returnToSourceInformation} onShowDocument={showPinnedTaskDocument} onRefresh={() => { void taskClient.refresh(); }} connected={tasks.connected} generation={coreGenerationRef.current} journal={journal.observation} journalRetained={Boolean(journal.notice) || journal.busy} run={liveAgents.run} runRecords={liveAgents.records} runRetained={liveAgents.detailStale || !liveAgents.connected} onJournal={showJournal} /></div> : <>
         {tasks.selectedTaskId ? <button className="tasks-show-details" onClick={showTaskDetails}>Show task details</button> : null}
         <ContextPane subject={contextSubject} sections={contextSections} onOpen={openLinkedFile} onTask={(target) => { void inspectBacklink(target); }} onRefreshTasks={() => { void taskClient.refresh(); }} headingRef={sourceInformationHeading} />
         </>}
@@ -1322,6 +1327,7 @@ export function App() {
           mockConversation={demo.conversation ? { tabs: MOCK_AGENTS, selected: demo.selected, onSelect: demo.select, selectionVersion: demo.selectionVersion, content: <MockConversation selected={demo.selected} /> } : undefined}
           onDraft={() => agentClient.openDraft(snapshot.focus)}
           draftContent={<PreparedLaunchDraft state={liveAgents} client={agentClient} previewCurrent={taskAttachment(tasks.selectedTaskId).alreadyAttached} dirtyPaths={fileTabs.filter((tab) => protectsBuffer(tab)).map((tab) => tab.path)} />}
+          trustedContent={<TrustedLocalPane draft={liveAgents.draft} bridge={window.swarm} connected={liveAgents.connected} generation={lifecycle?.core.generation ?? 0} />}
           runContent={<LiveRunPane state={liveAgents} onInstruction={(text) => agentClient.instruction(text)} onSteer={() => { void agentClient.steer(); }}
           onStop={() => { void agentClient.stop(); }} onRead={(fromStart) => { void agentClient.read(fromStart); }} onFollow={() => agentClient.follow()} onClose={() => agentClient.closePane()}
           onHeight={(height) => agentClient.resize(height)} currentWorldId={snapshot.world.id} currentFingerprint={snapshot.revisions.working.fingerprint}
@@ -1333,7 +1339,7 @@ export function App() {
           if (focus.worldId === snapshot.world.id && focus.revisionKind === "working") selectFocus({ ...focus, revisionId: snapshot.revisions.working.id });
           else setError("Launch focus cannot be mapped to this working world.");
         }} onClose={() => setAgents((state) => ({ ...state, selected: false }))} height={agentPaneHeight} onHeight={setAgentPaneHeight} /> : undefined}
-          jobsContent={<>{snapshot.jobs.length ? snapshot.jobs.map((job) => <article className={`job status-${job.status === "failed" ? "red" : job.status === "succeeded" ? "green" : "yellow"}`} key={job.id}><header><strong>{job.label}</strong><span>{Math.round(job.progress * 100)}%</span></header><div className="job-progress"><i style={{ width: `${job.progress * 100}%` }} /></div><footer><span>{job.message}</span><b>{job.resources.cpuPercent || job.resources.memoryMiB ? `CPU ${job.resources.cpuPercent}% · ${job.resources.memoryMiB} MiB` : "telemetry unavailable"}</b></footer></article>) : <article className="job idle"><strong>No derived work running</strong><span>Build the repository service topology to observe the current world.</span></article>}</>}
+          jobsContent={<BuildResources jobs={snapshot.jobs} />}
           activityContent={<><JournalActivity state={journal} onOpen={showJournal} /><div className="activity-list">{snapshot.activity.slice(0, 4).map((activity) => <div key={activity.id}><i className={`status-${activity.status}`} /><span>{activity.summary}</span><small>{activity.kind}</small></div>)}</div></>}
         />
       </section>

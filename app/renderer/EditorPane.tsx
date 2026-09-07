@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
 import { defaultKeymap } from "@codemirror/commands";
-import { EditorState, StateEffect, StateField } from "@codemirror/state";
+import { Compartment, EditorState, StateEffect, StateField } from "@codemirror/state";
 import {
   Decoration,
   EditorView,
@@ -12,6 +12,7 @@ import {
   type DecorationSet,
 } from "@codemirror/view";
 import type { SourceFlash } from "./source-diff";
+import { sourceLanguage, sourceSyntaxHighlighting } from "./editor-language";
 
 const setSourceFlash = StateEffect.define<SourceFlash | null>();
 
@@ -71,7 +72,8 @@ function minimalReplacement(previous: string, next: string): { from: number; to:
   return { from, to: previous.length - suffix, insert: next.slice(from, next.length - suffix) };
 }
 
-export function EditorPane({ content, flash, onChange, onSave, memory, navigation, onNavigation }: {
+export function EditorPane({ path, content, flash, onChange, onSave, memory, navigation, onNavigation }: {
+  path?: string;
   content: string;
   flash: SourceFlash | null;
   onChange: (content: string) => void;
@@ -82,6 +84,7 @@ export function EditorPane({ content, flash, onChange, onSave, memory, navigatio
 }) {
   const container = useRef<HTMLDivElement>(null);
   const view = useRef<EditorView | null>(null);
+  const language = useRef(new Compartment());
   const suppressChange = useRef(false);
   const onChangeRef = useRef(onChange);
   const onSaveRef = useRef(onSave);
@@ -95,6 +98,8 @@ export function EditorPane({ content, flash, onChange, onSave, memory, navigatio
     const state = EditorState.create({
       doc: content,
       extensions: [
+        language.current.of(sourceLanguage(path)),
+        sourceSyntaxHighlighting,
         lineNumbers(),
         drawSelection(),
         highlightActiveLine(),
@@ -126,6 +131,16 @@ export function EditorPane({ content, flash, onChange, onSave, memory, navigatio
     return () => { if (memory) memory.state = view.current?.state ?? null; view.current?.destroy(); view.current = null; };
     // A source tab owns one editor instance; content changes are synchronized below.
   }, []);
+
+  useEffect(() => {
+    const current = view.current;
+    const extension = sourceLanguage(path);
+    if (current && language.current.get(current.state) !== extension) {
+      // Reconfigure only parsing: text, selection, decorations and other fields
+      // remain in the same EditorView (including any installed undo history).
+      current.dispatch({ effects: language.current.reconfigure(extension) });
+    }
+  }, [path]);
 
   useEffect(() => {
     const current = view.current;
