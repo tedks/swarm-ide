@@ -38,22 +38,22 @@ async function main() {
     wc.sendInputEvent({ type: "mouseDown", button: "left", clickCount: 1, ...coordinates });
     wc.sendInputEvent({ type: "mouseUp", button: "left", clickCount: 1, ...coordinates }); await paint();
   };
-  const key = (keyCode, modifiers = []) => { wc.sendInputEvent({ type: "keyDown", keyCode, modifiers }); if (keyCode === "Enter") wc.sendInputEvent({ type: "char", keyCode: "\r", modifiers }); wc.sendInputEvent({ type: "keyUp", keyCode, modifiers }); };
+  const key = async (keyCode, modifiers = []) => { wc.sendInputEvent({ type: "keyDown", keyCode, modifiers }); if (keyCode === "Enter") wc.sendInputEvent({ type: "char", keyCode: "\r", modifiers }); wc.sendInputEvent({ type: "keyUp", keyCode, modifiers }); await paint(); };
   const command = async (name) => {
     await click(".command-trigger"); await click(".command-palette input");
     await until(() => run(() => document.activeElement?.getAttribute("aria-label") === "Workspace command"), "palette input owns native focus");
-    key("a", ["control"]); await wc.insertText(name);
+    await key("a", ["control"]); await wc.insertText(name);
     await until(() => run((expected) => document.querySelector(".command-palette input")?.value === expected &&
       document.querySelector(".command-results button[aria-current='true'] span")?.firstChild?.textContent === expected, name), "filtered command acknowledged");
-    key("Enter");
+    await key("Enter");
   };
   const open = async (source) => {
     await command("Open repository path");
     await until(() => run(() => document.querySelector(".command-palette input")?.getAttribute("aria-label") === "Exact repository path"), "exact path mode");
     await until(() => run(() => document.activeElement?.getAttribute("aria-label") === "Exact repository path"), "exact path input focus");
-    key("a", ["control"]); await wc.insertText(source);
+    await key("a", ["control"]); await wc.insertText(source);
     await until(() => run((expected) => document.querySelector(".command-palette input")?.value === expected, source), "exact path text acknowledged");
-    await paint(); key("Enter");
+    await paint(); await key("Enter");
     await until(async () => (await text(".source-surface header strong")) === source && await run((p) => document.querySelector(".artifact-context")?.dataset.contextSubject === p, source), `source/Context ${source}`);
   };
   const state = () => run(() => { const s = document.querySelector(".cm-content")?.cmView?.rootView?.view?.state; return s ? { text: s.doc.toString(), anchor: s.selection.main.anchor, head: s.selection.main.head } : null; });
@@ -66,7 +66,9 @@ async function main() {
   const allContext = await text("#information-panel");
   for (const removed of ["Providers not available", "Local editor buffer", "SHA-256"]) assert(!allContext.includes(removed));
   await screenshot("01-illustrative-latency.png", "[data-context-section='latency']");
-  await run(() => document.querySelector(".cm-content").focus()); key("End", ["control"]); await wc.insertText("// unsaved Context proof");
+  await run(() => document.querySelector(".cm-content").focus()); await key("End", ["control"]);
+  await until(async () => (await state())?.anchor === fixture.sourceText.length, "native end-of-source acknowledged");
+  await wc.insertText("// unsaved Context proof");
   await until(async () => (await state())?.text === `${fixture.sourceText}// unsaved Context proof`, "dirty source");
   const dirty = await state();
   await command("Ask an agent about this focus");
@@ -100,7 +102,7 @@ async function main() {
   await paint(); await paint();
   const cameras = await run(() => { globalThis.__contextGraphs = [...document.querySelectorAll(".react-flow__viewport")]; return globalThis.__contextGraphs.map((node) => node.style.transform); });
   assert(cameras.length > 0);
-  await run(() => document.querySelector(".cm-content").focus()); key("ArrowLeft"); await paint();
+  await run(() => document.querySelector(".cm-content").focus()); await key("ArrowLeft");
   assert.deepEqual(await run(() => globalThis.__contextGraphs.map((node) => ({ connected: node.isConnected, transform: node.style.transform }))), cameras.map((transform) => ({ connected: true, transform })));
   assert.equal(rendererErrors.length, 0, JSON.stringify(rendererErrors));
   await fs.writeFile(path.join(evidence, "proof.json"), JSON.stringify({ ok: true, realBazel: true, packagedCore: true, sourceCamerasRetained: true, modelTurns: 0, rendererErrors,
