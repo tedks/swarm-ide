@@ -14,7 +14,8 @@ An operator can register existing harness sessions, inspect their actual fork an
 - [x] (2026-09-07 19:56Z) Packaged eight-level synthetic UI/hand-off/retention/ordinary-save/clean-close proof passed on owned X11. Actual authorized local parent metadata recorded separately, ignored.
 - [x] (2026-09-07 19:56Z) Reviewed code6d8ae88: native and Google fix-delta CLEAN; Sonnet unavailable after240s. All36 build targets, full quality1484tests105files and31 focused tests passed.
 - [x] (2026-09-07 19:58Z) ROOT-cleared PR51c3128715 composed without conflicts or production delta as b6bd346.
-- [ ] Final exact reviewed-base landing or held pushed increment, Ditz status and cleanup receipt.
+- [x] (2026-09-07 20:12Z) ROOT-cleared PR54 composed cleanly as a873c885; all41 build targets, full quality1512tests108files, focused31, startup22, workspace6 and actual packaged owned-X11 proof passed. Native composition review CLEAN.
+- [ ] Normal landing: reviewed pushed increment held by ROOT's reserved merge order; Ditz remains in progress until actual merge. Owned packaged processes cleaned; no shared adoption.
 
 ## Surprises & Discoveries
 
@@ -33,6 +34,8 @@ Context paths require an exact operator-declared contextRoot equal to the regist
 ## Outcomes & Retrospective
 
 The bounded vertical works and is pushed as PR55. It exposes real registered metadata through an additive, separately typed observer and exercises the production archive with explicitly synthetic session files. Full local quality and the dedicated packaged proof are green on reviewed code6d8ae88. Final normal landing is conditioned on the current ROOT-cleared aggregate base; shared app adoption belongs to ROOT. No live provider capability, complete conversation history, verified repository edit attribution or full effective context is implied.
+
+The reviewed PR51/PR54 aggregate a873c885 has tree10495ca195670552d57a776d80f7b1d0410af57e. All41 build targets and four relevant test targets passed, including full quality1512/108. The actual packaged run.yRnFIe passed in2.845s with zero renderer exceptions, exact dirty-source/camera retention, checked disposable tmux selection, observed-process survival and cleanup1. These are relevant full-quality/focused/packaged gates, not a claim that every legacy integration suite was rerun. The first aggregate test invocation named a nonexistent startup target; correction used startup-guard-test without a source change. ROOT reserves merge ordering, so this reviewed aggregate is not permission to consume newer remote heads.
 
 ## Context and Orientation
 
