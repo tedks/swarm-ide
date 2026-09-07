@@ -4,6 +4,7 @@ import { AgentRequestSchema, AgentResultSchema, AgentFocusSchema, AgentLinksSche
 import { TaskRequestSchema, TaskResultSchema, TaskBoundaryErrorSchema, parseTaskResultForRequest, type TaskRequest } from "./tasks";
 import { RepositoryObservationSchema, RepositoryPathSchema, RepositoryRequestSchema, RepositoryResultSchema, parseRepositoryResultForRequest } from "./repository";
 import { RepositorySearchRequestSchema, RepositorySearchResultSchema, parseRepositorySearchResult } from "./repository-search";
+import { ServiceContextObservationSchema } from "./context";
 export { PROTOCOL_VERSION, FocusRefSchema, RevisionKindSchema, type FocusRef, type RevisionKind } from "./common";
 
 export const MAX_EDITABLE_FILE_BYTES = 2 * 1024 * 1024;
@@ -139,6 +140,7 @@ export const WorkspaceSnapshotSchema = z.object({
   graphs: z.array(GraphSliceSchema).min(1).max(8),
   mappings: z.array(NavigationMappingSchema).max(2_000),
   widgets: z.array(WidgetSchema).max(64),
+  serviceContext: ServiceContextObservationSchema.optional(),
   jobs: z.array(JobSchema).max(128),
   activity: z.array(ActivitySchema).max(256),
   reconciliation: z.object({
@@ -149,6 +151,12 @@ export const WorkspaceSnapshotSchema = z.object({
     message: z.string().min(1),
   }),
 }).superRefine((snapshot, context) => {
+  const service = snapshot.serviceContext;
+  if (service && (service.repositoryId !== snapshot.project.id || service.worldId !== snapshot.world.id))
+    context.addIssue({ code: "custom", path: ["serviceContext"], message: "Context must identify this repository and world" });
+  if (service?.status === "observed" && (service.buildId !== snapshot.revisions.built.id || service.sourceFingerprint !== snapshot.revisions.built.sourceFingerprint ||
+      !snapshot.graphs.some((graph) => graph.topologyId === "service" && graph.nodes.some((node) => node.id === service.service.id && node.focus.domain === "service") && graph.inputFingerprint === service.sourceFingerprint && graph.provenance.some((item) => item.sourceKind === "build" && item.version === service.buildId && item.uri === service.artifactUri))))
+    context.addIssue({ code: "custom", path: ["serviceContext"], message: "Service context must belong to the atomically published build and service graph" });
   const working = snapshot.revisions.working;
   if ((!working.fingerprint && (working.evidence !== "unavailable" || !working.id.startsWith("unobserved:"))) ||
       (working.id.startsWith("unobserved:") && (working.fingerprint !== "" || working.evidence !== "unavailable" ||

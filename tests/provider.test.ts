@@ -36,6 +36,13 @@ function dependencies(
 }
 
 describe("real workspace provider", () => {
+  it.each(["core/files.ts", "examples/checkout-world/services/payments/payments.proto"])("does not leak FraudCheck ownership onto %s", async (path) => {
+    const provider = await RealWorkspaceProvider.create("/unused", dependencies(["a".repeat(64), "a".repeat(64)]));
+    await provider.startReconciliation(() => undefined);
+    const snapshot = provider.selectFocus({ ...provider.snapshot().focus, domain: "repo", key: `file:${path}`, path });
+    expect(snapshot.widgets.find((widget) => widget.id === "owning-target")).toBeUndefined();
+    provider.dispose();
+  });
   it("starts with an honest gray graph and publishes exact yellow then green", async () => {
     const initialFingerprint = "a".repeat(64);
     const buildFingerprint = "b".repeat(64);
