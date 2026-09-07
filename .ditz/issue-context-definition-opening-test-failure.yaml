@@ -25,3 +25,15 @@ log_events:
     No assertion/code changed or repeated run to erase this failure; cause unproved.
     Corresponding baseline full quality run had only2 shutdown counterexamples. Triage
     remains outside current diagnostic authority.'
+- time: 2026-09-07T07:02:06-00:00
+  who: Ted Smith
+  what: commented
+  comment: 'Q4 controlled handoff continuation is an instrumentation boundary, not
+    behavioral proof. Pushed fde6ef8 and9c4b0d2; both authorized quality executions
+    stopped before Vitest at TS2345 tests/context-workbench.test.tsx:199. The one
+    permitted correction typed the readiness query but missed the following editorElement
+    declaration; original and corrected logs retained under /tmp/swarm-ide-task-backlinks-q4.NP4JSm/context-order-*.log.
+    No Q4_CONTEXT_ORDER traces, no historical cause or fix established. Correction/run
+    allowance exhausted. Exact next ROOT authority needed: querySelector<HTMLElement>
+    on editorElement declaration plus one frozen quality run. No production or shared-helper
+    edits; R3 independent, PR44/integration held, preview untouched. See context-order-boundary.md.'
