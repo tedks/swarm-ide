@@ -48,3 +48,12 @@ log_events:
   who: Ted Smith
   what: no longer blocked by task-rehearsal-resize-observer-d6
   comment: ""
+- time: 2026-09-07T19:12:23-00:00
+  who: Ted Smith
+  what: commented
+  comment: User explicitly accepts exact known ResizeObserver warning as nonblocking
+    risk; issue remains open but blocking edge removed. PR51 current91a0975/tree d68bfd27,
+    narrow test-only retained-warning assessment, all other errors/integrity/close
+    checks block. Targeted1479/105 and native+Google delta CLEAN; original explicit
+    Sonnet unfilled. ONE authorized frozen full35 build/fresh14 local underway; no
+    B1 consumption, physical app, production filter/model or broader scope.
