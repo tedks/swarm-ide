@@ -1,0 +1,16 @@
+id: repo-task-backlinks-q4
+title: Explicit revision-pinned Ditz backlinks in file Context
+desc: ""
+type: feature
+component: default
+release:
+reporter: Ted Smith <tedks@riseup.net>
+status: unstarted
+disposition:
+creation_time: 2026-09-07T05:09:03-00:00
+references: []
+log_events:
+- time: 2026-09-07T05:09:03-00:00
+  who: Ted Smith
+  what: created
+  comment: ""
