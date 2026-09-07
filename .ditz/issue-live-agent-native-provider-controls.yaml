@@ -39,5 +39,13 @@ log_events:
     patch plus synthetic tests; absent explicit answer HOLD P7. Proceeding with independent
     real Ditz T3 integration from verified T2. No default/preselected response is
     approval.
+- time: 2026-09-07T23:01:41-00:00
+  who: Ted Smith
+  what: commented
+  comment: 'PM reconciliation 2026-09-07: user-approved trusted-local execution is
+    now tracked by trusted-local-execution-x1 and does not require this separate sealed-context
+    HTTP-only/prewarm/retry proof. Proposed optional hardened-profile/reorg scope;
+    this issue remains open because no matching native-provider proof or patch landed.
+    The change in product direction is not evidence that these controls succeeded.'
 blocks:
 - agent-run-effective-policy
