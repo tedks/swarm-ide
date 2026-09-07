@@ -1,0 +1,16 @@
+id: demo-polish-service-states-20260907
+title: Explain empty Service graph states without inferring topology
+desc: ""
+type: task
+component: default
+release:
+reporter: Ted Smith <tedks@riseup.net>
+status: unstarted
+disposition:
+creation_time: 2026-09-07T21:32:43-00:00
+references: []
+log_events:
+- time: 2026-09-07T21:32:43-00:00
+  who: Ted Smith
+  what: created
+  comment: ""
