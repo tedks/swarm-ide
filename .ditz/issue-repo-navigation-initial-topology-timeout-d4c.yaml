@@ -13,7 +13,7 @@ type: bugfix
 component: default
 release:
 reporter: Ted Smith <tedks@riseup.net>
-status: unstarted
+status: in_progress
 disposition:
 creation_time: 2026-09-07T16:15:11-00:00
 references: []
@@ -25,6 +25,10 @@ log_events:
 - time: 2026-09-07T16:17:09-00:00
   who: Ted Smith
   what: blocks repo-task-context-core-d4
+  comment: ""
+- time: 2026-09-07T16:36:47-00:00
+  who: Ted Smith
+  what: started
   comment: ""
 blocks:
 - repo-task-context-core-d4
