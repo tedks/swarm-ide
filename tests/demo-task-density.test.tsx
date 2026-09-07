@@ -23,6 +23,7 @@ describe("task sidebar density without losing authority", () => {
     expect(disclosure.open).toBe(false);
     expect(list.compareDocumentPosition(disclosure) & Node.DOCUMENT_POSITION_FOLLOWING).not.toBe(0);
     expect(screen.getByText("Open means not closed, not ready to dispatch.").closest("details")).toBe(disclosure);
+    expect(screen.getByText(/shown · .* in snapshot/).closest("details")).toBe(disclosure);
     expect(screen.getByRole("searchbox", { name: "Search tasks by title or full ID" }).closest(".task-toolbar")).not.toBeNull();
     expect(screen.getByRole("group", { name: "Task filter" }).closest(".task-toolbar")).not.toBeNull();
   });
@@ -32,6 +33,7 @@ describe("task sidebar density without losing authority", () => {
     const state = screen.getByRole("status");
     expect(state.getAttribute("data-task-status")).toBe(status);
     expect(state.closest("details")).toBeNull();
+    expect(state.closest(".is-current")).toBeNull();
     expect(screen.getByText("Check could not confirm current metadata").closest("details")).toBeNull();
     expect(screen.getByRole("button", { name: "Select task task-fixture" })).toBeTruthy();
   });

@@ -37,8 +37,10 @@ export function TaskPanel({ observation, refreshing, connected, notice, selected
   const selectedVisible = selectedTaskId !== null && visible.some((task) => task.id === selectedTaskId);
   const status = observation?.status ?? "unobserved";
   const retainedAfterFailure = status === "observed" && notice !== null;
+  const current = status === "observed" && connected && !refreshing && !notice && !observation?.reason;
 
   return <section className="rail-section task-ui task-panel" aria-label="Tasks">
+    <div className={`task-panel-statusline${current ? " is-current" : ""}`}>
     <header className="task-heading"><h2>Tasks</h2><button type="button" onClick={onRefresh} disabled={!connected || refreshing}>Refresh tasks</button></header>
     <div className="task-observation" role="status" data-task-status={status}>
       <strong>{retainedAfterFailure ? "Task snapshot retained" : stateLabels[status]}</strong>
@@ -48,6 +50,7 @@ export function TaskPanel({ observation, refreshing, connected, notice, selected
       {notice ? <span>{displayTaskText(notice)}</span> : null}
       {retainedAfterFailure ? <span className="task-warning">Latest check failed or was ignored; retained data is not confirmed current.</span> : null}
     </div>
+    </div>
     <div className="task-toolbar">
       <label className="task-search"><input type="search" aria-label="Search tasks by title or full ID" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search tasks…" /></label>
       <div className="task-filters" role="group" aria-label="Task filter">
@@ -56,7 +59,6 @@ export function TaskPanel({ observation, refreshing, connected, notice, selected
       </div>
     </div>
     {snapshot ? <>
-      <p className="task-count">{visible.length} shown · {summaries!.length} in snapshot</p>
       {selectedTaskId !== null && !selectedPresent ? <p className="task-warning">Selected task {displayTaskText(selectedTaskId)} is not present in this revision.</p>
         : selectedPresent && !selectedVisible ? <p className="task-hint">Selected task is hidden by the current filters.</p> : null}
       {summaries!.length === 0 ? <p className="task-empty">No tasks in this snapshot.</p>
@@ -71,6 +73,7 @@ export function TaskPanel({ observation, refreshing, connected, notice, selected
     <details className="task-revision"><summary>{snapshot ? `Snapshot · ${snapshot.metadataCommit.hex.slice(0, 8)}` : "About task filters"}</summary>
       <p className="task-hint">Open means not closed, not ready to dispatch.</p>
       {snapshot ? <>
+        <p className="task-count">{visible.length} shown · {summaries!.length} in snapshot</p>
         <p>Observed at <code>{taskRevisionLabel(snapshot.metadataCommit)}</code></p>
         <p>Observed {snapshot.observedAt}</p>
         <p>Local ref checked {observation?.checkedAt ?? "not checked"}</p>
