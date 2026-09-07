@@ -3,6 +3,7 @@ import { PROTOCOL_VERSION, FocusRefSchema } from "./common";
 import { AgentRequestSchema, AgentResultSchema, AgentFocusSchema, AgentLinksSchema, AgentBoundaryErrorSchema, type AgentRequest } from "./agents";
 import { TaskRequestSchema, TaskResultSchema, TaskBoundaryErrorSchema, parseTaskResultForRequest, type TaskRequest } from "./tasks";
 import { RepositoryObservationSchema, RepositoryPathSchema, RepositoryRequestSchema, RepositoryResultSchema, parseRepositoryResultForRequest } from "./repository";
+import { RepositorySearchRequestSchema, RepositorySearchResultSchema, parseRepositorySearchResult } from "./repository-search";
 export { PROTOCOL_VERSION, FocusRefSchema, RevisionKindSchema, type FocusRef, type RevisionKind } from "./common";
 
 export const MAX_EDITABLE_FILE_BYTES = 2 * 1024 * 1024;
@@ -275,7 +276,7 @@ const WorkspaceRequestSchema = z.discriminatedUnion("type", [
     path: z.string().min(1).max(4_096),
   }),
 ]);
-export const CoreRequestSchema = z.union([WorkspaceRequestSchema, AgentRequestSchema, TaskRequestSchema, RepositoryRequestSchema]);
+export const CoreRequestSchema = z.union([WorkspaceRequestSchema, AgentRequestSchema, TaskRequestSchema, RepositoryRequestSchema, RepositorySearchRequestSchema]);
 export type CoreRequest = z.infer<typeof CoreRequestSchema>;
 
 export const FileResultSchema = z.discriminatedUnion("kind", [
@@ -311,6 +312,7 @@ export const CoreResponseSchema = z.discriminatedUnion("ok", [
     agent: AgentResultSchema.optional(),
     task: TaskResultSchema.optional(),
     repo: RepositoryResultSchema.optional(),
+    search: RepositorySearchResultSchema.optional(),
   }).strict(),
   z.object({
     protocolVersion: z.literal(PROTOCOL_VERSION),
@@ -370,6 +372,13 @@ const agentResultKind = {
 export function parseCoreResponseForRequest(input: unknown, request: CoreRequest): CoreResponse {
   const response = parseCoreResponse(input);
   if (response.requestId !== request.requestId) throw new Error("Response request ID mismatch");
+  if (request.type === "repo.search") {
+    if (response.ok) {
+      if (response.file || response.agent || response.task || response.repo || response.snapshot.project.id !== request.repositoryId)
+        throw new Error("Unexpected search response authority");
+      parseRepositorySearchResult(response.search, request);
+    }
+  } else if (response.ok && response.search) throw new Error("Search result supplied for a different command");
   if (request.type === "repo.list") {
     if (response.ok) {
       if (response.file || response.agent || response.task) throw new Error("Unexpected repository response authority");
