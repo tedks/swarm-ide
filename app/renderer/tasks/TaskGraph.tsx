@@ -9,7 +9,7 @@ export function TaskGraph({ client, state, visible, onOpen }: {
   client: TaskBridgeClient; state: TaskClientState; visible: boolean;
   onOpen: (snapshot: TaskSnapshot, id: string) => Promise<boolean>;
 }) {
-  const [loaded, setLoaded] = useState<{ snapshot: TaskSnapshot; lifetime: number; details: ReadonlyMap<string, TaskDetail>; attempted: number } | null>(null);
+  const [loaded, setLoaded] = useState<{ snapshot: TaskSnapshot; owner: TaskBridgeClient; lifetime: number; details: ReadonlyMap<string, TaskDetail>; attempted: number } | null>(null);
   const [loading, setLoading] = useState(false), [selected, setSelected] = useState<string | null>(null);
   const [notice, setNotice] = useState("");
   const current = useRef<AbortController | null>(null);
@@ -18,25 +18,25 @@ export function TaskGraph({ client, state, visible, onOpen }: {
   // isolated-node stack while details arrive. Later reads preserve the camera.
   if (loaded && !loading) canvasWasShown.current = true;
   const snapshot = state.observation?.snapshot ?? null;
-  const fresh = loaded && client.graphCurrent(loaded.snapshot, loaded.lifetime);
+  const fresh = loaded && loaded.owner === client && client.graphCurrent(loaded.snapshot, loaded.lifetime);
   const read = async () => {
     if (!snapshot || !client.graphCurrent(snapshot)) return;
     current.current?.abort();
     const controller = new AbortController(); current.current = controller;
     const lifetime = client.graphLifetime();
     setLoading(true); setNotice("");
-    setLoaded({ snapshot, lifetime, details: new Map(), attempted: 0 });
+    setLoaded({ snapshot, owner: client, lifetime, details: new Map(), attempted: 0 });
     await loadTaskGraphDetails(snapshot, (id, signal) => client.readGraphDetail(snapshot, id, signal), controller.signal,
-      (details, attempted) => { if (current.current === controller) setLoaded({ snapshot, lifetime, details, attempted }); });
+      (details, attempted) => { if (current.current === controller) setLoaded({ snapshot, owner: client, lifetime, details, attempted }); });
     if (current.current === controller) { setLoading(false); current.current = null; }
   };
   useEffect(() => {
-    if (!visible || !state.connected || !snapshot || loaded && (
+    if (!visible || !state.connected || !snapshot || loaded && (loaded.owner !== client ||
       snapshot.worldId !== loaded.snapshot.worldId || snapshot.repositoryId !== loaded.snapshot.repositoryId ||
       !sameGitObject(snapshot.metadataCommit, loaded.snapshot.metadataCommit))) {
       current.current?.abort(); current.current = null; setLoading(false);
     }
-  }, [visible, state.connected, snapshot, loaded?.snapshot]);
+  }, [client, visible, state.connected, snapshot, loaded?.snapshot, loaded?.owner]);
   useEffect(() => () => { current.current?.abort(); }, []);
   const projection = useMemo(() => loaded ? projectTaskGraph(loaded.snapshot, loaded.details, loaded.attempted) : null, [loaded]);
   const nodes = useMemo(() => projection?.nodes.map((row) => ({ id: row.id, title: displayTaskText(row.title),
@@ -45,7 +45,7 @@ export function TaskGraph({ client, state, visible, onOpen }: {
     label: `blocks${edge.diagnostics.length ? ` · ${edge.diagnostics.join(", ")}` : ""}` })) ?? [], [projection]);
   const picked = projection?.nodes.find((node) => node.id === selected);
   const open = async (id: string) => {
-    if (!loaded || !client.graphCurrent(loaded.snapshot, loaded.lifetime)) return;
+    if (!loaded || loaded.owner !== client || !client.graphCurrent(loaded.snapshot, loaded.lifetime)) return;
     if (!await onOpen(loaded.snapshot, id)) setNotice("Task link is unavailable at this revision. Refresh tasks and load the graph again.");
   };
   return <section className="planning-projection" aria-label="Task dependency graph" hidden={!visible}>

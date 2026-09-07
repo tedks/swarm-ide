@@ -49,6 +49,15 @@ describe("playable separate planning projections", () => {
     fireEvent.click(screen.getByRole("button", { name: "Load dependency graph" }));
     await waitFor(() => expect(screen.queryByText(/NOT CURRENT/)).toBeNull());
   });
+  it("does not authorize the old graph when a different client has the same numeric epoch", async () => {
+    const h = harness(), replacement = harness(); const view = render(<PlanWorkspace {...h.props} />);
+    fireEvent.click(screen.getByRole("button", { name: "Load dependency graph" })); await screen.findByText(/1\/1 details read/);
+    view.rerender(<PlanWorkspace {...h.props} client={replacement.props.client} />);
+    expect(screen.getByText(/NOT CURRENT/)).toBeTruthy();
+    fireEvent.click(screen.getByText(/Keyboard task outline/));
+    expect((screen.getByRole("button", { name: "Open graph task task-fixture" }) as HTMLButtonElement).disabled).toBe(true);
+    expect(replacement.readGraphDetail).not.toHaveBeenCalled();
+  });
   it("does not read relations or plan bytes until an explicit gesture; graph selection is not execution", async () => {
     const h = harness(); render(<PlanWorkspace {...h.props} />);
     expect(h.readGraphDetail).not.toHaveBeenCalled(); expect(h.request).not.toHaveBeenCalled();

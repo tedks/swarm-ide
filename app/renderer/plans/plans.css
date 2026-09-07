@@ -1,6 +1,9 @@
 .planning-field { grid-row: 2; min-width: 0; min-height: 0; display: grid; grid-template-rows: 34px minmax(0, 1fr); padding: 6px; gap: 5px; background: #071011; overflow: hidden; }
 .navigation-field.source-open > .planning-field { grid-column: 1; grid-row: 2 / span 2; }
-.planning-field[hidden], .planning-projection[hidden], .graphs-grid[hidden] { display: none !important; }
+.planning-field[hidden], .planning-projection[hidden] { display: none !important; }
+/* Keep inactive System panes measurable. A display:none round-trip makes the
+   existing directory observer interpret restoration as a fresh viewport. */
+.graphs-grid[hidden] { display: grid !important; visibility: hidden; pointer-events: none; }
 .planning-tabs { display: flex; gap: 5px; border-bottom: 1px solid #28413d; }
 .planning-field button { border: 1px solid #33504a; border-radius: 4px; background: #102422; color: #c4ded5; padding: 5px 8px; font: 11px system-ui; cursor: pointer; }
 .planning-field button:disabled { opacity: .45; cursor: default; }
