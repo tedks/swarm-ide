@@ -1,0 +1,24 @@
+id: repo-navigation-initial-topology-timeout-d4c
+title: 'D4C full package gate: initial Swarm topology remains running past existing
+  deadline'
+desc: Frozen composed PR50 executable8e93864 full local run:12/13 pass; unchanged
+  tools/repository-navigation/acceptance.cjs130 Swarm case run.mgV200/swarm timed
+  out initial topology attempt settled after90s, rendererErrors empty and cleanup1.
+  New task Prepare proof passed both separately and in full. topology-build.txt records
+  sleeping nested Bazel and nested_log unavailable-or-unsafe; cause not established.
+  No unchanged retry, timeout extension or driver edit. Raw archive /tmp/swarm-ide-task-consumers.jbWXBA/core/composition-8e93864-full-testlogs.tar.gz
+  SHA256481d660189ff29c123fc7003b8a4fa9517c00088b91f003c13ae7c6fea0d722c. PR50 landing
+  held; ROOT should authorize exact bounded diagnosis before correction.
+type: bugfix
+component: default
+release:
+reporter: Ted Smith <tedks@riseup.net>
+status: unstarted
+disposition:
+creation_time: 2026-09-07T16:15:11-00:00
+references: []
+log_events:
+- time: 2026-09-07T16:15:11-00:00
+  who: Ted Smith
+  what: created
+  comment: ""
