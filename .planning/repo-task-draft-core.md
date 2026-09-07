@@ -27,7 +27,9 @@ real Git/YAML preparation and separately label deterministic responder behavior.
 - [x] (2026-09-07 15:23Z) Resumed same consumer after user replenished quota. Collected completed jobs; bounded annotation/controlled6s Prepare proof correction continues in existing helper only.
 - [x] (2026-09-07) Correctedfbd27c7 quality1391/100 and full34 build PASS5.784s; all13 fresh local suites PASS257.952s. Same native/Google fix-delta CLEAN, Anthropic honestly unavailable. Exact archives and actual virtual proof inspected.
 - [x] (2026-09-07) Reviewed increment pushed to PR50; final documentation records this outcome. Its final frozen gate, normal merge/parents/tree, Ditz closure and owned cleanup are recorded in the step landing receipt, not presumed from this plan.
-- [ ] ROOT verifies D4 before D5/D6 aggregate consumption; parent delivery remains open until D6.
+- [x] (2026-09-07) ROOT verified independent D4 `18ab0a5` and D5 normal `3b6d166`; same-child bounded composition authorized. Exact normal merge `aa717df` has those two parents, tree `dde23192b4adb572ed80b786588ddd3562babd57`, with no conflicts.
+- [x] (2026-09-07 16:04Z) Original joined packaged test RED at acceptance.cjs338: expected D3 UNSUPPORTED_CONTROL, but actual rendered draft includes canonical pinned V2 task, disk source, exact prompt and unavailable production policy. Finite28.424s run/cleanup1 archived before correction.
+- [ ] Correct only authorized acceptance Prepare/evidence helpers plus this plan; prove real ordinary UI bytes/hash/confirmation/Remove at100/150 and retain all earlier gates. Frozen full local/delta council and exact-master normal landing follow; parent delivery remains open until broader D6.
 
 ## Surprises & Discoveries
 
@@ -56,6 +58,16 @@ was retained through a quota outage and archived before the exact correction.
 
 ## Decision Log
 
+
+Decision (2026-09-07, ROOT-authorized D4C): normal-compose only the two verified
+immutable heads. D5's old unavailable assertion was correct on its independent
+D3 base, not a production defect. Read existing expanded prepared-context UI,
+including its exact submitted prompt; compare against independent owned Git
+object identities and disk/CLI-authored task facts. No direct bridge Prepare,
+response injection, production edit, timeout extension or baseline reset.
+Explicit confirmation must still leave launch disabled, and Remove must retire
+the real prepared context and confirmation without changing source/instructions.
+New/resumed Anthropic council uses explicit Sonnet; completed reviews stand.
 
 Decision (2026-09-07, D4): keep one reader implementation and one owned YAML
 worker. A full bounded metadata scan is acceptable on explicit preparation
