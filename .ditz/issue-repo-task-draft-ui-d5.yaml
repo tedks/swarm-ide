@@ -6,8 +6,8 @@ type: feature
 component: swarm-ide
 release:
 reporter: Ted Smith <tedks@riseup.net>
-status: in_progress
-disposition:
+status: closed
+disposition: fixed
 creation_time: 2026-09-07T10:33:48-00:00
 references: []
 log_events:
@@ -19,3 +19,11 @@ log_events:
   who: Ted Smith
   what: started
   comment: ""
+- time: 2026-09-07T15:40:29-00:00
+  who: Ted Smith
+  what: 'closed: fixed'
+  comment: D5 bounded renderer consumer normally merged PR49 at 3b6d166ac15a745dea6c65d309c822f6ad1b8b58;
+    exact topic6f6f02b/tested tree0d4108cb, full34/all13fresh/1404 and native+Google
+    CLEAN. Actual CLI-Ditz packaged100/150 attachment UI and D3 UNSUPPORTED_CONTROL;
+    no successful joined preparation/provider claim. Parent remains OPEN for ROOT-reviewed
+    D4/D6.
