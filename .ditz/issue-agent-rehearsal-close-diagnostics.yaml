@@ -24,3 +24,11 @@ log_events:
     Native static audit suggests possible emitted-versus-retained close-tail race
     but actual cause unproved; no retries, weakened assertions or runtime changes.
     Exact test-support diagnostic ownership requested from ROOT.'
+- time: 2026-09-07T06:01:04-00:00
+  who: Ted Smith
+  what: commented
+  comment: ROOT-approved finite safe diagnostic codes pushed5003dfe; four classification/non-disclosure
+    regressions RED then GREEN1267/94. One owned diagnostic execution passed28.6s/cleanup1,
+    without reproducing or explaining original failure. Issue remains open; no second
+    run, runtime fix, gate waiver or assertion relaxation. Cause is unproved; static
+    close-tail/timeout hypotheses are not causal evidence.
