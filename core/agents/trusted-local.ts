@@ -65,14 +65,14 @@ export class TrustedLocalService {
     const request = TrustedRequestSchema.parse(raw);
     if (request.type === "trusted.snapshot") return this.snapshot();
     if (this.closed) throw new Error("Trusted conversation owner is closed. No command was sent.");
-    if (this.commands.has(request.requestId) || this.commands.size >= 512) throw new Error("Duplicate command or command limit; no automatic replay.");
-    this.commands.add(request.requestId);
     if (request.type === "trusted.stop") {
       if (request.token !== this.runToken) throw new Error("This Stop does not target the owned conversation.");
       this.stopped = true;
       await this.session?.stop();
       return this.snapshot();
     }
+    if (this.commands.has(request.requestId) || this.commands.size >= 512) throw new Error("Duplicate command or command limit; no automatic replay.");
+    this.commands.add(request.requestId);
     if (request.type === "trusted.send" || request.type === "trusted.decide") {
       if (request.token !== this.runToken || !this.session || this.stopped) throw new Error("Conversation target is no longer active.");
       if (request.type === "trusted.send") await this.session.send(request.text);
@@ -98,7 +98,9 @@ export class TrustedLocalService {
       if (this.closed) throw new Error("Preparation was cancelled during shutdown.");
       if (result.value.launchContext.root !== this.options.root) throw new Error("Prepared workspace does not match the opened workspace.");
       this.session = null; this.runToken = null; this.stopped = false;
-      this.preparation = { input, materialized: result.value, prompt: trustedPrompt(result.value), token: randomUUID() };
+      const prompt = trustedPrompt(result.value);
+      if (Buffer.byteLength(prompt) > 128 * 1024 || Buffer.byteLength(JSON.stringify(prompt)) > 240 * 1024) throw new Error("Prepared prompt exceeds the bounded Codex transport. Select a smaller source range.");
+      this.preparation = { input, materialized: result.value, prompt, token: randomUUID() };
       this.message = "Review the exact disk/task context and workspace, then explicitly launch. Unsaved editor text is excluded.";
       return;
     }
@@ -142,7 +144,9 @@ export async function createTrustedLocalService(rootPath: string, snapshot: () =
     const selected = process.env.SWARM_CODEX_BIN ?? "codex";
     if (selected !== "codex" && !isAbsolute(selected)) throw new Error("SWARM_CODEX_BIN must be an absolute executable path.");
     const [executable, node, unshare, setpriv] = await Promise.all([selected, "node", "unshare", "setpriv"].map(findTrustedExecutable));
-    const ownerScript = join(__dirname, "owner-process.js"); await access(ownerScript);
+    // Worker bundling places this module in app/core/worker.js, alongside the
+    // existing build-query factory; the lifetime helper keeps its agents folder.
+    const ownerScript = join(__dirname, "agents/owner-process.js"); await access(ownerScript);
     return new TrustedLocalSession({ root, executable, openTransport: (sink) => createOwnedCodexTransport({ root, executable,
       nodeExecutable: node!, unshareExecutable: unshare!, setprivExecutable: setpriv!, ownerScript,
       args: ["app-server", "--listen", "stdio://"] }, sink) }, () => {});

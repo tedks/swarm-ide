@@ -26,23 +26,30 @@ export function TrustedLocalPane({ draft, bridge, generation = 0, connected }: {
     watermark.current = sequence; setState(next);
   };
   useEffect(() => {
-    const current = ++epoch.current;
+    ++epoch.current;
     watermark.current = -1; busy.current = false; setPending(false); setConfirmed(false); setInputKey(null);
+    return () => { ++epoch.current; };
+  }, [bridge, connected, generation]);
+  useEffect(() => {
+    const current = epoch.current;
+    let alive = true;
     let timer: ReturnType<typeof setTimeout> | undefined;
     if (!connected || !bridge) { setNotice("Local core unavailable. No command will be replayed."); return; }
     const read = async () => {
       try {
         const request = make({ type: "trusted.snapshot" });
         const response = parseCoreResponseForRequest(await bridge.request(request), request);
-        if (epoch.current !== current) return;
-        if (response.ok && response.trusted) accept(response.trusted.snapshot, response.sequence);
+        if (!alive || epoch.current !== current) return;
+        if (response.ok && response.trusted) {
+          accept(response.trusted.snapshot, response.sequence);
+          if (["starting", "ready", "running", "stopping"].includes(response.trusted.snapshot.status)) timer = setTimeout(read, 800);
+        }
         else if (!response.ok) setNotice(response.error.message);
-      } catch { if (epoch.current === current) setNotice("Conversation observation unavailable; no command was replayed."); }
-      if (epoch.current === current) timer = setTimeout(read, 800);
+      } catch { if (alive && epoch.current === current) setNotice("Conversation observation unavailable; no command was replayed."); }
     };
     void read();
-    return () => { ++epoch.current; clearTimeout(timer); };
-  }, [bridge, connected, generation]);
+    return () => { alive = false; clearTimeout(timer); };
+  }, [bridge, connected, generation, state?.runToken]);
   useEffect(() => { setConfirmed(false); }, [key]);
   const dispatch = async (request: TrustedRequest, preparedKey?: string) => {
     if (!bridge || !connected || busy.current) return;

@@ -89,6 +89,16 @@ describe("explicit trusted-local core authority", () => {
     await expect(f.service.request(command("trusted.launch", { token: p.preparation!.token }))).rejects.toThrow("closed");
     expect(f.createSession).not.toHaveBeenCalled();
   });
+  it("retains Stop authority after the conversation command budget is exhausted", async () => {
+    const f = await fixture();
+    const p = await f.service.request(command("trusted.prepare", { input: f.input }));
+    const token = p.preparation!.token;
+    await f.service.request(command("trusted.launch", { token }));
+    for (let n = 0; n < 510; n++) await f.service.request(command("trusted.send", { token, text: "bounded control" }));
+    await expect(f.service.request(command("trusted.send", { token, text: "over budget" }))).rejects.toThrow("limit");
+    expect((await f.service.request(command("trusted.stop", { token }))).status).toBe("closed");
+    expect(f.session.stop).toHaveBeenCalled();
+  });
   it("accepts only typed controls and marks mutations uncertain on bridge loss", () => {
     expect(() => parseCoreRequest({ ...command("trusted.snapshot"), cwd: "/other" })).toThrow();
     for (const type of ["trusted.launch", "trusted.send", "trusted.decide", "trusted.stop"] as const) {
