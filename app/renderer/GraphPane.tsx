@@ -10,7 +10,28 @@ import { parentDirectory } from "./repository/navigation";
 import { useGraphReframe } from "./repository/reframe";
 import { AgentSprites } from "./repository/AgentSprites";
 import { directoryBuildLinks, withMockDirectoryAgents, type BuildLinkSnapshot } from "./repository/layers";
+import "./service-graph-status.css";
 export type { GraphConnectionFocus } from "./graph-adapter";
+
+function EmptyServiceGraph({ graph, running }: { graph: GraphSlice; running: boolean }) {
+  if (graph.topologyId !== "service" || graph.nodes.length) return null;
+  const message = graph.reconciliation === "gray"
+    ? ["Service topology not observed", "No service observation is available for this scope. Browse the repository, or use Build when service topology is configured."]
+    : graph.reconciliation === "yellow"
+      ? running
+        ? ["Building service topology", "A topology build is in progress. Results will appear here when an observation is available."]
+        : ["Service topology needs a build", "The working state has changed. Use the existing Build control to request a fresh topology observation."]
+      : graph.reconciliation === "red"
+        ? ["Service topology build failed", "Check Build output for details. No usable graph is available here; this is not an observed empty result."]
+        : graph.provenance.some((item) => item.sourceKind === "build")
+          ? ["No services in this observation", "The recorded build contains no service nodes for this scope, not the entire repository or its deployments."]
+          : ["Service topology unavailable", "No build-backed service observation is available for this scope. An empty canvas does not establish that no services exist."];
+  return <div className={`service-graph-status service-graph-status-${graph.reconciliation}`} role="status" aria-label="Service graph availability">
+    <span className="service-graph-status-label">Service observation</span>
+    <strong>{message[0]}</strong>
+    <p>{message[1]}</p>
+  </div>;
+}
 
 function TopologyNode({ data }: NodeProps) {
   const node = data as TopologyNodeData;
@@ -162,6 +183,7 @@ const GraphPaneContent = memo(function GraphPaneContent({ graph, focus, mappings
           <Background color="#173031" gap={22} size={1} />
           <Controls showInteractive={false} />
         </ReactFlow>
+        <EmptyServiceGraph graph={graph} running={reconciliationRunning} />
         {mockAgentsVisible ? <div className="directory-layer-note">MOCK ACTIVITY · visual only · no agents launched</div> : null}
         {selectedBuild?.data ? <aside className="directory-build-detail" aria-label="Captured Bazel link"><button aria-label="Close captured link" onClick={() => setSelectedBuildLink(null)}>×</button><strong>Bazel snapshot · {buildLinkSnapshot?.revision}</strong><small>Consumer → dependency · not live evidence</small><ul>{selectedBuild.data.labels.map((label) => <li key={label}>{label}</li>)}</ul></aside> : null}
       </div>

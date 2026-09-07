@@ -1,0 +1,19 @@
+.graph-pane[data-topology="service"] > .graph-canvas { position: relative; }
+.service-graph-status {
+  position: absolute;
+  inset: 20px 24px 54px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: flex-start;
+  max-width: 420px;
+  margin: auto;
+  pointer-events: none;
+  color: #a2b8b7;
+  line-height: 1.5;
+}
+.service-graph-status-label { font-size: 10px; letter-spacing: .12em; text-transform: uppercase; color: #77908e; }
+.service-graph-status strong { margin-top: 7px; color: #d9e7e4; font-size: 16px; font-weight: 550; }
+.service-graph-status p { margin: 7px 0 0; font-size: 12px; max-width: 48ch; }
+.service-graph-status-yellow .service-graph-status-label { color: #d5b975; }
+.service-graph-status-red .service-graph-status-label { color: #de9790; }
