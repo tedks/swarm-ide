@@ -62,3 +62,30 @@ The initial included Swarm story is a recorded task-context span. Its history
 proof uses deterministic execution; it is not evidence of production model
 launch. A supervised summarizer turn in the authoring session is real model
 synthesis but does not establish an autonomous in-app summarizer.
+
+## A one-minute walkthrough
+
+1. Open Swarm's own checkout. In Recent activity, select a Logical changes entry.
+   It opens expanded in the main text area, alongside retained source tabs.
+2. Read the task-context story: design and base, deliberate one-slot attachment,
+   pinned context resolution, then immutable admitted-history evidence.
+   The cards distinguish earlier agent reports from later Git observations.
+3. Expand Evidence to see the recorded agent/task IDs, source revisions and
+   affected files. Open a working file deliberately; this is current source,
+   not a claim that the old recorded bytes are still on disk.
+4. Return to Logical changes. Inspect the generation provenance or filter by
+   an exact affected file. Refresh reads a newer validated artifact when one
+   has been authored; it never launches an agent or submits a draft.
+
+The included account was actually produced by one supervised gpt-6-astra
+summarizer from bounded exported Git observations and explicitly supplied,
+sanitized reports. Its run and input provenance are in the document itself.
+The generated account even notes an older design-status paragraph; that is a
+recorded documentation discrepancy, not something the summarizer silently fixed.
+
+The Bazel-owned `//tools/demo-journal:smoke` proof requires explicit authoring
+inputs in `SWARM_JOURNAL_AUTHORING_PROOF`; it does not fabricate a model output
+when they are missing. It exercises two real disposable Git revisions and
+two actual supervised summaries through the packaged app on an owned virtual
+desktop, including stale/invalid citation refusal and source/draft retention.
+Synthetic unit fixtures test contracts separately and do not prove synthesis.
