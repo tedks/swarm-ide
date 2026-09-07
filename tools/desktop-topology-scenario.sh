@@ -62,14 +62,14 @@ run_command() {
   local palette_input_y=$((HEIGHT * 11 / 100 + 26))
   swarm_window_click "$((WIDTH / 2))" "$palette_input_y"
   swarm_window_key ctrl+a
-  swarm_window_type "$command" 2
+  swarm_window_type "$command" 10
   last_command_submitted_ms=$(date +%s%3N)
   swarm_window_key Return
   if (( $# == 2 )); then
     # Exact-path mode remains in the same palette until the path is submitted.
-    swarm_window_wait_title "Palette open"
+    swarm_window_wait_title "Palette open · exact path"
     swarm_window_key ctrl+a
-    swarm_window_type "$2" 2
+    swarm_window_type "$2" 10
     swarm_window_key Return
   fi
   swarm_window_wait_title "Palette open" absent

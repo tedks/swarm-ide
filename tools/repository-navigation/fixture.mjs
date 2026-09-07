@@ -36,11 +36,20 @@ export async function createNavigationFixture(parent, kind, source) {
     await writeFile(join(root, ".hidden"), "tracked dotfile\n");
     await writeFile(join(root, ".gitignore"), "ignored.txt\nlarge/\npipe\nnested/\nsubmodule/\n.ditz-worktree/\n.fixture-home/\n");
   }
+  const searchPath = kind === "swarm" ? "protocol/common.ts" : "docs/readme.md";
+  if (["swarm", "unfamiliar"].includes(kind)) {
+    await mkdir(join(root, "search-proof/a"), { recursive: true }); await mkdir(join(root, "search-proof/b"));
+    await writeFile(join(root, "search-proof/a/same-match.ts"), "export const source = 'a';\n");
+    await writeFile(join(root, "search-proof/b/same-match.ts"), "export const source = 'b';\n");
+    await writeFile(join(root, "search-proof/literal [*] $(not-command).txt"), "literal shell-looking name, not a command\n");
+    await writeFile(join(root, "search-proof/.dot-match"), "tracked dotfile\n");
+  }
   await git(root, ["init", "--object-format=sha1", "-b", "main"]);
   await git(root, ["config", "user.name", "Navigation proof"]);
   await git(root, ["config", "user.email", "proof@example.invalid"]);
   await git(root, ["add", "--all"]); await git(root, ["commit", "-m", "Owned packaged navigation inputs"]);
   const committedHead = (await git(root, ["rev-parse", "HEAD"])).toString("utf8").trim();
+  if (["swarm", "unfamiliar"].includes(kind)) await writeFile(join(root, "search-proof/untracked-match.txt"), "untracked filename\n");
   if (kind === "unfamiliar") {
     await writeFile(join(root, "untracked.txt"), "untracked\n");
     await writeFile(join(root, "ignored.txt"), "ignored\n");
@@ -67,6 +76,6 @@ export async function createNavigationFixture(parent, kind, source) {
     try { await oversized.truncate(64 * 1024 * 1024 + 1); } finally { await oversized.close(); }
   }
   const sourcePath = kind === "swarm" ? "core/files.ts" : "src/main.ts";
-  return { root, kind, sourceCommit, committedHead, sourcePath,
+  return { root, kind, sourceCommit, committedHead, sourcePath, searchPath, searchText: await readFile(join(root, searchPath), "utf8"),
     sourceText: await readFile(join(root, sourcePath), "utf8"), directory: sourcePath.split("/")[0] };
 }

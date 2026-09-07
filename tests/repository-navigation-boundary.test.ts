@@ -32,6 +32,11 @@ describe("actual packaged repository navigation proof boundary", () => {
     expect(acceptance).toContain('prepared.error.code === "STALE_CONTEXT"');
     expect(acceptance).toContain('saved.source === state.doc.toString()');
     expect(acceptance).toContain('saved.anchor === state.selection.main.anchor');
+    expect(acceptance).toContain('N2 real tracked/untracked/dot/literal filename search beyond loaded slice');
+    expect(acceptance).toContain('N2 actual deleted candidate denied on activation without source loss');
+    expect(acceptance).toContain('N2 actual 8192-name capture cap visibly partial');
+    expect(acceptance).toContain('key("Down"); key("Enter"); await directory("search-proof/b")');
+    expect(acceptance).toContain('stage = `file-search-${percent}`');
     expect(acceptance).not.toMatch(/ipcMain\.(?:handle|emit)|fixture\.reset|createFixture|launchContext:|type:\s*["']agent\.launch/);
   });
 });
