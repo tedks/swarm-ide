@@ -30,7 +30,7 @@ Use the task-context feature already implemented in Swarm, not a new sample app.
 
 ## Outcomes & Retrospective
 
-The connected path is operational and documented. The final packaged GUI scenario took 7.2 seconds (8.2 seconds including virtual startup), with zero renderer exceptions, zero accepted resize warnings, no model mutations and cleanup1. The product's live-policy flag was unavailable independently of the draft confirmation checkbox. The owned checkout uses actual committed Swarm source and local Ditz history, not recreated metadata or a fixture provider. The recorded Journal and human-authored briefing retain their distinct provenance.
+The connected path is operational and documented. The final packaged GUI scenario took 7.2 seconds (8.2 seconds including virtual startup), with zero renderer exceptions, zero accepted resize warnings, no model mutations and cleanup1. The product's live-policy flag was unavailable independently of the draft confirmation checkbox. The owned checkout uses actual committed Swarm source and local Ditz history, not recreated metadata or a fixture provider. The recorded Journal and repo-authored, AI-written briefing retain their distinct provenance.
 
 Quality on `c1e70fd` passed type checks, 1,632 tests/117 files and Node/renderer builds. Later deltas were confined to the manual proof: 13 launcher checks passed on `9c13f12`, and the final actual packaged tour passed on `f7bfa27`. Native convergence was CLEAN through each relevant delta; foreign seats were intentionally omitted under the Codex-only directive. No unrelated full-suite repeats, hosted CI claims, or managed execution are required for this lane.
 
@@ -71,3 +71,5 @@ Initial plan authored September 7: constrain the work to a connected, truthfully
 Updated September 7 after actual validation: recorded the narrow harness corrections, review, local gate attribution, screenshots and honest remaining product gaps. ROOT still owns final merge and shared-app adoption.
 
 Updated after ROOT's one-base integration instruction: consumed the cleared presentation/install aggregate once, retained previous proof attribution, refreshed the actual joined screenshots and adjusted only presenter wording for the delivered controls.
+
+At ROOT's attribution correction, replaced the inaccurate human-authorship claim with repo-authored guidance and explicitly identified the AI implementation agent as the briefing's writer. Updated only the matching index note and exact proof expectation; J1's recorded event-summary inputs/outputs are unchanged. Earlier run evidence retains its original content and scope.

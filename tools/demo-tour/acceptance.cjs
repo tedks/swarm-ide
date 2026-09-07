@@ -87,7 +87,7 @@ async function main() {
   await click('[aria-label="Inspect plan component:task-context"]');
   await shot("01-component-guidance.png");
   await click(`${plan} button`, "Read doc · docs/demo/task-context-briefing.md");
-  await until(async () => (await source())?.text.includes("human-authored briefing"), "real briefing source");
+  await until(async () => (await source())?.text.includes("repo-authored briefing"), "real briefing source");
   await shot("02-authored-briefing.png");
   await click(`${plan} button`, "contract · protocol/agent-task.ts");
   await until(async () => (await source())?.text.includes("TASK_CONTEXT_BYTES"), "real task contract source");

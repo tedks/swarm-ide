@@ -1,8 +1,9 @@
 # Task context: preserve intent while the world changes
 
-This is a **human-authored briefing**, not a generated summary, agent transcript
-or automatic provider instruction. It accompanies the task-context component
-and explains why its linked information belongs together.
+This is a **repo-authored briefing**, written by an AI implementation agent as
+repository documentation. It explains intended guidance, not a reconstructed
+event summary, raw agent transcript or automatic provider instruction. It
+accompanies the task-context component and connects its linked information.
 
 ## The product question
 
