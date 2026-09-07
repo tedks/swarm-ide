@@ -28,3 +28,13 @@ log_events:
     underway; Sonnet timed out without review. Live master advanced to c312871; ROOT
     exact base clearance requested before consumption/landing. Final frozen full gates
     pending; no shared adoption.
+- time: 2026-09-07T19:44:27-00:00
+  who: Ted Smith
+  what: commented
+  comment: Frozen eb46f55 build39 PASS59.3s; quality1496/106 PASS43.3s and new actual
+    two-repo graph proof PASS48.1s. Full15 finished14PASS/1FAIL346.5s. Three navigation
+    cases failed obsolete capture notice (ROOT-approved exact test-only71183f6 now
+    pushed); Swarm case separately failed Q2 recovery native focus/inspect. New repository-q2-recovery-focus-delivery
+    tracks exact evidence, not cause. PR52 landing held; all essential B1 graph evidence
+    preserved. One small diagnosis approval requested, no repeated full run or shared
+    adoption.
