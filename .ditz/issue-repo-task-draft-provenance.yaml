@@ -61,6 +61,11 @@ log_events:
   comment: D5 started on verified PR48 base6e11ce42. Bounded deliberate single-slot
     UI consumer; D4 independent and D6 joins only reviewed heads. No provider/adoption
     authority.
+- time: 2026-09-07T10:36:05-00:00
+  who: Ted Smith
+  what: commented
+  comment: 'D4 core consumer started on verified PR48 base: pinned metadata resolution,
+    owned lifecycle and exact task-Prepare timeout; D5 and D6 remain independent.'
 blocked_by:
 - repo-task-surface
 - repo-task-draft-contract-d2
