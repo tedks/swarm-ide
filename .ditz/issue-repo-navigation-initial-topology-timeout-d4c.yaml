@@ -55,5 +55,7 @@ log_events:
     Remove only this historical blocking relation to bounded D4; retain original failing
     evidence and issue for reliability follow-up. PR record5573965746; core/authorized-landing-verification.md
     will record final receipt.'
-blocks:
-- repo-task-context-core-d4
+- time: 2026-09-07T17:31:16-00:00
+  who: Ted Smith
+  what: no longer blocks repo-task-context-core-d4
+  comment: ""
