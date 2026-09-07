@@ -5,8 +5,8 @@ type: feature
 component: default
 release:
 reporter: Ted Smith <tedks@riseup.net>
-status: in_progress
-disposition:
+status: closed
+disposition: fixed
 creation_time: 2026-09-07T23:00:21-00:00
 references: []
 log_events:
@@ -27,3 +27,10 @@ log_events:
     cleanup1 zeroerrors; ONE authorized real Codex0.153.4 reply Swarm IDE launch verified
     with confirmed cleanup. No merge/adoption; ROOT closes on landing. Followups filed,
     original namespace witness failure remains unlocalized/open.'
+- time: 2026-09-07T23:40:48-00:00
+  who: Ted Smith
+  what: 'closed: fixed'
+  comment: PR67 normally merged; trusted-local explicit preparation, conversation,
+    one-time approvals and owned Stop. Native fixpoint, 1687 tests, controlled packaged
+    proof and one distinct real Codex smoke accepted. Cross-core history and namespace
+    witness follow-ups remain open.
