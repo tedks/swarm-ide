@@ -28,3 +28,15 @@ log_events:
     mutations, cleanup1. Native harness Git-environment risk fixed with10RED/1PASS
     then11GREEN; same-seat CLEAN. Corrected quality and final owned proof pending.
     Ready is not merged; ROOT retains landing authority.
+- time: 2026-09-07T21:57:15-00:00
+  who: Ted Smith
+  what: commented
+  comment: 'PR61 ready: final executable f7bfa27, docs5717c65. Actual real Swarm source/local
+    Ditz -> authored Plan/design/contract/D4 -> current source-owner Bazel graph ->
+    fixed-source Attach/Prepare -> recorded Activity PASS7.2s/8.2s total at owned135/55215,
+    zero renderer errors/resize warnings/model mutations, cleanup1. Exact core launch
+    false independently of confirmation. Quality1632/117 plus13 launcher regressions
+    and native fixpoint CLEAN; foreign seats intentionally omitted under Codex-only
+    directive. Sparse D4 metadata,64/160 task graph coverage and manual task/session
+    joins documented. Ready/pushed NOT merged: ROOT owns final merge/adoption; keep
+    issue in progress until landing.'
