@@ -1,0 +1,20 @@
+id: ui-context-linkages
+title: Connect Context instruments to selected artifact relationships
+desc: 'UI sprint renamed/widened Context and added clearly mock deployment/build/test/resource
+  cards. Still implement exact contextual relationships for files/directories/services/tasks/designs:
+  owning and dependent targets, interfaces/contracts, bugs/lessons, task blocks/epics/designs,
+  versions/deployments. Preserve unavailable and working/built/deployed provenance;
+  do not imply static demo cards provide this capability.'
+type: feature
+component: default
+release:
+reporter: Ted Smith <tedks@riseup.net>
+status: unstarted
+disposition:
+creation_time: 2026-09-07T00:20:19-00:00
+references: []
+log_events:
+- time: 2026-09-07T00:20:19-00:00
+  who: Ted Smith
+  what: created
+  comment: ""
