@@ -41,3 +41,13 @@ log_events:
   who: Ted Smith
   what: no longer blocks repo-task-draft-integration-d6
   comment: ""
+- time: 2026-09-07T19:09:14-00:00
+  who: Ted Smith
+  what: commented
+  comment: USER explicitly accepts this specific warning as nonblocking risk (2026-09-07).
+    Root cause remains OPEN, not fixed. D6 test-only assessment retains raw exact
+    ResizeObserver loop completed with undelivered notifications. messages and issue
+    reference; all different renderer errors and integrity/close/process checks stay
+    blocking. Removed blocking edge only under that explicit authority. No production
+    console filter, no event suppression, no physical-app control. One fresh reviewed
+    full checkpoint still required before PR51 landing.
