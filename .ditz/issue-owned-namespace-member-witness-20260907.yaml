@@ -14,3 +14,12 @@ log_events:
   who: Ted Smith
   what: created
   comment: ""
+- time: 2026-09-07T23:19:00-00:00
+  who: Ted Smith
+  what: commented
+  comment: 'X1 quality3 preserved /tmp/swarm-ide-demo-controls.q2i33c/trusted-execution/quality3-test.log:
+    existing tests/agent-owned-process.test.ts:152 expected no live namespace members
+    but observed PID326789 after cleanup confirmed. Owner implementation untouched.
+    PID absent at bounded later read; quality4 unchanged test passed. Historical cause
+    unlocalized; later pass is not a fix. Independent X1 packaged owner-close proof
+    passes. Examine witness namespace lifetime/reuse and owned teardown before attribution.'
