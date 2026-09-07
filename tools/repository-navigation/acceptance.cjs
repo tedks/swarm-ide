@@ -343,7 +343,9 @@ async function main() {
       const previousCapture = await request({ type: "repo.search", repositoryId: (await snapshot()).project.id, query: "same-match.ts", refresh: false });
       assert(previousCapture.ok);
       const previousLifecycle = await run(() => window.swarmLifecycle.status());
-      const cores = app.getAppMetrics().filter((metric) => metric.type === "Utility" && metric.serviceName === "swarm-ide-local-core");
+      const metrics = app.getAppMetrics();
+      await fs.writeFile(path.join(evidence, "owned-core-metrics.json"), JSON.stringify(metrics));
+      const cores = metrics.filter((metric) => metric.type === "Utility" && (metric.name === "swarm-ide-local-core" || metric.serviceName === "swarm-ide-local-core"));
       assert.equal(cores.length, 1, "exact owned packaged core selected, not a user process");
       const corePid = cores[0].pid;
       const procStatus = await fs.readFile(`/proc/${corePid}/status`, "utf8");

@@ -134,6 +134,13 @@ describe("real Git/filesystem filename search", () => {
     expect(result.paths).toEqual(["original-directory/child", "safe"]);
     expect(result.paths.some((path) => path.split("/").includes(".git"))).toBe(false);
   });
+  it("omits indexed gitlinks even if the working path has become a regular file", async () => {
+    const root = await repository();
+    const head = execFileSync("git", ["rev-parse", "HEAD"], { cwd: root, encoding: "utf8" }).trim();
+    execFileSync("git", ["update-index", "--add", "--cacheinfo", `160000,${head},module`], { cwd: root });
+    await writeFile(join(root, "module"), "not a source file belonging to this index");
+    expect((await reader(root).search(request("module"))).paths).toEqual([]);
+  });
 
   it("omits malformed byte/control names but preserves BOM and Unicode filename identities", async () => {
     const root = await repository();

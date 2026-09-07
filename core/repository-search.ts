@@ -9,8 +9,8 @@ import { FILE_SEARCH_ENTRIES, FILE_SEARCH_NAME_BYTES, FILE_SEARCH_RESULTS, FILE_
 import { hasRepositoryMarker, queryRepositoryGit } from "./repository-boundary";
 import { RepositoryError } from "./repository";
 
-interface Capture { id: string; time: number; generation: number; paths: string[]; complete: boolean; omitted: boolean }
-export interface FileSearchOptions { now?: () => number; git?: typeof queryRepositoryGit; lstat?: (path: string) => Promise<Stats>; metadataTimeoutMs?: number }
+interface Capture { id: string; time: number; generation: number; paths: string[]; gitlinks: Set<string>; complete: boolean; omitted: boolean }
+export interface FileSearchOptions { now?: () => number; git?: typeof queryRepositoryGit; indexGit?: typeof queryRepositoryGit; lstat?: (path: string) => Promise<Stats>; metadataTimeoutMs?: number }
 
 /** Names only: one bounded capture per registered core lifetime, refreshed explicitly. */
 export class RepositoryFileSearch {
@@ -74,7 +74,7 @@ export class RepositoryFileSearch {
         current();
         if (checked >= 160 || paths.length >= FILE_SEARCH_RESULTS || Date.now() >= deadline) break;
         ++checked;
-        if (await this.eligible(path, directories, deadline, current)) paths.push(path);
+        if (await this.eligible(path, capture.gitlinks, directories, deadline, current)) paths.push(path);
       }
       return { paths, matchesComplete: checked === candidates.length && Date.now() < deadline };
     })();
@@ -111,11 +111,30 @@ export class RepositoryFileSearch {
 
   private async captureNames(signal: AbortSignal): Promise<Capture> {
     const time = this.now(), generation = this.generation;
+    const deadline = Date.now() + 2_000;
+    let remainingBytes = 2 * 1024 * 1024;
     const bytes = await (this.options.git ?? queryRepositoryGit)(this.root,
       ["ls-files", "--cached", "--others", "--exclude-standard", "-z"],
-      { signal, maximumBytes: 2 * 1024 * 1024, timeoutMs: 2_000 });
+      { signal, maximumBytes: remainingBytes, timeoutMs: 2_000, onBytes: (count) => { remainingBytes -= count; } });
     if (signal.aborted || this.disposed) throw new Error("Disposed capture");
     if (bytes.length && bytes[bytes.length - 1] !== 0) throw new Error("Incomplete Git name record");
+    if (remainingBytes <= 0 || Date.now() >= deadline) throw new Error("Capture budget exhausted");
+    // Separate index-only plumbing keeps the stage format unambiguous while
+    // retaining gitlink authority even if a submodule was replaced by a file.
+    const index = await (this.options.indexGit ?? queryRepositoryGit)(this.root, ["ls-files", "--stage", "-z"],
+      { signal, maximumBytes: remainingBytes, timeoutMs: deadline - Date.now() });
+    if (signal.aborted || this.disposed || index.length && index[index.length - 1] !== 0) throw new Error("Incomplete index capture");
+    const gitlinks = new Set<string>();
+    for (const raw of index.toString("latin1").split("\0")) {
+      if (!raw) continue;
+      const record = /^(\d{6}) [a-f0-9]{40,64} [0-3]\t([\s\S]+)$/.exec(raw);
+      if (!record) throw new Error("Invalid index record");
+      if (record[1] !== "160000") continue;
+      try {
+        const path = new TextDecoder("utf8", { fatal: true, ignoreBOM: true }).decode(Buffer.from(record[2]!, "latin1"));
+        if (isRepositoryPath(path)) gitlinks.add(path);
+      } catch { /* Unsupported names cannot be actionable candidates. */ }
+    }
     const paths = new Set<string>();
     let size = 0, complete = true, omitted = false;
     for (const raw of bytes.toString("latin1").split("\0")) {
@@ -132,10 +151,10 @@ export class RepositoryFileSearch {
       if (paths.size >= FILE_SEARCH_ENTRIES || size + count > FILE_SEARCH_NAME_BYTES) { complete = false; continue; }
       size += count; paths.add(path);
     }
-    return { id: `filenames:${randomUUID()}`, time, generation, paths: [...paths], complete, omitted };
+    return { id: `filenames:${randomUUID()}`, time, generation, paths: [...paths], gitlinks, complete, omitted };
   }
 
-  private async eligible(path: string, directories: Map<string, boolean>, deadline: number, current: () => void): Promise<boolean> {
+  private async eligible(path: string, gitlinks: Set<string>, directories: Map<string, boolean>, deadline: number, current: () => void): Promise<boolean> {
     const parts = path.split("/");
     try {
       for (let index = 1; index < parts.length; ++index) {
@@ -144,14 +163,14 @@ export class RepositoryFileSearch {
         if (!directories.has(prefix)) {
           const absolute = join(this.root, prefix);
           const metadata = await (this.options.lstat ?? lstat)(absolute); current();
-          let eligible = metadata.isDirectory() && !metadata.isSymbolicLink();
+          let eligible = !gitlinks.has(prefix) && metadata.isDirectory() && !metadata.isSymbolicLink();
           if (eligible) { eligible = await realpath(absolute) === absolute; current(); }
           if (eligible) { eligible = !await hasRepositoryMarker(absolute); current(); }
           directories.set(prefix, eligible);
         }
         if (!directories.get(prefix)) return false;
       }
-      current(); if (Date.now() >= deadline) return false;
+      current(); if (Date.now() >= deadline || gitlinks.has(path)) return false;
       const absolute = join(this.root, path);
       const file = await (this.options.lstat ?? lstat)(absolute); current();
       if (!file.isFile()) return false;
