@@ -11,7 +11,7 @@ Opening Build graph must show dependencies queried from whichever repository is 
 - [x] (2026-09-07) Verified clean `feature/dynamic-build-graph` baseline e8ec0f9 and consumed exact assignment.
 - [x] Implement bounded typed query/cache and tests (a7b2938; quality1469/103).
 - [x] Connect existing graph, directory links and Context without resetting navigation.
-- [x] Prove actual two-repository packaged edge changes and retention on owned virtual desktop (21.6s each, cleanup1, zero exceptions). A later compact-canvas assertion is pending the final frozen run.
+- [x] Prove actual two-repository packaged edge changes and retention on owned virtual desktop, including160px compact canvas in frozen eb46f55 (21.6s/23.6s; cleanup1, zero exceptions).
 - [ ] Council convergence, one frozen local full gate, normal landing or precise base hold.
 
 ## Assumptions and Failure Modes
@@ -68,5 +68,15 @@ Step evidence lives at `/tmp/swarm-ide-build-graph-b1.MFmmXC`; `consumed.md` rec
 At 19:25 UTC, implementation a7b2938 has OpenAI native and same-session Google fix-delta CLEAN. Anthropic explicitly Sonnet timed out240s without a review and is unfilled, not CLEAN. Both complete actual packaged repository journeys passed21.6s each with cleanup1 and zero renderer exceptions. Screenshot: /tmp/swarm-ide-build-graph-b1.MFmmXC/packaged-selection-fix/run.MMLuuS/first/03-added-edges-retained-work.png. Narrow runtime-declaration/invalid-path tests subsequently passed in quality-runtime-proof.log (1470/103). Screenshot inspection exposed a tiny canvas under accumulated controls; the focused correction keeps a160px canvas in a scrollable Build pane. A new actual geometry assertion accompanies that correction; this is not claimed as an independently executed pre-fix RED test.
 
 Remote master advanced to c3128715a785c2fd42011e4cf5941038b268335c. Exact ROOT clearance is requested before any peer consumption or normal landing. No shared app/master/integration adoption has occurred. Final frozen full local gates, compact-canvas proof, Ditz closure and landing are not yet claimed. See docs/dynamic-build-graph.md for exact supported triggers/limits and residual scope.
+
+### Frozen gate and bounded continuation, 19:52 UTC
+
+ROOT cleared exactc312871 (normal PR51). Automatic conflict-free compositioneb46f55 has parentfd13f4b+c312871 and treee7c78f9b5c73443533b130132b736a3c9c2dfff6. Full39 build PASS59.309s; quality1496/106 PASS43.3s; frozen actual two-repository Build graph PASS48.1s, including minimum canvas/retention/error/cleanup assertions. Final-package/build-graph/run.vyF8xY holds evidence. Full15 ended14PASS/1FAIL346.536s, not green.
+
+Navigation had three obsolete capture-notice assertions (exact ROOT-approved replacement in71183f6) plus a separate Swarm Q2 core-recovery service-inspection timeout. Original saved final DOM focus was Refresh directory, with an extra Refresh click; no key-target record existed. The service nodes/source/draft were retained and renderer had zero errors. B1 query was not requested in that scenario. This does not establish original causality.
+
+ROOT authorized one passive bounded focus/key trace and one finite navigation run, no extra input/waits/retries/assertion changes. Instrumented4e0ac39 passed all four real navigation cases101.3s, each cleanup1/zeroerrors. Trace5events/0dropped shows connected service node gaining focus and receiving Shift+Enter; expected inspection and subsequent original provenance/deleted-restored/no-replay/retention assertions passed. Instrumentation adds observation round trips and can perturb scheduling. This is a negative historical diagnostic boundary, NOT a production fix or waiver. See recovery-diagnostic-boundary.md and recovery-diagnostic/repository-navigation/run.n46MZ3/swarm/q2-focus-trace.json in the step directory.
+
+OpenAI native and Google same-session correction/diagnostic deltas CLEAN; Sonnet still unfilled/no-review. Ditz repository-q2-recovery-focus-delivery stays OPEN, as do the historical topology timeout and broader dynamic-build-graph-followup. ROOT is asked to disposition this narrow noncritical residual input-delivery risk before ONE corrected full-local run and normal landing. No further forensic stage, peer consumption, shared app adoption or model execution is assumed. PR52 is pushed and held, not complete.
 
 Initial plan written before implementation to name authority, input and lifecycle assumptions.
