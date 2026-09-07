@@ -4,6 +4,7 @@ import { mkdir, mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { fixtureV2Draft } from "../fixtures/agent-context-v2";
 import { createFileRunStore, type FileRunStore, type FileRunStoreOptions } from "../core/agents/file-store";
 import { createAgentService, type AgentService } from "../core/agents/service";
 import type { AdapterEvent, AgentAdapter, AgentHandle, AgentOperation, CleanupEvidence } from "../core/agents/adapter";
@@ -39,14 +40,14 @@ const input: AgentPrepareInput = {
 };
 function draft(root: string, request: AgentPrepareInput): PreparedAgentContext {
   const timestamp = at(); const prompt = request.taskText; const digest = hash(prompt);
-  return { runId: randomUUID(), contextHash: digest, preparedAt: timestamp, expiresAt: new Date(Date.parse(timestamp) + AGENT_LIMITS.draftMs).toISOString(),
+  return fixtureV2Draft({ runId: randomUUID(), contextHash: digest, preparedAt: timestamp, expiresAt: new Date(Date.parse(timestamp) + AGENT_LIMITS.draftMs).toISOString(),
     capabilities, launchContext: {
       worldId: request.worldId, repositoryId: "repo", root, head: "a".repeat(40), workingFingerprint: "a".repeat(64), focus: request.focus,
       taskText: request.taskText, links: request.links, requested: { model: request.model, effort: request.effort },
       attachments: [{ path: "source.ts", content: "export {};", digest: hash("export {};"), startLine: 1, endLine: 1 }],
       instructionSources: [], configurationSources: [], submittedPrompt: prompt, contextHash: digest, diskOnly: true,
       access: { policy: "read-only", toolNetwork: false, approvals: "never", hostConfidentiality: false, sendsSelectedContentToProvider: true },
-    } };
+    } });
 }
 async function openStore(directory: string, options: FileRunStoreOptions = {}) {
   const store = await createFileRunStore(directory, { now, ...options }); stores.push(store); return store;

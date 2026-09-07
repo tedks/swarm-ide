@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { fixtureV2Draft } from "../fixtures/agent-context-v2";
 import { AgentBridgeClient } from "../app/renderer/agents/bridge-client";
 import { createAgentClient } from "../app/renderer/agents/client-memory";
 import { displayAgentText, emptyLiveAgentState, type LiveAgentState } from "../app/renderer/agents/live-state";
@@ -62,7 +63,7 @@ async function selected(steps = 1) {
 }
 function prepared(call: Pending) {
   if (call.input.type !== "agent.prepare") throw new Error("Expected prepare request");
-  return PreparedAgentContextSchema.parse({ runId: fixture(0).run!.runId, contextHash: "0".repeat(64),
+  return fixtureV2Draft({ runId: fixture(0).run!.runId, contextHash: "0".repeat(64),
     preparedAt: new Date(Date.now()).toISOString(), expiresAt: new Date(Date.now() + 60_000).toISOString(), capabilities: testCapabilities,
     launchContext: fixtureLaunchContext(call.input.focus, call.input.taskText, call.input.model ?? "", call.input.effort ?? ""),
   });
@@ -187,7 +188,7 @@ describe("agent bridge observation and recovery (injected transport, never a pro
   it("rejects a schema-valid prepared reply that changes requested task context", async () => {
     const { h, client } = await connected(); client.openDraft(paymentsFileFocus); const preparing = client.prepare(); const call = h.latest("agent.prepare");
     const draft = prepared(call); draft.launchContext.taskText = "Different task";
-    h.reply(call, { kind: "prepare", draft }); await preparing;
+    h.reply(call, { kind: "prepare", draft: fixtureV2Draft(draft) }); await preparing;
     expect(client.getSnapshot().draft?.prepared).toBeNull(); expect(client.getSnapshot().draft?.preparing).toBe(false);
     expect(client.getSnapshot().notice).toContain("INVALID_CORE_MESSAGE");
     await client.launch(); expect(h.calls.some((entry) => entry.input.type === "agent.launch")).toBe(false);

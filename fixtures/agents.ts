@@ -4,6 +4,7 @@
  * Frames are observations, not a replacement service/reducer/persistence layer.
  */
 import { createHash } from "node:crypto";
+import { formatAgentContextV2 } from "../protocol/agent-task";
 import type { AdapterEvent, AgentAdapter, AgentOperation } from "../core/agents/adapter";
 import {
   AGENT_LIMITS, AgentCapabilitiesSchema, AgentEventSchema, AgentResultSchema,
@@ -34,6 +35,7 @@ export function agentFixtureContext(): PreparedAgentContext {
   const prompt = "FIXTURE ONLY: explain the synthetic FraudCheck interface; no provider contacted.";
   const content = "// FIXTURE ONLY\nexport const fraudcheck = (amount: number) => amount < 100;\n";
   const fields = {
+    contextVersion: 2, sourceLinks: [],
     worldId: "fixture-world", repositoryId: "synthetic-fixture", root: "/fixture/not-a-real-workspace", head: null,
     workingFingerprint: digest("synthetic fixture world"),
     focus: { worldId: "fixture-world", revisionKind: "working", revisionId: "working", domain: "repo",
@@ -45,7 +47,7 @@ export function agentFixtureContext(): PreparedAgentContext {
     access: { policy: "read-only", toolNetwork: false, approvals: "never", hostConfidentiality: false,
       sendsSelectedContentToProvider: true },
   };
-  const submittedPrompt = `${prompt}\n${JSON.stringify(fields)}`;
+  const submittedPrompt = formatAgentContextV2(fields);
   const contextHash = digest(submittedPrompt);
   return PreparedAgentContextSchema.parse({
     runId: "eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee", contextHash,

@@ -23,14 +23,26 @@ deterministic rehearsal for admission/history/recovery evidence, not model work.
 - [x] (2026-09-07 08:53Z) D2 verified designated clean branch at ROOT-approved PR44 normal 9e2f095; read planning rules, task contract, closure ledger, UI decisions and ROOT landing receipt; inspected actual prepare/context/store/task/client seams.
 - [x] (2026-09-07 08:54Z) Created/started design subissue `repo-task-draft-contract-d2`; parent `repo-task-draft-provenance` remains open. Drafted this plan and product contract without implementation changes.
 - [x] (2026-09-07 09:09Z) Independent light native review: one Important disposal-seam finding corrected; lifecycle delta and focused timeout delta both CLEAN. Local whitespace, nine relative links, required plan headings/spacing and exact four-doc scope checked. No implementation tests run or claimed.
-- [ ] D2 normal PR47 landing and Ditz closure; actual merge receipt is required before design completion is claimed.
-- [ ] ROOT evaluates D2, then dispatches D3 shared-contract/compatibility base.
+- [x] (2026-09-07 09:16Z) D2 normal PR47 eafe0fe landed, Ditz design issue closed/synced; ROOT verified parents/tree/docs/review/cleanup in the D2 root-verification receipt.
+- [x] (2026-09-07 09:22Z) ROOT accepted D2 and dispatched D3 alone in task-draft-base at eafe0fe; created/started `repo-task-draft-base-d3`, parent remains open.
+- [x] (2026-09-07 09:30Z) D3 bounded baseline RED: wire7/attached instructions, legacy new-preparation rejection and snapshot2 acceptance fail; 1,305 existing tests pass. Raw baseline-red.log retained in D3 step directory.
+- [x] (2026-09-07 09:44Z) D3 owns strict V1/V2 formats, shared canonical serializer, next-write outer2 promotion, all attached Prepare unavailable, optional resolver/disposal interfaces and late-publication protection. Added exact integrity/byte/browser/legacy/receipt/disposal tests; compatibility adjustments and final gates underway, not yet landed.
 - [ ] D3 lands and is ROOT-verified before D4 core and D5 UI consumers.
 - [ ] D4/D5 independently reviewed increments; neither alone closes delivered behavior.
 - [ ] D6 reviewed packaged real-data integration and separate deterministic rehearsal proof; only then close implementation parent.
 
 ## Surprises & Discoveries
 
+
+D3 found that the read-only rehearsal-close verifier itself required outer
+snapshot 1. ROOT granted only strict outer1/V1 and outer2/mixed validation,
+V2 task digest verification and exact compatibility regressions. All original
+count/byte/receipt/cleanup/private-file/leak checks remain; no GUI retry or
+runtime authority was granted. The initial compatibility run identified old
+synthetic prompt/hash constructors, not an observed production failure. In
+particular the external-process fixture's launch request had to use the new
+constructed draft hash rather than the old local task-only hash. That exact
+cause is preserved with the failing run, not classified as namespace failure.
 
 `protocol/common.ts` is already wire version 6. `AgentLinksSchema.task` is a
 normalized source path, not task identity; Q4's `TaskBacklinkTargetSchema`
@@ -70,6 +82,20 @@ change. Mutation uncertainty stays unchanged.
 ## Decision Log
 
 
+Decision (2026-09-07, D3): use a strict V2 Prepared schema and mixed Run schema;
+the existing service already acknowledges admitted history before draft
+validation, so no service/R3 logic edit is required. Authoritative digest
+validation stays in the existing core store; the shared module is pure and
+actually browser-bundled/executed in a test. Source-linked V2 fields are bound
+by exact canonical prompt reconstruction; legacy contexts are not rebuilt.
+
+Decision (2026-09-07, D3): reject every attached Prepare even if a resolver
+interface is injected. The optional resolver is a type seam only. Disposal
+closes intake and drops draft authority synchronously; trusted source callbacks
+may settle under the old deadline but cannot publish. D4 alone implements
+owned metadata cancellation, production shutdown composition and the 40-second
+task-Prepare bridge branch.
+
 Decision (2026-09-07, D2): one read-only task slot next to editable instructions.
 Append keeps exact text and replaces/fills that slot; Replace clears text and
 sets the slot; both require review when there is existing content. Cancel is
@@ -102,6 +128,13 @@ Do not add a seventh agent command or widen permission scope.
 
 ## Outcomes & Retrospective
 
+
+D3 implementation is in progress, not yet a landing claim. New tests cover
+exact task bytes, V2 prompt consistency, unchanged V1 values across ordinary
+write/restart, old receipt acknowledgement without provider/revalidation calls,
+fail-closed attachments and held source callbacks across disposal. Final local
+gates, review and merge evidence will be recorded before D3 is closed. The
+attachment UI and real metadata context resolution remain D4/D5/D6 work.
 
 D2 provides a grounded design and prospective implementation sequence,
 not a shipped attachment button or executable schema. Draft PR47 contains only
@@ -523,3 +556,7 @@ lifecycle delta and separately on the narrow timeout delta. Preserved the
 reviewer's explicit absent-receipt-is-not-rejection test requirement. These
 reviews attest the design correction only. ROOT still evaluates the contract
 before any implementation dispatch.
+
+D3 revision (2026-09-07): recorded actual baseline and compatibility findings,
+ROOT-approved verifier ownership, V2-only fresh preparation and D4-held seams.
+No prior aggregate proof is attributed to these new changes.

@@ -85,7 +85,7 @@ export async function verifyRehearsalClose(options: { profile: string; workspace
     check = "snapshot-read";
     const snapshot = await readSnapshot(options.profile, hash(root)), raw = object(snapshot.input);
     check = "snapshot-shape";
-    if (Object.keys(raw).sort().join() !== "entries,version" || raw.version !== 1 || !Array.isArray(raw.entries) || raw.entries.length !== 4) throw new Error("Incomplete retained snapshot");
+    if (Object.keys(raw).sort().join() !== "entries,version" || (raw.version !== 1 && raw.version !== 2) || !Array.isArray(raw.entries) || raw.entries.length !== 4) throw new Error("Incomplete retained snapshot");
     const checked = raw.entries.map((input) => {
       check = "retained-bounds";
       const entry = object(input), rawRun = object(entry.run), context = object(rawRun.launchContext);
@@ -93,11 +93,14 @@ export async function verifyRehearsalClose(options: { profile: string; workspace
           !Array.isArray(rawRun.instructions) || rawRun.instructions.length > AGENT_LIMITS.receipts || utf8Bytes(JSON.stringify(context)) > AGENT_LIMITS.contextBytes) throw new Error("Unbounded retained run");
       check = "retained-schema";
       const run = RunSchema.parse(rawRun), receipt = AdmissionReceiptSchema.parse(entry.receipt);
+      if (raw.version === 1 && "contextVersion" in run.launchContext) throw new Error("Legacy snapshot cannot contain new contexts");
       const records = entry.records.map((record) => TranscriptRecordSchema.parse(record));
       const diagnostic = diagnostics.runs.find((item) => item.runId === run.runId);
       check = "retained-consistency";
       if (!diagnostic || run.launchContext.root !== root || receipt.runId !== run.runId || receipt.contextHash !== run.launchContext.contextHash || receipt.admittedAt !== run.createdAt ||
           hash(run.launchContext.submittedPrompt) !== run.launchContext.contextHash || run.launchContext.attachments.some((item) => hash(item.content) !== item.digest) ||
+          ("contextVersion" in run.launchContext && run.launchContext.repositoryTask !== undefined &&
+            hash(run.launchContext.repositoryTask.content) !== run.launchContext.repositoryTask.digest) ||
           run.instructions.some((item) => hash(item.text) !== item.textHash || item.status === "pending" || item.expectedTurnId !== run.providerTurnId) ||
           run.cleanup.status !== "confirmed" || run.processState !== "exited" || run.exitCode !== null ||
           records.some((record, index) => record.recordId !== index + 1) || run.transcript.lastRecord !== records.length ||

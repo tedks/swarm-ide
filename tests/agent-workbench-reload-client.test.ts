@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { fixtureV2Draft } from "../fixtures/agent-context-v2";
 import { AgentBridgeClient } from "../app/renderer/agents/bridge-client";
 import { createAgentClient, type AgentClientMemory } from "../app/renderer/agents/client-memory";
 import { emptyLiveAgentState, protectsAgentIntent, type LocalOperation } from "../app/renderer/agents/live-state";
@@ -113,7 +114,7 @@ describe("document-loss guard local client intent", () => {
     const preparing = client.prepare(); const call = h.latest("agent.prepare");
     if (call.input.type !== "agent.prepare") throw new Error("Expected preparation");
     const context = fixtureLaunchContext(call.input.focus, call.input.taskText, "", "");
-    const draft = PreparedAgentContextSchema.parse({ runId: run.runId, contextHash: context.contextHash,
+    const draft = fixtureV2Draft({ runId: run.runId, contextHash: context.contextHash,
       preparedAt: new Date().toISOString(), expiresAt: new Date(Date.now() + 60_000).toISOString(), capabilities, launchContext: context });
     client.clearLocalIntent(client.getSnapshot(), true); client.openDraft(paymentsFileFocus); client.editDraft({ task: "new private draft" });
     h.reply(call, { kind: "prepare", draft }); await preparing;
@@ -138,7 +139,7 @@ describe("document-loss guard local client intent", () => {
     const preparing = client.prepare(); const preparation = h.latest("agent.prepare");
     if (preparation.input.type !== "agent.prepare") throw new Error("Expected preparation");
     const context = fixtureLaunchContext(preparation.input.focus, preparation.input.taskText, "", "");
-    const draft = PreparedAgentContextSchema.parse({ runId: run.runId, contextHash: context.contextHash,
+    const draft = fixtureV2Draft({ runId: run.runId, contextHash: context.contextHash,
       preparedAt: new Date().toISOString(), expiresAt: new Date(Date.now() + 60_000).toISOString(), capabilities, launchContext: context });
     h.reply(preparation, { kind: "prepare", draft }); await preparing; client.confirmDraft(true);
     const launching = client.launch(); const pending = h.latest("agent.launch");

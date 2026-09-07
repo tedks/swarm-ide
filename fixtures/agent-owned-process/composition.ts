@@ -13,6 +13,7 @@ import { createAgentService } from "../../core/agents/service";
 import type { AgentOperation } from "../../core/agents/adapter";
 import type { RunStore } from "../../core/agents/store";
 import { AGENT_LIMITS, type AgentCapabilities, type AgentRequest, type AgentSnapshot, type PreparedAgentContext, type Run } from "../../protocol/agents";
+import { fixtureV2Draft } from "../agent-context-v2";
 import { PROTOCOL_VERSION } from "../../protocol/common";
 
 export type Scenario = "stop-terminal" | "unexpected-exit" | "core-death";
@@ -78,7 +79,7 @@ export async function openProcessFixture(directory: string, scenario: Scenario, 
     taskText: task, model: null, effort: null, links: { parentRunId: null, task: null, spec: null } };
   const preparedAt = new Date().toISOString();
   const contextHash = hash(task);
-  const draft: PreparedAgentContext = { runId: randomUUID(), contextHash, preparedAt,
+  const draft: PreparedAgentContext = fixtureV2Draft({ runId: randomUUID(), contextHash, preparedAt,
     expiresAt: new Date(Date.parse(preparedAt) + AGENT_LIMITS.draftMs).toISOString(), capabilities,
     launchContext: { worldId: input.worldId, repositoryId: "synthetic-process-fixture", root,
       head: null, workingFingerprint: hash("fixture-world"), focus: input.focus,
@@ -86,7 +87,7 @@ export async function openProcessFixture(directory: string, scenario: Scenario, 
       attachments: [], instructionSources: [], configurationSources: [],
       submittedPrompt: task, contextHash, diskOnly: true,
       access: { policy: "read-only", toolNetwork: false, approvals: "never",
-        hostConfidentiality: false, sendsSelectedContentToProvider: true } } };
+        hostConfidentiality: false, sendsSelectedContentToProvider: true } } });
   const service = await createAgentService({ store, adapter, capabilities: async () => capabilities,
     emit: (snapshot) => snapshots.push(structuredClone(snapshot)),
     context: { prepare: async () => ({ ok: true, value: draft }), revalidate: async (current) => ({ ok: true, value: current }) },
@@ -98,7 +99,7 @@ export async function openProcessFixture(directory: string, scenario: Scenario, 
   };
   const launch = async () => {
     value(await service.request({ ...base(), type: "agent.prepare", ...input }));
-    const result = value(await service.request({ ...base(), type: "agent.launch", runId: draft.runId, contextHash }));
+    const result = value(await service.request({ ...base(), type: "agent.launch", runId: draft.runId, contextHash: draft.contextHash }));
     if (result.kind !== "launch") throw new Error("Expected admission receipt");
     return result.receipt;
   };

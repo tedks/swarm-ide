@@ -20,7 +20,7 @@ describe("bounded explicit backlink publication", () => {
   it("accepts optional absence only as unpublished, with explicit v5/v6 rejection", () => {
     const value = taskObservationFixture().snapshot!;
     expect(TaskSnapshotSchema.parse(value).backlinks).toBeUndefined();
-    expect(PROTOCOL_VERSION).toBe(6);
+    expect(PROTOCOL_VERSION).toBe(7);
     expect(TaskRequestSchema.safeParse({ type: "tasks.snapshot", requestId: "test", worldId: "world", refresh: true, protocolVersion: 5 }).success).toBe(false);
     expect(CoreResponseSchema.safeParse({ protocolVersion: 5, requestId: "test", ok: true, sequence: 1, snapshot: initialSnapshot() }).success).toBe(false);
   });

@@ -1,5 +1,7 @@
 import { z } from "zod";
 import { FocusRefSchema, PROTOCOL_VERSION } from "./common";
+import { AgentTaskReferenceSchema, RepositoryTaskMaterializationSchema, agentTaskBytes,
+  formatAgentContextV2, hasValidUnicode } from "./agent-task";
 
 // Transport bounds, not claims that persistence or provider policy exists yet.
 export const AGENT_LIMITS = {
@@ -45,16 +47,20 @@ export const AgentLinksSchema = z.object({
   parentRunId: RunIdSchema.nullable(), task: path.nullable(), spec: path.nullable(),
 }).strict();
 export const AgentPrepareInputSchema = z.object({
-  worldId: id, focus: AgentFocusSchema, taskText: text(AGENT_LIMITS.taskBytes),
+  worldId: id, focus: AgentFocusSchema, taskText: text(AGENT_LIMITS.taskBytes, 0).refine(hasValidUnicode),
+  taskReference: AgentTaskReferenceSchema.optional(),
   model: text(256).nullable(), effort: text(64).nullable(), links: AgentLinksSchema,
-}).strict().refine((input) => input.worldId === input.focus.worldId && input.focus.revisionKind === "working",
-  "Preparation requires the selected working world");
+}).strict().refine(validPrepare, "Preparation requires a working world and instructions or a matching task");
 export type AgentPrepareInput = z.infer<typeof AgentPrepareInputSchema>;
+function validPrepare(input: { worldId: string; focus: { worldId: string; revisionKind: string };
+  taskText: string; taskReference?: { worldId: string } }): boolean {
+  return input.worldId === input.focus.worldId && input.focus.revisionKind === "working" &&
+    (input.taskReference === undefined ? input.taskText.trim().length > 0 : input.taskReference.worldId === input.worldId);
+}
 const base = z.object({ protocolVersion: z.literal(PROTOCOL_VERSION), requestId: id }).strict();
 export const AgentRequestSchema = z.discriminatedUnion("type", [
   base.extend({ type: z.literal("agent.prepare"), ...AgentPrepareInputSchema.shape })
-    .refine((input) => input.worldId === input.focus.worldId && input.focus.revisionKind === "working",
-      "Preparation requires the selected working world"),
+    .refine(validPrepare, "Preparation requires a working world and instructions or a matching task"),
   base.extend({ type: z.literal("agent.launch"), runId: RunIdSchema, contextHash: hash }),
   base.extend({ type: z.literal("agent.steer"), runId: RunIdSchema, expectedTurnId: id, text: text(AGENT_LIMITS.taskBytes) }),
   base.extend({ type: z.literal("agent.cancel"), runId: RunIdSchema }),
@@ -86,7 +92,8 @@ const instructionSource = z.object({
   before: date.nullable(), after: date.nullable(),
 }).strict().refine((source) => source.observation !== "observed" || source.digest !== null,
   "Observed instructions require a digest");
-export const LaunchContextSchema = z.object({
+// Frozen historical shape: do not reinterpret untagged stored contexts as V2.
+export const LaunchContextV1Schema = z.object({
   worldId: id, repositoryId: id, root: text(4096), head: z.string().regex(/^(?:[a-f0-9]{40}|[a-f0-9]{64})$/).nullable(),
   workingFingerprint: hash, focus: AgentFocusSchema, taskText: text(AGENT_LIMITS.taskBytes),
   links: AgentLinksSchema,
@@ -111,10 +118,27 @@ export const LaunchContextSchema = z.object({
     ctx.addIssue({ code: "custom", message: "Total launch context exceeds UTF-8 byte limit" });
   }
 });
+export const LaunchContextV2Schema = LaunchContextV1Schema.safeExtend({
+  contextVersion: z.literal(2), sourceLinks: z.array(path).max(32),
+  taskText: text(AGENT_LIMITS.taskBytes, 0).refine(hasValidUnicode),
+  repositoryTask: RepositoryTaskMaterializationSchema.optional(),
+}).superRefine((value, ctx) => {
+  try {
+    const task = value.repositoryTask;
+    if (task ? task.reference.worldId !== value.worldId || task.reference.repositoryId !== value.repositoryId :
+        value.taskText.trim().length === 0) throw new Error("Task identity or instructions mismatch");
+    if (agentTaskBytes(value.taskText, task) > AGENT_LIMITS.taskBytes) throw new Error("Task budget exceeded");
+    const fields = { ...value };
+    if (fields.repositoryTask === undefined) delete fields.repositoryTask;
+    if (formatAgentContextV2(fields) !== value.submittedPrompt) throw new Error("Prompt mismatch");
+  } catch { ctx.addIssue({ code: "custom", message: "V2 context must match canonical prompt, task identity and combined byte limits" }); }
+});
+export const LaunchContextSchema = z.union([LaunchContextV1Schema, LaunchContextV2Schema]);
 export type LaunchContext = z.infer<typeof LaunchContextSchema>;
+export type LaunchContextV2 = z.infer<typeof LaunchContextV2Schema>;
 export const PreparedAgentContextSchema = z.object({
   runId: RunIdSchema, contextHash: hash, preparedAt: date, expiresAt: date,
-  launchContext: LaunchContextSchema, capabilities: AgentCapabilitiesSchema,
+  launchContext: LaunchContextV2Schema, capabilities: AgentCapabilitiesSchema,
 }).strict().superRefine((value, ctx) => {
   const lifetime = Date.parse(value.expiresAt) - Date.parse(value.preparedAt);
   if (lifetime <= 0 || lifetime > AGENT_LIMITS.draftMs || value.contextHash !== value.launchContext.contextHash) {

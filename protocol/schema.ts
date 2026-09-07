@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { sameAgentTaskReference } from "./agent-task";
 import { PROTOCOL_VERSION, FocusRefSchema } from "./common";
 import { AgentRequestSchema, AgentResultSchema, AgentFocusSchema, AgentLinksSchema, AgentBoundaryErrorSchema, type AgentRequest } from "./agents";
 import { TaskRequestSchema, TaskResultSchema, TaskBoundaryErrorSchema, parseTaskResultForRequest, type TaskRequest } from "./tasks";
@@ -414,7 +415,8 @@ export function parseCoreResponseForRequest(input: unknown, request: CoreRequest
           request.model !== result.draft.launchContext.requested.model ||
           request.effort !== result.draft.launchContext.requested.effort ||
           JSON.stringify(AgentFocusSchema.parse(request.focus)) !== JSON.stringify(result.draft.launchContext.focus) ||
-          JSON.stringify(AgentLinksSchema.parse(request.links)) !== JSON.stringify(result.draft.launchContext.links))) ||
+          JSON.stringify(AgentLinksSchema.parse(request.links)) !== JSON.stringify(result.draft.launchContext.links) ||
+          !sameAgentTaskReference(request.taskReference, result.draft.launchContext.repositoryTask?.reference))) ||
         (request.type === "agent.launch" && result.kind === "launch" &&
          (request.runId !== result.receipt.runId || request.contextHash !== result.receipt.contextHash)) ||
         (request.type === "agent.steer" && result.kind === "steer" &&

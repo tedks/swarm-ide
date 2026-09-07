@@ -42,12 +42,13 @@ const RecordListSchema = z.unknown().transform((input, ctx) => {
   return records;
 });
 const SnapshotSchema = z.object({
-  version: z.literal(1),
+  version: z.union([z.literal(1), z.literal(2)]),
   entries: z.array(z.object({
     receipt: AdmissionReceiptSchema, run: RunSchema,
     records: RecordListSchema,
   }).strict()).max(AGENT_LIMITS.history),
-}).strict();
+}).strict().refine((snapshot) => snapshot.version === 2 || snapshot.entries.every(({ run }) =>
+  !("contextVersion" in run.launchContext)), "Snapshot version 1 requires legacy contexts");
 type Snapshot = z.infer<typeof SnapshotSchema>;
 type Entry = Snapshot["entries"][number];
 const digest = (text: string) => createHash("sha256").update(text).digest("hex");
@@ -71,6 +72,8 @@ function inside(parent: string, child: string): boolean {
 }
 function validHashes(run: Run): boolean {
   return digest(run.launchContext.submittedPrompt) === run.launchContext.contextHash &&
+    (!("contextVersion" in run.launchContext) || !run.launchContext.repositoryTask ||
+      digest(run.launchContext.repositoryTask.content) === run.launchContext.repositoryTask.digest) &&
     run.launchContext.attachments.every((a) => digest(a.content) === a.digest) &&
     run.instructions.every((r) => digest(r.text) === r.textHash);
 }
@@ -83,6 +86,7 @@ function validate(input: unknown): Snapshot {
     const run = object(object(entry).run), context = object(run.launchContext);
     bound(run.instructions, AGENT_LIMITS.receipts);
     bound(context.attachments, 1); bound(context.instructionSources, 32); bound(context.configurationSources, 32);
+    bound(context.sourceLinks, 32);
     bound(object(run.providerObservation).instructionSources, 32);
     if (utf8Bytes(JSON.stringify(context)) > AGENT_LIMITS.contextBytes) throw new StoreFailure();
   }
@@ -240,6 +244,8 @@ async function openStore(directory: string, dir: FileHandle, lock: Server, optio
     }
   }
   async function persist(next: Snapshot) {
+    // Promote only on an ordinary mutation, preserving old context values.
+    next = { ...next, version: 2 };
     validate(next);
     await checkIdentity();
     const temp = join(pinned, `snapshot-${randomUUID()}.tmp`);

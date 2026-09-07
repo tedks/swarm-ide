@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { fixtureV2Draft } from "../fixtures/agent-context-v2";
 import {
   AGENT_LIMITS, AgentEventSchema, AgentRequestSchema, AgentResultSchema, AgentSnapshotSchema,
   InstructionReceiptSchema, LaunchContextSchema, PreparedAgentContextSchema, RunSchema,
@@ -27,7 +28,7 @@ const launchContext = {
     hostConfidentiality: false as const, sendsSelectedContentToProvider: true as const },
 };
 const capabilities = unavailableAgentSnapshot().capabilities;
-const draft = { runId, contextHash: digest, preparedAt: at, expiresAt: "2026-09-06T01:05:00.000Z", launchContext, capabilities };
+const draft = fixtureV2Draft({ runId, contextHash: digest, preparedAt: at, expiresAt: "2026-09-06T01:05:00.000Z", launchContext, capabilities });
 const record = { recordId: 1, timestamp: at, kind: "message" as const, providerItemId: null, text: "Visible commentary" };
 const receipt = { requestId: "steer", expectedTurnId: "turn", text: "Focus on failures", textHash: digest,
   status: "pending" as const, submittedAt: at, settledAt: null, error: null };
@@ -50,7 +51,7 @@ const requests: AgentRequest[] = [
 ];
 describe("strict agent contract v3", () => {
   it("accepts the six frozen payloads and refuses extra authority at any depth", () => {
-    expect(PROTOCOL_VERSION).toBe(6);
+    expect(PROTOCOL_VERSION).toBe(7);
     for (const request of requests) {
       expect(CoreRequestSchema.parse(request)).toEqual(request);
       expect(() => CoreRequestSchema.parse({ ...request, cwd: "/escape" })).toThrow();
