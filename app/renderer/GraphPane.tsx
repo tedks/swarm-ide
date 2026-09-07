@@ -37,6 +37,7 @@ interface GraphPaneProps {
   focus: FocusRef;
   mappings: NavigationMapping[];
   onFocus: (focus: FocusRef) => void;
+  onActivate?: (focus: FocusRef, origin?: HTMLElement) => void;
   onConnectionFocus: (connection: GraphConnectionFocus) => void;
   onReconcile: () => void;
   reconciliationRunning: boolean;
@@ -60,7 +61,7 @@ function RepositoryGraphPane(props: GraphPaneProps) {
   return <GraphPaneContent {...presented} />;
 }
 
-const GraphPaneContent = memo(function GraphPaneContent({ graph, focus, mappings, onFocus, onConnectionFocus, onReconcile, reconciliationRunning, repositoryNavigation, repositoryCameraIntent, onNavigateDirectory, onInspectFocus, buildLinkSnapshot, mockAgents = false, mockGraphVersion = 0, reframeVersion = 0 }: GraphPaneProps) {
+const GraphPaneContent = memo(function GraphPaneContent({ graph, focus, mappings, onFocus, onActivate, onConnectionFocus, onReconcile, reconciliationRunning, repositoryNavigation, repositoryCameraIntent, onNavigateDirectory, onInspectFocus, buildLinkSnapshot, mockAgents = false, mockGraphVersion = 0, reframeVersion = 0 }: GraphPaneProps) {
   const adapted = useMemo(() => adaptGraph(graph, focus, mappings), [graph, focus, mappings]);
   const [buildLinksVisible, setBuildLinksVisible] = useState(false);
   const [mockAgentsVisible, setMockAgentsVisible] = useState(false);
@@ -88,9 +89,18 @@ const GraphPaneContent = memo(function GraphPaneContent({ graph, focus, mappings
   // only initial fit and the explicit Fit control should frame the graph.
 
   return (
-    <section className={`graph-pane ${graph.directory ? "has-directory" : ""} ${explorer ? `repository-view-${repositoryView}` : ""}`} data-topology={graph.topologyId} data-directory={graph.directory?.directory} data-observation-state={graph.directory?.state}>
+    <section className={`graph-pane ${graph.directory ? "has-directory" : ""} ${explorer ? `repository-view-${repositoryView}` : ""}`} data-topology={graph.topologyId} data-directory={graph.directory?.directory} data-observation-state={graph.directory?.state}
+      onKeyDownCapture={(event) => {
+        if (!onActivate || event.key !== "Enter" || event.altKey || event.ctrlKey || event.metaKey) return;
+        const element = event.target instanceof HTMLElement ? event.target : null;
+        if (!element?.classList.contains("react-flow__node")) return;
+        const node = graph.nodes.find((item) => item.id === element.dataset.id);
+        if (!node || !["service", "interface"].includes(node.focus.domain)) return;
+        event.preventDefault(); event.stopPropagation();
+        if (!event.repeat) { if (event.shiftKey) onFocus(node.focus); else onActivate(node.focus, element); }
+      }}>
       <header className="graph-header">
-        <div><span className="eyebrow">{explorer ? "repository" : `${graph.topologyId} lens`}</span>{!explorer ? <h2>{graph.title}</h2> : null}</div>
+        <div tabIndex={onActivate ? 0 : undefined} role={onActivate ? "note" : undefined} aria-label={onActivate ? "Click or Enter opens a recorded declaration. Alt-click or Shift+Enter inspects without opening. Declarations are not callsites." : undefined}><span className="eyebrow">{explorer ? "repository" : `${graph.topologyId} lens`}{onActivate ? " · ↵ open · ⇧↵ inspect" : ""}</span>{!explorer ? <h2>{graph.title}</h2> : null}</div>
         {explorer ? <div className="repository-view-switch" aria-label="Repository presentation"><button aria-pressed={repositoryView === "tree"} onClick={() => setRepositoryView("tree")}>Explorer</button><button aria-pressed={repositoryView === "map"} onClick={() => setRepositoryView("map")}>Map</button></div> : null}
         {graph.directory && onNavigateDirectory ? <div className="directory-map-controls"><button disabled={!graph.directory.directory} aria-label="Map parent directory" onClick={() => navigate(parentDirectory(graph.directory!.directory))}>↑</button><button aria-label="Map repository root" onClick={() => navigate("")}>/</button><span title={graph.directory.directory || "/"}>{graph.directory.directory || "/"}</span></div> : null}
         <div className="graph-meta"><span>{graph.scope}</span><span>{graph.zoomBand}</span>{graph.directory ? <span aria-label="Directory observation, not build evidence">◷</span> : graph.reconciliation === "yellow"
@@ -134,7 +144,8 @@ const GraphPaneContent = memo(function GraphPaneContent({ graph, focus, mappings
           zoomOnDoubleClick={!graph.directory}
           nodesConnectable={false}
           elementsSelectable
-          onNodeClick={(_event, node) => { const data = node.data as TopologyNodeData; if (graph.directory && data.kind === "directory" && onInspectFocus) onInspectFocus(data.focus); else onFocus(data.focus); }}
+          autoPanOnNodeFocus={onActivate ? false : undefined}
+          onNodeClick={(event, node) => { const data = node.data as TopologyNodeData; if (onActivate && !event.altKey && ["service", "interface"].includes(data.focus.domain)) onActivate(data.focus, event.currentTarget as HTMLElement); else if (graph.directory && data.kind === "directory" && onInspectFocus) onInspectFocus(data.focus); else onFocus(data.focus); }}
           onNodeDoubleClick={(_event, node) => { const data = node.data as TopologyNodeData; if (graph.directory && data.kind === "directory" && !data.directoryContainer && !data.unavailable && data.focus.path) navigate(data.focus.path); }}
           onSelectionChange={({ edges }) => {
             if (edges.length !== 1) return;

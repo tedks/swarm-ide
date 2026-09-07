@@ -202,10 +202,34 @@ attention. Dirty existing buffers are retained and labelled, never overwritten
 to match an old link. Unrelated graph instances/cameras do not move; the repo
 view may deliberately reveal the activated file under existing navigation rules.
 
-Q1 offers labelled implementation and interface-declaration links. It does not
-change service single-click into source opening or implement call highlighting.
-A later small consumer can make the user's service-click gesture open the
-explicit recorded definition with ambiguity choices. There is no exact callsite
+Q1 offers labelled implementation and interface-declaration links. Q2 adds the
+deliberate service/interface graph consumer in PR42: click or Enter opens an
+exact recorded declaration through the existing source broker; Alt-click or
+Shift+Enter inspects without opening. The service camera stays put while the repo
+view explicitly reveals the file. Hover, passive mappings, publications, and
+recovery never initiate source navigation.
+
+For the observed service, only provided-interface declarations are definition
+candidates. A referenced external service can only offer required-interface
+declarations explicitly naming it, labelled as such with implementation
+unavailable. An exact interface selects its recorded declaration. Paths are
+deduplicated while retaining their provided/required interface relationships;
+one unique path opens, several require an accessible chooser with no preferred
+fallback, and unknown associations stay unavailable. Cancel/Escape, newer intent,
+publication changes, repository/world or core replacement invalidate old choices
+and late foreground results. The chooser owns its keyboard, not a hidden palette.
+
+Historical links explicitly revalidate the current file even when its dirty tab
+already exists. Unsaved bytes and logical cursor survive; deleted or rejected
+destinations preserve prior work. The notice distinguishes the built declaration
+from today's file and from implementation/callsite evidence. The existing real
+artifact has FraudCheck and two interfaces, not a Payments service node; external
+service-node and ambiguity coverage is mounted fixture evidence. Populated
+captured Build-camera retention is also a mounted seam, not a live build provider
+in the packaged temporary repositories. See the [Q2 plan](../.planning/service-source-navigation.md)
+for actual packaged declaration and retained-service recovery evidence.
+
+There is no exact callsite
 consumer yet: `Payments.Authorize` is declared by the manifest, while
 `fraudcheck.ts` contains no matching call expression and no Payments
 implementation. Keep `ui-service-source-navigation` open. A call highlight
