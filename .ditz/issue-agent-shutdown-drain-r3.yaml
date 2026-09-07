@@ -5,8 +5,8 @@ type: bugfix
 component: default
 release:
 reporter: Ted Smith <tedks@riseup.net>
-status: in_progress
-disposition:
+status: closed
+disposition: fixed
 creation_time: 2026-09-07T06:57:57-00:00
 references: []
 log_events:
@@ -45,3 +45,13 @@ log_events:
     disposals, zero timers/pending controls, active-at-close unknown. Actual owned
     virtual cleanup1, processes/runtime absent. Fixture only, not live-provider or
     historical failure attribution. Landing remains ROOT-held.'
+- time: 2026-09-07T08:20:54-00:00
+  who: Ted Smith
+  what: 'closed: fixed'
+  comment: Delivered deterministic accepted-event shutdown ordering repair in PR46
+    normal merge fe01fb51c386369e95c3c0efd18357e80d7a4dc9, parents650432b+682650e,
+    exact reviewed tree4f3b6d6. ROOT cleared aggregatea4f3918/f0b8c4c2 with full local1305tests/all13
+    and actual packaged/ordinary-close proofs; prior R3 exact1260/all13 and native
+    convergence retained as evidence reuse, no new tests on merge. Original GUI/Context
+    historical causality remains unlocalized and separate issues remain open. R3-only
+    closure; no PR44/integration/app adoption.
