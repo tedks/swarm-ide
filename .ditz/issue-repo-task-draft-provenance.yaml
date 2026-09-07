@@ -39,6 +39,12 @@ log_events:
     base before at most D4 core/D5 UI, then D6 real packaged metadata/draft plus separately
     labelled deterministic rehearsal proof. ROOT must evaluate before dispatch. This
     implementation parent stays OPEN; no attachment/provider/credential/app changes.
+- time: 2026-09-07T09:29:02-00:00
+  who: Ted Smith
+  what: commented
+  comment: 'D3 started from ROOT-cleared eafe0fe: shared wire/context/store compatibility
+    only; all attached Prepare remains unavailable. D4/D5/D6 not started; parent remains
+    open.'
 blocked_by:
 - repo-task-surface
 - repo-task-draft-contract-d2
