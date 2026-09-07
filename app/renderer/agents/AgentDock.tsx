@@ -10,6 +10,7 @@ export interface AgentDockProps {
   onDraft: () => void;
   runContent: ReactNode;
   draftContent: ReactNode;
+  trustedContent?: ReactNode;
   jobsContent: ReactNode;
   activityContent: ReactNode;
   fixtureContent?: ReactNode;
@@ -25,7 +26,7 @@ export interface AgentDockProps {
   fixtureSelectionVersion?: number;
 }
 
-export function AgentDock({ state, client, onDraft, runContent, draftContent, jobsContent, activityContent, fixtureContent, mockConversation, selectionVersion = 0, fixtureSelectionVersion = 0 }: AgentDockProps) {
+export function AgentDock({ state, client, onDraft, runContent, draftContent, trustedContent, jobsContent, activityContent, fixtureContent, mockConversation, selectionVersion = 0, fixtureSelectionVersion = 0 }: AgentDockProps) {
   const id = useId();
   const runs = state.snapshot?.runs ?? [];
   const hasSelection = state.selectedRunId !== null;
@@ -86,11 +87,13 @@ export function AgentDock({ state, client, onDraft, runContent, draftContent, jo
         <p>{runs.length ? "Open a run from the sidebar or its tab to inspect output and send instructions when available."
           : !state.snapshot ? "Agent availability has not been observed yet."
             : state.snapshot.capabilities.availability === "available" ? "No agent runs yet. Prepare a focused draft to begin."
-              : "No live agent runs. Execution is unavailable; you can prepare a draft without launching a run."}</p>
+              : trustedContent ? "No isolated read-only runs. Prepare a draft, then choose the separate trusted-local profile below to run Codex."
+                : "No live agent runs. Execution is unavailable; you can prepare a draft without launching a run."}</p>
         {state.notice ? <p className="agent-dock-notice" role="status">{displayAgentText(state.notice)}</p> : null}
         <button className="agent-primary" onClick={onDraft}>Prepare an agent draft</button>
       </div> : null}
       {draftContent}
+      {trustedContent}
     </div>
     <div id={panelId("run:current")} role="tabpanel" aria-labelledby={state.selectedRunId ? tabId(`run:${state.selectedRunId}`) : undefined}
       hidden={!current.startsWith("run:")} className="agent-dock-panel agent-dock-run">{runContent}</div>

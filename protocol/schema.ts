@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { TrustedRequestSchema, TrustedResultSchema } from "./trusted-local";
 import { PlanReadRequestSchema, PlanReadResultSchema } from "./plans";
 import { sameAgentTaskReference } from "./agent-task";
 import { PROTOCOL_VERSION, FocusRefSchema } from "./common";
@@ -289,7 +290,7 @@ const WorkspaceRequestSchema = z.discriminatedUnion("type", [
     path: z.string().min(1).max(4_096),
   }),
 ]);
-export const CoreRequestSchema = z.union([WorkspaceRequestSchema, AgentRequestSchema, TaskRequestSchema, RepositoryRequestSchema, RepositorySearchRequestSchema, ChangelogRequestSchema, PlanReadRequestSchema, ExternalRequestSchema, BuildGraphRequestSchema]);
+export const CoreRequestSchema = z.union([WorkspaceRequestSchema, AgentRequestSchema, TaskRequestSchema, RepositoryRequestSchema, RepositorySearchRequestSchema, ChangelogRequestSchema, PlanReadRequestSchema, ExternalRequestSchema, BuildGraphRequestSchema, TrustedRequestSchema]);
 export type CoreRequest = z.infer<typeof CoreRequestSchema>;
 
 export const FileResultSchema = z.discriminatedUnion("kind", [
@@ -330,6 +331,7 @@ export const CoreResponseSchema = z.discriminatedUnion("ok", [
     plans: PlanReadResultSchema.optional(),
     external: ExternalResultSchema.optional(),
     buildGraph: BuildGraphObservationSchema.optional(),
+    trusted: TrustedResultSchema.optional(),
   }).strict(),
   z.object({
     protocolVersion: z.literal(PROTOCOL_VERSION),
@@ -389,6 +391,11 @@ const agentResultKind = {
 export function parseCoreResponseForRequest(input: unknown, request: CoreRequest): CoreResponse {
   const response = parseCoreResponse(input);
   if (response.requestId !== request.requestId) throw new Error("Response request ID mismatch");
+  if (request.type.startsWith("trusted.")) {
+    if (response.ok && (!response.trusted || response.agent || response.file || response.task || response.repo || response.search || response.changelog || response.plans || response.external || response.buildGraph)) throw new Error("Unexpected trusted-local response authority");
+    if (response.ok && "token" in request && response.trusted?.snapshot.runToken !== request.token) throw new Error("Trusted-local conversation identity mismatch");
+    return response;
+  } else if (response.ok && response.trusted) throw new Error("Trusted-local result supplied for a different command");
   if (request.type === "changelog.read") {
     if (response.ok && (!response.changelog || response.plans || response.external || response.buildGraph || response.file || response.agent || response.task || response.repo || response.search ||
       response.snapshot.project.id !== request.repositoryId || response.changelog.repositoryId !== request.repositoryId))
@@ -476,6 +483,7 @@ export function isExternalRequest(request: CoreRequest): request is ExternalRequ
 }
 
 export function uncertainMutationCode(request: CoreRequest): "WRITE_OUTCOME_UNKNOWN" | "AGENT_OUTCOME_UNKNOWN" | null {
+  if (["trusted.launch", "trusted.send", "trusted.decide", "trusted.stop"].includes(request.type)) return "AGENT_OUTCOME_UNKNOWN";
   if (request.type === "file.write") return "WRITE_OUTCOME_UNKNOWN";
   return ["agent.launch", "agent.steer", "agent.cancel"].includes(request.type)
     ? "AGENT_OUTCOME_UNKNOWN" : null;
