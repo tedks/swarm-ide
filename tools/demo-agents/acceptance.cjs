@@ -70,10 +70,18 @@ async function main() {
   const tmux = (...args) => execFileSync("tmux", ["-S", fixture.target.socket, ...args], { encoding: "utf8", timeout: 2000 });
   const active = () => tmux("display-message", "-p", "-t", "owned", "#{window_id}").trim();
   assert.equal(active(), fixture.other);
-  await run((selector) => { const button = document.querySelector(selector); button.scrollIntoView({ block: "nearest" }); button.focus(); }, label("Inspect external agent Synthetic worker 8"));
+  win.focus(); wc.focus();
+  await until(() => win.isFocused() && wc.isFocused(), "owned native window focus");
+  await run((selector) => {
+    const button = document.querySelector(selector); button.scrollIntoView({ block: "nearest" }); button.focus();
+    if (document.activeElement !== button) throw new Error("Agent button did not receive focus");
+    button.addEventListener("click", (event) => { globalThis.__lineageNativeClick = event.isTrusted; }, { once: true });
+  }, label("Inspect external agent Synthetic worker 8"));
   await wc.sendInputEvent({ type: "keyDown", keyCode: "Enter" });
+  await wc.sendInputEvent({ type: "char", keyCode: "\r" });
   await wc.sendInputEvent({ type: "keyUp", keyCode: "Enter" });
   await until(() => run(() => document.querySelector("[aria-label='External agent information']")?.textContent.includes("Synthetic worker 8: I report")), "actual recorded worklog");
+  assert.equal(await run(() => globalThis.__lineageNativeClick), true, "trusted native keyboard activation");
   assert.equal(active(), fixture.other, "mere agent selection does not hand off");
   assert(!(await run(() => document.querySelector("[aria-label='External agent information']").textContent)).includes("PRIVATE_"));
   // Ordinary folding makes the actual tree visible in the small left rail;
@@ -102,7 +110,7 @@ async function main() {
   const agent = await run(async () => window.swarm.request({ protocolVersion: 7, requestId: `proof:${crypto.randomUUID()}`, type: "agent.snapshot" }));
   assert(agent.ok && !agent.agent.snapshot.capabilities.controls.launch && agent.agent.snapshot.runs.length === 0);
   assert.deepEqual(rendererErrors, []);
-  await fs.writeFile(path.join(evidence, "proof.json"), JSON.stringify({ ok: true, synthetic: true, packaged: true, modelTurns: 0, depth: 7, solidConnectors: true, branchedForest: true, unknownAndCyclicDisconnected: true, sourceAndCamerasRetained: true, handoff: true, rendererErrors, elapsedMs: Date.now() - started }));
+  await fs.writeFile(path.join(evidence, "proof.json"), JSON.stringify({ ok: true, synthetic: true, packaged: true, modelTurns: 0, depth: 7, solidConnectors: true, branchedForest: true, unknownAndCyclicDisconnected: true, nativeKeyboardActivation: true, sourceAndCamerasRetained: true, handoff: true, rendererErrors, elapsedMs: Date.now() - started }));
   await until(() => fs.access(path.join(evidence, "close-request")).then(() => true, () => false), "owner close request");
   app.quit();
 }
