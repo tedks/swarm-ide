@@ -5,8 +5,8 @@ type: feature
 component: swarm-ide
 release:
 reporter: Ted Smith <tedks@riseup.net>
-status: in_progress
-disposition:
+status: closed
+disposition: fixed
 creation_time: 2026-09-07T19:25:19-00:00
 references: []
 log_events:
@@ -48,3 +48,10 @@ log_events:
     seats unfilled. H1 owns next normal merge; PR53 held only for ordered landing.
     verification.md contains exact trees/evidence/tour. No shared adoption, close
     issue only after actual merge.
+- time: 2026-09-07T20:49:53-00:00
+  who: Ted Smith
+  what: 'closed: fixed'
+  comment: PR53 normal-merged after reviewed H1/B1 composition, build48, quality1612/115,
+    Plan113/H1unit33 and owned private packaged Plan + observer proofs. Authored hierarchy
+    and real pinned task blockage shipped; resize and minor busy notice remain tracked;
+    no shared app adoption or real provider activation.
