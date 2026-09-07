@@ -1,0 +1,19 @@
+.external-agents { border-bottom: 1px solid #33404a; padding: 8px; font-size: 12px; }
+.external-agents header, .external-worklog header { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.external-agents ul { padding: 0; margin: 5px 0; list-style: none; }
+.external-agents li > button { display: flex; align-items: start; gap: 5px; width: 100%; text-align: left; background: transparent; border: 1px solid transparent; padding: 5px; border-radius: 5px; }
+.external-agents li > button[aria-pressed=true] { border-color: #77c9bb; background: #244039; }
+.external-agents small { display: block; color: #9cafa9; font-size: 10px; }
+.external-caption { color: #a3b1bd; font-size: 11px; line-height: 1.5; }
+.external-information { padding: 15px; overflow-wrap: anywhere; }
+.external-information h2 { font-size: 20px; font-weight: 500; margin: 5px 0 12px; }
+.external-information dl { display: grid; grid-template-columns: 82px minmax(0, 1fr); gap: 7px; font-size: 11px; line-height: 1.5; }
+.external-information dt { color: #93aaa5; }.external-information dd { margin: 0; }
+.external-boundary { border-left: 2px solid #72b4a6; padding-left: 9px; font-size: 12px; line-height: 1.5; }
+.external-actions, .external-information nav { display: flex; flex-wrap: wrap; gap: 5px; margin: 12px 0; }
+.external-information nav button[aria-pressed=true] { border-color: #78c9b9; color: #b6f4e6; }
+.external-worklog { padding: 0; list-style: none; }
+.external-worklog li { border-left: 1px solid #567b73; padding: 4px 0 12px 12px; margin-left: 4px; }
+.external-worklog header { flex-wrap: wrap; color: #92a8a2; font-size: 10px; }
+.external-worklog p { white-space: pre-wrap; font-size: 12px; line-height: 1.55; margin: 7px 0; }
+.external-information details { font-size: 12px; }.external-information details button { display: block; max-width: 100%; }

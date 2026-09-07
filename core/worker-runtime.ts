@@ -7,6 +7,7 @@ import {
   parseCoreRequest,
   isAgentRequest,
   isTaskRequest,
+  isExternalRequest,
   parseCoreResponseForRequest,
   type CoreEvent,
   type CoreResponse,
@@ -29,6 +30,8 @@ import { parseTaskResultForRequest, type TaskResult } from "../protocol/tasks";
 import { RepositoryError } from "./repository";
 import { type RepositoryResult } from "../protocol/repository";
 import type { RepositorySearchResult } from "../protocol/repository-search";
+import { ExternalAgentService } from "./external-agents";
+import type { ExternalResult } from "../protocol/external-agents";
 
 export interface WorkerDependencies {
   createAgents?: typeof createProductionAgentService;
@@ -39,6 +42,7 @@ export interface WorkerDependencies {
 
 export function startCoreWorker(dependencies: WorkerDependencies = {}): void {
 const workspaceRoot = process.env.SWARM_WORKSPACE_ROOT ?? process.cwd();
+const externalAgents = new ExternalAgentService(workspaceRoot, process.env.SWARM_EXTERNAL_AGENTS_REGISTRY);
 let sequence = 0;
 const requestIds = new BoundedRequestIds(512);
 const fileReadGenerations = new Map<string, number>();
@@ -90,7 +94,7 @@ function publish(type: CoreEvent["type"], snapshot: WorkspaceSnapshot): void {
   }));
 }
 
-function ok(requestId: string, snapshot: WorkspaceSnapshot, file?: FileResult, agent?: AgentResult, task?: TaskResult, repo?: RepositoryResult, search?: RepositorySearchResult): CoreResponse {
+function ok(requestId: string, snapshot: WorkspaceSnapshot, file?: FileResult, agent?: AgentResult, task?: TaskResult, repo?: RepositoryResult, search?: RepositorySearchResult, external?: ExternalResult): CoreResponse {
   return CoreResponseSchema.parse({
     protocolVersion: PROTOCOL_VERSION,
     requestId,
@@ -102,6 +106,7 @@ function ok(requestId: string, snapshot: WorkspaceSnapshot, file?: FileResult, a
     ...(task ? { task } : {}),
     ...(repo ? { repo } : {}),
     ...(search ? { search } : {}),
+    ...(external ? { external } : {}),
   });
 }
 
@@ -150,6 +155,7 @@ process.parentPort?.on("message", async (event) => {
   if (event.data?.type === "core.shutdown") {
     if (!shuttingDown) {
       shuttingDown = true;
+      externalAgents.dispose();
       void providerPromise.then((provider) => provider.dispose());
       try {
         await Promise.all([
@@ -171,6 +177,17 @@ process.parentPort?.on("message", async (event) => {
       return;
     }
     const provider = await providerPromise;
+    if (isExternalRequest(request)) {
+      try {
+        if (shuttingDown) throw new Error("Shutting down");
+        const external = await externalAgents.request(request);
+        if (shuttingDown) throw new Error("Shutting down");
+        post(parseCoreResponseForRequest(ok(requestId, provider.snapshot(), undefined, undefined, undefined, undefined, undefined, external), request));
+      } catch {
+        post(fail(requestId, "EXTERNAL_OBSERVER_UNAVAILABLE", "External observation or existing-window identity is unavailable. No agent was launched or messaged."));
+      }
+      return;
+    }
     if (isTaskRequest(request)) {
       if (shuttingDown) { post(fail(requestId, "CORE_UNAVAILABLE", "Core is shutting down; no task read was sent.")); return; }
       if (request.worldId !== provider.snapshot().world.id) {
