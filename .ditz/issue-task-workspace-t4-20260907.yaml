@@ -35,3 +35,11 @@ log_events:
     ready for ROOT normal merge; source/draft/cameras retained. No live-provider or
     whole-suite/hosted claim. Future central split and compact-fit layout filed. Retain
     issue in progress until ROOT merge.'
+- time: 2026-09-07T23:49:10-00:00
+  who: Ted Smith
+  what: commented
+  comment: ROOT-authorized same-worker composition pushed as 681da97, parents d856486
+    and reviewed fbcfa0e. Preserved both taskActivity and trusted protocol authorities
+    plus M1/S2 seams. One joined quality/focused execution and native delta review
+    active; own packaged task journey next. No J2, model turn or app adoption; issue
+    remains in progress pending ROOT merge.
