@@ -12,9 +12,10 @@ Let separate implementation worktrees run packaged repository navigation and tas
 
 
 - [x] (2026-09-07) Verified clean assigned c312871 baseline and read harness contract.
-- [ ] Record narrow failing nondefault-port tests, implement shared validation, and demonstrate GREEN.
-- [ ] Run actual navigation and task packages concurrently on :126/55206 and :127/55207, preserving evidence and cleanup.
-- [ ] Complete proportional council/local gates, normal PR landing or exact hold, Ditz and recap.
+- [x] (2026-09-07 20:10Z) Extracted old fixed guard: 5 RED / 2 PASS; corrected shared validation: 7 PASS. Both launchers now consume helper and bind its loopback port.
+- [x] (2026-09-07 20:13Z) Actual two-port/two-display overlap proved. Task and three navigation cases passed; unfamiliar task Reveal timed out. All five owned desktops cleaned up. Full navigation aggregate remains failed; no retry or cause claim.
+- [x] (2026-09-07 20:18Z) Corrected quality1481/105 and seven focused checks passed. Native/Google full and fix-delta council CLEAN; Sonnet240s no-review unavailable.
+- [ ] Normal PR57 landing held for ROOT disposition of the unfamiliar Reveal failure and reserved B1 merge order. All owned changes pushed; Ditz follow-up records preserved.
 
 ## Context and Orientation
 
@@ -55,12 +56,14 @@ The existing harness rejects occupied ports/displays and tears down only registe
 ## Surprises & Discoveries
 
 
-The supervisor writes display/token/Xauthority metadata but no private port file. Port authority is the launch environment it constructs and exact normalized window marker. Navigation already depends on the task-integration source filegroup, avoiding new global BUILD coupling.
+The supervisor writes display/token/Xauthority metadata but no private port file. Port authority is the launch environment it constructs and exact normalized window marker. Navigation already depends on the task-integration source filegroup, avoiding new global BUILD coupling. Actual first overlap at 20:10:50.983Z observed both distinct readiness response bodies, :126/:127 sockets and different ownership tokens. Task package passed its unchanged acceptance at port55207 in20.0s with cleanup1; navigation passed Swarm100.686s, invalid-name1.878s and fingerprint-budget2.057s, but unfamiliar timed out waiting directory src after task Reveal. All four navigation cases cleaned up. These are executable67ef71f observations, not synthetic tests.
+
+First broad quality run exposed the Node:test filename also being collected by Vitest and an old static boundary test requiring the literal55174 guard. Commit045a48a renamed the focused runner to owned-port.check.mjs and migrated only the old guard assertions to the shared helper/dynamic loopback bind, preserving every other assertion. Fresh corrected quality passed1481/105 and the seven Node checks passed. No production code changed in this correction. The original GUI failure is not explained by these test-wiring fixes.
 
 ## Decision Log
 
 
-Use the existing harness, not a new desktop allocator. Keep GUI tests exclusive within one Bazel invocation; separate prepared smoke binaries can demonstrate actual cross-worktree-style concurrency without modifying their assertions. ROOT clearance for delivery commit 94efa689 appeared before implementation and may be consumed explicitly.
+Use the existing harness, not a new desktop allocator. Keep GUI tests exclusive within one Bazel invocation; separate prepared smoke binaries can demonstrate actual cross-worktree-style concurrency without modifying their assertions. ROOT clearance for delivery commit94efa689 appeared before implementation; normal conflict-free composition67ef71f consumed exactly that base. ROOT subsequently reserved the next master merge for B1, so PR57 cannot normal-merge until released. Independently retain the new unfamiliar Reveal failure for ROOT severity/disposition, not an unapproved waiver or broad debugging project.
 
 ## Interfaces and Dependencies
 
@@ -75,6 +78,6 @@ Operational logs and concise seam live in /tmp/swarm-ide-demo-release.GY8Uwv/vir
 ## Outcomes & Retrospective
 
 
-Pending implementation and actual proof. No real-provider or shared-app changes are part of this step.
+The bounded compatibility change is implemented and reviewed; default55174, nondefault ports and negative ownership tests pass. Actual simultaneous packaged task/navigation listeners and private desktops are proven, with complete cleanup. The full navigation journey is NOT green: unfamiliar task Reveal timed out, no causal attribution. PR57 remains held, Ditz parallel-port-navigation-reveal-timeout-20260907 is open, and parallel-virtual-desktop-ports-20260907 remains in progress until disposition/landing. No provider, physical desktop, shared app, acceptance-driver or harness changes occurred.
 
-Initial plan written after inspection to preserve the bounded compatibility scope and explicit proof distinction.
+Revised after actual execution to distinguish successful concurrency from failed aggregate acceptance, record exact test-wiring corrections and retain an honest, reviewed held increment.
