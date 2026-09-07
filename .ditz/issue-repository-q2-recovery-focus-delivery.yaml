@@ -22,3 +22,12 @@ log_events:
   who: Ted Smith
   what: created
   comment: ""
+- time: 2026-09-07T19:52:03-00:00
+  who: Ted Smith
+  what: commented
+  comment: 'One ROOT-authorized passive trace on4e0ac39: all4navigationcasesPASS101.3s/cleanup1/zeroerrors.
+    Five events show retained service node focusin, sameTarget after focus, actualShiftEnter
+    targetnode, inspection completed3.5ms later; following exact provenance/no-replay/deleted-restored/retention
+    checks pass. Original failure remains unexplained; instrumentation timing can
+    perturb scheduling, pass is NOT fix/waiver. ROOT exact noncritical-risk disposition
+    requested before one corrected full-local gate; no more forensic stage assumed.'
