@@ -15,3 +15,12 @@ log_events:
   who: Ted Smith
   what: created
   comment: ""
+- time: 2026-09-07T05:49:22-00:00
+  who: Ted Smith
+  what: commented
+  comment: 'Q4 frozen d3282cf full suite: virtual-desktop-agent-rehearsal-test failed
+    at ordinary close, generic sanitized diagnostics/history mismatch only; owned
+    cleanup1, prior full suite passed. Evidence /tmp/swarm-ide-task-backlinks-q4.NP4JSm/frozen-tests/run.aGiXty.
+    Native static audit suggests possible emitted-versus-retained close-tail race
+    but actual cause unproved; no retries, weakened assertions or runtime changes.
+    Exact test-support diagnostic ownership requested from ROOT.'
