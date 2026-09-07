@@ -58,6 +58,7 @@ import type { ContextSubject } from "../../protocol/context";
 import { emptyContextAttention, permitsContextActivation, reduceContextAttention, subjectFromFocus, type AttentionEvent } from "./context/attention";
 import { composeContext, indexCapture, indexService, type SourceReceipt } from "./context/compose";
 import { ContextPane } from "./context/ContextPane";
+import { GlobalContext } from "./context/GlobalContext";
 import { declarationPublication, resolveDeclarations, type DeclarationResolution } from "./context/declarations";
 import { DeclarationChooser } from "./context/DeclarationChooser";
 import { sameAgentTaskReference } from "../../protocol/agent-task";
@@ -1037,11 +1038,11 @@ export function App() {
     publication?.status === "observed" ? [publication.buildId, publication.sourceFingerprint, publication.inputDigest, publication.artifactUri, publication.observedAt] : publication?.reason]);
   const serviceIndex = useMemo(() => indexService(publication), [serviceIdentity]);
   const [buildGraphVisible, setBuildGraphVisible] = useState(false), [directoryBuildVisible, setDirectoryBuildVisible] = useState(false);
-  const buildGraph = useBuildGraph(snapshot?.project.id, snapshot?.world.id, contextRealm(),
-    activeLens !== "Plan" && (buildGraphVisible || directoryBuildVisible) && (!window.swarmLifecycle || lifecycle?.core.phase === "ready"));
-  const buildLinks = useMemo(() => buildGraphLinks(buildGraph.observation), [buildGraph.observation]);
-  const captureIndex = useMemo(() => indexCapture(buildLinks), [buildLinks]);
   const contextSubject = attention.realm === contextRealm() ? attention.subject : null;
+  const buildGraph = useBuildGraph(snapshot?.project.id, snapshot?.world.id, contextRealm(),
+    (activeLens !== "Plan" && (buildGraphVisible || directoryBuildVisible) || !externalInformation && contextSubject?.kind === "file") && (!window.swarmLifecycle || lifecycle?.core.phase === "ready"));
+  const buildLinks = useMemo(() => buildGraphLinks(buildGraph.observation), [buildGraph.observation]);
+  const captureIndex = useMemo(() => indexCapture(buildLinks, buildGraph.observation?.worldId), [buildLinks, buildGraph.observation?.worldId]);
   const contextSections = snapshot ? composeContext(contextSubject, { snapshot, files: fileTabs, service: serviceIndex, capture: captureIndex,
     realm: contextRealm(), session: contextSession, tasks, ready: observedCoreGeneration === coreGenerationRef.current && (!window.swarmLifecycle || lifecycle?.core.phase === "ready") }) : [];
   const inspectBacklink = async (target: TaskBacklinkTarget) => {
@@ -1263,7 +1264,6 @@ export function App() {
       <section className={`navigation-field ${textOpen ? "source-open" : ""}`} style={{ "--graph-share": `${graphShare}%` } as CSSProperties}>
         <div className="field-toolbar">
           <div><span className="eyebrow">central navigation</span><strong>{journalVisible ? "Logical changes" : textDocumentVisible ? tasks.detail?.title ?? "Task document" : activeFile?.path ?? focusLabel(snapshot.focus)}</strong><small tabIndex={0}>{activeFile ? `${activeFile.status} · ${activeFile.message}` : `${snapshot.focus.domain} · ${snapshot.focus.revisionId.slice(0, 12)}`}</small></div>
-          <div className="world-chips"><span>working <b>{snapshot.revisions.working.id.slice(0, 8)}</b></span><span>built <b>{snapshot.revisions.built.id.slice(0, 8) || "—"}</b></span><span>deployed <b>{snapshot.revisions.deployed.environment}</b></span></div>
           <button id="reconcile-success" className="build-button" onClick={() => void reconcile()} disabled={reconciliationRunning || coreUnavailable}>▶ Build topology</button>
         </div>
         {textOpen ? <nav className="surface-tabs" aria-label="Document tabs">
@@ -1305,6 +1305,7 @@ export function App() {
 
       <ResizeDivider label="Resize Context" className="context-divider" container=".workbench" value={contextWidth} minimum={23} maximum={44} initial={30} reverse onChange={setContextWidth} />
       <aside id="information-panel" aria-label="Information panel" className="instrument-panel panel">
+        <GlobalContext snapshot={snapshot} ready={observedCoreGeneration === coreGenerationRef.current && (!window.swarmLifecycle || lifecycle?.core.phase === "ready")} />
         {externalInformation ? <ExternalAgentInformation client={externalAgents} onReturn={() => { setExternalInformation(false); returnToSourceInformation(); }} onOpen={(path) => { setExternalInformation(false); openLinkedFile(path); }} /> : <>
         {revealNotice ? <p ref={revealNoticeElement} className="tasks-reveal-notice" role="status" tabIndex={0}>{revealNotice}</p> : null}
         {contextSubject?.kind === "task" ? <div className="artifact-context" data-context-kind="task" data-context-subject={contextSubject.id}><TaskDetail returnButtonRef={taskReturnButton} selectedTaskId={contextSubject.id} snapshot={tasks.observation?.snapshot ?? null} detail={tasks.detail?.id === contextSubject.id ? tasks.detail : null} detailRevision={tasks.detailRevision} detailStale={tasks.detailStale || tasks.refreshing || tasks.observation?.status !== "observed" || Boolean(tasks.notice)} reading={tasks.reading} notice={tasks.detailNotice} attachment={taskAttachment(contextSubject.id)} onSelect={selectTask} onReveal={(ref) => { void revealTaskReference(ref); }} onReturnToSource={returnToSourceInformation} onShowDocument={showPinnedTaskDocument} onRefresh={() => { void taskClient.refresh(); }} /></div> : <>

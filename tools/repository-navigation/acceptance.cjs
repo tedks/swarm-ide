@@ -115,7 +115,8 @@ async function main() {
   const contextSubject = () => run(() => document.querySelector(".artifact-context")?.dataset.contextSubject);
   const contextText = (section) => run((id) => document.querySelector(`[data-context-section='${id}']`)?.textContent ?? "", section);
   await until(async () => await contextSubject() === fixture.sourcePath, "Q1 exact foreground source attention");
-  assert((await contextText("source-read")).includes(sourceRead.file.revision), "Q1 broker source receipt hash, not build revision");
+  assert((await contextText("source")).includes("Source broker") && (await contextText("source")).includes(`repo://${fixture.sourcePath}`), "Working source retains exact broker provenance");
+  assert(!(await contextText("source")).includes(sourceRead.file.revision), "Source receipt hash stays internal, not Context display");
   const agent = await request({ type: "agent.snapshot" });
   assert(agent.ok && agent.agent.snapshot.runs.length === 0 && !agent.agent.snapshot.capabilities.controls.launch);
   const facts = ["actual archive main/preload/core", "actual committed repository root and directory activation", "native Enter opens exact source", "zero agent runs"];
@@ -202,8 +203,8 @@ async function main() {
     await fs.writeFile(path.join(evidence, "q1-context-proof.json"), JSON.stringify({ buildId: built.revisions.built.id, sourceFingerprint: built.revisions.built.sourceFingerprint, inspected, declarationLinkOpened: true, rendererErrors: [] }, null, 2));
     facts.push("Q1 actual Bazel artifact, ordinary/implementation/provided/required distinction, explicit declaration link, graph inspection without source activation", "Q1 actual owned manifest build failure retains original build identity and historical relationships");
   } else {
-    assert((await contextText("services")).includes("unavailable"), "unfamiliar/degraded repository does not invent service facts");
-    assert((await contextText("capture")).includes("No bounded registered build observation for this repository."));
+    assert((await contextText("services")).includes("No services") && (await contextText("services")).includes("No matching service observation."), "unfamiliar/degraded repository does not invent service facts");
+    assert((await contextText("capture")).includes("No targets") && (await contextText("capture")).includes("No build observation yet."));
   }
 
   if (["invalid-name", "fingerprint-budget"].includes(fixture.kind)) {
