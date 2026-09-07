@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { readFile } from "node:fs/promises";
 import { describe, expect, it } from "vitest";
 import { agentFixtureContext } from "../fixtures/agents";
 import { AgentPrepareInputSchema, LaunchContextSchema, PreparedAgentContextSchema } from "../protocol/agents";
@@ -41,6 +42,13 @@ export function legacyDraft() {
 }
 
 describe("D3 task identity and historical admission boundary", () => {
+  it.each([["tools/repository-navigation/acceptance.cjs", 4], ["tools/task-integration/acceptance.cjs", 1]] as const)(
+    "keeps all explicit packaged-driver wire senders current in %s", async (file, count) => {
+      const code = await readFile(file, "utf8");
+      const versions = [...code.matchAll(/\bprotocolVersion\s*:\s*(\d+)/g)].map((match) => Number(match[1]));
+      expect(versions).toHaveLength(count);
+      expect(versions).toEqual(Array(count).fill(PROTOCOL_VERSION));
+    });
   it("uses wire 7 and accepts attached empty instructions, not plain whitespace", () => {
     expect(PROTOCOL_VERSION).toBe(7);
     expect(AgentPrepareInputSchema.safeParse({ ...input(), taskText: "", taskReference: pin }).success).toBe(true);
