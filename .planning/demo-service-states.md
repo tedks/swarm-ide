@@ -11,8 +11,9 @@ An empty Service canvas should explain whether topology is unobserved, needs a b
 - [x] (2026-09-07 21:30Z) Verified assigned branch `feature/demo-service-states` at `b1db2b9`, read instructions and inspected the graph contract.
 - [x] (2026-09-07 21:34Z) Added mounted state/retention tests: pre-change 8 failed / 10 passed across the focused suite; failures are missing explanations.
 - [x] (2026-09-07 21:35Z) Implemented prop-only explanation and locally scoped styling.
-- [ ] Run relevant local checks, native review and an owned virtual-X11 screenshot.
-- [ ] Push a ready PR, sync the issue and hand back to ROOT for merge/adoption.
+- [x] (2026-09-07 21:40Z) Owned virtual X11 proof passed: actual external Git repository and source opening, readable full/narrow empty canvas, zero renderer errors, cleanup complete. Native substantive/fix-delta review CLEAN.
+- [x] (2026-09-07 21:41Z) Final quality 1,644 tests across 118 files, focused 19 tests across 4 files, type checks/renderer/node builds and desktop bundle passed.
+- [x] (2026-09-07 21:42Z) PR59 pushed; preparing ready handoff and Ditz sync. ROOT retains merge/adoption authority and closes the issue only after actual merge.
 
 ## Surprises & Discoveries
 
@@ -24,7 +25,7 @@ Only `topologyId === "service"` with no nodes receives the explanation. Existing
 
 ## Outcomes & Retrospective
 
-Implementation and evidence are pending. ROOT, not this worker, owns final merge and app adoption. Foreign review seats are intentionally omitted under the user's Codex-only capacity instruction.
+The formerly blank Service canvas now explains its available evidence without new capabilities or actions. PR59 contains 22 lines of GraphPane presentation logic plus locally scoped CSS and dedicated proof. Actual full-width and source-adjacent screenshots show the settled yellow needs-build state; rare gray/pending/red/green-empty states are covered by synthetic mounted inputs, not claimed as real observed runs. Existing populated graphs, focus and mounted cameras passed the focused regressions. ROOT, not this worker, owns final merge and app adoption. Foreign review seats are intentionally omitted under the user's Codex-only capacity instruction. No actual service discovery for arbitrary repositories was added.
 
 ## Context and Orientation
 
@@ -36,7 +37,7 @@ First add `tests/demo-service-states.test.tsx` with a mounted ReactFlow substitu
 
 ## Concrete Steps
 
-Work in `/home/tedks/Projects/swarm-ide/demo-service-states`. Materialize dependencies with `nix develop --command pnpm install --frozen-lockfile`. Run focused tests with `nix develop --command bazel test --jobs=3 //tools/demo-service-states:regressions --test_output=errors`. Run final quality/build through Bazel. Use the dedicated smoke target with `SWARM_VIRTUAL_DISPLAY=:133` and `SWARM_VIRTUAL_DESKTOP_PORT=55213` explicitly forwarded. The shared harness owns display, window, profile and cleanup.
+Work in `/home/tedks/Projects/swarm-ide/demo-service-states`. Materialize dependencies with `nix develop --command pnpm install --frozen-lockfile`. Run focused tests with `nix develop --command bazel test --jobs=3 //tools/demo-service-states:regressions --test_output=errors`. Final checks are `nix develop --command bazel test --jobs=3 //:quality //tools/demo-service-states:regressions --test_output=errors` and `nix develop --command bazel build --jobs=3 //:desktop-bundle`. Run the actual UI proof with `SWARM_VIRTUAL_DISPLAY=:133 SWARM_VIRTUAL_DESKTOP_PORT=55213 nix develop --command bazel run --jobs=3 //tools/demo-service-states:smoke`. These run-target environment values are forwarded to the shared harness, which owns display, window, private profile, disposable Git input and cleanup. Use another free display/port if occupied; never stop another project.
 
 ## Validation and Acceptance
 
@@ -48,8 +49,10 @@ No data migration or new dependencies are required. Repeat focused tests safely.
 
 ## Artifacts and Notes
 
-Operational logs, review and screenshots live in `/tmp/swarm-ide-demo-polish.HjpljW/service-states`. Product modifications are limited to GraphPane, its new CSS, this plan and dedicated tests/tools.
+Operational logs, review and screenshots live in `/tmp/swarm-ide-demo-polish.HjpljW/service-states`. `virtual-settled/service-needs-build.png` and `virtual-settled/service-with-source.png` were visually inspected. `virtual-settled/supervisor.log` records 2.516 seconds scenario / 5.007 seconds total and `cleanup_complete=1`. The earlier failed driver assumptions remain in `virtual-final` and the first local `artifacts/service-states` run. They were test-only startup-state errors, not fixed product failures. Product modifications are limited to GraphPane, its new CSS, this plan and dedicated tests/tools.
 
 ## Interfaces and Dependencies
 
 Use the existing `GraphSlice`, `reconciliationRunning`, React and ReactFlow props; introduce no protocol, callback, provider or automatic Build. The only new import in GraphPane is local CSS. State explanation is derived during render and never changes input graph objects.
+
+Updated 2026-09-07 21:42Z to record completed local/native/actual-UI evidence, corrected smoke assumptions and the remaining ROOT merge gate. No repeated full run is required for this evidence-only plan update.
