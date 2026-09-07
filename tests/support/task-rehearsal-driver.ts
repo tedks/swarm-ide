@@ -11,7 +11,7 @@ import { advanceUnrelatedTaskFixture, resumeTaskFixture } from "../../tools/task
 import { AdmissionReceiptSchema, AgentResultSchema, RunSchema, TranscriptRecordSchema, type Run, type TranscriptRecord } from "../../protocol/agents";
 import { PROTOCOL_VERSION } from "../../protocol/schema";
 import type { RehearsalLedger } from "./agent-rehearsal-driver";
-import { finishTaskDiagnostics, installTaskResizeDiagnostics } from "./task-rehearsal-diagnostics";
+import { assessTaskRendererErrors, finishTaskDiagnostics, installTaskResizeDiagnostics } from "./task-rehearsal-diagnostics";
 
 const hash = (value: string | Buffer) => createHash("sha256").update(value).digest("hex");
 const canonical = (value: unknown): string => Array.isArray(value) ? `[${value.map(canonical).join(",")}]` :
@@ -260,7 +260,7 @@ export async function runTaskRehearsalProof({ window: win, artifacts, ledger }: 
   assert.deepEqual(mutations(), beforeRecovery);
   wc.removeListener("did-finish-load", loaded);
   assert.equal(await readFile(join(fixture.root, fixture.sourcePath), "utf8"), fixture.sourceText);
-  assert.deepEqual(errors, []); assert.equal(ledger().overflow, false);
+  assessTaskRendererErrors(errors); assert.equal(ledger().overflow, false);
   return { run: recovered, transcriptHash: originalTranscript.transcriptHash, originalMetadata: fixture.firstCommit.hex, currentMetadata: advanced.hex, rendererErrors: errors,
     sourceUnchanged: true, replayedCommands: 0, fixtureOnly: true, coreGenerations: ledger().generations, elapsedMs: Date.now() - started };
   } catch (error) { originalFailure = { error }; throw error; }

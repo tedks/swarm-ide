@@ -30,9 +30,18 @@ export function installTaskResizeDiagnostics() {
     dispose: () => { resize.disconnect(); mutations.disconnect(); removeEventListener("error", error); } };
 }
 
+/** Exact user-accepted D6 test risk, never a production console filter. Keep
+ * raw messages in proof/diagnostics; every other message remains blocking. */
+export function assessTaskRendererErrors(errors: readonly string[]) {
+  const acceptedWarning = "ResizeObserver loop completed with undelivered notifications.";
+  const unexpected = errors.filter((message) => message !== acceptedWarning);
+  if (unexpected.length) throw new Error(`Unexpected renderer errors: ${unexpected.join("; ")}`);
+  return { acceptedRisk: "task-rehearsal-resize-observer-d6", acceptedWarnings: [...errors], unexpectedErrors: [] };
+}
+
 /** Complete passive capture without changing which failure is authoritative. */
 export async function finishTaskDiagnostics(errors: readonly string[], capture: () => Promise<void>, originalFailure: { error: unknown } | null) {
   try { await capture(); } catch (error) { if (!originalFailure) throw error; }
   if (originalFailure) throw originalFailure.error;
-  if (errors.length) throw new Error(`Renderer errors after diagnostic capture: ${errors.join("; ")}`);
+  assessTaskRendererErrors(errors);
 }

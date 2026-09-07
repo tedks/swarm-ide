@@ -1,8 +1,23 @@
 // @vitest-environment jsdom
 import { afterEach, expect, it, vi } from "vitest";
-import { finishTaskDiagnostics, installTaskResizeDiagnostics } from "./support/task-rehearsal-diagnostics";
+import { assessTaskRendererErrors, finishTaskDiagnostics, installTaskResizeDiagnostics } from "./support/task-rehearsal-diagnostics";
 
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); document.body.innerHTML = ""; });
+const approvedWarning = "ResizeObserver loop completed with undelivered notifications.";
+it("retains the exact user-accepted resize warning without blocking, including late delivery", async () => {
+  const errors = [approvedWarning];
+  await expect(finishTaskDiagnostics(errors, async () => { await Promise.resolve(); errors.push(approvedWarning); }, null)).resolves.toBeUndefined();
+  expect(errors).toEqual([approvedWarning, approvedWarning]);
+  const assessment = assessTaskRendererErrors(errors);
+  expect(assessment).toEqual({ acceptedRisk: "task-rehearsal-resize-observer-d6", acceptedWarnings: errors, unexpectedErrors: [] });
+  assessment.acceptedWarnings.length = 0;
+  expect(errors).toEqual([approvedWarning, approvedWarning]);
+});
+it.each([`Error: ${approvedWarning}`, approvedWarning.slice(0, -1), `${approvedWarning}\n`, "TypeError: unrelated renderer failure"])("keeps other renderer errors blocking beside the known warning: %s", async (unexpected) => {
+  const errors = [approvedWarning, unexpected];
+  await expect(finishTaskDiagnostics(errors, async () => {}, null)).rejects.toThrow();
+  expect(errors).toEqual([approvedWarning, unexpected]);
+});
 it("rejects renderer errors delivered while final diagnostic capture is awaited", async () => {
   const errors: string[] = [];
   await expect(finishTaskDiagnostics(errors, async () => { await Promise.resolve(); errors.push("late-resize"); }, null)).rejects.toThrow("late-resize");

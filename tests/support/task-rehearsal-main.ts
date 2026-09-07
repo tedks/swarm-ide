@@ -6,6 +6,7 @@ import { isAbsolute, join } from "node:path";
 import { drainRehearsalCore, rehearsalLedger, rehearsalShutdownDiagnostics } from "./agent-rehearsal-launch";
 import { runTaskRehearsalProof, verifyTaskRehearsalClose, type TaskRehearsalProof } from "./task-rehearsal-driver";
 import type { RehearsalDiagnostics } from "./agent-rehearsal-service";
+import { assessTaskRendererErrors } from "./task-rehearsal-diagnostics";
 
 const profiles = process.argv.filter((value) => value.startsWith("--swarm-task-rehearsal-profile="));
 const profile = profiles[0]?.slice("--swarm-task-rehearsal-profile=".length);
@@ -47,8 +48,9 @@ function bootstrap() {
         Object.values(diagnostics.totals).every((count) => count === 0);
       if (!drained || !disposed || !proof) throw new Error("Task rehearsal did not drain recovered core without replay");
       const persisted = await verifyTaskRehearsalClose(profile!, process.cwd(), proof);
+      const rendererAssessment = assessTaskRendererErrors(proof.rendererErrors);
       await writeFile(join(artifacts!, "task-rehearsal.tmp"), JSON.stringify({ ok: true, fixtureOnly: true,
-        modelTurns: 0, externalAgentProcesses: 0, proof, shutdown: { drained, disposed, diagnostics, persisted }, ledger: rehearsalLedger(),
+        modelTurns: 0, externalAgentProcesses: 0, rendererAssessment, proof, shutdown: { drained, disposed, diagnostics, persisted }, ledger: rehearsalLedger(),
       }, null, 2), { mode: 0o600 });
       await rename(join(artifacts!, "task-rehearsal.tmp"), join(artifacts!, "task-rehearsal.json"));
       app.exit(0);
