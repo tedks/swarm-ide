@@ -7,9 +7,9 @@ into work, what an implementing agent would receive, and what changed.
 Start with the [Linux quick start](../README.md#linux-quick-start), opening
 Swarm's checkout and fetching its local `ditz-metadata` branch as described
 there. No model account or external-session registry is needed for the core
-tour. Use a disposable checkout for experimental edits. See the
-[presenter guide](demo/presenter-guide.md) for timing, recovery and evidence
-boundaries.
+tour. Use a disposable checkout for experimental edits. The
+[installation guide](evaluator-install.md) covers prerequisites and recovery;
+the [presenter guide](demo/presenter-guide.md) covers timing and evidence boundaries.
 
 ## 1. Intent → component → context
 
@@ -18,8 +18,9 @@ into bounded agent context** in the graph or its keyboard outline. Its parent
 is the product plan; the links are authored in `.swarm/plans.json`, not an LLM's
 current guess about the repository.
 
-Open **Read doc · docs/demo/task-context-briefing.md**, then inspect **Why this
-context?**. The briefing connects intent, contract and implementation lessons.
+Open **Read doc · docs/demo/task-context-briefing.md**, then choose **Why this
+context?** to reach the supporting guidance. The briefing connects intent,
+contract and implementation lessons.
 The full design is **Read doc · docs/repo-task-draft.md**; its opening status
 paragraph still describes the historical D3-only stage, not today's Prepare.
 **contract · protocol/agent-task.ts** opens the shared contract. These are

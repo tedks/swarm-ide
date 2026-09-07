@@ -10,8 +10,10 @@ on an unoccupied port. No model key or registry is necessary. Refresh Tasks,
 choose All, and confirm `repo-task-context-core-d4` resolves. Load the Plan index.
 Do not include private session data in distributed archives or screenshots.
 
-The default window can require scrolling inside panels. Scroll the Plan
-inspector for selected links and the draft for Prepare. Avoid a live resize-heavy
+The default window can require scrolling inside panels. Selected Plan actions
+are grouped by document, source and task; scroll within a group and hover a
+clipped label to read its full path or ID. **Why this context?** brings supporting
+guidance into view. Scroll the draft for Prepare. Avoid a live resize-heavy
 performance test: the exact known ResizeObserver warning remains tracked.
 
 ## Five-minute narration
@@ -95,7 +97,8 @@ an ordinary shell without those overrides. Editor/pager preferences are accepted
 but removed from its noninteractive Git environment. Missing metadata or a port
 collision fails closed rather than touching another repository or process.
 
-The September 7 joined validation used actual Swarm history and Ditz metadata:
+The September 7 joined validation includes the merged UI polish and installation
+documentation. It used actual Swarm history and Ditz metadata:
 Plan/briefing/contract → D4 → source and a current file-owner build graph →
 Attach/Prepare → recorded Activity. Source text/cursor, draft and graph instances
 survived Activity inspection. The task graph reported 64/160 details, not complete

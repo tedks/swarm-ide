@@ -14,6 +14,7 @@ An evaluator should be able to follow one feature from its authored plan through
 - [x] (2026-09-07 21:54Z) Final owned packaged joined walkthrough passed on `f7bfa27`: actual source/task/Plan/build/Prepare/recorded Activity, retained work, zero renderer errors and model mutations, cleanup confirmed.
 - [x] Native review reached CLEAN through the final proof delta; quality 1,632 tests/117 files and 13 dedicated harness checks passed with attribution below.
 - [x] (2026-09-07 21:58Z) Pushed final documentation and marked PR61 ready; Ditz remains in progress for ROOT's actual merge. Local checks and native review are complete, and the executive handoff includes owned cleanup/evidence.
+- [x] (2026-09-07 22:01Z) Consumed ROOT-cleared combined07f6ec8 once in conflict-free normal compositioncb4c6e6; rebuilt the package and reran only the unchanged joined tour, which passed7.2s with zero renderer errors/mutations and cleanup1. Earlier checks keep their original attribution; no peer-suite repeats.
 
 ## Surprises & Discoveries
 
@@ -59,6 +60,8 @@ Operational evidence is under `/tmp/swarm-ide-demo-polish.HjpljW/demo-tour`. No 
 
 Final screenshots and `proof.json` are in `final-current-graph/run.Xr7IMR/`: `01-component-guidance.png`, `05-build-relationships.png`, `06-real-prepared-task.png`, `08-logical-change-main-text.png` and `09-attributed-evidence.png`. The report preserves exact source/metadata observations and the current graph result. Earlier failed or incomplete evidence is retained in sibling run directories and is not retroactively green.
 
+Updated delivery screenshots supersede those for presentation: `joined-delivery/run.FLDZAC/`, same filenames. They show the ROOT-reviewed U1/U2/U3 polish and L2 install docs joined with this tour oncb4c6e6. The unchanged proof confirmed actual Plan/task/source/Prepare/recorded Activity, current source-owner graph,64/160 task details, no renderer errors/resize warnings/model mutations, and preserved work. The package rebuilt successfully; scenario7.2s, full virtual lifecycle8.2s, cleanup1. No manual conflict resolution, product correction or shared-app adoption occurred.
+
 ## Interfaces and Dependencies
 
 Existing typed IPC, real Ditz Git/YAML provider and real prepared-context service remain unchanged. The proof uses Electron native inputs plus read-only DOM/IPC observations and the existing X11 supervisor. It must not replace responses, create synthetic tasks, launch agents or add provider configuration.
@@ -66,3 +69,5 @@ Existing typed IPC, real Ditz Git/YAML provider and real prepared-context servic
 Initial plan authored September 7: constrain the work to a connected, truthfully labelled evaluator story and actual joined evidence.
 
 Updated September 7 after actual validation: recorded the narrow harness corrections, review, local gate attribution, screenshots and honest remaining product gaps. ROOT still owns final merge and shared-app adoption.
+
+Updated after ROOT's one-base integration instruction: consumed the cleared presentation/install aggregate once, retained previous proof attribution, refreshed the actual joined screenshots and adjusted only presenter wording for the delivered controls.
