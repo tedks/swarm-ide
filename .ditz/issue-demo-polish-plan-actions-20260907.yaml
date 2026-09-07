@@ -1,0 +1,16 @@
+id: demo-polish-plan-actions-20260907
+title: Make selected plan actions prominent
+desc: ""
+type: task
+component: renderer
+release:
+reporter: Ted Smith <tedks@riseup.net>
+status: unstarted
+disposition:
+creation_time: 2026-09-07T21:31:52-00:00
+references: []
+log_events:
+- time: 2026-09-07T21:31:52-00:00
+  who: Ted Smith
+  what: created
+  comment: ""
