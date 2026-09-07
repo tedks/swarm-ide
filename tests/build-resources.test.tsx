@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
-import { cleanup, render, screen, within } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { useKeyPress } from "@xyflow/react";
 import { afterEach, describe, expect, it } from "vitest";
 import { BuildResources } from "../app/renderer/build-resources/BuildResources";
 import type { Job } from "../protocol/schema";
@@ -8,6 +9,10 @@ import type { Job } from "../protocol/schema";
 afterEach(cleanup);
 const job: Job = { id: "build:1", label: "bazel build //lib:core", kind: "build", status: "running", progress: 0.43,
   resources: { cpuPercent: 0, memoryMiB: 0 }, message: "Compiling source" };
+function GraphSpaceShortcut() {
+  const active = useKeyPress("Space", { target: window });
+  return <output data-testid="graph-space-state">{active ? "panning" : "idle"}</output>;
+}
 
 describe("Builds & resources instrument", () => {
   it("is compact when idle and makes the example discoverable without pretending it is live", () => {
@@ -97,5 +102,20 @@ describe("Builds & resources instrument", () => {
     h.rerender(<BuildResources jobs={[]} />);
     expect(example.textContent).toBe(before);
     expect(screen.getByText("No derived work running")).toBeTruthy();
+  });
+
+  it("keeps native summary Space activation out of React Flow's window pan shortcut", async () => {
+    const user = userEvent.setup();
+    render(<><GraphSpaceShortcut /><BuildResources jobs={[]} /></>);
+    await user.click(screen.getByRole("button", { name: /Example profile/ }));
+    const summary = screen.getByText("Profile basis");
+    // false means preventDefault cancelled native disclosure activation. Use
+    // the real graph library hook, not a replacement event-handler fixture.
+    expect(fireEvent.keyDown(summary, { key: " ", code: "Space" })).toBe(true);
+    expect(screen.getByTestId("graph-space-state").textContent).toBe("idle");
+    fireEvent.keyUp(summary, { key: " ", code: "Space" });
+    expect(fireEvent.keyDown(document.body, { key: " ", code: "Space" })).toBe(false);
+    expect(screen.getByTestId("graph-space-state").textContent).toBe("panning");
+    fireEvent.keyUp(document.body, { key: " ", code: "Space" });
   });
 });
