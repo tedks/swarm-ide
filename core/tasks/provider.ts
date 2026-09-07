@@ -1,6 +1,6 @@
 import {
   GitObjectIdSchema, sameGitObject, TASK_LIMITS, TASK_METADATA_REF, TaskIdSchema,
-  TaskObservationSchema, TaskReadResultSchema, TaskResultSchema,
+  TaskObservationSchema, TaskReadResultSchema, TaskResultSchema, TaskBacklinksSchema, taskBaseSnapshot,
   type GitObjectId, type TaskDetail, type TaskError, type TaskObservation,
   type TaskObservationStatus, type TaskSnapshot,
 } from "../../protocol/tasks";
@@ -13,6 +13,14 @@ type Attempt = Pick<TaskObservation, "status" | "localRef" | "reason" | "checked
 const now = () => new Date().toISOString();
 const error = (code: TaskError["code"], message: string): TaskError => ({ code, message });
 const changed = error("TASK_REF_CHANGED", "The local metadata ref changed. Refresh tasks to adopt a new complete revision.");
+
+/** Separate original normalized capacity from additive projection capacity.
+ * Call only after detail/result validation, never on unparsed metadata. */
+export function assertTaskCacheBudget(snapshot: TaskSnapshot, details: readonly TaskDetail[]): void {
+  if (Buffer.byteLength(JSON.stringify({ snapshot: taskBaseSnapshot(snapshot), details })) > TASK_LIMITS.cacheBytes ||
+      Buffer.byteLength(JSON.stringify({ snapshot, details })) > TASK_LIMITS.augmentedCacheBytes)
+    throw new TaskReaderError("TASK_LIMIT_EXCEEDED", "Task cache exceeds its limit.");
+}
 
 /** Registered-root, read-only Ditz reader. Not installed by the default worker:
  * T3 owns composition and the task-specific outer request deadline. */
@@ -63,7 +71,11 @@ export const createDitzTaskProvider: CreateTaskProvider = (context): TaskProvide
       if (refresh) {
         const blobs = await git.scan(localRef, signal, deadline);
         const details = await parseTaskMetadata(blobs, signal, deadline);
+        const projection = TaskBacklinksSchema.safeParse({ status: "complete", entries:
+          [...details].sort((a, b) => a.id < b.id ? -1 : a.id > b.id ? 1 : 0).flatMap((detail) =>
+            detail.fileRefs.map(({ path, navigation }, refIndex) => ({ taskId: detail.id, refIndex, path, navigation }))) });
         const snapshot: TaskSnapshot = { ...world, metadataCommit: localRef, observedAt: now(),
+          backlinks: projection.success ? projection.data : { status: "unavailable", reason: "projection-limit" },
           summaries: details.map(({ description: _description, disposition: _disposition,
             blocks: _blocks, blockedBy: _blockedBy, fileRefs: _fileRefs, ...summary }) => summary) };
         replacement = { snapshot, details: new Map(details.map((detail) => [detail.id, detail])) };
@@ -75,13 +87,11 @@ export const createDitzTaskProvider: CreateTaskProvider = (context): TaskProvide
             throw new TaskReaderError("TASK_LIMIT_EXCEEDED", "Task detail response exceeds its limit.");
           TaskReadResultSchema.parse(full);
         }
-        if (Buffer.byteLength(JSON.stringify({ snapshot, details })) > TASK_LIMITS.cacheBytes)
-          throw new TaskReaderError("TASK_LIMIT_EXCEEDED", "Task cache exceeds its limit.");
+        assertTaskCacheBudget(snapshot, details);
         const after = await git.resolve(signal, deadline);
         next = { status: after && sameGitObject(localRef, after) ? "observed" : "stale",
           localRef: after, checkedAt: now(), reason: after && sameGitObject(localRef, after) ? null : changed };
-      } else if (attempt.reason && ["malformed", "limited", "error", "unavailable"].includes(attempt.status) &&
-          (!attempt.localRef || sameGitObject(attempt.localRef, localRef))) {
+      } else if (attempt.reason && ["malformed", "limited", "error", "unavailable"].includes(attempt.status)) {
         // A cheap ref check cannot attest that a failed full scan now works,
         // even if the ref still equals the retained cache or the failed attempt
         // could not resolve it at all. Only explicit refresh clears that failure.
@@ -100,11 +110,19 @@ export const createDitzTaskProvider: CreateTaskProvider = (context): TaskProvide
       }
       // Reserve room for the longest failure reason too, so later retention
       // cannot overflow a snapshot that only just fit while observed.
+      // Sanitized reasons exclude controls; quotes/backslashes are the largest
+      // JSON expansion still admitted (two encoded bytes per raw UTF-8 byte).
       const reserve = { ...next, status: "unavailable" as const, localRef,
-        reason: error("TASK_METADATA_UNAVAILABLE", "x".repeat(512)) };
-      if (Buffer.byteLength(JSON.stringify({ kind: "snapshot", observation: { ...world, ...reserve,
-        sequence: Number.MAX_SAFE_INTEGER, metadataRef: TASK_METADATA_REF, snapshot: replacement?.snapshot ?? null } })) > TASK_LIMITS.snapshotBytes)
+        checkedAt: "9999-12-31T23:59:59.99999999999Z",
+        reason: error("TASK_METADATA_UNAVAILABLE", "\\".repeat(512)) };
+      const reserved = { kind: "snapshot", observation: { ...world, ...reserve,
+        sequence: Number.MAX_SAFE_INTEGER, metadataRef: TASK_METADATA_REF, snapshot: replacement?.snapshot ?? null } };
+      const base = { ...reserved, observation: { ...reserved.observation,
+        snapshot: replacement ? taskBaseSnapshot(replacement.snapshot) : null } };
+      if (Buffer.byteLength(JSON.stringify(base)) > TASK_LIMITS.snapshotBytes ||
+          Buffer.byteLength(JSON.stringify(reserved)) > TASK_LIMITS.resultBytes)
         throw new TaskReaderError("TASK_LIMIT_EXCEEDED", "Task snapshot response exceeds its limit.");
+      TaskResultSchema.parse(reserved);
       result(next, replacement, Number.MAX_SAFE_INTEGER);
     } catch (cause) {
       replacement = cache;

@@ -3,6 +3,8 @@ import type { WorkspaceSnapshot } from "../../../protocol/schema";
 import { isRepositoryPath } from "../../../protocol/repository";
 import type { BuildLinkSnapshot } from "../repository/layers";
 import { buildTargets } from "../repository/build-view";
+import type { TaskClientState } from "../tasks/client";
+import { taskBacklinkSection } from "./task-backlinks";
 
 export interface SourceReceipt { revision: string; receivedAt: string; realm: string; session: string }
 export interface ContextFile {
@@ -39,6 +41,7 @@ export function indexCapture(capture: BuildLinkSnapshot | undefined) {
 export interface ContextObservations {
   snapshot: WorkspaceSnapshot; files: readonly ContextFile[]; service: ReturnType<typeof indexService>;
   capture: ReturnType<typeof indexCapture>; realm: string; session: string; ready: boolean;
+  tasks?: TaskClientState;
 }
 const bounded = (value: string) => value.length > 512 ? `${value.slice(0, 511)}…` : value;
 export function contextLabel(subject: ContextSubject | null): string { return subject ? "path" in subject ? subject.path || "/" : subject.id ?? "No task selected" : "Nothing selected"; }
@@ -108,6 +111,7 @@ export function composeContext(subject: ContextSubject | null, input: ContextObs
       observedAt: c.capturedAt, timeBasis: "producer", freshness: "CAPTURE", coverage: "Recorded entries only; unknown outside this dated capture",
     }, notice: labels.length ? "Captured references are not current ownership." : "No direct references in this capture; current target ownership unavailable." } : { id: "capture", title: "Captured build references", notice: "No bounded registered capture for this repository.", rows: [] });
   }
-  sections.push({ id: "unsupported", title: "Providers not available", rows: [], notice: "Reverse task, bug, design and lesson links; deployment, runtime and function metrics are unavailable. Missing evidence is not zero." });
+  if (subject.kind === "file") sections.push(taskBacklinkSection(subject, input.tasks));
+  sections.push({ id: "unsupported", title: "Providers not available", rows: [], notice: "Inferred bug, design and lesson links; deployment, runtime and function metrics are unavailable. Missing evidence is not zero." });
   return sections.map((section) => ({ ...section, total: section.rows.length, rows: section.rows.slice(0, CONTEXT_ROWS).map((row) => ({ ...row, label: bounded(row.label), value: row.link?.kind === "source" || section.id === "source" ? row.value : bounded(row.value) })) }));
 }

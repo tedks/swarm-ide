@@ -3,8 +3,8 @@
 
 This ExecPlan is a living document maintained under `.planning/PLANS.md`. Its
 Progress, Surprises & Discoveries, Decision Log and Outcomes & Retrospective
-must be updated as work proceeds. Q3 authors the design only. **Do not execute
-Q4 until ROOT evaluates and authorizes this plan.**
+must be updated as work proceeds. Q3 authored the design; ROOT approved its full
+contract and this plan for Q4 at base `650432b` on 2026-09-07.
 
 ## Purpose / Big Picture
 
@@ -26,11 +26,43 @@ not a general knowledge index or agent dispatch feature.
 - [x] (2026-09-07 04:54Z) Q3 independent native light design review CLEAN after
   scalar-byte clarification; actual whitespace/link/plan/scope checks passed.
   Normal landing is recorded by the PR and separate landing receipt, not assumed.
-- [ ] ROOT evaluation of the landed Q3 decisions; Q4 owner/worktree authorization.
-- [ ] Q4 protocol/provider projection and negative boundary evidence.
-- [ ] Q4 client/index/visibility/pinned attention plus Context consumer.
-- [ ] Q4 actual packaged CLI-metadata proof, local full gates, substantive review,
-  normal merge, Ditz and reviewed integration handoff.
+- [x] (2026-09-07 05:05Z) ROOT approved the complete Q3 contract and assigned
+  `feature/task-backlinks` at `650432b` in the isolated `task-backlinks` worktree.
+- [x] (2026-09-07 05:14Z) Compact Context initial-observation and persistent-pin
+  regressions RED. Initial provider test had a malformed fixture (missing nullable
+  line/note); corrected fixture then proves the complete never-read projection.
+- [x] (2026-09-07 05:36Z) Q4 protocol/provider projection and runtime canonical,
+  escaped-byte, original 512 KiB result / 16 MiB cache capacity boundaries pass.
+- [x] (2026-09-07 05:36Z) Client/index/consumer union/pin/Context implemented with
+  negative delayed-read, same-commit, invalid-detail, attention ABA and reconnect
+  tests. ROOT approved only the optional sidebar-fold visibility callback.
+- [x] (2026-09-07 05:50Z) Frozen `d3282cf` actual packaged CLI-metadata proof
+  passed in both repositories plus two unavailable-evidence cases (98.0s), zero
+  renderer exceptions/model turns and four cleanup receipts. Reviewed the final
+  150% screenshot; newly inspected task heading is now visible without focus loss.
+- [x] (2026-09-07 05:54Z) Native and Google code/fix-delta council CLEAN;
+  Anthropic unavailable after a bounded 180-second timeout. Quality 1,267/94
+  passes including the approved diagnostic-only extension at `5003dfe`.
+- [x] (2026-09-07 07:13Z) ROOT-authorized controlled source-handoff evidence at
+  `0a60a70`: late still-offered A cancelled newer B after real focus/ack; early,
+  deliberate-source and original ungated controls passed. Two prior compiler
+  failures remain recorded. This proves an imposed-order mechanism, not the
+  historical scheduler cause; the pre-Q4-based R3 occurrence is not a pristine
+  baseline or code-consumption authority.
+- [x] (2026-09-07 07:40Z) Separately committed renderer authority repair and
+  regressions. Initial guard green at `e06240e`; native council found a second
+  offer-to-draft/palette gap, proved RED at `9858d7e`, fixed at `e9efa90`.
+  Frozen final quality: both typechecks pass, 1,284 tests pass, only the two
+  unchanged R3-owned shutdown oracles fail. Separate full build passes34.
+  OpenAI native and Google warm delta convergence CLEAN; Anthropic missing
+  after actual 240-second review timeout, not substituted.
+- [ ] Aggregate local gate: frozen build passed34, full tests passed12/13;
+  existing rehearsal ordinary-close proof failed. ROOT approved safe diagnostic
+  codes and one bounded owned diagnostic run, which passed28.6s at5003dfe but
+  did not reproduce/explain the original failure. No runtime fix or waiver.
+- [ ] Normal merge, Ditz slice closure and reviewed integration handoff.
+- [ ] ROOT-reviewed composition with independently repaired R3 and fresh
+  aggregate/GUI evidence. No peer code consumed or merge/adoption lease used.
 
 ## Surprises & Discoveries
 
@@ -48,6 +80,43 @@ a pinned read and a retained pinned-selection mode. `App.tsx` currently derives
 task visibility from the compact Work pane, insufficient for a file Context
 consumer when the sidebar is hidden. The two path grammars also differ: source
 candidacy alone is not canonical repository-path eligibility.
+
+Q4 native council found two real boundary defects in the first increment:
+unchanged ref checks left pins falsely stale after completion, and a failed
+reconnect could bind retained old projection mode to the new client lifetime.
+Both were fixed with regressions. One shared detail's freshness now changes at
+both request boundaries; only an actually supplied snapshot binds new authority.
+The Google diff-only review missed unchanged local scope and a Boolean effect
+dependency; exact scope established the former was a false positive, and named
+scalar consumer booleans make the latter's semantics explicit. Native and Google
+fix-delta convergence at `28625ca` are CLEAN; Anthropic timed out with no opinion.
+
+The first packaged extension left the compact Information panel open and tried
+to focus the hidden Back control in the original navigation journey. Restoring
+the prior panel explicitly fixed the setup. A second test probe incorrectly
+assumed task attention survives Q1's core-realm reset and threw a renderer
+exception; the corrected proof explicitly revisits the retained task selection.
+Neither failed run is presented as a passed or zero-exception acceptance.
+
+The frozen full suite exposed an opaque failure in the existing rehearsal-close
+verifier, even though the earlier nonfrozen full run passed. A static
+audit found possible emitted-versus-retained close-tail and shutdown-deadline
+causes, but the original artifact cannot distinguish them. ROOT approved two
+test-support files to add finite safe failure codes only; no runtime predicate,
+read, cleanup, retry or timeout changes. Four classification/non-disclosure
+regressions were RED while the other1,263 passed, then all1,267 passed.
+
+The Context opening-notice failure was subsequently observed on pre-Q4-based
+R3 code too, but that branch includes service/shutdown changes and is not a
+pristine baseline. A controlled real-EditorPane gate established a narrower
+mechanism: a command still offered after B started could focus A and cancel B.
+Neither this forced order nor a later ungated pass explains the old scheduler.
+
+The first renderer repair passed all new tests, but native council identified
+that a completed read's offered handoff escaped cancellation when the user
+focused a draft or opened the palette. Two added real-gesture tests were RED
+before the small cancellation delta. Their GREEN result after that delta is
+separate from the original historical occurrence, which remains open.
 
 ## Decision Log
 
@@ -71,6 +140,26 @@ Pinned task inspection retains its commit across refresh; only deliberate
 reselection changes it. Context-only selection avoids forcing a task document
 or moving source. Consumer visibility is a union on the existing client/timer.
 
+Decision (Q4, 2026-09-07): preserve a failed full-scan warning even when a later
+cheap check sees a rollback to the cached commit or movement to another commit.
+Only a successful full observation proves the failed read has recovered. This
+closes a pre-existing provider branch gap needed by the approved freshness rule.
+
+Decision (Q4, 2026-09-07): the 784 KiB result and augmented-cache reserves cannot
+bind before the independent original/projection limits under today's strict
+shape. Tests prove exact original boundaries, escaped projection boundaries and
+whole envelopes without fabricating an otherwise-valid exact-784-KiB payload.
+
+Decision (ROOT-authorized source repair, 2026-09-07): keep command identity
+separate from delivery authority captured after activateFile. The real editor
+checks current ownership, destination lifetime, realm, intent and attention
+before selection/focus. Obsolete delivery retires only its own command, silently;
+only a currently authorized invalid-content/line acknowledgement may publish an
+error. Valid focus advances its own counters before successful identity-based
+retirement. Generic user interaction also revokes offered commands after the
+read token is gone; source focus retains sourceInformation's existing authority
+advancement, preserving legitimate self-focus and real-user cancellation.
+
 ## Outcomes & Retrospective
 
 
@@ -82,6 +171,25 @@ foundation Context/knowledge issues remain open after this design, and Q4 will
 close only explicit file-to-task backlinks. Task-to-draft provenance, docs/wiki,
 live build links, configuration, function metrics and real-agent policy are not
 covered by this work.
+
+Q4 has implemented and reviewed the bounded vertical, with actual CLI-to-packaged
+UI proof rather than injected renderer data. The full local landing gate remains
+held on the independent rehearsal close uncertainty; do not mistake the12/13
+aggregate result or a non-reproducing diagnostic for a complete final gate.
+Evidence is retained under `/tmp/swarm-ide-task-backlinks-q4.NP4JSm`, especially
+`frozen-tests.log`, `frozen-tests/run.ixP5Uj` (successful Q4 package),
+`frozen-tests/run.aGiXty` (failed close), `rehearsal-ownership.md` and
+`review-summary.md`. PR44 and the final landing receipt record actual disposition.
+
+The narrow source repair is now a pushed, reviewed increment, not a landed
+aggregate. Production commits `32920a3` and `e9efa90` are separate from test
+commits `e06240e` and `9858d7e` and this plan update. Mounted tests use the
+previously authorized diagnostic scaffold; the new standalone real-EditorPane
+authorization test is independent of that scaffold. No claim is made that a
+cherry-pick onto another department's base is conflict-free. ROOT owns reviewed
+composition. Exact evidence is `source-handoff-boundary.md` and repair-only
+council receipts in the existing control directory; the two shutdown reds and
+historical Context issue are not waived or closed by this increment.
 
 ## Context and Orientation
 
@@ -330,3 +438,8 @@ retained-selection behavior because neither summary counts nor ID-only selection
 can safely implement a file backlink. ROOT acceptance is a separate gate.
 Light review clarified that existing scalar limits count raw UTF-8 while aggregate
 limits count serialized JSON, and the plan now names the actual packaged harness.
+
+Revision note (Q4, 2026-09-07): ROOT authorized implementation. Progress now
+separates passing packaged/runtime/mounted checks from the held full landing
+gate; records council fixes, safe diagnostic ownership and failed evidence
+without erasing it. No normal merge or integration is implied by implementation.

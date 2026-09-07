@@ -27,7 +27,7 @@ describe("actual packaged repository navigation proof boundary", () => {
     expect(fixture).toContain('offset < 4_120');
     expect(fixture).toContain('["ref", "navigation-reveal", "src/main.ts:2"');
     expect(acceptance).toContain('require(path.join(packaged, "app/electron/main.js"))');
-    expect(acceptance).toContain('window.swarm.request({ protocolVersion: 5');
+    expect(acceptance).toContain('window.swarm.request({ protocolVersion: 6');
     expect(acceptance).toContain('assert.deepEqual(rendererErrors, []');
     expect(acceptance).toContain('prepared.error.code === "STALE_CONTEXT"');
     expect(acceptance).toContain('saved.source === state.doc.toString()');

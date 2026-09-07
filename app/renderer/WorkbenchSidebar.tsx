@@ -1,11 +1,12 @@
-import { Fragment, useRef, useState, type ReactNode } from "react";
+import { Fragment, useEffect, useRef, useState, type ReactNode } from "react";
 import "./sidebar.css";
 
 const names = ["Directory", "Agent runs", "Tasks"] as const;
 
 /** Folding and resizing never unmount drafts or navigation. */
-export function WorkbenchSidebar({ directory, agents, tasks, repositoryName }: { directory: ReactNode; agents: ReactNode; tasks: ReactNode; repositoryName: string }) {
+export function WorkbenchSidebar({ directory, agents, tasks, repositoryName, onTasksVisibility }: { directory: ReactNode; agents: ReactNode; tasks: ReactNode; repositoryName: string; onTasksVisibility?: (visible: boolean) => void }) {
   const [collapsed, setCollapsed] = useState([false, false, false]);
+  useEffect(() => { onTasksVisibility?.(!collapsed[2]); }, [collapsed[2], onTasksVisibility]);
   const [sizes, setSizes] = useState([1, 1, 1]);
   const root = useRef<HTMLElement>(null);
   const drag = useRef<{ index: number; y: number; height: number; fraction: number; total: number } | null>(null);

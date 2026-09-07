@@ -16,6 +16,8 @@ export interface TaskDetailProps {
   onReturnToSource: () => void;
   returnButtonRef?: Ref<HTMLButtonElement>;
   surface?: "information" | "editor";
+  onShowDocument?: () => void;
+  onRefresh?: () => void;
 }
 
 function Dependencies({ title, rows, onSelect }: { title: string; rows: TaskDetailData["blocks"]; onSelect: (id: string) => void }) {
@@ -28,7 +30,7 @@ function Dependencies({ title, rows, onSelect }: { title: string; rows: TaskDeta
   </section>;
 }
 
-export function TaskDetail({ selectedTaskId, snapshot, detail, detailRevision, detailStale, reading, notice, onSelect, onReveal, onReturnToSource, returnButtonRef, surface = "information" }: TaskDetailProps) {
+export function TaskDetail({ selectedTaskId, snapshot, detail, detailRevision, detailStale, reading, notice, onSelect, onReveal, onReturnToSource, returnButtonRef, surface = "information", onShowDocument, onRefresh }: TaskDetailProps) {
   // The client validates all wire identities; never display another selection's
   // cached detail during a parent render transition, even for a single frame.
   const selectedDetail = detail?.id === selectedTaskId && detailRevision !== null ? detail : null;
@@ -37,6 +39,8 @@ export function TaskDetail({ selectedTaskId, snapshot, detail, detailRevision, d
   return <section className={`task-ui task-detail ${surface === "editor" ? "task-document" : ""}`} aria-label={surface === "editor" ? "Task document" : "Task details"}>
     <header className="task-heading"><h2>{surface === "editor" ? "Task · read-only" : "Task details"}</h2><button ref={returnButtonRef} type="button" onClick={onReturnToSource}>{surface === "editor" ? "Return to source" : "Return to source information"}</button></header>
     {selectedTaskId === null ? <p className="task-empty">Select a task in Work to inspect its metadata.</p> : <code className="task-selected-id">{displayTaskText(selectedTaskId)}</code>}
+    {selectedDetail && onShowDocument ? <button type="button" onClick={onShowDocument}>Show task document</button> : null}
+    {onRefresh ? <button type="button" onClick={onRefresh}>Refresh tasks</button> : null}
     <div role="status" className="task-detail-status">
       {reading ? <p>Reading selected task…</p> : null}
       {notice ? <p className="task-warning">{displayTaskText(notice)}</p> : null}

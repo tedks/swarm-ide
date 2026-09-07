@@ -60,38 +60,57 @@ async function readSnapshot(profile: string, identity: string) {
 }
 
 export async function verifyRehearsalClose(options: { profile: string; workspace: string; diagnostics: unknown; proof: unknown }) {
+  // Constant check identifiers only: never echo untrusted exception text, paths,
+  // run IDs, diagnostics, prompts, or persisted content into the failure artifact.
+  let check: "input" | "diagnostics-shape" | "diagnostics-schema" | "diagnostics-ledger" | "diagnostics-totals" |
+    "snapshot-read" | "snapshot-shape" | "retained-bounds" | "retained-schema" | "retained-consistency" |
+    "retained-record-count" | "retained-text-bytes" | "retained-identities" | "retained-outcome" = "input";
   try {
     if (!isAbsolute(options.profile) || !isAbsolute(options.workspace)) throw new Error("Absolute owned locations required");
     const root = await realpath(options.workspace), ids = ProofIdsSchema.parse(object(options.proof).runIds);
     const expected = roles.map((role) => ids[role]);
     if (new Set(expected).size !== 4) throw new Error("Expected run IDs must be unique");
+    check = "diagnostics-shape";
     const rawDiagnostics = object(options.diagnostics);
     if (!Array.isArray(rawDiagnostics.runs) || rawDiagnostics.runs.length !== 4) throw new Error("Missing complete shutdown diagnostics");
+    check = "diagnostics-schema";
     const diagnostics = DiagnosticSchema.parse(rawDiagnostics);
+    check = "diagnostics-ledger";
     if (diagnostics.totals.start !== 4 || diagnostics.totals.dispose !== 4 ||
         new Set(diagnostics.runs.map((run) => run.runId)).size !== 4 || diagnostics.runs.some((run) => !expected.includes(run.runId) || run.calls.start !== 1 || run.calls.dispose !== 1)) throw new Error("Dispatch/cleanup ledger mismatch");
+    check = "diagnostics-totals";
     for (const method of ["start", "steer", "interrupt", "dispose"] as const) {
       if (diagnostics.runs.reduce((sum, run) => sum + run.calls[method], 0) !== diagnostics.totals[method]) throw new Error("Incomplete invocation totals");
     }
+    check = "snapshot-read";
     const snapshot = await readSnapshot(options.profile, hash(root)), raw = object(snapshot.input);
+    check = "snapshot-shape";
     if (Object.keys(raw).sort().join() !== "entries,version" || raw.version !== 1 || !Array.isArray(raw.entries) || raw.entries.length !== 4) throw new Error("Incomplete retained snapshot");
     const checked = raw.entries.map((input) => {
+      check = "retained-bounds";
       const entry = object(input), rawRun = object(entry.run), context = object(rawRun.launchContext);
       if (Object.keys(entry).sort().join() !== "receipt,records,run" || !Array.isArray(entry.records) || entry.records.length > REHEARSAL_LIMITS.streamRecords + AGENT_LIMITS.receipts + 1 ||
           !Array.isArray(rawRun.instructions) || rawRun.instructions.length > AGENT_LIMITS.receipts || utf8Bytes(JSON.stringify(context)) > AGENT_LIMITS.contextBytes) throw new Error("Unbounded retained run");
+      check = "retained-schema";
       const run = RunSchema.parse(rawRun), receipt = AdmissionReceiptSchema.parse(entry.receipt);
       const records = entry.records.map((record) => TranscriptRecordSchema.parse(record));
       const diagnostic = diagnostics.runs.find((item) => item.runId === run.runId);
+      check = "retained-consistency";
       if (!diagnostic || run.launchContext.root !== root || receipt.runId !== run.runId || receipt.contextHash !== run.launchContext.contextHash || receipt.admittedAt !== run.createdAt ||
           hash(run.launchContext.submittedPrompt) !== run.launchContext.contextHash || run.launchContext.attachments.some((item) => hash(item.content) !== item.digest) ||
           run.instructions.some((item) => hash(item.text) !== item.textHash || item.status === "pending" || item.expectedTurnId !== run.providerTurnId) ||
           run.cleanup.status !== "confirmed" || run.processState !== "exited" || run.exitCode !== null ||
           records.some((record, index) => record.recordId !== index + 1) || run.transcript.lastRecord !== records.length ||
-          run.transcript.bytes !== (records.length ? utf8Bytes(JSON.stringify(records)) : 0) || records.length !== diagnostic.emittedRecords ||
-          records.reduce((sum, record) => sum + utf8Bytes(record.text), 0) !== diagnostic.emittedBytes) throw new Error("Retained context, receipt, history, or cleanup mismatch");
+          run.transcript.bytes !== (records.length ? utf8Bytes(JSON.stringify(records)) : 0)) throw new Error("Retained context, receipt, history, or cleanup mismatch");
+      check = "retained-record-count";
+      if (records.length !== diagnostic.emittedRecords) throw new Error("Retained record count mismatch");
+      check = "retained-text-bytes";
+      if (records.reduce((sum, record) => sum + utf8Bytes(record.text), 0) !== diagnostic.emittedBytes) throw new Error("Retained text byte count mismatch");
       return run;
     });
+    check = "retained-identities";
     if (new Set(checked.map((run) => run.runId)).size !== 4) throw new Error("Duplicate retained run");
+    check = "retained-outcome";
     const runs = roles.map((role) => {
       const run = checked.find((item) => item.runId === ids[role]);
       const state = role === "second" ? "completed" : role === "activeAtClose" ? "unknown" : "cancelled";
@@ -104,5 +123,5 @@ export async function verifyRehearsalClose(options: { profile: string; workspace
     });
     return { verified: true as const, inProcessCleanupOnly: true as const, runCount: 4 as const, snapshotBytes: snapshot.bytes,
       responder: { start: 4 as const, dispose: 4 as const, activeTimers: 0 as const }, runs };
-  } catch { throw new Error("Rehearsal close proof failed: owned shutdown diagnostics and retained run history did not agree; no successful cleanup claim was published."); }
+  } catch { throw new Error(`Rehearsal close proof failed: [${check}] owned shutdown diagnostics and retained run history did not agree; no successful cleanup claim was published.`); }
 }

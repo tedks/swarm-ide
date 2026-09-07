@@ -70,6 +70,78 @@ async function openSource() {
   return EditorView.findFromDOM(document.querySelector(".cm-editor")!)!;
 }
 
+it("observes metadata for compact file Context without a visible Tasks sidebar", async () => {
+  const media = { matches: true, addEventListener: vi.fn(), removeEventListener: vi.fn() };
+  vi.stubGlobal("matchMedia", () => media);
+  try {
+    const { request } = setup(); render(<App />);
+    await openContextPath(source);
+    fireEvent.click(screen.getByRole("button", { name: "Toggle information panel" }));
+    await waitFor(() => expect(request.mock.calls.filter(([r]) => r.type === "tasks.snapshot" && r.refresh)).toHaveLength(1));
+    expect(request.mock.calls.filter(([r]) => r.type === "tasks.read")).toHaveLength(0);
+  } finally { vi.unstubAllGlobals(); }
+});
+
+it("inspects a never-opened exact backlink without moving editor, dirty cursor, graphs or opening a document", async () => {
+  const { request, observation } = setup();
+  observation.snapshot!.backlinks = { status: "complete", entries: [{ taskId: "task-fixture", refIndex: 0, path: source, navigation: "candidate" }] };
+  render(<App />); const editor = await openSource();
+  act(() => editor.dispatch({ changes: { from: 0, insert: "dirty " }, selection: { anchor: 3 } }));
+  const graphs = screen.getAllByTestId("task-graph"), before = request.mock.calls.length;
+  const panel = document.getElementById("information-panel")!; panel.scrollTop = 400;
+  fireEvent.click(screen.getByRole("button", { name: "Inspect linked task task-fixture" }));
+  await waitFor(() => expect(document.querySelector(".artifact-context")?.getAttribute("data-context-kind")).toBe("task"));
+  expect(panel.scrollTop).toBe(0);
+  expect(editor.state.doc.toString()).toBe("dirty one\ntwo\nthree\n"); expect(editor.state.selection.main.anchor).toBe(3);
+  expect(screen.getAllByTestId("task-graph")).toEqual(graphs); expect(document.querySelector(".task-editor-surface")).toBeNull();
+  expect(request.mock.calls.slice(before).map(([r]) => r.type)).toEqual(["tasks.read"]);
+  fireEvent.click(screen.getByRole("button", { name: "Show task document" }));
+  expect(screen.getByRole("region", { name: "Task document" })).toBeTruthy();
+  const original = request.getMockImplementation()!; let finish!: () => void;
+  request.mockImplementation(async (input) => input.type === "tasks.snapshot" ? new Promise<CoreResponse>((resolve) => {
+    finish = () => { void original(input).then(resolve); };
+  }) : original(input));
+  fireEvent.click(within(screen.getByRole("region", { name: "Task details" })).getByRole("button", { name: "Refresh tasks" }));
+  for (const name of ["Task document", "Task details"]) expect(within(screen.getByRole("region", { name })).getByText(/Retained details/)).toBeTruthy();
+  await act(async () => finish());
+  for (const name of ["Task document", "Task details"]) expect(within(screen.getByRole("region", { name })).queryByText(/Retained details/)).toBeNull();
+  fireEvent.click(screen.getByRole("button", { name: "Close task document" }));
+  await waitFor(() => expect(document.querySelector(".artifact-context")?.getAttribute("data-context-kind")).toBe("file"));
+  expect(editor.state.selection.main.anchor).toBe(3);
+});
+
+it("rejects a delayed backlink after file A to another source and back to A", async () => {
+  const { request, observation } = setup();
+  observation.snapshot!.backlinks = { status: "complete", entries: [{ taskId: "task-fixture", refIndex: 0, path: source, navigation: "candidate" }] };
+  const original = request.getMockImplementation()!; let finish!: () => void;
+  request.mockImplementation(async (input) => input.type === "tasks.read" ? new Promise<CoreResponse>((resolve) => {
+    finish = () => { void original(input).then(resolve); };
+  }) : original(input));
+  render(<App />); await openSource();
+  fireEvent.click(screen.getByRole("button", { name: "Inspect linked task task-fixture" }));
+  expect(document.querySelector(".artifact-context")?.getAttribute("data-context-kind")).toBe("file");
+  await openContextPath(doc); await openContextPath(source);
+  await act(async () => finish());
+  expect(document.querySelector(".artifact-context")?.getAttribute("data-context-subject")).toBe(source);
+  expect(document.querySelector(".task-editor-surface")).toBeNull();
+});
+
+it("folds the Tasks consumer without stopping a visible file Context or duplicating its five-second timer", async () => {
+  const intervals = vi.spyOn(globalThis, "setInterval"), cleared = vi.spyOn(globalThis, "clearInterval");
+  const { request } = setup(); render(<App />); await screen.findByRole("button", { name: "Select task task-fixture" });
+  const fiveSecond = () => intervals.mock.calls.flatMap((args, index) => args[1] === 5000 ? [intervals.mock.results[index]!.value] : []);
+  const first = fiveSecond().at(-1); expect(first).toBeDefined();
+  fireEvent.click(screen.getByRole("button", { name: "Tasks" }));
+  expect(cleared.mock.calls.some(([id]) => id === first)).toBe(true);
+  await openContextPath(source);
+  await waitFor(() => expect(fiveSecond().length).toBeGreaterThan(1));
+  const active = fiveSecond().at(-1), scans = request.mock.calls.filter(([r]) => r.type === "tasks.snapshot" && r.refresh).length;
+  fireEvent.click(screen.getByRole("button", { name: "Tasks" }));
+  fireEvent.click(screen.getByRole("button", { name: "Tasks" }));
+  expect(cleared.mock.calls.some(([id]) => id === active)).toBe(false);
+  expect(request.mock.calls.filter(([r]) => r.type === "tasks.snapshot" && r.refresh)).toHaveLength(scans);
+});
+
 it("runs the demo palette commands without launching agents or building, and clears only mock surfaces", async () => {
   const { request } = setup(); render(<App />);
   await screen.findByRole("button", { name: "Select task task-fixture" });

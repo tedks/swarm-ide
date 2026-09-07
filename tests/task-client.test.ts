@@ -68,6 +68,99 @@ function atRevision(result: TaskReadResult, observation: TaskObservation): TaskR
   return { ...result, metadataCommit: observation.snapshot!.metadataCommit, sequence: observation.sequence };
 }
 
+function linkedObservation(sequence = 1, hash?: string) {
+  const observation = hash ? advanceObservation(sequence, hash) : { ...taskObservationFixture(), sequence };
+  const read = taskReadFixture(); if (!read.result.ok) throw new Error("fixture");
+  observation.snapshot!.backlinks = { status: "complete", entries: read.result.detail.fileRefs.map((ref, refIndex) => ({
+    taskId: read.taskId, refIndex, path: ref.path, navigation: ref.navigation,
+  })) };
+  return observation;
+}
+
+describe("explicit backlink selection", () => {
+  it.each(["revision", "association", "coverage", "attention", "dispose"])("revokes delayed inspection after %s without replacing prior detail", async (change) => {
+    const h = await observed(linkedObservation());
+    const index = h.client.getSnapshot().backlinks!, path = index.references("task-fixture")[0]!.path;
+    let current = true;
+    const promise = h.client.inspectPinned(index.lookup(path)[0]!.target, { path, index }, () => current);
+    const pending = h.latest("tasks.read");
+    if (change === "attention") current = false;
+    else if (change === "dispose") h.client.dispose();
+    else {
+      const next = linkedObservation(2, change === "revision" ? "c" : undefined);
+      if (next.snapshot!.backlinks?.status === "complete" && change === "association") next.snapshot!.backlinks.entries[0]!.path = "other.ts";
+      if (change === "coverage") next.snapshot!.backlinks = { status: "unavailable", reason: "projection-limit" };
+      void h.client.refresh(); h.snapshot(next); await drain();
+    }
+    h.read(undefined, pending); expect(await promise).toBe(false);
+    expect(h.client.getSnapshot().selectedTaskId).toBeNull(); expect(h.client.getSnapshot().detail).toBeNull();
+    expect(h.calls.filter((c) => c.request.type === "tasks.read")).toHaveLength(1);
+    if (["association", "coverage"].includes(change)) expect(h.client.getSnapshot().notice).toContain("INVALID_CORE_MESSAGE");
+  });
+  it("reuses the exact index on ref checks and blocks a forged row before any detail request", async () => {
+    const h = await observed(linkedObservation()), index = h.client.getSnapshot().backlinks!;
+    await vi.advanceTimersByTimeAsync(5000); h.snapshot(linkedObservation(2)); await drain();
+    expect(h.client.getSnapshot().backlinks).toBe(index); expect(vi.getTimerCount()).toBe(1);
+    const path = index.references("task-fixture")[0]!.path, target = index.lookup(path)[0]!.target;
+    expect(await h.client.inspectPinned({ ...target, issueBlob: { algorithm: "sha1", hex: "f".repeat(40) } }, { path, index }, () => true)).toBe(false);
+    expect(h.calls.filter((c) => c.request.type === "tasks.read")).toHaveLength(0);
+    h.client.setVisible(false); expect(vi.getTimerCount()).toBe(0);
+  });
+  it("blocks another inspection after invalid detail evidence until a valid observation is adopted", async () => {
+    const h = await observed(linkedObservation()), index = h.client.getSnapshot().backlinks!;
+    const path = index.references("task-fixture")[0]!.path, target = index.lookup(path)[0]!.target;
+    const promise = h.client.inspectPinned(target, { path, index }, () => true);
+    const bad = taskReadFixture(); if (!bad.result.ok) throw new Error("fixture");
+    bad.result.detail.fileRefs[0]!.path = "wrong.ts";
+    h.read(bad); expect(await promise).toBe(false);
+    expect(h.client.getSnapshot().notice).toContain("INVALID_CORE_MESSAGE");
+    expect(await h.client.inspectPinned(target, { path, index }, () => true)).toBe(false);
+    expect(h.calls.filter((call) => call.request.type === "tasks.read")).toHaveLength(1);
+    void h.client.refresh(); h.snapshot(linkedObservation(2)); await drain();
+    const retry = h.client.inspectPinned(target, { path, index }, () => true); h.read(); expect(await retry).toBe(true);
+  });
+  it("invalidates old pending reads across an identical-identity replacement core", async () => {
+    const h = harness(true); h.client.setVisible(true); h.status(h.ready(1)); h.snapshot(linkedObservation()); await drain();
+    const index = h.client.getSnapshot().backlinks!, path = index.references("task-fixture")[0]!.path;
+    const promise = h.client.inspectPinned(index.lookup(path)[0]!.target, { path, index }, () => true), pending = h.latest("tasks.read");
+    h.status(h.ready(2)); h.snapshot(linkedObservation()); await drain();
+    h.read({ ...taskReadFixture(), sequence: 999 }, pending);
+    expect(await promise).toBe(false); expect(h.client.getSnapshot().detail).toBeNull();
+    expect(h.client.getSnapshot().backlinks).not.toBe(index);
+  });
+  it("does not let a failed reconnect bind an old compatibility mode as new-lifetime authority", async () => {
+    const h = harness(true); h.client.setVisible(true); h.status(h.ready(1)); h.snapshot(); await drain();
+    h.status(h.ready(2)); h.snapshot(taskObservationFixture("unavailable", false)); await drain();
+    expect(h.client.getSnapshot().observation?.snapshot).not.toBeNull();
+    expect(h.client.getSnapshot().backlinks).toBeNull();
+    void h.client.refresh(); h.snapshot(linkedObservation(2)); await drain();
+    expect(h.client.getSnapshot().notice).toBeNull();
+    expect(h.client.getSnapshot().backlinks?.lookup("docs/architecture.md")).toHaveLength(1);
+  });
+  it("retains a successful pin across subsequent refresh rather than silently substituting N", async () => {
+    const h = await observed(linkedObservation());
+    const index = h.client.getSnapshot().backlinks!;
+    const path = index.references("task-fixture")[0]!.path;
+    const row = index.lookup(path)[0]!;
+    const pin = h.client.inspectPinned(row.target, { path, index }, () => true);
+    h.read(); expect(await pin).toBe(true);
+    const retained = h.client.getSnapshot().detail;
+    await vi.advanceTimersByTimeAsync(5000); expect(h.client.getSnapshot().detailStale).toBe(true);
+    h.snapshot(linkedObservation(2)); await drain();
+    expect(h.client.getSnapshot().detailStale).toBe(false);
+    const next = linkedObservation(3, "c");
+    void h.client.refresh(); h.snapshot(next); await drain();
+    const auto = h.calls.filter((c) => c.request.type === "tasks.read");
+    if (auto.length > 1) { h.read(atRevision(taskReadFixture(), next)); await drain(); }
+    expect(h.client.getSnapshot().detailRevision).toEqual(TASK_FIXTURE_COMMIT);
+    expect(h.client.getSnapshot().detail).toBe(retained);
+    expect(h.client.getSnapshot().detailStale).toBe(true);
+    expect(auto).toHaveLength(1);
+    h.client.select("task-fixture"); h.read(atRevision(taskReadFixture(), next)); await drain();
+    expect(h.client.getSnapshot().detailRevision).toEqual(next.snapshot!.metadataCommit);
+  });
+});
+
 describe("TaskBridgeClient read-only observation scheduling", () => {
   it("opens once, checks the ref every visible five seconds and coalesces explicit full refresh without a poll backlog", async () => {
     const h = harness(); expect(h.calls).toHaveLength(0);

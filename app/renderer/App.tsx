@@ -40,7 +40,7 @@ import { TaskBridgeClient } from "./tasks/client";
 import { TaskPanel } from "./tasks/TaskPanel";
 import { TaskDetail } from "./tasks/TaskDetail";
 import { taskLineTarget, validTaskReference } from "./tasks/reveal";
-import type { TaskFileRef } from "../../protocol/tasks";
+import type { TaskFileRef, TaskBacklinkTarget } from "../../protocol/tasks";
 import { isRepositoryPath, type RepositoryEntry, type RepositoryRequest } from "../../protocol/repository";
 import { useRepositoryNavigation } from "./repository/navigation";
 import { RepositoryNavigation } from "./repository/RepositoryNavigation";
@@ -148,17 +148,20 @@ export function App() {
   const [noticeFocusRequest, setNoticeFocusRequest] = useState(0);
   const [revealNotice, setRevealNotice] = useState("");
   const [sourceNavigation, setSourceNavigation] = useState<(SourceLineNavigation & { path: string }) | null>(null);
+  const sourceNavigationRef = useRef<typeof sourceNavigation>(null);
   const editorMemories = useRef(new Map<string, EditorMemory>());
   const navigationIntent = useRef(0);
   const pendingRevealIntent = useRef<number | null>(null);
   const mounted = useRef(false);
-  useEffect(() => { mounted.current = true; return () => { mounted.current = false; ++navigationIntent.current; }; }, []);
+  useEffect(() => { mounted.current = true; return () => { mounted.current = false; sourceNavigationRef.current = null; ++navigationIntent.current; }; }, []);
   const [commandQuery, setCommandQuery] = useState("");
   const [hmr, setHmr] = useState({ generation: 0, milliseconds: 0 });
   const [fileTabs, setFileTabs] = useState<FileTab[]>(hotCheckpoint?.files ?? []);
   const [activeSurface, setActiveSurface] = useState<string>(hotCheckpoint?.activeSurface ?? "graphs");
   const [taskDocumentOpen, setTaskDocumentOpen] = useState(false);
   const [taskDocumentVisible, setTaskDocumentVisible] = useState(false);
+  const [taskSidebarVisible, setTaskSidebarVisible] = useState(true);
+  const pendingBacklinkIntent = useRef<number | null>(null);
   const [selectedConnection, setSelectedConnection] = useState<GraphConnectionFocus | null>(null);
   const workspaceRef = useRef<WorkspaceState>(workspace);
   // Attention's layout-phase realm reset must see this render's accepted world,
@@ -195,6 +198,15 @@ export function App() {
     const current = workspaceRef.current.snapshot;
     if (current) inspect({ repositoryId: current.project.id, worldId: current.world.id, kind: "task", id });
   }, [inspect]);
+  const inspectedTaskId = attention.subject?.kind === "task" ? attention.subject.id : null;
+  useLayoutEffect(() => {
+    // A successfully inspected pin starts at its heading. Do not focus it, move
+    // source, or reset scrolling on passive refresh or repeated same-task clicks.
+    if (tasks.pin && tasks.pin.taskId === inspectedTaskId) {
+      const panel = document.getElementById("information-panel");
+      if (panel) panel.scrollTop = 0;
+    }
+  }, [tasks.pin, inspectedTaskId]);
   const sourceReceipt = useCallback((revision: string): SourceReceipt => ({ revision, receivedAt: new Date().toISOString(), realm: contextRealm(), session: contextSession }), [contextRealm, contextSession]);
   useLayoutEffect(() => {
     const realm = contextRealm();
@@ -241,15 +253,19 @@ export function App() {
   useEffect(() => {
     if (workspace.snapshot) taskClient.setContext(workspace.snapshot.world.id, workspace.snapshot.project.id);
   }, [taskClient, workspace.snapshot?.world.id, workspace.snapshot?.project.id]);
+  const taskDocumentConsumer = taskDocumentOpen && (taskDocumentVisible || !fileTabs.some((tab) => tab.path === activeSurface));
+  const taskContextConsumer = ["file", "task"].includes(attention.subject?.kind ?? "");
   useEffect(() => {
     // Mirrors the existing compact breakpoint, including Electron's CSS zoom.
     // Checking panel visibility does not make source/build changes scan tasks.
     const media = window.matchMedia?.("(max-width: 1100px)");
-    const update = () => taskClient.setVisible(Boolean(workspace.snapshot) && (!media?.matches || compactPanel === "work"));
+    const update = () => taskClient.setVisible(Boolean(workspace.snapshot) && (
+      taskSidebarVisible && (!media?.matches || compactPanel === "work") ||
+      taskDocumentConsumer || taskContextConsumer && (!media?.matches || compactPanel === "info")));
     update();
     media?.addEventListener("change", update);
     return () => { media?.removeEventListener("change", update); };
-  }, [taskClient, compactPanel, Boolean(workspace.snapshot)]);
+  }, [taskClient, compactPanel, Boolean(workspace.snapshot), taskSidebarVisible, taskDocumentConsumer, taskContextConsumer]);
 
   const selectTask = useCallback((id: string) => {
     ++navigationIntent.current;
@@ -273,18 +289,45 @@ export function App() {
     sourceInformation();
     setSourceInfoFocusRequest(navigationIntent.current);
   }, [sourceInformation]);
+  const closeTaskDocument = useCallback(() => {
+    ++navigationIntent.current;
+    setTaskDocumentOpen(false); setTaskDocumentVisible(false);
+    if (attentionRef.current.subject?.kind === "task") sourceInformation();
+  }, [sourceInformation]);
   const reportRevealFailure = useCallback((message: string) => {
     setRevealNotice(message);
     setNoticeFocusRequest(navigationIntent.current);
   }, []);
-  const interruptPendingReveal = useCallback(() => {
+  const retireSourceNavigation = useCallback((command: NonNullable<typeof sourceNavigation>) => {
+    if (sourceNavigationRef.current !== command) return;
+    sourceNavigationRef.current = null;
+    setSourceNavigation((current) => current === command ? null : current);
+  }, []);
+  const acknowledgeSourceNavigation = useCallback((nonce: number, applied: boolean) => {
+    const command = sourceNavigationRef.current;
+    if (!command || command.nonce !== nonce) return;
+    const reportInvalid = !applied && command.authorization?.isCurrent();
+    // Successful focus synchronously advances intent/attention itself. Identity
+    // still owns retirement; those self-advances do not turn success into error.
+    retireSourceNavigation(command);
+    if (reportInvalid) reportRevealFailure("Working buffer changed before Reveal navigation; cursor retained. Reveal again after reconciling source.");
+  }, [retireSourceNavigation, reportRevealFailure]);
+  const interruptPendingReveal = useCallback((event?: { type: string; target: EventTarget | null }) => {
+    // A completed read may still own an undelivered editor command. Generic
+    // interaction revokes it even after pendingRevealIntent has been cleared.
+    // Source focus already advances authority in sourceInformation; leaving
+    // retirement to the delivery/ack path also preserves legitimate self-focus.
+    const sourceFocus = event?.type === "focus" && event.target instanceof Element && event.target.closest(".source-surface");
+    const command = sourceNavigationRef.current;
+    if (command && !sourceFocus) retireSourceNavigation(command);
+    if (pendingBacklinkIntent.current !== null) { pendingBacklinkIntent.current = null; ++navigationIntent.current; }
     if (pendingRevealIntent.current === null) return;
     pendingRevealIntent.current = null;
     definitionRef.current = null; setDefinition(null);
     ++navigationIntent.current;
     setRevealNotice((notice) => notice.startsWith("Opening working file")
       ? "Reveal superseded by a newer interaction; previous source retained." : notice);
-  }, []);
+  }, [retireSourceNavigation]);
   useLayoutEffect(() => {
     if (sourceInfoFocusRequest && sourceInfoFocusRequest === navigationIntent.current) sourceInformationHeading.current?.focus();
   }, [sourceInfoFocusRequest]);
@@ -519,6 +562,7 @@ export function App() {
       lifecycleRef.current = status;
       if (coreGenerationRef.current !== status.core.generation) {
         ++navigationIntent.current;
+        sourceNavigationRef.current = null;
         setSourceNavigation(null);
         setRevealNotice((notice) => notice.startsWith("Opening working file") ? "CORE_GENERATION_CHANGED: Reveal interrupted; previous source retained." : notice);
         coreGenerationRef.current = status.core.generation;
@@ -732,7 +776,23 @@ export function App() {
       if (declaration) textWasOpen.current = true;
       activateFile(ref.path);
       setRevealNotice(declaration ? `${declaration.notice} ${target.notice}` : target.notice);
-      setSourceNavigation({ path: ref.path, content: tab.content, line: target.line, nonce: intent, focus: true });
+      // The command nonce predates activateFile's legitimate intent/attention
+      // advances. Capture delivery authority only after that activation.
+      const deliveryIntent = navigationIntent.current, deliveryAttention = attentionRef.current.generation;
+      const deliveryRealm = contextRealm(), openGeneration = openGenerationsRef.current.get(ref.path);
+      const command: NonNullable<typeof sourceNavigation> = {
+        path: ref.path, content: tab.content, line: target.line, nonce: intent, focus: true,
+        authorization: {
+          isCurrent: () => sourceNavigationRef.current === command && mounted.current &&
+            activeSurfaceRef.current === ref.path && desiredFilesRef.current.has(ref.path) &&
+            openGenerationsRef.current.get(ref.path) === openGeneration && contextRealm() === deliveryRealm &&
+            navigationIntent.current === deliveryIntent && attentionRef.current.generation === deliveryAttention &&
+            (!window.swarmLifecycle || lifecycleRef.current?.core.phase === "ready"),
+          retire: () => retireSourceNavigation(command),
+        },
+      };
+      sourceNavigationRef.current = command;
+      setSourceNavigation(command);
       // Explicit Reveal alone navigates the repository projection. The file
       // opener remains authoritative; failed/partial listing cannot hide it.
       if (workspaceRef.current.snapshot?.graphs.some((graph) => graph.directory)) void repository.reveal(ref.path);
@@ -741,7 +801,7 @@ export function App() {
       // Never clear a newer Reveal's token when an older read finally settles.
       if (pendingRevealIntent.current === intent) pendingRevealIntent.current = null;
     }
-  }, [activateFile, invoke, openFile, reportRevealFailure, repository.reveal, contextRealm, sourceReceipt]);
+  }, [activateFile, invoke, openFile, reportRevealFailure, repository.reveal, contextRealm, sourceReceipt, retireSourceNavigation]);
 
   const openLinkedFile = useCallback((path: string) => {
     if (!isRepositoryPath(path)) { reportRevealFailure("Use an exact canonical repository-relative file path, without .git or parent segments."); return; }
@@ -755,6 +815,7 @@ export function App() {
   }, [enterDirectory, openLinkedFile]);
 
   const closeFile = useCallback((path: string) => {
+    ++navigationIntent.current;
     const tab = fileTabsRef.current.find((candidate) => candidate.path === path);
     if (tab && protectsBuffer(tab)) {
       setFileTabs((tabs) => tabs.map((candidate) => candidate.path === path ? { ...candidate, message: "Save or reload this buffer before closing it." } : candidate));
@@ -916,7 +977,7 @@ export function App() {
       if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "k") { event.preventDefault(); interruptPendingReveal(); if (paletteOpen) cancelPalette(); else openPalette(); }
       if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "w") {
         event.preventDefault();
-        if (taskDocumentVisible || (taskDocumentOpen && !fileTabsRef.current.some((tab) => tab.path === activeSurface))) { setTaskDocumentVisible(false); setTaskDocumentOpen(false); if (attentionRef.current.subject?.kind === "task") sourceInformation(); return; }
+        if (taskDocumentVisible || (taskDocumentOpen && !fileTabsRef.current.some((tab) => tab.path === activeSurface))) { closeTaskDocument(); return; }
         const path = activeSurface === "graphs" ? null : activeSurface;
         if (path) closeFile(path);
         return;
@@ -925,7 +986,7 @@ export function App() {
     };
     window.addEventListener("keydown", listener);
     return () => window.removeEventListener("keydown", listener);
-  }, [activeSurface, closeFile, interruptPendingReveal, resetZoom, zoomIn, zoomOut, taskDocumentVisible, taskDocumentOpen, paletteOpen, cancelPalette, openPalette, sourceInformation]);
+  }, [activeSurface, closeFile, interruptPendingReveal, resetZoom, zoomIn, zoomOut, taskDocumentVisible, taskDocumentOpen, paletteOpen, cancelPalette, openPalette, closeTaskDocument]);
 
   useEffect(() => {
     if (paletteOpen) requestAnimationFrame(() => commandInput.current?.focus());
@@ -947,7 +1008,24 @@ export function App() {
   const captureIndex = useMemo(() => indexCapture(uiBuildLinks), []);
   const contextSubject = attention.realm === contextRealm() ? attention.subject : null;
   const contextSections = snapshot ? composeContext(contextSubject, { snapshot, files: fileTabs, service: serviceIndex, capture: captureIndex,
-    realm: contextRealm(), session: contextSession, ready: observedCoreGeneration === coreGenerationRef.current && (!window.swarmLifecycle || lifecycle?.core.phase === "ready") }) : [];
+    realm: contextRealm(), session: contextSession, tasks, ready: observedCoreGeneration === coreGenerationRef.current && (!window.swarmLifecycle || lifecycle?.core.phase === "ready") }) : [];
+  const inspectBacklink = async (target: TaskBacklinkTarget) => {
+    const subject = contextSubject, index = tasks.backlinks;
+    if (subject?.kind !== "file" || !index || subject !== attentionRef.current.subject) return;
+    const token = { realm: contextRealm(), generation: attentionRef.current.generation, intent: ++navigationIntent.current, path: subject.path };
+    pendingBacklinkIntent.current = token.intent;
+    const valid = () => mounted.current && attentionRef.current.subject === subject &&
+      permitsContextActivation(attentionRef.current, token, navigationIntent.current, contextRealm(), subject.path);
+    try {
+      if (await taskClient.inspectPinned(target, { path: subject.path, index }, valid) && valid()) inspectTask(target.taskId);
+    } finally { if (pendingBacklinkIntent.current === token.intent) pendingBacklinkIntent.current = null; }
+  };
+  const showPinnedTaskDocument = () => {
+    if (!tasks.detail || !tasks.detailRevision) return;
+    ++navigationIntent.current;
+    setTaskDocumentOpen(true); setTaskDocumentVisible(true); setCompactPanel(null);
+    inspectTask(tasks.selectedTaskId);
+  };
   const activeFile = fileTabs.find((tab) => tab.path === activeSurface);
   const textDocumentVisible = taskDocumentVisible || (taskDocumentOpen && !activeFile);
   const textOpen = Boolean(activeFile || textDocumentVisible);
@@ -1104,6 +1182,7 @@ export function App() {
       </header>
 
       <WorkbenchSidebar
+        onTasksVisibility={setTaskSidebarVisible}
         repositoryName={snapshot.project.name}
         directory={repositoryObservation ? <RepositoryNavigation key={snapshot.project.id} rootLabel={snapshot.project.name} focusedPath={snapshot.focus.path} observation={repositoryObservation} actions={deliberateRepository} onActivate={activateRepositoryEntry} onOpenPath={openLinkedFile} /> : <p className="muted">Observing repository…</p>}
         agents={<>
@@ -1124,7 +1203,7 @@ export function App() {
         </div>
         {textOpen ? <nav className="surface-tabs" aria-label="Document tabs">
           {fileTabs.map((tab) => <div key={tab.path} className={`surface-tab ${activeFile?.path === tab.path && !textDocumentVisible ? "active" : ""}`}><button className="surface-tab-main" onClick={() => activateFile(tab.path)} title={tab.path}><span className={`tab-state status-${tab.status}`}>{tab.status === "dirty" ? "●" : tab.status === "saving" ? "◌" : tab.status === "conflict" || tab.status === "error" ? "!" : "◇"}</span>{tab.path.split("/").at(-1)}</button><button className="surface-tab-close" aria-label={`Close ${tab.path}`} onClick={() => closeFile(tab.path)}>×</button></div>)}
-          {taskDocumentOpen ? <div className={`surface-tab ${textDocumentVisible ? "active" : ""}`}><button className="surface-tab-main" onClick={() => { setTaskDocumentVisible(true); inspectTask(tasks.selectedTaskId); }} title={tasks.selectedTaskId ?? "Task"}>▤ {tasks.detail?.title ?? "Task document"}</button><button className="surface-tab-close" aria-label="Close task document" onClick={() => { setTaskDocumentOpen(false); setTaskDocumentVisible(false); if (contextSubject?.kind === "task") sourceInformation(); }}>×</button></div> : null}
+          {taskDocumentOpen ? <div className={`surface-tab ${textDocumentVisible ? "active" : ""}`}><button className="surface-tab-main" onClick={() => { setTaskDocumentVisible(true); inspectTask(tasks.selectedTaskId); }} title={tasks.selectedTaskId ?? "Task"}>▤ {tasks.detail?.title ?? "Task document"}</button><button className="surface-tab-close" aria-label="Close task document" onClick={closeTaskDocument}>×</button></div> : null}
         </nav> : null}
         <div tabIndex={-1} className={`graphs-grid ${textOpen ? "is-sidebar" : "is-active"}`}>{snapshot.graphs.map((graph) => {
           const pane = <GraphPane key={graph.topologyId} graph={graph} mockAgents={demo.graphs} mockGraphVersion={demo.graphVersion} buildLinkSnapshot={graph.directory && snapshot.project.id === uiBuildLinks.repositoryId ? uiBuildLinks : undefined} focus={snapshot.focus} mappings={snapshot.mappings} reframeVersion={graphReframe} interfaceZoom={zoomPercent} onFocus={selectFocus} onActivate={graph.topologyId === "service" ? activateDefinition : undefined} onInspectFocus={(focus) => { ++navigationIntent.current; inspectGraph(focus); setSelectedConnection(null); void invoke({ type: "focus.select", requestId: requestId(), protocolVersion: PROTOCOL_VERSION, focus }); }} onNavigateDirectory={graph.directory ? enterDirectory : undefined} onConnectionFocus={(connection) => selectConnection(connection, graph.topologyId)} onReconcile={() => { void reconcile(); }} reconciliationRunning={reconciliationRunning} repositoryCameraIntent={graph.directory ? repository.cameraIntent : undefined} />;
@@ -1138,7 +1217,7 @@ export function App() {
             {activeFile.revision ? <EditorPane key={activeFile.path} content={activeFile.content} flash={activeFile.flash}
               memory={(() => { let memory = editorMemories.current.get(activeFile.path); if (!memory) { memory = { state: null }; editorMemories.current.set(activeFile.path, memory); } return memory; })()}
               navigation={sourceNavigation?.path === activeFile.path ? sourceNavigation : null}
-              onNavigation={(nonce, applied) => { setSourceNavigation((current) => current?.nonce === nonce ? null : current); if (!applied) reportRevealFailure("Working buffer changed before Reveal navigation; cursor retained. Reveal again after reconciling source."); }} onChange={(content) => {
+              onNavigation={acknowledgeSourceNavigation} onChange={(content) => {
               const update = (tab: FileTab): FileTab => {
               if (tab.path !== activeFile.path) return tab;
               const unresolved = ["conflict", "unknown", "error"].includes(tab.status);
@@ -1156,9 +1235,9 @@ export function App() {
       <ResizeDivider label="Resize Context" className="context-divider" container=".workbench" value={contextWidth} minimum={23} maximum={44} initial={30} reverse onChange={setContextWidth} />
       <aside id="information-panel" aria-label="Information panel" className="instrument-panel panel">
         {revealNotice ? <p ref={revealNoticeElement} className="tasks-reveal-notice" role="status" tabIndex={0}>{revealNotice}</p> : null}
-        {contextSubject?.kind === "task" ? <div className="artifact-context" data-context-kind="task" data-context-subject={contextSubject.id}><TaskDetail returnButtonRef={taskReturnButton} selectedTaskId={contextSubject.id} snapshot={tasks.observation?.snapshot ?? null} detail={tasks.detail?.id === contextSubject.id ? tasks.detail : null} detailRevision={tasks.detailRevision} detailStale={tasks.detailStale || tasks.observation?.status !== "observed" || Boolean(tasks.notice)} reading={tasks.reading} notice={tasks.detailNotice} onSelect={selectTask} onReveal={(ref) => { void revealTaskReference(ref); }} onReturnToSource={returnToSourceInformation} /></div> : <>
+        {contextSubject?.kind === "task" ? <div className="artifact-context" data-context-kind="task" data-context-subject={contextSubject.id}><TaskDetail returnButtonRef={taskReturnButton} selectedTaskId={contextSubject.id} snapshot={tasks.observation?.snapshot ?? null} detail={tasks.detail?.id === contextSubject.id ? tasks.detail : null} detailRevision={tasks.detailRevision} detailStale={tasks.detailStale || tasks.refreshing || tasks.observation?.status !== "observed" || Boolean(tasks.notice)} reading={tasks.reading} notice={tasks.detailNotice} onSelect={selectTask} onReveal={(ref) => { void revealTaskReference(ref); }} onReturnToSource={returnToSourceInformation} onShowDocument={showPinnedTaskDocument} onRefresh={() => { void taskClient.refresh(); }} /></div> : <>
         {tasks.selectedTaskId ? <button className="tasks-show-details" onClick={showTaskDetails}>Show task details</button> : null}
-        <ContextPane subject={contextSubject} sections={contextSections} onOpen={openLinkedFile} headingRef={sourceInformationHeading} />
+        <ContextPane subject={contextSubject} sections={contextSections} onOpen={openLinkedFile} onTask={(target) => { void inspectBacklink(target); }} onRefreshTasks={() => { void taskClient.refresh(); }} headingRef={sourceInformationHeading} />
         </>}
         {demo.context ? <MockContext focus={contextSubject && "path" in contextSubject ? contextSubject.path : contextSubject && "id" in contextSubject ? contextSubject.id ?? "No task selected" : "Nothing selected"} /> : null}
       </aside>

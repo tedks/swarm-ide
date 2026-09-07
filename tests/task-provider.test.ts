@@ -41,6 +41,20 @@ afterEach(async () => {
 });
 
 describe("real pinned Ditz provider", () => {
+  it("publishes never-read explicit references with duplicate ordinals in the full observation", async () => {
+    const root = await repo();
+    await commit(root, { "issue-first.yaml": issue() + "file_refs:\n- {path: core/files.ts, line: null, note: null}\n- {path: core/files.ts, line: null, note: null}\n- {path: ../unsupported.ts, line: null, note: null}\n" });
+    const item = await provider(root);
+    const scan = vi.spyOn(TaskGitReader.prototype, "scan");
+    expect((await item.snapshot({ refresh: true })).snapshot).toMatchObject({ backlinks: {
+      status: "complete", entries: [
+        { taskId: "first", refIndex: 0, path: "core/files.ts", navigation: "candidate" },
+        { taskId: "first", refIndex: 1, path: "core/files.ts", navigation: "candidate" },
+        { taskId: "first", refIndex: 2, path: "../unsupported.ts", navigation: "unsupported" },
+      ],
+    } });
+    await item.snapshot({ refresh: false }); expect(scan).toHaveBeenCalledTimes(1);
+  });
   it("binds real commit/blob/details, returns defensive copies, and never reads a source reference", async () => {
     const root = await repo();
     const revision = await commit(root, { "issue-first.yaml": issue() + "file_refs:\n- path: absent/source.ts\n  line: 9\n  note: explicit only\nreferences: [never-an-implicit-link.ts]\n" });
@@ -182,6 +196,33 @@ describe("real pinned Ditz provider", () => {
     await writeFile(objectPath, objectBytes);
     expect(await item.snapshot({ refresh: false })).toMatchObject({ status: "unavailable" });
     expect(await item.snapshot({ refresh: true })).toMatchObject({ status: "observed", localRef: revision });
+  });
+
+  it("retains failed full-scan warning across rollback to cached M or movement to O", async () => {
+    const root = await repo(); const first = await commit(root, { "issue-first.yaml": issue() });
+    const item = await provider(root); await item.snapshot({ refresh: true });
+    const failed = await commit(root, { "issue-first.yaml": "not valid issue" });
+    expect(await item.snapshot({ refresh: true })).toMatchObject({ status: "malformed", localRef: failed });
+    await git(root, ["update-ref", TASK_METADATA_REF, first.hex]);
+    expect(await item.snapshot({ refresh: false })).toMatchObject({ status: "malformed", localRef: first, snapshot: { metadataCommit: first } });
+    const other = await commit(root, { "issue-first.yaml": issue("first", "Other revision") });
+    expect(await item.snapshot({ refresh: false })).toMatchObject({ status: "malformed", localRef: other });
+    expect(await item.snapshot({ refresh: true })).toMatchObject({ status: "observed", localRef: other });
+  });
+
+  it("adopts usable new summaries/details when only the escaped association projection overflows", async () => {
+    const root = await repo(); const first = await commit(root, { "issue-first.yaml": issue() });
+    const item = await provider(root); await item.snapshot({ refresh: true });
+    const files: Record<string, string> = {};
+    for (let i = 0; i < 12; i++) files[`issue-overflow-${i}.yaml`] = issue(`overflow-${i}`) +
+      `file_refs: ${JSON.stringify(Array.from({ length: 4 }, () => ({ path: "\u0000".repeat(1024), line: null, note: null })))}\n`;
+    const next = await commit(root, files);
+    const observed = await item.snapshot({ refresh: true });
+    expect(observed).toMatchObject({ status: "observed", snapshot: { metadataCommit: next, backlinks: { status: "unavailable", reason: "projection-limit" } } });
+    expect(observed.snapshot!.summaries).toHaveLength(13);
+    expect(await item.read({ metadataCommit: next, taskId: "overflow-0" })).toMatchObject({ result: { ok: true } });
+    expect(await item.read({ metadataCommit: first, taskId: "first" })).toMatchObject({ result: { ok: false, error: { code: "TASK_REVISION_EXPIRED" } } });
+    expect((await item.snapshot({ refresh: false })).snapshot!.backlinks).toEqual({ status: "unavailable", reason: "projection-limit" });
   });
 
   it("checks whole serialized envelopes rather than treating character counts as output byte limits", async () => {

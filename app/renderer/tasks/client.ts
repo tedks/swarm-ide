@@ -2,9 +2,10 @@ import type { SwarmBridge } from "../../electron/preload";
 import { LifecycleSchema, type LifecycleBridge } from "../../lifecycle";
 import { parseCoreResponseForRequest, PROTOCOL_VERSION } from "../../../protocol/schema";
 import {
-  sameGitObject, TaskIdSchema, TaskRequestSchema,
-  type GitObjectId, type TaskDetail, type TaskObservation, type TaskRequest, type TaskResult, type TaskSummary,
+  sameGitObject, TaskIdSchema, TaskRequestSchema, TaskBacklinkTargetSchema,
+  type GitObjectId, type TaskDetail, type TaskObservation, type TaskRequest, type TaskResult, type TaskSummary, type TaskBacklinkTarget,
 } from "../../../protocol/tasks";
+import { indexTaskBacklinks, type TaskBacklinkIndex, type TaskBacklinkAssociation } from "./backlinks";
 
 export interface TaskClientState {
   observation: TaskObservation | null;
@@ -17,11 +18,15 @@ export interface TaskClientState {
   connected: boolean;
   notice: string | null;
   detailNotice: string | null;
+  backlinks: TaskBacklinkIndex | null;
+  pin: TaskBacklinkTarget | null;
+  backlinkNotice: string | null;
 }
 
 const emptyState = (): TaskClientState => ({ observation: null, selectedTaskId: null, detail: null,
   detailRevision: null, detailStale: true, reading: false, refreshing: false, connected: false,
-  notice: null, detailNotice: null });
+  notice: null, detailNotice: null, backlinks: null, pin: null, backlinkNotice: null });
+const expiredLink = "Link revision unavailable; refresh and select again.";
 const safeMessage = (value: string) => value.replace(/[\p{Cc}\p{Cf}]/gu,
   (char) => `\\u{${char.codePointAt(0)!.toString(16)}}`);
 class TaskClientFailure extends Error {}
@@ -75,7 +80,7 @@ export class TaskBridgeClient {
     const status = (input: unknown) => {
       if (!live) return;
       const parsed = LifecycleSchema.safeParse(input);
-      if (!parsed.success) { this.update({ notice: "INVALID_CORE_MESSAGE: invalid core lifecycle ignored." }); return; }
+      if (!parsed.success) { ++this.detailTicket; this.update({ reading: false, notice: "INVALID_CORE_MESSAGE: invalid core lifecycle ignored." }); return; }
       const next = parsed.data;
       if (next.core.generation < generation || next.revision < revision) return;
       const changed = next.core.generation !== generation;
@@ -121,6 +126,7 @@ export class TaskBridgeClient {
     ++this.epoch; ++this.detailTicket;
     this.snapshotWatermark = -1; this.detailWatermark = -1;
     this.pendingSnapshot = null; this.refreshAgain = false; this.needsInitial = true;
+    this.update({ backlinks: null, backlinkNotice: null });
     this.stopTimer();
   }
   private markDisconnected(notice: string) {
@@ -173,13 +179,14 @@ export class TaskBridgeClient {
     this.needsInitial = false;
     // Starting another request is not evidence that the previous failure has
     // recovered. Keep that warning visible throughout the bounded pending read.
-    this.update({ refreshing: true });
+    this.update({ refreshing: true, ...(this.state.pin ? { detailStale: true } : {}) });
     try {
       const result = await this.request({ protocolVersion: PROTOCOL_VERSION, requestId: this.id(),
         type: "tasks.snapshot", worldId: context.worldId, refresh });
       if (epoch !== this.epoch) return;
       if (result.kind !== "snapshot") throw new TaskClientFailure("INVALID_CORE_MESSAGE: unexpected task reply kind.");
       let observation = result.observation;
+      const suppliedSnapshot = observation.snapshot;
       if (observation.sequence < this.snapshotWatermark) {
         this.update({ notice: "Stale task observation ignored; retained data is unchanged." }); return;
       }
@@ -194,8 +201,9 @@ export class TaskBridgeClient {
       if (retained && observation.snapshot && sameGitObject(retained.metadataCommit, observation.snapshot.metadataCommit)) {
         const old = new Map(retained.summaries.map((row) => [row.id, row]));
         if (old.size !== observation.snapshot.summaries.length || observation.snapshot.summaries.some((row) =>
-          !old.has(row.id) || !sameSummary(row, old.get(row.id)!)))
-          throw new TaskClientFailure("INVALID_CORE_MESSAGE: immutable task revision changed its summaries.");
+          !old.has(row.id) || !sameSummary(row, old.get(row.id)!)) ||
+          this.state.backlinks && JSON.stringify(retained.backlinks) !== JSON.stringify(observation.snapshot.backlinks))
+          throw new TaskClientFailure("INVALID_CORE_MESSAGE: immutable task revision changed its summaries or backlinks.");
       }
       const changed = retained && observation.snapshot && !sameGitObject(retained.metadataCommit, observation.snapshot.metadataCommit);
       if (changed) {
@@ -205,12 +213,15 @@ export class TaskBridgeClient {
       this.snapshotWatermark = observation.sequence;
       // Domain outcomes already have observation.reason. notice is reserved
       // for client/transport failures, not a duplicate rendering of that reason.
-      this.update({ observation, notice: null });
+      const backlinks = observation.snapshot && (suppliedSnapshot || this.state.backlinks)
+        ? !changed && this.state.backlinks ? this.state.backlinks : indexTaskBacklinks(observation.snapshot) : null;
+      this.update({ observation, backlinks, notice: null });
       this.reconcileDetail(refresh || Boolean(changed));
-    } catch (error) { if (epoch === this.epoch) this.update({ notice: this.failure(error) }); }
+    } catch (error) { if (epoch === this.epoch) { ++this.detailTicket; this.update({ reading: false, notice: this.failure(error) }); } }
     finally {
       if (this.pendingSnapshot === pending) {
         this.pendingSnapshot = null; this.update({ refreshing: false });
+        if (this.state.pin) this.reconcileDetail();
         if (this.refreshAgain) { this.refreshAgain = false; if (this.isVisible()) void this.snapshot(true); }
       }
     }
@@ -218,6 +229,8 @@ export class TaskBridgeClient {
 
   select(taskId: string) {
     if (!TaskIdSchema.safeParse(taskId).success) return;
+    ++this.detailTicket;
+    this.update({ pin: null, backlinkNotice: null, reading: false });
     if (taskId !== this.state.selectedTaskId) {
       ++this.detailTicket;
       this.update({ selectedTaskId: taskId, detail: null, detailRevision: null, reading: false,
@@ -225,10 +238,60 @@ export class TaskBridgeClient {
     }
     this.reconcileDetail(true);
   }
+
+  async inspectPinned(input: TaskBacklinkTarget, association: TaskBacklinkAssociation, stillCurrent: () => boolean): Promise<boolean> {
+    const ticket = ++this.detailTicket, epoch = this.epoch;
+    const parsed = TaskBacklinkTargetSchema.safeParse(input);
+    const target = parsed.success ? parsed.data : null;
+    const valid = () => {
+      const snapshot = this.state.observation?.snapshot;
+      if (!target || !this.state.connected || this.state.notice || epoch !== this.epoch || ticket !== this.detailTicket ||
+          !stillCurrent() || !snapshot || this.state.backlinks !== association.index ||
+          snapshot.backlinks?.status !== "complete" || snapshot.provider !== target.provider ||
+          snapshot.repositoryId !== target.repositoryId || snapshot.worldId !== target.worldId ||
+          !sameGitObject(snapshot.metadataCommit, target.metadataCommit)) return undefined;
+      return association.index.lookup(association.path).find((row) => row.target.taskId === target.taskId &&
+        sameGitObject(row.target.issueBlob, target.issueBlob));
+    };
+    this.update({ reading: false, backlinkNotice: null });
+    try {
+      const row = valid();
+      if (!row || !target) { this.update({ backlinkNotice: expiredLink }); return false; }
+      this.update({ reading: true });
+      const cached = this.state.detail && this.state.detailRevision && sameGitObject(this.state.detailRevision, target.metadataCommit) &&
+        sameSummary(this.state.detail, row.summary) ? this.state.detail : null;
+      const result = cached ? null : await this.request({ protocolVersion: PROTOCOL_VERSION, requestId: this.id(),
+        type: "tasks.read", worldId: target.worldId, metadataCommit: target.metadataCommit, taskId: target.taskId });
+      if (!valid()) {
+        if (epoch === this.epoch && ticket === this.detailTicket) this.update({ backlinkNotice: expiredLink });
+        return false;
+      }
+      if (result && (result.kind !== "read" || !result.result.ok || result.sequence < this.detailWatermark)) {
+        this.update({ backlinkNotice: expiredLink }); return false;
+      }
+      const detail = cached ?? (result?.kind === "read" && result.result.ok ? result.result.detail : null);
+      const refs = association.index.references(target.taskId);
+      if (!detail || !sameSummary(detail, row.summary) || detail.fileRefs.length !== refs.length ||
+          detail.fileRefs.some((ref, index) => ref.path !== refs[index]?.path || ref.navigation !== refs[index]?.navigation))
+        throw new TaskClientFailure("INVALID_CORE_MESSAGE: task detail differs from its explicit reference projection.");
+      if (result) this.detailWatermark = result.sequence;
+      this.update({ selectedTaskId: target.taskId, detail, detailRevision: target.metadataCommit, pin: target,
+        detailStale: this.state.refreshing || this.state.observation?.status !== "observed", detailNotice: null, backlinkNotice: null });
+      return true;
+    } catch (error) {
+      if (epoch === this.epoch && ticket === this.detailTicket) this.update({ notice: this.failure(error), backlinkNotice: expiredLink });
+      return false;
+    } finally { if (epoch === this.epoch && ticket === this.detailTicket) this.update({ reading: false }); }
+  }
   private reconcileDetail(explicit = false) {
     const snapshot = this.state.observation?.snapshot;
     const taskId = this.state.selectedTaskId;
     if (!taskId) return;
+    if (this.state.pin) {
+      this.update({ detailStale: !this.state.connected || Boolean(this.state.notice) || this.state.refreshing ||
+        this.state.observation?.status !== "observed" || !snapshot || !sameGitObject(snapshot.metadataCommit, this.state.pin.metadataCommit) });
+      return;
+    }
     const summary = snapshot?.summaries.find((item) => item.id === taskId);
     if (!summary || !snapshot) {
       ++this.detailTicket;
