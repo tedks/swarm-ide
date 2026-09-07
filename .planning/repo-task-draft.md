@@ -251,6 +251,12 @@ resolution and require the same reference and exact content bytes/digest.
 Unrelated commit advancement also fails. Never silently refresh or update UI
 cache; no timer or scan on typing/focus.
 
+Task-bearing prepare additionally requires exactly one non-null resolved disk
+attachmentPath and the existing canonical file/range checks. Reject otherwise
+valid reference-only directory/service focus as STALE_CONTEXT for this extension;
+plain draft support is unchanged. Include a hostile-renderer valid-pin plus
+reference-only-focus regression, not just a disabled UI button.
+
 Reuse 10-second metadata/5-second Git-command limits and the owned parser worker
 within the existing 30-second total context deadline. Pass cancellation through
 and dispose exact owned children/worker, not just Promise.race their result;

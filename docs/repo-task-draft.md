@@ -249,6 +249,13 @@ with a task-bearing prepare returns
 `UNSUPPORTED_CONTROL` (“Repository-task context is unavailable”), never drops
 the task. Plain drafts remain usable. No new public task/agent command is needed.
 
+For task-bearing preparation the core additionally requires its resolved
+`AgentContextTarget.attachmentPath` to name exactly one supported disk file and
+the existing canonical broker/range checks to succeed. A directory/service
+reference-only target (`attachmentPath:null`) is `STALE_CONTEXT` here, even if
+it is valid for a plain draft. Test a hostile renderer sending such a focus
+with a valid task pin; UI disabling alone does not enforce this source contract.
+
 The resolver reuses `TaskGitReader.resolve/scan` and the owned
 `parseTaskMetadata` worker in a new `core/tasks/draft-context.ts`. For the first
 bounded implementation, one explicit prepare/revalidate may scan the existing
