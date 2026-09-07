@@ -1,0 +1,41 @@
+// @vitest-environment jsdom
+import { act, cleanup, fireEvent, render, screen, within } from "@testing-library/react";
+import { afterEach, expect, it, vi } from "vitest";
+import { TaskContext, type TaskContextProps } from "../app/renderer/tasks/TaskContext";
+import { taskDetailFixture, taskObservationFixture, TASK_FIXTURE_COMMIT } from "../fixtures/tasks";
+import { initialSnapshot } from "../fixtures/world";
+import { PROTOCOL_VERSION, type CoreRequest, type CoreResponse } from "../protocol/schema";
+afterEach(() => { cleanup(); delete window.swarm; });
+const props = (): TaskContextProps => ({ selectedTaskId: "task-fixture", detail: taskDetailFixture(), snapshot: taskObservationFixture().snapshot,
+  detailRevision: TASK_FIXTURE_COMMIT, detailStale: false, reading: false, notice: null, onSelect: vi.fn(), onReveal: vi.fn(), onReturnToSource: vi.fn(),
+  connected: true, generation: 1, journal: null, journalRetained: false, run: null, onJournal: vi.fn() });
+function response(input: CoreRequest, comment: string): CoreResponse {
+  if (input.type !== "taskActivity.read") throw new Error("Unexpected request");
+  const snapshot = initialSnapshot(); snapshot.world.id = input.worldId; snapshot.project.id = input.repositoryId;
+  return { protocolVersion: PROTOCOL_VERSION, requestId: input.requestId, ok: true, sequence: 1, snapshot,
+    taskActivity: { worldId: input.worldId, repositoryId: input.repositoryId, taskId: input.taskId, metadataCommit: input.metadataCommit, unavailable: null,
+      activity: { blob: taskDetailFixture().blob, createdAt: null, total: 1, omitted: 0, status: "complete", events: [{ ordinal: 0, time: "2026-09-07T12:00:00Z", who: "Fixture", what: "commented", comment }] } } };
+}
+it("shows compact metadata, literal real history and exact dependency titles; not an inferred agent log", async () => {
+  const input = props();
+  input.snapshot!.summaries.push({ ...input.snapshot!.summaries[0]!, id: "blocker", title: "Approve the interface" });
+  input.detail = { ...input.detail!, blockedBy: [{ taskId: "blocker", status: "unstarted", diagnostics: [] }] };
+  window.swarm = { request: vi.fn(async (request) => response(request, "<b>Review complete</b>")), onEvent: () => () => {} };
+  render(<TaskContext {...input} />);
+  expect(await screen.findByText("<b>Review complete</b>")).toBeTruthy();
+  const button = screen.getByRole("button", { name: "Select dependency blocker" });
+  expect(button.textContent).toBe("Approve the interface"); fireEvent.click(button); expect(input.onSelect).toHaveBeenCalledWith("blocker");
+  expect(screen.getByText("No agent activity in this scope.")).toBeTruthy();
+  expect(screen.queryByRole("heading", { name: "Description" })).toBeNull();
+});
+it("late previous-task history cannot overwrite the current selection", async () => {
+  const pending: { input: CoreRequest; resolve: (response: CoreResponse) => void }[] = [];
+  window.swarm = { request: (input) => new Promise((resolve) => pending.push({ input, resolve })), onEvent: () => () => {} };
+  const input = props(), view = render(<TaskContext {...input} />);
+  view.rerender(<TaskContext {...input} selectedTaskId="another" detail={{ ...input.detail!, id: "another" }} />);
+  await act(async () => { pending[1]!.resolve(response(pending[1]!.input, "Current update")); });
+  await act(async () => { pending[0]!.resolve(response(pending[0]!.input, "Old update")); });
+  expect(screen.getByText("Current update")).toBeTruthy(); expect(screen.queryByText("Old update")).toBeNull();
+  view.rerender(<TaskContext {...input} selectedTaskId="missing" detail={null} />);
+  expect(within(screen.getByRole("region", { name: "Task context" })).queryByText("Current update")).toBeNull();
+});

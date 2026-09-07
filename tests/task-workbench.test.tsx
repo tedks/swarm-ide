@@ -200,13 +200,13 @@ it("runs the demo palette commands without launching agents or building, and cle
 async function selectTask() {
   fireEvent.click(screen.getByRole("button", { name: "Select task task-fixture" }));
   await screen.findByRole("region", { name: "Task details" });
-  await screen.findByRole("heading", { name: "Inspect a repository task" });
+  await within(screen.getByRole("region", { name: "Task details" })).findByRole("heading", { name: "Inspect a repository task" });
 }
 function showDetails() {
   fireEvent.click(within(document.getElementById("information-panel")!).getByRole("button", { name: "Show task details" }));
 }
 function reveal(path: string, line: number | null) {
-  const button = screen.getByRole("button", { name: `Reveal working file ${path}${line === null ? "" : ` at line ${line}`}` });
+  const button = within(screen.getByRole("region", { name: "Task details" })).getByRole("button", { name: `Reveal working file ${path}${line === null ? "" : ` at line ${line}`}` });
   act(() => button.focus());
   fireEvent.click(button);
 }
@@ -316,7 +316,7 @@ describe("task inspection in the source cockpit", () => {
   it("returns from a task-only document to the graph-only layout", async () => {
     setup(); render(<App />);
     const row = await screen.findByRole("button", { name: "Select task task-fixture" });
-    fireEvent.doubleClick(row);
+    fireEvent.click(row);
     const document = await screen.findByRole("region", { name: "Task document" });
     fireEvent.click(within(document).getByRole("button", { name: "Return to source" }));
     expect(screen.queryByRole("region", { name: "Task document" })).toBeNull();

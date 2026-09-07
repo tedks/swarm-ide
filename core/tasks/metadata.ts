@@ -6,6 +6,7 @@ import {
 } from "../../protocol/tasks";
 import { TaskReaderError } from "./git-reader";
 import { METADATA_WORKER_SOURCE } from "./metadata-worker";
+import { projectTaskActivity } from "./activity";
 
 export interface TaskMetadataInput { id: string | null; blob: GitObjectId; bytes: Uint8Array }
 const requireHere = createRequire(__filename);
@@ -84,6 +85,10 @@ async function parseDocuments(input: TaskMetadataInput[], signal: AbortSignal, d
 /** No source path is opened here. Every returned ref is literal metadata and
  * syntactic navigation eligibility is not filesystem authority. */
 export async function parseTaskMetadata(input: TaskMetadataInput[], signal: AbortSignal, deadline: number): Promise<TaskDetail[]> {
+  return (await parseTaskMetadataBatch(input, signal, deadline)).details;
+}
+
+export async function parseTaskMetadataBatch(input: TaskMetadataInput[], signal: AbortSignal, deadline: number) {
   if (signal.aborted || !Number.isFinite(deadline) || deadline <= Date.now()) fail("TASK_OBSERVATION_FAILED");
   if (input.length > TASK_LIMITS.issues + 1) limited();
   let total = 0;
@@ -149,7 +154,7 @@ export async function parseTaskMetadata(input: TaskMetadataInput[], signal: Abor
     if (encodedBytes(detail) > TASK_LIMITS.detailBytes) limited();
     const validated = TaskDetailSchema.safeParse({ ...detail, counts: { ...detail.counts, blocks: 0, blockedBy: 0 } });
     if (!validated.success) malformed();
-    return [{ detail: validated.data, blocks, blockedBy }];
+    return [{ detail: validated.data, blocks, blockedBy, activity: projectTaskActivity(doc, entry.blob) }];
   });
   const byId = new Map(raw.map((item) => [item.detail.id, item]));
   // Interpret both recorded directions as directed blocker -> blocked edges.
@@ -188,5 +193,5 @@ export async function parseTaskMetadata(input: TaskMetadataInput[], signal: Abor
   }).sort((a, b) => a.id < b.id ? -1 : a.id > b.id ? 1 : 0);
   if (encodedBytes(details) > TASK_LIMITS.cacheBytes) limited();
   if (signal.aborted || Date.now() >= deadline) fail("TASK_OBSERVATION_FAILED");
-  return details;
+  return { details, activities: new Map(raw.map((item) => [item.detail.id, item.activity])) };
 }

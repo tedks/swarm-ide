@@ -199,6 +199,22 @@ process.parentPort?.on("message", async (event) => {
       }
       return;
     }
+    if (request.type === "taskActivity.read") {
+      if (shuttingDown || request.worldId !== provider.snapshot().world.id || request.repositoryId !== provider.snapshot().project.id) {
+        post(fail(requestId, "TASK_WORLD_MISMATCH", "Task activity requires the registered working repository.")); return;
+      }
+      try {
+        const tasks = await taskProviderPromise;
+        if (shuttingDown) throw new Error("Shutting down");
+        const taskActivity = tasks.activity ? await tasks.activity(request) : {
+          worldId: request.worldId, repositoryId: request.repositoryId, metadataCommit: request.metadataCommit,
+          taskId: request.taskId, activity: null, unavailable: "unsupported" as const,
+        };
+        if (shuttingDown) throw new Error("Shutting down");
+        post(parseCoreResponseForRequest({ ...ok(requestId, provider.snapshot()), taskActivity }, request));
+      } catch { post(fail(requestId, "TASK_OBSERVATION_FAILED", "Task activity is unavailable in this core lifetime.")); }
+      return;
+    }
     if (isTaskRequest(request)) {
       if (shuttingDown) { post(fail(requestId, "CORE_UNAVAILABLE", "Core is shutting down; no task read was sent.")); return; }
       if (request.worldId !== provider.snapshot().world.id) {

@@ -65,7 +65,7 @@ describe("playable separate planning projections", () => {
     await screen.findByText(/1\/1 details read/);
     expect(h.onOpenTask).not.toHaveBeenCalled();
     fireEvent.click(screen.getByRole("button", { name: "Inspect graph task task-fixture" }));
-    expect(h.onOpenTask).not.toHaveBeenCalled();
+    expect(h.onOpenTask).toHaveBeenCalledExactlyOnceWith(h.props.tasks.observation!.snapshot, "task-fixture");
     fireEvent.click(screen.getByRole("button", { name: "Open task details" }));
     await waitFor(() => expect(h.onOpenTask).toHaveBeenCalledWith(h.props.tasks.observation!.snapshot, "task-fixture"));
     expect(h.onOpenFile).not.toHaveBeenCalled();

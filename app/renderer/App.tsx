@@ -40,6 +40,7 @@ import { TaskBridgeClient } from "./tasks/client";
 import { PlanWorkspace } from "./plans/PlanWorkspace";
 import { TaskPanel } from "./tasks/TaskPanel";
 import { TaskDetail } from "./tasks/TaskDetail";
+import { TaskContext } from "./tasks/TaskContext";
 import { taskLineTarget, validTaskReference } from "./tasks/reveal";
 import type { TaskFileRef, TaskBacklinkTarget, TaskSnapshot } from "../../protocol/tasks";
 import { isRepositoryPath, type RepositoryEntry, type RepositoryRequest } from "../../protocol/repository";
@@ -295,7 +296,8 @@ export function App() {
     try {
       const opened = await taskClient.inspectGraphTask(snapshot, id, () => navigationIntent.current === intent && mounted.current);
       if (!opened || navigationIntent.current !== intent || !mounted.current) return false;
-      setRevealNotice(""); inspectTask(id); setCompactPanel("info");
+      setRevealNotice(""); inspectTask(id); setCompactPanel(null);
+      setJournalVisible(false); setTaskDocumentOpen(true); setTaskDocumentVisible(true);
       return true;
     } finally { if (pendingBacklinkIntent.current === intent) pendingBacklinkIntent.current = null; }
   }, [taskClient, inspectTask]);
@@ -1305,7 +1307,7 @@ export function App() {
       <aside id="information-panel" aria-label="Information panel" className="instrument-panel panel">
         {externalInformation ? <ExternalAgentInformation client={externalAgents} onReturn={() => { setExternalInformation(false); returnToSourceInformation(); }} onOpen={(path) => { setExternalInformation(false); openLinkedFile(path); }} /> : <>
         {revealNotice ? <p ref={revealNoticeElement} className="tasks-reveal-notice" role="status" tabIndex={0}>{revealNotice}</p> : null}
-        {contextSubject?.kind === "task" ? <div className="artifact-context" data-context-kind="task" data-context-subject={contextSubject.id}><TaskDetail returnButtonRef={taskReturnButton} selectedTaskId={contextSubject.id} snapshot={tasks.observation?.snapshot ?? null} detail={tasks.detail?.id === contextSubject.id ? tasks.detail : null} detailRevision={tasks.detailRevision} detailStale={tasks.detailStale || tasks.refreshing || tasks.observation?.status !== "observed" || Boolean(tasks.notice)} reading={tasks.reading} notice={tasks.detailNotice} attachment={taskAttachment(contextSubject.id)} onSelect={selectTask} onReveal={(ref) => { void revealTaskReference(ref); }} onReturnToSource={returnToSourceInformation} onShowDocument={showPinnedTaskDocument} onRefresh={() => { void taskClient.refresh(); }} /></div> : <>
+        {contextSubject?.kind === "task" ? <div className="artifact-context" data-context-kind="task" data-context-subject={contextSubject.id}><TaskContext returnButtonRef={taskReturnButton} selectedTaskId={contextSubject.id} snapshot={tasks.observation?.snapshot ?? null} detail={tasks.detail?.id === contextSubject.id ? tasks.detail : null} detailRevision={tasks.detailRevision} detailStale={tasks.detailStale || tasks.refreshing || tasks.observation?.status !== "observed" || Boolean(tasks.notice)} reading={tasks.reading} notice={tasks.detailNotice} attachment={taskAttachment(contextSubject.id)} onSelect={openTaskDocument} onReveal={(ref) => { void revealTaskReference(ref); }} onReturnToSource={returnToSourceInformation} onShowDocument={showPinnedTaskDocument} onRefresh={() => { void taskClient.refresh(); }} connected={tasks.connected} generation={coreGenerationRef.current} journal={journal.observation} journalRetained={Boolean(journal.notice) || journal.busy} run={liveAgents.run} onJournal={showJournal} /></div> : <>
         {tasks.selectedTaskId ? <button className="tasks-show-details" onClick={showTaskDetails}>Show task details</button> : null}
         <ContextPane subject={contextSubject} sections={contextSections} onOpen={openLinkedFile} onTask={(target) => { void inspectBacklink(target); }} onRefreshTasks={() => { void taskClient.refresh(); }} headingRef={sourceInformationHeading} />
         </>}

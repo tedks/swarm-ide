@@ -8,6 +8,25 @@ export interface TaskGraphProjection {
   nodes: TaskGraphNode[]; edges: TaskGraphEdge[]; loaded: number; attempted: number; total: number;
   unread: number; omittedEdges: number; omittedEndpoints: number;
 }
+
+/** Scope changes presentation only; unread/omitted coverage remains on the full
+ * projection. A missing anchor is not replaced by a different task. */
+export function scopeTaskGraph(graph: TaskGraphProjection, anchor: string | null, whole: boolean) {
+  if (whole) return { nodes: graph.nodes, edges: graph.edges, hidden: 0 };
+  const ids = anchor === null ? new Set(graph.nodes.slice(0, 16).map((node) => node.id)) : new Set([anchor]);
+  if (anchor !== null) for (const edge of graph.edges) {
+    if (edge.source === anchor) ids.add(edge.target);
+    if (edge.target === anchor) ids.add(edge.source);
+  }
+  const candidates = graph.nodes.filter((node) => ids.has(node.id));
+  const capped = candidates.slice(0, 48);
+  const selected = anchor === null ? undefined : candidates.find((node) => node.id === anchor);
+  if (selected && !capped.includes(selected)) capped[capped.length - 1] = selected;
+  const shown = new Set(capped.map((node) => node.id));
+  const nodes = candidates.filter((node) => shown.has(node.id));
+  const visible = new Set(nodes.map((node) => node.id));
+  return { nodes, edges: graph.edges.filter((edge) => visible.has(edge.source) && visible.has(edge.target)), hidden: graph.nodes.length - nodes.length };
+}
 export function graphSummaries(snapshot: TaskSnapshot): TaskSummary[] {
   return [...snapshot.summaries].sort((a, b) => Number(a.status === "closed") - Number(b.status === "closed") ||
     (a.id < b.id ? -1 : a.id > b.id ? 1 : 0)).slice(0, TASK_GRAPH_LIMITS.details);
@@ -85,4 +104,30 @@ export function dependencyPositions(ids: string[], edges: { source: string; targ
     const row = rows.get(column) ?? 0; rows.set(column, row + 1);
     return [id, { x: column * 260, y: row * 104 }];
   }));
+}
+
+/** Pack independent dependency components into shelves instead of one enormous
+ * column of isolated tasks. Edges inside each component retain their layers. */
+export function compactTaskPositions(ids: string[], edges: { source: string; target: string }[]) {
+  const neighbors = new Map(ids.map((id) => [id, new Set<string>()]));
+  for (const edge of edges) if (neighbors.has(edge.source) && neighbors.has(edge.target)) {
+    neighbors.get(edge.source)!.add(edge.target); neighbors.get(edge.target)!.add(edge.source);
+  }
+  const visited = new Set<string>(), positions = new Map<string, { x: number; y: number }>();
+  let x = 0, y = 0, shelf = 0;
+  for (const root of ids) {
+    if (visited.has(root)) continue;
+    const component: string[] = [], pending = [root];
+    while (pending.length) {
+      const id = pending.pop()!; if (visited.has(id)) continue;
+      visited.add(id); component.push(id); pending.push(...neighbors.get(id)!);
+    }
+    const layout = dependencyPositions(component, edges);
+    const width = Math.max(...[...layout.values()].map((point) => point.x)) + 260;
+    const height = Math.max(...[...layout.values()].map((point) => point.y)) + 104;
+    if (x && x + width > 1040) { x = 0; y += shelf; shelf = 0; }
+    for (const [id, point] of layout) positions.set(id, { x: x + point.x, y: y + point.y });
+    x += width; shelf = Math.max(shelf, height);
+  }
+  return positions;
 }

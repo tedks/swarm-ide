@@ -63,9 +63,9 @@ describe("task sidebar density without losing authority", () => {
     expect(input.onSelect).not.toHaveBeenCalled(); expect(input.onOpen).not.toHaveBeenCalled();
     const task = screen.getByRole("button", { name: "Select task task-fixture" });
     expect(task.getAttribute("aria-pressed")).toBe("true");
-    fireEvent.keyDown(task, { key: "Enter" });
+    fireEvent.click(task);
     expect(input.onOpen).toHaveBeenCalledExactlyOnceWith("task-fixture");
-    fireEvent.doubleClick(task); expect(input.onOpen).toHaveBeenCalledTimes(2);
+    fireEvent.click(task); expect(input.onOpen).toHaveBeenCalledTimes(2);
     fireEvent.click(screen.getByRole("button", { name: "Show task details" }));
     expect(input.onShowDetails).toHaveBeenCalledOnce();
   });
