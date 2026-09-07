@@ -1,10 +1,11 @@
 import { CONTEXT_ROWS, type ContextEvidenceRef, type ContextSection, type ContextSubject, type ObservedServiceContext, type ServiceContextObservation } from "../../../protocol/context";
 import type { WorkspaceSnapshot } from "../../../protocol/schema";
-import { isRepositoryPath } from "../../../protocol/repository";
-import type { BuildLinkSnapshot } from "../repository/layers";
-import { buildTargets } from "../repository/build-view";
 import type { TaskClientState } from "../tasks/client";
 import { taskBacklinkSection } from "./task-backlinks";
+import { indexCapture } from "./build-targets";
+import { illustrativeLatency, type LatencyProfile } from "./latency";
+export { indexCapture } from "./build-targets";
+export interface ContextInstrument extends ContextSection { empty?: string; latency?: LatencyProfile }
 
 export interface SourceReceipt { revision: string; receivedAt: string; realm: string; session: string }
 export interface ContextFile {
@@ -21,23 +22,6 @@ export function indexService(publication: ServiceContextObservation | undefined)
   }
   return { publication, paths };
 }
-export function indexCapture(capture: BuildLinkSnapshot | undefined) {
-  const paths = new Map<string, string[]>();
-  if (!capture || capture.links.length > (capture.observation ? 8000 : 4096) || new TextEncoder().encode(JSON.stringify(capture)).byteLength > (capture.observation ? 4 : 1) * 1024 * 1024 ||
-      [capture.repositoryId, capture.revision, capture.command].some((item) => !item || item.length > 512) || !Number.isFinite(Date.parse(capture.capturedAt))) return { capture: undefined, paths };
-  const targets = new Set(buildTargets(capture));
-  // Same exact-reference relation as fileBuildTargets; invert it once for all
-  // paths instead of scanning the capture on every inspection/cursor movement.
-  for (const link of capture.links) {
-    if ([link.from, link.to].some((label) => label.length > 512) || !isRepositoryPath(link.toPath, true) || !isRepositoryPath(link.fromPath, true)) return { capture: undefined, paths: new Map<string, string[]>() };
-    if (!targets.has(link.from) || targets.has(link.to) || !isRepositoryPath(link.toPath)) continue;
-    const labels = paths.get(link.toPath) ?? [];
-    if (!labels.includes(link.from)) labels.push(link.from);
-    paths.set(link.toPath, labels);
-  }
-  for (const labels of paths.values()) labels.sort();
-  return { capture, paths };
-}
 export interface ContextObservations {
   snapshot: WorkspaceSnapshot; files: readonly ContextFile[]; service: ReturnType<typeof indexService>;
   capture: ReturnType<typeof indexCapture>; realm: string; session: string; ready: boolean;
@@ -50,25 +34,23 @@ function buildEvidence(p: ObservedServiceContext, current: boolean): ContextEvid
     revisionKind: "built", revision: `${p.buildId} · source ${p.sourceFingerprint} · inputs ${p.inputDigest}`, observedAt: p.observedAt,
     timeBasis: "producer", freshness: current ? "current" : "retained", coverage: "Complete retained example artifact only; other repository services unavailable" };
 }
-export function composeContext(subject: ContextSubject | null, input: ContextObservations): ContextSection[] {
+export function composeContext(subject: ContextSubject | null, input: ContextObservations): ContextInstrument[] {
   const { snapshot, service, capture } = input;
   if (!subject) return [];
   if (subject.repositoryId !== snapshot.project.id || subject.worldId !== snapshot.world.id) return [{ id: "unavailable", title: "Evidence unavailable", notice: "The inspected artifact belongs to a different repository or world.", rows: [] }];
-  const sections: ContextSection[] = [];
+  const sections: ContextInstrument[] = [];
   const file = subject.kind === "file" ? input.files.find((item) => item.path === subject.path) : undefined;
   const read = file?.contextRead;
   const readCurrent = Boolean(input.ready && read?.realm === input.realm && read.session === input.session && file?.revision === read.revision && !["error", "conflict", "unknown", "loading"].includes(file?.status ?? "error"));
   const dirty = Boolean(file && file.content !== file.savedContent);
   if (subject.kind === "file") {
-    sections.push({ id: "source", title: "Working source", rows: [{ label: "Path", value: subject.path }, { label: "Editor", value: file?.status ?? "Not open" }], notice: bounded(file?.message ?? "Inspect or explicitly open this file to observe source; Context does not read files.") });
-    if (read) sections.push({ id: "source-read", title: "Last read from working file", rows: [{ label: "SHA-256", value: read.revision }], evidence: {
+    sections.push({ id: "source", title: "Working source", rows: [{ label: "Path", value: subject.path }, { label: "Editor", value: dirty ? `${file?.status} · unsaved changes` : file?.status ?? "Not open" }],
+      notice: [file && ["error", "conflict", "unknown", "loading"].includes(file.status) ? bounded(file.message) : "",
+        dirty ? "Unsaved buffer is not represented by this build." : ""].filter(Boolean).join(" ") || undefined,
+      evidence: read ? {
       provider: "Source broker", repositoryId: subject.repositoryId, worldId: subject.worldId, origin: `repo://${subject.path}`, revisionKind: "source-read", revision: read.revision,
       observedAt: read.receivedAt, timeBasis: "client receipt", freshness: readCurrent ? "current" : "retained", coverage: "One broker-validated working file read; not a continuous disk assertion",
-    } });
-    sections.push({ id: "buffer", title: "Local editor buffer", rows: [{ label: "State", value: dirty ? "Unsaved buffer" : "No unsaved text difference" }], evidence: {
-      provider: "Local editor", repositoryId: subject.repositoryId, worldId: subject.worldId, origin: `buffer:${subject.path}`, revisionKind: "buffer", revision: String(file?.bufferGeneration ?? 0),
-      observedAt: file?.bufferChangedAt ?? null, timeBasis: file?.bufferChangedAt ? "local edit" : "unavailable", freshness: "current", coverage: "Local buffer generation only; not a Git, build or deployment revision",
-    }, notice: dirty ? "Unsaved buffer is not represented by this build." : undefined });
+    } : undefined });
   }
   if (subject.kind === "directory") {
     const directory = snapshot.graphs.find((graph) => graph.topologyId === "repo")?.directory;
@@ -80,7 +62,7 @@ export function composeContext(subject: ContextSubject | null, input: ContextObs
   if (["file", "service", "interface", "edge"].includes(subject.kind)) {
     const p = service.publication;
     const matching = p?.status === "observed" && p.repositoryId === subject.repositoryId && p.worldId === subject.worldId && p.buildId === snapshot.revisions.built.id && p.sourceFingerprint === snapshot.revisions.built.sourceFingerprint;
-    if (!matching) sections.push({ id: "services", title: "Service relationships", notice: p?.status === "unavailable" ? p.reason : "Service artifact unavailable; no repository-wide service coverage.", rows: [] });
+    if (!matching) sections.push({ id: "services", title: "Declared services", empty: "No services", notice: "No matching service observation.", rows: [] });
     else {
       const record = p.service;
       const pathMatch = subject.kind === "file" ? service.paths.get(subject.path) : undefined;
@@ -100,18 +82,28 @@ export function composeContext(subject: ContextSubject | null, input: ContextObs
       if (own) for (const path of record.implementationPaths) rows.push({ label: "Implementation source", value: path, link: { kind: "source", path } });
       if (own || interfaceIds.some((id) => allInterfaces.some((item) => item.id === id))) rows.push({ label: "Service configuration", value: record.manifestPath, link: { kind: "source", path: record.manifestPath } });
       const current = input.ready && snapshot.revisions.working.evidence === "observed" && p.sourceFingerprint === snapshot.revisions.working.fingerprint && snapshot.reconciliation.status === "green" && graph?.reconciliation === "green" && graph.inputFingerprint === p.sourceFingerprint && (subject.kind !== "file" || readCurrent);
-      sections.push({ id: "services", title: "Service relationships", evidence: buildEvidence(p, current), rows, notice: !rows.length ? "No association in the retained example artifact; other service coverage unavailable." : edge ? "Declared relationship, not an observed callsite." : !current ? "Retained build facts; not verified against the current inspected source." : undefined });
+      sections.push({ id: "services", title: "Declared services", evidence: buildEvidence(p, current), rows, empty: !rows.length ? "No services" : undefined,
+        notice: !rows.length ? "No association in this service artifact; other service coverage unavailable." : edge ? "Declared relationship, not an observed callsite." : !current ? "Retained build facts; not verified against the current inspected source." : undefined });
     }
   }
   if (subject.kind === "file") {
     const c = capture.capture;
-    const labels = c?.repositoryId === subject.repositoryId ? capture.paths.get(subject.path) ?? [] : undefined;
-    sections.push(labels && c ? { id: "capture", title: c.observation ? "Declared build references" : "Direct references in CAPTURE", rows: labels.map((label) => ({ label: c.observation ? "Referencing rule" : "Captured target", value: label })), evidence: {
+    const membership = c?.repositoryId === subject.repositoryId && (!capture.worldId || capture.worldId === subject.worldId) ? capture.forFile(subject.path) : undefined;
+    const evidence: ContextEvidenceRef | undefined = membership && c ? {
       provider: c.observation ? "Repository Bazel query" : "Captured Bazel query", repositoryId: c.repositoryId, worldId: subject.worldId, origin: c.command, revisionKind: c.observation ? "build-query" : "capture", revision: c.revision,
       observedAt: c.capturedAt, timeBasis: "producer", freshness: c.observation ? input.ready && c.observation.status === "current" ? "current" : "retained" : "CAPTURE", coverage: c.observation?.coverage ?? "Recorded entries only; unknown outside this dated capture",
-    }, notice: c.observation ? `Local declaration observation ${c.observation.status}; ${labels.length ? "references, not exclusive ownership or binary build evidence" : "no references in returned scope; omitted scope remains unknown"}.` : labels.length ? "Captured references are not current ownership." : "No direct references in this capture; current target ownership unavailable." } : { id: "capture", title: "Build references", notice: "No bounded registered build observation for this repository.", rows: [] });
+    } : undefined;
+    const scope = !membership ? "No build observation yet." : c?.observation ? `${c.observation.complete ? "Returned query scope" : "Partial query scope"} · declarations, not compiled binaries.` : "Recorded capture only; not current ownership.";
+    sections.push({ id: "capture", title: "Direct build targets", rows: (membership?.direct ?? []).map((label) => ({ label: "Direct reference", value: label })), evidence,
+      empty: !membership?.direct.length ? "No targets" : undefined, notice: scope });
+    sections.push({ id: "indirect-targets", title: "Indirect build targets", rows: (membership?.indirect ?? []).map((label) => ({ label: "Transitive dependent", value: label })), evidence,
+      empty: !membership?.indirect.length ? "No targets" : undefined, notice: membership?.indirect.length ? "Includes this file through dependency paths; direct targets excluded." : scope });
+    const latency = illustrativeLatency(subject, file, membership?.direct ?? []);
+    sections.push({ id: "latency", title: "Latency", rows: [], latency, empty: latency ? undefined : "No latency profile", notice: latency ? undefined : "No declared demo tag or target profile for this file." });
+    // Global deployment metadata has no file/service membership. Do not turn a
+    // matching build ID or a service declaration into a deployment assertion.
+    sections.push({ id: "deployments", title: "Deployed services", rows: [], empty: "No services", notice: "No file-to-deployment association observed." });
   }
   if (subject.kind === "file") sections.push(taskBacklinkSection(subject, input.tasks));
-  sections.push({ id: "unsupported", title: "Providers not available", rows: [], notice: "Inferred bug, design and lesson links; deployment, runtime and function metrics are unavailable. Missing evidence is not zero." });
   return sections.map((section) => ({ ...section, total: section.rows.length, rows: section.rows.slice(0, CONTEXT_ROWS).map((row) => ({ ...row, label: bounded(row.label), value: row.link?.kind === "source" || section.id === "source" ? row.value : bounded(row.value) })) }));
 }

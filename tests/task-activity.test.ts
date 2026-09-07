@@ -4,7 +4,8 @@ import { stringify } from "yaml";
 import { projectTaskActivity } from "../core/tasks/activity";
 import { parseTaskMetadata, parseTaskMetadataBatch } from "../core/tasks/metadata";
 import { TaskActivityResultSchema } from "../protocol/task-activity";
-import { parseCoreResponseForRequest, PROTOCOL_VERSION } from "../protocol/schema";
+import { parseCoreRequest, parseCoreResponseForRequest, PROTOCOL_VERSION } from "../protocol/schema";
+import { TrustedResultSchema } from "../protocol/trusted-local";
 import { initialSnapshot } from "../fixtures/world";
 import { execFileSync } from "node:child_process";
 import { mkdtemp, mkdir, writeFile, rm } from "node:fs/promises";
@@ -49,6 +50,28 @@ it("response is bound to exact world, repository, metadata revision and task", (
   for (const delta of [{ worldId: "elsewhere" }, { repositoryId: "elsewhere" }, { taskId: "elsewhere" }, { metadataCommit: { ...blob, hex: "b".repeat(40) } }])
     expect(() => parseCoreResponseForRequest({ ...response, taskActivity: { ...result, ...delta } }, request)).toThrow();
   expect(() => parseCoreResponseForRequest(response, { type: "workspace.snapshot", requestId: "activity", protocolVersion: PROTOCOL_VERSION })).toThrow();
+});
+
+it("composes task activity and trusted-local namespaces without cross-result authority", () => {
+  const snapshot = initialSnapshot();
+  const activityRequest = parseCoreRequest({ type: "taskActivity.read", protocolVersion: PROTOCOL_VERSION, requestId: "joined",
+    worldId: snapshot.world.id, repositoryId: snapshot.project.id, metadataCommit: blob, taskId: "task" });
+  const trustedRequest = parseCoreRequest({ type: "trusted.snapshot", protocolVersion: PROTOCOL_VERSION, requestId: "joined" });
+  const taskActivity = TaskActivityResultSchema.parse({ worldId: snapshot.world.id, repositoryId: snapshot.project.id,
+    metadataCommit: blob, taskId: "task", activity: projectTaskActivity({ log_events: [] }, blob), unavailable: null });
+  const trusted = TrustedResultSchema.parse({ kind: "trusted", snapshot: {
+    instanceId: "11111111-1111-4111-8111-111111111111", profile: "trusted-local", workspace: "/fixture",
+    preparation: null, runToken: null, status: "idle", threadId: null, turnId: null, output: "", message: "", approvals: [],
+  } });
+  const base = { protocolVersion: PROTOCOL_VERSION, requestId: "joined", ok: true, sequence: 1, snapshot };
+  expect(parseCoreResponseForRequest({ ...base, taskActivity }, activityRequest).ok).toBe(true);
+  expect(parseCoreResponseForRequest({ ...base, trusted }, trustedRequest).ok).toBe(true);
+  for (const request of [activityRequest, trustedRequest]) {
+    expect(() => parseCoreResponseForRequest({ ...base, taskActivity, trusted }, request)).toThrow();
+    expect(() => parseCoreResponseForRequest(base, request)).toThrow();
+  }
+  expect(() => parseCoreResponseForRequest({ ...base, trusted }, activityRequest)).toThrow();
+  expect(() => parseCoreResponseForRequest({ ...base, taskActivity }, trustedRequest)).toThrow();
 });
 
 it("reads only its cached pinned Git/YAML history, retains old data on ref movement and awaits disposal", async () => {

@@ -243,7 +243,7 @@ describe("workbench shell", () => {
     fireEvent.click(screen.getByRole("button", { name: "Inspect connection service-e1" }));
     await waitFor(() => expect(document.querySelector(".artifact-context")?.getAttribute("data-context-subject")).toBe("service-e1"));
     expect(screen.getByRole("heading", { name: "service-e1" })).toBeTruthy();
-    expect(document.querySelector("[data-context-section='services']")?.textContent).toContain("Service artifact unavailable");
+    expect(document.querySelector("[data-context-section='services']")?.textContent).toContain("No matching service observation.");
 
     fireEvent.click(screen.getByRole("button", { name: /Build topology/ }));
     await waitFor(() => expect(requests.some((item) => item.type === "reconciliation.start")).toBe(true));
