@@ -15,8 +15,12 @@ independently establish this defect class on the exact pre-Q4 base.
   original test blob 6537abcd and service blob bee40ff; read recorded RED proof.
 - [x] (2026-09-07 07:05Z) Fresh baseline reproduced exactly 2 RED/1239 PASS;
   initial repair and 16 additional lifecycle cases pass complete quality.
-- [ ] Prove deterministic adversarial GREEN, full local build/suites, council fixpoint.
-- [ ] Normal standalone PR merge, Ditz synchronization, cleanup and ROOT handoff.
+- [x] (2026-09-07 07:21Z) Corrected b943888: 1260 quality tests/93 files,
+  all34 build targets and fresh13/13 local suites pass; native convergence CLEAN.
+- [ ] ROOT disposition of independently reproduced unowned Context failure,
+  then normal standalone PR merge and Ditz closure. No waiver presumed.
+- [x] (2026-09-07 07:23Z) Final evidence recorded, own Bazel/virtual resources
+  stopped, documentation pushed for ROOT handoff; repair issue remains open.
 
 ## Context and orientation
 
@@ -114,7 +118,18 @@ them RED on62eefb4 (1257 others pass): terminal-/grace-first reentrant cleanup
 invokes disposal twice, and a resolved handle extending a post-cutoff read queue
 escapes shutdown's wait. Registering cleanup before adapter entry and counting
 resolved handles awaiting registration address these without awaiting unresolved
-setup or arbitrary later read traffic. Convergence and repaired-tree gates remain.
+setup or arbitrary later read traffic. Convergence and repaired-tree gates are
+recorded below; they do not erase the separate Context boundary.
+
+Frozen b943888 full build34PASS5.629s; all13 local suitesPASS249.819s, quality
+1260PASS/93files and all23 shutdown-order cases pass. Unchanged owned-virtual
+rehearsal28.5s/cleanup1 proves four retained runs with emitted/retained counts
+7/7,81/81,2/2,3/3, four disposals, zero timers and activeAtClose unknown. No real
+model or external provider; production remains unavailable. Native fix-delta
+review CLEAN. Google acknowledgment-only then timeout and Anthropic timeout
+remain honest missing seats, not substituted or called clean. The later pass
+on materially corrected code is not a causal resolution or waiver of Context.
+PR46 remains held for ROOT disposition before landing or Q4 consumption.
 
 Revision note: initial bounded plan records assumptions, exact ownership and
 the distinction between reproducible defect class and unlocalized history.
@@ -122,3 +137,6 @@ Progress update: reserved shutdown barrier, preexisting cleanup deferral and
 reentrant idempotence preserve ordering without awaiting provider setup.
 Review update: retain original frozen failure and council RED receipts. Count
 correction is documentary; no assertions or verifiers weakened.
+Final-gate update: all local gates completed on frozen b943888. This plan-only
+evidence update does not change any tested executable input; historical and
+unowned failure attribution remain unresolved and explicitly separated.
