@@ -194,7 +194,7 @@ describe("truthful Context in the mounted workbench", () => {
       fireEvent.change(draft, { target: { value: "Preserve this local draft" } });
       await openContextPath("core/files.ts"); await waitFor(() => expect(subject()).toBe("core/files.ts"));
       await waitFor(() => expect(handoff.offered?.navigation).toBeDefined());
-      await waitFor(() => expect(EditorView.findFromDOM(document.querySelector(".cm-editor") ?? document.body)).toBeInstanceOf(EditorView));
+      await waitFor(() => expect(EditorView.findFromDOM(document.querySelector<HTMLElement>(".cm-editor") ?? document.body)).toBeInstanceOf(EditorView));
       const editorElement = document.querySelector(".cm-editor")!;
       const editor = EditorView.findFromDOM(editorElement)!;
       act(() => editor.dispatch({ selection: { anchor: 3 } }));
