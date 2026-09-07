@@ -5,7 +5,8 @@
 .topology-view { min-height: 0; min-width: 0; display: flex; }
 .topology-view[hidden] { display: none; }
 .topology-view > * { flex: 1; min-width: 0; }
-.build-graph-view { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
+.build-graph-view { display: flex; flex-direction: column; min-width: 0; min-height: 0; overflow: auto; }
+.build-graph-view > :not(.build-canvas) { flex-shrink: 0; }
 .build-target-controls { display: flex; gap: 5px; align-items: center; flex-wrap: wrap; padding: 6px; border-bottom: 1px solid #2a3e30; font: 9px monospace; }
 .build-target-controls form { display: flex; flex: 1; min-width: 150px; gap: 4px; }
 .build-target-controls input:not([type="checkbox"]) { flex: 1; min-width: 0; color: #c5d4c6; background: #0b1812; border: 1px solid #375440; padding: 4px; font: 10px monospace; }
@@ -15,7 +16,7 @@
 .build-root-chips { display: flex; gap: 4px; padding: 3px 6px; overflow-x: auto; }
 .build-root-chips button { flex-shrink: 0; }
 .build-capture-caption { padding: 3px 8px; color: #b8a37b; font: 9px monospace; }
-.build-canvas { flex: 1; min-height: 0; position: relative; }
+.build-canvas { flex: 1 0 160px; min-height: 160px; position: relative; }
 .build-target-node { position: relative; width: 210px; min-height: 56px; padding: 9px; background: #1b2c21; border: 1px solid #6c7853; border-radius: 5px; }
 .build-target-node small { color: #ad9f73; font: 7px monospace; display: block; margin-bottom: 5px; }
 .build-target-node strong { display: block; overflow-wrap: anywhere; color: #d0d6bb; font: 10px monospace; }
@@ -26,3 +27,14 @@
 .build-selection strong { flex: 1; min-width: 0; overflow-wrap: anywhere; }
 .build-view-empty, .build-empty-hint { padding: 15px; color: #b2ad8b; font: 11px/1.6 monospace; }
 .build-empty-hint { position: absolute; top: 0; left: 0; pointer-events: none; }
+.build-observation { padding: 6px 10px; font-size: 11px; border-bottom: 1px solid #30433a; color: #c4d3ca; }
+.build-observation strong { text-transform: uppercase; }
+.build-observation.status-green strong { color: #83dca4; }
+.build-observation.status-yellow strong { color: #e7c277; }
+.build-observation.status-red strong { color: #ef9690; }
+.build-observation button { margin-left: 10px; }
+.build-observation button { color: #c0d7c9; background: #193b2e; border: 1px solid #47705b; border-radius: 3px; font: 10px monospace; padding: 3px 7px; }
+.build-observation button:disabled { opacity: .55; }
+.build-observation { padding: 4px 8px; font-size: 10px; }
+.build-capture-caption:not(details) { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.build-capture-caption[open] { max-height: 80px; overflow: auto; }

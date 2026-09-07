@@ -1,11 +1,15 @@
 import { MarkerType, type Edge, type Node } from "@xyflow/react";
 import type { TopologyNodeData } from "../graph-adapter";
+import type { BuildTarget, BuildGraphObservation } from "../../../protocol/build-graph";
 
 export interface BuildLinkSnapshot {
   repositoryId: string;
   revision: string;
   capturedAt: string;
   command: string;
+  targets?: BuildTarget[];
+  graphEdges?: Array<{ from: string; to: string }>;
+  observation?: { status: BuildGraphObservation["status"]; coverage: string; complete: boolean };
   /** Bazel label plus path: rule targets map to their package, sources to their file. */
   links: Array<{ from: string; to: string; fromPath: string; toPath: string }>;
 }

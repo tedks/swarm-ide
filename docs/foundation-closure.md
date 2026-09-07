@@ -40,6 +40,15 @@ opening and honest partial/stale/unavailable coverage. Search closes only with
 its own passing local/review/normal-landing receipt; neither UI work nor search
 closes the following contextual/provider gaps.
 
+B1/PR52 replaces that path-bound production capture with a
+[bounded per-repository Bazel declaration observation](dynamic-build-graph.md).
+This closes only the supported local build-link data vertical when its own normal
+landing and final local receipt are verified: demand/explicit refresh, observed
+local definition/membership changes, retained error/stale evidence and exact typed
+file links. It does not close generic build/test execution, configured/external
+dependency closure, ignored/environment input tracking, metrics or the broad
+contextual-information issue. The original capture remains labelled test data only.
+
 Q4/PR44 and R3/PR46 are normal-merged at final PR44 `9e2f095`, exact tree
 `f0b8c4c2f40196cbbca3d711dde630c3c0e28735`, equal to the previously reviewed
 composition. That tree passed 34 build targets, all 13 fresh local suites and
