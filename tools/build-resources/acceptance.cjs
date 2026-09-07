@@ -1,6 +1,7 @@
 // Real Electron input and packaged renderer/core; DOM evaluation is observation
 // only. No synthetic jobs, mocked bridge responses or renderer state injection.
 const { app, BrowserWindow, ipcMain } = require("electron");
+const { execFileSync } = require("node:child_process");
 const fs = require("node:fs/promises"), path = require("node:path"), assert = require("node:assert/strict");
 const evidence = process.env.SWARM_RESOURCES_EVIDENCE;
 const errors = [], requests = []; let stage = "startup", currentWindow;
@@ -36,13 +37,18 @@ async function main() {
   });
   const paint = () => run(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve(true)))));
   const key = async (keyCode, modifiers = []) => {
-    const nativeKey = keyCode === "Space" ? " " : keyCode;
-    wc.sendInputEvent({ type: "keyDown", keyCode: nativeKey, modifiers });
+    // Use the owned X11 keyboard for Space: Electron's injected space sequence
+    // did not activate native <summary>. The harness already selected this
+    // owned window and supplied its private DISPLAY/Xauthority.
+    if (keyCode === "Space") {
+      execFileSync("xdotool", ["key", "--clearmodifiers", "space"], { timeout: 2000 });
+      await paint(); return;
+    }
+    wc.sendInputEvent({ type: "keyDown", keyCode, modifiers });
     // Chromium activates native buttons/details on the character event. Match
     // real keyboard delivery rather than down/up-only synthetic keypresses.
     if (keyCode === "Enter") wc.sendInputEvent({ type: "char", keyCode: "\r", modifiers });
-    if (keyCode === "Space") wc.sendInputEvent({ type: "char", keyCode: " ", modifiers });
-    wc.sendInputEvent({ type: "keyUp", keyCode: nativeKey, modifiers }); await paint();
+    wc.sendInputEvent({ type: "keyUp", keyCode, modifiers }); await paint();
   };
   const click = async (selector) => {
     await run((s) => {
@@ -181,6 +187,8 @@ main().catch(async (error) => {
     await fs.writeFile(path.join(evidence, "failure.png"), (await currentWindow.webContents.capturePage()).toPNG());
     await fs.writeFile(path.join(evidence, "failure-dom.txt"), await currentWindow.webContents.executeJavaScript("document.body.innerText").catch(() => ""));
   }
-  await fs.writeFile(path.join(evidence, "failure.json"), JSON.stringify({ stage, error: error.stack, rendererErrors: errors }, null, 2));
+  const keys = currentWindow && !currentWindow.isDestroyed()
+    ? await currentWindow.webContents.executeJavaScript("JSON.stringify({ keys: globalThis.__resourceProofKeys, active: document.activeElement?.outerHTML })").catch(() => null) : null;
+  await fs.writeFile(path.join(evidence, "failure.json"), JSON.stringify({ stage, error: error.stack, rendererErrors: errors, keys }, null, 2));
   console.error(error);
 });
