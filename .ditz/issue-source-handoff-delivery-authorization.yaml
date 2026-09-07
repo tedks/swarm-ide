@@ -18,3 +18,16 @@ log_events:
   who: Ted Smith
   what: started
   comment: ""
+- time: 2026-09-07T07:45:02-00:00
+  who: Ted Smith
+  what: commented
+  comment: 'Reviewed narrow repair pushed: production32920a3 ande9efa90; regressions
+    e06240e/9858d7e; plan-only3de1af8. Current authority captured after activation
+    and checked at actual delivery; stale owned retirement/negative ack isolation,
+    valid focus self-advance and generic draft/palette cancellation. Controlled late0a60
+    red and native-council9858 draft/palette red retained; frozen e9 quality1284PASS/2unchanged
+    R3 shutdown FAIL, Context25/independent7PASS; separate full34-target buildPASS.
+    OpenAI native+Google warm delta CLEAN after Important fix; Anthropic missing240s
+    timeout. This issue remains in_progress pending ROOT-reviewed composition/landing,
+    not an adopted product fix. Historical Context causality remains separately open.
+    See source-handoff-boundary.md. No R3 consumption or preview changes.'
