@@ -5,8 +5,8 @@ type: task
 component: default
 release:
 reporter: Ted Smith <tedks@riseup.net>
-status: in_progress
-disposition:
+status: closed
+disposition: fixed
 creation_time: 2026-09-07T09:29:01-00:00
 references: []
 log_events:
@@ -41,3 +41,12 @@ log_events:
     timeout unfilled. Final docs-only b87384b pushed, exact-head frozen gates running
     before normal merge. Parent remains open; no resolver/UI/provider activation or
     adoption.
+- time: 2026-09-07T10:14:12-00:00
+  who: Ted Smith
+  what: 'closed: fixed'
+  comment: PR48 normally merged6e11ce42 at exact approved eafe0fe + reviewed/tested
+    b87384b, identical tree05d04ecf. Final34-target build/all13 fresh local PASS,1342/98.
+    Native/Google full and fix-delta CLEAN; Anthropic timed out/unfilled. Strict V2/V1
+    history, next-write outer2, canonical/browser/integrity and disposal base only;
+    every attached Prepare unavailable. ROOT accepts precise RED sequencing; parent
+    and D4/D5/D6 remain open. No model or app/master/integration/human55175 adoption.
