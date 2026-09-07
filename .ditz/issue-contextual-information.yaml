@@ -65,6 +65,13 @@ log_events:
   what: commented
   comment: Q2 consumes existing typed service evidence and adds combined packaged
     Swarm retained-service core recovery/navigation proof.
+- time: 2026-09-07T04:21:20-00:00
+  who: Ted Smith
+  what: commented
+  comment: Q2 consumer landed PR42 normal7562668/integratione46c2af with exact declaration
+    navigation, historical/current provenance and new actual Swarm service-record
+    recovery proof. Broad Context requirements remain OPEN; no reverse knowledge,
+    live runtime/function metrics or model activity added.
 blocks:
 - meaningful-workbench-lenses
 - scoped-workbench-configuration
