@@ -37,7 +37,7 @@ export function TaskPanel({ observation, refreshing, connected, notice, selected
   const selectedVisible = selectedTaskId !== null && visible.some((task) => task.id === selectedTaskId);
   const status = observation?.status ?? "unobserved";
   const retainedAfterFailure = status === "observed" && notice !== null;
-  const current = status === "observed" && connected && !refreshing && !notice && !observation?.reason;
+  const current = status === "observed" && connected && !refreshing && notice === null && !observation?.reason;
 
   return <section className="rail-section task-ui task-panel" aria-label="Tasks">
     <div className={`task-panel-statusline${current ? " is-current" : ""}`}>

@@ -45,6 +45,12 @@ describe("task sidebar density without losing authority", () => {
     expect((screen.getByRole("button", { name: "Refresh tasks" }) as HTMLButtonElement).disabled).toBe(true);
   });
 
+  it("does not compact retained data even when a notice is an empty string", () => {
+    render(<TaskPanel {...props({ notice: "" })} />);
+    expect(screen.getByRole("status").closest(".is-current")).toBeNull();
+    expect(screen.getByText("Latest check failed or was ignored; retained data is not confirmed current.")).toBeTruthy();
+  });
+
   it("search and disclosure do not change selection, while deliberate activation still opens the exact task", () => {
     const input = props();
     render(<TaskPanel {...input} />);

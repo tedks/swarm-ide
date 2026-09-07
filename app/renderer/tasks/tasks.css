@@ -59,6 +59,7 @@
 .task-panel .task-heading button { padding: 2px 6px; }
 .task-panel .task-panel-statusline.is-current { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0 4px; }
 .task-panel .task-panel-statusline.is-current .task-heading { order: 1; }
+.task-panel .task-panel-statusline.is-current .task-heading, .task-panel .task-panel-statusline.is-current .task-observation { margin: 0; }
 .task-panel .task-panel-statusline.is-current .task-heading button { font-size: 9px; }
 .task-panel .task-observation { margin: 3px 0; gap: 2px; font-size: 9px; }
 .task-panel .task-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; margin: 4px 0; }
