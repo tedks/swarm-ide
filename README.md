@@ -99,6 +99,19 @@ nix develop --command bazel test --jobs=3 //...
 SWARM_VIRTUAL_DESKTOP_PORT=55174 nix develop --command bazel run --jobs=3 //tools:desktop-smoke
 ```
 
+To exercise the installation path itself after fetching the local Ditz branch:
+
+```bash
+nix develop --command bazel run --jobs=3 //tools/demo-install:smoke
+```
+
+This creates a fresh local Git clone, materializes its dependencies, and opens
+real files in that checkout and two disposable target repositories on owned
+virtual X11. It checks startup rejection and explicit-build authority, records
+screenshots under `artifacts/demo-install/`, and retains its temporary checkouts
+for inspection. Shared Nix/package download caches are allowed; this is not a
+cold-download benchmark. Run GUI scenarios one at a time.
+
 Automated GUI checks create and clean up their own Xvfb/Openbox desktop; they
 never drive your existing application window. See
 [development and visual verification](docs/development-loop.md) for additional
