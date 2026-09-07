@@ -16,6 +16,8 @@ Let separate implementation worktrees run packaged repository navigation and tas
 - [x] (2026-09-07 20:13Z) Actual two-port/two-display overlap proved. Task and three navigation cases passed; unfamiliar task Reveal timed out. All five owned desktops cleaned up. Full navigation aggregate remains failed; no retry or cause claim.
 - [x] (2026-09-07 20:18Z) Corrected quality1481/105 and seven focused checks passed. Native/Google full and fix-delta council CLEAN; Sonnet240s no-review unavailable.
 - [ ] Normal PR57 landing held for ROOT disposition of the unfamiliar Reveal failure and reserved B1 merge order. All owned changes pushed; Ditz follow-up records preserved.
+- [x] (2026-09-07 20:35Z) ROOT accepted the exact Reveal residual risk without fixing/erasing it. B1 cleared and normally composed; H1 now owns next master merge.
+- [ ] Complete authorized B1 launcher/helper/runfiles wiring, focused checks and one nondefault packaged proof; review/push and hand back without indefinite merge wait.
 
 ## Context and Orientation
 
@@ -81,3 +83,10 @@ Operational logs and concise seam live in /tmp/swarm-ide-demo-release.GY8Uwv/vir
 The bounded compatibility change is implemented and reviewed; default55174, nondefault ports and negative ownership tests pass. Actual simultaneous packaged task/navigation listeners and private desktops are proven, with complete cleanup. The full navigation journey is NOT green: unfamiliar task Reveal timed out, no causal attribution. PR57 remains held, Ditz parallel-port-navigation-reveal-timeout-20260907 is open, and parallel-virtual-desktop-ports-20260907 remains in progress until disposition/landing. No provider, physical desktop, shared app, acceptance-driver or harness changes occurred.
 
 Revised after actual execution to distinguish successful concurrency from failed aggregate acceptance, record exact test-wiring corrections and retain an honest, reviewed held increment.
+
+## Authorized B1 compatibility continuation
+
+
+ROOT's same-child authority now covers newly merged tools/build-graph/launch.mjs and its BUILD data. Replace that launcher's duplicate owner/fixed55174 guard with resolveOwnedVirtualPort and returned loopback port, exactly as for the prior two launchers; add task-integration sources to both B1 GUI targets. Do not change B1 query/fixtures/acceptance or investigate the earlier Reveal failure. New owned-port.check.mjs checks this wiring via a focused Bazel Node test, while the existing helper checks remain unchanged. Run both focused targets, relevant quality and one actual packaged B1 two-repository smoke on an unused :126/55206. Existing native/Google reviewers inspect only this small delta; no unavailable-seat retry or checksums. H1's next merge slot remains binding.
+
+Inspection found tools/agent-rehearsal/task-launch.mjs still requires55174. It is explicitly outside this continuation. Scope docs to the three supported packaged families, preserve the legacy task-rehearsal coordination requirement, and file a separate follow-up instead of claiming every full suite is concurrent. Historical evidence above is retained, not rewritten into all-green results.
