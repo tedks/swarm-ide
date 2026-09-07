@@ -14,3 +14,12 @@ log_events:
   who: Ted Smith
   what: created
   comment: ""
+- time: 2026-09-07T20:02:07-00:00
+  who: Ted Smith
+  what: commented
+  comment: 'H1 ships bounded Codex assistant-only tail and explicit manual operator
+    registration. Follow-ups: collapsible/arrow-key lineage navigation, explicit earlier-page
+    conversation loading, other harness formats and easier operator registration.
+    No live provider authority implied; context completeness and repository-verified
+    change attribution remain unavailable. Existing visual-only tmux revalidation/selection
+    interval documented, no input sent.'
