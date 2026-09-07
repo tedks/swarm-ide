@@ -8,15 +8,35 @@ import { lstat, open, readFile, realpath, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { execFileSync } from "node:child_process";
 import { advanceUnrelatedTaskFixture, resumeTaskFixture } from "../../tools/task-integration/fixture.mjs";
-import { AdmissionReceiptSchema, RunSchema, TranscriptRecordSchema, type Run } from "../../protocol/agents";
+import { AdmissionReceiptSchema, AgentResultSchema, RunSchema, TranscriptRecordSchema, type Run, type TranscriptRecord } from "../../protocol/agents";
 import { PROTOCOL_VERSION } from "../../protocol/schema";
 import type { RehearsalLedger } from "./agent-rehearsal-driver";
 
 const hash = (value: string | Buffer) => createHash("sha256").update(value).digest("hex");
 const canonical = (value: unknown): string => Array.isArray(value) ? `[${value.map(canonical).join(",")}]` :
   value !== null && typeof value === "object" ? `{${Object.keys(value).sort().map((key) => `${JSON.stringify(key)}:${canonical((value as Record<string, unknown>)[key])}`).join(",")}}` : JSON.stringify(value);
-export type TaskRehearsalProof = { run: Run; originalMetadata: string; currentMetadata: string; rendererErrors: string[];
+export type TaskRehearsalProof = { run: Run; transcriptHash: string; originalMetadata: string; currentMetadata: string; rendererErrors: string[];
   sourceUnchanged: true; replayedCommands: 0; fixtureOnly: true; coreGenerations: number; elapsedMs: number };
+
+/** Exact bounded read-only history observation, independently repeated at each recovery boundary. */
+export async function readTaskRehearsalTranscript(run: Run, readPage: (afterRecord: number) => Promise<unknown>) {
+  assert(run.state === "completed" && run.cleanup.status === "confirmed");
+  assert(run.transcript.lastRecord > 0 && run.transcript.lastRecord <= 81 && !run.transcript.truncated && !run.transcript.tailMayBeLost);
+  const records: TranscriptRecord[] = [];
+  while (records.length < run.transcript.lastRecord) {
+    const result = AgentResultSchema.parse(await readPage(records.length));
+    assert(result.kind === "read"); assert.deepEqual(result.run, run);
+    assert(!result.page.truncated && result.page.records.length > 0);
+    for (const record of result.page.records) {
+      assert.equal(record.recordId, records.length + 1);
+      records.push(record);
+      assert(records.length <= run.transcript.lastRecord);
+    }
+    assert.equal(result.page.nextCursor, records.length);
+  }
+  assert.equal(Buffer.byteLength(JSON.stringify(records)), run.transcript.bytes);
+  return { records, transcriptHash: hash(JSON.stringify(records)) };
+}
 
 export async function runTaskRehearsalProof({ window: win, artifacts, ledger }: {
   window: BrowserWindow; artifacts: string; ledger(): RehearsalLedger;
@@ -81,6 +101,10 @@ export async function runTaskRehearsalProof({ window: win, artifacts, ledger }: 
   const request = (input: object) => js<any>(`window.swarm.request({...${q(input)},protocolVersion:${PROTOCOL_VERSION},requestId:'task-rehearsal:'+crypto.randomUUID()})`);
   const snapshot = async () => { const result = await request({ type: "agent.snapshot" }); assert(result.ok && result.agent.kind === "snapshot"); return result.agent.snapshot; };
   const read = async (runId: string) => { const result = await request({ type: "agent.read", runId, afterRecord: 0 }); assert(result.ok && result.agent.kind === "read"); return result.agent.run as Run; };
+  const transcript = (run: Run) => readTaskRehearsalTranscript(run, async (afterRecord) => {
+    const result = await request({ type: "agent.read", runId: run.runId, afterRecord });
+    assert(result.ok); return result.agent;
+  });
   await until("native owned window selected", () => readFile(join(artifacts, "window-selected"), "utf8").then(() => true, () => false), Boolean, 30000);
   await js("addEventListener('error', e=>console.error(e.error?.stack ?? e.message))");
   await until("actual CLI Tasks reader", () => has("[data-task-status='observed']"), Boolean);
@@ -168,6 +192,7 @@ export async function runTaskRehearsalProof({ window: win, artifacts, ledger }: 
   assert.deepEqual(beforeRecovery.map((entry) => entry.type), ["agent.prepare", "agent.launch"]);
   const complete = await until("deterministic terminal and cleanup, not a model", () => read(runId), (value) => value.state === "completed" && value.cleanup.status === "confirmed", 30000);
   assert.deepEqual(complete.launchContext, active.launchContext);
+  const originalTranscript = await transcript(complete);
   await retained();
   const historyScope = ".agent-dock-panel .agent-launch-context";
   await expand(".agent-controls", "Submitted context");
@@ -180,6 +205,7 @@ export async function runTaskRehearsalProof({ window: win, artifacts, ledger }: 
   await until("clean renderer reload", async () => loads, (value) => value === 1);
   await until("history after document reload", snapshot, (value) => value.runs.length === 1);
   assert.deepEqual((await read(runId)).launchContext, active.launchContext);
+  assert.deepEqual(await transcript(complete), originalTranscript, "renderer reload preserves exact paged record contents and timestamps");
   assert.deepEqual(mutations(), beforeRecovery);
   // Select only this Electron app's exact named local core from its own metrics.
   // No broad process search or renderer-controlled PID; this is an owned crash.
@@ -195,6 +221,7 @@ export async function runTaskRehearsalProof({ window: win, artifacts, ledger }: 
   }, (value) => value?.runs.length === 1);
   const recovered = await read(runId);
   assert.deepEqual(recovered, complete, "completed run and immutable context survive actual core loss unchanged");
+  assert.deepEqual(await transcript(recovered), originalTranscript, "core recovery preserves exact paged record contents and timestamps");
   assert.deepEqual(mutations(), beforeRecovery, "renderer/core recovery never replays Prepare or Launch");
   const runSelector = ".agent-rail .agent-run-select";
   await until("history rail selection", () => has(runSelector), Boolean);
@@ -215,7 +242,7 @@ export async function runTaskRehearsalProof({ window: win, artifacts, ledger }: 
   wc.removeListener("did-finish-load", loaded);
   assert.equal(await readFile(join(fixture.root, fixture.sourcePath), "utf8"), fixture.sourceText);
   assert.deepEqual(errors, []); assert.equal(ledger().overflow, false);
-  return { run: recovered, originalMetadata: fixture.firstCommit.hex, currentMetadata: advanced.hex, rendererErrors: errors,
+  return { run: recovered, transcriptHash: originalTranscript.transcriptHash, originalMetadata: fixture.firstCommit.hex, currentMetadata: advanced.hex, rendererErrors: errors,
     sourceUnchanged: true, replayedCommands: 0, fixtureOnly: true, coreGenerations: ledger().generations, elapsedMs: Date.now() - started };
 }
 
@@ -248,13 +275,15 @@ export async function verifyTaskRehearsalClose(profile: string, workspace: strin
     assert(Array.isArray(entry.records) && entry.records.length === run.transcript.lastRecord && entry.records.length <= 81);
     entry.records.forEach((raw: unknown, index: number) => assert.equal(TranscriptRecordSchema.parse(raw).recordId, index + 1));
     assert.equal(Buffer.byteLength(JSON.stringify(entry.records)), run.transcript.bytes);
+    const transcriptHash = hash(JSON.stringify(entry.records.map((raw: unknown) => TranscriptRecordSchema.parse(raw))));
+    assert.equal(transcriptHash, proof.transcriptHash, "persisted transcript must match the independently paged preclose observation");
     assert.equal(hash(run.launchContext.submittedPrompt), run.launchContext.contextHash);
     assert("contextVersion" in run.launchContext && run.launchContext.repositoryTask);
     assert.equal(hash(run.launchContext.repositoryTask.content), run.launchContext.repositoryTask.digest);
     assert.equal(run.launchContext.repositoryTask.reference.metadataCommit.hex, proof.originalMetadata);
     assert.notEqual(proof.originalMetadata, proof.currentMetadata);
     return { bytes: raw.length, digest: hash(raw), runId: run.runId, contextHash: run.launchContext.contextHash,
-      records: entry.records.length, originalMetadata: proof.originalMetadata, currentMetadata: proof.currentMetadata,
+      records: entry.records.length, transcriptHash, originalMetadata: proof.originalMetadata, currentMetadata: proof.currentMetadata,
       observedUpdatedAt: proof.run.updatedAt, shutdownUpdatedAt: run.updatedAt, immutable: true, snapshot };
   } finally { await handle.close(); }
 }
