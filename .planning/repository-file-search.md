@@ -10,7 +10,7 @@ Ctrl+K can find a filename outside the loaded directory, then explicitly open it
 
 - [x] (2026-09-07) Read navigation/UI decisions and inspected the typed bridge, directory and file brokers; selected one bounded vertical.
 - [x] (2026-09-07) Implement runtime contract, cached core inventory/query and palette keyboard journey; draft PR39 pushed.
-- [ ] Prove failure/race/boundary cases and actual packaged two-repository behavior.
+- [x] (2026-09-07) Prove failure/race/boundary cases and actual packaged two-repository behavior through089bdb8; final stronger failure/concurrency receipts running.
 - [ ] Run full local gates and provider-diverse review to fixpoint; normal PR/integration merge and push; close Ditz.
 
 ## Decision Log
@@ -57,5 +57,6 @@ Control/evidence directory: `/tmp/swarm-ide-file-search-n2.MCo2v9`. Reviewed-bas
 ## Outcomes & Retrospective
 
 Implementation pending. Repository navigation is already real; this step closes filename finding only. Live build links, service callsites, tiling, richer Context and real-agent policy remain separate, unclosed work.
+Implementation is now complete. Native and Google council convergence passed throughc084226; Anthropic's actual bounded600-second attempt timed out without review and remains an empty seat. The first full34-target build passed56.4s; its13-suite run found a new test-only incomplete Stats double type error (replaced with actual Stats) and an existing native1ms exact-path harness gesture dropping a character under cold build load. The harness now waits for the actual exact-path mode and uses human-paced10ms native input; all source/draft/state assertions remain. Final complete local gates and normal landing are still required. Stronger isolation of kernel-stalled metadata is filed as `repository-search-stalled-metadata`.
 
 Revision: initial bounded contract before implementation, 2026-09-07.

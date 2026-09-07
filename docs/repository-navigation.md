@@ -3,8 +3,9 @@
 Implemented by N1 in PR37 after ROOT accepted N0 at `abf149d`. The actual
 packaged Swarm and unfamiliar-repository journeys pass; final local gate and
 normal-merge records belong to the PR and executive handoff. See the living
-[implementation plan](../.planning/repository-navigation.md). This does not
-implement filename search or an interactive project picker.
+[implementation plan](../.planning/repository-navigation.md). N2/PR39 adds
+[bounded filename search](repository-file-search.md); an interactive project
+picker remains separate.
 
 ## Human journey
 
@@ -23,7 +24,7 @@ and agent-draft bindings retain ownership elsewhere. A directory activation
 navigates; a file activation calls the existing source opener. No generic
 “every focus path is a file” shortcut. Ctrl-K offers Repository root, Up,
 Refresh, and an exact repository-relative Open path command. Filename search
-across the repository is a later consumer, not a misleading fixed command list.
+across the repository is now the bounded N2 consumer of this same activation path.
 
 ## Identity, observations and limits
 

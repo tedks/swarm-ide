@@ -1,6 +1,7 @@
 # Foundation closure ledger
 
-This is product accounting through N1's verified packaged navigation in PR37,
+This is product accounting through N1/PR37, personally steered UI sprint PR38,
+and N2/PR39's bounded filename-search implementation,
 not authority for another feature. “Landed” does not mean the watched
 visualization adopted that revision. The accepted
 [navigation contract](repository-navigation.md) now has actual visible proof.
@@ -31,11 +32,19 @@ Both real-repository packaged journeys and both unavailable-fingerprint cases
 passed with zero renderer errors and owned cleanup. Navigation closes only with
 its local/review/normal-landing gate; no other foundation gap is closed by N1.
 
+PR38 establishes the user-approved simultaneous sidebar/graphs/document tabs/
+Context/conversation dock. Its Bazel links are visibly dated captures and its
+optional agent/telemetry demo cards are mocks, not live providers. N2/PR39 adds
+actual bounded filename search beyond the loaded slice, explicit keyboard
+opening and honest partial/stale/unavailable coverage. Search closes only with
+its own passing local/review/normal-landing receipt; neither UI work nor search
+closes the following contextual/provider gaps.
+
 ## Unclosed product experiences, in order
 
 | Gap / Ditz issue | User-visible completion and dependency |
 | --- | --- |
-| Find/open the repository: navigation verified by N1/PR37; `repository-file-search` remains open | Actual root/directory navigation and exact file opening now have packaged proof. Next locate filenames beyond the loaded slice with stated coverage, consuming N1 path activation. `repository-project-entry` remains open: choosing an existing local repo still requires launch configuration. |
+| Find/open the repository: N1/PR37 navigation and N2/PR39 bounded filename search | Actual directory navigation, literal filename/path finding beyond the loaded slice and exact file opening have packaged proof; N2's normal landing receipt owns completion. `repository-project-entry` remains open: choosing an existing local repo still requires launch configuration. |
 | Hierarchy: `semantic-hierarchy-navigation` | N1 closes directory descent/Up, not merely camera magnification. Later explicit function/component/service drilldown changes the information level without inventing links; depends on corresponding real providers. |
 | Context: `contextual-information` | Selecting two unrelated files shows their own known facts/links and honest unavailable instruments, not FraudCheck widgets for both. Follow navigation/search; later cursor-level metrics require symbol/runtime evidence. |
 | Lenses: `meaningful-workbench-lenses` | System/Plan/Performance/Refactor produce genuinely different supported information, or visibly report unavailable; styling alone is not completion. Depends on contextual data. |
@@ -54,7 +63,10 @@ Existing `first-real-agent-run-surface`, `agent-run-effective-policy`,
 
 `scalable-working-world-observer`, `atomic-source-write-broker`,
 `document-refresh-editor-viewstate` and `hermetic-js-bazel` remain open engineering
-limits; N1 must not imply they disappeared. Local relevant verification and
+limits; navigation/search must not imply they disappeared.
+`repository-search-stalled-metadata` tracks OS metadata calls that cannot be
+cancelled in-process; N2 bounds responses and permits only one outstanding chain,
+not arbitrary kernel cancellation. Local relevant verification and
 review authorize normal PR landing. Hosted CI is ignored/nonblocking by explicit
 roadmap directive; do not call it green. Automated GUI evidence is owned virtual
 X11 only. No ledger row is closed by writing this document.

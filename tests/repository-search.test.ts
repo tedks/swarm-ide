@@ -1,7 +1,7 @@
 // @vitest-environment node
 import { execFileSync } from "node:child_process";
 import type { Stats } from "node:fs";
-import { mkdir, mkdtemp, rename, rm, symlink, writeFile } from "node:fs/promises";
+import { lstat, mkdir, mkdtemp, rename, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -182,8 +182,9 @@ describe("deterministic injected capture bounds and cancellation faults", () => 
     const metadata = vi.fn((_path: string): Promise<Stats> => new Promise((resolve) => { release = resolve; }));
     const value = reader(root, { lstat: metadata, metadataTimeoutMs: 25 });
     await expect(value.search(request("file"))).rejects.toMatchObject({ code: "REPOSITORY_SEARCH_UNAVAILABLE" });
-    const isDirectory = vi.fn(() => true);
-    release({ isDirectory, isSymbolicLink: () => false } as Stats);
+    const returnedStats = await lstat(join(root, "directory"));
+    const isDirectory = vi.spyOn(returnedStats, "isDirectory");
+    release(returnedStats);
     await new Promise((resolve) => setTimeout(resolve, 0));
     expect(isDirectory).not.toHaveBeenCalled(); expect(metadata).toHaveBeenCalledTimes(1);
   });

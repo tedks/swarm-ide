@@ -213,6 +213,7 @@ async function main() {
     await preserved(true);
     await search("same-match.ts");
     assert.deepEqual(await searchPaths(), ["search-proof/a/same-match.ts", "search-proof/b/same-match.ts"]);
+    await screenshot("04-file-search-results.png");
     key("Down"); key("Enter"); await directory("search-proof/b");
     await until(() => run(() => document.querySelector(".source-surface header strong")?.textContent === "search-proof/b/same-match.ts"), "highlighted duplicate opens exact full path");
     assert.equal(await run(() => document.querySelector(".cm-content").cmView.rootView.view.state.doc.toString()), await fs.readFile(path.join(fixture.root, "search-proof/b/same-match.ts"), "utf8"));
@@ -361,6 +362,27 @@ async function main() {
       await closeSearch(); await paint(); await preserved();
       assert.equal(await viewport("repo"), previousCoreRepoCamera, "core replacement preserves irrelevant repository camera");
       facts.push("N2 actual owned packaged core termination/recovery retains query and work; capture identity replaced");
+      stage = "file-search-git-error";
+      await search("same-match.ts");
+      const offlineGit = path.join(fixture.root, ".search-offline-git");
+      await fs.rename(path.join(fixture.root, ".git"), offlineGit);
+      try {
+        await click(".file-search-status button");
+        await until(() => run(() => document.querySelector(".file-search-status")?.textContent.includes("Refresh failed; retained capture is stale")), "actual Git error retains labelled stale capture");
+        assert.deepEqual(await searchPaths(), ["search-proof/a/same-match.ts", "search-proof/b/same-match.ts"]);
+        assert(await run(() => document.activeElement === document.querySelector('[aria-label="Workspace command"]')), "Refresh retains keyboard ownership");
+      } finally { await fs.rename(offlineGit, path.join(fixture.root, ".git")); }
+      await click(".file-search-status button");
+      await until(() => run(() => { const text = document.querySelector(".file-search-status")?.textContent ?? ""; return text.includes("Git name inventory") && !text.includes("Refresh failed"); }), "explicit recovery after real Git failure");
+      await closeSearch(); await preserved();
+      const concurrent = await run(async (repositoryId) => Promise.all([
+        window.swarm.request({ protocolVersion: 5, requestId: `search-old:${crypto.randomUUID()}`, type: "repo.search", repositoryId, query: "same-match", refresh: true }),
+        window.swarm.request({ protocolVersion: 5, requestId: `search-new:${crypto.randomUUID()}`, type: "repo.search", repositoryId, query: "literal [*]", refresh: false }),
+      ]), (await snapshot()).project.id);
+      assert(!concurrent[0].ok && concurrent[0].error.code === "REPOSITORY_CANCELLED", "actual older in-flight capture query is superseded");
+      assert(concurrent[1].ok && concurrent[1].search.query === "literal [*]", "actual newer query owns its response");
+      assert.deepEqual(concurrent[1].search.paths, ["search-proof/literal [*] $(not-command).txt"]);
+      facts.push("N2 actual Git failure/stale retention and explicit recovery", "N2 actual concurrent typed bridge queries supersede old intent");
       stage = "file-search-partial-capture";
       // Actual filesystem cap, introduced only after the regular journey.
       await fs.mkdir(path.join(fixture.root, "a-capped-search"));
