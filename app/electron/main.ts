@@ -29,7 +29,7 @@ function publish(update: Partial<Lifecycle>) {
 }
 const supervisor = new CoreSupervisor({
   launch() {
-    const child = launchLocalCore(process.cwd(), join(app.getPath("userData"), "agent-runs"));
+    const child = launchLocalCore(process.env.SWARM_WORKSPACE_ROOT ?? process.cwd(), join(app.getPath("userData"), "agent-runs"));
     child.stdout?.on("data", (chunk) => process.stdout.write(`[core] ${chunk}`));
     child.stderr?.on("data", (chunk) => process.stderr.write(`[core] ${chunk}`));
     child.on("spawn", () => console.log(`[core] spawned pid=${child.pid} generation=${supervisor.state.generation}`));
