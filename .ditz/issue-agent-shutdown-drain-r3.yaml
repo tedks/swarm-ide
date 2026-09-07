@@ -18,3 +18,11 @@ log_events:
   who: Ted Smith
   what: started
   comment: ""
+- time: 2026-09-07T07:15:11-00:00
+  who: Ted Smith
+  what: commented
+  comment: PR46 first repair62eefb4 quality1257 green; frozen build34 pass, full12/13
+    with same Context opening notice failure as Q4; unchanged rehearsal passed28.7s.
+    Native council found two narrow fix-introduced races, reproduced3RED/1257PASS
+    in86b019e; correcting owned service/test before convergence. Both foreign seats
+    unavailable, recorded. No merge/waiver or historical GUI attribution.
