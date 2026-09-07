@@ -92,6 +92,17 @@ log_events:
   comment: 'D6 started at reviewed PR50 e8ec0f9: remaining real CLI metadata advance/re-attach/reprepare
     plus separately deterministic admitted history/recovery; production launch unavailable.
     Parent remains open until exact coverage closes.'
+- time: 2026-09-07T18:45:28-00:00
+  who: Ted Smith
+  what: commented
+  comment: D6 PR51 implementation/review complete but NOT landed; parent remains OPEN.
+    Final real CLI metadata advance/re-attach/reprepare100/150 passes through production
+    package with dirty source/cursor/cameras retained,0 model/launch. Separately deterministic
+    admission/history/core recovery reaches all comparisons but fresh final suite
+    fails strict ResizeObserver renderer-error gate before corrected postclose proof.
+    New task-rehearsal-resize-observer-d6 holds D6. One immutable35 build and13/14fresh
+    local, quality1470. Exact bounded diagnostic continuation only, no provider/adoption
+    authority; prior historical topology timeout separately open.
 blocked_by:
 - repo-task-surface
 - repo-task-draft-contract-d2
