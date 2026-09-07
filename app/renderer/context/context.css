@@ -7,3 +7,26 @@
 .context-section summary { cursor: pointer; }
 .context-section [data-context-freshness="CAPTURE"] { color: #ddbc7e; }
 .context-section [data-context-freshness="retained"] { color: #e1b376; }
+.artifact-context > .widget-grid { grid-template-columns: minmax(0, 1fr); gap: 10px; }
+.context-section { min-width: 0; }
+.context-section > dl > div { display: grid; grid-template-columns: minmax(80px, .8fr) minmax(0, 1.8fr); gap: 10px; align-items: baseline; }
+.context-section > dl dt { margin-top: 3px; }
+.context-section .context-scope { color: #80968c; font-size: 10px; margin: 6px 0 0; }
+.context-section.context-empty { padding: 10px 14px; background: #101a17; }
+.context-empty header { color: #91a399; }
+.context-section .context-empty-label { font-size: 11px; color: #7e9187; margin: 6px 0 0; }
+.context-empty details { margin-top: 6px; }
+.context-illustrative { color: #dbc18e; border: 1px solid #675537; border-radius: 4px; padding: 2px 5px; }
+.context-table-scroll { overflow-x: auto; }
+.context-latency-table { width: 100%; border-collapse: collapse; font-size: 10px; font-variant-numeric: tabular-nums; }
+.context-latency-table th, .context-latency-table td { padding: 7px 5px; border-bottom: 1px solid #2a3b31; text-align: right; }
+.context-latency-table th:first-child { text-align: left; font-weight: 500; min-width: 82px; }
+.context-latency-table thead { color: #91a99c; }
+.context-latency-table tbody { color: #d4e4db; }
+.context-global { margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid #304638; min-width: 0; }
+.context-global > header { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; }
+.context-global header small { color: #81988c; font-size: 10px; }
+.context-global dl { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 9px; margin: 12px 0 0; }
+.context-global dt { font-size: 10px; color: #8da598; margin-bottom: 6px; }
+.context-global dd { font-size: 12px; margin: 0; overflow-wrap: anywhere; color: #d5e4da; }
+.context-global dd small { display: block; color: #7f9588; font-size: 9px; line-height: 1.4; margin-top: 4px; }

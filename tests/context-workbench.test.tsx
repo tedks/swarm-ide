@@ -10,6 +10,7 @@ import { adaptServiceTopology } from "../core/service-topology";
 import { openContextPath } from "./context-navigation";
 import { fixtureBuildObservation } from "./support/build-graph-fixture";
 import uiBuildLinks from "../fixtures/ui-build-links.snapshot.json";
+import { NAVIGATION_KEY } from "../app/renderer/recovery";
 type EditorProps = import("react").ComponentProps<typeof import("../app/renderer/EditorPane").EditorPane>;
 type TraceFields = { path?: string; nonce?: number; held?: boolean; applied?: boolean; request?: string };
 const handoff = vi.hoisted(() => ({
@@ -143,6 +144,26 @@ function setup(artifact = contextArtifact) {
   return { snapshot, emit, request, readEntered, delay: (path: string) => { delayPath = path; }, fail: (path: string) => { failPath = path; }, finish: async () => { if (!delayed) throw new Error("No delayed read"); const held = delayed; handoff.trace?.("held-read-release", { path: held.path }); await act(async () => held.resolve(response(held.request))); } };
 }
 describe("truthful Context in the mounted workbench", () => {
+  it("keeps restored Global evidence retained until this core generation actually supplies its snapshot", async () => {
+    const test = setup();
+    sessionStorage.setItem(NAVIGATION_KEY, JSON.stringify({ paths: [], activeSurface: "", lens: "System", focus: null, snapshot: test.snapshot }));
+    test.request.mockImplementation(() => new Promise(() => {}));
+    window.swarmLifecycle = { status: async () => ({ revision: 1, core: { generation: 2, phase: "ready", message: "Ready" }, reload: "idle", notice: "" }),
+      onStatus: () => () => {}, reload: async () => { throw new Error("No reload in this test"); } };
+    render(<App />);
+    await waitFor(() => expect(document.title).toContain("Core 2:ready"));
+    expect(document.querySelector(".context-global")?.textContent).toContain("Retained source");
+    expect(document.querySelector(".context-global")?.textContent).toContain("Retained build");
+    expect(document.querySelector(".context-global")?.textContent).not.toContain("Matches working source");
+  });
+
+  it("loads exact build references for file Context without opening either build graph", async () => {
+    const test = setup(); render(<App />); await openContextPath("core/files.ts");
+    await waitFor(() => expect(test.request.mock.calls.some(([request]) => request.type === "buildGraph.observe")).toBe(true));
+    expect(screen.queryByTestId("captured-build-camera")).toBeNull();
+    await waitFor(() => expect(document.querySelector("[data-context-section='capture']")?.textContent).toContain("//:quality_sources"));
+    expect(test.request.mock.calls.some(([request]) => request.type === "reconciliation.start")).toBe(false);
+  });
   it("definition activation preserves a mounted captured Build camera and its manually selected view", async () => {
     const test = setup(); test.snapshot.project.id = uiBuildLinks.repositoryId;
     if (test.snapshot.serviceContext?.status !== "observed") throw new Error("fixture");
