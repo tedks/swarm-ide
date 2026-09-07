@@ -5,8 +5,8 @@ type: feature
 component: ui
 release:
 reporter: Ted Smith <tedks@riseup.net>
-status: in_progress
-disposition:
+status: closed
+disposition: fixed
 creation_time: 2026-09-07T23:00:12-00:00
 references: []
 log_events:
@@ -52,3 +52,11 @@ log_events:
     retained, zero renderer errors, cleanup1 and owned Bazel stopped. M1/S2/X1 seams
     preserved. No model, J2 or shared adoption; ROOT owns normal merge and issue closure.
     Trusted-local conversation remains separate from loaded isolated/rehearsal excerpts.
+- time: 2026-09-07T23:55:43-00:00
+  who: Ted Smith
+  what: 'closed: fixed'
+  comment: PR66 normally merged 1fa5005 after reviewed X1/M1 composition. Quality1761,
+    focused15 and unchanged actual packaged CLI-Ditz task/history/dependency/focused-graph
+    proof passed with retained source/cursor/draft/cameras and cleanup. Trusted-local
+    conversation history is not integrated into task excerpts; central split/compact
+    fit follow-ups remain open.
