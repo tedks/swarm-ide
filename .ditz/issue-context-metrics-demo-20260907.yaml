@@ -5,8 +5,8 @@ type: feature
 component: renderer
 release:
 reporter: Ted Smith <tedks@riseup.net>
-status: in_progress
-disposition:
+status: closed
+disposition: fixed
 creation_time: 2026-09-07T22:58:35-00:00
 references: []
 log_events:
@@ -32,3 +32,10 @@ log_events:
     dirty source/fixed draft retained; final cursor-motion camera identity preserved.
     9836ms scenario, :139/55219, cleanup1, zero renderer exceptions/model turns. ReadyPR69,
     ROOT merge/close pending.'
+- time: 2026-09-07T23:40:49-00:00
+  who: Ted Smith
+  what: 'closed: fixed'
+  comment: PR69 normally merged; structured Context Global, direct/transitive targets,
+    illustrative latency, compact empty states and hash/provider/buffer-card removal.
+    Native fixpoint, 1703 tests plus 52 focused and actual packaged Git/Bazel contrast
+    accepted. Live latency/deployment data follow-up remains open.
