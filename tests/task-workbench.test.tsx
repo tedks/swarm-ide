@@ -88,8 +88,10 @@ it("inspects a never-opened exact backlink without moving editor, dirty cursor, 
   render(<App />); const editor = await openSource();
   act(() => editor.dispatch({ changes: { from: 0, insert: "dirty " }, selection: { anchor: 3 } }));
   const graphs = screen.getAllByTestId("task-graph"), before = request.mock.calls.length;
+  const panel = document.getElementById("information-panel")!; panel.scrollTop = 400;
   fireEvent.click(screen.getByRole("button", { name: "Inspect linked task task-fixture" }));
   await waitFor(() => expect(document.querySelector(".artifact-context")?.getAttribute("data-context-kind")).toBe("task"));
+  expect(panel.scrollTop).toBe(0);
   expect(editor.state.doc.toString()).toBe("dirty one\ntwo\nthree\n"); expect(editor.state.selection.main.anchor).toBe(3);
   expect(screen.getAllByTestId("task-graph")).toEqual(graphs); expect(document.querySelector(".task-editor-surface")).toBeNull();
   expect(request.mock.calls.slice(before).map(([r]) => r.type)).toEqual(["tasks.read"]);

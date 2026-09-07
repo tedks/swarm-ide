@@ -197,6 +197,15 @@ export function App() {
     const current = workspaceRef.current.snapshot;
     if (current) inspect({ repositoryId: current.project.id, worldId: current.world.id, kind: "task", id });
   }, [inspect]);
+  const inspectedTaskId = attention.subject?.kind === "task" ? attention.subject.id : null;
+  useLayoutEffect(() => {
+    // A successfully inspected pin starts at its heading. Do not focus it, move
+    // source, or reset scrolling on passive refresh or repeated same-task clicks.
+    if (tasks.pin && tasks.pin.taskId === inspectedTaskId) {
+      const panel = document.getElementById("information-panel");
+      if (panel) panel.scrollTop = 0;
+    }
+  }, [tasks.pin, inspectedTaskId]);
   const sourceReceipt = useCallback((revision: string): SourceReceipt => ({ revision, receivedAt: new Date().toISOString(), realm: contextRealm(), session: contextSession }), [contextRealm, contextSession]);
   useLayoutEffect(() => {
     const realm = contextRealm();
