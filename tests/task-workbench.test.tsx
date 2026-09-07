@@ -263,7 +263,7 @@ describe("task inspection in the source cockpit", () => {
     // Explicit Reveal revalidates the canonical destination even for a dirty
     // buffer, but neither replaces that buffer nor writes/replays anything.
     expect(request.mock.calls.slice(before).map(([input]) => input.type).filter((type) => type !== "tasks.snapshot")).toEqual(["file.read", "focus.select"]);
-    expect(document.activeElement).toBe(editor.contentDOM);
+    await waitFor(() => expect(document.activeElement).toBe(editor.contentDOM));
   });
 
   it("opens valid files for out-of-range lines without clamping or moving an existing cursor", async () => {
