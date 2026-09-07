@@ -27,6 +27,8 @@ deterministic rehearsal for admission/history/recovery evidence, not model work.
 - [x] (2026-09-07 09:22Z) ROOT accepted D2 and dispatched D3 alone in task-draft-base at eafe0fe; created/started `repo-task-draft-base-d3`, parent remains open.
 - [x] (2026-09-07 09:30Z) D3 bounded baseline RED: wire7/attached instructions, legacy new-preparation rejection and snapshot2 acceptance fail; 1,305 existing tests pass. Raw baseline-red.log retained in D3 step directory.
 - [x] (2026-09-07 09:44Z) D3 owns strict V1/V2 formats, shared canonical serializer, next-write outer2 promotion, all attached Prepare unavailable, optional resolver/disposal interfaces and late-publication protection. Added exact integrity/byte/browser/legacy/receipt/disposal tests; compatibility adjustments and final gates underway, not yet landed.
+- [x] (2026-09-07 09:58Z) Frozen21c3400 build34 passed56.203s; full local13 executed in641.439s with11 PASS and exactly navigation/task packaged failures. Actual logs identify old CJS wire6 requests rejected by required7. Full archive retained; ROOT approved five literal corrections and exact boundary/tripwire only. New tripwire RED:2 failed/1340 passed before correction.
+- [x] (2026-09-07 09:58Z) Native council CLEAN. Google withdrew two false positives after exact installed Zod4.5.4 and Array.isArray guard evidence, SAME-session recheck CLEAN. Anthropic no review before420s timeout, explicitly unavailable; not backfilled. Exact wire correction now in convergence/final local gates, not yet a green aggregate or merge claim.
 - [ ] D3 lands and is ROOT-verified before D4 core and D5 UI consumers.
 - [ ] D4/D5 independently reviewed increments; neither alone closes delivered behavior.
 - [ ] D6 reviewed packaged real-data integration and separate deterministic rehearsal proof; only then close implementation parent.
@@ -43,6 +45,17 @@ synthetic prompt/hash constructors, not an observed production failure. In
 particular the external-process fixture's launch request had to use the new
 constructed draft hash rather than the old local task-only hash. That exact
 cause is preserved with the failing run, not classified as namespace failure.
+
+The frozen packaged test exposed a separate mechanical omission: five explicit
+CJS acceptance requests still sent wire6. The core rejected them with expected7;
+the navigation driver then reached its existing120-second bound. ROOT approved
+only four navigation and one task-driver literal changes plus drift/boundary
+tests. Original all13 execution (11 PASS/2 FAIL), four owned navigation cases,
+task failure and cleanup evidence are preserved in
+`/tmp/swarm-ide-task-draft-d3.ymHzPV/frozen21c3400-testlogs.tar.gz`; SHA256 is
+`4e59395c4cc597f3c466cc2029340112c4c4c7e8e9b69a12aeb030a05dec0ae1`.
+This is concrete request-version evidence, not a claim about old discarded GUI
+failures. No timeout, selector, acceptance assertion or renderer code changed.
 
 `protocol/common.ts` is already wire version 6. `AgentLinksSchema.task` is a
 normalized source path, not task identity; Q4's `TaskBacklinkTargetSchema`
@@ -560,3 +573,8 @@ before any implementation dispatch.
 D3 revision (2026-09-07): recorded actual baseline and compatibility findings,
 ROOT-approved verifier ownership, V2-only fresh preparation and D4-held seams.
 No prior aggregate proof is attributed to these new changes.
+
+D3 bounded correction (2026-09-07): recorded the original frozen aggregate and
+ROOT-approved packaged wire fix, with two new RED assertions before correction.
+Current outcome/merge attribution remains in the step's final receipt; the
+parent cannot close before D6. Hosted CI remains ignored, not called green.
