@@ -1,7 +1,6 @@
 # Foundation closure ledger
 
-This is product accounting through N1/PR37, personally steered UI sprint PR38,
-and N2/PR39's bounded filename-search implementation,
+This is product accounting through Q4/PR44 and R3/PR46's reviewed ordered landing,
 not authority for another feature. “Landed” does not mean the watched
 visualization adopted that revision. The accepted
 [navigation contract](repository-navigation.md) now has actual visible proof.
@@ -24,7 +23,8 @@ T1/T2/T3, completed by PR35, provide real CLI-authored Ditz metadata through the
 packaged worker/bridge/UI, literal task details and explicit source Reveal.
 T3 also fixed CodeMirror state identity with actual red/green evidence. Both T3
 trees passed all 12 local suites, 1,030 tests, and strict owned virtual packaged
-proof with no renderer exceptions. Task-to-draft provenance (D2) remains future.
+proof with no renderer exceptions. [Task-to-draft provenance (D2)](repo-task-draft.md)
+is a separate design contract; attachment implementation remains future.
 
 N1/PR37 replaces the fixed repository example with actual bounded directory
 browsing and exact file activation, independently of a successful service build.
@@ -40,13 +40,25 @@ opening and honest partial/stale/unavailable coverage. Search closes only with
 its own passing local/review/normal-landing receipt; neither UI work nor search
 closes the following contextual/provider gaps.
 
+Q4/PR44 and R3/PR46 are normal-merged at final PR44 `9e2f095`, exact tree
+`f0b8c4c2f40196cbbca3d711dde630c3c0e28735`, equal to the previously reviewed
+composition. That tree passed 34 build targets, all 13 fresh local suites and
+1,305 tests/96 files, real packaged two-repository navigation/Context/backlinks
+retention and the unchanged ordinary-close deterministic rehearsal. The latter
+is fixture evidence, not real provider execution. R3 repairs a demonstrated
+accepted-event shutdown-drain class; Q4 repairs a demonstrated source-handoff
+authorization class. Neither successful controlled-order evidence nor the final
+aggregate pass establishes the cause of discarded historical GUI/Context
+failures. Their diagnostic issues stay open. No new run is attributed to the
+ancestry-only landing commits and no visualization adoption is implied.
+
 ## Unclosed product experiences, in order
 
 | Gap / Ditz issue | User-visible completion and dependency |
 | --- | --- |
 | Find/open the repository: N1/PR37 navigation and N2/PR39 bounded filename search | Actual directory navigation, literal filename/path finding beyond the loaded slice and exact file opening have packaged proof; N2's normal landing receipt owns completion. `repository-project-entry` remains open: choosing an existing local repo still requires launch configuration. |
 | Hierarchy: `semantic-hierarchy-navigation` | N1 closes directory descent/Up, not merely camera magnification. Later explicit function/component/service drilldown changes the information level without inventing links; depends on corresponding real providers. |
-| Context: `contextual-information` | PR41 implements the [first truthful Context slice](contextual-information.md): exact source/buffer facts, independent service/capture evidence, explicit task/graph/directory attention and honest unavailable providers. PR42 adds deliberate service/interface-to-declaration navigation and actual retained-service core-recovery proof, not inferred callsites or external implementations. Q4/PR44 implements [bounded explicit Ditz file backlinks](task-backlinks.md) with actual two-repository packaged proof and pinned task inspection; its landing receipt owns completion, and the aggregate rehearsal-close gate remains separately tracked. The broad issue remains open: other reverse knowledge/instruction links, live build links and cursor-level metrics need their own providers. |
+| Context: `contextual-information` | PR41 implements the [first truthful Context slice](contextual-information.md): exact source/buffer facts, independent service/capture evidence, explicit task/graph/directory attention and honest unavailable providers. PR42 adds deliberate service/interface-to-declaration navigation and actual retained-service core-recovery proof, not inferred callsites or external implementations. Q4/PR44's [bounded explicit Ditz file backlinks](task-backlinks.md), pinned inspection and source-handoff repair are landed with the reviewed R3 composition and passing current aggregate gate described above; historical causal diagnostics remain open. The broad issue remains open: other reverse knowledge/instruction links, live build links and cursor-level metrics need their own providers. |
 | Lenses: `meaningful-workbench-lenses` | System/Plan/Performance/Refactor produce genuinely different supported information, or visibly report unavailable; styling alone is not completion. Depends on contextual data. |
 | Layout/configuration: `scoped-workbench-configuration` | Pin/resize relevant instruments; repo/folder defaults compose additively, deepest wins with standard alternative and clickable provenance; conflicting shortcuts require user choice/backout. Depends on real contextual instruments, not an HR/team ontology. |
 | Knowledge: `repo-knowledge-navigation` and existing `repo-task-draft-provenance` | Follow documentation and reverse file-to-task/instruction links with exact provenance; intentionally attach a pinned task to a draft. Ditz browsing is already real; D2 is not dispatch. Build-generated human docs and agent-readable instructions need explicit sources. |
