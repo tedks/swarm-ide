@@ -14,3 +14,11 @@ log_events:
   who: Ted Smith
   what: created
   comment: ""
+- time: 2026-09-07T23:25:48-00:00
+  who: Ted Smith
+  what: commented
+  comment: M1 PR69 intentionally ships labelled illustrative latency keyed to saved
+    comment tag or exact example target. No per-file deployment association provider
+    exists; deployed services stays compact No services. Future implementation must
+    preserve per-source provenance and never equate declaration/global build metadata
+    with deployment membership.
