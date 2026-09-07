@@ -18,6 +18,11 @@
 .agent-state-completed, .agent-state-cancelled { color: #76d5b7; }
 .agent-state-unknown, .agent-state-failed { color: #ed9898; }
 .agent-draft { padding: 12px; min-height: 0; overflow: auto; border-top: 1px solid #314340; }
+.agent-task-proposal, .agent-task-slot { min-width: 0; margin-block: 8px; padding: 9px; border: 1px solid #42695e; border-radius: 4px; background: #11251f; overflow-wrap: anywhere; }
+.agent-task-proposal h3, .agent-task-slot h3 { margin: 0 0 7px; font-size: 11px; }
+.agent-task-proposal pre, .agent-task-slot pre { white-space: pre-wrap; overflow-wrap: anywhere; max-height: 140px; overflow: auto; font: 10px/1.5 monospace; }
+.agent-task-actions { display: flex; flex-wrap: wrap; gap: 6px; }
+.agent-draft-notice { color: #e8bf76 !important; }
 .agent-draft header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
 .agent-draft label, .agent-controls label { display: grid; gap: 4px; margin: 8px 0; color: #b0c5bf; font-size: 10px; }
 .agent-draft input, .agent-draft textarea, .agent-controls textarea, .agent-controls select { min-width: 0; width: 100%; color: #d8e5e1; background: #081513; border: 1px solid #35514b; border-radius: 3px; padding: 5px; font: 11px/1.4 monospace; }

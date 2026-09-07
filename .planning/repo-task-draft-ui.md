@@ -11,8 +11,8 @@ D5 adds a deliberate task-to-draft interaction. A person inspecting an authorita
 
 
 - [x] (2026-09-07) Read ROOT authority, accepted product contract, full parent plan and D3 intake/handoff; verified designated clean feature/task-draft-ui at 6e11ce42.
-- [ ] Add adversarial client/mounted regressions and record precise baseline failures.
-- [ ] Implement current-detail eligibility, generation-bound proposals, one-slot form and immutable history presentation.
+- [x] (2026-09-07 10:38Z) UI baseline: four mounted failures (missing review, attached-empty Prepare disabled, legacy label absent), 1,396 passed. Client/selector were already implemented and their green tests are not historical RED. A mechanical test-type adapter removal overlapped baseline startup; this is not final frozen-head attribution.
+- [x] (2026-09-07 10:46Z) Current-detail selector, source-independent generation-bound proposal, one-slot form, explicit original history and narrow ROOT-approved dock reveal implemented. Quality1 passed 1,400 tests/100 files; scoped packaged driver was authored alongside, not yet executed.
 - [ ] Prove actual owned virtual interaction, strict local full suite and provider-aware council convergence.
 - [ ] Push and normally land only on ROOT-cleared base; hand off D4/D6 limits.
 

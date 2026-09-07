@@ -40,6 +40,8 @@ export function AgentDock({ state, client, onDraft, runContent, draftContent, jo
   }, [state.selectedRunId, state.paneOpen, selectionVersion, hasSelection]);
   const draftOpen = Boolean(state.draft);
   useEffect(() => { if (draftOpen) setActive("agents"); }, [draftOpen]);
+  const proposalId = state.taskProposal?.id;
+  useEffect(() => { if (proposalId) setActive("agents"); }, [proposalId]);
   const fixtureOpen = Boolean(fixtureContent);
   useEffect(() => { if (fixtureOpen) setActive("fixture"); }, [fixtureOpen, fixtureSelectionVersion]);
   const mockSelected = mockConversation?.selected;
@@ -80,7 +82,7 @@ export function AgentDock({ state, client, onDraft, runContent, draftContent, jo
         onClick={() => choose(tab.key)}><span>{tab.label}</span>{tab.detail ? <small className={`agent-state agent-state-${tab.detail}`}>{tab.detail}</small> : null}</button>)}
     </div>
     <div id={panelId("agents")} role="tabpanel" aria-labelledby={tabId("agents")} hidden={current !== "agents"} className="agent-dock-panel agent-dock-home">
-      {!draftOpen ? <div className="agent-dock-welcome"><strong>{runs.length ? "Select an agent run" : "Agent interaction"}</strong>
+      {!draftOpen && !proposalId ? <div className="agent-dock-welcome"><strong>{runs.length ? "Select an agent run" : "Agent interaction"}</strong>
         <p>{runs.length ? "Open a run from the sidebar or its tab to inspect output and send instructions when available."
           : !state.snapshot ? "Agent availability has not been observed yet."
             : state.snapshot.capabilities.availability === "available" ? "No agent runs yet. Prepare a focused draft to begin."

@@ -2,7 +2,10 @@ import {
   AGENT_LIMITS, AgentEventSchema, AgentPrepareInputSchema, AgentRequestSchema, isTerminalRunState, utf8Bytes,
   type AgentRequest, type AgentSnapshot,
 } from "../../../protocol/agents";
-import { parseCoreResponseForRequest, PROTOCOL_VERSION, type CoreResponse, type FocusRef } from "../../../protocol/schema";
+import { FocusRefSchema, parseCoreResponseForRequest, PROTOCOL_VERSION, type CoreResponse, type FocusRef } from "../../../protocol/schema";
+import { canonicalJsonV1, formatRepositoryTask, sameAgentTaskReference, taskUtf8Bytes, TASK_CONTEXT_BYTES } from "../../../protocol/agent-task";
+import { isRepositoryPath } from "../../../protocol/repository";
+import type { TaskAttachmentCandidate } from "../tasks/client";
 import type { SwarmBridge } from "../../electron/preload";
 import type { Lifecycle, LifecycleBridge } from "../../lifecycle";
 import { displayAgentText, emptyLiveAgentState, recoverLiveAgentState, unresolvedOperation, type LiveAgentState, type LocalOperation } from "./live-state";
@@ -20,6 +23,8 @@ export class AgentBridgeClient {
   private readTicket = 0;
   private snapshotTicket = 0;
   private prepareTicket = 0;
+  private draftEditGeneration = 0;
+  private attachmentReview: { id: string; valid: () => boolean; invoker?: HTMLElement } | null = null;
   private readAgain = false;
   private reconciling = new Map<string, symbol>();
 
@@ -141,9 +146,71 @@ export class AgentBridgeClient {
   resize(height: number) { this.update({ height: Math.max(180, Math.min(420, height)) }); }
   openDraft(focus: FocusRef) {
     if (this.state.draft) return; // Navigation cannot retarget an existing draft.
+    ++this.draftEditGeneration;
     this.update({ draft: { focus: structuredClone(focus), task: "Explain this focus's inputs, outputs and failure cases.", model: "", prepared: null, confirmed: false, preparing: false } });
   }
-  closeDraft() { ++this.prepareTicket; this.update({ draft: null }); }
+  closeDraft() { ++this.prepareTicket; ++this.draftEditGeneration; this.attachmentReview = null; this.update({ draft: null, taskProposal: null }); }
+
+  proposeTaskAttachment(candidate: TaskAttachmentCandidate, sourceChoice: { focus: FocusRef; isCurrent: () => boolean } | null, invoker?: HTMLElement): "review" | "already-attached" | "unavailable" {
+    const draft = this.state.draft;
+    const focus = draft?.focus ?? sourceChoice?.focus;
+    if (!this.state.connected || !candidate.isCurrent()) {
+      this.attachmentReview = null;
+      this.update({ taskProposal: null, notice: "Task detail is not current; explicitly Refresh tasks and inspect it again." }); return "unavailable";
+    }
+    if (!focus || !FocusRefSchema.safeParse(focus).success || focus.revisionKind !== "working" || focus.domain !== "repo" ||
+        !focus.path || !isRepositoryPath(focus.path) || focus.key !== `file:${focus.path}` || focus.worldId !== candidate.reference.worldId ||
+        (!draft && !sourceChoice?.isCurrent())) {
+      this.attachmentReview = null;
+      this.update({ taskProposal: null, notice: draft ? "This draft has no unambiguous working-file target. Retain or close it explicitly, then choose a source file and Attach again."
+        : "Choose a working source file using existing navigation, then Attach this task again. Task references do not choose a source." });
+      return "unavailable";
+    }
+    if (sameAgentTaskReference(draft?.taskReference, candidate.reference)) return "already-attached";
+    const epoch = this.epoch, edits = this.draftEditGeneration, id = this.id();
+    this.attachmentReview = { id, invoker, valid: () => this.state.connected && this.epoch === epoch &&
+      this.draftEditGeneration === edits && candidate.isCurrent() && (Boolean(draft) || Boolean(sourceChoice?.isCurrent())) };
+    this.update({ taskProposal: { id, focus: structuredClone(focus), reference: structuredClone(candidate.reference),
+      title: candidate.title, description: candidate.description, instructions: draft?.task ?? "", replacing: Boolean(draft?.taskReference), hasDraft: Boolean(draft) } });
+    return "review";
+  }
+  cancelTaskAttachment(expectedId = this.state.taskProposal?.id) {
+    if (expectedId !== this.state.taskProposal?.id) return;
+    const invoker = this.attachmentReview?.invoker;
+    this.attachmentReview = null;
+    this.update({ taskProposal: null });
+    if (invoker?.isConnected) invoker.focus();
+  }
+  acceptTaskAttachment(mode: "append" | "replace", expectedId = this.state.taskProposal?.id) {
+    const proposal = this.state.taskProposal, review = this.attachmentReview;
+    if (expectedId !== proposal?.id) { this.update({ notice: "Draft or task changed; review again." }); return; }
+    if (!proposal || !review || proposal.id !== review.id || !review.valid()) {
+      this.attachmentReview = null;
+      this.update({ taskProposal: null, notice: "Draft or task changed; review again." }); return;
+    }
+    const task = mode === "replace" ? "" : proposal.instructions;
+    try {
+      const content = formatRepositoryTask(proposal.reference, proposal.title, proposal.description);
+      if (taskUtf8Bytes(canonicalJsonV1({ instructions: task, repositoryTask: JSON.parse(content) })) > TASK_CONTEXT_BYTES) {
+        this.update({ notice: "OUTPUT_LIMIT: Instructions and attached task exceed the 16 KiB task-context limit. Draft unchanged." }); return;
+      }
+    } catch {
+      this.update({ notice: "INVALID_REQUEST: Task preview or instructions are outside the supported exact Unicode format. Draft unchanged." }); return;
+    }
+    ++this.prepareTicket; ++this.draftEditGeneration;
+    this.attachmentReview = null;
+    const draft = this.state.draft ?? { focus: proposal.focus, task: "", model: "", prepared: null, confirmed: false, preparing: false };
+    this.update({ taskProposal: null, draft: { ...draft, task, taskReference: proposal.reference,
+      taskPreview: { title: proposal.title, description: proposal.description, verified: true }, prepared: null, confirmed: false, preparing: false },
+      notice: "Pinned task attached. Preview only; core independently verifies at Prepare. Source and task metadata are unchanged." });
+  }
+  removeTaskAttachment() {
+    const draft = this.state.draft;
+    if (!draft?.taskReference) return;
+    const { taskReference: _reference, taskPreview: _preview, ...retained } = draft;
+    ++this.prepareTicket; ++this.draftEditGeneration;
+    this.update({ draft: { ...retained, prepared: null, confirmed: false, preparing: false }, notice: "Attached task removed; instructions, model and source retained." });
+  }
   clearLocalIntent(observed: LiveAgentState, allowDocumentLoss = false) {
     // A click authorizes only what its rendered controls showed. Newer drafts,
     // text and receipts must remain protected, including between preflight and
@@ -151,7 +218,7 @@ export class AgentBridgeClient {
     const clearDraft = this.state.draft === observed.draft;
     const newerIntent = !clearDraft || this.state.instructions !== observed.instructions ||
       (allowDocumentLoss && this.state.operations.some((op) => unresolvedOperation(op) && !observed.operations.includes(op)));
-    if (clearDraft && this.state.draft) ++this.prepareTicket;
+    if (clearDraft && this.state.draft) { ++this.prepareTicket; ++this.draftEditGeneration; }
     this.update({
       ...(clearDraft ? { draft: null } : {}),
       instructions: this.state.instructions === observed.instructions ? {} : this.state.instructions,
@@ -196,15 +263,16 @@ export class AgentBridgeClient {
   }
   editDraft(patch: { task?: string; model?: string }) {
     if (!this.state.draft) return;
-    ++this.prepareTicket;
+    ++this.prepareTicket; ++this.draftEditGeneration;
     this.update({ draft: { ...this.state.draft, ...patch, prepared: null, confirmed: false, preparing: false } });
   }
   confirmDraft(confirmed: boolean) { if (this.state.draft) this.update({ draft: { ...this.state.draft, confirmed } }); }
   async prepare() {
     const draft = this.state.draft;
-    if (!draft || draft.preparing || !this.state.connected || !draft.task.trim()) return;
+    if (!draft || draft.preparing || !this.state.connected || (!draft.taskReference && !draft.task.trim())) return;
     const input = AgentPrepareInputSchema.safeParse({ worldId: draft.focus.worldId, focus: draft.focus, taskText: draft.task,
-      model: draft.model.trim() || null, effort: null, links: { parentRunId: null, task: null, spec: null } });
+      model: draft.model.trim() || null, effort: null, links: { parentRunId: null, task: null, spec: null },
+      ...(draft.taskReference ? { taskReference: draft.taskReference } : {}) });
     if (!input.success) { this.update({ notice: "INVALID_REQUEST: use a working focus and task/model within UTF-8 limits." }); return; }
     const ticket = ++this.prepareTicket;
     this.update({ draft: { ...draft, prepared: null, confirmed: false, preparing: true } });

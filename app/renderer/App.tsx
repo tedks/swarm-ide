@@ -57,6 +57,7 @@ import { composeContext, indexCapture, indexService, type SourceReceipt } from "
 import { ContextPane } from "./context/ContextPane";
 import { declarationPublication, resolveDeclarations, type DeclarationResolution } from "./context/declarations";
 import { DeclarationChooser } from "./context/DeclarationChooser";
+import { sameAgentTaskReference } from "../../protocol/agent-task";
 
 const lensTabs = ["System", "Plan", "Performance", "Refactor"] as const;
 const FRAUDCHECK_IMPLEMENTATION = "examples/checkout-world/services/fraudcheck/fraudcheck.ts";
@@ -140,6 +141,7 @@ export function App() {
   const [compactPanel, setCompactPanel] = useState<"work" | "info" | null>(null);
   const taskClient = useMemo(() => new TaskBridgeClient(), [TaskBridgeClient]);
   const tasks = useSyncExternalStore(taskClient.subscribe, taskClient.getSnapshot);
+  const [taskAttachmentNotice, setTaskAttachmentNotice] = useState<{ taskId: string | null; text: string } | null>(null);
   const [informationFocusRequest, setInformationFocusRequest] = useState(0);
   const taskReturnButton = useRef<HTMLButtonElement>(null);
   const sourceInformationHeading = useRef<HTMLHeadingElement>(null);
@@ -1027,6 +1029,33 @@ export function App() {
     inspectTask(tasks.selectedTaskId);
   };
   const activeFile = fileTabs.find((tab) => tab.path === activeSurface);
+  const attachInspectedTask = useCallback((taskId: string | null, origin: HTMLButtonElement) => {
+    const candidate = taskClient.getAttachmentCandidate(taskId);
+    if (!candidate) { setTaskAttachmentNotice({ taskId, text: "Task detail changed; Refresh tasks and inspect it again." }); return; }
+    const current = workspaceRef.current.snapshot, path = activeSurfaceRef.current;
+    const file = fileTabsRef.current.find((tab) => tab.path === path);
+    const generation = coreGenerationRef.current, sourceIntent = navigationIntent.current;
+    const openGeneration = openGenerationsRef.current.get(path);
+    // The selected, already-open working file is independent of task attention.
+    // This is the same registered file FocusRef used by coordinateFileFocus;
+    // no task link is consulted and no source/graph command is dispatched.
+    const sourceChoice = current && file?.revision && isRepositoryPath(path) && !["loading", "error"].includes(file.status) ? {
+      focus: { worldId: current.world.id, revisionKind: "working" as const, revisionId: current.revisions.working.id,
+        domain: "repo" as const, key: `file:${path}`, path },
+      isCurrent: () => mounted.current && coreGenerationRef.current === generation && navigationIntent.current === sourceIntent &&
+        workspaceRef.current.snapshot?.project.id === current.project.id && workspaceRef.current.snapshot?.world.id === current.world.id &&
+        activeSurfaceRef.current === path && openGenerationsRef.current.get(path) === openGeneration &&
+        fileTabsRef.current.some((tab) => tab.path === path && Boolean(tab.revision) && !["loading", "error"].includes(tab.status)),
+    } : null;
+    const result = agentClient.proposeTaskAttachment(candidate, sourceChoice, origin);
+    setTaskAttachmentNotice(result === "unavailable" ? { taskId, text: agentClient.getSnapshot().notice } : null);
+  }, [agentClient, taskClient]);
+  const taskAttachment = (id: string | null) => {
+    const candidate = taskClient.getAttachmentCandidate(id);
+    return { eligible: Boolean(candidate && liveAgents.connected), alreadyAttached: Boolean(candidate && sameAgentTaskReference(liveAgents.draft?.taskReference, candidate.reference)),
+      notice: taskAttachmentNotice?.taskId === id ? taskAttachmentNotice.text : null,
+      onAttach: (origin: HTMLButtonElement) => attachInspectedTask(id, origin) };
+  };
   const textDocumentVisible = taskDocumentVisible || (taskDocumentOpen && !activeFile);
   const textOpen = Boolean(activeFile || textDocumentVisible);
   useEffect(() => { if (textOpen && !textWasOpen.current) setGraphReframe((n) => n + 1); textWasOpen.current = textOpen; }, [textOpen]);
@@ -1229,13 +1258,13 @@ export function App() {
             }} onSave={() => void saveFile(activeFile.path)} /> : <div className="source-message source-error">{activeFile.message}</div>}
           </>}
         </section> : null}
-        {taskDocumentOpen ? <div className="task-editor-surface" hidden={!textDocumentVisible} onPointerDownCapture={() => inspectTask(tasks.selectedTaskId)} onFocusCapture={() => inspectTask(tasks.selectedTaskId)}><TaskDetail surface="editor" selectedTaskId={tasks.selectedTaskId} snapshot={tasks.observation?.snapshot ?? null} detail={tasks.detail} detailRevision={tasks.detailRevision} detailStale={tasks.detailStale || tasks.observation?.status !== "observed" || Boolean(tasks.notice)} reading={tasks.reading} notice={tasks.detailNotice} onSelect={(id) => openTaskDocument(id)} onReveal={(ref) => { void revealTaskReference(ref); }} onReturnToSource={() => { setTaskDocumentVisible(false); if (!activeFile) setTaskDocumentOpen(false); returnToSourceInformation(); }} /></div> : null}
+        {taskDocumentOpen ? <div className="task-editor-surface" hidden={!textDocumentVisible} onPointerDownCapture={(event) => { if (!(event.target as Element).closest(".task-attach")) inspectTask(tasks.selectedTaskId); }} onFocusCapture={(event) => { if (!(event.target as Element).closest(".task-attach")) inspectTask(tasks.selectedTaskId); }}><TaskDetail surface="editor" selectedTaskId={tasks.selectedTaskId} snapshot={tasks.observation?.snapshot ?? null} detail={tasks.detail} detailRevision={tasks.detailRevision} detailStale={tasks.detailStale || tasks.observation?.status !== "observed" || Boolean(tasks.notice)} reading={tasks.reading} notice={tasks.detailNotice} attachment={taskAttachment(tasks.selectedTaskId)} onRefresh={() => { void taskClient.refresh(); }} onSelect={(id) => openTaskDocument(id)} onReveal={(ref) => { void revealTaskReference(ref); }} onReturnToSource={() => { setTaskDocumentVisible(false); if (!activeFile) setTaskDocumentOpen(false); returnToSourceInformation(); }} /></div> : null}
       </section>
 
       <ResizeDivider label="Resize Context" className="context-divider" container=".workbench" value={contextWidth} minimum={23} maximum={44} initial={30} reverse onChange={setContextWidth} />
       <aside id="information-panel" aria-label="Information panel" className="instrument-panel panel">
         {revealNotice ? <p ref={revealNoticeElement} className="tasks-reveal-notice" role="status" tabIndex={0}>{revealNotice}</p> : null}
-        {contextSubject?.kind === "task" ? <div className="artifact-context" data-context-kind="task" data-context-subject={contextSubject.id}><TaskDetail returnButtonRef={taskReturnButton} selectedTaskId={contextSubject.id} snapshot={tasks.observation?.snapshot ?? null} detail={tasks.detail?.id === contextSubject.id ? tasks.detail : null} detailRevision={tasks.detailRevision} detailStale={tasks.detailStale || tasks.refreshing || tasks.observation?.status !== "observed" || Boolean(tasks.notice)} reading={tasks.reading} notice={tasks.detailNotice} onSelect={selectTask} onReveal={(ref) => { void revealTaskReference(ref); }} onReturnToSource={returnToSourceInformation} onShowDocument={showPinnedTaskDocument} onRefresh={() => { void taskClient.refresh(); }} /></div> : <>
+        {contextSubject?.kind === "task" ? <div className="artifact-context" data-context-kind="task" data-context-subject={contextSubject.id}><TaskDetail returnButtonRef={taskReturnButton} selectedTaskId={contextSubject.id} snapshot={tasks.observation?.snapshot ?? null} detail={tasks.detail?.id === contextSubject.id ? tasks.detail : null} detailRevision={tasks.detailRevision} detailStale={tasks.detailStale || tasks.refreshing || tasks.observation?.status !== "observed" || Boolean(tasks.notice)} reading={tasks.reading} notice={tasks.detailNotice} attachment={taskAttachment(contextSubject.id)} onSelect={selectTask} onReveal={(ref) => { void revealTaskReference(ref); }} onReturnToSource={returnToSourceInformation} onShowDocument={showPinnedTaskDocument} onRefresh={() => { void taskClient.refresh(); }} /></div> : <>
         {tasks.selectedTaskId ? <button className="tasks-show-details" onClick={showTaskDetails}>Show task details</button> : null}
         <ContextPane subject={contextSubject} sections={contextSections} onOpen={openLinkedFile} onTask={(target) => { void inspectBacklink(target); }} onRefreshTasks={() => { void taskClient.refresh(); }} headingRef={sourceInformationHeading} />
         </>}
@@ -1247,7 +1276,7 @@ export function App() {
         <AgentDock state={liveAgents} client={agentClient} selectionVersion={agentDockSelection} fixtureSelectionVersion={fixtureDockSelection}
           mockConversation={demo.conversation ? { tabs: MOCK_AGENTS, selected: demo.selected, onSelect: demo.select, selectionVersion: demo.selectionVersion, content: <MockConversation selected={demo.selected} /> } : undefined}
           onDraft={() => agentClient.openDraft(snapshot.focus)}
-          draftContent={<PreparedLaunchDraft state={liveAgents} client={agentClient} dirtyPaths={fileTabs.filter((tab) => protectsBuffer(tab)).map((tab) => tab.path)} />}
+          draftContent={<PreparedLaunchDraft state={liveAgents} client={agentClient} previewCurrent={taskAttachment(tasks.selectedTaskId).alreadyAttached} dirtyPaths={fileTabs.filter((tab) => protectsBuffer(tab)).map((tab) => tab.path)} />}
           runContent={<LiveRunPane state={liveAgents} onInstruction={(text) => agentClient.instruction(text)} onSteer={() => { void agentClient.steer(); }}
           onStop={() => { void agentClient.stop(); }} onRead={(fromStart) => { void agentClient.read(fromStart); }} onFollow={() => agentClient.follow()} onClose={() => agentClient.closePane()}
           onHeight={(height) => agentClient.resize(height)} currentWorldId={snapshot.world.id} currentFingerprint={snapshot.revisions.working.fingerprint}
