@@ -15,6 +15,7 @@ An evaluator should be able to follow one feature from its authored plan through
 - [x] Native review reached CLEAN through the final proof delta; quality 1,632 tests/117 files and 13 dedicated harness checks passed with attribution below.
 - [x] (2026-09-07 21:58Z) Pushed final documentation and marked PR61 ready; Ditz remains in progress for ROOT's actual merge. Local checks and native review are complete, and the executive handoff includes owned cleanup/evidence.
 - [x] (2026-09-07 22:01Z) Consumed ROOT-cleared combined07f6ec8 once in conflict-free normal compositioncb4c6e6; rebuilt the package and reran only the unchanged joined tour, which passed7.2s with zero renderer errors/mutations and cleanup1. Earlier checks keep their original attribution; no peer-suite repeats.
+- [x] (2026-09-07 22:05Z) Corrected briefing attribution on9a2aa4d, received CLEAN light native review, and passed the corrected-content joined tour in7.3s/8.3s total, zero errors/warnings/mutations and cleanup1. No J1 or runtime edits.
 
 ## Surprises & Discoveries
 
@@ -73,3 +74,5 @@ Updated September 7 after actual validation: recorded the narrow harness correct
 Updated after ROOT's one-base integration instruction: consumed the cleared presentation/install aggregate once, retained previous proof attribution, refreshed the actual joined screenshots and adjusted only presenter wording for the delivered controls.
 
 At ROOT's attribution correction, replaced the inaccurate human-authorship claim with repo-authored guidance and explicitly identified the AI implementation agent as the briefing's writer. Updated only the matching index note and exact proof expectation; J1's recorded event-summary inputs/outputs are unchanged. Earlier run evidence retains its original content and scope.
+
+The corrected-attribution screenshots and proof are in `joined-attribution/run.oXgeA3/` on9a2aa4d. The package rebuilt and the same joined scenario passed7.3s (8.3s virtual lifecycle), with current exact-source graph, real metadata/Prepare, recorded Activity, retained work, zero renderer errors/resize warnings/model mutations and cleanup1. Light native review43c4935..9a2aa4d was CLEAN; older quality/launcher/review evidence was not rerun or relabelled as current aggregate evidence.
