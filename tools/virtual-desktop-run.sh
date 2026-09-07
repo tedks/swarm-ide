@@ -576,22 +576,25 @@ printf 'timestamp_ms\tphase\tpid\tsid\trss_kib\tpss_kib\tcommand\n' >"$artifact_
 resource_snapshot ready
 write_ownership_artifact
 
-# Read only the known nested Bazel output tree for this workspace, never a
+# Pin the already selected window's kernel identity before the scenario runs.
+topology_window_identity=$(proc_identity "$SWARM_WINDOW_PID" 2>/dev/null || true)
+# Read only the known nested Bazel output tree for the verified process cwd, never a
 # recursive log search or an environment dump. The tail deliberately retains
 # progress/timing lines, not compiler diagnostics (which can contain source).
 topology_build_diagnostics() {
   "$timeout_bin" --signal=TERM --kill-after=1 3 "$node_bin" - \
-    "$workspace" "$runtime_dir/cache" "${TEST_TMPDIR:-}" "$app_session" "$app_start" <<'NODE'
+    "$workspace" "$runtime_dir/cache" "${TEST_TMPDIR:-}" "$app_session" "$app_start" \
+    "$ownership_dir" "$SWARM_WINDOW_PID" "$topology_window_identity" <<'NODE'
 const fs = require('node:fs');
 const path = require('node:path');
 const crypto = require('node:crypto');
-const [workspace, cache, testTmp, session, start] = process.argv.slice(2);
+const [workspace, cache, testTmp, session, start, owner, windowPid, windowIdentity] = process.argv.slice(2);
 const safe = text => text.replace(/[^\x20-\x7e]/g, '?').slice(0, 512);
 const read = (name, limit, tail = false) => {
   const fd = fs.openSync(name, fs.constants.O_RDONLY | fs.constants.O_NOFOLLOW | fs.constants.O_NONBLOCK);
   try {
     const stat = fs.fstatSync(fd);
-    if (!stat.isFile()) throw Error('not regular');
+    if (!stat.isFile() || stat.uid !== process.getuid()) throw Error('not owned regular');
     const bytes = Buffer.alloc(Math.min(limit, stat.size));
     const count = fs.readSync(fd, bytes, 0, bytes.length, tail ? Math.max(0, stat.size - limit) : 0);
     const text = bytes.subarray(0, count).toString('utf8');
@@ -615,17 +618,46 @@ for (const entry of fs.readdirSync('/proc')) {
     count++;
   } catch { /* process exited during observation */ }
 }
-const root = testTmp || path.join(cache, 'bazel');
-const user = require('node:os').userInfo().username;
-const base = path.join(root, `_bazel_${user}`, crypto.createHash('md5').update(workspace).digest('hex'));
+const directoryTree = directory => {
+  if (!path.isAbsolute(directory)) throw Error('not absolute');
+  let current = '/';
+  for (const part of directory.split('/').filter(Boolean)) {
+    current = path.join(current, part);
+    const stat = fs.lstatSync(current);
+    if (!stat.isDirectory() || stat.isSymbolicLink()) throw Error('unsafe tree');
+  }
+};
+const processRecord = pid => {
+  if (!/^[1-9][0-9]*$/.test(pid)) throw Error('invalid process');
+  const raw = fs.readFileSync(`/proc/${pid}/stat`, 'utf8');
+  const fields = raw.slice(raw.lastIndexOf(')') + 2).trim().split(/\s+/);
+  if (fields[3] !== session || BigInt(fields[19]) < BigInt(start)) throw Error('not owned session');
+  return { parent: fields[1], identity: `${fields[3]} ${fields[19]}` };
+};
 try {
+  if (processRecord(session).identity !== `${session} ${start}` ||
+      processRecord(windowPid).identity !== windowIdentity) throw Error('process reused');
+  let ancestor = windowPid;
+  for (let depth = 0; ancestor !== session && depth < 64; depth++) ancestor = processRecord(ancestor).parent;
+  if (ancestor !== session) throw Error('not descendant');
+  // Kernel proc cwd is the sole selector. Do not trust fixture JSON, renderer
+  // input, argv paths or recursively search other repositories' build logs.
+  const selected = fs.readlinkSync(`/proc/${windowPid}/cwd`);
+  directoryTree(owner);
+  const ownerStat = fs.lstatSync(owner);
+  if (ownerStat.uid !== process.getuid() || (ownerStat.mode & 0o077) !== 0) throw Error('not private owner');
+  if (selected !== workspace && !selected.startsWith(owner + path.sep)) throw Error('outside owned run');
+  directoryTree(selected);
+  if (fs.lstatSync(selected).uid !== process.getuid() || fs.realpathSync(selected) !== selected) throw Error('unsafe workspace');
+  if (processRecord(windowPid).identity !== windowIdentity || processRecord(session).identity !== `${session} ${start}` ||
+      fs.readlinkSync(`/proc/${windowPid}/cwd`) !== selected) throw Error('process changed');
+  console.log(`workspace_selection=${selected === workspace ? 'source' : 'owned-disposable'} selected_workspace=${safe(selected)}`);
+  const root = testTmp || path.join(cache, 'bazel');
+  const user = require('node:os').userInfo().username;
+  const base = path.join(root, `_bazel_${user}`, crypto.createHash('md5').update(selected).digest('hex'));
   // Refuse symlinks in the selected tree, including parents; no log outside
   // the private test/cache root may be reached through indirection.
-  let current = '/';
-  for (const part of base.split('/').filter(Boolean)) {
-    current = path.join(current, part);
-    if (!fs.lstatSync(current).isDirectory() || fs.lstatSync(current).isSymbolicLink()) throw Error('unsafe tree');
-  }
+  directoryTree(base);
   console.log(`nested_output_base=${safe(base)}`);
   const text = read(path.join(base, 'command.log'), 16384, true);
   const lines = text.split('\n');

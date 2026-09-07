@@ -37,6 +37,20 @@ real Git/YAML preparation and separately label deterministic responder behavior.
 ## Surprises & Discoveries
 
 
+ROOT authorized a separate20min diagnostic, not production repair or landing.
+Prior successful18ab and failed8e93864 navigation archives BOTH show missing
+nested diagnostics. Their real disposable roots hash differently from the
+outer source workspace used by the old helper. A deterministic supervisor test
+now reproduces lost progress for an owned disposable cwd (RED6.673s Bazel).
+The scoped capture change selects only the pinned, session/descendant-verified
+window process cwd: exact prior source root or a canonical owned disposable
+directory. Parent/log symlink and FIFO rejection, owner checks, byte/time bounds
+and source-redacted output remain. Focused supervisor tests GREEN49.453s
+(46.0s target), including new nested-positive, parent-symlink and unowned-cwd
+cases plus prior lifecycle/security tests. At most one newly instrumented
+packaged navigation run follows. This explains missing capture, NOT the90s
+topology timeout; original full gate stays held and no new review is authorized.
+
 The existing quality target intentionally runs all unit tests, type checking
 and both bundles; no targeted Vitest entry point is supported. Tests will be
 batched to avoid duplicating full executions. D3 deliberately rejects even an
