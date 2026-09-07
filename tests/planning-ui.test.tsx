@@ -123,4 +123,16 @@ describe("plan bridge authority", () => {
     expect(() => parseCoreResponseForRequest(wrap(request, observedPlans()), { ...request, repositoryId: "wrong" })).toThrow();
     expect(() => parseCoreResponseForRequest(wrap(request, observedPlans()), { ...request, type: "workspace.snapshot" } as CoreRequest)).toThrow();
   });
+  it("does not combine plan and Build result authority in either direction", () => {
+    const plan = wrap(request, observedPlans());
+    const buildRequest = { ...request, type: "buildGraph.observe" as const, refresh: false };
+    const buildGraph = { repositoryId: request.repositoryId, worldId: request.worldId, generation: 1, status: "error", message: "No build observation" };
+    const mixed = { ...plan, buildGraph };
+    expect(() => parseCoreResponseForRequest(mixed, request)).toThrow();
+    expect(() => parseCoreResponseForRequest(mixed, buildRequest)).toThrow();
+    const build = { ...plan, plans: undefined, buildGraph };
+    expect(parseCoreResponseForRequest(build, buildRequest).ok).toBe(true);
+    expect(() => parseCoreResponseForRequest(build, request)).toThrow();
+    expect(() => parseCoreResponseForRequest(plan, buildRequest)).toThrow();
+  });
 });

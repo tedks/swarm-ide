@@ -71,6 +71,20 @@ async function openSource() {
   return EditorView.findFromDOM(document.querySelector(".cm-editor")!)!;
 }
 
+it("pauses Build demand while the independent Plan lens hides its consumers and resumes deliberately", async () => {
+  const { request } = setup(); render(<App />);
+  await screen.findByRole("button", { name: "Select task task-fixture" });
+  const reads = () => request.mock.calls.filter(([input]) => input.type === "buildGraph.observe").length;
+  fireEvent.click(screen.getByRole("button", { name: "Build graph" }));
+  await waitFor(() => expect(reads()).toBeGreaterThan(0));
+  fireEvent.click(screen.getByRole("button", { name: "Plan" }));
+  const hiddenReads = reads();
+  await act(async () => { await new Promise((resolve) => setTimeout(resolve, 750)); });
+  expect(reads()).toBe(hiddenReads);
+  fireEvent.click(screen.getByRole("button", { name: "System" }));
+  await waitFor(() => expect(reads()).toBeGreaterThan(hiddenReads));
+});
+
 it("revokes a held planning-task activation when the user switches lens", async () => {
   const { request } = setup(); render(<App />);
   await screen.findByRole("button", { name: "Select task task-fixture" });

@@ -32,7 +32,7 @@ import { LiveRunPane } from "./agents/LiveRunPane";
 import { PreparedLaunchDraft } from "./agents/PreparedLaunchDraft";
 import { AgentReloadGuard } from "./agents/AgentReloadGuard";
 import { AgentDock } from "./agents/AgentDock";
-import uiBuildLinks from "../../fixtures/ui-build-links.snapshot.json";
+import { buildGraphLinks, useBuildGraph } from "./repository/use-build-graph";
 import { useUiDemo, MockRunRail, MockConversation, MockContext, MOCK_AGENTS, type DemoCommand } from "./agents/ui-demo";
 import { protectsAgentIntent } from "./agents/live-state";
 import "./agents/agents.css";
@@ -1018,7 +1018,11 @@ export function App() {
   const serviceIdentity = JSON.stringify([snapshot?.project.id, snapshot?.world.id, coreGenerationRef.current, publication?.status,
     publication?.status === "observed" ? [publication.buildId, publication.sourceFingerprint, publication.inputDigest, publication.artifactUri, publication.observedAt] : publication?.reason]);
   const serviceIndex = useMemo(() => indexService(publication), [serviceIdentity]);
-  const captureIndex = useMemo(() => indexCapture(uiBuildLinks), []);
+  const [buildGraphVisible, setBuildGraphVisible] = useState(false), [directoryBuildVisible, setDirectoryBuildVisible] = useState(false);
+  const buildGraph = useBuildGraph(snapshot?.project.id, snapshot?.world.id, contextRealm(),
+    activeLens !== "Plan" && (buildGraphVisible || directoryBuildVisible) && (!window.swarmLifecycle || lifecycle?.core.phase === "ready"));
+  const buildLinks = useMemo(() => buildGraphLinks(buildGraph.observation), [buildGraph.observation]);
+  const captureIndex = useMemo(() => indexCapture(buildLinks), [buildLinks]);
   const contextSubject = attention.realm === contextRealm() ? attention.subject : null;
   const contextSections = snapshot ? composeContext(contextSubject, { snapshot, files: fileTabs, service: serviceIndex, capture: captureIndex,
     realm: contextRealm(), session: contextSession, tasks, ready: observedCoreGeneration === coreGenerationRef.current && (!window.swarmLifecycle || lifecycle?.core.phase === "ready") }) : [];
@@ -1248,8 +1252,8 @@ export function App() {
           {taskDocumentOpen ? <div className={`surface-tab ${textDocumentVisible ? "active" : ""}`}><button className="surface-tab-main" onClick={() => { setTaskDocumentVisible(true); inspectTask(tasks.selectedTaskId); }} title={tasks.selectedTaskId ?? "Task"}>▤ {tasks.detail?.title ?? "Task document"}</button><button className="surface-tab-close" aria-label="Close task document" onClick={closeTaskDocument}>×</button></div> : null}
         </nav> : null}
         <div hidden={activeLens === "Plan"} inert={activeLens === "Plan"} tabIndex={-1} className={`graphs-grid ${textOpen ? "is-sidebar" : "is-active"}`}>{snapshot.graphs.map((graph) => {
-          const pane = <GraphPane key={graph.topologyId} graph={graph} mockAgents={demo.graphs} mockGraphVersion={demo.graphVersion} buildLinkSnapshot={graph.directory && snapshot.project.id === uiBuildLinks.repositoryId ? uiBuildLinks : undefined} focus={snapshot.focus} mappings={snapshot.mappings} reframeVersion={graphReframe} interfaceZoom={zoomPercent} onFocus={selectFocus} onActivate={graph.topologyId === "service" ? activateDefinition : undefined} onInspectFocus={(focus) => { ++navigationIntent.current; inspectGraph(focus); setSelectedConnection(null); void invoke({ type: "focus.select", requestId: requestId(), protocolVersion: PROTOCOL_VERSION, focus }); }} onNavigateDirectory={graph.directory ? enterDirectory : undefined} onConnectionFocus={(connection) => selectConnection(connection, graph.topologyId)} onReconcile={() => { void reconcile(); }} reconciliationRunning={reconciliationRunning} repositoryCameraIntent={graph.directory ? repository.cameraIntent : undefined} />;
-          return graph.topologyId === "service" ? <TopologyViews key={graph.topologyId} service={pane} focusedFile={snapshot.focus.domain === "repo" && snapshot.focus.path && snapshot.focus.key === `file:${snapshot.focus.path}` ? snapshot.focus.path : activeFile?.path ?? null} showBuildVersion={showBuildVersion} capture={snapshot.project.id === uiBuildLinks.repositoryId ? uiBuildLinks : undefined} mockAgents={demo.graphs} mockVersion={demo.graphVersion} onOpenBuild={openLinkedFile} reframeVersion={graphReframe} /> : pane;
+          const pane = <GraphPane key={graph.topologyId} graph={graph} mockAgents={demo.graphs} mockGraphVersion={demo.graphVersion} buildLinkSnapshot={graph.directory ? buildLinks : undefined} onBuildLinksVisibility={graph.directory ? setDirectoryBuildVisible : undefined} buildGraphStatus={buildGraph.observation?.status} focus={snapshot.focus} mappings={snapshot.mappings} reframeVersion={graphReframe} interfaceZoom={zoomPercent} onFocus={selectFocus} onActivate={graph.topologyId === "service" ? activateDefinition : undefined} onInspectFocus={(focus) => { ++navigationIntent.current; inspectGraph(focus); setSelectedConnection(null); void invoke({ type: "focus.select", requestId: requestId(), protocolVersion: PROTOCOL_VERSION, focus }); }} onNavigateDirectory={graph.directory ? enterDirectory : undefined} onConnectionFocus={(connection) => selectConnection(connection, graph.topologyId)} onReconcile={() => { void reconcile(); }} reconciliationRunning={reconciliationRunning} repositoryCameraIntent={graph.directory ? repository.cameraIntent : undefined} />;
+          return graph.topologyId === "service" ? <TopologyViews key={graph.topologyId} service={pane} focusedFile={snapshot.focus.domain === "repo" && snapshot.focus.path && snapshot.focus.key === `file:${snapshot.focus.path}` ? snapshot.focus.path : activeFile?.path ?? null} showBuildVersion={showBuildVersion} capture={buildLinks} observation={buildGraph.observation} onRefresh={() => { void buildGraph.refresh(); }} onVisibility={setBuildGraphVisible} mockAgents={demo.graphs} mockVersion={demo.graphVersion} onOpenBuild={openLinkedFile} reframeVersion={graphReframe} /> : pane;
         })}</div>
         <PlanWorkspace key={`${snapshot.project.id}:${snapshot.world.id}`} visible={activeLens === "Plan"} worldId={snapshot.world.id} repositoryId={snapshot.project.id}
           generation={coreGenerationRef.current} connected={!coreUnavailable && Boolean(window.swarm)} tasks={tasks} client={taskClient}
