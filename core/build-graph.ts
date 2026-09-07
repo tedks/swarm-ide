@@ -102,6 +102,7 @@ async function executable(name: string): Promise<string> {
 /** Reuse the independently tested private PID-namespace owner; never a shared Bazel server. */
 export async function queryBuildGraph(root: string, signal: AbortSignal): Promise<Uint8Array> {
   const scratch = await mkdtemp(join(tmpdir(), "swarm-build-query-"));
+  let retainScratch = false;
   try {
     const [node, unshare, setpriv] = await Promise.all(["node", "unshare", "setpriv"].map(executable));
     const bazel = process.env.SWARM_BAZEL_BIN, javaHome = process.env.SWARM_BAZEL_JAVA_HOME;
@@ -114,11 +115,12 @@ export async function queryBuildGraph(root: string, signal: AbortSignal): Promis
     return await new Promise<Uint8Array>((resolve, reject) => {
       if (signal.aborted) { reject(new Error("Build query cancelled")); return; }
       let transport: ReturnType<typeof createOwnedCodexTransport>;
-      const chunks: Buffer[] = []; let bytes = 0, failure: Error | undefined, closing = false;
+      const chunks: Buffer[] = []; let bytes = 0, failure: Error | undefined, closing = false, ended = false;
+      let exitCode: number | null | undefined;
       const finish = (code?: number | null) => {
         if (closing) return; closing = true; clearTimeout(timer); signal.removeEventListener("abort", abort);
         void transport.close().then((cleanup) => {
-          if (cleanup.status !== "confirmed") reject(new Error("Build query owned cleanup is unconfirmed"));
+          if (cleanup.status !== "confirmed") { retainScratch = true; reject(new Error("Build query owned cleanup is unconfirmed; scratch retained")); }
           else if (failure || code !== 0) reject(failure ?? new Error("Bazel query failed; repository dependencies must already be available locally"));
           else resolve(Buffer.concat(chunks));
         }, reject);
@@ -133,14 +135,15 @@ export async function queryBuildGraph(root: string, signal: AbortSignal): Promis
       try {
         transport = createOwnedCodexTransport({ root, executable: bazel!, nodeExecutable: node!, unshareExecutable: unshare!, setprivExecutable: setpriv!, ownerScript,
           args: ["--batch", "--ignore_all_rc_files", `--server_javabase=${javaHome}`, `--output_user_root=${scratch}`, ...BUILD_QUERY_ARGS] }, {
-          stdout: (chunk) => consume(chunk, true), stderr: (chunk) => consume(chunk, false), end() {},
-          exit: (code) => finish(code), error() { failure = new Error("Owned Bazel query could not start"); finish(); },
+          stdout: (chunk) => consume(chunk, true), stderr: (chunk) => consume(chunk, false),
+          end() { ended = true; if (exitCode !== undefined) finish(exitCode); },
+          exit(code) { exitCode = code; if (ended) finish(code); }, error() { failure = new Error("Owned Bazel query could not start"); finish(); },
         });
         signal.addEventListener("abort", abort, { once: true });
         if (signal.aborted) abort();
       } catch (error) { clearTimeout(timer); reject(error); }
     });
-  } finally { await rm(scratch, { recursive: true, force: true }); }
+  } finally { if (!retainScratch) await rm(scratch, { recursive: true, force: true }); }
 }
 
 export class BuildGraphProvider {

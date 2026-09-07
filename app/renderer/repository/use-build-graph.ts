@@ -28,7 +28,7 @@ export function useBuildGraph(repositoryId: string | undefined, worldId: string 
     setObservation((old) => old && old.repositoryId === repositoryId && old.worldId === worldId ? { ...old, status: "stale", message: "Core/view lifetime changed; observation requires revalidation." } : undefined);
     if (!enabled) return;
     void refresh(false);
-    const timer = setInterval(() => { void refresh(false); }, 2000);
+    const timer = setInterval(() => { void refresh(false); }, 500);
     return () => { clearInterval(timer); ++serial.current; pending.current = false; };
   }, [repositoryId, worldId, realm, enabled, refresh]);
   return { observation: observation && observation.repositoryId === repositoryId && observation.worldId === worldId ? observation : undefined, refresh };

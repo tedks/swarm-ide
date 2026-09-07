@@ -30,6 +30,7 @@ filegroup(
         "//tools/policy:sources",
         "//tools/task-integration:sources",
         "//tools/repository-navigation:sources",
+        "//tools/build-graph:sources",
     ],
 )
 
