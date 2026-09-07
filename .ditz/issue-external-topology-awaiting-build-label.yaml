@@ -14,3 +14,11 @@ log_events:
   who: Ted Smith
   what: created
   comment: ""
+- time: 2026-09-07T19:50:45-00:00
+  who: Ted Smith
+  what: commented
+  comment: 'Noncritical presentation follow-up: external public --workspace suppresses
+    automatic build correctly, but the existing observed-working yellow state still
+    says Reconciling while Jobs says no derived work running. Real source browsing
+    works and service evidence remains unavailable. Track clearer awaiting-build wording
+    without expanding L1.'
