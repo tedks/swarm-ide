@@ -30,5 +30,18 @@ log_events:
   who: Ted Smith
   what: started
   comment: ""
+- time: 2026-09-07T16:36:50-00:00
+  who: Ted Smith
+  what: commented
+  comment: 'ROOT-authorized bounded diagnostic: proven outer-versus-disposable workspace
+    hash selection error, focused RED6.673s then GREEN49.453s with canonical owned
+    PID/session/ancestry/cwd and symlink/FIFO/outside-root guards. Diagnostic executable52e164d,
+    exactly ONE targeted navigation run PASS101.5s/Bazel107.185s run.jGRSqB; capture
+    now reads actual Swarm nested base. End-of-scenario unclassified/lockfalse/errortrue/elapsed0.131s
+    is not initial-phase attribution; scenario contains later deliberate build fault.
+    Original90s timeout remains unexplained and full-local/PR50 hold stays. No production
+    edits, second GUI run, full repeat, reviewer or merge. Proposed next diagnostic
+    only: phase-pin capture before later faults. All4 cleanup1/16PIDs absent; raw
+    archives retained under core/diagnostic-*.'
 blocks:
 - repo-task-context-core-d4
