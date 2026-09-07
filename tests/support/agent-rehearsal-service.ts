@@ -9,6 +9,7 @@ import { RegisteredAgentContextProvider } from "../../core/agents/context";
 import { createFileRunStore } from "../../core/agents/file-store";
 import type { createProductionAgentService, ProductionAgentService } from "../../core/agents/production";
 import { createAgentService } from "../../core/agents/service";
+import { createAgentTaskResolver } from "../../core/tasks/draft-context";
 import { AGENT_LIMITS, AgentCapabilitiesSchema, utf8Bytes, type AgentError } from "../../protocol/agents";
 
 export const REHEARSAL_LIMITS = Object.freeze({ runs: AGENT_LIMITS.history, outputBytes: 350 * 1024,
@@ -61,6 +62,7 @@ export async function createRehearsalAgentService(
   const root = await realpath(options.root);
   const identity = createHash("sha256").update(root).digest("hex");
   const store = await createFileRunStore(join(options.storeRoot, identity));
+  let context: RegisteredAgentContextProvider | undefined;
   const entries = new Map<string, Entry>();
   let closing: Promise<void> | undefined;
   let closed = false;
@@ -77,8 +79,10 @@ export async function createRehearsalAgentService(
     return { fixture: "TEST-ONLY autonomous in-process rehearsal / R2 service / E1 disk context", externalProcesses: 0, totals, runs };
   };
   try {
-    const context = await RegisteredAgentContextProvider.create({
-      root, repositoryId: `repository:${identity}`, worldId: options.snapshot().world.id,
+    const repositoryId = `repository:${identity}`, worldId = options.snapshot().world.id;
+    context = await RegisteredAgentContextProvider.create({
+      root, repositoryId, worldId,
+      taskResolver: createAgentTaskResolver({ root, repositoryId, worldId }),
       workingRevision: () => options.snapshot().revisions.working.fingerprint || null,
       async resolveFocus(focus) {
         const snapshot = options.snapshot();
@@ -198,18 +202,32 @@ export async function createRehearsalAgentService(
       },
     };
     const service = await createAgentService({ store, context, adapter, capabilities: async () => capabilities(), emit: options.emit });
+    const ownedContext = context;
     return {
       request: (request) => service.request(request), diagnostics,
       shutdown() {
         if (closing) return closing;
+        let resolveClosing!: () => void, rejectClosing!: (error: unknown) => void;
+        closing = new Promise<void>((resolve, reject) => { resolveClosing = resolve; rejectClosing = reject; });
+        const drain = <T>(operation: () => Promise<T>): Promise<T> => {
+          try { return operation(); } catch (error) { return Promise.reject(error); }
+        };
         closed = true;
         // Service owns durable uncertainty and receipt settlement. Repeated
-        // disposal is idempotent; waiting all entries also covers a late handle.
-        closing = service.shutdown().then(async () => {
-          await Promise.all([...entries.values()].map((entry) => entry.handle!.dispose()));
-        }).finally(() => store.close());
+        // disposal is idempotent; reserve the promise before reentrant abort
+        // callbacks. Waiting all entries also covers a late handle.
+        const serviceDrain = drain(() => service.shutdown()), contextDrain = drain(() => ownedContext.dispose());
+        void Promise.allSettled([serviceDrain, contextDrain]).then(async (settlements) => {
+          const entriesDrained = await Promise.allSettled([...entries.values()].map((entry) => drain(() => entry.handle!.dispose())));
+          const [storage] = await Promise.allSettled([drain(() => store.close())]);
+          const failures = [...settlements, ...entriesDrained, storage].filter((result) => result.status === "rejected");
+          if (failures.length) throw new AggregateError(failures.map((result) => result.reason), "Rehearsal shutdown cleanup failed");
+        }).then(resolveClosing, rejectClosing);
         return closing;
       },
     };
-  } catch (error) { await store.close(); throw error; }
+  } catch (error) {
+    try { await context?.dispose(); } finally { await store.close(); }
+    throw error;
+  }
 }

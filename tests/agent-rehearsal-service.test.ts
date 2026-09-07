@@ -6,6 +6,12 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { RealWorkspaceProvider } from "../core/provider";
+import { RegisteredAgentContextProvider } from "../core/agents/context";
+import * as serviceModule from "../core/agents/service";
+import * as storeModule from "../core/agents/file-store";
+import { formatRepositoryTask, type AgentTaskReference } from "../protocol/agent-task";
+import { TaskGitReader } from "../core/tasks/git-reader";
+import { advanceTaskFixture, createTaskFixture, removeTaskMetadata } from "../tools/task-integration/fixture.mjs";
 import { AGENT_LIMITS, utf8Bytes, type AgentRequest, type AgentResult, type Run } from "../protocol/agents";
 import { PROTOCOL_VERSION } from "../protocol/common";
 import { createRehearsalAgentService, REHEARSAL_LIMITS, type RehearsalAgentService } from "./support/agent-rehearsal-service";
@@ -71,6 +77,158 @@ async function fixture(taskText = "REHEARSAL: <img src=x onerror=alert('literal'
 }
 
 describe("human-paced in-process rehearsal over real context and durable lifecycle", () => {
+  it("retains admitted CLI-authored task history and deduplicates before metadata revalidation", async () => {
+    const directory = await mkdtemp(join(tmpdir(), "swarm-rehearsal-task-")); roots.push(directory);
+    const f = await createTaskFixture(directory);
+    const provider = await RealWorkspaceProvider.create(f.root);
+    await provider.observeWorkingWorld(() => undefined);
+    await provider.listRepository({ ...base(), type: "repo.list", directory: "src", page: 0, filter: "", refresh: true }, () => undefined);
+    const focus = provider.snapshot().graphs[0]!.nodes.find((node) => node.focus.path === f.sourcePath)!.focus;
+    const blob = execFileSync("git", ["rev-parse", `${f.firstCommit.hex}:.ditz/issue-${f.taskId}.yaml`], { cwd: f.root, encoding: "utf8" }).trim();
+    const reference: AgentTaskReference = { version: 1, worldId: focus.worldId,
+      repositoryId: `repository:${createHash("sha256").update(f.root).digest("hex")}`, provider: "ditz", taskId: f.taskId,
+      metadataCommit: f.firstCommit, issueBlob: { algorithm: "sha1", hex: blob } };
+    const service = await createRehearsalAgentService({ root: f.root, storeRoot: join(directory, "private"), snapshot: () => provider.snapshot(), emit() {} });
+    services.push(service);
+    const scan = vi.spyOn(TaskGitReader.prototype, "scan");
+    try {
+      const prepared = await result(service, { ...base(), type: "agent.prepare", worldId: focus.worldId, focus,
+        taskText: "Explain pinned metadata", taskReference: reference, model: null, effort: null, links: { parentRunId: null, task: null, spec: null } });
+      if (prepared.kind !== "prepare") throw new Error("Expected task preparation");
+      const content = formatRepositoryTask(reference, f.title, f.description);
+      expect(prepared.draft.launchContext.repositoryTask).toMatchObject({ reference, content,
+        bytes: Buffer.byteLength(content), digest: createHash("sha256").update(content).digest("hex") });
+      const request: AgentRequest = { ...base(), type: "agent.launch", runId: prepared.draft.runId, contextHash: prepared.draft.contextHash };
+      const receipt = await result(service, request);
+      expect(receipt).toMatchObject({ kind: "launch", receipt: { status: "admitted" } });
+      expect(scan).toHaveBeenCalledTimes(2);
+      const scans = scan.mock.calls.length;
+      await advanceTaskFixture(f);
+      expect(await result(service, request)).toEqual(receipt);
+      expect((await detail(service, prepared.draft.runId)).run.launchContext).toEqual(prepared.draft.launchContext);
+      await removeTaskMetadata(f);
+      expect(await result(service, request)).toEqual(receipt);
+      expect((await detail(service, prepared.draft.runId)).run.launchContext).toEqual(prepared.draft.launchContext);
+      expect(scan).toHaveBeenCalledTimes(scans);
+      expect(service.diagnostics().totals.start).toBe(1);
+      expect(await readFile(join(f.root, f.sourcePath), "utf8")).toBe(f.sourceText);
+    } finally { scan.mockRestore(); }
+  }, 30_000);
+
+  it.each(["service", "context"])("shares reentrant shutdown and drains the other owner after synchronous %s failure", async (failing) => {
+    const creatingContext = vi.spyOn(RegisteredAgentContextProvider, "create");
+    const creatingService = vi.spyOn(serviceModule, "createAgentService");
+    const creatingStore = vi.spyOn(storeModule, "createFileRunStore");
+    const f = await fixture();
+    const context = await creatingContext.mock.results[0]!.value, service = await creatingService.mock.results[0]!.value;
+    const store = await creatingStore.mock.results[0]!.value;
+    await service.shutdown(); await context.dispose();
+    let release!: () => void; const gate = new Promise<void>((resolve) => { release = resolve; });
+    const reentered: Promise<void>[] = [], events: string[] = [];
+    const drain = (owner: string) => {
+      events.push(owner);
+      if (events.length <= 2) reentered.push(f.service.shutdown());
+      if (owner === failing) throw new Error(`${owner} synchronous failure`);
+      return gate;
+    };
+    vi.spyOn(service, "shutdown").mockImplementation(() => drain("service"));
+    vi.spyOn(context, "dispose").mockImplementation(() => drain("context"));
+    const close = vi.spyOn(store, "close");
+    let closing: Promise<void> | undefined;
+    try {
+      closing = f.service.shutdown();
+      const observed = closing.catch((error: unknown) => error);
+      expect(events).toEqual(["service", "context"]); expect(reentered).toEqual([closing, closing]);
+      await new Promise((resolve) => setImmediate(resolve)); expect(close).not.toHaveBeenCalled();
+      release(); expect(await observed).toBeInstanceOf(AggregateError); expect(close).toHaveBeenCalledTimes(1);
+    } finally {
+      release(); await closing?.catch(() => undefined);
+      services.splice(services.indexOf(f.service), 1); await store.close(); vi.restoreAllMocks();
+    }
+  });
+
+  it.each(["prepare", "launch"] as const)("aborts held metadata during %s without early store close or responder admission", async (operation) => {
+    const createContext = RegisteredAgentContextProvider.create.bind(RegisteredAgentContextProvider);
+    let held = false, entered = false, signal: AbortSignal | undefined, release!: () => void;
+    const gate = new Promise<void>((resolve) => { release = resolve; });
+    let reference!: AgentTaskReference;
+    vi.spyOn(RegisteredAgentContextProvider, "create").mockImplementation(async (options) => {
+      expect(options.taskResolver).toBeDefined();
+      reference = { version: 1, worldId: options.worldId, repositoryId: options.repositoryId, provider: "ditz", taskId: "held",
+        metadataCommit: { algorithm: "sha1", hex: "a".repeat(40) }, issueBlob: { algorithm: "sha1", hex: "b".repeat(40) } };
+      return createContext({ ...options, taskResolver: {
+        async resolveTask(pin, observedSignal) {
+          if (held) { signal = observedSignal; entered = true; await gate; }
+          return { reference: pin, title: "Held metadata", description: "Exact task data" };
+        }, async checkRevision() {},
+      } });
+    });
+    const creatingStore = vi.spyOn(storeModule, "createFileRunStore");
+    let pending: Promise<unknown> | undefined;
+    try {
+      const f = await fixture();
+      const store = await creatingStore.mock.results[0]!.value, close = vi.spyOn(store, "close");
+      if (f.prepare.type !== "agent.prepare") throw new Error("Expected prepare");
+      const input = { ...f.prepare, taskReference: reference };
+      const prepared = await f.service.request(input);
+      if (!prepared.ok || prepared.value.kind !== "prepare") throw new Error("Expected task draft");
+      held = true;
+      pending = f.service.request(operation === "prepare" ? input : { ...base(), type: "agent.launch",
+        runId: prepared.value.draft.runId, contextHash: prepared.value.draft.contextHash });
+      await vi.waitFor(() => expect(entered).toBe(true));
+      const closing = f.service.shutdown();
+      expect(signal?.aborted).toBe(true);
+      await new Promise((resolve) => setImmediate(resolve)); expect(close).not.toHaveBeenCalled();
+      release(); await closing;
+      expect(await pending).toMatchObject({ ok: false, error: { code: "STALE_CONTEXT" } });
+      expect(close).toHaveBeenCalledTimes(1);
+      expect(f.service.diagnostics().totals.start).toBe(0);
+    } finally { release(); await pending; vi.restoreAllMocks(); }
+  });
+
+  it.each(["service", "context"])("waits both shutdown drains and preserves responder cleanup when %s fails", async (failing) => {
+    const creatingContext = vi.spyOn(RegisteredAgentContextProvider, "create");
+    const creatingService = vi.spyOn(serviceModule, "createAgentService");
+    const creatingStore = vi.spyOn(storeModule, "createFileRunStore");
+    const f = await fixture(); await f.running();
+    const context = await creatingContext.mock.results[0]!.value;
+    const service = await creatingService.mock.results[0]!.value;
+    const store = await creatingStore.mock.results[0]!.value;
+    const events: string[] = [];
+    let releaseService!: () => void, releaseContext!: () => void;
+    const serviceGate = new Promise<void>((resolve) => { releaseService = resolve; });
+    const contextGate = new Promise<void>((resolve) => { releaseContext = resolve; });
+    const originalShutdown = service.shutdown.bind(service), originalDispose = context.dispose.bind(context);
+    const shutdown = vi.spyOn(service, "shutdown").mockImplementation(() => {
+      events.push("service"); const drained = originalShutdown();
+      return serviceGate.then(async () => { await drained; if (failing === "service") throw new Error("service drain failed"); });
+    });
+    const dispose = vi.spyOn(context, "dispose").mockImplementation(() => {
+      events.push("context"); const drained = originalDispose();
+      return contextGate.then(async () => { await drained; if (failing === "context") throw new Error("context drain failed"); });
+    });
+    const close = vi.spyOn(store, "close");
+    let settled = false;
+    const closing = f.service.shutdown();
+    const observed = closing.then(() => { settled = true; return null; }, (error: unknown) => { settled = true; return error; });
+    try {
+      expect(events).toEqual(["service", "context"]);
+      expect(f.service.shutdown()).toBe(closing);
+      if (failing === "context") releaseContext(); else releaseService();
+      await new Promise((resolve) => setImmediate(resolve));
+      expect(settled).toBe(false); expect(close).not.toHaveBeenCalled();
+      releaseService(); releaseContext();
+      expect(await observed).toBeInstanceOf(Error);
+      expect(shutdown).toHaveBeenCalledTimes(1); expect(dispose).toHaveBeenCalledTimes(1);
+      expect(close).toHaveBeenCalledTimes(1);
+      expect(f.service.diagnostics()).toMatchObject({ runs: [{ activeTimers: 0, cleanupSettled: true }], totals: { dispose: 1 } });
+    } finally {
+      releaseService(); releaseContext(); await observed;
+      services.splice(services.indexOf(f.service), 1);
+      await store.close(); vi.restoreAllMocks();
+    }
+  });
+
   it("autonomously starts from real disk context and records literal inputs without private controls", async () => {
     const f = await fixture(); const { prepared, request, receipt } = await f.running();
     expect(prepared).toMatchObject({ capabilities: { provider: "deterministic-rehearsal", version: "test-only" },

@@ -82,13 +82,24 @@ SH
 cat >"$bin_dir/dev" <<'SH'
 #!/usr/bin/env bash
 [[ "${SWARM_FAKE_APP_EXIT:-0}" != 1 ]] || exit 29
+cd "$BUILD_WORKSPACE_DIRECTORY"
+if [[ "${SWARM_FAKE_NESTED_WORKSPACE:-0}" == 1 ]]; then
+  mkdir -p "$SWARM_X11_OWNERSHIP_DIR/navigation-fixture"
+  cd "$SWARM_X11_OWNERSHIP_DIR/navigation-fixture"
+fi
+if [[ -n "${SWARM_FAKE_DIAGNOSTIC_CWD:-}" ]]; then cd "$SWARM_FAKE_DIAGNOSTIC_CWD"; fi
 if [[ -n "${SWARM_FAKE_BAZEL_LOG:-}" ]]; then
-  digest=$(printf '%s' "$BUILD_WORKSPACE_DIRECTORY" | md5sum | cut -d' ' -f1)
+  digest=$(printf '%s' "$PWD" | md5sum | cut -d' ' -f1)
   base="$TEST_TMPDIR/_bazel_$(id -un)/$digest"
   mkdir -p "$base"
   case "$SWARM_FAKE_BAZEL_LOG" in
     fifo) mkfifo "$base/command.log" ;;
     symlink) ln -s "$SWARM_FAKE_SECRET_FILE" "$base/command.log" ;;
+    parent-symlink)
+      rmdir "$base"
+      mkdir -p "$TEST_TMPDIR/actual-log-parent"
+      ln -s "$TEST_TMPDIR/actual-log-parent" "$base"
+      printf '[1 / 197] Compiling PRIVATE_SOURCE_CANARY\n' >"$base/command.log" ;;
     progress)
       printf '[1 / 197] Compiling src/google/protobuf/descriptor.cc [for tool]; 2s\nPRIVATE_SOURCE_CANARY\nINFO: Elapsed time: 21.0s\n' >"$base/command.log" ;;
   esac
@@ -202,11 +213,22 @@ run_success bounded-build-progress TEST_TMPDIR="$test_root/progress-tmp" SWARM_F
 grep -q 'toolchain-work-observed' "$case_dir/topology-build.txt" || fail 'lost nested compiler progress'
 grep -q 'INFO: Elapsed time: 21.0s' "$case_dir/topology-build.txt" || fail 'lost build timing'
 if grep -q PRIVATE_SOURCE_CANARY "$case_dir/topology-build.txt"; then fail 'copied compiler source into diagnostics'; fi
+run_success owned-disposable-build-progress TEST_TMPDIR="$test_root/nested-tmp" SWARM_FAKE_BAZEL_LOG=progress SWARM_FAKE_NESTED_WORKSPACE=1
+grep -q 'toolchain-work-observed' "$case_dir/topology-build.txt" || fail 'lost actual disposable workspace compiler progress'
+grep -q 'workspace_selection=owned-disposable' "$case_dir/topology-build.txt" || fail 'did not prove owned disposable workspace selection'
+if grep -q PRIVATE_SOURCE_CANARY "$case_dir/topology-build.txt"; then fail 'copied nested compiler source into diagnostics'; fi
 printf 'PRIVATE_SOURCE_CANARY\n' >"$test_root/secret-canary"
 run_success reject-log-symlink TEST_TMPDIR="$test_root/symlink-tmp" SWARM_FAKE_BAZEL_LOG=symlink SWARM_FAKE_SECRET_FILE="$test_root/secret-canary"
 grep -q 'nested_log=unavailable-or-unsafe' "$case_dir/topology-build.txt" || fail 'followed symlink log'
 run_success reject-log-fifo TEST_TMPDIR="$test_root/fifo-tmp" SWARM_FAKE_BAZEL_LOG=fifo
 grep -q 'nested_log=unavailable-or-unsafe' "$case_dir/topology-build.txt" || fail 'accepted FIFO log'
+run_success reject-nested-parent-symlink TEST_TMPDIR="$test_root/parent-symlink-tmp" SWARM_FAKE_NESTED_WORKSPACE=1 SWARM_FAKE_BAZEL_LOG=parent-symlink
+grep -q 'nested_log=unavailable-or-unsafe' "$case_dir/topology-build.txt" || fail 'followed nested log parent symlink'
+if grep -q PRIVATE_SOURCE_CANARY "$case_dir/topology-build.txt"; then fail 'read symlink parent contents'; fi
+mkdir "$test_root/unowned-workspace"
+run_success reject-unowned-workspace TEST_TMPDIR="$test_root/unowned-tmp" SWARM_FAKE_BAZEL_LOG=progress SWARM_FAKE_DIAGNOSTIC_CWD="$test_root/unowned-workspace"
+grep -q 'nested_log=unavailable-or-unsafe' "$case_dir/topology-build.txt" || fail 'accepted unowned process cwd'
+if grep -q 'toolchain-work-observed' "$case_dir/topology-build.txt"; then fail 'read unowned workspace log'; fi
 
 run_failure missing-wm 'SWARM_WM_BIN must name an executable absolute path' SWARM_WM_BIN="$test_root/missing-wm"
 run_failure missing-automation 'SWARM_XDOTOOL_BIN must name an executable absolute path' SWARM_XDOTOOL_BIN="$test_root/missing-xdotool"
