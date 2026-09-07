@@ -22,3 +22,12 @@ log_events:
     says Reconciling while Jobs says no derived work running. Real source browsing
     works and service evidence remains unavailable. Track clearer awaiting-build wording
     without expanding L1.'
+- time: 2026-09-07T23:01:44-00:00
+  who: Ted Smith
+  what: commented
+  comment: 'PM reconciliation 2026-09-07: PR59 now distinguishes empty Service needs-build
+    from running/failed/unobserved states. The original global label remains unresolved:
+    current app/renderer/App.tsx reconciliationTitle still maps every yellow status
+    to Reconciling and renders it in global-truth, including idle external workspaces.
+    Leave open for that remaining label; do not attribute the whole issue fixed by
+    the new canvas explanation.'
