@@ -95,12 +95,18 @@ async function main() {
       }) };
   }, selected.title, controls);
   await paint(); const beforeScroll = await measurements();
+  const scrollCameras = await run(() => {
+    globalThis.__actionsScrollGraphs = [...document.querySelectorAll(".react-flow__viewport")];
+    return globalThis.__actionsScrollGraphs.map((node) => node.style.transform);
+  });
   assert(beforeScroll.controls.every((control) => control.visible), "title and all primary controls visible before supporting scroll");
   await run(() => { const support = document.querySelector(".plan-selection-support"); support.scrollTop = support.scrollHeight; });
   await paint(); const afterScroll = await measurements();
   assert(afterScroll.scrollTop > 0, "real supporting content overflow exercised");
   assert(afterScroll.controls.every((control) => control.visible), "title and all primary controls remain visible after supporting scroll");
   assert.deepEqual(afterScroll.controls.map(({ top, bottom }) => ({ top, bottom })), beforeScroll.controls.map(({ top, bottom }) => ({ top, bottom })), "primary coordinates stay fixed while supporting content scrolls");
+  assert.deepEqual(await run(() => globalThis.__actionsScrollGraphs.map((node) => ({ connected: node.isConnected, transform: node.style.transform }))),
+    scrollCameras.map((transform) => ({ connected: true, transform })), "supporting scroll retains every graph instance and camera");
   await screenshot("01-selected-plan-actions.png");
   await click(".plan-selection-primary button", "Why this context?");
   await until(() => run(() => {
@@ -131,15 +137,19 @@ async function main() {
     slot: document.querySelector(".agent-task-slot")?.textContent, source: document.querySelector(".agent-context-path")?.textContent }));
   const draft = await draftState();
   stage = "retained-work";
-  const cameras = await run(() => { globalThis.__actionsGraphs = [...document.querySelectorAll(".react-flow__viewport")]; return globalThis.__actionsGraphs.map((node) => node.style.transform); });
+  // Explicit cross-directory source activation intentionally frames the repo
+  // directory projection. It must not move the separate Plan projection.
+  const cameras = await run(() => { globalThis.__actionsGraphs = [...document.querySelectorAll(".planning-field .react-flow__viewport")]; return globalThis.__actionsGraphs.map((node) => node.style.transform); });
   await click(".plan-selection-primary button", `Read doc · ${fixture.docPath}`);
   await until(async () => (await sourceState())?.text === fixture.docText, "read doc with retained dirty source");
+  await until(() => has('.graph-pane[data-directory="docs"]'), "explicit document activation follows docs directory");
   await click(".plan-selection-primary button", `Open source · ${fixture.sourcePath}`);
   await until(async () => (await sourceState())?.text === dirty.text, "return to unsaved source");
+  await until(() => has('.graph-pane[data-directory="src"]'), "explicit source activation follows src directory");
   assert.deepEqual(await sourceState(), dirty, "dirty source logical cursor retained");
   assert.deepEqual(await draftState(), draft, "draft and attached task retained");
   assert.deepEqual(await run(() => globalThis.__actionsGraphs.map((node) => ({ connected: node.isConnected, transform: node.style.transform }))),
-    cameras.map((transform) => ({ connected: true, transform })), "graph component identity and cameras retained");
+    cameras.map((transform) => ({ connected: true, transform })), "Plan component identity and cameras retained through explicit file navigation");
   assert.equal(await fs.readFile(path.join(fixture.root, fixture.sourcePath), "utf8"), fixture.sourceText, "source disk untouched");
   const agents = await request({ type: "agent.snapshot" });
   assert(agents.ok && agents.agent.snapshot.runs.length === 0 && !agents.agent.snapshot.capabilities.controls.launch);
@@ -150,6 +160,7 @@ async function main() {
     input: "Disposable real Git/Ditz repo with explicitly authored supporting-note layout pressure; not observed live architecture",
     viewport: { width: 1440, height: 876 }, selectedTitle: selected.title, beforeScroll, afterScroll,
     primaryControlsVisibleAfterScroll: true, sourceDraftCamerasRetained: true,
+    cameraScope: "All graph instances/cameras during supporting scroll; Plan instances/cameras during explicit docs-to-src activation; repository directory follows that explicit navigation",
     activated: ["native Enter plan selection", "Why this context focus", "context document", "Read doc", "Open source", "Inspect task", "Attach"],
     modelTurns: 0, rendererErrors, diagnostics, milliseconds: Date.now() - started }));
 }
