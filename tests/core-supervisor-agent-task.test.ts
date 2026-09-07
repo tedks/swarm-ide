@@ -180,6 +180,9 @@ describe("task-bearing preparation transport deadline", () => {
     let release!: () => void, entered!: () => void;
     const gate = new Promise<void>((resolve) => { release = resolve; });
     const scanning = new Promise<void>((resolve) => { entered = resolve; });
+    let releasePrepare!: () => void, enteredPrepare!: () => void;
+    const prepareGate = new Promise<void>((resolve) => { releasePrepare = resolve; });
+    const preparingScan = new Promise<void>((resolve) => { enteredPrepare = resolve; });
     const deliveries = new Map<string, Promise<CoreResponse>>();
     let restoreScan = () => undefined;
     try {
@@ -201,16 +204,36 @@ describe("task-bearing preparation transport deadline", () => {
       transport.first.postMessage.mockImplementation((input: CoreRequest | { type: "core.shutdown" }) => {
         if (!("requestId" in input) || !isAgentRequest(input)) throw new Error("Expected agent request");
         const delivery = ownedService.request(input).then((result): CoreResponse => {
-          const reply = result.ok ? response(input, result.value)
+          const reply: CoreResponse = result.ok ? response(input, result.value)
             : { protocolVersion: PROTOCOL_VERSION, requestId: input.requestId, ok: false, error: result.error };
           transport.first.emit("message", reply);
           return reply;
         });
         deliveries.set(input.requestId, delivery);
       });
-      const prepared = await supervisor.request({ protocolVersion: PROTOCOL_VERSION, requestId: "real-prepare", type: "agent.prepare",
+      const originalScan = TaskGitReader.prototype.scan;
+      const prepareScan = vi.spyOn(TaskGitReader.prototype, "scan").mockImplementationOnce(async function (this: TaskGitReader, ...args) {
+        enteredPrepare(); await prepareGate;
+        return originalScan.apply(this, args);
+      });
+      restoreScan = () => { prepareScan.mockRestore(); return undefined; };
+      vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+      const prepareSettled = vi.fn();
+      const preparing = supervisor.request({ protocolVersion: PROTOCOL_VERSION, requestId: "real-prepare", type: "agent.prepare",
         worldId: focus.worldId, focus, taskText: "Explain the exact pinned task", taskReference: reference,
-        model: null, effort: null, links: { parentRunId: null, task: null, spec: null } });
+        model: null, effort: null, links: { parentRunId: null, task: null, spec: null } })
+        .then((reply) => { prepareSettled(reply); return reply; });
+      await preparingScan;
+      await vi.advanceTimersByTimeAsync(6_000);
+      expect(prepareSettled).not.toHaveBeenCalled();
+      expect(service.diagnostics().totals.start).toBe(0);
+      // Release real Git/YAML work only after crossing the former bridge bound.
+      // Date and I/O stay real, so metadata deadlines retain their actual clock.
+      vi.useRealTimers(); releasePrepare();
+      const prepared = await preparing;
+      expect(prepareSettled).toHaveBeenCalledExactlyOnceWith(prepared);
+      expect(prepareScan).toHaveBeenCalledTimes(1);
+      prepareScan.mockRestore();
       expect(prepared.ok).toBe(true);
       if (!prepared.ok || prepared.agent?.kind !== "prepare") throw new Error("Expected real task context");
       const draft = prepared.agent.draft;
@@ -218,7 +241,6 @@ describe("task-bearing preparation transport deadline", () => {
       expect(draft.launchContext.repositoryTask).toMatchObject({ reference, content, digest: hash(content) });
       expect(draft.launchContext.attachments[0]?.content).toBe(fixture.sourceText);
 
-      const originalScan = TaskGitReader.prototype.scan;
       const scan = vi.spyOn(TaskGitReader.prototype, "scan").mockImplementation(async function (this: TaskGitReader, ...args) {
         entered(); await gate;
         return originalScan.apply(this, args);
@@ -264,7 +286,7 @@ describe("task-bearing preparation transport deadline", () => {
         .toEqual(["agent.prepare", "agent.launch", "agent.read", "agent.snapshot"]);
       expect(scan).toHaveBeenCalledTimes(1); // History reads never reread metadata.
     } finally {
-      release(); vi.useRealTimers();
+      releasePrepare(); release(); vi.useRealTimers();
       await Promise.allSettled(deliveries.values());
       supervisor?.stop();
       await service?.shutdown();

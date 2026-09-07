@@ -22,6 +22,9 @@ real Git/YAML preparation and separately label deterministic responder behavior.
 - [x] (2026-09-07 10:48Z) Concrete registered Git/YAML resolver, canonical materialization, disk/ref bracketing and lifecycle composition implemented; corrected quality1388/100 PASS. Exact initial implementation had TypeScript-only definite-assignment/test-this errors, fixed before behavioral execution.
 - [x] (2026-09-07 10:48Z) Task-bearing Prepare40s branch passes deterministic transport checks; ordinary5s/tasks12s/write behavior unchanged. Separate synthetic late-launch receipt evidence retained.
 - [x] (2026-09-07) Pushed4e19fcf adds no replacement scan while prior owned metadata settles, plus actual worker-cancellation proof. Three-provider council active; extended real late-admission transport proof and final frozen full gates pending.
+- [x] (2026-09-07) Native full and added-test delta CLEAN; Google same-session full/delta CLEAN. Anthropic single420s attempt returned no review, unavailable rather than substituted.
+- [x] (2026-09-07) Frozen0b3902a build34 PASS57.845s; all13 fresh suites completed240.177s with12 PASS and exact owned test-only TS2719 reply.ok widening failure. Raw output archived before any correction; no GUI failure or unexplained retry.
+- [x] (2026-09-07 15:23Z) Resumed same consumer after user replenished quota. Collected completed jobs; bounded annotation/controlled6s Prepare proof correction continues in existing helper only.
 - [ ] Run frozen local full gates and provider-aware council to fixpoint; record exact attribution.
 - [ ] Push reviewed increment and normally merge only on ROOT-cleared base; close bounded Ditz issue after actual landing and hand off to ROOT.
 
@@ -44,6 +47,12 @@ now refuses new preparation while metadata remains owned, preventing a queue
 of new scans behind a cancelled but not-yet-reaped operation. Tests use held
 callbacks to distinguish bounded response from actual owned settlement.
 
+The first frozen aggregate caught a TypeScript literal widening in the added
+real-service transport harness (`reply.ok` became boolean). The other twelve
+suites, including packaged browsing and ordinary-close rehearsal, passed. This
+is a test annotation error, not a product lifecycle failure. The completed run
+was retained through a quota outage and archived before the exact correction.
+
 ## Decision Log
 
 
@@ -62,8 +71,11 @@ The first implementation quality execution passed1388 tests/100 files, type
 checks and both bundles. It includes actual CLI-authored pinned production
 Prepare while launch remains unavailable, and separately deterministic responder
 admission/history with immutable task data. Extra settling/worker/transport tests
-are not attributed to that earlier run. Final full gates and council remain
-in progress; no merge, attachment UI, packaged attachment or model is claimed.
+are not attributed to that earlier run. First frozen aggregate0b3902a was12/13,
+not green; exact test typing correction and controlled actual Prepare timing
+proof require new local execution. Native/Google full and added-test reviews
+were CLEAN, Anthropic unavailable. No merge, attachment UI, packaged attachment
+or model is claimed.
 D6 must join reviewed D4/D5 and owns parent issue closure.
 
 ## Context and Orientation
