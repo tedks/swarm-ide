@@ -18,3 +18,10 @@ log_events:
   who: Ted Smith
   what: started
   comment: ""
+- time: 2026-09-07T09:47:23-00:00
+  who: Ted Smith
+  what: commented
+  comment: PR48 candidate21c3400 pushed and ready. Baseline3RED/1305PASS; current
+    quality1340PASS/98 files. Full frozen local gates and provider-aware council running.
+    ROOT-approved rehearsal verifier strict1/2 compatibility only, no weakening; all
+    task-bearing Prepare unavailable. Parent remains open.
