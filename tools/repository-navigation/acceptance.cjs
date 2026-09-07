@@ -623,6 +623,12 @@ async function main() {
     await click(label("Inspect linked task q4-linked")); await until(async () => await contextSubject() === "q4-linked", "Q4 pin before owned core recovery");
     const recovery = await replaceOwnedCore("q4");
     await until(() => run(() => document.querySelector(".task-observation")?.textContent.includes("Tasks observed")), "Q4 one reconnected full task observation");
+    // Q1 revokes attention at the new core realm; explicitly revisit the retained
+    // selection. Do not mistake a missing, correctly revoked Context for loss of
+    // the client's retained pin, or manufacture a renderer exception in a probe.
+    await until(() => has(".tasks-show-details"), "Q4 retained selection affordance after realm reset");
+    await click(".tasks-show-details");
+    await until(() => has(".artifact-context .task-detail"), "Q4 explicit revisit after core recovery");
     assert((await run(() => document.querySelector(".artifact-context .task-detail").textContent)).includes(fixture.backlinks.commit));
     await preserved(); await screenshot("q4-revision-and-recovery.png");
     await click(".artifact-context .task-detail .task-heading button");

@@ -179,13 +179,14 @@ export class TaskBridgeClient {
     this.needsInitial = false;
     // Starting another request is not evidence that the previous failure has
     // recovered. Keep that warning visible throughout the bounded pending read.
-    this.update({ refreshing: true });
+    this.update({ refreshing: true, ...(this.state.pin ? { detailStale: true } : {}) });
     try {
       const result = await this.request({ protocolVersion: PROTOCOL_VERSION, requestId: this.id(),
         type: "tasks.snapshot", worldId: context.worldId, refresh });
       if (epoch !== this.epoch) return;
       if (result.kind !== "snapshot") throw new TaskClientFailure("INVALID_CORE_MESSAGE: unexpected task reply kind.");
       let observation = result.observation;
+      const suppliedSnapshot = observation.snapshot;
       if (observation.sequence < this.snapshotWatermark) {
         this.update({ notice: "Stale task observation ignored; retained data is unchanged." }); return;
       }
@@ -212,7 +213,7 @@ export class TaskBridgeClient {
       this.snapshotWatermark = observation.sequence;
       // Domain outcomes already have observation.reason. notice is reserved
       // for client/transport failures, not a duplicate rendering of that reason.
-      const backlinks = observation.snapshot
+      const backlinks = observation.snapshot && (suppliedSnapshot || this.state.backlinks)
         ? !changed && this.state.backlinks ? this.state.backlinks : indexTaskBacklinks(observation.snapshot) : null;
       this.update({ observation, backlinks, notice: null });
       this.reconcileDetail(refresh || Boolean(changed));
@@ -220,6 +221,7 @@ export class TaskBridgeClient {
     finally {
       if (this.pendingSnapshot === pending) {
         this.pendingSnapshot = null; this.update({ refreshing: false });
+        if (this.state.pin) this.reconcileDetail();
         if (this.refreshAgain) { this.refreshAgain = false; if (this.isVisible()) void this.snapshot(true); }
       }
     }
@@ -277,7 +279,7 @@ export class TaskBridgeClient {
         detailStale: this.state.refreshing || this.state.observation?.status !== "observed", detailNotice: null, backlinkNotice: null });
       return true;
     } catch (error) {
-      if (epoch === this.epoch && ticket === this.detailTicket) this.update({ backlinkNotice: `${expiredLink} ${this.failure(error)}` });
+      if (epoch === this.epoch && ticket === this.detailTicket) this.update({ notice: this.failure(error), backlinkNotice: expiredLink });
       return false;
     } finally { if (epoch === this.epoch && ticket === this.detailTicket) this.update({ reading: false }); }
   }

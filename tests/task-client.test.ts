@@ -115,6 +115,15 @@ describe("explicit backlink selection", () => {
     expect(await promise).toBe(false); expect(h.client.getSnapshot().detail).toBeNull();
     expect(h.client.getSnapshot().backlinks).not.toBe(index);
   });
+  it("does not let a failed reconnect bind an old compatibility mode as new-lifetime authority", async () => {
+    const h = harness(true); h.client.setVisible(true); h.status(h.ready(1)); h.snapshot(); await drain();
+    h.status(h.ready(2)); h.snapshot(taskObservationFixture("unavailable", false)); await drain();
+    expect(h.client.getSnapshot().observation?.snapshot).not.toBeNull();
+    expect(h.client.getSnapshot().backlinks).toBeNull();
+    void h.client.refresh(); h.snapshot(linkedObservation(2)); await drain();
+    expect(h.client.getSnapshot().notice).toBeNull();
+    expect(h.client.getSnapshot().backlinks?.lookup("docs/architecture.md")).toHaveLength(1);
+  });
   it("retains a successful pin across subsequent refresh rather than silently substituting N", async () => {
     const h = await observed(linkedObservation());
     const index = h.client.getSnapshot().backlinks!;
@@ -123,6 +132,9 @@ describe("explicit backlink selection", () => {
     const pin = h.client.inspectPinned(row.target, { path, index }, () => true);
     h.read(); expect(await pin).toBe(true);
     const retained = h.client.getSnapshot().detail;
+    await vi.advanceTimersByTimeAsync(5000); expect(h.client.getSnapshot().detailStale).toBe(true);
+    h.snapshot(linkedObservation(2)); await drain();
+    expect(h.client.getSnapshot().detailStale).toBe(false);
     const next = linkedObservation(3, "c");
     void h.client.refresh(); h.snapshot(next); await drain();
     const auto = h.calls.filter((c) => c.request.type === "tasks.read");

@@ -243,19 +243,19 @@ export function App() {
   useEffect(() => {
     if (workspace.snapshot) taskClient.setContext(workspace.snapshot.world.id, workspace.snapshot.project.id);
   }, [taskClient, workspace.snapshot?.world.id, workspace.snapshot?.project.id]);
+  const taskDocumentConsumer = taskDocumentOpen && (taskDocumentVisible || !fileTabs.some((tab) => tab.path === activeSurface));
+  const taskContextConsumer = ["file", "task"].includes(attention.subject?.kind ?? "");
   useEffect(() => {
     // Mirrors the existing compact breakpoint, including Electron's CSS zoom.
     // Checking panel visibility does not make source/build changes scan tasks.
     const media = window.matchMedia?.("(max-width: 1100px)");
     const update = () => taskClient.setVisible(Boolean(workspace.snapshot) && (
       taskSidebarVisible && (!media?.matches || compactPanel === "work") ||
-      taskDocumentOpen && (taskDocumentVisible || !fileTabs.some((tab) => tab.path === activeSurface)) ||
-      ["file", "task"].includes(attention.subject?.kind ?? "") && (!media?.matches || compactPanel === "info")));
+      taskDocumentConsumer || taskContextConsumer && (!media?.matches || compactPanel === "info")));
     update();
     media?.addEventListener("change", update);
     return () => { media?.removeEventListener("change", update); };
-  }, [taskClient, compactPanel, Boolean(workspace.snapshot), taskSidebarVisible, taskDocumentOpen,
-    taskDocumentVisible, Boolean(fileTabs.some((tab) => tab.path === activeSurface)), attention.subject?.kind]);
+  }, [taskClient, compactPanel, Boolean(workspace.snapshot), taskSidebarVisible, taskDocumentConsumer, taskContextConsumer]);
 
   const selectTask = useCallback((id: string) => {
     ++navigationIntent.current;
@@ -278,6 +278,11 @@ export function App() {
   const returnToSourceInformation = useCallback(() => {
     sourceInformation();
     setSourceInfoFocusRequest(navigationIntent.current);
+  }, [sourceInformation]);
+  const closeTaskDocument = useCallback(() => {
+    ++navigationIntent.current;
+    setTaskDocumentOpen(false); setTaskDocumentVisible(false);
+    if (attentionRef.current.subject?.kind === "task") sourceInformation();
   }, [sourceInformation]);
   const reportRevealFailure = useCallback((message: string) => {
     setRevealNotice(message);
@@ -762,6 +767,7 @@ export function App() {
   }, [enterDirectory, openLinkedFile]);
 
   const closeFile = useCallback((path: string) => {
+    ++navigationIntent.current;
     const tab = fileTabsRef.current.find((candidate) => candidate.path === path);
     if (tab && protectsBuffer(tab)) {
       setFileTabs((tabs) => tabs.map((candidate) => candidate.path === path ? { ...candidate, message: "Save or reload this buffer before closing it." } : candidate));
@@ -923,7 +929,7 @@ export function App() {
       if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "k") { event.preventDefault(); interruptPendingReveal(); if (paletteOpen) cancelPalette(); else openPalette(); }
       if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "w") {
         event.preventDefault();
-        if (taskDocumentVisible || (taskDocumentOpen && !fileTabsRef.current.some((tab) => tab.path === activeSurface))) { setTaskDocumentVisible(false); setTaskDocumentOpen(false); if (attentionRef.current.subject?.kind === "task") sourceInformation(); return; }
+        if (taskDocumentVisible || (taskDocumentOpen && !fileTabsRef.current.some((tab) => tab.path === activeSurface))) { closeTaskDocument(); return; }
         const path = activeSurface === "graphs" ? null : activeSurface;
         if (path) closeFile(path);
         return;
@@ -932,7 +938,7 @@ export function App() {
     };
     window.addEventListener("keydown", listener);
     return () => window.removeEventListener("keydown", listener);
-  }, [activeSurface, closeFile, interruptPendingReveal, resetZoom, zoomIn, zoomOut, taskDocumentVisible, taskDocumentOpen, paletteOpen, cancelPalette, openPalette, sourceInformation]);
+  }, [activeSurface, closeFile, interruptPendingReveal, resetZoom, zoomIn, zoomOut, taskDocumentVisible, taskDocumentOpen, paletteOpen, cancelPalette, openPalette, closeTaskDocument]);
 
   useEffect(() => {
     if (paletteOpen) requestAnimationFrame(() => commandInput.current?.focus());
@@ -1149,7 +1155,7 @@ export function App() {
         </div>
         {textOpen ? <nav className="surface-tabs" aria-label="Document tabs">
           {fileTabs.map((tab) => <div key={tab.path} className={`surface-tab ${activeFile?.path === tab.path && !textDocumentVisible ? "active" : ""}`}><button className="surface-tab-main" onClick={() => activateFile(tab.path)} title={tab.path}><span className={`tab-state status-${tab.status}`}>{tab.status === "dirty" ? "●" : tab.status === "saving" ? "◌" : tab.status === "conflict" || tab.status === "error" ? "!" : "◇"}</span>{tab.path.split("/").at(-1)}</button><button className="surface-tab-close" aria-label={`Close ${tab.path}`} onClick={() => closeFile(tab.path)}>×</button></div>)}
-          {taskDocumentOpen ? <div className={`surface-tab ${textDocumentVisible ? "active" : ""}`}><button className="surface-tab-main" onClick={() => { setTaskDocumentVisible(true); inspectTask(tasks.selectedTaskId); }} title={tasks.selectedTaskId ?? "Task"}>▤ {tasks.detail?.title ?? "Task document"}</button><button className="surface-tab-close" aria-label="Close task document" onClick={() => { setTaskDocumentOpen(false); setTaskDocumentVisible(false); if (contextSubject?.kind === "task") sourceInformation(); }}>×</button></div> : null}
+          {taskDocumentOpen ? <div className={`surface-tab ${textDocumentVisible ? "active" : ""}`}><button className="surface-tab-main" onClick={() => { setTaskDocumentVisible(true); inspectTask(tasks.selectedTaskId); }} title={tasks.selectedTaskId ?? "Task"}>▤ {tasks.detail?.title ?? "Task document"}</button><button className="surface-tab-close" aria-label="Close task document" onClick={closeTaskDocument}>×</button></div> : null}
         </nav> : null}
         <div tabIndex={-1} className={`graphs-grid ${textOpen ? "is-sidebar" : "is-active"}`}>{snapshot.graphs.map((graph) => {
           const pane = <GraphPane key={graph.topologyId} graph={graph} mockAgents={demo.graphs} mockGraphVersion={demo.graphVersion} buildLinkSnapshot={graph.directory && snapshot.project.id === uiBuildLinks.repositoryId ? uiBuildLinks : undefined} focus={snapshot.focus} mappings={snapshot.mappings} reframeVersion={graphReframe} interfaceZoom={zoomPercent} onFocus={selectFocus} onActivate={graph.topologyId === "service" ? activateDefinition : undefined} onInspectFocus={(focus) => { ++navigationIntent.current; inspectGraph(focus); setSelectedConnection(null); void invoke({ type: "focus.select", requestId: requestId(), protocolVersion: PROTOCOL_VERSION, focus }); }} onNavigateDirectory={graph.directory ? enterDirectory : undefined} onConnectionFocus={(connection) => selectConnection(connection, graph.topologyId)} onReconcile={() => { void reconcile(); }} reconciliationRunning={reconciliationRunning} repositoryCameraIntent={graph.directory ? repository.cameraIntent : undefined} />;

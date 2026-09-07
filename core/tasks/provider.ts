@@ -14,6 +14,14 @@ const now = () => new Date().toISOString();
 const error = (code: TaskError["code"], message: string): TaskError => ({ code, message });
 const changed = error("TASK_REF_CHANGED", "The local metadata ref changed. Refresh tasks to adopt a new complete revision.");
 
+/** Separate original normalized capacity from additive projection capacity.
+ * Call only after detail/result validation, never on unparsed metadata. */
+export function assertTaskCacheBudget(snapshot: TaskSnapshot, details: readonly TaskDetail[]): void {
+  if (Buffer.byteLength(JSON.stringify({ snapshot: taskBaseSnapshot(snapshot), details })) > TASK_LIMITS.cacheBytes ||
+      Buffer.byteLength(JSON.stringify({ snapshot, details })) > TASK_LIMITS.augmentedCacheBytes)
+    throw new TaskReaderError("TASK_LIMIT_EXCEEDED", "Task cache exceeds its limit.");
+}
+
 /** Registered-root, read-only Ditz reader. Not installed by the default worker:
  * T3 owns composition and the task-specific outer request deadline. */
 export const createDitzTaskProvider: CreateTaskProvider = (context): TaskProvider => {
@@ -79,9 +87,7 @@ export const createDitzTaskProvider: CreateTaskProvider = (context): TaskProvide
             throw new TaskReaderError("TASK_LIMIT_EXCEEDED", "Task detail response exceeds its limit.");
           TaskReadResultSchema.parse(full);
         }
-        if (Buffer.byteLength(JSON.stringify({ snapshot: taskBaseSnapshot(snapshot), details })) > TASK_LIMITS.cacheBytes ||
-            Buffer.byteLength(JSON.stringify({ snapshot, details })) > TASK_LIMITS.augmentedCacheBytes)
-          throw new TaskReaderError("TASK_LIMIT_EXCEEDED", "Task cache exceeds its limit.");
+        assertTaskCacheBudget(snapshot, details);
         const after = await git.resolve(signal, deadline);
         next = { status: after && sameGitObject(localRef, after) ? "observed" : "stale",
           localRef: after, checkedAt: now(), reason: after && sameGitObject(localRef, after) ? null : changed };

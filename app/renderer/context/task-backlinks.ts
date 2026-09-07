@@ -1,6 +1,6 @@
 import type { ContextSection, ContextSubject } from "../../../protocol/context";
 import type { TaskClientState } from "../tasks/client";
-import { taskRevisionLabel } from "../tasks/display";
+import { displayTaskText, taskRevisionLabel } from "../tasks/display";
 
 /** A second, independently versioned instrument about the same file. */
 export function taskBacklinkSection(subject: ContextSubject, tasks?: TaskClientState): ContextSection {
@@ -26,7 +26,7 @@ export function taskBacklinkSection(subject: ContextSubject, tasks?: TaskClientS
   }
   const rows = index.lookup(subject.path);
   section.rows = rows.map((row) => ({ label: `Explicit file reference · ${row.refCount} recorded`,
-    value: `${row.summary.title} · ${row.summary.status}`, link: { kind: "task", target: row.target } }));
+    value: `${displayTaskText(row.summary.title)} · ${row.summary.status}`, link: { kind: "task", target: row.target } }));
   section.notice = [warning, rows.length ? `Showing ${Math.min(32, rows.length)} of ${rows.length} tasks in ${scope}.`
     : `No explicit file references in ${scope}.`].filter(Boolean).join(" ");
   return section;
