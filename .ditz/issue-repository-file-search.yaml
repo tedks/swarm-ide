@@ -28,6 +28,16 @@ log_events:
   who: Ted Smith
   what: started
   comment: ""
+- time: 2026-09-07T01:32:53-00:00
+  who: Ted Smith
+  what: commented
+  comment: 'PR39 pushed c084226: actual packaged Swarm/unfamiliar filename search,
+    duplicate/literal/dot/untracked names, explicit keyboard activation and cancellation,
+    dirty source/cursor/draft/cameras100/150, deleted-result refusal and8192-name
+    cap passed at089bdb8; actual owned-core recovery passed. Current full local all-target
+    gates underway. Native/Google fixpoint converged through gitlink fix; narrow deadline
+    follow-on/camera assertion delta reviewing. Anthropic600s timeout missing. No
+    model requests or human55175/master adoption; hosted ignored.'
 blocks:
 - contextual-information
 blocked_by:
