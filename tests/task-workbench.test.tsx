@@ -17,6 +17,7 @@ import { readWorkspaceFile, resolveWorkspaceFile, WorkspaceFileError } from "../
 vi.mock("../app/renderer/GraphPane", () => ({ GraphPane: ({ graph }: { graph: GraphSlice }) =>
   <section data-testid="task-graph">{graph.title}<input aria-label={`Camera ${graph.topologyId}`} defaultValue="camera untouched" /></section>,
 }));
+vi.mock("../app/renderer/plans/ProjectionCanvas", () => ({ ProjectionCanvas: () => <div>Planning camera test stand-in</div> }));
 import { App } from "../app/renderer/App";
 
 beforeAll(() => {
@@ -69,6 +70,27 @@ async function openSource() {
   await waitFor(() => expect(document.querySelector(".cm-content")?.textContent).toContain("one"));
   return EditorView.findFromDOM(document.querySelector(".cm-editor")!)!;
 }
+
+it("revokes a held planning-task activation when the user switches lens", async () => {
+  const { request } = setup(); render(<App />);
+  await screen.findByRole("button", { name: "Select task task-fixture" });
+  fireEvent.click(screen.getByRole("button", { name: "Plan", exact: true }));
+  fireEvent.click(screen.getByRole("button", { name: "Load dependency graph" }));
+  await screen.findByText(/1\/1 details read/);
+  fireEvent.click(screen.getByText(/Keyboard task outline/));
+  const original = request.getMockImplementation()!; let finish!: () => void;
+  request.mockImplementation(async (input) => input.type === "tasks.read" ? new Promise<CoreResponse>((resolve) => {
+    finish = () => { void original(input).then(resolve); };
+  }) : original(input));
+  fireEvent.click(screen.getByRole("button", { name: "Open graph task task-fixture" }));
+  await waitFor(() => expect(finish).toBeTypeOf("function"));
+  const system = screen.getByRole("button", { name: "System", exact: true });
+  fireEvent.pointerDown(system); fireEvent.click(system);
+  await act(async () => finish());
+  expect(document.querySelector(".artifact-context")?.getAttribute("data-context-kind")).not.toBe("task");
+  expect(document.querySelector("main.workbench")?.getAttribute("data-compact-panel")).not.toBe("info");
+  expect(screen.getByRole("button", { name: "Select task task-fixture" }).getAttribute("aria-pressed")).toBe("false");
+});
 
 it("observes metadata for compact file Context without a visible Tasks sidebar", async () => {
   const media = { matches: true, addEventListener: vi.fn(), removeEventListener: vi.fn() };

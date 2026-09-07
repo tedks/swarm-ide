@@ -7,6 +7,7 @@ import {
 } from "../../../protocol/tasks";
 import { indexTaskBacklinks, type TaskBacklinkIndex, type TaskBacklinkAssociation } from "./backlinks";
 import { AgentTaskReferenceSchema, type AgentTaskReference } from "../../../protocol/agent-task";
+import { TASK_GRAPH_LIMITS } from "./graph";
 
 /** Read-only UI preview, not core task-materialization authority. The predicate
  * revokes a proposed edit when its exact observation or client lifetime ends. */
@@ -64,6 +65,7 @@ export class TaskBridgeClient {
   private needsInitial = true;
   private visible = false;
   private timer: ReturnType<typeof setInterval> | undefined;
+  private graphReadsInFlight = 0;
 
   getSnapshot = () => this.state;
   getAttachmentCandidate(taskId: string | null): TaskAttachmentCandidate | null {
@@ -283,9 +285,10 @@ export class TaskBridgeClient {
   }
 
   /** A graph is an immutable observation, never a second polling/selection owner. */
-  graphCurrent(snapshot: TaskSnapshot): boolean {
+  graphLifetime = () => this.epoch;
+  graphCurrent(snapshot: TaskSnapshot, lifetime = this.epoch): boolean {
     const state = this.state, current = state.observation?.snapshot;
-    return Boolean(this.bridge && state.connected && !state.notice && state.observation?.status === "observed" &&
+    return Boolean(lifetime === this.epoch && this.bridge && state.connected && !state.notice && state.observation?.status === "observed" &&
       current && current.worldId === snapshot.worldId && current.repositoryId === snapshot.repositoryId &&
       sameGitObject(current.metadataCommit, snapshot.metadataCommit));
   }
@@ -294,13 +297,17 @@ export class TaskBridgeClient {
     const epoch = this.epoch;
     const summary = snapshot.summaries.find((row) => row.id === taskId);
     const valid = () => !signal.aborted && this.epoch === epoch && this.graphCurrent(snapshot);
-    if (!summary || !valid()) return null;
+    if (!summary || !valid() || this.graphReadsInFlight >= TASK_GRAPH_LIMITS.concurrency) return null;
+    // Cancellation fences adoption, not the already-sent RPC. Its slot stays
+    // owned until settlement, including across hide/reopen and core lifetimes.
+    this.graphReadsInFlight++;
     try {
       const result = await this.request({ protocolVersion: PROTOCOL_VERSION, requestId: this.id(),
         type: "tasks.read", worldId: snapshot.worldId, metadataCommit: snapshot.metadataCommit, taskId });
       if (!valid() || result.kind !== "read" || !result.result.ok || !sameSummary(result.result.detail, summary)) return null;
       return result.result.detail;
     } catch { return null; }
+    finally { this.graphReadsInFlight--; }
   }
 
   /** Deliberate graph/plan activation pins the displayed revision, not whatever

@@ -1,5 +1,12 @@
 package(default_visibility = ["//visibility:public"])
 
+sh_test(
+    name = "regressions",
+    srcs = ["regressions.sh"],
+    data = ["//:quality_sources"],
+    tags = ["local"],
+)
+
 filegroup(
     name = "sources",
     srcs = glob(["*.mjs", "*.cjs", "*.sh"]),

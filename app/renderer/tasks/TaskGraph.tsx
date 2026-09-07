@@ -3,12 +3,13 @@ import { sameGitObject, type TaskDetail, type TaskSnapshot } from "../../../prot
 import { TaskBridgeClient, type TaskClientState } from "./client";
 import { loadTaskGraphDetails, projectTaskGraph, TASK_GRAPH_LIMITS } from "./graph";
 import { ProjectionCanvas } from "../plans/ProjectionCanvas";
+import { displayTaskText } from "./display";
 
 export function TaskGraph({ client, state, visible, onOpen }: {
   client: TaskBridgeClient; state: TaskClientState; visible: boolean;
   onOpen: (snapshot: TaskSnapshot, id: string) => Promise<boolean>;
 }) {
-  const [loaded, setLoaded] = useState<{ snapshot: TaskSnapshot; details: ReadonlyMap<string, TaskDetail>; attempted: number } | null>(null);
+  const [loaded, setLoaded] = useState<{ snapshot: TaskSnapshot; lifetime: number; details: ReadonlyMap<string, TaskDetail>; attempted: number } | null>(null);
   const [loading, setLoading] = useState(false), [selected, setSelected] = useState<string | null>(null);
   const [notice, setNotice] = useState("");
   const current = useRef<AbortController | null>(null);
@@ -17,15 +18,16 @@ export function TaskGraph({ client, state, visible, onOpen }: {
   // isolated-node stack while details arrive. Later reads preserve the camera.
   if (loaded && !loading) canvasWasShown.current = true;
   const snapshot = state.observation?.snapshot ?? null;
-  const fresh = loaded && client.graphCurrent(loaded.snapshot);
+  const fresh = loaded && client.graphCurrent(loaded.snapshot, loaded.lifetime);
   const read = async () => {
     if (!snapshot || !client.graphCurrent(snapshot)) return;
     current.current?.abort();
     const controller = new AbortController(); current.current = controller;
+    const lifetime = client.graphLifetime();
     setLoading(true); setNotice("");
-    setLoaded({ snapshot, details: new Map(), attempted: 0 });
+    setLoaded({ snapshot, lifetime, details: new Map(), attempted: 0 });
     await loadTaskGraphDetails(snapshot, (id, signal) => client.readGraphDetail(snapshot, id, signal), controller.signal,
-      (details, attempted) => { if (current.current === controller) setLoaded({ snapshot, details, attempted }); });
+      (details, attempted) => { if (current.current === controller) setLoaded({ snapshot, lifetime, details, attempted }); });
     if (current.current === controller) { setLoading(false); current.current = null; }
   };
   useEffect(() => {
@@ -37,13 +39,13 @@ export function TaskGraph({ client, state, visible, onOpen }: {
   }, [visible, state.connected, snapshot, loaded?.snapshot]);
   useEffect(() => () => { current.current?.abort(); }, []);
   const projection = useMemo(() => loaded ? projectTaskGraph(loaded.snapshot, loaded.details, loaded.attempted) : null, [loaded]);
-  const nodes = useMemo(() => projection?.nodes.map((row) => ({ id: row.id, title: row.title,
+  const nodes = useMemo(() => projection?.nodes.map((row) => ({ id: row.id, title: displayTaskText(row.title),
     subtitle: `${row.status} · ${row.missing ? "missing" : row.detailLoaded ? "relations read" : "relations unread"}`, warning: row.missing })) ?? [], [projection]);
   const edges = useMemo(() => projection?.edges.map((edge) => ({ ...edge,
     label: `blocks${edge.diagnostics.length ? ` · ${edge.diagnostics.join(", ")}` : ""}` })) ?? [], [projection]);
   const picked = projection?.nodes.find((node) => node.id === selected);
   const open = async (id: string) => {
-    if (!loaded || !fresh) return;
+    if (!loaded || !client.graphCurrent(loaded.snapshot, loaded.lifetime)) return;
     if (!await onOpen(loaded.snapshot, id)) setNotice("Task link is unavailable at this revision. Refresh tasks and load the graph again.");
   };
   return <section className="planning-projection" aria-label="Task dependency graph" hidden={!visible}>
@@ -63,9 +65,9 @@ export function TaskGraph({ client, state, visible, onOpen }: {
       {canvasWasShown.current ? <ProjectionCanvas label="Task blockage canvas" nodes={nodes} edges={edges} selected={selected} onSelect={setSelected} />
         : <div className="planning-empty">Reading bounded relations before framing the graph…</div>}
       <div className="planning-inspector">
-        {picked ? <><strong>{picked.title}</strong><code>{picked.id}</code><button disabled={!fresh || picked.missing} onClick={() => { void open(picked.id); }}>Open task details</button></> : <p>Select a task, then explicitly open its pinned detail.</p>}
+        {picked ? <><strong>{displayTaskText(picked.title)}</strong><code>{picked.id}</code><button disabled={!fresh || picked.missing} onClick={() => { void open(picked.id); }}>Open task details</button></> : <p>Select a task, then explicitly open its pinned detail.</p>}
         <details><summary>Keyboard task outline · {projection.nodes.length} shown</summary><ul>{projection.nodes.map((node) => <li key={node.id}>
-          <button aria-label={`Inspect graph task ${node.id}`} onClick={() => setSelected(node.id)}>{node.title}</button>
+          <button aria-label={`Inspect graph task ${node.id}`} onClick={() => setSelected(node.id)}>{displayTaskText(node.title)}</button>
           <span>{node.status}{!node.detailLoaded ? " · relations unread" : ""}</span>
           <button disabled={!fresh || node.missing} aria-label={`Open graph task ${node.id}`} onClick={() => { void open(node.id); }}>Open task</button>
         </li>)}</ul></details>

@@ -278,10 +278,13 @@ export function App() {
   }, [taskClient, inspectTask]);
   const openPlanningTask = useCallback(async (snapshot: TaskSnapshot, id: string): Promise<boolean> => {
     const intent = ++navigationIntent.current;
-    const opened = await taskClient.inspectGraphTask(snapshot, id, () => navigationIntent.current === intent && mounted.current);
-    if (!opened || navigationIntent.current !== intent || !mounted.current) return false;
-    setRevealNotice(""); inspectTask(id); setCompactPanel("info");
-    return true;
+    pendingBacklinkIntent.current = intent;
+    try {
+      const opened = await taskClient.inspectGraphTask(snapshot, id, () => navigationIntent.current === intent && mounted.current);
+      if (!opened || navigationIntent.current !== intent || !mounted.current) return false;
+      setRevealNotice(""); inspectTask(id); setCompactPanel("info");
+      return true;
+    } finally { if (pendingBacklinkIntent.current === intent) pendingBacklinkIntent.current = null; }
   }, [taskClient, inspectTask]);
   const sourceInformation = useCallback(() => {
     ++navigationIntent.current;

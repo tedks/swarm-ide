@@ -13,12 +13,13 @@ async function harness() {
   const client = new TaskBridgeClient(); clients.push(client);
   const pending: { request: CoreRequest; reply: (value: CoreResponse) => void }[] = [];
   client.setContext("world:working", "project:swarm-ide");
-  client.connect({ request: (request) => new Promise((reply) => pending.push({ request, reply })), onEvent: vi.fn(() => () => {}) });
+  const bridge = { request: (request: CoreRequest): Promise<CoreResponse> => new Promise((reply) => pending.push({ request, reply })), onEvent: vi.fn(() => () => {}) };
+  client.connect(bridge);
   client.setVisible(true);
   const answer = (task: unknown, index = pending.length - 1) => pending[index]!.reply({ protocolVersion: PROTOCOL_VERSION,
     requestId: pending[index]!.request.requestId, ok: true, sequence: 1, snapshot: initialSnapshot(), task } as CoreResponse);
   answer({ kind: "snapshot", observation: taskObservationFixture() }); await drain();
-  return { client, pending, answer, snapshot: client.getSnapshot().observation!.snapshot! };
+  return { client, bridge, pending, answer, snapshot: client.getSnapshot().observation!.snapshot! };
 }
 describe("graph reads share task authority without hijacking selection", () => {
   it("reads the pinned revision and leaves the selected detail untouched until deliberate activation", async () => {
@@ -58,5 +59,17 @@ describe("graph reads share task authority without hijacking selection", () => {
     const old = { ...h.snapshot, metadataCommit: { algorithm: "sha1" as const, hex: "c".repeat(40) } };
     expect(await h.client.inspectGraphTask(old, "task-fixture")).toBe(false);
     expect(h.pending).toHaveLength(count);
+  });
+  it("bounds actual pending requests across canceled graph batches", async () => {
+    const h = await harness(); const controller = new AbortController();
+    const first = Array.from({ length: 4 }, () => h.client.readGraphDetail(h.snapshot, "task-fixture", controller.signal));
+    const pending = h.pending.slice(-4); controller.abort();
+    const second = h.client.readGraphDetail(h.snapshot, "task-fixture", new AbortController().signal);
+    expect(h.pending.filter((call) => call.request.type === "tasks.read")).toHaveLength(4);
+    expect(await second).toBeNull();
+    for (const call of pending) h.answer(taskReadFixture(), h.pending.indexOf(call));
+    expect(await Promise.all(first)).toEqual([null, null, null, null]);
+    const resumed = h.client.readGraphDetail(h.snapshot, "task-fixture", new AbortController().signal); h.answer(taskReadFixture());
+    expect((await resumed)?.id).toBe("task-fixture");
   });
 });

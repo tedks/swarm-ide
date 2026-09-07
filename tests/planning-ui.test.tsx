@@ -29,15 +29,26 @@ function harness() {
   const tasks: TaskClientState = { ...new TaskBridgeClient().getSnapshot(), observation: taskObservationFixture(), connected: true };
   const readGraphDetail = vi.fn(async () => taskDetailFixture());
   const refresh = vi.fn(async () => {});
-  const client = { graphCurrent: () => true, readGraphDetail, refresh } as unknown as TaskBridgeClient;
+  let lifetime = 1;
+  const client = { graphCurrent: (_snapshot: unknown, epoch = lifetime) => epoch === lifetime, graphLifetime: () => lifetime, readGraphDetail, refresh } as unknown as TaskBridgeClient;
   const onOpenTask = vi.fn(async () => true), onOpenFile = vi.fn();
   const request = vi.fn(async (request: CoreRequest) => wrap(request, observedPlans()));
   window.swarm = { request, onEvent: () => () => {} };
   const props = { visible: true, worldId: "world:working", repositoryId: "project:swarm-ide", generation: 1, connected: true,
     tasks, client, onOpenTask, onOpenFile };
-  return { props, readGraphDetail, request, onOpenTask, onOpenFile };
+  return { props, readGraphDetail, request, onOpenTask, onOpenFile, nextLifetime: () => { lifetime++; } };
 }
 describe("playable separate planning projections", () => {
+  it("requires an explicit graph reload after the client lifetime changes at the same metadata commit", async () => {
+    const h = harness(); const view = render(<PlanWorkspace {...h.props} />);
+    fireEvent.click(screen.getByRole("button", { name: "Load dependency graph" })); await screen.findByText(/1\/1 details read/);
+    h.nextLifetime(); view.rerender(<PlanWorkspace {...h.props} generation={2} tasks={{ ...h.props.tasks }} />);
+    expect(screen.getByText(/NOT CURRENT/)).toBeTruthy();
+    fireEvent.click(screen.getByText(/Keyboard task outline/));
+    expect((screen.getByRole("button", { name: "Open graph task task-fixture" }) as HTMLButtonElement).disabled).toBe(true);
+    fireEvent.click(screen.getByRole("button", { name: "Load dependency graph" }));
+    await waitFor(() => expect(screen.queryByText(/NOT CURRENT/)).toBeNull());
+  });
   it("does not read relations or plan bytes until an explicit gesture; graph selection is not execution", async () => {
     const h = harness(); render(<PlanWorkspace {...h.props} />);
     expect(h.readGraphDetail).not.toHaveBeenCalled(); expect(h.request).not.toHaveBeenCalled();

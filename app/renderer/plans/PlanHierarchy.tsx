@@ -4,6 +4,7 @@ import { PLAN_INDEX_PATH, type PlanReadResult } from "../../../protocol/plans";
 import type { TaskClientState } from "../tasks/client";
 import type { TaskSnapshot } from "../../../protocol/tasks";
 import { ProjectionCanvas } from "./ProjectionCanvas";
+import { displayTaskText } from "../tasks/display";
 
 export function PlanHierarchy({ visible, worldId, repositoryId, generation, connected, tasks, onOpenFile, onOpenTask }: {
   visible: boolean; worldId: string; repositoryId: string; generation: number; connected: boolean; tasks: TaskClientState;
@@ -67,7 +68,7 @@ export function PlanHierarchy({ visible, worldId, repositoryId, generation, conn
             {node.sourcePaths.map((path, i) => <button key={`source:${i}`} disabled={!current} onClick={() => onOpenFile(path)}>Open source · {path}</button>)}
             {node.taskIds.map((id, i) => <button key={`task:${i}`} disabled={!current || !tasks.connected} onClick={() => { void openTask(id); }}>Inspect task · {id}</button>)}</div>
           <h3>Why this context?</h3><p>Repo-authored guidance; selected briefing, not an inventory of effective permissions.</p>
-          {node.contextRefs.length ? <ul>{node.contextRefs.map((ref, i) => <li key={i}><button disabled={!current} onClick={() => onOpenFile(ref.path)}>{ref.kind} · {ref.path}</button><span>{ref.note}</span></li>)}</ul> : <p>No context references authored for this node.</p>}
+          {node.contextRefs.length ? <ul>{node.contextRefs.map((ref, i) => <li key={i}><button disabled={!current} onClick={() => onOpenFile(ref.path)}>{ref.kind} · {ref.path}</button><span>{ref.note === null ? null : displayTaskText(ref.note)}</span></li>)}</ul> : <p>No context references authored for this node.</p>}
         </> : <p>Select a plan or component to inspect its explicit document, source, task and context links.</p>}
         <details open><summary>Keyboard plan outline · {nodes.length} nodes</summary><ul>{index.nodes.map((item) => <li key={item.id} style={{ paddingLeft: `${Math.min(depth(item.id), 12) * 10}px` }}>
           <button aria-label={`Inspect plan ${item.id}`} onClick={() => setSelected(item.id)}>{item.title}</button><span>{item.kind} · depth {depth(item.id)}</span>
