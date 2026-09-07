@@ -31,3 +31,9 @@ log_events:
     to Reconciling and renders it in global-truth, including idle external workspaces.
     Leave open for that remaining label; do not attribute the whole issue fixed by
     the new canvas explanation.'
+- time: 2026-09-07T23:02:12-00:00
+  who: Ted Smith
+  what: commented
+  comment: 'Reference correction to the preceding PM note: the helper is named statusLabel
+    (App.tsx:94), not reconciliationTitle. The yellow-to-Reconciling mapping and remaining
+    behavior are as described.'
