@@ -17,8 +17,9 @@ The opened workspace is a registered local Git worktree. Ditz summaries and deta
 - [x] Add explicit bounded task-dependency projection and mounted Plan lens UI.
 - [x] Add bounded authored plan reader, linked browser, truthful Swarm index and maintenance instructions.
 - [x] Prove real CLI-authored disposable metadata and actual packaged UI on owned virtual X11; default repository passed at 123fa18 with strict source/draft/camera/negative checks and zero renderer exceptions.
-- [ ] Finish the separate authored-Swarm archive case after correcting its exposed controlled-selection feedback loop.
-- [ ] Run meaningful local gates, proportional provider-diverse council, push reviewed PR and normal merge if base remains cleared.
+- [x] Finish the separate authored-Swarm archive case after correcting its exposed controlled-selection feedback loop: actual six-node/three-level committed index and 71 CLI-authored tasks, with 64 read / 7 unread coverage, passed at 8bd8367.
+- [x] Run meaningful local gates and proportional provider-diverse council; push reviewed PR53. Full build42 passed; all18 suites executed,17 passed and quality found two owned test typing options. Test-only correction07317bb passes quality1558/111,109 focused regressions and packaged edge/task/Attach proof; unchanged production covered by the17 other full-suite passes.
+- [ ] Normal merge and Ditz closure: held for ROOT's written B1-base clearance and merge-order slot, not an implementation gate. Do not consume later remote master without approval.
 
 ## Surprises & Discoveries
 
@@ -32,9 +33,11 @@ Task graph reads will be a small read-only method on the existing client, pinned
 
 Native review converged on each substantive delta. Anthropic Sonnet produced no review before a bounded stop; Google returned acknowledgements, not reviews, on an initial call and one continuation. Both are recorded as unfilled seats, never as CLEAN. The misleading busy-versus-expired graph notice is a noncritical Ditz follow-up, not hidden. ROOT has explicitly cleared integration base 94efa689 in the demo wave's written integration authority; no later remote tip is implied.
 
+The 71-task Swarm proof and 70-task small-repository proof exercise real visible partial coverage after the legible fork/join tour. Repeated exact ResizeObserver warnings remain in raw evidence (34 in the final Swarm case,10 in the corrected small case); they are the exact user-accepted noncritical class, not suppressed or called fixed. The proof's outer gate recomputes classification from preserved raw diagnostics and rejects all other errors, forged classifications, missing evidence or model activity. Source, attachment and cameras survived those runs. Inspecting another task correctly adds an existing retained-preview notice; immutable attachment content is compared separately from that explicitly asserted freshness state.
+
 ## Outcomes & Retrospective
 
-The bounded views, strict broker reader, authored Swarm index and maintenance guide are implemented and pushed in PR53. Final joined local checks and normal landing remain pending. This step does not implement planning automation, task mutation, live managed providers or orgs' full skill system. Default disposable data is CLI-authored test input; the Swarm case archives committed authored source but creates its own matching task records, not the source repository's metadata branch.
+The bounded views, strict broker reader, authored Swarm index and maintenance guide are implemented, reviewed and locally verified in PR53. Normal landing remains coordinated by ROOT because remote master advanced to B1 and its previous landing slot is still reserved. This step does not implement planning automation, task mutation, live managed providers or orgs' full skill system. Default disposable data is CLI-authored test input; the Swarm case archives committed authored source but creates its own matching task records, not the source repository's metadata branch. Final runtime code is unchanged from the frozen full-suite tree; the later correction changes only test typings and adds the explicit edge endpoint proof.
 
 ## Context and Orientation
 
