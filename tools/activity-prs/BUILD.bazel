@@ -4,6 +4,8 @@ filegroup(name = "sources", srcs = glob(["*.sh", "*.mjs", "*.cjs"]))
 
 sh_binary(name = "probe", srcs = ["probe.sh"], data = ["probe.ts", ":sources", "//:quality_sources"], tags = ["manual"])
 
+sh_test(name = "unit", srcs = ["unit.sh"], data = [":sources", "//:quality_sources"], tags = ["local"])
+
 sh_binary(
     name = "smoke",
     srcs = ["smoke.sh"],
