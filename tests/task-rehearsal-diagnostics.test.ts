@@ -1,8 +1,20 @@
 // @vitest-environment jsdom
 import { afterEach, expect, it, vi } from "vitest";
-import { installTaskResizeDiagnostics } from "./support/task-rehearsal-diagnostics";
+import { finishTaskDiagnostics, installTaskResizeDiagnostics } from "./support/task-rehearsal-diagnostics";
 
-afterEach(() => { vi.unstubAllGlobals(); document.body.innerHTML = ""; });
+afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); document.body.innerHTML = ""; });
+it("rejects renderer errors delivered while final diagnostic capture is awaited", async () => {
+  const errors: string[] = [];
+  await expect(finishTaskDiagnostics(errors, async () => { await Promise.resolve(); errors.push("late-resize"); }, null)).rejects.toThrow("late-resize");
+});
+it("retains the original journey failure when diagnostic capture also fails", async () => {
+  const original = new Error("original journey");
+  await expect(finishTaskDiagnostics([], async () => { throw new Error("secondary diagnostic write"); }, { error: original })).rejects.toBe(original);
+});
+it("fails closed on diagnostic write failure when the journey was otherwise successful", async () => {
+  const writeError = new Error("diagnostic write");
+  await expect(finishTaskDiagnostics([], async () => { throw writeError; }, null)).rejects.toBe(writeError);
+});
 it("captures bounded passive resize/error evidence without suppressing or scheduling delivery", () => {
   document.body.innerHTML = `<section class="graph-pane" data-topology="repo"><div class="react-flow"></div></section>`;
   const before = document.body.innerHTML;

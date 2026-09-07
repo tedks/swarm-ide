@@ -11,7 +11,7 @@ import { advanceUnrelatedTaskFixture, resumeTaskFixture } from "../../tools/task
 import { AdmissionReceiptSchema, AgentResultSchema, RunSchema, TranscriptRecordSchema, type Run, type TranscriptRecord } from "../../protocol/agents";
 import { PROTOCOL_VERSION } from "../../protocol/schema";
 import type { RehearsalLedger } from "./agent-rehearsal-driver";
-import { installTaskResizeDiagnostics } from "./task-rehearsal-diagnostics";
+import { finishTaskDiagnostics, installTaskResizeDiagnostics } from "./task-rehearsal-diagnostics";
 
 const hash = (value: string | Buffer) => createHash("sha256").update(value).digest("hex");
 const canonical = (value: unknown): string => Array.isArray(value) ? `[${value.map(canonical).join(",")}]` :
@@ -119,6 +119,7 @@ export async function runTaskRehearsalProof({ window: win, artifacts, ledger }: 
     const result = await request({ type: "agent.read", runId: run.runId, afterRecord });
     assert(result.ok); return result.agent;
   });
+  let originalFailure: { error: unknown } | null = null;
   try {
   await installed;
   await until("native owned window selected", () => readFile(join(artifacts, "window-selected"), "utf8").then(() => true, () => false), Boolean, 30000);
@@ -262,11 +263,14 @@ export async function runTaskRehearsalProof({ window: win, artifacts, ledger }: 
   assert.deepEqual(errors, []); assert.equal(ledger().overflow, false);
   return { run: recovered, transcriptHash: originalTranscript.transcriptHash, originalMetadata: fixture.firstCommit.hex, currentMetadata: advanced.hex, rendererErrors: errors,
     sourceUnchanged: true, replayedCommands: 0, fixtureOnly: true, coreGenerations: ledger().generations, elapsedMs: Date.now() - started };
-  } finally {
+  } catch (error) { originalFailure = { error }; throw error; }
+  finally {
     wc.removeListener("did-finish-load", reinstallDiagnostics);
-    const resize = await js("globalThis.__taskResize?.read() ?? null").catch(() => null);
-    documentEvidence.push(resize);
-    await writeFile(join(artifacts, "task-resize-diagnostics.json"), JSON.stringify({ phase, consoleEvidence, documentEvidence }, null, 2));
+    await finishTaskDiagnostics(errors, async () => {
+      const resize = await js("globalThis.__taskResize?.read() ?? null").catch(() => null);
+      documentEvidence.push(resize);
+      await writeFile(join(artifacts, "task-resize-diagnostics.json"), JSON.stringify({ phase, consoleEvidence, documentEvidence }, null, 2));
+    }, originalFailure);
   }
 }
 

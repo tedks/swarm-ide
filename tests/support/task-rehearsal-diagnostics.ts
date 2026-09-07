@@ -29,3 +29,10 @@ export function installTaskResizeDiagnostics() {
   return { read: () => ({ observed: count, deliveries: [...deliveries], errors: [...errors] }),
     dispose: () => { resize.disconnect(); mutations.disconnect(); removeEventListener("error", error); } };
 }
+
+/** Complete passive capture without changing which failure is authoritative. */
+export async function finishTaskDiagnostics(errors: readonly string[], capture: () => Promise<void>, originalFailure: { error: unknown } | null) {
+  try { await capture(); } catch (error) { if (!originalFailure) throw error; }
+  if (originalFailure) throw originalFailure.error;
+  if (errors.length) throw new Error(`Renderer errors after diagnostic capture: ${errors.join("; ")}`);
+}
