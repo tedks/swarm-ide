@@ -18,3 +18,11 @@ log_events:
   who: Ted Smith
   what: started
   comment: ""
+- time: 2026-09-07T21:44:38-00:00
+  who: Ted Smith
+  what: commented
+  comment: PR58 ready for ROOT merge. Inspector actions remain fixed while context/outline
+    scroll. Native review CLEAN; quality1637/118 and focused15 pass. Actual packaged
+    real Git/Ditz UI proof passes with dirty source/draft/Plan camera retention, zero
+    renderer errors and cleanup1. No model/shared app changes. Leave issue open until
+    ROOT merges.
