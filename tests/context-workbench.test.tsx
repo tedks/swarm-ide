@@ -195,7 +195,7 @@ describe("truthful Context in the mounted workbench", () => {
       await openContextPath("core/files.ts"); await waitFor(() => expect(subject()).toBe("core/files.ts"));
       await waitFor(() => expect(handoff.offered?.navigation).toBeDefined());
       await waitFor(() => expect(EditorView.findFromDOM(document.querySelector<HTMLElement>(".cm-editor") ?? document.body)).toBeInstanceOf(EditorView));
-      const editorElement = document.querySelector(".cm-editor")!;
+      const editorElement = document.querySelector<HTMLElement>(".cm-editor")!;
       const editor = EditorView.findFromDOM(editorElement)!;
       act(() => editor.dispatch({ selection: { anchor: 3 } }));
       const source = editor.state.doc.toString(), graph = screen.getByTestId("graph-service");
