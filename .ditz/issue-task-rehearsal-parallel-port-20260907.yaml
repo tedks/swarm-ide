@@ -1,9 +1,11 @@
 id: task-rehearsal-parallel-port-20260907
 title: Remove remaining fixed port from task rehearsal launcher
-desc: tools/agent-rehearsal/task-launch.mjs still insists55174; S1 continuation covers
-  navigation/task/build-graph launchers only. Reuse reviewed owned-port helper in
-  a future bounded change with unchanged rehearsal acceptance/cleanup; until then
-  full suites including virtual-desktop-task-rehearsal-test still coordinate55174.
+desc: tools/agent-rehearsal/task-launch.mjs still requires port 55174. The S1 continuation
+  covers only the navigation, task and build-graph launchers. Reuse the reviewed helper
+  that allocates ports owned by the test harness in a separate limited-scope change,
+  keeping rehearsal acceptance checks and cleanup unchanged. Until then, full suites
+  that include virtual-desktop-task-rehearsal-test still need to coordinate use of
+  55174.
 type: bugfix
 component: default
 release:
@@ -16,4 +18,8 @@ log_events:
 - time: 2026-09-07T20:37:52-00:00
   who: Ted Smith
   what: created
+  comment: ""
+- time: 2026-09-08T04:32:05-00:00
+  who: Ted Smith
+  what: updated description
   comment: ""
