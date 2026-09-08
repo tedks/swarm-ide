@@ -8,7 +8,7 @@ import { initialSnapshot } from "../fixtures/world";
 import type { ExternalAgentSummary, ExternalDetail, ExternalResult } from "../protocol/external-agents";
 import { PROTOCOL_VERSION, type CoreRequest, type CoreResponse } from "../protocol/schema";
 
-afterEach(() => { cleanup(); vi.useRealTimers(); vi.restoreAllMocks(); });
+afterEach(() => { cleanup(); vi.useRealTimers(); vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 const at = "2026-09-07T20:00:00.000Z";
 const id = (n: number) => `00000000-0000-4000-8000-${String(n).padStart(12, "0")}`;
 function session(n: number, parent?: number): ExternalAgentSummary {
@@ -45,6 +45,58 @@ function setup(handle?: (request: CoreRequest) => Promise<CoreResponse> | undefi
 }
 
 describe("external observer presentation and lifecycle", () => {
+  function terminalClient(info: ExternalDetail) {
+    return { snapshot: null, detail: info, selected: info.session.id, busy: false, notice: "",
+      read: vi.fn(async () => {}), refresh: vi.fn(async () => {}), handoff: vi.fn(async () => {}) };
+  }
+  const commands = { attach: "tmux -L 'my socket' attach-session -t 'work:agent with spaces' ",
+    switch: "tmux -L 'my socket' switch-client -t '@84'", location: "@84 / %179" };
+  it("shows complete selectable terminal commands and copies their exact checked bytes", async () => {
+    const writeText = vi.fn(async () => {});
+    vi.stubGlobal("navigator", { ...navigator, clipboard: { writeText } });
+    const client = terminalClient({ ...detail(1), terminal: commands });
+    render(<ExternalAgentInformation client={client} contextOnly onOpen={() => {}} onReturn={() => {}} />);
+    fireEvent.click(screen.getByText("Open in terminal"));
+    expect(screen.queryByText(commands.location, { exact: false })).toBeNull();
+    for (const [label, command, button] of [
+      ["Attach terminal command", commands.attach, "Copy attach command"],
+      ["Switch terminal command", commands.switch, "Copy switch command"],
+    ]) {
+      const block = screen.getByLabelText(label);
+      expect(block.tagName).toBe("PRE"); expect(block.textContent).toBe(command);
+      expect(block.closest("details")?.open).toBe(true);
+      block.focus(); expect(document.activeElement).toBe(block);
+      // jsdom's focus() collapses Selection after firing focusin (unlike the
+      // browser). Exercise our focus handler after that simulator-only collapse;
+      // the owned Chromium proof separately checks real keyboard-tab selection.
+      fireEvent.focusIn(block);
+      expect(window.getSelection()?.toString()).toBe(command);
+      fireEvent.click(screen.getByRole("button", { name: button }));
+      await waitFor(() => expect(writeText).toHaveBeenLastCalledWith(command));
+    }
+    expect(writeText).toHaveBeenCalledTimes(2);
+    expect(client.handoff).not.toHaveBeenCalled(); expect(client.read).not.toHaveBeenCalled();
+  });
+
+  it.each(["absent", "rejected"])("retains selectable exact terminal text when clipboard is %s", async (failure) => {
+    vi.stubGlobal("navigator", { ...navigator, clipboard: failure === "absent" ? undefined : { writeText: async () => { throw new Error("Denied"); } } });
+    render(<ExternalAgentInformation client={terminalClient({ ...detail(1), terminal: commands })} contextOnly onOpen={() => {}} onReturn={() => {}} />);
+    fireEvent.click(screen.getByText("Open in terminal"));
+    fireEvent.click(screen.getByRole("button", { name: "Copy attach command" }));
+    await screen.findByText("Select the command to copy it.");
+    expect(screen.getByLabelText("Attach terminal command").textContent).toBe(commands.attach);
+  });
+
+  it("withholds terminal disclosure unless the existing checked target is available", () => {
+    const view = render(<ExternalAgentInformation client={terminalClient({ ...detail(1), terminal: commands })} contextOnly onOpen={() => {}} onReturn={() => {}} />);
+    expect(screen.getByText("Open in terminal")).toBeTruthy();
+    for (const handoff of ["unavailable", "unconfigured"] as const) {
+      view.rerender(<ExternalAgentInformation client={terminalClient({ ...detail(1), terminal: commands, handoff })} contextOnly onOpen={() => {}} onReturn={() => {}} />);
+      expect(screen.queryByText("Open in terminal")).toBeNull();
+      expect(screen.queryByRole("button", { name: "Copy attach command" })).toBeNull();
+    }
+  });
+
   it("orders sibling forks by creation, keeps deep descendants below their parents and preserves connector geometry", () => {
     const born = (n: number, parent: number | undefined, day: number) => ({ ...session(n, parent), createdAt: `2026-09-${String(day).padStart(2, "0")}T00:00:00.000Z` });
     const siblings = Array.from({ length: 7 }, (_, i) => born(i + 2, 1, i + 2));

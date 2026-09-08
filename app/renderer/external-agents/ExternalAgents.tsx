@@ -118,6 +118,22 @@ export function ExternalAgentRail({ client, onSelect }: { client: ExternalClient
   </section>;
 }
 
+function TerminalCommand({ command, kind, label }: { command: string; kind: "attach" | "switch"; label: string }) {
+  const [notice, setNotice] = useState("");
+  return <div className="external-terminal-command">
+    <header><span>{label}</span><button type="button" aria-label={`Copy ${kind} command`} title={`Copy ${kind} command`}
+      onClick={() => { void Promise.resolve().then(() => navigator.clipboard.writeText(command))
+        .then(() => setNotice("Copied"), () => setNotice("Select the command to copy it.")); }}>Copy</button></header>
+    <pre tabIndex={0} aria-label={`${kind === "attach" ? "Attach" : "Switch"} terminal command`} onFocus={(event) => {
+      const selection = window.getSelection();
+      if (!selection) return;
+      const range = document.createRange(); range.selectNodeContents(event.currentTarget);
+      selection.removeAllRanges(); selection.addRange(range);
+    }}><code>{command}</code></pre>
+    {notice ? <span role="status">{notice}</span> : null}
+  </div>;
+}
+
 export function ExternalAgentInformation({ client, bridge, visible = true, contextOnly = false, onReturn, onOpen, onWorktree }: { client: ExternalClient; bridge?: SwarmBridge; visible?: boolean; contextOnly?: boolean; onReturn(): void; onOpen(path: string): void; onWorktree?(id: string): void }) {
   const [tab, setTab] = useState<"worklog" | "conversation">("worklog");
   const detail = client.detail, session = detail?.session;
@@ -145,9 +161,9 @@ export function ExternalAgentInformation({ client, bridge, visible = true, conte
       </details>
       <div className="external-actions"><button disabled={client.busy} onClick={() => { void client.refresh(); }}>Refresh observation</button>
         <button disabled={client.busy || detail.handoff !== "available"} onClick={() => { void client.handoff(); }}>Select in tmux</button></div>
-      {detail.terminal && detail.handoff === "available" ? <details><summary>Open in terminal · {detail.terminal.location}</summary>
-        <label>Outside tmux<input aria-label="Attach terminal command" readOnly value={detail.terminal.attach} onFocus={(event) => event.currentTarget.select()} /></label>
-        <label>Inside tmux<input aria-label="Switch terminal command" readOnly value={detail.terminal.switch} onFocus={(event) => event.currentTarget.select()} /></label>
+      {detail.terminal && detail.handoff === "available" ? <details className="external-terminal"><summary>Open in terminal</summary>
+        <TerminalCommand key={`attach:${session.id}:${detail.terminal.attach}`} command={detail.terminal.attach} kind="attach" label="Outside tmux" />
+        <TerminalCommand key={`switch:${session.id}:${detail.terminal.switch}`} command={detail.terminal.switch} kind="switch" label="Inside tmux" />
       </details> : detail.handoff !== "available" ? <p className="external-caption">Terminal session unavailable.</p> : null}
       {session.contextPaths.length ? <details><summary>Why this context?</summary><p>Operator-associated briefing links, not a claim of all effective context.</p>{session.contextPaths.map((path) => <button key={path} onClick={() => onOpen(path)}>{path}</button>)}</details> : null}
       {!contextOnly ? <><nav aria-label="External information views"><button aria-pressed={tab === "worklog"} onClick={() => setTab("worklog")}>Activity</button><button aria-pressed={tab === "conversation"} onClick={() => setTab("conversation")}>Conversation</button></nav>

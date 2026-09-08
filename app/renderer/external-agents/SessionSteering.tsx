@@ -1,4 +1,4 @@
-import { useId, useState, useSyncExternalStore } from "react";
+import { useId, useRef, useState, useSyncExternalStore } from "react";
 import type { SwarmBridge } from "../../electron/preload";
 import { parseCoreResponseForRequest, PROTOCOL_VERSION } from "../../../protocol/schema";
 import { EXTERNAL_MESSAGE_MAX_BYTES, parseExternalResult, type ExternalDetail, type ExternalRequest } from "../../../protocol/external-agents";
@@ -16,6 +16,7 @@ export function SessionSteering({ detail, bridge, memory }: { detail: ExternalDe
   const owner = memory ?? local;
   const { targets, pending } = useSyncExternalStore(owner.subscribe, owner.getSnapshot);
   const fieldId = useId();
+  const composer = useRef<HTMLTextAreaElement>(null);
   const chatKeys = useChatSubmit();
   // Keep this component mounted while observations load: pending sends and
   // per-session drafts must outlive temporary absence of selection detail.
@@ -32,6 +33,9 @@ export function SessionSteering({ detail, bridge, memory }: { detail: ExternalDe
     const id = session.id, text = target.draft;
     const outgoingId = owner.beginSend(id, text, session.label);
     if (!outgoingId) return;
+    // An explicit button send gives focus back now, never when a late receipt
+    // arrives. Read-only pending input keeps Chromium from blurring this node.
+    composer.current?.focus({ preventScroll: true });
     let receipt: Receipt;
     try {
       const request: ExternalRequest = { protocolVersion: PROTOCOL_VERSION, requestId: `external-send:${crypto.randomUUID()}`,
@@ -51,12 +55,21 @@ export function SessionSteering({ detail, bridge, memory }: { detail: ExternalDe
     {!available ? <p>Read-only. Refresh or open the session in your terminal.</p> : null}
     <form onSubmit={(event) => { event.preventDefault(); void send(); }}>
       <label htmlFor={fieldId}>Message to {session.label}</label>
-      <textarea {...chatKeys} id={fieldId} value={target.draft} rows={3} disabled={!available || pending?.id === session.id}
-        title="Enter to send · Shift-Enter for a new line"
-        aria-describedby={target.draft && invalid ? `${fieldId}-limit` : undefined} aria-invalid={target.draft.length > 0 && !!invalid}
-        onChange={(event) => { const draft = event.target.value; update(session.id, (prior) => ({ ...prior, draft })); }} />
+      <div className="session-composer">
+        <textarea {...chatKeys} ref={composer} id={fieldId} value={target.draft} rows={3}
+          disabled={!available} readOnly={pending?.id === session.id}
+          title="Enter to send · Shift-Enter for a new line"
+          aria-describedby={target.draft && invalid ? `${fieldId}-limit` : undefined} aria-invalid={target.draft.length > 0 && !!invalid}
+          onChange={(event) => { const draft = event.target.value; update(session.id, (prior) => ({ ...prior, draft })); }} />
+        <button className="session-send" type="submit" aria-label="Send message" title="Send message"
+          disabled={!available || !!invalid || !!pending}>
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2"
+            strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" focusable="false">
+            <path d="M12 19V5m-6 6 6-6 6 6" />
+          </svg>
+        </button>
+      </div>
       {target.draft && invalid ? <p id={`${fieldId}-limit`}>{invalid}</p> : null}
-      <button type="submit" disabled={!available || !!invalid || !!pending}>Send message</button>
     </form>
     {pending ? <p role="status">Sending to {pending.label} ({pending.id})…</p> : null}
     {target.receipt ? <span role="status" data-delivery-status={target.receipt.status}
