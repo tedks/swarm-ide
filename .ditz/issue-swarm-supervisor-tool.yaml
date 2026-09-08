@@ -29,3 +29,11 @@ log_events:
     tests. Native review corrected inherited startup proof and status failure cleanup.
     Final focused convergence in progress; live supervisors untouched. Future launcher
     adoption must export its pre-compaction cursor.
+- time: 2026-09-08T04:02:51-00:00
+  who: Ted Smith
+  what: commented
+  comment: 'Completed: PR88 packages configurable multi-role supervision, exact fresh
+    fork/turn startup proof, complete JSONL recaps, durable one-attempt notifications,
+    optional watcher fallback and five-line status requests. Final 17 fake-process/JSONL
+    tests pass; native fix-delta CLEAN. No live services changed. Future launcher
+    receipt adoption tracked separately; ROOT owns normal merge and issue closure.'
