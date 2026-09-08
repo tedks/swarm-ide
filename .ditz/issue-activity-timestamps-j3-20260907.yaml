@@ -5,8 +5,8 @@ type: feature
 component: default
 release:
 reporter: Ted Smith <tedks@riseup.net>
-status: in_progress
-disposition:
+status: closed
+disposition: fixed
 creation_time: 2026-09-08T02:37:49-00:00
 references: []
 log_events:
@@ -45,3 +45,9 @@ log_events:
     provenance retained. Final J3 expanded67focused/typechecks PASS, bundlePASS5.636s,
     nativeCLEAN. Not ROOT earlier narrower test run; no new GUI/model. Ready ROOT
     normal merge/adoption; pause.'
+- time: 2026-09-08T03:18:10-00:00
+  who: Ted Smith
+  what: 'closed: fixed'
+  comment: 'PR81 normally merged with direct-user readability review: time-only today,
+    short older dates, readable hover, generation/read metadata removed from main
+    log. Native review, final typechecks/67 focused tests and bundle passed.'
