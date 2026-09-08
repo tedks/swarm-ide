@@ -118,6 +118,6 @@ export function AgentDock({ state, client, onDraft, runContent, draftContent, tr
     {mockConversation ? <div id={panelId("mock:current")} role="tabpanel" aria-labelledby={tabId(`mock:${mockConversation.selected}`)} hidden={!current.startsWith("mock:")} className="agent-dock-panel agent-dock-run">{mockConversation.content}</div> : null}
     </section>
     {workLogContent ? <div className="dock-side-panel dock-work-log" tabIndex={0} role="group" aria-label="Work Log column">{workLogContent}</div> : null}
-    <section className="dock-side-panel dock-activity" aria-label="Recent activity" tabIndex={0}><header className="dock-section-heading">{onOpenActivity ? <button className="activity-open-heading journal-activity-heading" onClick={onOpenActivity}>Recent Activity <span aria-hidden="true">↗</span></button> : "Recent activity"}</header>{activityContent}</section>
+    <section className="dock-side-panel dock-activity" aria-label="Activity" tabIndex={0}><header className="dock-section-heading">{onOpenActivity ? <button className="activity-open-heading journal-activity-heading" onClick={onOpenActivity}>Activity <span aria-hidden="true">↗</span></button> : "Activity"}</header>{activityContent}</section>
   </div>;
 }
