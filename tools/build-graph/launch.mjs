@@ -26,13 +26,17 @@ try {
   const html = await readFile(join(extracted, "renderer/index.html"), "utf8");
   if (/\b(?:src|href)=["']\/assets\//.test(html)) throw new Error("Packaged file URL has absolute asset references");
   const fixture = await createBuildGraphFixture(scratch, process.env.SWARM_BUILD_GRAPH_CASE, process.cwd());
+  if (process.env.SWARM_SELECTED_BUILD_PROOF === "1") {
+    await writeFile(join(fixture.root, "BUILD"), 'platform(name="local_platform")\n');
+    await writeFile(join(fixture.root, ".bazelrc"), 'build --host_platform=//:local_platform\nbuild --platforms=//:local_platform\nbuild --repository_disable_download\nbuild --lockfile_mode=off\n');
+  }
   await writeFile(join(evidence, "fixture.json"), JSON.stringify(fixture));
   server = createServer((_request, response) => { response.writeHead(200); response.end("owned packaged build-graph proof"); });
   await new Promise((resolve, reject) => { server.once("error", reject); server.listen(port, "127.0.0.1", resolve); });
   const environment = { ...process.env, NODE_PATH: "", SWARM_BUILD_GRAPH_PACKAGE: extracted, SWARM_BUILD_GRAPH_PROFILE: profile };
   for (const name of ["SWARM_RENDERER_URL", "SWARM_DEV_CONTROL", "SWARM_WORKSPACE_ROOT", "SWARM_AGENT_STORE_ROOT", "NODE_OPTIONS", "ELECTRON_RUN_AS_NODE"])
     delete environment[name];
-  desktop = spawn(electron, [...resolveElectronRuntimeArguments(), join(scripts, "acceptance.cjs"),
+  desktop = spawn(electron, [...resolveElectronRuntimeArguments(), join(scripts, process.env.SWARM_SELECTED_BUILD_PROOF === "1" ? "target-acceptance.cjs" : "acceptance.cjs"),
     `--user-data-dir=${profile}`, process.env.SWARM_RENDERER_PROCESS_ARGUMENT], { cwd: fixture.root, env: environment, stdio: "inherit" });
   for (const signal of ["SIGINT", "SIGTERM", "SIGHUP"]) {
     const handler = () => { desktop.kill("SIGTERM"); killTimer ??= setTimeout(() => desktop.kill("SIGKILL"), 2000); };

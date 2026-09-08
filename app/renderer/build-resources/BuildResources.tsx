@@ -1,5 +1,6 @@
 import { useId, useState } from "react";
 import type { Job } from "../../../protocol/schema";
+import type { BuildJobsObservation, TargetBuildJob } from "../../../protocol/build-jobs";
 import { EXAMPLE_BUILD_PROFILE, samplePoints, summarizeSamples } from "./stats";
 import "./build-resources.css";
 
@@ -45,7 +46,20 @@ function JobCard({ job }: { job: Job }) {
   </article>;
 }
 
-export function BuildResources({ jobs }: { jobs: readonly Job[] }) {
+function TargetJobCard({ job, onCancel }: { job: TargetBuildJob; onCancel?: (id: string) => void }) {
+  const active = job.status === "running" || job.status === "stopping";
+  const status = { running: "Running", stopping: "Stopping", succeeded: "Complete", failed: "Failed", cancelled: "Cancelled" }[job.status];
+  return <article className={`resource-job status-${job.status === "failed" ? "red" : job.status === "succeeded" ? "green" : "yellow"}`} data-target-build-id={job.id}>
+    <header><strong title={job.target}>{job.target}</strong><span>{status}</span></header>
+    <div className="resource-progress-row">{active ? <progress aria-label={`${job.target} build in progress`} /> : null}<span>{number.format(job.elapsedMs / 1000)} s</span>
+      <time dateTime={job.startedAt} title={new Date(job.startedAt).toLocaleString()}>{new Date(job.startedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</time>
+      {onCancel && active ? <button type="button" disabled={job.status === "stopping"} onClick={() => onCancel(job.id)}>Stop</button> : null}</div>
+    <p className="resource-job-message">{job.message}</p>
+    {job.output ? <details><summary>Build output</summary><pre className="resource-build-output">{job.output}</pre></details> : null}
+  </article>;
+}
+
+export function BuildResources({ jobs, targetBuilds, buildError, onCancel }: { jobs: readonly Job[]; targetBuilds?: BuildJobsObservation; buildError?: string; onCancel?: (id: string) => void }) {
   const [example, setExample] = useState(false);
   const id = useId();
   const rank = { running: 0, queued: 1, failed: 2, succeeded: 3 };
@@ -57,8 +71,10 @@ export function BuildResources({ jobs }: { jobs: readonly Job[] }) {
   // React Flow's input guard also recognizes .nokey. Without it,
   // its window-level Space pan shortcut cancels native <summary> activation.
   return <div className="build-resources nokey">
+    {buildError ? <p role="alert">{buildError}</p> : null}
+    {targetBuilds?.jobs.length ? <div className="resource-jobs" aria-label="Selected target builds">{targetBuilds.jobs.map((job) => <TargetJobCard key={job.id} job={job} onCancel={onCancel} />)}</div> : null}
     {jobs.length ? <><p className="resource-job-summary" aria-label="Build job counts">{summary}</p><div className="resource-jobs">{ordered.map((job) => <JobCard job={job} key={job.id} />)}</div></>
-      : <p className="resource-idle">No build jobs</p>}
+      : !targetBuilds?.jobs.length ? <p className="resource-idle">No build jobs</p> : null}
     <button type="button" className="resource-example-toggle" aria-expanded={example} aria-controls={id} onClick={() => setExample((open) => !open)}>
       <span aria-hidden="true">{example ? "▾" : "▸"}</span> Example profile
       <small>illustrative</small>
