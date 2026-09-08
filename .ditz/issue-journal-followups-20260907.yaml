@@ -1,5 +1,5 @@
 id: journal-followups-20260907
-title: 'Journal follow-up: richer generation and activity ergonomics'
+title: Make journal generation and activity easier to use
 desc: ""
 type: task
 component: swarm-ide
@@ -23,3 +23,11 @@ log_events:
     lists are immutable under entry digest, contain no stateful children or reorder
     operation; stable explicit IDs would expand generated schema without present behavior
     benefit.'
+- time: 2026-09-08T04:30:06-00:00
+  who: Ted Smith
+  what: changed title
+  comment: ""
+- time: 2026-09-08T04:30:06-00:00
+  who: Ted Smith
+  what: updated description
+  comment: ""
