@@ -22,5 +22,15 @@ log_events:
   who: Ted Smith
   what: started
   comment: ""
+- time: 2026-09-08T16:37:27-00:00
+  who: Ted Smith
+  what: commented
+  comment: PR122 implements one four-pane workspace, full design/source/task/log reading
+    beside retained graphs, old Plan/Code preference migration, legacy roots/guidance,
+    and dirty editor/cursor retention. 148 focused tests/types and native convergence
+    passed; actual repo plus loaded Ditz graph owned GUI passed in 2.536s, zero errors,
+    cleanup complete. ROOT landing needs a small composition with newly merged PR121
+    Work Log state; exact four App hunks documented in the handoff. No shared app
+    adoption.
 blocked_by:
 - swarm-component-graph-stability
