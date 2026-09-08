@@ -5,8 +5,8 @@ type: bugfix
 component: default
 release:
 reporter: Ted Smith <tedks@riseup.net>
-status: in_progress
-disposition:
+status: closed
+disposition: fixed
 creation_time: 2026-09-08T13:28:40-00:00
 references: []
 log_events:
@@ -37,5 +37,12 @@ log_events:
     source files and the existing demo-agents unit evidence role are now linked. Existing
     build edges preserved; exact patch/reverse applicability and source existence
     checked. No new runtime delta or test-cycle claim.'
+- time: 2026-09-08T14:22:58-00:00
+  who: Ted Smith
+  what: 'closed: fixed'
+  comment: 'Merged PR106: current agent state now follows session lifecycle; historical
+    Work Log outcomes are separate from Ditz recording. Local focused tests/types
+    and native review passed. The Activity consumer is also merged; the joined cockpit
+    update will bring both into the managed window.'
 blocks:
 - swarm-usability-join
