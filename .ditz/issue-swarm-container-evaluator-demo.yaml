@@ -5,8 +5,8 @@ type: feature
 component: default
 release:
 reporter: Ted Smith <tedks@riseup.net>
-status: in_progress
-disposition:
+status: closed
+disposition: fixed
 creation_time: 2026-09-08T13:28:45-00:00
 references: []
 log_events:
@@ -39,5 +39,11 @@ log_events:
     checks pass; native review converged. Mac/ARM validation and the denied owned-process
     proc mount are explicit separate follow-ups; no host agents/accounts/public image
     implied.
+- time: 2026-09-08T14:19:21-00:00
+  who: Ted Smith
+  what: 'closed: fixed'
+  comment: Local Docker evaluator increment is implemented and browser/source/sandbox
+    verified. Mac hardware validation and full owned-process controls remain separately
+    tracked.
 blocks:
 - swarm-usability-pass
