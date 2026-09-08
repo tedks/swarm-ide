@@ -1,0 +1,20 @@
+id: swarm-cockpit-tab-overflow
+title: Dark scrollbars and navigable cockpit tab overflow
+desc: 'Specific user follow-up after operator handoff: slim dark scrollbars and VSCode-like
+  overflow arrows for document/lens/agent tab strips. Arrows only on overflow, correct
+  disabled directions, active tab revealed, existing keyboard/manual activation/trackpad
+  preserved; do not hide editor or diff scrollbars. Separate scoped UI PR, direct
+  tests and owned virtual check only.'
+type: task
+component: default
+release:
+reporter: Ted Smith <tedks@riseup.net>
+status: unstarted
+disposition:
+creation_time: 2026-09-08T04:53:34-00:00
+references: []
+log_events:
+- time: 2026-09-08T04:53:34-00:00
+  who: Ted Smith
+  what: created
+  comment: ""
