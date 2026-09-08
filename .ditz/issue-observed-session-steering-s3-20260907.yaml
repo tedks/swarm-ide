@@ -35,3 +35,12 @@ log_events:
     skips opt-in self test). No repeated GUI/full suite/queue message. Original one
     self-queue message subsequently consumed and acknowledged, separately from receipt.
     ROOT owns landing/adoption; durable receipts follow-up stays open.'
+- time: 2026-09-08T01:15:58-00:00
+  who: Ted Smith
+  what: commented
+  comment: Authorized final E3 join ready PR76 pushedcd0f023 (last delta docs-only).
+    Exact normal compositione709371 remains native CLEAN; joined focused78/71 plus
+    typecheck pass. ONE newly authorized existing packaged scenario at56e7be0 passed2.065s
+    on owned154/55234, zero renderer errors/cleanup1, all original send/literal argv/stale-closed/retention/process-survival
+    assertions retained. No new actual message/model or whole suite. ROOT owns normal
+    landing/adoption; joined-verification.md contains exact evidence.
