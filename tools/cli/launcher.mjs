@@ -42,6 +42,7 @@ export function launchConfiguration(options, { cwd, environment, bundleRoot, ele
   delete env.SWARM_RENDERER_URL;
   delete env.SWARM_DEV_CONTROL;
   delete env.ELECTRON_RUN_AS_NODE;
+  delete env.SWARM_CLI_USER_DATA_DIR;
   const args = [bundleRoot];
   // Existing owned-X11 harness identity marker; never an arbitrary Electron flag.
   const marker = env.SWARM_RENDERER_PROCESS_ARGUMENT;
@@ -49,7 +50,7 @@ export function launchConfiguration(options, { cwd, environment, bundleRoot, ele
     if (!/^--swarm-window-marker=http:\/\/127\.0\.0\.1:[1-9][0-9]{0,4}\/$/.test(marker)) throw new Error("Invalid owned-window marker.");
     args.push(marker);
   }
-  if (options.userDataDir !== undefined) args.push(`--user-data-dir=${resolve(cwd, options.userDataDir)}`);
+  if (options.userDataDir !== undefined) env.SWARM_CLI_USER_DATA_DIR = resolve(cwd, options.userDataDir);
   if (env.SWARM_ELECTRON_NO_SANDBOX !== undefined) {
     if (env.SWARM_ELECTRON_NO_SANDBOX !== "1") throw new Error("SWARM_ELECTRON_NO_SANDBOX must be exactly '1' when set.");
     args.push("--no-sandbox");

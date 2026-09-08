@@ -60,11 +60,12 @@ in buildBazelPackage {
     mkdir -p "$out/share/swarm-ide/cli" "$out/bin"
     tar -xzf bazel-bin/swarm-ide-foundation.tar.gz -C "$out/share/swarm-ide"
     cp tools/cli/{launcher,main}.mjs "$out/share/swarm-ide/cli/"
+    cp tools/cli/electron-main.cjs "$out/share/swarm-ide/cli/"
     substituteInPlace "$out/share/swarm-ide/cli/main.mjs" \
       --replace-fail '@electron@' '${electron}/bin/electron'
     # Give Electron a stable application name and its own userData directory.
     cp ${builtins.toFile "swarm-ide-runtime-package.json" (builtins.toJSON {
-      name = "swarm-ide"; version = "0.1.0"; main = "app/electron/main.js";
+      name = "swarm-ide"; version = "0.1.0"; main = "cli/electron-main.cjs";
     })} "$out/share/swarm-ide/package.json"
     makeWrapper ${nodejs_22}/bin/node "$out/bin/swarm" \
       --add-flags "$out/share/swarm-ide/cli/main.mjs" \

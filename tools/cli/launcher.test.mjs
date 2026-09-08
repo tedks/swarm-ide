@@ -1,10 +1,11 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { mkdtempSync, mkdirSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import { mkdtempSync, mkdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { spawn } from "node:child_process";
 import { once } from "node:events";
+import { runInNewContext } from "node:vm";
 import { parseArguments, launchConfiguration, launch } from "./launcher.mjs";
 
 test("arguments accept explicit workspace/profile and help", () => {
@@ -22,7 +23,8 @@ test("relative workspace/profile resolve from invocation, not immutable bundle",
     const config = launchConfiguration(parseArguments(["--workspace", "../project with spaces", "--user-data-dir", "../my profile"]), { cwd: join(root, "caller"), environment: {}, bundleRoot: "/nix/store/install", electron: "/nix/store/electron" });
     assert.equal(config.cwd, join(root, "project with spaces"));
     assert.equal(config.env.SWARM_WORKSPACE_ROOT, config.cwd);
-    assert.deepEqual(config.args, ["/nix/store/install", `--user-data-dir=${root}/my profile`]);
+    assert.deepEqual(config.args, ["/nix/store/install"]);
+    assert.equal(config.env.SWARM_CLI_USER_DATA_DIR, `${root}/my profile`);
   } finally { rmSync(root, { recursive: true, force: true }); }
 });
 test("default workspace is caller; symlinks are canonical and file/missing paths reject", () => {
@@ -36,10 +38,10 @@ test("default workspace is caller; symlinks are canonical and file/missing paths
   } finally { rmSync(root, { recursive: true, force: true }); }
 });
 test("development controls are removed while host tools/config/display remain", () => {
-  const environment = { PATH: "/host/tools", XAUTHORITY: "/owned/auth", DISPLAY: ":155", GH_CONFIG_DIR: "/host/gh", XDG_CONFIG_HOME: "/host/config", CODEX_HOME: "/host/codex", SWARM_RENDERER_URL: "http://localhost:1", SWARM_DEV_CONTROL: "/old/dev", ELECTRON_RUN_AS_NODE: "1", SWARM_WORKSPACE_ROOT: "/old" };
+  const environment = { PATH: "/host/tools", XAUTHORITY: "/owned/auth", DISPLAY: ":155", GH_CONFIG_DIR: "/host/gh", XDG_CONFIG_HOME: "/host/config", CODEX_HOME: "/host/codex", SWARM_RENDERER_URL: "http://localhost:1", SWARM_DEV_CONTROL: "/old/dev", ELECTRON_RUN_AS_NODE: "1", SWARM_WORKSPACE_ROOT: "/old", SWARM_CLI_USER_DATA_DIR: "/old/profile" };
   const config = launchConfiguration({}, { cwd: process.cwd(), environment, bundleRoot: "/install", electron: "/electron" });
   for (const key of ["PATH", "XAUTHORITY", "DISPLAY", "GH_CONFIG_DIR", "XDG_CONFIG_HOME", "CODEX_HOME"]) assert.equal(config.env[key], environment[key]);
-  for (const key of ["SWARM_RENDERER_URL", "SWARM_DEV_CONTROL", "ELECTRON_RUN_AS_NODE"]) assert.equal(config.env[key], undefined);
+  for (const key of ["SWARM_RENDERER_URL", "SWARM_DEV_CONTROL", "ELECTRON_RUN_AS_NODE", "SWARM_CLI_USER_DATA_DIR"]) assert.equal(config.env[key], undefined);
   assert.equal(environment.ELECTRON_RUN_AS_NODE, "1");
   assert.deepEqual(config.args, ["/install"]);
 });
@@ -83,3 +85,23 @@ for (const [signal, expected] of [["SIGINT", 130], ["SIGTERM", 143], ["SIGHUP", 
     }
   });
 }
+test("installed entry applies the chosen profile before starting the fixed app", () => {
+  const source = readFileSync(new URL("./electron-main.cjs", import.meta.url), "utf8");
+  const run = (profile) => {
+    const calls = []; let effective = "/normal/config/swarm-ide";
+    runInNewContext(source, {
+      process: { env: profile === undefined ? {} : { SWARM_CLI_USER_DATA_DIR: profile } },
+      console: { log: (line) => calls.push(line) },
+      require: (name) => {
+        if (name === "electron") return { app: { setPath: (key, value) => { assert.equal(key, "userData"); calls.push("profile"); effective = value; }, getPath: () => effective } };
+        if (name === "node:fs") return { mkdirSync: (path, options) => { assert.equal(path, profile); assert.equal(options.mode, 0o700); calls.push("mkdir"); } };
+        if (name === "node:path") return { isAbsolute: (path) => path.startsWith("/") };
+        assert.equal(name, "../app/electron/main.js"); calls.push("fixed-app");
+      },
+    });
+    return calls;
+  };
+  assert.deepEqual(run("/chosen/profile"), ["mkdir", "profile", 'swarm: profile "/chosen/profile"', "fixed-app"]);
+  assert.deepEqual(run(undefined), ['swarm: profile "/normal/config/swarm-ide"', "fixed-app"]);
+  assert.throws(() => run("relative"), /absolute path/);
+});
