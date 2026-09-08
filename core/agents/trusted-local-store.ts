@@ -45,6 +45,8 @@ function validate(input: unknown): TrustedStoredRun[] {
   if (new Set(parsed.runs.map((run) => run.summary.runToken)).size !== parsed.runs.length ||
       parsed.runs.some((run) =>
         (run.turnId !== null && run.threadId === null) ||
+        (run.summary.fork !== undefined && (run.summary.fork.parentRunToken === run.summary.runToken ||
+          run.summary.taskReference !== null || (run.summary.fork.confirmed && (run.threadId === null || run.threadId === run.summary.fork.parentThreadId)))) ||
         Date.parse(run.summary.updatedAt) < Date.parse(run.summary.createdAt) ||
         new Set(run.activities.map((activity) => activity.id)).size !== run.activities.length)) {
     throw new Error("Invalid trusted history identity or correlation.");

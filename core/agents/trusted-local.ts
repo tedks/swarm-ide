@@ -9,7 +9,7 @@ import type { WorkspaceSnapshot } from "../../protocol/schema";
 import { RegisteredAgentContextProvider } from "./context";
 import { createAgentTaskResolver } from "../tasks/draft-context";
 import { createOwnedCodexTransport } from "./owner";
-import { TrustedLocalSession } from "./trusted-local-session";
+import { TrustedLocalSession, type TrustedForkPoint } from "./trusted-local-session";
 import { FileTrustedLocalStore, MemoryTrustedLocalStore, type TrustedLocalStore, type TrustedStoredRun } from "./trusted-local-store";
 
 export function trustedPrompt(prepared: PreparedAgentContext): string {
@@ -33,7 +33,7 @@ export async function findTrustedExecutable(name: string): Promise<string> {
 }
 
 type Context = Pick<RegisteredAgentContextProvider, "prepare" | "dispose">;
-type Session = Pick<TrustedLocalSession, "snapshot" | "start" | "send" | "decide" | "stop"> & { activity?(): TrustedActivity[] };
+type Session = Pick<TrustedLocalSession, "snapshot" | "start" | "send" | "decide" | "stop"> & { activity?(): TrustedActivity[]; forkPoint?(): TrustedForkPoint | null };
 export interface TrustedLocalOptions {
   root: string;
   context: Context;
@@ -74,6 +74,7 @@ export class TrustedLocalService {
   private closed = false;
   private pending = new Set<Promise<unknown>>();
   private commands = new Set<string>();
+  private admittedTokens = new Set<string>();
   private message = "Trusted local · normal Codex settings and approvals. No agent starts until Launch.";
   private readonly store: TrustedLocalStore;
   private readonly initialization: Promise<void>;
@@ -90,6 +91,8 @@ export class TrustedLocalService {
   private async restore() {
     try {
       for (const saved of await this.store.load()) {
+        this.admittedTokens.add(saved.summary.runToken);
+        if (saved.summary.fork) this.admittedTokens.add(saved.summary.fork.parentRunToken);
         const interrupted = !saved.summary.archived || !["closed", "failed"].includes(saved.summary.status);
         saved.summary = { ...saved.summary, archived: true, approvalCount: 0,
           ...(interrupted ? { status: "failed" as const, updatedAt: this.timestamp(),
@@ -117,6 +120,7 @@ export class TrustedLocalService {
     run.saved.activities = run.session.activity?.() ?? run.saved.activities;
     run.saved.summary = { ...run.saved.summary, status: state.status, approvalCount: state.approvals.length,
       archived: state.status === "closed", message: state.message };
+    if (run.saved.summary.fork && state.threadId) run.saved.summary.fork = { ...run.saved.summary.fork, confirmed: true };
     boundHistory(run.saved);
     if (JSON.stringify(run.saved) !== before) run.saved.summary.updatedAt = new Date(Math.max(Date.parse(updatedAt), Date.parse(this.timestamp()))).toISOString();
   }
@@ -161,6 +165,7 @@ export class TrustedLocalService {
       approvals: run?.session?.snapshot().approvals ?? [],
       message: this.storageError ?? run?.saved.summary.message ?? this.message,
       taskReference: run?.saved.summary.taskReference ?? null, activities: run?.saved.activities ?? [], archived: run?.saved.summary.archived ?? false,
+      forkPoint: run && !run.stopped && !run.launching ? run.session?.forkPoint?.() ?? null : null,
       runs: [...this.runs.values()].map((r) => r.saved.summary) });
   }
   async request(raw: TrustedRequest): Promise<TrustedSnapshot> {
@@ -196,10 +201,54 @@ export class TrustedLocalService {
     if (request.type === "trusted.prepare") this.preparing = true;
     const operation = this.execute(request);
     this.pending.add(operation);
-    try { await operation; if (request.type === "trusted.prepare") this.preparing = false; return this.snapshot(request.type === "trusted.launch" ? request.token : undefined); }
+    try { await operation; if (request.type === "trusted.prepare") this.preparing = false; return this.snapshot(request.type === "trusted.fork" ? request.childToken : request.type === "trusted.launch" ? request.token : undefined); }
     finally { if (request.type === "trusted.prepare") this.preparing = false; this.pending.delete(operation); }
   }
-  private async execute(request: Extract<TrustedRequest, { type: "trusted.prepare" | "trusted.launch" }>) {
+  private reserveCapacity() {
+    if ([...this.runs.values()].filter((run) => run.launching || !run.saved.summary.archived).length >= MAX_LIVE) throw new Error("Eight conversations are already live or awaiting cleanup. Stop one before launching another.");
+    for (const [token, run] of this.runs) {
+      if (this.runs.size < MAX_RETAINED) break;
+      if (run.saved.summary.archived && !run.launching) this.runs.delete(token);
+    }
+  }
+  private async fork(request: Extract<TrustedRequest, { type: "trusted.fork" }>) {
+    if (request.expectedInstanceId !== this.instanceId) throw new Error("Fork owner changed; refresh this IDE. No request was replayed.");
+    const parent = this.runs.get(request.token);
+    const point = parent && !parent.stopped && !parent.launching && !parent.saved.summary.archived ? parent.session?.forkPoint?.() : null;
+    if (!point || point.threadId !== request.expectedThreadId || point.turnId !== request.expectedTurnId)
+      throw new Error("Fork requires the current successfully completed parent turn. Refresh this ready conversation; nothing was started.");
+    if (this.admittedTokens.has(request.childToken) || this.runs.has(request.childToken) || this.preparation?.token === request.childToken)
+      throw new Error("Child token was already used; no automatic replay.");
+    this.reserveCapacity();
+    const at = this.timestamp(), run: Run = { session: null, stopped: false, launching: true, saved: {
+      summary: { runToken: request.childToken, title: tail(request.text.trim(), 256), createdAt: at, updatedAt: at,
+        status: "starting", archived: false, approvalCount: 0, taskReference: null,
+        message: "Forking completed history into a child sharing this workspace. No isolated worktree is created.",
+        fork: { parentRunToken: request.token, parentThreadId: point.threadId, parentTurnId: point.turnId,
+          sharedWorkspace: true, inheritedTaskReference: parent!.saved.summary.taskReference ?? parent!.saved.summary.fork?.inheritedTaskReference ?? null, confirmed: false } },
+      threadId: null, turnId: null, output: "", activities: [],
+    } };
+    // Reserve the child before any await. Its preparation slot is independent.
+    this.admittedTokens.add(request.childToken); this.runs.set(request.childToken, run); this.selected = request.childToken;
+    try {
+      await this.persist();
+      if (this.closed || run.stopped) throw new Error("Fork cancelled before provider start.");
+      run.session = await this.options.createSession(() => this.changed(run));
+      if (this.closed || run.stopped) { await run.session.stop(); throw new Error("Fork cancelled before provider start."); }
+      const prompt = JSON.stringify({ profile: "trusted-local-child", instructions: request.text,
+        contextNotice: "You inherit the parent's conversation through a completed turn. Its task and previous instructions are context, not a new task assignment or permission grant. Follow this child's explicit instruction and normal Codex settings/approvals. The parent and child share this working directory; no isolated worktree was created.",
+        workspace: this.options.root });
+      void run.session.start(prompt, request.model, point).catch(() => { /* observable session failure; never replay */ }).finally(() => this.changed(run));
+      this.refresh(run); await this.persist();
+    } catch (error) {
+      if (!run.session) run.saved.summary = { ...run.saved.summary, status: run.stopped ? "closed" : "failed", archived: true,
+        message: error instanceof Error ? tail(error.message, 4096) : "Fork failed before provider start." };
+      else this.refresh(run);
+      await this.persist().catch(() => {}); throw error;
+    } finally { run.launching = false; }
+  }
+  private async execute(request: Extract<TrustedRequest, { type: "trusted.prepare" | "trusted.launch" | "trusted.fork" }>) {
+    if (request.type === "trusted.fork") return this.fork(request);
     if (request.type === "trusted.prepare") {
       this.preparation = null;
       const input = AgentPrepareInputSchema.parse(request.input);
@@ -215,11 +264,7 @@ export class TrustedLocalService {
     }
     const p = this.preparation;
     if (!p || request.token !== p.token || (this.options.now?.() ?? Date.now()) >= Date.parse(p.materialized.expiresAt)) throw new Error("Prepared context was replaced or expired. Prepare again.");
-    if ([...this.runs.values()].filter((run) => run.launching || !run.saved.summary.archived).length >= MAX_LIVE) throw new Error("Eight conversations are already live or awaiting cleanup. Stop one before launching another.");
-    for (const [token, run] of this.runs) {
-      if (this.runs.size < MAX_RETAINED) break;
-      if (run.saved.summary.archived && !run.launching) this.runs.delete(token);
-    }
+    this.reserveCapacity();
     const at = this.timestamp();
     const run: Run = { session: null, stopped: false, launching: true, saved: {
       summary: { runToken: p.token, title: tail(p.input.taskText.trim() || "Repository task conversation", 256), createdAt: at, updatedAt: at,
@@ -228,7 +273,7 @@ export class TrustedLocalService {
     } };
     // Consume authority before any await. A timeout, repeated click or new request
     // cannot relaunch this token even when no acknowledgement reached the UI.
-    this.preparation = null; this.selected = p.token; this.runs.set(p.token, run);
+    this.preparation = null; this.selected = p.token; this.admittedTokens.add(p.token); this.runs.set(p.token, run);
     try {
     await this.persist();
     const fresh = await this.options.context.prepare(p.input);

@@ -1,0 +1,48 @@
+package(default_visibility = ["//visibility:public"])
+
+sh_test(
+    name = "unit",
+    srcs = ["unit.sh"],
+    data = ["//:quality_sources"],
+    tags = ["local"],
+)
+
+filegroup(
+    name = "live-sources",
+    srcs = ["live.ts", "build-live.sh", "live-smoke.sh"],
+)
+
+genrule(
+    name = "live-bundle",
+    srcs = ["build-live.sh", ":live-sources", "//:quality_sources", "//:package.json"],
+    outs = ["live-proof.cjs"],
+    cmd = "bash $(location build-live.sh) $@ $(location //:package.json)",
+    tags = ["manual", "local"],
+)
+
+sh_binary(
+    name = "live-smoke",
+    srcs = ["live-smoke.sh"],
+    data = [":live-bundle", "//:quality_sources"],
+    tags = ["manual"],
+)
+
+filegroup(
+    name = "gui-sources",
+    srcs = glob(["gui-*.cjs", "gui-*.mjs", "gui-*.sh"]),
+)
+
+genrule(
+    name = "gui-syntax",
+    srcs = ["gui-acceptance.cjs", "gui-fake-codex.cjs", "gui-launch.mjs", "gui-launch.sh", "gui-scenario.sh", "gui-smoke.sh"],
+    outs = ["gui-syntax.ok"],
+    cmd = "node --check $(location gui-acceptance.cjs) && node --check $(location gui-fake-codex.cjs) && node --check $(location gui-launch.mjs) && bash -n $(location gui-launch.sh) $(location gui-scenario.sh) $(location gui-smoke.sh) && touch $@",
+    tags = ["manual", "local"],
+)
+
+sh_binary(
+    name = "gui-smoke",
+    srcs = ["gui-smoke.sh"],
+    data = [":gui-sources", ":gui-syntax", "//:desktop-bundle", "//:quality_sources", "//tools/task-integration:sources", "//tools:virtual-desktop-run.sh", "//tools:x11-driver-source", "//tools:electron-runtime-source"],
+    tags = ["manual"],
+)

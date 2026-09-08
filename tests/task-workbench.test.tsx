@@ -130,7 +130,8 @@ it("inspects a never-opened exact backlink without moving editor, dirty cursor, 
   expect(panel.scrollTop).toBe(0);
   expect(editor.state.doc.toString()).toBe("dirty one\ntwo\nthree\n"); expect(editor.state.selection.main.anchor).toBe(3);
   expect(screen.getAllByTestId("task-graph")).toEqual(graphs); expect(document.querySelector(".task-editor-surface")).toBeNull();
-  expect(request.mock.calls.slice(before).map(([r]) => r.type)).toEqual(["tasks.read", "taskActivity.read"]);
+  // The fleet's independent read-only observer may interleave; retain every other request and its order.
+  expect(request.mock.calls.slice(before).map(([r]) => r.type).filter((type) => type !== "trusted.snapshot")).toEqual(["tasks.read", "taskActivity.read"]);
   fireEvent.click(screen.getByRole("button", { name: "Show task document" }));
   expect(screen.getByRole("region", { name: "Task document" })).toBeTruthy();
   const original = request.getMockImplementation()!; let finish!: () => void;

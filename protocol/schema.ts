@@ -413,7 +413,12 @@ export function parseCoreResponseForRequest(input: unknown, request: CoreRequest
   } else if (response.ok && response.taskActivity) throw new Error("Task activity supplied for a different command");
   if (request.type.startsWith("trusted.")) {
     if (response.ok && (!response.trusted || response.agent || response.file || response.task || response.repo || response.search || response.changelog || response.plans || response.external || response.buildGraph || response.taskActivity || response.githubPrs)) throw new Error("Unexpected trusted-local response authority");
-    if (response.ok && "token" in request && response.trusted?.snapshot.runToken !== request.token) throw new Error("Trusted-local conversation identity mismatch");
+    if (response.ok && "token" in request && response.trusted?.snapshot.runToken !== (request.type === "trusted.fork" ? request.childToken : request.token)) throw new Error("Trusted-local conversation identity mismatch");
+    if (response.ok && request.type === "trusted.fork") {
+      const fork = response.trusted?.snapshot.runs?.find((run) => run.runToken === request.childToken)?.fork;
+      if (response.trusted?.snapshot.instanceId !== request.expectedInstanceId || !fork || fork.parentRunToken !== request.token || fork.parentThreadId !== request.expectedThreadId || fork.parentTurnId !== request.expectedTurnId)
+        throw new Error("Trusted-local fork parent mismatch");
+    }
     return response;
   } else if (response.ok && response.trusted) throw new Error("Trusted-local result supplied for a different command");
   if (request.type === "changelog.read") {
@@ -503,7 +508,7 @@ export function isExternalRequest(request: CoreRequest): request is ExternalRequ
 }
 
 export function uncertainMutationCode(request: CoreRequest): "WRITE_OUTCOME_UNKNOWN" | "AGENT_OUTCOME_UNKNOWN" | null {
-  if (["trusted.launch", "trusted.send", "trusted.decide", "trusted.stop"].includes(request.type)) return "AGENT_OUTCOME_UNKNOWN";
+  if (["trusted.launch", "trusted.fork", "trusted.send", "trusted.decide", "trusted.stop"].includes(request.type)) return "AGENT_OUTCOME_UNKNOWN";
   if (request.type === "file.write") return "WRITE_OUTCOME_UNKNOWN";
   return ["agent.launch", "agent.steer", "agent.cancel"].includes(request.type)
     ? "AGENT_OUTCOME_UNKNOWN" : null;
