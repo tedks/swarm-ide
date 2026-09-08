@@ -457,7 +457,10 @@ describe("truthful Context in the mounted workbench", () => {
     await waitFor(() => expect(subject()).toBe("/"));
     expect(document.querySelector("[data-context-section='directory']")?.textContent).toContain("no matching current page");
     if (!held) throw new Error("Back publication not held"); test.emit(held);
-    expect(subject()).toBe("/"); expect(document.querySelector("[data-context-section='directory']")?.textContent).toContain("page:");
+    expect(subject()).toBe("/");
+    expect(document.querySelector("[data-context-section='directory']")?.textContent).toContain("Captured entries1");
+    expect(document.querySelector("[data-context-section='directory'] [data-context-freshness]")?.textContent).toBe("current");
+    expect(held.graphs[0]!.directory!.observationId).toBe("page:");
   });
   it("distinguishes files, lets graph inspection win without closing source, and returns to the dirty editor without extra reads", async () => {
     const test = setup(); render(<App />);

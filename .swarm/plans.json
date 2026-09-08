@@ -377,6 +377,9 @@
       "app/renderer/changelog/JournalPanel.tsx",
       "app/renderer/FleetActivityView.tsx",
       "app/renderer/external-agents/ObservedActivity.tsx",
+      "app/renderer/external-agents/activity-entries.ts",
+      "app/renderer/external-agents/RunStatus.tsx",
+      "app/renderer/build-resources/BuildResources.tsx",
       "app/renderer/work-log/WorkLogPanel.tsx",
       "core/work-log/service.ts",
       "BUILD.bazel"
@@ -424,6 +427,21 @@
               "relation": "data"
             }
           ]
+        },
+        {
+          "label": "//tools/live-observers:unit",
+          "role": "Checks lifecycle badges, raw activity and refresh retention",
+          "dependencies": [{ "label": "//:quality_sources", "relation": "data" }]
+        },
+        {
+          "label": "//tools/work-log:check",
+          "role": "Checks logical outcomes and explicit summary controls",
+          "dependencies": [{ "label": "//:quality_sources", "relation": "data" }]
+        },
+        {
+          "label": "//tools/activity-usability:smoke",
+          "role": "Packaged raw activity, keyboard settings and retained work proof",
+          "dependencies": [{ "label": "//:desktop-bundle", "relation": "data" }]
         }
       ]
     }

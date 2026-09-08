@@ -15,6 +15,18 @@ const bridge = (request = vi.fn(async (input: CoreRequest) => reply(input))) => 
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); vi.useRealTimers(); });
 
 describe("online Work Log panel", () => {
+  it("shows unrecorded completed outcomes as Complete, with separate failed/waiting/unknown history", async () => {
+    const data = observation();
+    data.entries = (["completed", "failed", "waiting", "unknown"] as const).map((state) => ({ ...data.entries[0], id: state, state, recorded: false }));
+    bridge(vi.fn(async (input: CoreRequest) => reply(input, data)));
+    render(<WorkLogPanel />);
+    await screen.findByText("Complete");
+    expect(screen.queryByText("In progress")).toBeNull();
+    expect(screen.getByText("Failed")).toBeTruthy();
+    expect(screen.getByText("Waiting on you")).toBeTruthy();
+    expect(screen.getByText("Status unavailable")).toBeTruthy();
+    expect(screen.queryByText("Recorded in Ditz")).toBeNull();
+  });
   it("offers a compact accessible settings gear without starting or stopping the summarizer", async () => {
     const request = bridge(); render(<WorkLogPanel />);
     await screen.findByText("Added a live fleet feed.");

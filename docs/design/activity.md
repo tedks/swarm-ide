@@ -40,6 +40,21 @@ Record outcome action appends an idempotent Ditz comment to a known completed
 issue; it does not close worker issues. Private transcript bytes remain local.
 This is a small producer over the registered roster, not another fleet platform.
 
+Saved entries describe historical completed turns, independently of the agent's
+current lifecycle. New outcomes are `completed`, or `failed` when their terminal
+event has an explicit error. Recording in Ditz changes only `recorded` and the
+task linkage, never execution status. Starting a later turn leaves earlier
+outcomes unchanged. The live agent label comes from its separate observed
+session lifecycle, not from the latest saved outcome.
+
+On reading a legacy Work Log, the service makes a bounded non-model pass over
+registered completion evidence under its existing producer lock. Exact matching
+session/boundary/time data repairs old `working` rows without changing their
+outcome text, recorded flag or summarizer attempt history. A saved attempt alone
+corroborates a turn boundary but not success, so its state becomes `unknown`.
+Unmatched user-authored rows stay intact; missing transcripts are not guessed.
+The repair works while summarization is stopped and never re-bills old history.
+
 `App.tsx` mounts that panel once in `AgentDock`, immediately left of Recent Activity
 and independent of the agent sidebar's scrolling/folding, and opens its selected outcome
 through the pure `WorkLogEntryDetail` in the central document area. Opening an
@@ -52,6 +67,12 @@ Only paused or disconnected observation needs a status note; example sessions
 remain labelled. Tool results are operations too, while assistant recaps are not.
 Summary settings lives behind a keyboard-accessible gear next to explicit
 Start/Stop. A running empty Work Log says it is watching for completed turns.
+The shared `RunStatus.tsx` presents the core lifecycle with visible text and
+different shapes: a yellow square for working, paused bars for waiting on input,
+a red hollow slashed circle for failure, and a filled green circle for completion.
+Missing evidence is neutral and never invents progress. The rail and agent
+information use the current session lifecycle; each Work Log row/detail uses
+that outcome's own historical state. Recording in Ditz stays a separate fact.
 
 The neighboring `BuildResources.tsx` instrument counts actual provided build
 jobs, puts running/queued work before failed/completed rows, and preserves full
@@ -73,6 +94,10 @@ The Work Log modules use the same root source/bundle targets. Its dedicated
 `//tools/live-observers:unit` checks raw operation ordering, originating-session
 activation and refresh retention; `//tools/build-resources:regressions` checks
 truthful counts, progress, examples and preserved source state.
+`//tools/activity-usability:smoke` exercises the packaged application with two
+explicitly labelled private JSONL proof fixtures on an owned virtual desktop.
+It checks raw event timestamps, keyboard settings and retained source/draft/cameras;
+those recorded operations are not executed commands or model responses.
 
 See [logical changelog](../logical-changelog.md) for saved-report behavior and
 [the operator plan](../swarm-operator-hour.md) for the new online Work Log.

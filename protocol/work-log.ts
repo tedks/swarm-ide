@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { PROTOCOL_VERSION } from "./common";
+import { AgentExecutionStateSchema } from "./agent-lifecycle";
 
 export const WorkLogSettingsSchema = z.object({
   harness: z.literal("codex").default("codex"),
@@ -9,7 +10,7 @@ export const WorkLogSettingsSchema = z.object({
 export const WorkLogEntrySchema = z.object({
   id: z.string().min(1).max(160), sessionId: z.string().min(1).max(160),
   agent: z.string().min(1).max(120), taskId: z.string().max(200).nullable(),
-  at: z.string().datetime(), state: z.enum(["working", "completed"]),
+  at: z.string().datetime(), state: AgentExecutionStateSchema,
   outcome: z.string().min(1).max(1600), areas: z.array(z.string().max(160)).max(12),
   checks: z.array(z.string().max(320)).max(8), followUps: z.array(z.string().max(320)).max(8),
   recorded: z.boolean().default(false),

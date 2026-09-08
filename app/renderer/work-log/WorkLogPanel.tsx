@@ -5,6 +5,7 @@ import {
   type WorkLogEntry, type WorkLogRequest, type WorkLogSettings, type WorkLogSnapshot,
 } from "../../../protocol/work-log";
 import { ActivityTime } from "../ActivityTime";
+import { RunStatus } from "../external-agents/RunStatus";
 import "./work-log.css";
 export type { WorkLogEntry } from "../../../protocol/work-log";
 
@@ -71,7 +72,7 @@ function Outcome({ entry, pending, onRecord, onOpen, onOpenAgent, onOpenTask }: 
   return <li className="work-log-entry" data-work-log-entry={entry.id}>
     <div className="work-log-entry-heading">
       {onOpenAgent ? <button className="work-log-link" onClick={() => onOpenAgent(entry.sessionId)}>{entry.agent}</button> : <strong>{entry.agent}</strong>}
-      <span className={`work-log-state is-${entry.state}`}>{entry.state === "working" ? "In progress" : "Completed"}</span>
+      <RunStatus state={entry.state} />
       <ActivityTime at={entry.at} />
     </div>
     {onOpen ? <button className="work-log-outcome work-log-link" onClick={() => onOpen(entry)}>{entry.outcome}</button>
@@ -145,7 +146,7 @@ export function WorkLogEntryDetail({ entry, onAgent, onTask, onClose }: {
     <header className="work-log-heading"><h2>Work Log</h2>{onClose ? <button onClick={onClose}>Close</button> : null}</header>
     <div className="work-log-entry-heading">
       {onAgent ? <button className="work-log-link" onClick={() => onAgent(entry.sessionId)}>{entry.agent}</button> : <strong>{entry.agent}</strong>}
-      <span>{entry.state === "completed" ? "Completed" : "In progress"}</span><ActivityTime at={entry.at} />
+      <RunStatus state={entry.state} /><ActivityTime at={entry.at} />
     </div>
     <p className="work-log-outcome">{entry.outcome}</p>
     {entry.taskId ? onTask ? <button className="work-log-link" onClick={() => onTask(entry.taskId!)}>Task · {entry.taskId}</button> : <p>Task · {entry.taskId}</p> : null}

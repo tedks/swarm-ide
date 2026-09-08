@@ -11,6 +11,7 @@ showing them together must not launch a second copy of a running conversation.
 | Native trusted conversations/forks | [trusted-local-session.ts](../../core/agents/trusted-local-session.ts), [trusted-local.ts](../../core/agents/trusted-local.ts) | IDE-owned persistent Codex app-server |
 | Native history and fleet UI | [trusted-local-store.ts](../../core/agents/trusted-local-store.ts), [TrustedLocalPane](../../app/renderer/agents/TrustedLocalPane.tsx) | Per-workspace persisted observations; targeted controls |
 | Registered terminal sessions | [external-agents-registry.ts](../../core/external-agents-registry.ts), [external-agents.ts](../../core/external-agents.ts) | Existing terminal/TUI remains owner |
+| Execution lifecycle | [agent-lifecycle.ts](../../core/agent-lifecycle.ts), [shared lifecycle](../../protocol/agent-lifecycle.ts) | Own-session start, completion and blocking-input evidence; separate from availability |
 | Send and terminal handoff | [external-agents-send.ts](../../core/external-agents-send.ts), [external-agents-handoff.ts](../../core/external-agents-handoff.ts) | Queue to checked existing session; select checked pane |
 | Registration | [tools/session-registration](../../tools/session-registration/BUILD.bazel) | Explicit known rollout/session/pane/worktree, not an account-wide scan |
 
@@ -62,6 +63,29 @@ existing registry timer drives fleet reads rather than creating another agent
 platform. Native app-server execution remains a separate owner path. App joins
 event activation to the correct-worktree source view; a fleet observation does
 not itself grant authority to send to or take over that session.
+
+Each observed session carries an optional `lifecycle`: working means **In
+progress**, blocking input means **Waiting on you**, an explicit failed completion
+means **Failed**, and successful `task_complete` means **Complete**. The object
+also records the evidence time and turn ID. Unknown evidence never becomes
+working merely because a transcript or terminal exists. Intentional interruption
+is not success or failure. A completed turn does not close every assigned issue.
+
+The core reduces lifecycle before Activity trimming. A bounded per-registration
+cache bridges observed append intervals only while the file identity and a raw
+overlap anchor agree. Missing bytes, unreadable records, replacement or truncation
+discard that continuity. A cold read without a usable boundary can be unknown.
+Forks rewrite outer timestamps: preserved `started_at` must establish the turn
+after the child's metadata birth; ambiguous second-precision birth-time turns
+are not borrowed from the parent. Blocking `request_user_input` waits for its
+correlated response; async questions do not pause work. A nonzero tool command or
+provider diagnostic is not a failed turn. These modules are shared inputs to
+`//:quality_sources` and `//:desktop-bundle`, with focused observer checks at
+`//tools/demo-agents:unit`.
+
+Native ownership remains distinct. Its `ready` status alone is not completion:
+it also returns to ready after failure or interruption. A consumer must inspect
+the known terminal outcome, not label every ready native run successful.
 
 The terminal handoff selects an existing tmux pane and exposes checked copyable
 attach/switch commands. Neither copying nor selecting resumes another process.

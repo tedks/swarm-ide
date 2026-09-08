@@ -1,0 +1,7 @@
+.run-status { display: inline-flex; align-items: center; gap: 4px; font-size: 10px; font-weight: 400; line-height: 1.4; color: #9cafa9; }
+.run-status svg { display: block; width: 13px; height: 13px; flex: 0 0 13px; fill: currentColor; }
+.run-status .run-status-outline, .run-status path { fill: none; stroke: currentColor; stroke-width: 1.7; }
+.run-status.is-working { color: #e0c563; }
+.run-status.is-waiting { color: #d8b583; }
+.run-status.is-failed { color: #ef8c8c; }
+.run-status.is-completed { color: #83d5a5; }
