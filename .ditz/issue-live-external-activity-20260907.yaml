@@ -1,5 +1,5 @@
 id: live-external-activity-20260907
-title: Live retained observation of registered agent activity
+title: Follow and retain registered agents' live activity
 desc: ""
 type: feature
 component: agents
@@ -33,3 +33,11 @@ log_events:
   comment: 'PR72 normal-merged: live bounded observation and Activity instrument;
     local/native/owned packaged evidence verified, visibility optimization separately
     tracked'
+- time: 2026-09-08T04:30:14-00:00
+  who: Ted Smith
+  what: changed title
+  comment: ""
+- time: 2026-09-08T04:30:14-00:00
+  who: Ted Smith
+  what: updated description
+  comment: ""
