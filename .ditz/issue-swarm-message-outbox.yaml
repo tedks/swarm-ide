@@ -25,5 +25,11 @@ log_events:
     state and copy recovery, including ambiguous failures and reload. Existing Codex
     queue acknowledgement is not consumption; no automatic resend or competing resume.
     Coordinate exact sender/input seam with chat-input and schema with lifecycle owner.
+- time: 2026-09-08T13:32:16-00:00
+  who: Ted Smith
+  what: commented
+  comment: User wants IDE plus terminal access to the same agent as a bug fallback.
+    Keep checked copyable tmux target and visible pending message text; no second
+    resume or automatic replay. CLI association belongs Linux-install.
 blocks:
 - swarm-usability-join
