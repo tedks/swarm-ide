@@ -37,3 +37,9 @@ log_events:
     ceremony. Retain actual harness approvals, message persistence, stop/steering
     and root identity. Separate startup-build/service-discovery peers; direct local/native
     proof, owned GUI only.'
+- time: 2026-09-08T19:28:52-00:00
+  who: Ted Smith
+  what: blocks swarm-close-working-loop
+  comment: ""
+blocks:
+- swarm-close-working-loop
