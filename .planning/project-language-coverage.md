@@ -24,9 +24,12 @@ to this workstream.
 - [x] Read shared ownership, inspected existing parser compartment and syntax proof.
 - [x] Inventory tracked local filenames in Goals, Pure Sky, Predictionbook,
   Pairmarket, discord-agents, slowed and Swarm.
-- [ ] Add bounded detection/token tests and parser-only language extensions.
-- [ ] Verify dependency identity and actual editing/saving on owned virtual X11.
-- [ ] Native review to clean, publish coverage and push ready PR with Ditz notes.
+- [x] 2026-09-08 06:10 UTC: 50 new behavior failures reproduced before code;
+  parser-only implementation makes all 100 focused tests pass.
+- [x] 2026-09-08 06:12 UTC: both TypeScript boundaries and dependency/cursor checks
+  pass; actual packaged six-language edit/tab/save proof passes on owned :163/55403.
+- [x] 2026-09-08 06:16 UTC: native code and light documentation review CLEAN;
+  implementation and coverage pushed in PR102; final handoff prepared.
 
 ## Context and plan of work
 
@@ -65,13 +68,34 @@ without altering the exported sourceLanguage API or EditorPane.
 ## Surprises & Discoveries
 
 discord-agents contains 48 OCaml implementation files and 3 interfaces; Move is
-present in Predictionbook and Pairmarket. These are real gaps beyond web syntax.
+present in Predictionbook and Pairmarket. Chaos adds Go/Kotlin/Swift. These are
+real gaps beyond web syntax. Upstream legacy-modes has no Nix mode, so the small
+Replit Nix parser is used. Several stream modes include autocomplete data; this
+is removed without mutating their shared upstream parser objects.
 
 ## Decision Log
 
 Use upstream parsers where practical and existing stream modes for the long
 tail. Avoid a grammar platform or broad GitHub scan in this bounded increment.
+Preserve the already-pinned single CodeMirror state implementation. Keep the
+existing EditorPane and exported language APIs unchanged; no App/core join is
+required. The conversation owner receives only a small design-index link request
+because it owns the cockpit design document and central composition.
 
 ## Outcomes & Retrospective
 
-Implementation and proof pending. No universal language-support claim.
+PR102 adds 21 language selections beyond the existing seven, with named-file
+variants, stable identity and no new keyboard/completion behavior. All 100 focused
+cases and both TypeScript boundaries pass. The packaged proof completed in 3.626s
+(4.454s harness), with actual six-file broker reads, colors, dirty/cursor/camera
+retention, one explicit save, zero renderer errors and owned cleanup.
+
+Native code review and the light documentation pass are CLEAN. No hosted/foreign
+review was run under the finish-wave override. Dedicated Move and remaining
+format coverage are tracked as `swarm-language-grammar-followups`. Source-language
+documentation has an actual component/build diagram; the conversation owner may
+link it into its cockpit design index. ROOT owns normal merge and managed adoption.
+No universal language-support, semantic validity or live-provider claim.
+
+Revision: completed the bounded implementation and replaced pending steps with
+the actual local evidence and explicit remaining format limits.
