@@ -5,8 +5,8 @@ type: feature
 component: default
 release:
 reporter: Ted Smith <tedks@riseup.net>
-status: in_progress
-disposition:
+status: closed
+disposition: fixed
 creation_time: 2026-09-08T00:35:00-00:00
 references: []
 log_events:
@@ -61,3 +61,10 @@ log_events:
     one existing actual-service deterministic-peer packaged trusted-local smoke PASS2.593s,
     prepare/approval/next-turn/Stop, zero model/errors, source/camera retention and
     cleanup1; fresh session-unit PASS. Joined verification updated; ROOT owns merge/adoption.'
+- time: 2026-09-08T01:40:29-00:00
+  who: Ted Smith
+  what: 'closed: fixed'
+  comment: PR73 normally merged 1f54845. Final F1/A2/E3/S3/T5 composition accepted
+    with focused native/local checks and actual packaged deterministic-provider fleet
+    and final one-run evidence. Real model evidence stays separately attributed to
+    F1; retention/capacity follow-ups remain open.
