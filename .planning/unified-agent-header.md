@@ -9,9 +9,9 @@ Root and other registered agents should be the conversation header, not tabs abo
 ## Progress
 
 - [x] 2026-09-08: Started the designated clean branch from reviewed master 3ee62d6, preserving the completed branches.
-- [ ] Implement the header and explicit native-tools access.
-- [ ] Check mounted identity, empty/reconnect behavior and draft retention; native review and bounded owned visual check.
-- [ ] Push ready PR, record Ditz outcomes and hand off to ROOT.
+- [x] 2026-09-08 15:43Z: Implemented the header and explicit native-tools access in 979e1f9; opened/pushed PR120.
+- [x] 2026-09-08 15:49Z: Focused mounted checks, native fix-delta review and bounded owned visual check complete. Corrected the review-found missing-tab focus fallback in b9fa7da.
+- [ ] Push final outcome notes, close/sync Ditz and hand off to ROOT for landing.
 
 ## Context and Orientation
 
@@ -26,6 +26,10 @@ Native tools move behind an explicit icon button, not a permanent generic tab. E
 ## Surprises & Discoveries
 
 The previous fallback always selected the permanent Native tab. Removing that category requires an explicit empty view; silently selecting another label without reading that session would display the wrong conversation. Reconnecting observations must retain disabled tabs and keep actions unavailable.
+
+Native review found that closing a background tab from the untabbed Agent tools view tried to focus a nonexistent tab. The fallback now focuses the Agent tools icon; a mounted regression covers this exact interaction.
+
+The initial visual driver's textarea-node identity assertion was too strong: the existing SessionSteering intentionally renders no textarea while loading a different session. The corrected driver checks the component's stable field ID and persistent conversation/list, along with exact restored drafts. This was a proof correction, not a change to the accepted PR117 loading behavior. The original failed run had zero renderer errors and complete owned cleanup.
 
 ## Plan of Work
 
@@ -53,4 +57,10 @@ Current progress and final evidence live in `/tmp/swarm-ide-agent-tabs.gd9Pg9/se
 
 ## Outcomes & Retrospective
 
-Implementation pending. Native-only proportional review and local focused evidence are the requested gates; no hosted CI or legacy full-suite work.
+One header is implemented with current-session icons and no permanent Native/New tab. The existing sender, outbox and native controls remain intact. Native initial review found one focus issue; the b9fa7da correction returned CLEAN on a delta review. Foreign reviews and hosted CI were intentionally not run under the user's native/local-only directive.
+
+Final focused validation uses the existing `//tools/demo-syntax:editor-tests` wrapper with seven explicit files: registered-conversation-tabs, conversation-scroll, conversation-cockpit, agent-dock, message-outbox, chat-input and external-agents-ui (all `.test.tsx`). This passed 75 tests and both TypeScript boundaries in 14.2 seconds. The broader historical conversation-tabs target also contains living-design: that untouched test expects Show all 20 source files although the unchanged manifest now has 22. Its other 72 cases passed. The brittle selector is recorded separately in Ditz swarm-design-source-count-selector; no plan behavior was modified or old failure hidden.
+
+Owned packaged evidence is `/tmp/swarm-ide-agent-tabs.gd9Pg9/visual-corrected/run.TlMm7z`: real ROOT/child transcript reads, native Ctrl-Shift-Tab, retained draft/source/cameras, one icon row at normal and deliberately constrained 320px width, 1.497-second scenario, zero sends/model turns/renderer errors, cleanup complete. This precedes only the reviewed small focus fallback; that delta has its exact mounted regression, not a repeated GUI claim. ROOT retains responsibility for normal merge and shared app adoption.
+
+Updated after implementation to record actual proof limits and review correction, rather than claiming textarea DOM lifetime across a loading state that the existing component does not provide.
