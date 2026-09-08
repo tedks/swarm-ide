@@ -56,5 +56,15 @@ log_events:
     scoped follow-up swarm-registration-native-helpers; ROOT has the shared-helper
     ownership request. aarch64 execution is separately untested/tracked. PR111 is
     pushed; ROOT owns landing.
+- time: 2026-09-08T14:39:23-00:00
+  who: Ted Smith
+  what: commented
+  comment: Completed the approved direct-native-helper correction and actual installed
+    selected-session path. Nix package opens another repository, discovers five real
+    workers, verifies the plans worker has its own worktree, and leaves that exact
+    agent alive after IDE close. 19 CLI plus 68 registration-related checks and native
+    convergence pass. Existing private-registry mode independently shows ROOT activity.
+    Two skipped panes and untested ARM Linux are separate follow-ups. PR111 ready/pushed;
+    no shared preview or user profile changed.
 blocks:
 - swarm-usability-pass
