@@ -53,7 +53,7 @@ const tail = (value: string, bytes: number) => {
 const outputTail = (value: string, bytes: number) => Buffer.byteLength(value) <= bytes ? value : `[Earlier output omitted]\n${tail(value, bytes - 32)}`;
 function boundHistory(saved: TrustedStoredRun): TrustedStoredRun {
   saved.output = outputTail(saved.output, 128 * 1024);
-  saved.activities = saved.activities.slice(-50).map((activity) => ({ ...activity, summary: tail(activity.summary, 2048) }));
+  saved.activities = saved.activities.slice(-100).map((activity) => ({ ...activity, summary: tail(activity.summary, 2048) }));
   // Count JSON escaping too. Twenty records remain well below the 8MiB store
   // bound even when provider strings contain many quote/control characters.
   while (Buffer.byteLength(JSON.stringify(saved)) > 256 * 1024) {

@@ -15,7 +15,8 @@ The operator can keep several real local conversations running, address each by 
 - [x] Verify routing, capacity races, cancellation, persistence failure and restart without replay in controlled tests.
 - [x] Run relevant local checks and native review; push PR and synchronize Ditz.
 - [x] Complete the authorized real two-conversation/three-turn proof with confirmed cleanup and no replay.
-- [ ] ROOT normal landing and independent cockpit/activity/task consumer joins (not owned by this child).
+- [x] Normally compose ROOT-cleared A2 at6191047; controlled joined activity/parser/storage proof passed.
+- [ ] ROOT normal landing and independent cockpit/task consumer joins (not owned by this child).
 
 ## Surprises & Discoveries
 
@@ -27,7 +28,7 @@ Native review found a persistence completion race: a last callback could join an
 
 Use at most eight live runs and twenty retained records, with one concurrent context preparation. Reserve a record before awaiting launch revalidation so duplicate clicks cannot allocate twice. Retain a separate store outside the repository; recovered active records become failed/archived with an explicit interrupted/unknown message, not an invented outcome. The existing status vocabulary is preserved for compatibility.
 
-Persist a UTF-8 output tail of at most 128KiB and the last fifty activities with 2KiB summaries, further reducing old tails when JSON escaping would exceed 256KiB per record. Explicit omission text labels truncated output. The complete file remains under its 8MiB bound. Use `XDG_STATE_HOME/swarm-ide/trusted-local/<workspace-identity>.json`, or the normal `~/.local/state` fallback; another active IDE owner is rejected before reading/archiving its history. `flock` comes from the existing Nix util-linux environment, not a new dependency.
+Persist a UTF-8 output tail of at most 128KiB and the last one hundred activities with 2KiB summaries, further reducing old tails when JSON escaping would exceed 256KiB per record. Explicit omission text labels truncated output. The complete file remains under its 8MiB bound. Use `XDG_STATE_HOME/swarm-ide/trusted-local/<workspace-identity>.json`, or the normal `~/.local/state` fallback; another active IDE owner is rejected before reading/archiving its history. `flock` comes from the existing Nix util-linux environment, not a new dependency.
 
 ## Outcomes & Retrospective
 
@@ -69,3 +70,6 @@ The contract adds optional `runs`, `taskReference`, `activities`, and `archived`
 
 Initial revision: record scope and compatibility assumptions before implementation.
 Implementation revision: record actual race discoveries, bounded storage policy and exclusive writer lifetime.
+A2 join revision: normally consume ROOT-cleared PR77/PR71 at6191047, whose actual session accessor is already100/64KiB. Widen F1's former fifty-row history cap to the requested last100, retain the independent serialized byte bound, and exercise actual joined parsing/callback/storage with a controlled transport. No additional provider turn is authorized or run for this join.
+
+The joined focused suite passed81 tests/five files and desktop packaging passed. Two new tests first failed against F1's fifty-row cap (79 passed); after alignment, a test-only assumption that an evicted turn activity should reappear was corrected to preserve A2's no-revival rule. Final native delta convergence CLEAN. Earlier full1847 test and three-live-turn evidence remain attributed to the prior F1 executable; no full legacy GUI or model rerun is claimed for this narrow join.

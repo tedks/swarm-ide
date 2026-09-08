@@ -11,7 +11,8 @@ import { RegisteredAgentContextProvider } from "../core/agents/context";
 import { computeWorkingWorldFingerprint } from "../core/fingerprint";
 import { PROTOCOL_VERSION } from "../protocol/common";
 import { TrustedRequestSchema, type TrustedActivity, type TrustedRequest } from "../protocol/trusted-local";
-import type { TrustedLocalSessionSnapshot } from "../core/agents/trusted-local-session";
+import { TrustedLocalSession, type TrustedLocalSessionSnapshot } from "../core/agents/trusted-local-session";
+import type { CodexTransportSink } from "../core/agents/codex-app-server";
 import type { AgentTaskReference } from "../protocol/agent-task";
 
 const roots: string[] = [], owners: TrustedLocalService[] = [];
@@ -201,5 +202,53 @@ describe("bounded trusted fleet routing and restart history", () => {
     await Promise.resolve().then(() => f.sessions[0]!.emit({ output: "after writer completion" }));
     await Promise.resolve();
     expect((await store.load())[0]!.output).toBe("after writer completion");
+  });
+  it("publishes and persists the last 100 short activities from a larger accessor tail", async () => {
+    const f = await fixture(), token = await f.launch();
+    const activities: TrustedActivity[] = Array.from({ length: 128 }, (_, n) => ({ id: `event-${n}`, at: new Date().toISOString(),
+      turnId: null, kind: "tool", status: "completed", summary: `Tool ${n}` }));
+    f.sessions[0]!.setActivities(activities);
+    expect(f.service.snapshot(token).activities).toEqual(activities.slice(-100));
+    await vi.waitFor(async () => expect((await f.store.load())[0]!.activities).toEqual(activities.slice(-100)));
+    expect(f.service.snapshot(token).status).toBe("ready");
+  });
+  it("joins real A2 session parsing/callbacks to service snapshots and stored activity without a provider process", async () => {
+    const f = await fixture();
+    let sink!: CodexTransportSink;
+    const sent: Array<{ id?: number; method?: string }> = [];
+    const receive = (value: unknown) => sink.stdout(Buffer.from(JSON.stringify(value) + "\n"));
+    const close = vi.fn(async () => ({ status: "confirmed" as const, observedAt: new Date().toISOString(), detail: "Controlled transport only" }));
+    let actual!: TrustedLocalSession;
+    const service = new TrustedLocalService({ ...f.options, createSession: async (notify) => {
+      actual = new TrustedLocalSession({ root: f.root, executable: "/controlled/codex", openTransport(callbacks) {
+        sink = callbacks;
+        return { close, write(line) {
+          const request = JSON.parse(line); sent.push(request);
+          if (request.method === "initialize") receive({ id: request.id, result: { userAgent: "controlled-codex" } });
+          if (request.method === "thread/start") receive({ id: request.id, result: { thread: { id: "thread" }, cwd: f.root } });
+          if (request.method === "turn/start") receive({ id: request.id, result: { turn: { id: "turn" } } });
+        } };
+      } }, notify);
+      return actual;
+    } }); owners.push(service);
+    const prepared = await service.request(command("trusted.prepare", { input: f.input }));
+    const token = prepared.preparation!.token;
+    await service.request(command("trusted.launch", { token }));
+    await vi.waitFor(() => expect(service.snapshot(token).turnId).toBe("turn"));
+    for (let n = 0; n < 128; n++) receive({ method: "item/completed", params: { threadId: "thread", turnId: "turn",
+      item: { type: "mcpToolCall", id: `tool-${n}`, status: "completed", tool: "not-a-published-name" } } });
+    const expected = actual.activity(); expect(expected).toHaveLength(100);
+    expect(service.snapshot(token).activities).toEqual(expected);
+    await vi.waitFor(async () => expect((await f.store.load())[0]!.activities).toEqual(expected));
+    receive({ method: "turn/completed", params: { threadId: "thread", turn: { id: "turn", status: "completed" } } });
+    expect(service.snapshot(token).status).toBe("ready");
+    await service.request(command("trusted.stop", { token }));
+    expect(service.snapshot(token).status).toBe("closed");
+    // The turn row was evicted by the bounded tail. Completion must not revive
+    // old entries or reorder the retained provider evidence.
+    expect(service.snapshot(token).activities).toEqual(expected);
+    expect((await f.store.load())[0]!.activities).toEqual(expected);
+    expect(sent.filter((request) => request.method === "turn/start")).toHaveLength(1);
+    expect(close).toHaveBeenCalledOnce();
   });
 });
