@@ -62,15 +62,21 @@
       "connections": [
         {
           "targetId": "design:repository",
-          "label": "Files & target definitions"
+          "label": "Files & target definitions",
+          "kind": "request",
+          "detail": "The cockpit asks the repository capability to open an observed file or build declaration. The canonical source broker and current navigation authority choose the bytes; a graph label alone is not a path."
         },
         {
           "targetId": "design:planning",
-          "label": "Design & task documents"
+          "label": "Design & task documents",
+          "kind": "navigation",
+          "detail": "An explicit selection opens a design or task document while retaining source buffers and independent graph cameras. It does not edit a plan or change a task's status."
         },
         {
           "targetId": "design:agents",
-          "label": "Conversations & steering"
+          "label": "Conversations & steering",
+          "kind": "navigation",
+          "detail": "Selecting an agent opens its conversation and existing controls. Sending is a separate deliberate action through that agent's actual execution owner."
         }
       ],
       "buildTargets": [
@@ -156,11 +162,15 @@
       "connections": [
         {
           "targetId": "design:runtime",
-          "label": "Repository & build queries"
+          "label": "Repository & build queries",
+          "kind": "request",
+          "detail": "Repository instruments submit typed file, Git and Bazel requests through preload and the local-core dispatcher. These areas span renderer and core; this is a routed capability, not a call between deployed services."
         },
         {
           "targetId": "design:cockpit",
-          "label": "Graphs & Context links"
+          "label": "Graphs & Context links",
+          "kind": "data",
+          "detail": "Observed repository results feed separate file, build and service projections and contextual links. Shared source files or Bazel inputs do not create architectural dependencies."
         }
       ],
       "buildTargets": [
@@ -248,6 +258,7 @@
       "core/plans.ts",
       "core/tasks/draft-context.ts",
       "app/renderer/plans/DesignWorkspace.tsx",
+      "app/renderer/plans/design.css",
       "app/renderer/plans/navigation.ts",
       "app/renderer/plans/ProjectionCanvas.tsx",
       "app/renderer/plans/PlanWorkspace.tsx",
@@ -271,11 +282,15 @@
       "connections": [
         {
           "targetId": "design:runtime",
-          "label": "Plans & pinned task reads"
+          "label": "Plans & pinned task reads",
+          "kind": "request",
+          "detail": "The local core reads the working plan index and identifies its contents; Ditz reads are pinned to a specified Git metadata revision. Refresh can update the view but cannot silently retarget an attached draft."
         },
         {
           "targetId": "design:agents",
-          "label": "Fixed task/source context"
+          "label": "Fixed task/source context",
+          "kind": "data",
+          "detail": "A deliberate attachment carries revision-pinned task text alongside the draft's fixed source. Core preparation materializes and revalidates that context; merely selecting a task does not launch an agent."
         }
       ],
       "buildTargets": [
@@ -326,6 +341,7 @@
       "core/external-agents-send.ts",
       "protocol/external-agents.ts",
       "app/renderer/external-agents/ExternalAgents.tsx",
+      "app/renderer/external-agents/client.ts",
       "app/renderer/external-agents/AgentConversation.tsx",
       "app/renderer/external-agents/conversation-selection.ts",
       "app/renderer/external-agents/conversation-scroll.ts",
@@ -346,11 +362,15 @@
       "connections": [
         {
           "targetId": "design:runtime",
-          "label": "Owned runs & terminal sends"
+          "label": "Owned runs & terminal sends",
+          "kind": "request",
+          "detail": "Native controls call the IDE-owned app-server. Terminal sends queue to the checked existing session instead; they do not resume a second conversation or transfer ownership of the TUI."
         },
         {
           "targetId": "design:activity",
-          "label": "Agent operations & edits"
+          "label": "Agent operations & edits",
+          "kind": "data",
+          "detail": "Registered transcript events and native activity carry the originating session and worktree into Activity. Recorded edits and current Git diffs remain distinct; meaningful turn boundaries feed Work Log summarization."
         }
       ],
       "buildTargets": [
@@ -455,11 +475,21 @@
       "connections": [
         {
           "targetId": "design:agents",
-          "label": "Events → responsible agent"
+          "label": "Open responsible agent",
+          "kind": "navigation",
+          "detail": "Clicking an event or saved outcome selects its exact registered agent. This navigates the cockpit; it does not start a model, send a message or alter the agent lifecycle."
+        },
+        {
+          "targetId": "design:agents",
+          "label": "Latest saved summary",
+          "kind": "data",
+          "detail": "App shares one Work Log observation with the agent rail. The latest saved outcome for the exact session ID appears below its current lifecycle; a historical summary does not decide whether the agent is working now."
         },
         {
           "targetId": "design:planning",
-          "label": "Completed outcome notes"
+          "label": "Record outcome note",
+          "kind": "request",
+          "detail": "The explicit Record outcome action appends one idempotent Ditz comment to a known already-closed issue. It never closes an issue or infers completion from a summary."
         }
       ],
       "buildTargets": [
@@ -562,11 +592,15 @@
       "connections": [
         {
           "targetId": "design:repository",
-          "label": "Filesystem, Git & Bazel results"
+          "label": "Filesystem, Git & Bazel results",
+          "kind": "result",
+          "detail": "The matching typed response returns bytes or observations with source identity and freshness. This is the return direction of Repository & build queries, not an independent service dependency."
         },
         {
           "targetId": "design:agents",
-          "label": "Process & terminal ownership"
+          "label": "Owned runs / observed sessions",
+          "kind": "result",
+          "detail": "Native run state comes from an IDE-owned process. Registered terminal state comes from reading the existing owner's transcript and checking its identity. The dispatcher reports both without claiming ownership of terminal processes."
         }
       ],
       "buildTargets": [
