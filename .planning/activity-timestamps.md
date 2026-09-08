@@ -4,7 +4,7 @@ This living ExecPlan follows `.planning/PLANS.md`.
 
 ## Purpose / Big Picture
 
-Operators should be able to distinguish when work was recorded, when a narrative was generated, and when the IDE last read it. Add compact local timestamps to workspace events and recorded activity summaries without changing navigation, observation, or generation behavior.
+Operators should be able to scan when work happened without reading an audit trail. Show time-only for today's events, short dates for older events, and a single full timestamp on hover. Keep generation/read metadata in the existing collapsed provenance, not the main activity surface. Preserve recorded-versus-live honesty without changing navigation, observation or generation behavior.
 
 ## Progress
 
@@ -13,6 +13,7 @@ Operators should be able to distinguish when work was recorded, when a narrative
 - [x] (2026-09-08 02:47Z) Local typechecks, 15 focused tests and desktop bundle passed. Native layout finding repaired and convergence CLEAN. Owned virtual normal/150% screenshots captured with cleanup confirmed.
 - [ ] ROOT intake, normal merge and managed app adoption.
 - [x] (2026-09-08 02:56Z) Additional direct-user correction: stable background TaskPanel refresh presentation, three new regressions and 65 focused tests/typechecks PASS; native scoped review CLEAN.
+- [x] (2026-09-08) User visually confirmed task refresh no longer flashes, requested simpler timestamps and removal of prominent generated/read information. Readability baseline 4 RED / 63 PASS; corrected typechecks and 67 focused tests PASS, native delta CLEAN.
 
 ## Surprises & Discoveries
 
@@ -24,7 +25,7 @@ Additional user-reported Refresh Tasks blinking came from three presentation cha
 
 ## Decision Log
 
-Use explicitly labelled cited-evidence ranges for narrative entries. Always include a calendar date in the compact local format: this avoids midnight ambiguity without adding a clock or timer. Preserve exact ISO instants and timezone in hover/accessibility information. Leave the existing selected-agent observer behavior untouched.
+Use explicitly labelled cited-evidence ranges for narrative entries. The initial always-date and prominent generation/read display was rejected in direct user review as too verbose. The accepted format is time-only today, short date/time otherwise, and a year only for another year. Compare local calendar dates, not UTC day strings. Recalculate on normal renders without a new timer. Preserve exact ISO in semantic datetime, with one human-readable full date/time/zone on hover. Leave the existing selected-agent observer behavior untouched.
 
 Native review found that a nowrap timestamp in the auto metadata column could crowd out the summary. Put the timestamp on its own grid row spanning the text columns; the final native delta is CLEAN and the actual 150% screenshot shows event text retained above its timestamp.
 
@@ -32,17 +33,17 @@ For the explicitly added task refresh correction, keep the original current pred
 
 ## Outcomes & Retrospective
 
-PR81 supplies visible cited-evidence, generation and read times, semantic exact timestamps, and workspace-event times without changing selection or refresh behavior. This does not implement continuous summarization or all-swarm activity aggregation. The known independently owned task-test mismatch remains attributed; ROOT owns integration and adoption.
+PR81 supplies readable cited-evidence and workspace-event times, with exact semantic timestamps and a compact human-readable hover. Generation/read metadata is retained in the existing closed provenance disclosure only. This does not implement continuous summarization or all-swarm activity aggregation. Earlier gate evidence remains historical and is not relabelled onto the final correction; ROOT owns integration and adoption.
 
-The task-refresh follow-up is a presentation-only correction under ROOT's exact TaskPanel/CSS/test ownership. The timestamp output is preserved. J4 is permitted a separate optional liveContent slot in JournalPanel plus a separate App mount; J3 does not author or consume its unreviewed implementation.
+The task-refresh follow-up is a presentation-only correction under ROOT's exact TaskPanel/CSS/test ownership and was manually accepted by the user. J4 is not launched; an optional liveContent slot in JournalPanel plus separate App mount is only reserved. J3 does not author or consume summarizer implementation.
 
 ## Context and Orientation
 
-`app/renderer/changelog/JournalPanel.tsx` renders saved summaries both in the Recent Activity feed and the central document area. `app/renderer/App.tsx` also renders workspace event rows whose `at` timestamp is currently omitted. `protocol/changelog.ts` provides cited evidence with `at`, document `generatedAt`, and result `observedAt`. No protocol changes are needed.
+`app/renderer/changelog/JournalPanel.tsx` renders saved summaries both in the Recent Activity feed and the central document area. `app/renderer/App.tsx` now renders each workspace event's `at` timestamp below its description. `protocol/changelog.ts` provides cited evidence with `at`, document `generatedAt`, and result `observedAt`. No protocol changes are needed.
 
 ## Plan of Work
 
-Add a small shared presentation component using the browser's local date/time formatter with semantic `time` markup. In the journal, calculate the earliest and latest timestamps of only the entry's cited evidence. Show report generation and last-read separately, with recorded/manual-refresh wording. Add focused tests for source time versus read time, different days, exact offset normalization, defensive unknown time, and unchanged deliberate navigation.
+Use the shared presentation component with the browser's local date/time formatter and semantic `time` markup. In the journal, calculate the earliest and latest timestamps of only the entry's cited evidence. Keep the existing Recorded labels and collapsed provenance, without a separate freshness block. Test today abbreviation, local midnight on rerender, other months/years, exact offset normalization, readable hover, defensive unknown time, and unchanged deliberate navigation. Keep the accepted task-refresh correction unchanged.
 
 ## Concrete Steps
 
@@ -50,7 +51,7 @@ Work only in `/home/tedks/Projects/swarm-ide/activity-timestamps`. Materialize d
 
 ## Validation and Acceptance
 
-Tests must show separate semantic time elements for cited evidence, report generation, and last read. Crossing midnight must visibly change the date. Missing or invalid presentation inputs must not throw or produce invalid dateTime markup. Existing Journal source opening, filter, selection and stale-reply assertions remain. A proportional owned virtual screenshot is desirable if the existing harness can exercise the updated surface cheaply; no models or physical desktop automation.
+Tests must show cited event time without prominent generation/read blocks; the existing provenance disclosure remains closed by default. Crossing local midnight must restore the abbreviated date on the next render. Missing or invalid presentation inputs must not throw or produce invalid dateTime markup. Existing Journal source opening, filter, selection and stale-reply assertions remain. The final user-requested readability delta uses proportional focused/native/build gates; no new GUI run or product model is required. Earlier screenshots are attributed only to their original code, not this shorter display.
 
 ## Idempotence and Recovery
 

@@ -47,18 +47,9 @@ function EvidenceTime({ entry, observation }: { entry: ChangelogResult["document
   return <span className="journal-entry-time">Evidence <ActivityTime at={new Date(first).toISOString()} />{last !== first ? <> – <ActivityTime at={new Date(last).toISOString()} /></> : null}</span>;
 }
 
-function JournalFreshness({ observation }: { observation: ChangelogResult }) {
-  return <div className="journal-freshness">
-    <span>Generated <ActivityTime at={observation.document.generatedAt} /></span>
-    <span>Last read <ActivityTime at={observation.observedAt} /></span>
-    <span>Saved report · not live · Refresh reads the report</span>
-  </div>;
-}
-
 export function JournalActivity({ state, onOpen }: { state: JournalState; onOpen(entryId?: string): void }) {
   return <div className="journal-activity">
     {state.notice ? <p>{state.observation ? "Retained account · refresh needed" : "No recorded summary available"}</p> : null}
-    {state.observation ? <JournalFreshness observation={state.observation} /> : null}
     {state.observation?.document.entries.slice(0, 5).map((entry) => <button className="journal-activity-entry" key={entry.id} onClick={() => onOpen(entry.id)}><span>{entry.headline}</span><small>Recorded · {entry.state}</small><EvidenceTime entry={entry} observation={state.observation!} /></button>)}
     {state.busy ? <p>Reading recorded changes…</p> : null}
   </div>;
@@ -100,7 +91,6 @@ export function JournalPanel({ open, state, selectedEntry, selectionVersion = 0,
       {!observation && !busy ? <p className="journal-empty">No recorded activity summary. <code>docs/logical-changelog.md</code> describes how to add one.</p> : null}
       {observation ? <>
         <div className="journal-coverage"><span className="journal-badge">Recorded activity · {observation.state === "recorded-head" ? "through observed HEAD" : "earlier repository history"}</span><p>Summarized by {observation.document.generator.name}. Working edits are not included.</p></div>
-        <JournalFreshness observation={observation} />
         <label className="journal-filter">Affected file <select value={filter} onChange={(event) => setFilter(event.target.value)}><option value="">All evidence</option>{paths.map((path) => <option key={path} value={path}>{path}</option>)}</select></label>
         {!entries.length ? <p>No logical changes cite this exact path in the current bundle.</p> : null}
         <ol className="journal-cards">{entries.map((entry) => {

@@ -5,18 +5,46 @@ import { JournalActivity, JournalPanel } from "../app/renderer/changelog/Journal
 import { syntheticJournal } from "./journal-fixture";
 import { ActivityTime } from "../app/renderer/ActivityTime";
 
-afterEach(cleanup);
+afterEach(() => { cleanup(); vi.useRealTimers(); });
 
 describe("activity timestamps", () => {
-  it("preserves an offset instant with an exact ISO and local timezone in accessible detail", () => {
+  it("keeps the exact instant machine-readable with one human-readable full timestamp on hover", () => {
     render(<ActivityTime at="2026-09-07T23:59:58-04:00" />);
     const time = document.querySelector("time")!;
     expect(time.dateTime).toBe("2026-09-08T03:59:58.000Z");
-    expect(time.title).toContain("2026-09-08T03:59:58.000Z");
-    expect(time.title).toContain(Intl.DateTimeFormat().resolvedOptions().timeZone);
+    expect(time.title).toBe(new Date(time.dateTime).toLocaleString([], {
+      year: "numeric", month: "short", day: "numeric", hour: "numeric", minute: "2-digit", second: "2-digit", timeZoneName: "short",
+    }));
+    expect(time.title).not.toContain("2026-09-08T03:59:58.000Z");
+    expect(time.title).not.toContain(" · ");
     expect(time.getAttribute("aria-label")).toBe(time.title);
-    expect(time.textContent).toBe(new Date(time.dateTime).toLocaleString([], {
-      year: "numeric", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit", second: "2-digit",
+  });
+
+  it("shows only time today and restores the date after local midnight on the next render", () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    const date = new Date(2026, 8, 7, 23, 10, 45);
+    vi.setSystemTime(new Date(2026, 8, 7, 23, 59, 59));
+    const view = render(<ActivityTime at={date.toISOString()} />);
+    const time = document.querySelector("time")!;
+    expect(time.textContent).toBe(date.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }));
+    vi.setSystemTime(new Date(2026, 8, 8, 0, 0, 0));
+    view.rerender(<ActivityTime at={date.toISOString()} />);
+    expect(time.textContent).toBe(date.toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }));
+    expect(time.dateTime).toBe(date.toISOString());
+  });
+
+  it("includes the year only for another year and does not treat the same day number as today", () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date(2026, 8, 7, 12, 0));
+    const earlier = new Date(2025, 8, 7, 9, 5);
+    const view = render(<ActivityTime at={earlier.toISOString()} />);
+    expect(document.querySelector("time")!.textContent).toBe(earlier.toLocaleString([], {
+      year: "numeric", month: "short", day: "numeric", hour: "numeric", minute: "2-digit",
+    }));
+    const previousMonth = new Date(2026, 7, 7, 9, 5);
+    view.rerender(<ActivityTime at={previousMonth.toISOString()} />);
+    expect(document.querySelector("time")!.textContent).toBe(previousMonth.toLocaleString([], {
+      month: "short", day: "numeric", hour: "numeric", minute: "2-digit",
     }));
   });
 
@@ -27,7 +55,7 @@ describe("activity timestamps", () => {
     expect(document.querySelector("time")).toBeNull();
   });
 
-  it("labels generated and last-read instants separately from cited work in the feed and central log", () => {
+  it("shows cited work without generation/read metadata in the feed or main log, retaining provenance in details", () => {
     const observation = syntheticJournal().result;
     observation.observedAt = "2026-09-08T06:02:00Z";
     const state = { observation, busy: false, notice: "", refresh: vi.fn() };
@@ -36,12 +64,15 @@ describe("activity timestamps", () => {
     const feed = document.querySelector(".journal-activity")!;
     const panel = document.querySelector(".journal-panel")!;
     for (const surface of [feed, panel]) {
-      expect(surface.textContent).toContain("Generated");
-      expect(surface.textContent).toContain("Last read");
-      expect(surface.textContent).toContain("not live");
-      expect(surface.querySelector(`time[datetime="${new Date(observation.document.generatedAt).toISOString()}"]`)).toBeTruthy();
-      expect(surface.querySelector(`time[datetime="${new Date(observation.observedAt).toISOString()}"]`)).toBeTruthy();
+      expect(surface.querySelector(".journal-freshness")).toBeNull();
+      expect(surface.textContent).toContain("Recorded");
+      expect(surface.querySelector(`time[datetime="${new Date(observation.document.generatedAt).toISOString()}"]`)).toBeNull();
+      expect(surface.querySelector(`time[datetime="${new Date(observation.observedAt).toISOString()}"]`)).toBeNull();
     }
+    const provenance = panel.querySelector<HTMLDetailsElement>(".journal-provenance")!;
+    expect(provenance.open).toBe(false);
+    expect(provenance.textContent).toContain(`Generated ${observation.document.generatedAt}`);
+    expect(provenance.textContent).toContain(`Observed ${observation.observedAt}`);
     const entry = screen.getByRole("button", { name: /Synthetic change/ });
     expect(entry.textContent).toContain("Evidence");
     expect(entry.querySelector("time")?.dateTime).toBe("2026-09-07T12:00:00.000Z");
