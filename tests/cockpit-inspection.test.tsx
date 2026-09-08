@@ -21,6 +21,12 @@ function response(input: CoreRequest, content: string): CoreResponse {
     worktreeInspection: { sessionId: input.sessionId, path: input.path, label: "C7", worktree: "/repos/agent-worktree", content, diff: "-old\n+agent change\n" } };
 }
 describe("operator cockpit inspection", () => {
+  it.each(["/repo/file.ts", "../file.ts", "./file.ts"])("keeps noncanonical event path %s as an actionable notice, not a renderer exception", async (path) => {
+    const request = vi.fn(), bridge: SwarmBridge = { request, onEvent: () => () => {} };
+    render(<WorktreeInspection selection={{ ...selection, path }} bridge={bridge} generation={1} onReturn={vi.fn()} />);
+    expect(await screen.findByRole("status")).toHaveProperty("textContent", "This event does not name a repository-relative file. Open the agent to inspect its command.");
+    expect(request).not.toHaveBeenCalled();
+  });
   it("opens a raw fleet event with its containing agent identity and recorded patch", () => {
     const session = { id, label: "C7", evidence: "local" as const, status: "observed" as const, parentId: null,
       ancestry: "root" as const, observationId: "a".repeat(64), observedAt: "2026-09-08T04:00:00Z", message: "", contextPaths: [], worktree: "/repos/child" };
@@ -31,7 +37,7 @@ describe("operator cockpit inspection", () => {
     render(<FleetActivityView fleet={[detail]} selected={null} onSelect={onSelect} onAgent={vi.fn()} onInspect={onInspect} />);
     fireEvent.click(screen.getByRole("button", { name: "app/file.ts" }));
     expect(onInspect).toHaveBeenCalledExactlyOnceWith(id, "app/file.ts", "+child-only");
-    fireEvent.click(screen.getByRole("button", { name: /C7 Edited app\/file.ts/ }));
+    fireEvent.click(screen.getByRole("button", { name: "C7: Edited app/file.ts" }));
     expect(onSelect).toHaveBeenCalledExactlyOnceWith({ session, entry });
     expect(document.querySelector("time")?.dateTime).toBe("2026-09-08T04:00:00.000Z");
   });

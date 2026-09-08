@@ -19,7 +19,7 @@ export function FleetActivityView({ fleet, selected, onSelect, onAgent, onInspec
         {selected.entry.path ? <button onClick={() => onInspect(selected.session.id, selected.entry.path!, selected.entry.patch)}>Inspect {selected.entry.path}</button> : null}</div>
       {selected.entry.patch ? <pre className="fleet-recorded-patch">{selected.entry.patch}</pre> : null}
     </article> : entries.length ? <ol>{entries.map(({ session, entry }) => <li key={`${session.id}:${entry.id}`}>
-      <button onClick={() => onSelect({ session, entry })}><ActivityTime at={entry.at} /><strong>{session.label}</strong><span>{entry.text}</span></button>
+      <button aria-label={`${session.label}: ${entry.text}`} onClick={() => onSelect({ session, entry })}><ActivityTime at={entry.at} /><strong>{session.label}</strong><span>{entry.text}</span></button>
       {entry.path ? <button className="fleet-file-link" onClick={() => onInspect(session.id, entry.path!, entry.patch)}>{entry.path}</button> : null}
     </li>)}</ol> : <p>No activity yet. Registered agents appear here as their transcripts update.</p>}
   </section>;

@@ -19,8 +19,10 @@ export function WorktreeInspection({ selection, bridge, generation, onReturn }: 
     let current = true;
     setResult(null); setNotice("");
     if (!bridge) { setNotice("Local core unavailable. Try again when connected."); return; }
-    const request = WorktreeInspectionRequestSchema.parse({ protocolVersion: PROTOCOL_VERSION,
+    const parsed = WorktreeInspectionRequestSchema.safeParse({ protocolVersion: PROTOCOL_VERSION,
       requestId: `worktree:${crypto.randomUUID()}`, type: "worktree.inspect", sessionId: selection.sessionId, path: selection.path });
+    if (!parsed.success) { setNotice("This event does not name a repository-relative file. Open the agent to inspect its command."); return; }
+    const request = parsed.data;
     void bridge.request(request).then((raw) => {
       const response = parseCoreResponseForRequest(raw, request);
       if (!response.ok) throw new Error(response.error.message);
