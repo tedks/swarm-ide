@@ -14,3 +14,11 @@ log_events:
   who: Ted Smith
   what: created
   comment: ""
+- time: 2026-09-08T19:44:31-00:00
+  who: Ted Smith
+  what: commented
+  comment: User explicitly removed the 4 MiB raw query-output cap. Current query still
+    buffers stdout; retain output MiB progress, cancellation/deadline, three loading
+    workers and 512 MiB Bazel JVM. Goals actual output is 7.2 MiB despite 449 tracked
+    files. Revisit streaming or a cap only when measurements warrant it; do not restore
+    an arbitrary low cutoff.
