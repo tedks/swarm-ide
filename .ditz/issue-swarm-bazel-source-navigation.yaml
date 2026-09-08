@@ -25,3 +25,12 @@ log_events:
     in PR101. Ordinary editor input and dirty-buffer authority retained; generated/external/unobserved
     and ambiguous relative .bzl macro strings are not guessed. App mount and owned
     packaged proof next.
+- time: 2026-09-08T06:34:50-00:00
+  who: Ted Smith
+  what: commented
+  comment: 'Accomplished: Alt-click follows observed local Bazel target and file literals
+    through existing source navigation. Real packaged native input followed //b:library
+    to b/BUILD.bazel, then data.txt to b/data.txt; ordinary click stayed in the current
+    file. No source writes, lost dirty buffer/cursor, renderer errors or model turns.
+    Native review and focused tests pass. Ready PR101 above PR103; ROOT landing remains.
+    Unsupported shorthand/relative Starlark load forms are tracked in swarm-bazel-reference-forms.'
