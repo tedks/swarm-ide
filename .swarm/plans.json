@@ -393,12 +393,17 @@
     "title": "Typed local core & configuration",
     "parentId": "design:system",
     "docs": [
-      "docs/design/runtime.md"
+      "docs/design/runtime.md",
+      "docs/container-demo.md"
     ],
     "sourcePaths": [
       "protocol/schema.ts",
       "core/worker-runtime.ts",
       "app/electron/main.ts",
+      "Dockerfile",
+      "tools/container/runtime.nix",
+      "tools/container/entrypoint.sh",
+      "tools/container/BUILD.bazel",
       "BUILD.bazel"
     ],
     "taskIds": [],
@@ -440,6 +445,16 @@
               "relation": "data"
             }
           ]
+        },
+        {
+          "label": "//tools/container:checks",
+          "role": "Checks the browser-display container transport",
+          "dependencies": [{ "label": "//tools/container:sources", "relation": "data" }]
+        },
+        {
+          "label": "//tools/container:smoke",
+          "role": "Exercises the Docker-packaged desktop through noVNC",
+          "dependencies": [{ "label": "//tools/container:sources", "relation": "data" }]
         }
       ]
     }
