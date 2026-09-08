@@ -79,6 +79,16 @@ describe("registered chat Enter behavior", () => {
     h.view.rerender(<SessionSteering detail={detail()} bridge={undefined} />); enter();
     expect(textarea().value).toBe("Keep this instruction"); expect(h.calls).toHaveLength(0);
   });
+
+  it("does not leave a replaced textarea stuck in an old composition", () => {
+    const h = external(); edit("Keep the completed composition");
+    fireEvent.compositionStart(textarea());
+    h.view.rerender(<SessionSteering detail={null} bridge={h.bridge} />);
+    h.view.rerender(<SessionSteering detail={detail()} bridge={h.bridge} />);
+    fireEvent.focus(textarea());
+    expect(enter()).toBe(false); expect(h.calls).toHaveLength(1);
+    expect(h.calls[0].input).toMatchObject({ sessionId: A, text: "Keep the completed composition" });
+  });
 });
 
 it("native Codex Enter uses the existing targeted turn sender, including its pending lock", async () => {

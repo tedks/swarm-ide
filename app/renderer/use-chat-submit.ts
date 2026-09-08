@@ -6,6 +6,9 @@ export function useChatSubmit() {
   return {
     onCompositionStart: () => { composing.current = true; },
     onCompositionEnd: () => { composing.current = false; },
+    // Observation may remove a composing textarea without delivering blur.
+    // A newly focused field starts a fresh input lifetime.
+    onFocus: () => { composing.current = false; },
     onBlur: () => { composing.current = false; },
     onKeyDown: (event: KeyboardEvent<HTMLTextAreaElement>) => {
       if (event.defaultPrevented || event.key !== "Enter" || event.shiftKey || event.ctrlKey || event.altKey || event.metaKey ||

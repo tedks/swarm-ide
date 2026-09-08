@@ -6,7 +6,7 @@ const { controlledSendEnvelope } = require("./response.cjs");
 const fs = require("node:fs/promises"), path = require("node:path"), assert = require("node:assert/strict");
 const evidence = process.env.SWARM_ARTIFACT_DIR, errors = [], sends = [], observedMessages = new Map();
 const receipt = "30000000-0000-4000-8000-000000000001";
-let stage = "startup", sentTarget = null, snapshotResponses = 0;
+let stage = "startup", sentTarget = null, snapshotResponses = 0, detailResponses = 0;
 app.on("web-contents-created", (_event, wc) => {
   wc.on("console-message", (event) => { if (event.level === "error") errors.push({ stage, message: event.message }); });
   wc.on("render-process-gone", (_event, info) => errors.push({ stage, message: `Renderer gone: ${info.reason}` }));
@@ -26,6 +26,7 @@ ipcMain.handle = (channel, listener) => handle(channel, async (event, input) => 
   const response = await listener(event, input);
   if (input.type === "externalAgents.snapshot") snapshotResponses++;
   if (input.type === "externalAgents.read" && response.response?.ok && response.response.external?.kind === "read") {
+    detailResponses++;
     const detail = response.response.external.detail;
     observedMessages.set(detail.session.id, detail.entries.filter((entry) => entry.kind === "assistant" || entry.kind === "user").map((entry) => entry.text));
   }
@@ -148,7 +149,7 @@ async function main() {
     globalThis.__conversationEditor = document.querySelector(".source-surface .cm-content").cmView.rootView.view;
   });
   stage = "caret during background observation";
-  const readsBeforeCaret = snapshotResponses;
+  const readsBeforeCaret = detailResponses;
   const caret = await run(async () => {
     const editor = globalThis.__conversationEditor, states = [], before = editor.state;
     for (let index = 0; index < 12; index++) {
@@ -164,7 +165,7 @@ async function main() {
   assert(caret.every((sample) => sample.sameEditor && sample.sameState && sample.focused && sample.cursorHeight > 0), "background observation preserves editor, state and focus");
   assert(caret.every((sample) => sample.nativeCaret === "rgba(0, 0, 0, 0)" && sample.duration === "1.2s"), "only CodeMirror's normal 1.2-second caret is drawn");
   assert(new Set(caret.map((sample) => sample.opacity)).size > 1, "normal caret blinking observed, not an editor reload");
-  assert(snapshotResponses > readsBeforeCaret, "real background fleet observation ran while caret was sampled");
+  assert(detailResponses > readsBeforeCaret, "real background conversation observation ran while caret was sampled");
   await fs.writeFile(path.join(evidence, "caret-observation.json"), JSON.stringify(caret, null, 2));
   stage = "per-agent drafts";
   const rootDraft = "Controlled ROOT draft, never delivered\nSecond line", childDraft = "Controlled child draft, never delivered";
