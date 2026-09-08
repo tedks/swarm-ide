@@ -9,14 +9,13 @@ Swarm's checkout and fetching its local `ditz-metadata` branch as described
 there. No model account or external-session registry is needed for the core
 tour. Use a disposable checkout for experimental edits. The
 [installation guide](evaluator-install.md) covers prerequisites and recovery;
-the [presenter guide](demo/presenter-guide.md) covers timing and evidence boundaries.
+the [presenter guide](demo/presenter-guide.md) covers timing and what each part demonstrates.
 
 ## 1. Intent → component → context
 
 Choose **Plan → Plans & components → Load plan index**. Select **Turn repo tasks
 into bounded agent context** in the graph or its keyboard outline. Its parent
-is the product plan; the links are authored in `.swarm/plans.json`, not an LLM's
-current guess about the repository.
+is the product plan; the links are maintained in `.swarm/plans.json`.
 
 Open **Read doc · docs/demo/task-context-briefing.md**, then choose **Why this
 context?** to reach the supporting guidance. The briefing connects intent,
@@ -24,8 +23,8 @@ contract and implementation lessons.
 The full design is **Read doc · docs/repo-task-draft.md**; its opening status
 paragraph still describes the historical D3-only stage, not today's Prepare.
 **contract · protocol/agent-task.ts** opens the shared contract. These are
-ordinary working files and navigable guidance, not proof a provider loaded them
-or permission to execute.
+ordinary working files. Opening a link lets you read the guidance; it does not
+attach that document to an agent's prompt.
 
 ## 2. Component → actual work → source
 
@@ -38,8 +37,8 @@ To find them in the rail, select **All** and search the full ID.
 Clicking a task title or task-graph node opens its document in the main area;
 **Show task document** also returns to it from Context. Context shows actual issue
 metadata, recorded updates, **Blocked by** / **Blocking**, explicit source links
-and only explicitly associated agent evidence. **Trusted conversations** lists
-runs actually admitted with this task attached; **Open conversation** or **Open
+and linked agent activity. **Trusted conversations** lists
+runs launched with this task attached; **Open conversation** or **Open
 saved conversation** selects that run in the dock. Completing a turn does not
 close the issue. See [task workspace](task-workspace.md).
 
@@ -47,13 +46,13 @@ close the issue. See [task workspace](task-workspace.md).
 Load dependency graph** shows recorded dependencies, separately from plan
 containment. The initial overview shows 16 tasks; **Focus selected task** narrows
 to direct neighbors and **Whole projection** shows the loaded projection.
-Read its coverage counter: it loads at most 64 details, and
-missing/unread edges are not inferred. The rail's search does not filter the
-graph. This is recorded work, not a scheduler or readiness score.
+The counter shows how much is loaded, up to 64 task details. Dependencies outside
+that set may be missing. The rail's search does not filter the graph. This view
+shows Ditz records; it does not schedule work.
 
 Return to the component's **Open source · core/tasks/draft-context.ts**. The
 historical D4–D6 records have no explicit file references, so this authored source
-link is the connection—not a fabricated task Reveal. Records that do have file
+link connects the task to its code. Records that do have file
 references expose **Reveal working file**. **Ctrl-K → Open repository path** is
 the exact-path fallback.
 
@@ -62,7 +61,7 @@ the exact-path fallback.
 Switch to **System** and open **Build graph**. It queries local Bazel declarations
 on demand; **Refresh build graph** deliberately resamples. Directory **Build
 links** connects observed source membership to targets. A fresh declaration
-query is not a successful binary build. Missing or retained evidence stays
+query reads declarations without building binaries. Missing or older results stay
 labelled; see [coverage and limits](dynamic-build-graph.md).
 
 File Context also observes direct and indirect target membership on demand,
@@ -71,7 +70,7 @@ built and deployed observations. For the metrics demo, open
 `examples/checkout-world/services/fraudcheck/fraudcheck.ts`: its declared target
 can associate an **Illustrative** latency table. **Builds & resources → Example
 profile** shows example CPU/memory distributions. These are authored values, not
-production telemetry; no deployed-file mapping is invented. See
+production telemetry. Deployment mappings are shown only when available. See
 [associations and scope](context-metrics-demo.md).
 
 If the task document is still in the center, choose its **Return to source**
@@ -87,7 +86,7 @@ The draft captures that source focus. Browsing another document or graph does
 not retarget it. An unsaved edit in a disposable checkout can demonstrate buffer
 retention, but preparation reads disk, not unsaved editor text.
 
-## 4. Actual task → bounded prepared context
+## 4. Task → prepared agent context
 
 Inspect `repo-task-context-core-d4` again and choose **Attach this task to draft**.
 Review the proposal and choose **Append — keep instructions**. There is one
@@ -95,12 +94,11 @@ read-only task slot; attaching does not paste task prose over your request.
 
 Choose **Prepare disk context**. Open **Recorded repository task · immutable**,
 **Disk attachments**, and **Exact submitted prompt**. These show real local
-Git/YAML materialization and disk reads. Task metadata and working source remain
-separate. A blank historical description remains blank; no agent report is
-silently substituted for it.
+task content from Git and source from disk. The preview preserves the task's
+saved description, including an empty description on older records.
 
 Preparation does **not** run a model. **Launch read-only run** belongs to the
-isolated profile and remains disabled under its unverified effective-policy gate.
+isolated profile and remains disabled because its restrictions have not been verified.
 Linked designs are not
 automatically included: inspect the exact submitted prompt. If source or task
 metadata changes, refresh, explicitly reattach when needed, and prepare again.
@@ -112,16 +110,16 @@ launch PATH, use the separate **Codex · trusted local** section in the dock.
 Choose **Prepare trusted-local context** for the same fixed-source draft and
 attached task, inspect its exact prompt, check **Launch in this workspace with
 normal Codex permissions**, then **Launch trusted-local Codex**. This deliberately
-runs a model using normal configuration, tools and approvals—not extra autonomy
-or a copied account. **Send next turn**, **Steer current turn** and **Stop
+runs a model using normal configuration, tools and approvals. **Send next turn**,
+**Steer current turn** and **Stop
 conversation** operate on that conversation.
 
 Use **New conversation** to prepare another run, then the run list to switch
 between up to eight live conversations with independent message composers.
 Controls affect the selected conversation, not every agent. Renderer refresh
 can re-observe live runs while the core stays alive; app/core shutdown stops
-them. Up to twenty retained records preserve bounded output, activity and actual
-admitted task links. Restart archives history without automatic resume or replay;
+them. Up to twenty saved conversations keep recent output, activity and attached
+task links. Restart archives history without automatically resuming conversations;
 unsent composers are not a durable backup. Save first to include editor changes. The
 [trusted-local guide](trusted-local-execution.md) covers supported approvals and
 unsupported interactions. Skip this segment to keep the tour model-free.
@@ -130,11 +128,11 @@ unsupported interactions. Skip this segment to keep the tour model-free.
 
 Click **Recent Activity** to open **Activity log**, or select one of its entries. The
 expanded entry lives in the main text area: intent, outcome, decision and
-supporting evidence. Swarm includes supervised-agent-generated, **recorded**
-summaries of this same task-context work. They combine Git observations with
-attributed agent/check reports; opening a card does not rerun checks, and
-reconstructed reasoning is labelled. Inspect **Evidence, not authority** and
-deliberately open an affected file. Your draft remains independent.
+supporting sources. Swarm includes **saved summaries** of this same task-context
+work, written by a supervised agent from Git changes and agent/test reports.
+Open a card's source details to inspect the reports or an affected file. Your
+draft stays attached to its original source. Reported checks are not rerun when
+you open the card.
 
 The update loop is currently **export evidence → supervised summarizer →
 validate → Refresh**, not an in-app scheduler.
@@ -156,14 +154,14 @@ entries, not global discovery. D4/D5/D6 labels in a report
 are not verified session IDs and do not automatically select an agent; choose a
 known registration manually or skip this segment. Observation does not send a
 message. To steer a checked live target, review its identity, enter an instruction
-and deliberately choose **Send message**. A queued receipt is not proof the agent
-consumed or completed it; uncertain outcomes are not retried automatically. The
+and choose **Send message**. The message may wait in the agent's queue before
+being read. If delivery cannot be confirmed, check the conversation before
+sending again; the IDE will not retry it automatically. The
 external process is not IDE-owned and is not stopped when the IDE closes. See
 [external observations](demo-agents.md).
 
-The result is one inspectable story across distinct views—not one universal
-graph. Local browsing and preparation need no model account. Trusted-local
-execution is an optional real operation with your installed account; external
-session observation stays read-only unless you explicitly Send to a checked
-target. Task links come from actual trusted-run admission or explicit external
-registration, not inference from labels. Autonomous summarization is not implemented.
+The result is one story you can follow across the views. Local browsing and
+preparation need no model account. Running Codex uses your installed account;
+watching an external session only reads it until you choose Send message.
+Task links come from the attached task or the external session's registration.
+The saved-summary workflow does not yet run a summarizer inside the app.

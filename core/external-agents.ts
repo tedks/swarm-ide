@@ -1,9 +1,9 @@
-import { constants } from "node:fs";
+import { constants, type Stats } from "node:fs";
 import { open, realpath, lstat, type FileHandle } from "node:fs/promises";
 import { isAbsolute, relative } from "node:path";
 import { createHash, randomUUID } from "node:crypto";
 import { z } from "zod";
-import { ExternalSessionId, ExternalRequestSchema, ExternalResultSchema, type ExternalRequest, type ExternalResult,
+import { ExternalSessionId, ExternalRequestSchema, ExternalResultSchema, EXTERNAL_FLEET_MAX_ENTRIES, EXTERNAL_FLEET_MAX_ENTRY_BYTES, externalEntryBytes, type ExternalRequest, type ExternalResult,
   type ExternalAgentSummary, type ExternalDetail, type ExternalEntry, type ExternalSnapshot } from "../protocol/external-agents";
 import { validateHandoff, openHandoff, terminalCommands } from "./external-agents-handoff";
 import { extractEntries } from "./external-agents-activity";
@@ -11,6 +11,8 @@ import { Registry, type Registered } from "./external-agents-registry";
 import { queueExternalMessage, resolveExternalCodex, type QueueMessage, type ExternalSendReceipt } from "./external-agents-send";
 
 const HEADER = 65536, TAIL = 262144, MAX_ENTRIES = 120;
+const HISTORY_ENTRIES = 16;
+const fileVersion = (stat: Stats) => `${stat.dev}:${stat.ino}:${stat.size}:${stat.mtimeMs}:${stat.ctimeMs}:${stat.mode}:${stat.uid}`;
 const Meta = z.object({ type: z.literal("session_meta"), payload: z.object({ id: ExternalSessionId,
   forked_from_id: ExternalSessionId.nullable().optional() }) });
 const safe = (text: string, size = 4096) => (text.length > size ? text.slice(0, size - 16) + " … [truncated]" : text).replace(/[\p{Cf}\p{Cc}]/gu,
@@ -26,10 +28,11 @@ export class ExternalAgentService {
   private drained: (() => void)[] = [];
   private sending = new Set<string>();
   private sentRequests = new Set<string>();
+  private historical = new Map<string, { registration: string; version: string; detail: ExternalDetail }>();
   constructor(private readonly root: string, private readonly registryPath: string | undefined,
     private readonly sender: { queue: QueueMessage; executable(): Promise<string> } = { queue: queueExternalMessage, executable: resolveExternalCodex }) {}
   dispose(): Promise<void> {
-    this.disposed = true; this.controller.abort();
+    this.disposed = true; this.controller.abort(); this.historical.clear();
     return this.pending ? new Promise((resolve) => this.drained.push(resolve)) : Promise.resolve();
   }
   private check() { if (this.disposed) throw new Error("Observer disposed"); }
@@ -134,12 +137,36 @@ export class ExternalAgentService {
         if (result.handoff === "available") result.terminal = terminalCommands(row.tmux);
       }
       this.check();
+      if (tail && !checkHandoff && !row.tmux) {
+        const entries = result.entries.slice(-HISTORY_ENTRIES), dropped = result.entries.length - entries.length;
+        this.historical.set(row.id, { registration: JSON.stringify(row), version: fileVersion(stat),
+          detail: { ...result, entries, coverage: { ...result.coverage, partial: result.coverage.partial || dropped > 0, omittedRecords: result.coverage.omittedRecords + dropped } } });
+      }
       return result;
     } catch {
       this.check();
+      this.historical.delete(row.id);
       return { ...result, session: this.summary(row), entries: [], handoff: row.tmux ? "unavailable" : "unconfigured",
         coverage: { tailBytes: 0, partial: true, omittedRecords: 0, message: "Missing, changed, invalid or unsafe registered transcript; no transcript authority retained." } };
     } finally { await file?.close(); }
+  }
+  private async readFleet(row: Registered): Promise<ExternalDetail> {
+    if (row.tmux) this.historical.delete(row.id);
+    const cached = !row.tmux ? this.historical.get(row.id) : undefined;
+    if (cached?.registration === JSON.stringify(row)) {
+      try {
+        const current = await lstat(row.rollout); this.check();
+        if (current.isFile() && !current.isSymbolicLink() && current.uid === process.getuid?.() &&
+            fileVersion(current) === cached.version && await realpath(row.rollout) === row.rollout) {
+          this.check();
+          return { ...cached.detail, session: { ...cached.detail.session } };
+        }
+      } catch { this.check(); }
+      this.historical.delete(row.id);
+    }
+    const result = await this.read(row, true, false);
+    const retained = this.historical.get(row.id);
+    return !row.tmux && retained?.registration === JSON.stringify(row) ? retained.detail : result;
   }
   private async send(request: Extract<ExternalRequest, { type: "externalAgents.send" }>): Promise<ExternalSendReceipt> {
     const reject = (message: string): ExternalSendReceipt => ({ kind: "send", sessionId: request.sessionId, receiptId: randomUUID(), status: "rejected", message });
@@ -194,17 +221,19 @@ export class ExternalAgentService {
       }
       this.check();
       if (request.type === "externalAgents.snapshot") {
+        const registeredIds = new Set(rows.map((row) => row.id));
+        for (const id of this.historical.keys()) if (!registeredIds.has(id)) this.historical.delete(id);
         const fleet: ExternalDetail[] = [];
         // Small bounded batches: all registered tails, no selected-session
         // bottleneck and no process-control validation on passive fleet reads.
         for (let index = 0; index < rows.length; index += 4) {
-          const batch = await Promise.allSettled(rows.slice(index, index + 4).map((row) => this.read(row, true, false)));
+          const batch = await Promise.allSettled(rows.slice(index, index + 4).map((row) => this.readFleet(row)));
           this.check();
           for (const result of batch) { if (result.status === "rejected") throw result.reason; fleet.push(result.value); }
         }
         const sessions = fleet.map((detail) => detail.session);
         resolveAncestry(sessions);
-        return ExternalResultSchema.parse({ kind: "snapshot", snapshot: { status: "observed", sessions, fleet, observedAt: new Date().toISOString(),
+        return ExternalResultSchema.parse({ kind: "snapshot", snapshot: { status: "observed", sessions, fleet: boundFleet(fleet), observedAt: new Date().toISOString(),
           message: "Registered fleet" } });
       }
       const row = rows.find((candidate) => candidate.id === request.sessionId);
@@ -220,6 +249,27 @@ export class ExternalAgentService {
         : "Existing conversation identity is unavailable or changed. Nothing was launched or resumed." };
     } finally { if (--this.pending === 0) for (const done of this.drained.splice(0)) done(); }
   }
+}
+
+/** Bound the whole published feed, preferring registered interactive owners and
+ * their newest useful events. A selected conversation still has its full tail. */
+export function boundFleet(fleet: ExternalDetail[]): ExternalDetail[] {
+  const candidates = fleet.flatMap((detail, session) => detail.entries
+    .map((entry, index) => ({ entry, index, session, current: detail.session.control === "tmux" }))
+    .filter(({ entry }) => entry.kind !== "tool-result"));
+  candidates.sort((a, b) => Number(b.current) - Number(a.current) || (Date.parse(b.entry.at) || 0) - (Date.parse(a.entry.at) || 0) || b.index - a.index);
+  const retained = new Map<number, Set<number>>(); let bytes = 0, count = 0;
+  for (const candidate of candidates) {
+    const size = externalEntryBytes(candidate.entry);
+    if (count >= EXTERNAL_FLEET_MAX_ENTRIES) break;
+    if (bytes + size > EXTERNAL_FLEET_MAX_ENTRY_BYTES) continue;
+    const indices = retained.get(candidate.session) ?? new Set<number>();
+    indices.add(candidate.index); retained.set(candidate.session, indices); bytes += size; count++;
+  }
+  return fleet.map((detail, session) => {
+    const entries = detail.entries.filter((_, index) => retained.get(session)?.has(index)), dropped = detail.entries.length - entries.length;
+    return { ...detail, entries, coverage: { ...detail.coverage, partial: detail.coverage.partial || dropped > 0, omittedRecords: detail.coverage.omittedRecords + dropped } };
+  });
 }
 
 export function resolveAncestry(sessions: ExternalAgentSummary[]): void {

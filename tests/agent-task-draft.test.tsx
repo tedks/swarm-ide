@@ -346,7 +346,7 @@ describe("task attachment mounted review and immutable history (schema fixtures 
     fireEvent.click(within(review).getByRole("button", { name: "Append — keep instructions" }));
     expect(client.getSnapshot().draft?.task).toBe("Keep my exact instructions");
     expect(screen.getByText(task.title)).toBeTruthy(); expect(screen.getByText(task.description)).toBeTruthy();
-    expect(screen.getByText(/core verifies at Prepare/i)).toBeTruthy();
+    expect(screen.getByText(/Prepare checks this saved revision again/i)).toBeTruthy();
     expect(screen.getAllByRole("textbox").some((element) => (element as HTMLTextAreaElement).value === task.description)).toBe(false);
     fireEvent.click(screen.getByRole("button", { name: "Remove attached task" }));
     expect(client.getSnapshot().draft?.task).toBe("Keep my exact instructions"); expect(client.getSnapshot().draft?.taskReference).toBeUndefined();
@@ -373,7 +373,7 @@ describe("task attachment mounted review and immutable history (schema fixtures 
     expect(screen.getAllByText(new RegExp(task.reference.metadataCommit.hex)).length).toBeGreaterThan(0);
     const legacy = fixtureLaunchContext(paymentsFileFocus, "Original legacy task", "", "");
     view.rerender(<LaunchContextView context={legacy} />);
-    expect(screen.getByText(/Legacy context; no structured task provenance recorded/i)).toBeTruthy();
+    expect(screen.getByText(/No repository-task details were saved for this older run/i)).toBeTruthy();
     expect(h.calls.map((entry) => entry.input.type)).toEqual(["agent.snapshot", "agent.prepare"]);
   });
 });

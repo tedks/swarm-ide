@@ -34,6 +34,9 @@ export const ExternalEntrySchema = z.object({
   callId: z.string().max(160).optional(),
 }).strict();
 export type ExternalEntry = z.infer<typeof ExternalEntrySchema>;
+export const EXTERNAL_FLEET_MAX_ENTRIES = 240;
+export const EXTERNAL_FLEET_MAX_ENTRY_BYTES = 512 * 1024;
+export const externalEntryBytes = (entry: ExternalEntry) => new TextEncoder().encode(JSON.stringify(entry)).byteLength;
 export const ExternalDetailSchema = z.object({
   session: ExternalAgentSummarySchema,
   entries: z.array(ExternalEntrySchema).max(120),
@@ -47,7 +50,10 @@ export const ExternalSnapshotSchema = z.object({
   sessions: z.array(ExternalAgentSummarySchema).max(64),
   // Same bounded detail contract, with handoff unavailable until explicitly read.
   fleet: z.array(ExternalDetailSchema).max(64).optional(),
-}).strict();
+}).strict().refine((snapshot) => {
+  const entries = snapshot.fleet?.flatMap((detail) => detail.entries) ?? [];
+  return entries.length <= EXTERNAL_FLEET_MAX_ENTRIES && entries.reduce((sum, entry) => sum + externalEntryBytes(entry), 0) <= EXTERNAL_FLEET_MAX_ENTRY_BYTES;
+}, "Fleet activity exceeds aggregate bound");
 export type ExternalSnapshot = z.infer<typeof ExternalSnapshotSchema>;
 const Base = z.object({ protocolVersion: z.literal(PROTOCOL_VERSION), requestId: z.string().min(1).max(160) });
 export const ExternalRequestSchema = z.discriminatedUnion("type", [

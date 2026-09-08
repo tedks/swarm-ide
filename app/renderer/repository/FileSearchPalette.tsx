@@ -45,8 +45,8 @@ export function FileSearchPalette({ query, onQuery, exact, commands, inputRef, f
         }} placeholder={exact ? "Exact relative path, e.g. core/files.ts" : "Find a filename, path fragment or command…"} /><kbd>esc</kbd></header>
       {!exact && query ? <div className="file-search-status" role="status">
         <span>{search.loading ? "Finding repository filenames…" : search.error ? `Search unavailable: ${search.error}` : result ?
-          `${stale ? "Stale" : "Captured"} · ${result.complete ? "complete" : "partial"} Git name inventory · ${result.capturedCount} names · ${new Date(result.capturedAt).toLocaleTimeString()}` : "Filename search unavailable"}</span>
-        {result ? <small>{result.notice}{stale && result.state !== "stale" ? " Capture is now stale; Refresh explicitly." : ""}</small> : null}
+          `${stale ? "Needs refresh" : "Last scanned"} · ${result.complete ? "complete" : "partial"} file list · ${result.capturedCount} names · ${new Date(result.capturedAt).toLocaleTimeString()}` : "Filename search unavailable"}</span>
+        {result ? <small>{result.notice}{stale && result.state !== "stale" ? " Refresh to check for newer files." : ""}</small> : null}
         {!search.loading ? <button onClick={() => { inputRef.current?.focus({ preventScroll: true }); search.refresh(); }}>Refresh filenames</button> : null}
       </div> : null}
       <div className="command-results" id="workspace-search-results" ref={list} aria-label="Commands and repository files"
@@ -56,7 +56,7 @@ export function FileSearchPalette({ query, onQuery, exact, commands, inputRef, f
         {paths.map((path, offset) => <button id={`workspace-search-${commands.length + offset}`} aria-current={active === commands.length + offset} key={`file:${path}`}
           data-file-search-path={path} onClick={() => onOpen(path)}>
           <span>{path.slice(path.lastIndexOf("/") + 1)}<small>{path}</small></span><kbd>file ↵</kbd></button>)}
-        {!exact && result && !paths.length ? <p className="file-search-empty">{result.complete && result.matchesComplete ? "No matching eligible file in this captured inventory." : "No match in this partial search; this does not prove the file is absent."} Use Refresh or exact Open path.</p> : null}
+        {!exact && result && !paths.length ? <p className="file-search-empty">{result.complete && result.matchesComplete ? "No matching file in the last scan." : "No match in the files searched so far."} Refresh filenames or use Open repository path.</p> : null}
       </div>
       <footer><span>Current focus: {focusLabel}</span><span>{exact ? "exact path · file opener" : "↑↓ choose · Enter opens · Escape cancels"}</span></footer>
     </section>

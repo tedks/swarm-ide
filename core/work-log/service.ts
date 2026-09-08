@@ -10,7 +10,7 @@ import { recordWorkOutcome, runWorkCommand, summarizeWork, withWorkLock, type Wo
 const DocumentSchema = z.object({ version: z.literal(1), entries: z.array(WorkLogEntrySchema).max(200) }).strict();
 const StateSchema = z.object({ version: z.literal(1), settings: WorkLogSettingsSchema, seen: z.record(z.string(), z.string()).default({}) }).strict();
 type State = z.infer<typeof StateSchema>;
-export type WorkLogDependencies = { inputs(root: string, registry?: string): Promise<WorkInput[]>;
+export type WorkLogDependencies = { inputs(root: string, registry?: string, seen?: Record<string, string>): Promise<WorkInput[]>;
   summarize(input: WorkInput[], settings: WorkLogSnapshot["settings"], signal: AbortSignal): Promise<WorkSummary[]> };
 
 async function atomic(path: string, bytes: string, mode = 0o600) {
@@ -108,7 +108,7 @@ export class WorkLogService {
         // Cross-window attempts are read under the same kernel lock.
         this.state = StateSchema.parse(JSON.parse(await readFile(join(this.privateDir, "state.json"), "utf8")));
         await this.loadDocument();
-        const observed = await this.deps.inputs(this.root, this.registry);
+        const observed = await this.deps.inputs(this.root, this.registry, this.state.seen);
         if (!this.snapshot.running || this.disposed) return;
         const fresh = observed.filter((item) => this.state.seen[item.sessionId] !== item.boundary)
           .sort((a, b) => b.at.localeCompare(a.at));

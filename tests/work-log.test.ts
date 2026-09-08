@@ -108,7 +108,25 @@ describe("online Work Log", () => {
     await writeFile(registry, JSON.stringify({ version: 1, sessions: [{ id, label: "Worker", task: "task-a", rollout }] }), { mode: 0o600 });
     const result = await readWorkInputs(f.root, registry);
     expect(result).toHaveLength(1); expect(result[0].boundary).toContain("new:"); expect(result[0].text).not.toContain("private-value"); expect(result[0].text).not.toContain("Inherited");
+    expect(await readWorkInputs(f.root, registry, { [id]: result[0].boundary })).toEqual([]);
     await writeFile(registry, JSON.stringify({ version: 1, sessions: [{ id: "01a07f1d-d63e-7963-b2b4-41e4c4538c7b", label: "Wrong", rollout }] }));
+    expect(await readWorkInputs(f.root, registry)).toEqual([]);
+  });
+  it("retains the latest boundary behind a large ongoing turn without sending its noisy tail", async () => {
+    const f = await fixture(), id = "01a07f1d-d6d0-7f01-b2bd-4154876ec187", rollout = join(f.dir, "session.jsonl"), registry = join(f.dir, "registry.json"), at = new Date().toISOString();
+    const rows = [{ type: "session_meta", timestamp: at, payload: { id } },
+      { type: "event_msg", timestamp: at, payload: { type: "task_complete", turn_id: "finished", last_agent_message: "Added completed behavior" } },
+      ...Array.from({ length: 10 }, () => ({ type: "response_item", payload: { type: "function_call_output", output: "noise".repeat(6000) } }))];
+    await writeFile(rollout, rows.map((row) => JSON.stringify(row)).join("\n") + "\n");
+    await writeFile(registry, JSON.stringify({ version: 1, sessions: [{ id, label: "Worker", rollout }] }), { mode: 0o600 });
+    const result = await readWorkInputs(f.root, registry);
+    expect(result[0].text).toBe("Added completed behavior"); expect(result[0].boundary).toContain("finished:");
+  });
+  it("does not buy a summary for an empty startup turn", async () => {
+    const f = await fixture(), id = "01a07f1d-d6d0-7f01-b2bd-4154876ec187", rollout = join(f.dir, "session.jsonl"), registry = join(f.dir, "registry.json"), at = new Date().toISOString();
+    await writeFile(rollout, [{ type: "session_meta", timestamp: at, payload: { id } },
+      { type: "event_msg", timestamp: at, payload: { type: "task_complete", turn_id: "empty" } }].map((row) => JSON.stringify(row)).join("\n") + "\n");
+    await writeFile(registry, JSON.stringify({ version: 1, sessions: [{ id, label: "Worker", rollout }] }), { mode: 0o600 });
     expect(await readWorkInputs(f.root, registry)).toEqual([]);
   });
   it("scrubs private paths and common credential assignments", () => {

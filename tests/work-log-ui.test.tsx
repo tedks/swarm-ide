@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { WorkLogPanel } from "../app/renderer/work-log/WorkLogPanel";
+import { WorkLogEntryDetail, WorkLogPanel } from "../app/renderer/work-log/WorkLogPanel";
 import { initialSnapshot } from "../fixtures/world";
 import { PROTOCOL_VERSION, type CoreRequest } from "../protocol/schema";
 import { WorkLogSettingsSchema, type WorkLogSnapshot } from "../protocol/work-log";
@@ -15,6 +15,24 @@ const bridge = (request = vi.fn(async (input: CoreRequest) => reply(input))) => 
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); vi.useRealTimers(); });
 
 describe("online Work Log panel", () => {
+  it("opens the exact outcome and accepts the cockpit callback names without double delivery", async () => {
+    const request = bridge(), onOpen = vi.fn(), onAgent = vi.fn(), onTask = vi.fn(), legacy = vi.fn();
+    render(<WorkLogPanel onOpen={onOpen} onAgent={onAgent} onTask={onTask} onOpenAgent={legacy} onOpenTask={legacy} />);
+    fireEvent.click(await screen.findByRole("button", { name: "Added a live fleet feed." }));
+    expect(onOpen).toHaveBeenCalledWith(observation().entries[0]);
+    fireEvent.click(screen.getByRole("button", { name: "F7" })); expect(onAgent).toHaveBeenCalledWith("session-1");
+    fireEvent.click(screen.getByRole("button", { name: "Task · swarm-live-fleet" })); expect(onTask).toHaveBeenCalledWith("swarm-live-fleet");
+    expect(legacy).not.toHaveBeenCalled(); expect(request).toHaveBeenCalledTimes(1);
+  });
+  it("renders a pure center-pane outcome with links and no bridge requests", () => {
+    const request = bridge(), onAgent = vi.fn(), onTask = vi.fn(), onClose = vi.fn();
+    render(<WorkLogEntryDetail entry={observation().entries[0]} onAgent={onAgent} onTask={onTask} onClose={onClose} />);
+    expect(screen.getByText("Parser checks passed")).toBeTruthy(); expect(screen.getByText("Connect the cockpit")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "F7" })); expect(onAgent).toHaveBeenCalledWith("session-1");
+    fireEvent.click(screen.getByRole("button", { name: "Task · swarm-live-fleet" })); expect(onTask).toHaveBeenCalledWith("swarm-live-fleet");
+    fireEvent.click(screen.getByRole("button", { name: "Close" })); expect(onClose).toHaveBeenCalledTimes(1);
+    expect(request).not.toHaveBeenCalled(); expect(screen.queryByRole("button", { name: "Record outcome" })).toBeNull();
+  });
   it("reads on mount without starting a model and opens the specific session/task", async () => {
     const request = bridge(), onOpenAgent = vi.fn(), onOpenTask = vi.fn();
     render(<WorkLogPanel onOpenAgent={onOpenAgent} onOpenTask={onOpenTask} />);

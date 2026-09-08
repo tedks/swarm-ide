@@ -139,9 +139,9 @@ it("inspects a never-opened exact backlink without moving editor, dirty cursor, 
     finish = () => { void original(input).then(resolve); };
   }) : original(input));
   fireEvent.click(within(screen.getByRole("region", { name: "Task details" })).getByRole("button", { name: "Refresh tasks" }));
-  for (const name of ["Task document", "Task details"]) expect(within(screen.getByRole("region", { name })).getByText(/Retained details/)).toBeTruthy();
+  for (const name of ["Task document", "Task details"]) expect(within(screen.getByRole("region", { name })).getByText(/Showing saved task details/)).toBeTruthy();
   await act(async () => finish());
-  for (const name of ["Task document", "Task details"]) expect(within(screen.getByRole("region", { name })).queryByText(/Retained details/)).toBeNull();
+  for (const name of ["Task document", "Task details"]) expect(within(screen.getByRole("region", { name })).queryByText(/Showing saved task details/)).toBeNull();
   fireEvent.click(screen.getByRole("button", { name: "Close task document" }));
   await waitFor(() => expect(document.querySelector(".artifact-context")?.getAttribute("data-context-kind")).toBe("file"));
   expect(editor.state.selection.main.anchor).toBe(3);
