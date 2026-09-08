@@ -36,5 +36,14 @@ log_events:
     paths, safe literal arguments and preserved host configuration. Nix package now
     fetches real Bazel and JavaScript dependencies separately; installed execution
     will use only the production bundle.'
+- time: 2026-09-08T14:19:11-00:00
+  who: Ted Smith
+  what: commented
+  comment: Installed Linux package now builds and opens a chosen separate repository
+    without Vite; actual profile location is verified. Explicit tmux launch flags
+    are implemented. Real tmux testing caught and fixed a session-selector bug. Association
+    now reaches existing registration but native helper rollouts make current discovery
+    ambiguous; coordinating a small shared-helper correction, keeping all existing
+    agents untouched.
 blocks:
 - swarm-usability-pass
