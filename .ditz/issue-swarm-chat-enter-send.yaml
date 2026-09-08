@@ -1,0 +1,16 @@
+id: swarm-chat-enter-send
+title: Enter sends chat; Shift-Enter inserts a newline
+desc: ""
+type: feature
+component: default
+release:
+reporter: Ted Smith <tedks@riseup.net>
+status: unstarted
+disposition:
+creation_time: 2026-09-08T13:28:38-00:00
+references: []
+log_events:
+- time: 2026-09-08T13:28:38-00:00
+  who: Ted Smith
+  what: created
+  comment: ""
