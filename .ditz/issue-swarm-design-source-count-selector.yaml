@@ -1,0 +1,21 @@
+id: swarm-design-source-count-selector
+title: Make the design source expansion test independent of the current file count
+desc: 'The conversation-tabs target on header PR120 passed 72 cases but living-design.test.tsx:107
+  expected Show all 20 source files. The unchanged current design:repository manifest
+  has 22 sourcePaths. Derive the expected count from its loaded fixture/index rather
+  than a hardcoded count, while retaining expand/open-last/collapse assertions. This
+  header branch changes neither the plan index, DesignWorkspace, nor that test. Original
+  log: /tmp/swarm-ide-agent-tabs.gd9Pg9/focused-corrected.log.'
+type: bugfix
+component: default
+release:
+reporter: Ted Smith <tedks@riseup.net>
+status: unstarted
+disposition:
+creation_time: 2026-09-08T15:46:57-00:00
+references: []
+log_events:
+- time: 2026-09-08T15:46:57-00:00
+  who: Ted Smith
+  what: created
+  comment: ""
