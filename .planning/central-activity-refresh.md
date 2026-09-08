@@ -12,11 +12,18 @@ Opening Activity should show the current registered fleet operations as the exis
 - [x] Inspected current readers and mount. The observer already polls; the header unconditionally calls changelog.read, and overview activation retains selectedActivity.
 - [x] Reproduced seven failing mounted cases with eight passing controls; one later stale-row authority case also failed before its fix.
 - [x] Implemented JournalPanel, FleetActivityView and narrow App activity callbacks; updated component design/map.
-- [ ] Run focused Bazel checks, native review to clean, push PR and record Ditz outcome.
+- [x] (2026-09-08) Final 21 focused mounted tests and both TypeScript boundaries passed on 6471c49; native fix-delta review CLEAN.
+- [x] Owned packaged central proof passed: 3.364 seconds of interaction, automatic publication after 1.303 seconds, correct manual reader, retained source/cursor/draft/cameras, zero renderer errors and complete cleanup.
+- [x] PR119 pushed/ready; Ditz outcome recorded. ROOT owns normal merge and app adoption.
+- [x] Additional design target: 80 passed / 1 stale repository-source-count expectation failed. Filed swarm-design-source-count-expectation; no unrelated edit or green claim.
 
 ## Surprises & Discoveries
 
 JournalPanel's selection effect depended on the saved document digest, so a background summary update could also reset the current view and focus. Fleet data itself was already passed as current props; an explicit event article obscured the updating list. The corrected tests initially reached a previously unexecuted test gesture: with no source open, closing the only document hides its tab strip. The test now reopens from the actual dock heading; a separate source-open case checks document-tab reopening. This was a test setup correction, not a product change.
+
+Native review found an observed session with no worktree could still offer Inspect because two absent worktree values compared equal. An exact regression failed before correction; file inspection now requires a present matching registered root, while conversation opening remains available.
+
+The first owned GUI attempt reached central Activity, then the driver's pointer helper rejected a clipped draft field after prior settings-keyboard navigation. The screenshot confirms the draft was outside the scrolled dock viewport. The test now reaches it through ordinary Tab, preserving the original failure artifacts and every retention/error/cleanup assertion. The corrected run passes; this is not a claim about the historical user report's GUI cause.
 
 ## Decision Log
 
@@ -29,7 +36,7 @@ JournalPanel's selection effect depended on the saved document digest, so a back
 
 ## Outcomes & Retrospective
 
-Pending implementation. No backend, protocol, agent conversation or shared app changes are authorized.
+The central overview now stays current through the existing observer. Explicit event detail is intentionally historical, and the header refreshes the selected source rather than always reading saved summaries. Background publication does not move focus or select a different tab. No backend, protocol, agent conversation or shared app was changed. Tests exposed and corrected two narrowly related authority affordances. The only additional failing gate is an unchanged design test's hardcoded 20-versus-22 source count, filed separately; the repair's focused and packaged checks pass.
 
 ## Context and Orientation
 
@@ -55,6 +62,10 @@ No migration or persisted data changes. Preserve the old feature branch and all 
 
 Concise current seam and logs live under `/tmp/swarm-ide-usability.BirZCk/activity-ui`; final handoff uses CENTRAL-ACTIVITY-REFRESH-20260908-V4P8. The original completed increment is not reopened.
 
+Main failure log: refresh-baseline.log (7 failed, 8 passed). Current targeted log: refresh-final-focused.log (21 passed plus types). Native rootless reproduction: refresh-rootless-red.log (1 failed, 20 passed). Final package: central-packaged-corrected.log and artifacts/activity-usability/run.XyoSh8; initial driver failure retained at run.3MXLdV. Extra design-target boundary: refresh-design-check.log (80 passed, 1 failed).
+
 ## Interfaces and Dependencies
 
 Reuse ExternalClient refresh/busy/refreshing/notice/observing and JournalState/GithubPrState. No new protocol fields. Preserve callbacks carrying session ID, worktree-relative path and optional recorded patch. The component design in `docs/design/activity.md` and its exact `.swarm/plans.json` node must describe the new routing and actual focused Bazel target.
+
+Completion update: recorded implemented behavior, exact native/local/owned evidence and the unrelated design-test boundary. No further implementation scope was added.
