@@ -144,6 +144,9 @@ export async function supervise(config, signal = new AbortController().signal) {
   const stateFile = path.join(config.stateDirectory, 'state.json');
   let state; let failed = false; let operational = false;
   const active = new Map();
+  const hasActiveRequest = () => [...active].some(([name, entry]) => entry.ready && (
+    state.requests[name] || Object.values(state.requests).some((request) => request.child === entry.proof.id)
+  ));
   const currentFile = path.join(config.stateDirectory, 'current.json');
   const persist = async () => {
     await jsonSave(stateFile, state);
@@ -187,7 +190,7 @@ export async function supervise(config, signal = new AbortController().signal) {
         const prefix = `${role.name}:status:`;
         const paths = Object.keys(state.notifications).filter((key) => key.startsWith(prefix) && /^\d+$/.test(key.slice(prefix.length)))
           .map((key) => path.join(role.stepDirectory, `status-${key.slice(prefix.length)}.md`));
-        if (paths.length && !state.roles[role.name]?.done) state.requests[role.name] = { phase: 'waiting', legacyResponsePaths: paths };
+        if (paths.length) state.requests[role.name] = { phase: 'waiting', legacyResponsePaths: paths };
       }
       if (Object.keys(state.notifications).some((key) => /^checkpoint:\d+$/.test(key))) {
         state.checkpointWake = { token: `${state.instance}:legacy`, generation: config.generation, queuedAt: null, legacy: true };
@@ -261,7 +264,9 @@ export async function supervise(config, signal = new AbortController().signal) {
             for (const record of await entry.recapReader.read(entry.rollout)) recap ??= finalMessage(record, role.marker);
             if (recap) {
               await save(step('final-recap'), `${recap}\n`);
-              if (state.requests[name]) state.requests[name].phase = 'complete';
+              // Completing work does not consume an already queued status ask.
+              // Keep that request outstanding even when another role uses the
+              // same child, until its actual response receipt arrives.
               await notify(`${name}:complete`, config.parentSession, `SUPERVISOR WAKE — ${name} completed. Generation ${config.generation}; current state: ${currentFile}; recap: ${step('final-recap')}.`);
               state.roles[name] = { done: true, outcome: 'complete' }; await persist(); active.delete(name);
             } else if (entry.watcherError) {
@@ -283,8 +288,7 @@ export async function supervise(config, signal = new AbortController().signal) {
       }
       // A response receipt, not CLI success or elapsed time, frees the child
       // status slot. UUID-scoped filenames cannot acknowledge an older step.
-      for (const [name] of active) {
-        const request = state.requests[name];
+      for (const request of Object.values(state.requests)) {
         const paths = request?.legacyResponsePaths ?? (request?.responsePath ? [request.responsePath] : []);
         if (request?.phase === 'waiting' && paths.length && (await Promise.all(paths.map(statusWritten))).every(Boolean)) {
           request.phase = 'answered'; request.answeredAt = new Date().toISOString(); await persist();
@@ -296,21 +300,21 @@ export async function supervise(config, signal = new AbortController().signal) {
       if (config.statusSeconds && active.size && Date.now() >= nextStatus) {
         const tick = ++state.tick; await persist();
         for (const [name, entry] of active) {
-          if (!entry.ready || state.requests[name]?.phase === 'waiting' || Object.values(state.requests).some((request) => request.phase === 'waiting' && request.child === entry.proof.id)) continue;
+          if (!entry.ready || state.requests[name]?.phase === 'waiting' || Object.values(state.requests).some((request) => request.phase === 'waiting' && (!request.child || request.child === entry.proof.id))) continue;
           const responsePath = path.join(entry.role.stepDirectory, `status-${state.instance}-${tick}.md`);
           state.requests[name] = { phase: 'waiting', child: entry.proof.id, tick, responsePath, requestedAt: new Date().toISOString() };
           state.checkpointDue ??= Date.now() + config.statusGraceSeconds * 1000;
           await persist();
-          await notify(`${name}:status:${tick}`, entry.proof.id, `CTO CHECKPOINT ${tick}, generation ${config.generation} — Write ${responsePath} with five short lines:\n1. Done and visible proof.\n2. Next bounded deliverable.\n3. Blocker or dependency.\n4. Scope growth or drift.\n5. PR and pushed commit.\nThen continue the existing assignment; no extra test/review cycle.`);
+          await notify(`${name}:status:${tick}`, entry.proof.id, `CTO CHECKPOINT ${tick}, generation ${config.generation} — Current assignment state: ${currentFile}. If still active, write ${responsePath} with five short lines:\n1. Done and visible proof.\n2. Next bounded deliverable.\n3. Blocker or dependency.\n4. Scope growth or drift.\n5. PR and pushed commit.\nNo new work or test/review cycle is requested.`);
         }
-        if ([...active.keys()].some((name) => state.requests[name])) state.checkpointDue ??= Date.now() + config.statusGraceSeconds * 1000;
+        if (hasActiveRequest()) state.checkpointDue ??= Date.now() + config.statusGraceSeconds * 1000;
         await persist();
         nextStatus = Date.now() + config.statusSeconds * 1000;
       }
       if (state.checkpointDue && Date.now() >= state.checkpointDue) {
         // Completion may overtake the grace period. Never queue a routine wake
         // with no active participant; genuine completion/error wakes are separate.
-        if (active.size && !state.checkpointWake && [...active.keys()].some((name) => state.requests[name])) {
+        if (active.size && !state.checkpointWake && hasActiveRequest()) {
           const token = `${state.instance}:${state.tick}`;
           state.checkpointWake = { token, generation: config.generation, queuedAt: null };
           await notify(`checkpoint:${state.tick}`, config.parentSession, `CTO CHECKPOINT — Current generation ${config.generation}: ${currentFile}. Acknowledge routine wake token ${token} after reading; unhandled completion/error notices remain separate.`);

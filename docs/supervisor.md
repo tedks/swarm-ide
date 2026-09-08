@@ -19,12 +19,12 @@ pre-compaction cursor, and the exact task appears in a newly started turn with
 the configured model. Historical inherited compaction/model records alone are
 insufficient. This verifies logged task consumption, not eventual task success.
 
-The existing ad-hoc launcher writes `rollout-path` and `recap-cursor`, but does not
-export its pre-compaction cursor. For future launches, also persist its existing
-`compact_after` value as `startup-cursor` immediately before requesting compaction.
-Do not invent that receipt after the fact or replace the live supervisors to try
-this tool. Missing receipts time out with a failure wake. This narrow launcher
-adoption remains separate from this package.
+Launchers must publish `rollout-path`, `recap-cursor` and the pre-compaction
+`startup-cursor`. A spawn-agent version supporting `--startup-cursor-file` can
+export its existing `compact_after` value immediately before requesting compaction.
+Older ad-hoc launchers may need that receipt added before adoption. Do not invent
+it after the fact or replace live supervisors to try this tool. Missing receipts
+time out with a failure wake; launcher adoption remains separate from this package.
 
 ## Configuration and launch
 
@@ -185,7 +185,12 @@ acknowledgements from suppressing a new completion.
 
 For an old ledger, completed roles remain completed; legacy `sent` notifications
 are not replayed. Previously queued status requests are conservatively treated as
-outstanding until their recorded response files exist or the role completes.
+outstanding until their recorded response files contain the report; role completion
+does not imply delivery of an earlier status request. When a legacy receipt lacks
+child identity, fresh child requests are held across that ledger until those
+responses arrive. Current-state reporting and completion/error wakes continue.
+An operator must reconcile abandoned legacy asks explicitly; this tool does not
+infer consumption from age, completion or missing history.
 Legacy checkpoint receipts need explicit ROOT acknowledgement, because enqueue
 success alone cannot establish whether ROOT read them. Never delete history or
 clear a Codex queue to make this migration look clean.
@@ -204,6 +209,12 @@ Operational recommendation: routine worker milestones belong in the current seam
 file; direct ROOT messages should be reserved for necessary decisions/blockers or
 otherwise-unwatched handoffs. This is guidance for future assignments, not authority
 to broadcast, replace live supervisors or suppress already queued worker messages.
+
+The notification-lag increment is covered by the focused supervisor test target:
+backlogged requests across several ticks, explicit ROOT receipt, actual receipt
+CLI, completion overtaking a grace period, restart/legacy deduplication, distinct
+continuation recap generations and shared-child transport slots. Existing exact
+startup, enqueue-ambiguity and owned-helper cleanup tests remain in that target.
 
 Task-text regressions additionally cover final LF, repeated LF, CRLF and
 surrounding whitespace, plus rejection when the observed text differs. Reading

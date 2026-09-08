@@ -5,7 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { configure, Records, startupProof, finalMessage, supervise, acknowledgeStatus } from './supervisor.mjs';
+import { configure, Records, startupProof, finalMessage, supervise, acknowledgeStatus, execute } from './supervisor.mjs';
 
 const script = fileURLToPath(new URL('./supervisor.mjs', import.meta.url));
 const pause = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -249,7 +249,7 @@ test('response frees only child slot; explicit current receipt frees ROOT checkp
   await writeFile(old.roles[0].status.responsePath, 'Done\nNext\nBlocker\nScope\nPR\n');
   await waitUntil(async () => (await childRequests(f)).length === 2);
   assert.equal((await rootChecks(f)).length, 1);
-  await acknowledgeStatus(f.config.stateDirectory, old.pendingCheckpoint.token);
+  await execute([process.execPath], [script, 'ack-status', f.config.stateDirectory, old.pendingCheckpoint.token], 1);
   await waitUntil(async () => (await rootChecks(f)).length === 2);
   await assert.rejects(acknowledgeStatus(f.config.stateDirectory, old.pendingCheckpoint.token), /not current/);
   assert.equal((await childRequests(f)).length, 2);
@@ -305,6 +305,57 @@ test('continuation generation cannot reuse ledger and never loses its own true c
   assert.equal(current.generation, 'second-step');
   assert.equal((await f.messages()).filter((call) => call[4].includes('worker completed.')).length, 2);
   assert.match(await readFile(path.join(secondStep, 'final-recap'), 'utf8'), /SECOND-STEP/);
+});
+
+test('one role completing cannot free an unanswered status slot for the same child', async (t) => {
+  const f = await fixture(t, { config: { statusSeconds: 0.04, statusGraceSeconds: 0.01 } });
+  const other = path.join(f.directory, 'other-step'); await mkdir(other);
+  await writeFile(path.join(other, 'rollout-path'), f.rollout);
+  await writeFile(path.join(other, 'recap-cursor'), '0');
+  await writeFile(path.join(other, 'startup-cursor'), '0');
+  await writeFile(path.join(other, 'task-prompt'), 'do task');
+  f.config.roles.push({ ...f.config.roles[0], name: 'other', window: 'session:other', stepDirectory: other, marker: 'OTHER COMPLETE' });
+  const run = supervise(f.config);
+  await waitUntil(async () => (await childRequests(f)).length === 1);
+  await complete(f);
+  await waitUntil(async () => (await stateOf(f)).roles.worker?.done);
+  await pause(160);
+  await appendFile(f.rollout, JSON.stringify(message('OTHER COMPLETE')) + '\n');
+  assert.equal(await run, 0);
+  assert.equal((await childRequests(f)).length, 1);
+});
+
+test('legacy queued requests and ROOT checkpoints are not silently treated as consumed', async (t) => {
+  const f = await fixture(t, { config: { statusSeconds: 0.04, statusGraceSeconds: 0.01 } });
+  const legacyConfig = { ...f.config }; delete legacyConfig.generation;
+  await mkdir(f.config.stateDirectory);
+  await writeFile(path.join(f.config.stateDirectory, 'state.json'), JSON.stringify({ config: legacyConfig, notifications: { 'worker:startup': 'sent', 'worker:status:1': 'sent', 'checkpoint:1': 'sent' }, roles: {}, tick: 1 }));
+  const run = supervise(f.config);
+  await pause(190);
+  assert.equal((await f.messages()).length, 0);
+  const current = await currentOf(f);
+  assert.equal(current.pendingCheckpoint.legacy, true);
+  assert.equal(current.roles[0].status.phase, 'waiting');
+  await complete(f); assert.equal(await run, 0);
+  assert.equal((await f.messages()).length, 1);
+  assert.match((await f.messages())[0][4], /worker completed/);
+});
+
+test('legacy completed-role request cannot be bypassed by an active role sharing its child', async (t) => {
+  const f = await fixture(t, { config: { statusSeconds: 0.04, statusGraceSeconds: 0.01 } });
+  const other = path.join(f.directory, 'legacy-other'); await mkdir(other);
+  for (const file of ['rollout-path', 'recap-cursor', 'startup-cursor', 'task-prompt']) {
+    await writeFile(path.join(other, file), await readFile(path.join(f.step, file)));
+  }
+  f.config.roles.push({ ...f.config.roles[0], name: 'other', stepDirectory: other, marker: 'OTHER COMPLETE' });
+  const legacyConfig = { ...f.config }; delete legacyConfig.generation;
+  await mkdir(f.config.stateDirectory);
+  await writeFile(path.join(f.config.stateDirectory, 'state.json'), JSON.stringify({ config: legacyConfig, notifications: { 'worker:startup': 'sent', 'worker:complete': 'sent', 'worker:status:1': 'sent' }, roles: { worker: { done: true, outcome: 'complete' } }, tick: 1 }));
+  const run = supervise(f.config);
+  await pause(180);
+  await appendFile(f.rollout, JSON.stringify(message('OTHER COMPLETE')) + '\n');
+  assert.equal(await run, 0);
+  assert.equal((await childRequests(f)).length, 0);
 });
 
 test('exclusive supervisor lock and stopping observer leave rollout intact', async (t) => {
