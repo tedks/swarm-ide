@@ -12,6 +12,6 @@ sh_test(
 sh_binary(
     name = "smoke",
     srcs = ["smoke.sh"],
-    data = [":sources", "//:Dockerfile", "//:compose.yaml", "//:.dockerignore"],
+    data = [":sources"],
     tags = ["manual", "local"],
 )

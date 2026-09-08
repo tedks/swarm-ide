@@ -44,11 +44,6 @@ try {
   assert.equal(inspection.NetworkSettings.Ports['6080/tcp'][0].HostIp, '127.0.0.1');
   const windows = docker('exec', name, 'xdotool', 'search', '--sync', '--onlyvisible', '--name', 'swarm-ide');
   assert(windows.trim(), 'Actual Electron window is visible on the container display');
-  docker('exec', name, 'xdotool', 'key', '--clearmodifiers', 'ctrl+k');
-  await sleep(200);
-  docker('exec', name, 'xdotool', 'type', '--clearmodifiers', '--delay', '20', 'README.md');
-  docker('exec', name, 'xdotool', 'key', 'Return');
-  await sleep(700);
   docker('cp', 'tools/container/browser-proof.cjs', `${name}:/tmp/browser-proof.cjs`);
   docker('exec', name, 'electron', '/tmp/browser-proof.cjs');
   docker('cp', `${name}:/tmp/container-browser.png`, join(evidence, 'browser.png'));

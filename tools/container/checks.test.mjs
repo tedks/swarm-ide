@@ -18,7 +18,7 @@ test('localhost display transport, no host control mounts or added capabilities'
 
 test('real production Electron is nonroot and keeps its sandbox', () => {
   const docker = read('../../Dockerfile'), entry = read('entrypoint.sh');
-  assert.match(docker, /bazel build --jobs=3 .*\/\/:desktop-bundle/);
+  assert.match(docker, /bazel --batch build --jobs=3 .*\/\/:desktop-bundle/);
   assert.match(docker, /USER 1000:1000/);
   assert.match(entry, /dbus-run-session -- electron \/opt\/swarm\/app\/electron\/main\.js/);
   assert.match(entry, /unshare --user --map-root-user --pid --fork true/);
