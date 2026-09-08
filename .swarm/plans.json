@@ -401,6 +401,7 @@
       "app/electron/main.ts",
       "nix/package.nix",
       "tools/cli/launcher.mjs",
+      "tools/cli/BUILD.bazel",
       "BUILD.bazel"
     ],
     "taskIds": [],
