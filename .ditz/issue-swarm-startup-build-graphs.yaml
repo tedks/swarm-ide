@@ -38,5 +38,13 @@ log_events:
     entirely for now. Do not hold on streaming/scoping redesign. Keep monitoring/cancel/time/concurrency/cleanup;
     note a future measured resource guard if problems arise. Goals has449 tracked
     files, so no unsupported large-repo claim.'
+- time: 2026-09-08T19:44:29-00:00
+  who: Ted Smith
+  what: commented
+  comment: 'PR131: actual Goals baseline hit the raw cutoff in 10.3s. Corrected automatic
+    query passed in 11.3s: 7,566,560 output bytes, 9,752 records (9,365 rules), no
+    compilation, unchanged Git status, one-query cache reuse and confirmed cleanup.
+    Existing 2,000-target partial view remains explicitly incomplete; graph coverage
+    follow-up stays open.'
 blocks:
 - swarm-close-working-loop
