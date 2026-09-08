@@ -5,8 +5,8 @@ type: task
 component: default
 release:
 reporter: Ted Smith <tedks@riseup.net>
-status: in_progress
-disposition:
+status: closed
+disposition: fixed
 creation_time: 2026-09-08T15:31:26-00:00
 references: []
 log_events:
@@ -28,3 +28,12 @@ log_events:
     ROOT/child packaged read-only proof passed 1.497s with keyboard switching, retained
     source/drafts/cameras, 320px layout, zero errors and cleanup. No messages sent.
     Final focus regression/check/review in progress.
+- time: 2026-09-08T15:50:13-00:00
+  who: Ted Smith
+  what: 'closed: fixed'
+  comment: Root and registered conversations now share one compact header with Terminal
+    copy, Worktree and Details icons. Native tools remain accessible without a permanent
+    category tab; real drafts, keyboard switching, receipts and scroll memory retained.
+    PR120 ready/pushed, 75 focused tests/types and native convergence CLEAN, owned
+    real registered read-only header proof passed with no sends and complete cleanup.
+    ROOT handles merge/adoption.
