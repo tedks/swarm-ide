@@ -1,0 +1,21 @@
+id: editor-undo-history-20260907
+title: Install editor undo history and verify native Undo/Redo
+desc: F2 disposable packaged GUI proof found EditorPane.tsx installs defaultKeymap
+  but no history()/historyKeymap extension. Native Ctrl-Z did not restore the synthetic
+  source edit. This is a separate existing editor capability gap, not a Fork blocker
+  or repaired product behavior. Scope follow-up to undo/redo plus tab/navigation retention;
+  F2 only corrected its cleanup driver to restore disposable text through ordinary
+  input. Evidence /tmp/swarm-ide-self-hosting.wkSErV/child-forks/gui-proof/run.lLdzNn/app.log.
+type: feature
+component: default
+release:
+reporter: Ted Smith <tedks@riseup.net>
+status: unstarted
+disposition:
+creation_time: 2026-09-08T02:23:26-00:00
+references: []
+log_events:
+- time: 2026-09-08T02:23:26-00:00
+  who: Ted Smith
+  what: created
+  comment: ""
