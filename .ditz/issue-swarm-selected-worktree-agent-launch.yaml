@@ -18,3 +18,12 @@ log_events:
   who: Ted Smith
   what: created
   comment: ""
+- time: 2026-09-08T20:02:56-00:00
+  who: Ted Smith
+  what: commented
+  comment: 'PR132 proves direct New agent launches in the selected registered worktree,
+    and Send/Stop remain there after navigation, with persistent exact initial text.
+    Actual packaged route and one real Codex service turn passed. Keeping this issue
+    OPEN for its specifically described legacy source/task Prepare context: that optional
+    attachment workflow is still launch-root scoped; this PR does not claim its selected-worktree
+    materialization.'
