@@ -1,213 +1,176 @@
-# Install and run the Swarm IDE demo
+# Open Swarm on a real project
 
-For a browser-based Linux desktop on a machine with Docker, see the
-[container demo](container-demo.md). Its host/architecture and agent-run limits
-are explicit; it is not a native Mac build.
+Use the **installed Linux app** for the full local workflow. For a Mac evaluator,
+the [Docker browser demo](container-demo.md) offers design and source browsing,
+but not host-agent or live build execution. The source is private: the sender must
+give you repository access or an authorized clone. No public installer/image is
+published.
 
-This is the supported **Linux/Nix source-checkout path**, not a standalone
-downloadable application. Start with Swarm's own repository to see its checked-in
-plans, tasks, service example and recorded logical-change story. Then follow the
-[connected walkthrough](demo.md). No model account is needed for its browsing,
-preparation and saved Activity summaries. Optional **Codex · trusted local** launch
-uses an existing installed account; the isolated read-only profile remains
-unavailable.
+## Linux: first window
 
-## Before you start
+Use a normal user on Linux x86_64, with Git, Nix and an X11 desktop
+(`DISPLAY` and any required `XAUTHORITY`). Nix needs `nix-command` and `flakes`
+enabled. If necessary, add `extra-experimental-features = nix-command flakes`
+to your existing `~/.config/nix/nix.conf`, preserving other settings.
+The verified desktop was Xorg; native Wayland, macOS and ARM are not verified.
+Keep the host's Electron sandbox and namespace support enabled.
 
-Use a normal, non-root user on Linux x86_64 with Git and
-[Nix installed](https://nixos.org/download/). Nix must have `nix-command` and
-`flakes` enabled. If needed, add `extra-experimental-features = nix-command flakes`
-to your existing user `nix/nix.conf` under your configuration directory, normally
-`~/.config/nix/nix.conf`; preserve other settings. See the
-[Nix configuration reference](https://nix.dev/manual/nix/stable/command-ref/conf-file.html).
-Installing Nix itself is a prerequisite, not something this demo test installs.
-
-For an interactive window, use a logged-in X11 desktop terminal with a valid
-`DISPLAY` and any required `XAUTHORITY`. XWayland may provide an X11 connection,
-but the verified environment is Xorg; native Wayland, macOS, Windows/WSL and ARM
-have not been verified. The flake declares `aarch64-linux` without claiming a
-tested demo there. Your host must support Electron's sandbox and the Linux
-namespace facilities used by owned subprocesses. Do not use `sudo`,
-`--no-sandbox`, or disable host security controls to work around a startup error.
-
-The repository is private during prototyping: your GitHub account needs an
-explicit grant of access and working Git authentication. The commands below use
-SSH; an already-authenticated HTTPS clone is also suitable. A repository-not-found
-or permission error means you should check access with the sender.
-Initial Nix and pnpm dependency downloads require network access, disk space and
-time. This rehearsal reused download caches; no cold-install duration is promised.
-
-## Fresh checkout to first window
-
-Run these in a terminal, choosing an unused destination for the clone:
+From a new destination:
 
 ```bash
 git clone git@github.com:tedks/swarm-ide.git
 cd swarm-ide
-git fetch origin refs/heads/ditz-metadata:refs/heads/ditz-metadata
-git show-ref --verify refs/heads/ditz-metadata
-nix develop --command pnpm install --frozen-lockfile
-nix develop --command bazel build --jobs=3 //:desktop-bundle
-SWARM_DEV_PORT=55173 nix develop --command bazel run --jobs=3 //:dev
+nix run . -- --workspace "$PWD"
 ```
 
-The pinned Nix environment supplies Node, pnpm, Bazel, Java, Electron and desktop
-tools. The frozen install materializes `node_modules` without selecting new
-dependency versions. The targeted build creates the desktop bundle; running
-every test or building every proof is **not required to open the demo**.
+The first build downloads pinned runtime/build dependencies and bundles the app.
+It does not require a manual pnpm install, a development server, a model account,
+or a full test run. Leave the foreground command running while using the window.
 
-Leave that terminal running. You should get a native Swarm IDE window with
-**Directory**, graph tabs and a source area. Open **Ctrl-K → Open repository
-path**, enter `README.md`, and press Enter to open the file.
-Expand **Tasks** and choose **Refresh tasks** to read the local metadata branch.
-Follow the [tour](demo.md) for plans, graph relationships, task context and
-Activity. To follow existing agent sessions, register them using the optional
-[session helper](session-registration.md). The list is empty until you do.
-
-### Optional accounts: execution and GitHub PRs
-
-Neither account is installed by the quick start. To run an agent, make your
-normally configured/authenticated Codex available in the IDE launch PATH (or set
-the documented `SWARM_CODEX_BIN` executable path). Open a source-file agent draft,
-optionally attach a task, and use **Prepare trusted-local context → review exact
-prompt → permission confirmation → Launch trusted-local Codex**. It inherits
-normal configuration, tools and approvals. The run list and **New conversation** support up to eight live
-conversations, each with its own message composer and controls. Up to twenty
-saved conversations keep recent output, activity and attached task links. Core restart
-archives prior conversations without automatically resuming them; it does not
-mark their tasks complete. See [execution and limitations](trusted-local-execution.md).
-
-To inspect PRs, make ordinary `gh` available in the same launch environment and
-authenticate normally with `gh auth login`. In **Recent Activity → Activity log →
-Pull requests**, choose **Refresh PRs**. The opened checkout needs a supported
-github.com origin. PRs are fetched when you choose Refresh, not in the background.
-See [PR scope and custom-XDG configuration](logical-changelog.md#github-pull-requests).
-Do not paste account files or tokens into the IDE. Recorded summaries do not
-require GitHub authentication and are not generated live when you open them.
-
-`55173` is an example free loopback port, not a reserved service. Set another
-unused decimal integer in `1..65535` if necessary. The default when omitted is
-`5173`. Swarm fails on an occupied port instead of killing its owner or quietly
-switching ports. Opening the HTTP address alone is not the supported demo: the
-desktop window supplies the privileged local-core bridge.
-
-## Open another repository
-
-Stop the current launch with Ctrl-C, then run **from the Swarm IDE checkout**:
+Swarm's repository includes its own component design and source. To see its
+tasks too, run this once in the **fresh clone**:
 
 ```bash
-SWARM_DEV_PORT=55173 nix develop --command bazel run --jobs=3 //:dev -- --workspace "/absolute/path/to/your/repository"
+git fetch origin refs/heads/ditz-metadata:refs/heads/ditz-metadata
 ```
 
-Pass an existing Git **working-tree root with a committed HEAD**, not an inner
-directory, bare repository or newly initialized repository with no commit.
-Relative paths resolve from the directory where the command was invoked. Quote
-paths containing spaces. The IDE's dependency and development outputs remain in
-the IDE checkout; selecting a target does not install packages into that target.
-Editing and explicitly saving a source does, of course, change the selected repo.
+The task view notices local metadata-ref changes automatically. It does not
+fetch remote changes itself. For an existing local branch, use Ditz sync rather
+than force-fetching over work. Other projects need no Ditz setup to browse files.
 
-A non-Bazel repository still supports real directory/file browsing. Missing
-service, task, plan or deployment data is shown as unavailable, not filled with
-Swarm's example data. The service extractor is currently specific to Swarm's
-checked-in example. [Build graph](dynamic-build-graph.md) is a separate real
-Bazel declaration query with its own supported-root and runtime limits.
+Follow the [five-minute tour](demo.md). No agent account is required for the
+design/source portion; a fresh install has no registered agents until you
+connect some.
 
-Use repositories whose tooling you trust. Opening an external target does not
-automatically run its topology build. **Build** explicitly executes build tooling;
-opening **Build graph**, enabling **Build links**, or inspecting a file's Context
-build targets can load repository-controlled Bazel definitions. These operations
-run with local permissions. A query reads build declarations without compiling them.
+## Keep the command, then open another project
 
-## Tasks and metadata
+From the Swarm checkout:
 
-The IDE reads `refs/heads/ditz-metadata` **in the selected repository**. It does not
-fetch GitHub issues or periodically pull a remote branch. A normal clone's
-`origin/ditz-metadata` remote-tracking ref alone is insufficient. The fresh-clone
-fetch above creates the required local branch without switching source branches.
+```bash
+nix profile install .#swarm-ide
+swarm --workspace /absolute/path/to/your/project \
+  --user-data-dir "$HOME/.config/swarm-ide-my-project"
+```
 
-For an existing checkout, first check `git show-ref --verify
-refs/heads/ditz-metadata`. If the branch is absent and its origin publishes this
-format, run the same fetch there. If the branch already exists, do not force-fetch
-over it; contributors reconcile through [Ditz sync](../AGENTS.md#issue-tracking-ditz).
-Refresh tasks after metadata changes. If the branch is missing, malformed or
-stale, the IDE will show why its task list is unavailable or incomplete.
+Replace both example paths. The profile option keeps this window's history and
+settings separate from another Swarm window; it does not copy or relocate Codex,
+GitHub, Docker or tmux configuration. Without `--workspace`, `swarm` opens the
+directory where you invoked it. Without installing, use
+`nix run /path/to/swarm-checkout -- --workspace /path/to/project`.
 
-The Ditz CLI is **not required to read** existing tasks. To author or reconcile
-them, the repository documents `nix run github:tedks/ditz -- <command>` and the
-[contributor workflow](../AGENTS.md#issue-tracking-ditz); that is an additional
-tool download, not part of the pinned Swarm flake or this installation proof.
+Choose a Git **working-tree root with a committed HEAD**, not a subdirectory,
+bare-repository parent or empty repository. In a multi-worktree layout use
+`/home/me/Projects/project/master` or a specific feature worktree. On Linux,
+linked worktrees work normally because their Git directory is accessible.
+The container instead needs a standalone clone inside its mount.
 
-## Stop, restart and update safely
+The installed application lives in the Nix store and opens your chosen project.
+Saving changes that project's files; simply opening it does not install its
+dependencies. Source browsing works without Bazel or project-specific plans.
+Available instruments depend on the actual repository and running local tools.
+Bazel observation loads project-controlled definitions with your local permissions;
+it is a query, not compilation. See [build graph coverage](dynamic-build-graph.md).
 
-Save any edits with Ctrl-S before Ctrl-C in the launch terminal. Rerun the same
-launch command to reopen the same repository. To select a different repo, stop
-and relaunch with `--workspace`; there is no in-app project picker yet.
-For an update, inspect `git status` first and preserve your work, then pull an
-appropriate reviewed revision, rerun the frozen install and desktop-bundle build,
-and relaunch. Never reset the checkout just to make an update succeed.
+## Include agents already running in tmux
 
-Renderer edits use hot reload; many local-core edits recover in the same window.
-Main-process changes need a deliberate restart. Reload guards are not backups
-for crashes or discarded unsaved buffers. If desired, after stopping your own
-launch, `nix develop --command bazel shutdown` stops this checkout's Bazel server.
-Do not kill all Electron/Bazel processes or delete global caches to stop one demo.
+Install/authenticate your harness normally, outside Swarm. To follow existing
+**Codex** owners in one session:
 
-## Troubleshooting
+```bash
+swarm --workspace /absolute/path/to/your/project \
+  --user-data-dir "$HOME/.config/swarm-ide-my-project" \
+  --tmux-server personal --tmux-session project
+```
+
+Replace `personal` and `project` with your actual server/session. The alternative
+`--tmux-socket /absolute/path/to/socket --tmux-session project` selects a socket
+directly. Association scans that session once, up to 64 panes. Shells, unsupported
+harnesses and ambiguous owners may be skipped. If none are found, omit the tmux
+flags to open the project alone.
+
+For an already-maintained private registry, use this instead of tmux flags:
+
+```bash
+swarm --workspace /absolute/path/to/your/project \
+  --user-data-dir "$HOME/.config/swarm-ide-my-project" \
+  --agent-registry /absolute/private/agents.json
+```
+
+Registration observes existing processes; it does not create a second agent.
+Closing the IDE or a conversation tab leaves those tmux agents running. New panes
+need a new association or explicit registration. [Linux installation](linux-install.md)
+covers skipped panes, generated registry paths and reuse.
+
+Select a registered agent to read the conversation and Activity. The terminal
+icon copies its checked attach command, so you can steer the same agent in tmux.
+IDE messages remain copyable while queued. If receipt is unclear, inspect the
+conversation or terminal before submitting again; do not resend just to clear
+the label. Faster refresh and better receipt reconciliation are pending work.
+
+## Optional model and GitHub actions
+
+Browsing and observing do not request a model turn. Explicit trusted-local
+launch uses your existing Codex installation, account, tools and approvals.
+Use the Agent tools control to prepare a source-focused request, inspect the
+prompt, and confirm launch. Unlike external tmux sessions, IDE-owned runs stop
+with the app/core; saved history is not automatically resumed.
+See [trusted-local execution](trusted-local-execution.md).
+
+Work Log **Start** separately enables online summaries of registered work.
+Its gear exposes the model settings; default is Codex `gpt-5.6-luna`. Leave it
+stopped for a no-model tour. Saved outcomes remain readable.
+
+For GitHub PRs, make normally authenticated `gh` available in the launch PATH.
+Open **Activity → Pull requests → Refresh PRs**. This explicitly reads the
+selected repository's supported github.com origin; it does not mutate PRs or
+automatically poll them. Accounts and credentials are not bundled with Swarm.
+
+## Stop, update and troubleshoot
+
+Save with Ctrl-S, then close the window or interrupt the launch command.
+Ordinary installed use requires no service-manager setup and no Vite port.
+To update an install made from a clone, preserve local work and pull the chosen
+reviewed revision in that same clone. Run `nix profile list`, find Swarm's entry
+by its source/flake attribute, then use its actual **Name**:
+
+```bash
+nix profile upgrade NAME
+```
+
+Replace `NAME`; do not add a second install over the existing `swarm` command.
+Save/close the old app before relaunching. An install pinned with `rev=COMMIT`
+does not advance automatically; fleet rollout chooses a new reviewed pin.
+See the [installation reference](linux-install.md#run-or-install).
 
 | Symptom | Next action |
 | --- | --- |
-| Git access denied / repository not found | Confirm the supplied repo URL and your access with the sender; do not change visibility or paste credentials into the IDE. |
-| Nix says flakes or nix-command is disabled | Enable the two features above; open a new terminal if Nix is not yet on PATH. |
-| Missing dependencies / Electron version mismatch | Use the pinned `nix develop` commands and repeat `pnpm install --frozen-lockfile`; do not upgrade packages independently. |
-| `EADDRINUSE` / cannot listen | Pick another `SWARM_DEV_PORT`; leave the existing listener alone. |
-| Workspace rejected | Pass the committed working-tree root, with correct quoting; check `git -C "/path/to/repo" rev-parse --show-toplevel`. |
-| No display / sandbox or namespace denial | Run on the supported logged-in Linux/X11 host; report the exact host error instead of disabling safety controls. Headless verification below needs no physical desktop. |
-| Empty or unavailable Tasks | Check the local metadata branch in the selected repo, then Refresh tasks. |
-| Build/service information unavailable or out of date | Read the view's explanation, then refresh or build if you trust the repo. Swarm's service extractor currently supports its own example. |
-| No external agents | [Register existing sessions](session-registration.md) to follow their output and see available message controls. See [external sessions](demo-agents.md). |
-| Trusted-local launch unavailable | Check installed Codex in the launch PATH, its normal account/configuration and the reported ownership-tool error. Prepare from a source-file draft, review and explicitly confirm. See [execution](trusted-local-execution.md); do not bypass host controls. |
-| Launch read-only run disabled | The isolated profile is not available. Use Codex · trusted local with your normal account and permissions. |
-| GitHub PRs unavailable | Check the opened checkout's github.com origin and normal `gh` login/configuration, then explicitly Refresh PRs. See [PR limits](logical-changelog.md#github-pull-requests). |
+| Repository not found | Ask the sender to confirm access; no public artifact exists yet. |
+| Nix command/features unavailable | Install Nix and enable flakes/nix-command; reopen the terminal if needed. |
+| Workspace rejected | Check `git -C "/path/to/project" rev-parse --show-toplevel` and choose the committed worktree root. |
+| No window or sandbox/namespace error | Report the exact host error and use a supported Linux/X11 environment. |
+| Missing tasks | Check local `refs/heads/ditz-metadata` in that project, not just `origin/ditz-metadata`. |
+| No agents | Use an existing Codex tmux session or maintained registry; opening a repo alone does not launch/discover them. |
+| Message remains queued | Check that same conversation in tmux; keep the saved text rather than automatically resending. |
+| Missing build/service information | Use the supported view explanation; queries do not infer arbitrary service deployments. |
+| GitHub PRs unavailable | Check normal `gh` configuration and the selected repo's origin, then explicitly refresh. |
 
-When reporting an installation failure, include the command, short `git rev-parse
---short HEAD`, host architecture and relevant terminal error, with private paths
-and account details removed. Do not send raw agent transcripts or account files.
+When reporting a failure, send the command, app revision, host architecture and
+short error with private details removed—not account files or raw transcripts.
 
-## Reproduce the installation check
+## What has actually been exercised
 
-From a source branch in the IDE checkout with local Ditz metadata available:
+PR111 tested the x86_64-linux package build, `nix run` help, a disposable profile
+installation, real source opening in another repository, and actual registered
+Codex activity. Its tmux association proof found five selected-session agents;
+the checked worker survived IDE close. Some panes were skipped.
 
-```bash
-SWARM_VIRTUAL_DISPLAY=:134 SWARM_VIRTUAL_DESKTOP_PORT=55214 \
-  nix develop --command bazel run --jobs=3 //tools/demo-install:smoke
-```
+PR112 tested Linux/amd64 Docker/noVNC keyboard navigation into the real app and
+its renderer sandbox. It did not test macOS, ARM, Safari or live agent execution
+in that container. See [container limits](container-demo.md#architecture-and-tested-limits).
 
-This existing Bazel target makes a fresh local Git clone of the committed source,
-fetches its local Ditz branch, creates new `node_modules` and Bazel outputs, builds
-the bundle and runs workspace tests. It then runs the actual public dev command
-on an owned Xvfb/Openbox desktop for the checkout and two disposable external Git
-repos, including a path with spaces. It opens actual files, tests missing-workspace
-and occupied-port rejection, and proves the external Bazel wrapper runs zero times
-on ordinary opening and once after an explicit Build. No model turn is requested.
-
-Choose a free virtual display/port pair, or omit `SWARM_VIRTUAL_DISPLAY` to let
-the harness allocate a display. Another owner is never displaced. The three cases
-are sequential; independent checkouts can use different pairs. Do not automate
-your physical desktop. For a `bazel test` target rather than this `bazel run`
-target, environment overrides also need explicit `--test_env` forwarding.
-
-Inspect the printed `artifacts/demo-install/run.…` directory for
-`installation-inputs.json`, `materialization.log`, `startup-rejections.json`,
-per-case `source.png` and `supervisor.log`. Each case must finish with
-`cleanup_complete=1`; the disposable clone is retained at the printed `/tmp`
-path for inspection, but its owned GUI and Bazel processes are stopped.
-
-This checks fresh source/dependency materialization **with shared warm Nix/pnpm
-download caches**. It does not prove a cold-network install, remote GitHub account
-access, installation of Nix itself, all host distributions or every demo feature.
-The bundle at `bazel-bin/swarm-ide-foundation.tar.gz` is compiled app code, **not a
-standalone installer**: it excludes Electron, the Nix/system runtime and your repo.
-
-For other checks and hot-reload behavior, see
-[development and visual verification](development-loop.md). For what to present
-after the window opens, use the [connected tour](demo.md).
+Those are existing implementation proofs, not a fresh whole-tour execution of
+this documentation revision. Maintainers can use
+`nix develop --command bazel test --jobs=3 //tools/cli:checks` for CLI arguments;
+package/owned-desktop reproduction is in [Linux installation](linux-install.md).
+Source development and its separate install rehearsal remain documented in
+[the development loop](development-loop.md).

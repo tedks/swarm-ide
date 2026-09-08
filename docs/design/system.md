@@ -8,7 +8,10 @@ abstraction, inspect its context, apply intelligence, then follow the result.
 ## The component map
 
 The accompanying authored graph lives in [the plan index](../../.swarm/plans.json).
-These are conceptual components, not separate executables or deployment services.
+These are responsibility areas that span renderer and core, not separate
+executables or deployed services. The initial map shows only the six areas within
+Swarm. Select an area to see its incoming and outgoing contracts; choose one
+contract to read exactly what crosses that boundary and in which direction.
 
 | Component | Responsibility | Connects to |
 | --- | --- | --- |
@@ -18,6 +21,22 @@ These are conceptual components, not separate executables or deployment services
 | [Agent ownership and steering](agents.md) | Native conversations, registered terminal sessions and parentage | Tasks, Activity, cockpit |
 | [Activity and Work Log](activity.md) | What happened; what was accomplished | Agents, source, tasks and GitHub |
 | [Runtime and providers](runtime.md) | Typed privileged operations and process lifetime | All renderer consumers |
+
+Containment says **part of**, not **depends on**. Contract arrows distinguish
+**request** (ask a capability), **result** (its reply), **data** (a consumed
+observation) and **navigation** (move the operator's focus). Requests are teal,
+results/data amber and navigation violet; the selector names the kind in text.
+Older project indices without a kind remain generic contracts. Each component
+shows only its own links, never every relationship among its children or peers.
+
+For example, Repository → Runtime requests a query and Runtime → Repository
+returns its result. These are directions of the same routed capability, not a
+two-service dependency cycle. Agent execution splits into IDE-owned native runs
+and observation/queued steering of an existing terminal owner. Activity → Agents
+can mean navigation to the responsible conversation **or** delivery of the latest
+saved Work Log summary to the rail; these are separate contracts. Activity →
+Planning records an outcome note on an already-closed Ditz issue, never automatic
+issue completion.
 
 The product is one coordinated workspace, not one universal graph. The directory
 tree, build dependency graph, service graph, plan hierarchy and agent lineage each
@@ -44,6 +63,8 @@ tests, examples and `.swarm/**` into `//:quality_sources`.
 `//tools:build-app` to produce the Electron archive. These shared build targets
 are the current implementation floor; the component graph does not pretend
 that TypeScript directories are independently deployable Bazel libraries.
+Two areas listing the same source or build input does not add a component edge.
+Actual Bazel rule/input relationships remain in the separate Build projection.
 
 ## Current increment
 

@@ -23,7 +23,7 @@ async function main() {
     const xy = { x: Math.round(p.x * wc.getZoomFactor()), y: Math.round(p.y * wc.getZoomFactor()) };
     wc.sendInputEvent({ type: "mouseDown", button: "left", clickCount: 1, ...xy }); wc.sendInputEvent({ type: "mouseUp", button: "left", clickCount: 1, ...xy }); await paint();
   };
-  await until(() => run(() => document.querySelectorAll(".design-graph .react-flow__node").length === 7 && document.querySelectorAll(".design-graph .react-flow__edge").length === 19), "real seven-component design and nineteen edges");
+  await until(() => run(() => document.querySelectorAll(".design-graph .react-flow__node").length === 7 && document.querySelectorAll(".design-graph .react-flow__edge").length === 6), "real seven-component responsibility hierarchy");
   await until(() => run(() => [...document.querySelectorAll('.task-projection button')].some(n => n.textContent === 'Load dependency graph' && !n.disabled)), 'task metadata available');
   await click('.task-projection button', 'Load dependency graph');
   await until(() => run(() => Boolean(document.querySelector('.task-projection .react-flow__viewport'))), 'actual Ditz dependency graph');
@@ -48,10 +48,27 @@ async function main() {
   await click(".design-details aside button", "Cockpit, focus & source");
   await until(() => text('.component-graph-card nav').then((s) => s.includes("Cockpit, focus & source")), "component selected");
   assert(await run(() => window.graphProof.canvas === document.querySelector(".design-graph .react-flow")), "selection retains canvas");
+  await click('.design-details aside button', 'Cockpit, focus & source → Repository, build & context: Files & target definitions');
+  await until(() => run(() => document.querySelectorAll('.design-graph .react-flow__edge').length === 1), 'one selected directed contract');
+  assert.equal(await run(() => document.querySelectorAll('.design-graph .react-flow__node').length), 2);
+  assert((await text('.design-contract-detail')).includes('canonical source broker'));
+  assert(await run(() => document.querySelector('.design-graph .design-edge').classList.contains('request')), 'authored request kind');
+  assert.equal(await camera(), rootCamera, 'contract selection leaves camera alone');
+  // This deliberately follows the preserved zoomed camera with the ordinary
+  // Fit control; inspecting a contract must not secretly refit the user's view.
+  await click('.design-graph .react-flow__controls-fitview'); await sleep(250);
+  assert(await run(() => {
+    const r = document.querySelector('.design-graph').getBoundingClientRect();
+    return [...document.querySelectorAll('.design-graph .react-flow__node')].every(node => {
+      const n = node.getBoundingClientRect(); return n.left >= r.left - 1 && n.right <= r.right + 1 && n.top >= r.top - 1 && n.bottom <= r.bottom + 1;
+    });
+  }), 'explicit Fit makes both contract endpoints fully visible');
+  await shot('selected-contract');
   await click('.component-graph-card nav button', 'Swarm IDE · system design'); await paint();
   assert.equal(await camera(), rootCamera);
   await click(".component-graph-card header button", "Read design");
   await until(() => text(".design-prose").then((s) => s.includes("engineering organization")), "full system document"); await shot("design-reading");
+  await click(".component-graph-card .design-details summary");
   await click(".design-details aside button", "Cockpit, focus & source");
   await until(() => text(".design-prose").then((s) => s.includes("EditorPane")), "component document");
   await click(".design-implementation button", "app/renderer/App.tsx");
@@ -73,6 +90,6 @@ async function main() {
   assert(await run(() => window.graphProof.editor === document.querySelector(".cm-editor") && window.graphProof.panels.every((n, i) => n === document.querySelector(".graph-panels").children[i])), "instances retained");
   assert(await run(() => window.graphProof.task === document.querySelector('.task-projection .react-flow') && window.graphProof.taskCamera === document.querySelector('.task-projection .react-flow__viewport').style.transform), 'loaded task graph and camera retained');
   assert.deepEqual(errors, []);
-  await fs.writeFile(path.join(evidence, "proof.json"), JSON.stringify({ ok: true, actualRepo: process.cwd(), packaged: true, topNodes: 7, edges: 19, overview, compact, unchangedRefreshIdentity: true, scopedCameraRoundtrip: true, loadedTaskGraphRetained: true, retainedEditor: true, rendererErrors: errors }));
+  await fs.writeFile(path.join(evidence, "proof.json"), JSON.stringify({ ok: true, actualRepo: process.cwd(), packaged: true, topNodes: 7, containmentEdges: 6, selectedContract: { nodes: 2, edges: 1, kind: 'request', nativeActivation: true }, overview, compact, unchangedRefreshIdentity: true, scopedCameraRoundtrip: true, loadedTaskGraphRetained: true, retainedEditor: true, rendererErrors: errors }));
 }
 void main().catch(async (error) => { const win = BrowserWindow.getAllWindows()[0]; if (win) await fs.writeFile(path.join(evidence, "failure.png"), (await win.webContents.capturePage()).toPNG()).catch(() => {}); await fs.writeFile(path.join(evidence, "failure.json"), JSON.stringify({ message: error.stack, errors })); app.exit(1); });

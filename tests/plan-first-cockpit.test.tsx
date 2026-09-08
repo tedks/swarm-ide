@@ -46,7 +46,9 @@ function bridge(withBuild = false) {
 it("starts on four coordinated graphs without a Plan/Code mode switch", async () => {
   bridge(); render(<App />);
   const lenses = await screen.findByRole("navigation", { name: "Workspace navigation" });
-  expect(within(lenses).getAllByRole("button").map((node) => node.textContent)).toEqual(["Workspace"]);
+  expect(within(lenses).getAllByRole("button").map((node) => node.textContent)).toEqual(["←", "→", "Workspace"]);
+  expect(within(lenses).getByRole("button", { name: "Go back" }).hasAttribute("disabled")).toBe(true);
+  expect(within(lenses).getByRole("button", { name: "Go forward" }).hasAttribute("disabled")).toBe(true);
   expect(screen.getAllByTestId("retained-layout-graph")).toHaveLength(4);
   expect(document.querySelector(".graphs-grid")?.classList.contains("is-sidebar")).toBe(false);
   expect(screen.queryByText("Live workspace")).toBeNull();

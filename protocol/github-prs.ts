@@ -11,6 +11,7 @@ export const GithubPullRequestSchema = z.object({
   number: z.number().int().positive().max(Number.MAX_SAFE_INTEGER), title: label(512),
   state: z.enum(["OPEN", "CLOSED", "MERGED"]), isDraft: z.boolean(), author: label(100),
   updatedAt: z.string().datetime({ offset: true }),
+  headRefName: label(256).optional(),
   url: z.string().max(300), changedFiles: z.number().int().nonnegative().max(1_000_000),
   paths: z.array(RepositoryPathSchema).max(GITHUB_PR_PATH_LIMIT),
 }).strict().superRefine((pr, ctx) => {

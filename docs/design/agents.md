@@ -47,11 +47,17 @@ renderer reload and application restart in that same profile/origin; unsent
 composer drafts still live only in memory. Outgoing text is never inserted into
 the agent's message body as marker or bookkeeping data.
 
-Queue acceptance remains **Queued**, not delivered: the queue receipt identifies
-a queue item, not the separate client ID in a consumed user-message event. A
-matching text, a later reply, or a missing queue item does not establish receipt.
-Consequently a consumed message may appear in the transcript alongside its saved
-queued copy until a future supported correlation path is added. Interrupted sends
+Queue acceptance displays **Sent to queue** with a static submission arrow, not
+an ongoing waiting clock or a delivered checkmark. This is a completed submission,
+not a claim that the message remains queued: the queue receipt identifies a queue
+item, while the inspected consumed user-message event exposes a client ID without
+a supported link to that queue receipt. A matching text,
+a later reply, or a missing queue item does not establish receipt. The hover explains
+that the IDE cannot yet confirm when the agent receives it; no permanent warning or
+extra controls are added. A consumed message can therefore appear in the transcript
+alongside its separately saved outgoing copy until an exact supported correlation
+path exists. Existing saved rows use the new presentation without a data migration;
+their internal `queued` status, text and receipt stay unchanged. Interrupted sends
 reload as **Unconfirmed**, never retry. The outbox holds at most 100 messages and
 512 KiB; capacity, invalid storage or write failure before dispatch stops sending
 and preserves the draft, rather than silently evicting unresolved messages. An
@@ -108,6 +114,18 @@ existing registry timer drives fleet reads rather than creating another agent
 platform. Native app-server execution remains a separate owner path. App joins
 event activation to the correct-worktree source view; a fleet observation does
 not itself grant authority to send to or take over that session.
+
+The renderer observer (`external-agents/client.ts`) shares one request lane
+between fleet and selected-conversation reads. It starts automatic conversation
+reads no more often than once a second and fleet reads no more often than every
+three seconds, measured from request start rather than completion. The oldest
+due deadline wins, with conversation reads first on ties; this keeps the fleet
+from starving while avoiding unnecessary conversation delay. Initial/core-reset
+registry discovery and explicit user requests retain priority. Missed intervals
+collapse into one read, never a catch-up batch. An already-running fleet request
+still has to finish; this does not change native message queues or model latency.
+`tests/external-agents-live.test.tsx`, included in `//tools/demo-agents:unit`, checks
+slow reads, tied deadlines, fleet fairness and selection while a read is held.
 
 Each observed session carries an optional `lifecycle`: working means **In
 progress**, blocking input means **Waiting on you**, an explicit failed completion

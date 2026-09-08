@@ -5,6 +5,11 @@ browser displays that desktop through noVNC. You do not need Nix or an X server
 on your Mac, and no model account is required to explore the included project.
 This is a local evaluation path, not a public web service.
 
+**Choose this for a design/source demo, not live swarm orchestration.** The
+current container cannot run owned agent or Bazel-query subprocesses or observe
+Mac host agents. Linux/amd64 Docker was tested; Mac, Apple Silicon and Safari
+were not. For the full local workflow use the [installed Linux app](linux-install.md).
+
 ## Start
 
 Install and start [Docker Desktop for your Mac](https://docs.docker.com/desktop/setup/install/mac-install/),
@@ -69,8 +74,9 @@ Ditz branch from the Swarm checkout is silently copied into the demo image.
 
 The container sees **container** repositories, processes, ports and tmux. It does
 not discover or steer your Mac host's agents. Codex/other harnesses and account
-credentials are not installed or mounted. Connecting authenticated agent runs
-inside this environment is a separate setup step, not part of this quick demo.
+credentials are not installed or mounted. Authenticated agent runs also need a
+different supported process profile; adding credentials alone does not enable
+them in this image.
 URLs for a dev server inside the container require an explicit additional port
 mapping before the host browser can reach them. There is no bundled host browser
 for opening arbitrary external links from the streamed Linux desktop.
@@ -123,7 +129,7 @@ seccomp enabled and no-new-privileges. The owned container was removed cleanly.
 The 10 direct checks also passed. An amd64 container test is not a macOS, Apple Silicon, Safari or
 Docker Desktop test. Those remain evaluator-platform follow-ups until actually
 run. If a platform denies user namespaces, report its exact error and use the
-[Linux source path](evaluator-install.md); do not disable host security controls.
+[Linux installed path](linux-install.md); do not disable host security controls.
 
 ## Developer checks
 

@@ -35,7 +35,11 @@ const PlanNodeSchema = z.object({
   design: z.object({
     summary: text(2048, 1), state: z.enum(["implemented", "planned"]),
     constraints: z.array(text(512, 1)).optional(),
-    connections: z.array(z.object({ targetId: id, label: text(128, 1) }).strict()).max(16),
+    connections: z.array(z.object({
+      targetId: id, label: text(128, 1),
+      kind: z.enum(["request", "result", "data", "navigation"]).optional(),
+      detail: text(1024, 1).optional(),
+    }).strict()).max(16),
     buildTargets: z.array(z.object({
       label: PlanBuildLabelSchema, role: text(256, 1),
       dependencies: z.array(z.object({ label: PlanBuildLabelSchema, relation: z.enum(["srcs", "data", "tools", "actual", "tests"]) }).strict()).max(32),

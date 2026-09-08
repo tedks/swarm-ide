@@ -4,6 +4,13 @@ Swarm trusts the local machine and its configured agent harnesses, while keeping
 privileged operations out of the renderer. The boundary is practical: a graph
 label or clicked document cannot become an arbitrary process command.
 
+The top-level Runtime area describes this routing and ownership boundary across
+the application, not a service separate from the Repository and Agents areas.
+Repository request/result arrows are two directions of one capability. Agent
+results distinguish the IDE-owned native app-server from the read-only transcript
+observation and checked queue handoff of an existing terminal owner. Reporting a
+terminal process never makes that process owned by the IDE.
+
 ## Lower-level map
 
 | Layer | Actual implementation | Responsibility |
@@ -12,6 +19,7 @@ label or clicked document cannot become an arbitrary process command.
 | Preload bridge | [preload.ts](../../app/electron/preload.ts) | Narrow runtime-validated request/event surface |
 | Electron main | [main.ts](../../app/electron/main.ts), [core-supervisor.ts](../../app/electron/core-supervisor.ts) | Native window and utility-process lifecycle |
 | Core dispatch | [worker.ts](../../core/worker.ts), [worker-runtime.ts](../../core/worker-runtime.ts) | Validates, routes and publishes provider results |
+| Workspace routing | [workspace-context.ts](../../core/workspace-context.ts), [workspace.ts](../../protocol/workspace.ts) | Checked same-repository selections and immutable provider lifetimes |
 | Contracts | [protocol/schema.ts](../../protocol/schema.ts) and domain modules | Shared request/result types and runtime schemas |
 | Providers | [provider.ts](../../core/provider.ts), files, tasks, build graph, agents | Filesystem, Git, Bazel and owned harness operations |
 | Installed Linux command | [launcher.mjs](../../tools/cli/launcher.mjs), [package.nix](../../nix/package.nix) | Resolves the invocation's project, launches the immutable production bundle and keeps host configuration available |
@@ -21,6 +29,22 @@ The Electron renderer has context isolation and no Node integration. The local
 core resolves workspace identity and canonical paths, manages process lifetimes
 and publishes bounded results. Registration/configuration selects actual providers;
 renderer text does not grant new filesystem or execution authority.
+
+`workspace.open` takes a registered session ID or the launch workspace, not a raw
+path. Each opened canonical repository ID owns its own files, watchers, tasks,
+plans, build and project-context readers. `workspaceId` on requests and events,
+or an existing repository ID on domain requests, routes the operation before any
+await. A write accepted for A therefore remains an A write after the UI opens B.
+Unknown or contradictory scope is rejected. Failed initialization closes only its
+own providers; core shutdown closes all contexts, including pending creation.
+
+The renderer's [workspace bridge](../../app/renderer/workspace-bridge.ts) stamps
+rooted requests and filters events; shared agent observation, steering and Work
+Log services remain single owners in the launch context. New agent preparation
+outside that launch scope is explicitly unavailable in this increment. Provider
+facts are rebuilt for the selected root or shown unavailable, never relabelled.
+Opened contexts remain alive until core shutdown; idle-context eviction and
+cross-repository workspace selection are follow-ups rather than hidden behavior.
 
 The `projectContext.observe` route validates the opened repository/world and
 coalesces bounded read-only Node/Python/Hugo, Docker and manifest discovery. Each

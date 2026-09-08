@@ -22,6 +22,7 @@ const index = PlanIndexSchema.parse(JSON.parse(readFileSync(resolve(root, ".swar
 const base = { worldId: "world:working", repositoryId: "project:swarm-ide", generation: 1, connected: true, visible: true };
 function reply(request: CoreRequest): CoreResponse {
   return { protocolVersion: PROTOCOL_VERSION, requestId: request.requestId, ok: true as const, sequence: 1, snapshot: initialSnapshot(),
+    ...(request.workspaceId ? { workspaceId: request.workspaceId, snapshot: { ...initialSnapshot(), project: { ...initialSnapshot().project, id: request.workspaceId } } } : {}),
     ...(request.type === "plans.read" ? { plans: { status: "observed" as const, index, revision: "a".repeat(64), observedAt: "2026-09-08T00:00:00.000Z" } }
       : request.type === "file.read" ? { file: { kind: "read" as const, path: request.path, content: `# Actual document\n\n${request.path}`, revision: "a".repeat(64), size: 64 } } : {}) };
 }
@@ -101,10 +102,10 @@ describe("living system design", () => {
       }
     }
   });
-  it("renders connected top components then real target/input edges at component depth", () => {
+  it("renders top responsibilities then separate real target/input edges at component depth", () => {
     const top = designProjection(index, index.nodes[0]!);
     expect(top.nodes).toHaveLength(7);
-    expect(top.edges.some((edge) => edge.label === "Files & target definitions")).toBe(true);
+    expect(top.edges.every((edge) => edge.kind === "containment")).toBe(true);
     const leaf = implementationProjection(index.nodes[1]!);
     expect(leaf.edges).toContainEqual(expect.objectContaining({ source: "//:desktop-bundle", target: "//:quality_sources", label: "srcs" }));
   });

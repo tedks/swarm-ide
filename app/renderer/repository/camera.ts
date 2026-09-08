@@ -10,14 +10,14 @@ export type GraphCamera = Pick<ReactFlowInstance, "getViewport" | "setViewport">
 
 /** Camera memory is deliberately bounded and keyed independently of revision,
  * capture freshness and interface zoom. Those observations cannot move a camera. */
-export function useDirectoryCamera(observation: RepositoryObservation | undefined, intent: RepositoryCameraIntent | null | undefined) {
+export function useDirectoryCamera(observation: RepositoryObservation | undefined, intent: RepositoryCameraIntent | null | undefined, workspaceScope?: string) {
   const [instance, setInstance] = useState<GraphCamera | null>(null);
   const cameras = useRef(new Map<string, Viewport>());
-  const displayed = useRef<{ key: string; loaded: boolean } | null>(null);
+  const displayed = useRef<{ key: string; loaded: boolean; scope?: string } | null>(null);
   const consumedIntent = useRef<number | null>(null);
   const frame = useRef<number | null>(null);
-  const key = observation ? directoryCameraKey(observation) : null;
-  const loaded = Boolean(observation && observation.state !== "loading");
+  const key = observation ? JSON.stringify([workspaceScope ?? "", directoryCameraKey(observation)]) : workspaceScope ?? null;
+  const loaded = !observation ? Boolean(workspaceScope) : observation.state !== "loading";
   const remember = useCallback((key: string, viewport: Viewport) => {
     cameras.current.delete(key); cameras.current.set(key, { ...viewport });
     if (cameras.current.size > DIRECTORY_HISTORY_LIMIT) cameras.current.delete(cameras.current.keys().next().value!);
@@ -26,20 +26,21 @@ export function useDirectoryCamera(observation: RepositoryObservation | undefine
   useEffect(() => {
     if (!instance || !key) return;
     const before = displayed.current;
-    const explicit = Boolean(loaded && intent && intent.serial !== consumedIntent.current &&
+    const switched = before !== null && before.scope !== workspaceScope;
+    const explicit = Boolean(loaded && observation && intent && intent.serial !== consumedIntent.current &&
       intent.directory === observation!.directory && intent.page === observation!.page);
     if (explicit) consumedIntent.current = intent!.serial;
     if (before?.key === key && !explicit && (before.loaded || !loaded)) return;
     // The normal ReactFlow mount fit owns the first already-populated slice.
-    if (!before) { displayed.current = { key, loaded }; if (loaded) return; }
+    if (!before) { displayed.current = { key, loaded, scope: workspaceScope }; if (loaded) return; }
     if (!loaded) return;
     if (before?.loaded && before.key !== key && typeof instance.getViewport === "function") remember(before.key, instance.getViewport());
-    displayed.current = { key, loaded };
+    displayed.current = { key, loaded, scope: workspaceScope };
     // Core replacement may publish its default root without user navigation.
     // Only the first loading observation or a fresh matching intent may frame;
     // recording an automatic publication must not move the retained camera.
-    if (before?.loaded && !explicit) return;
-    const saved = intent?.restore && intent.directory === observation!.directory && intent.page === observation!.page ? cameras.current.get(key) : undefined;
+    if (before?.loaded && !explicit && !switched) return;
+    const saved = switched || intent?.restore && observation && intent.directory === observation.directory && intent.page === observation.page ? cameras.current.get(key) : undefined;
     frame.current = requestAnimationFrame(() => {
       frame.current = requestAnimationFrame(() => {
         frame.current = null;
@@ -48,7 +49,7 @@ export function useDirectoryCamera(observation: RepositoryObservation | undefine
       });
     });
     return cancelFrame;
-  }, [instance, key, loaded, intent, remember, cancelFrame]);
+  }, [instance, key, loaded, intent, remember, cancelFrame, workspaceScope]);
   const onMoveStart = useCallback((event: MouseEvent | TouchEvent | null) => { if (event) cancelFrame(); }, [cancelFrame]);
   const onMoveEnd = useCallback((_event: MouseEvent | TouchEvent | null, viewport: Viewport) => {
     if (displayed.current?.loaded) remember(displayed.current.key, viewport);

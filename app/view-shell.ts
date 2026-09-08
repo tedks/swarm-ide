@@ -3,6 +3,7 @@
 export const INTERFACE_ZOOM_LEVELS = [80, 90, 100, 125, 150, 160] as const;
 export const DEFAULT_INTERFACE_ZOOM = 100;
 export const VIEW_SHELL_ZOOM_CHANNEL = "swarm:view:set-zoom";
+export const VIEW_SHELL_NAVIGATE_CHANNEL = "swarm:view:navigate";
 
 export type InterfaceZoomPercent = (typeof INTERFACE_ZOOM_LEVELS)[number];
 
@@ -12,6 +13,7 @@ export type ViewShellResult =
 
 export interface ViewShellBridge {
   setZoomPercent(percent: number): Promise<ViewShellResult>;
+  onNavigate?(listener: (direction: "back" | "forward") => void): () => void;
 }
 
 export function isInterfaceZoomPercent(value: unknown): value is InterfaceZoomPercent {

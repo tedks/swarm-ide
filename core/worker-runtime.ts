@@ -44,6 +44,7 @@ import { inspectRegisteredWorktree, browseRegisteredWorktree } from "./worktree-
 import { WorkLogService } from "./work-log/service";
 import { WorkLogRequestSchema } from "../protocol/work-log";
 import { ProjectContextProvider } from "./project-context/provider";
+import { WorkspaceContextRouter, resolveWorkspaceSelection, type RootedRuntime } from "./workspace-context";
 
 export interface WorkerDependencies {
   createAgents?: typeof createProductionAgentService;
@@ -53,9 +54,30 @@ export interface WorkerDependencies {
 }
 
 export function startCoreWorker(dependencies: WorkerDependencies = {}): void {
-const workspaceRoot = process.env.SWARM_WORKSPACE_ROOT ?? process.cwd();
-const externalAgents = new ExternalAgentService(workspaceRoot, process.env.SWARM_EXTERNAL_AGENTS_REGISTRY);
-const workLog = new WorkLogService(workspaceRoot, process.env.SWARM_EXTERNAL_AGENTS_REGISTRY);
+  const launchRoot = process.env.SWARM_WORKSPACE_ROOT ?? process.cwd();
+  const router = new WorkspaceContextRouter({
+    resolve: (sessionId, signal) => resolveWorkspaceSelection(launchRoot, process.env.SWARM_EXTERNAL_AGENTS_REGISTRY, sessionId, signal),
+    create: (selection, primary) => createWorkspaceRuntime(selection.root, selection.id, primary, dependencies,
+      (message) => process.parentPort?.postMessage(message)),
+    post: (message) => process.parentPort?.postMessage(message),
+  });
+  void router.primary.catch((error) => { console.error("Local core failed to open the workspace", error); process.parentPort?.postMessage({ type: "core.failed" }); });
+  let shutdown: Promise<void> | undefined;
+  process.parentPort?.on("message", (event) => {
+    if (dependencies.privateMessage?.(event.data)) return;
+    if (event.data?.type === "core.shutdown") {
+      shutdown ??= router.shutdown().then(() => { process.parentPort?.postMessage({ type: "core.shutdown.ready" }); }).catch(() => {});
+      return;
+    }
+    void router.request(event.data);
+  });
+  process.on("exit", () => router.close());
+}
+
+export function createWorkspaceRuntime(workspaceRoot: string, workspaceId: string, primary: boolean, dependencies: WorkerDependencies,
+  postMessage: (message: unknown) => void): RootedRuntime {
+const externalAgents = primary ? new ExternalAgentService(workspaceRoot, process.env.SWARM_EXTERNAL_AGENTS_REGISTRY) : null;
+const workLog = primary ? new WorkLogService(workspaceRoot, process.env.SWARM_EXTERNAL_AGENTS_REGISTRY) : null;
 let sequence = 0;
 const requestIds = new BoundedRequestIds(512);
 const fileReadGenerations = new Map<string, number>();
@@ -79,7 +101,7 @@ const taskProviderPromise: Promise<TaskProvider> = providerPromise.then(async (p
 const agentServicePromise: Promise<ProductionAgentService | null> = providerPromise.then(async (provider) => {
   // Absence is an explicitly unavailable bridge, useful for legacy/test boot.
   // Production main always supplies its own app-data location, not renderer input.
-  if (!process.env.SWARM_AGENT_STORE_ROOT) return null;
+    if (!primary || !process.env.SWARM_AGENT_STORE_ROOT) return null;
   try {
     return await (dependencies.createAgents ?? createProductionAgentService)({ root: workspaceRoot, storeRoot: process.env.SWARM_AGENT_STORE_ROOT,
       snapshot: () => provider.snapshot(), emit: publishAgents });
@@ -100,7 +122,7 @@ function publishAgents(snapshot: AgentEvent["snapshot"]): void {
 }
 
 function post(message: CoreResponse | CoreEvent | FileEvent | AgentEvent): void {
-  process.parentPort?.postMessage(message);
+  postMessage("type" in message && message.type === "agent.changed" ? message : { ...message, workspaceId });
 }
 
 function publish(type: CoreEvent["type"], snapshot: WorkspaceSnapshot): void {
@@ -171,36 +193,26 @@ const fileWatchers = new WorkspaceFileWatchers(
   })),
 );
 
-process.parentPort?.on("message", async (event) => {
-  if (dependencies.privateMessage?.(event.data)) return;
-  // This private utility-process control is not in the public request schema.
-  if (event.data?.type === "core.shutdown") {
-    if (!shuttingDown) {
-      shuttingDown = true;
-      journalLifetime.abort();
-      void providerPromise.then((provider) => provider.dispose());
-      try {
-        await Promise.all([
-          externalAgents.dispose(),
-          workLog.dispose(),
-          trustedPromise?.then((service) => service?.shutdown()),
-          agentServicePromise.then((service) => service?.shutdown()),
-          taskProviderPromise.then((tasks) => tasks.dispose()),
-          journalPending?.catch(() => {}),
-          ...[...worktreeInspections].map((pending) => pending.catch(() => {})),
-          buildGraphPromise.then((graph) => graph.dispose()),
-          targetBuildsPromise.then((builds) => builds.dispose()),
-          githubPrsPromise.then((prs) => prs.dispose()),
-          projectContextPromise.then((context) => context.dispose()),
-        ]);
-        process.parentPort?.postMessage({ type: "core.shutdown.ready" });
-      } catch { /* No successful shutdown attestation; supervisor's deadline owns fallback. */ }
-    }
-    return;
-  }
+async function shutdown(): Promise<void> {
+  shuttingDown = true;
+  journalLifetime.abort();
+  workingWorldObserver?.close();
+  fileWatchers.closeAll();
+  void providerPromise.then((provider) => provider.dispose());
+  await Promise.all([
+    externalAgents?.dispose(), workLog?.dispose(),
+    trustedPromise?.then((service) => service?.shutdown()),
+    agentServicePromise.then((service) => service?.shutdown()), taskProviderPromise.then((tasks) => tasks.dispose()),
+    journalPending?.catch(() => {}), ...[...worktreeInspections].map((pending) => pending.catch(() => {})),
+    buildGraphPromise.then((graph) => graph.dispose()), githubPrsPromise.then((prs) => prs.dispose()),
+    targetBuildsPromise.then((builds) => builds.dispose()),
+    projectContextPromise.then((context) => context.dispose()),
+  ]);
+}
+async function requestMessage(input: unknown): Promise<void> {
   let requestId = "invalid-request";
   try {
-    const request = parseCoreRequest(event.data);
+    const request = parseCoreRequest(input);
     requestId = request.requestId;
     if (shuttingDown) { post(fail(requestId, "CORE_UNAVAILABLE", "Core is shutting down; no operation was sent.")); return; }
     if (!requestIds.accept(requestId)) {
@@ -225,6 +237,7 @@ process.parentPort?.on("message", async (event) => {
     }
     if (request.type.startsWith("workLog.")) {
       try {
+        if (!workLog) throw new Error("Work Log belongs to the original workspace.");
         const result = await workLog.request(WorkLogRequestSchema.parse(request));
         post(parseCoreResponseForRequest({ ...ok(requestId, provider.snapshot()), workLog: result }, request));
       } catch (error) { post(fail(requestId, "WORK_LOG_UNAVAILABLE", error instanceof Error && error.message.length < 512 ? error.message : "Work Log unavailable")); }
@@ -232,6 +245,7 @@ process.parentPort?.on("message", async (event) => {
     }
     if (request.type.startsWith("trusted.")) {
       try {
+        if (!primary) throw new Error("Agent execution belongs to the original workspace.");
         trustedPromise ??= import("./agents/trusted-local").then(({ createTrustedLocalService }) =>
           createTrustedLocalService(workspaceRoot, () => provider.snapshot())).catch(() => null);
         const trusted = await trustedPromise;
@@ -248,6 +262,7 @@ process.parentPort?.on("message", async (event) => {
     }
     if (isExternalRequest(request)) {
       try {
+        if (!externalAgents) throw new Error("Agent observation belongs to the original workspace.");
         if (shuttingDown) throw new Error("Shutting down");
         const external = await externalAgents.request(request);
         if (shuttingDown) throw new Error("Shutting down");
@@ -443,9 +458,10 @@ process.parentPort?.on("message", async (event) => {
     const message = error instanceof Error ? error.message : "Unknown protocol error";
     post(fail(requestId, code, message.slice(0, 512)));
   }
-});
+}
 
-void providerPromise.then(async (provider) => {
+const ready = providerPromise.then(async (provider) => {
+  if (shuttingDown) throw new Error("Workspace closed during initialization.");
   workingWorldObserver = new WorkingWorldObserver(
     provider.snapshot().revisions.working.fingerprint,
     () => computeWorkingWorldFingerprint(workspaceRoot),
@@ -458,15 +474,14 @@ void providerPromise.then(async (provider) => {
   // A failed initial directory gets an explicit error observation with Refresh.
   void provider.listRepository({ protocolVersion: PROTOCOL_VERSION, requestId: "initial-repository", type: "repo.list", directory: "", page: 0, filter: "", refresh: true }, publish).catch(() => undefined);
   const service = await agentServicePromise;
-  process.parentPort?.postMessage({ type: "core.ready" });
+  if (primary) postMessage({ type: "core.ready" });
   const initial = await service?.request({ protocolVersion: PROTOCOL_VERSION, requestId: "initial-agent-snapshot", type: "agent.snapshot" });
-  publishAgents(initial?.ok && initial.value.kind === "snapshot" ? initial.value.snapshot : unavailableAgentSnapshot());
-}).catch((error) => {
-  console.error("Local core failed to open the workspace", error);
-  process.parentPort?.postMessage({ type: "core.failed" });
+  if (primary) publishAgents(initial?.ok && initial.value.kind === "snapshot" ? initial.value.snapshot : unavailableAgentSnapshot());
+  return provider.snapshot();
 });
 
-process.on("exit", () => {
+function close(): void {
+  shuttingDown = true; journalLifetime.abort();
   void buildGraphPromise.then((graph) => graph.dispose());
   void targetBuildsPromise.then((builds) => builds.dispose());
   void githubPrsPromise.then((prs) => prs.dispose());
@@ -474,5 +489,6 @@ process.on("exit", () => {
   void providerPromise.then((provider) => provider.dispose());
   workingWorldObserver?.close();
   fileWatchers.closeAll();
-});
+}
+return { ready, request: requestMessage, snapshot: async () => (await providerPromise).snapshot(), shutdown, close };
 }

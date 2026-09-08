@@ -54,6 +54,7 @@ function TopologyNode({ data }: NodeProps) {
 const nodeTypes = { topology: TopologyNode };
 
 interface GraphPaneProps {
+  workspaceId?: string;
   graph: GraphSlice;
   focus: FocusRef;
   mappings: NavigationMapping[];
@@ -84,7 +85,7 @@ function RepositoryGraphPane(props: GraphPaneProps) {
   return <GraphPaneContent {...presented} />;
 }
 
-const GraphPaneContent = memo(function GraphPaneContent({ graph, focus, mappings, onFocus, onActivate, onConnectionFocus, onReconcile, reconciliationRunning, repositoryNavigation, repositoryCameraIntent, onNavigateDirectory, onInspectFocus, buildLinkSnapshot, onBuildLinksVisibility, buildGraphStatus, mockAgents = false, mockGraphVersion = 0, reframeVersion = 0 }: GraphPaneProps) {
+const GraphPaneContent = memo(function GraphPaneContent({ workspaceId, graph, focus, mappings, onFocus, onActivate, onConnectionFocus, onReconcile, reconciliationRunning, repositoryNavigation, repositoryCameraIntent, onNavigateDirectory, onInspectFocus, buildLinkSnapshot, onBuildLinksVisibility, buildGraphStatus, mockAgents = false, mockGraphVersion = 0, reframeVersion = 0 }: GraphPaneProps) {
   const adapted = useMemo(() => adaptGraph(graph, focus, mappings), [graph, focus, mappings]);
   const [buildLinksVisible, setBuildLinksVisible] = useState(false);
   useEffect(() => { onBuildLinksVisibility?.(buildLinksVisible); return () => onBuildLinksVisibility?.(false); }, [buildLinksVisible, onBuildLinksVisibility]);
@@ -96,7 +97,7 @@ const GraphPaneContent = memo(function GraphPaneContent({ graph, focus, mappings
   const selectedBuild = buildEdges.find((edge) => edge.id === selectedBuildLink);
   const [repositoryView, setRepositoryView] = useState<"tree" | "map">("tree");
   const explorer = Boolean(graph.directory && repositoryNavigation);
-  const camera = useDirectoryCamera(graph.directory, repositoryCameraIntent);
+  const camera = useDirectoryCamera(graph.directory, repositoryCameraIntent, workspaceId ? `${workspaceId}:${graph.topologyId}` : undefined);
   const flow = useRef<GraphCamera | null>(null);
   const cancelReframe = useGraphReframe(flow, reframeVersion);
   const canvas = useRef<HTMLDivElement>(null);
