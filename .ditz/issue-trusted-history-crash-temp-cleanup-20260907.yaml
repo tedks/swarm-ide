@@ -1,12 +1,13 @@
 id: trusted-history-crash-temp-cleanup-20260907
 title: Clean up trusted history temporary files left by abrupt process termination
-desc: FileTrustedLocalStore uses atomic private temporary-file rename and removes
-  its current temporary file on ordinary failure. Abrupt process death between temporary-file
-  creation and rename can retain an owned .history.json.UUID.tmp snapshot across restarts.
-  Current 8 MiB bound covers the canonical snapshot, not accumulated crash leftovers.
-  Native F1 store review found no Critical or Important issue under the one-owner
-  trusted-local assumption; track a small owned-file-only bounded startup cleanup,
-  preserving unrelated files and canonical history, with crash recovery coverage.
+desc: FileTrustedLocalStore writes through a private temporary file, renames it atomically,
+  and removes its current temporary file on ordinary failure. If the process dies
+  between creation and rename, an owned .history.json.UUID.tmp snapshot can remain
+  across restarts. The current 8 MiB limit covers the canonical snapshot, not accumulated
+  crash leftovers. The native F1 store review found no Critical or Important issue
+  under the assumption that trusted-local history has one owner. Add a small startup
+  cleanup with limits on its work and restricted to files owned by the store. Preserve
+  unrelated files and canonical history, and cover crash recovery in tests.
 type: task
 component: agents
 release:
@@ -19,4 +20,8 @@ log_events:
 - time: 2026-09-08T00:41:26-00:00
   who: Ted Smith
   what: created
+  comment: ""
+- time: 2026-09-08T04:32:15-00:00
+  who: Ted Smith
+  what: updated description
   comment: ""
