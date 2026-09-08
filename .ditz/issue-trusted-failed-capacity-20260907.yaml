@@ -14,3 +14,14 @@ log_events:
   who: Ted Smith
   what: created
   comment: ""
+- time: 2026-09-08T01:24:45-00:00
+  who: Ted Smith
+  what: commented
+  comment: 'Static actual joined F1 evidence: TrustedLocalSession.close preserves
+    failed even with confirmed transport cleanup; TrustedLocalService.refresh archives
+    only statusclosed, so failed sessions remain in eight-live count. ServiceStop
+    also leavesfailedsticky, so addingUIStop would notfreecapacity. Native seam reviewer
+    classified availability follow-up/nonblocking for bounded ordinary joined proof.
+    Restart archives history and stops other liveconversations; no automaticresume.
+    Future fix must distinguish executionfailure from confirmedownedcleanup, not indiscriminately
+    archiveunknownprocesses. No realfailure/modeltest claimed.'
