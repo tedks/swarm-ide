@@ -18,3 +18,15 @@ log_events:
   who: Ted Smith
   what: started
   comment: ""
+- time: 2026-09-08T21:57:57-00:00
+  who: Ted Smith
+  what: commented
+  comment: 'PR139 implements node-scoped service/build/task camera following, exact
+    source membership, measured hidden readiness and manual-pan precedence. Reviewed
+    base174b262 normally joined; service sprite toolbar grid defect fixed with exact
+    RED/GREEN. Final code e7cdfc4: camera51/task38/sprites52+selected-map checks and
+    both types PASS; native convergence CLEAN. Actual owned packaged source/service/build
+    and independently verified pan retention PASS5.090s, zero renderer errors/cleanup1.
+    Earlier failed driver/grid proofs retained separately. Same-ID sidebar re-click
+    follow-up filed swarm-task-repeat-sidebar-reveal. Pushed ready PR awaits ROOT
+    normal landing/adoption; no shared app or model turn.'
