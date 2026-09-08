@@ -99,6 +99,11 @@ any repository mounted writable into it.
 Docker build's Nix setting `sandbox=false` describes Nix build isolation *inside*
 Docker's builder. It does not disable Electron's runtime sandbox.
 
+The image installs the frozen lockfile once before Bazel, then disables pnpm's
+automatic dependency re-install before each build command. Dependency versions
+remain the frozen inputs; this avoids seven redundant install cycles during
+bundling, not a change to the app's runtime or host package-manager settings.
+
 ## Architecture and tested limits
 
 The Dockerfile selects the build machine's Linux architecture, without forcing
@@ -119,10 +124,14 @@ run. If a platform denies user namespaces, report its exact error and use the
 From the source checkout with Nix installed:
 
 ```bash
-nix develop --command bazel test --jobs=3 //tools/container:checks
+nix develop --command bazel run --jobs=3 //tools/container:checks
 docker compose build
 nix develop --command bazel run --jobs=3 //tools/container:smoke
 ```
+
+The checks target is a manual, uncached command: it reads the actual checkout's
+Dockerfile, Compose and ignore rules each time. It does not pretend these root
+configuration files are cached Bazel test inputs or belong to `bazel test //...`.
 
 The smoke target uses the built `swarm-ide-demo:local` image, a unique container,
 owned virtual desktop and port 55418. Override `SWARM_CONTAINER_PORT` if needed.

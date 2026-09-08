@@ -2,9 +2,12 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
+import { resolve } from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { disposeContainer } from './cleanup.mjs';
-const read = (name) => readFileSync(new URL(name, import.meta.url), 'utf8');
+const read = (name) => readFileSync(name.startsWith('../../')
+  ? resolve(process.env.SWARM_CONTAINER_SOURCE_ROOT, name.slice(6))
+  : new URL(name, import.meta.url), 'utf8');
 
 test('localhost display transport, no host control mounts or added capabilities', () => {
   const compose = read('../../compose.yaml');

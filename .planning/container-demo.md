@@ -9,7 +9,8 @@ An evaluator with Docker can build this checkout and open the actual Electron ID
 ## Progress
 
 - [x] 2026-09-08: Inspected the existing desktop bundle, Docker availability and official Electron, Docker, Nix and noVNC guidance.
-- [ ] Build a nonroot runtime from pinned repository dependencies and include a small editable demo repository.
+- [x] 2026-09-08 14:01Z: Implemented nonroot runtime definition and included Git/design demo; actual Docker app bundle now builds in 8 seconds after one frozen install.
+- [ ] Complete runtime image and actual browser proof.
 - [ ] Exercise the actual container, browser transport and sandbox; run focused checks and native review.
 - [ ] Document architecture limits, push a ready PR and hand off to ROOT.
 
@@ -19,11 +20,13 @@ Docker Engine/Desktop is already installed and the evaluator has source access. 
 
 ## Surprises & Discoveries
 
-The app requires `window.swarm` from Electron preload; serving Vite in a browser is not a working demo. The existing `//:desktop-bundle` tar contains the complete app/main/preload/core/renderer code but not Electron or Git/Bazel. Docker's default syscall policy can deny Chromium's namespace sandbox, so this must be exercised before a launch claim. The host has Docker 29.6.2 on Linux/amd64; a local proof is not a macOS or arm64 proof.
+The app requires `window.swarm` from Electron preload; serving Vite in a browser is not a working demo. The existing `//:desktop-bundle` tar contains the complete app/main/preload/core/renderer code but not Electron or Git/Bazel. Docker's default syscall policy denies the namespace preflight; the scoped profile passes it. The owned-process helper additionally needs a proc mount that remains denied, so live build-query/agent-run availability is explicitly outside this first browser demo. The host has Docker 29.6.2 on Linux/amd64; a local proof is not a macOS or arm64 proof.
+
+The initial recursive bazel-* ignore excluded a real source module; correcting it to root outputs fixed that bundle failure. Bazel's daemon shutdown cannot reap its daemon correctly in the Docker build stage, so use `--batch`. Most build time was pnpm spawning install before every exec; after the explicit frozen install, disabling only that automatic repetition changed actual Bazel duration from434.639s to8.032s.
 
 ## Decision Log
 
-Use Xvfb, x11vnc and noVNC/websockify instead of creating a privileged HTTP API. Build runtime dependencies from the existing flake lock in `tools/container/runtime.nix`; retain the existing Bazel desktop bundle contract independently of the parallel Linux installer. Publish only localhost port 6080 and no raw VNC port. Default to a disposable included Git repository with named-volume persistence, not a host source mount.
+Use Xvfb, x11vnc and noVNC/websockify instead of creating a privileged HTTP API. Build runtime dependencies from the existing flake lock in `tools/container/runtime.nix`; retain the existing Bazel desktop bundle contract independently of the parallel Linux installer. Publish only localhost port 6080 and no raw VNC port, and require a fresh generated desktop password. Default to a disposable included Git repository with named-volume persistence, not a host source mount. Do not add mount authority merely to make owned process controls work; document the boundary and track it in `swarm-container-owned-processes`.
 
 ## Context and Orientation
 
@@ -35,7 +38,7 @@ First add the build/runtime definition, startup script and tiny demo. The startu
 
 ## Concrete Steps
 
-From this designated worktree run `nix develop --command bazel test --jobs=3 //tools/container:checks` for direct checks. Run `docker compose up --build` as the public Docker-only entry; its image build invokes Nix and Bazel. For recorded local acceptance run `nix develop --command bazel run --jobs=3 //tools/container:smoke`. Open `http://127.0.0.1:6080/vnc.html?autoconnect=1&resize=scale` after readiness. Use `docker compose down` to stop; do not remove the named volume unless intentionally discarding saved demo edits.
+From this designated worktree run `nix develop --command bazel run --jobs=3 //tools/container:checks` for direct checks. This manual uncached target reads actual root Docker configuration every time without requiring root BUILD changes or claiming global test coverage. Run `docker compose up --build` as the public Docker-only entry; its image build invokes Nix and Bazel. For recorded local acceptance run `nix develop --command bazel run --jobs=3 //tools/container:smoke`. Open `http://127.0.0.1:6080/vnc.html?autoconnect=1&resize=scale` after readiness. Use `docker compose down` to stop; do not remove the named volume unless intentionally discarding saved demo edits.
 
 ## Validation and Acceptance
 

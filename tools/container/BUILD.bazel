@@ -2,11 +2,11 @@ package(default_visibility = ["//visibility:public"])
 
 filegroup(name = "sources", srcs = glob(["**"], exclude = ["BUILD.bazel"]))
 
-sh_test(
+sh_binary(
     name = "checks",
     srcs = ["checks.sh"],
-    data = [":sources", "//:Dockerfile", "//:compose.yaml", "//:.dockerignore"],
-    tags = ["local"],
+    data = [":sources"],
+    tags = ["manual", "local"],
 )
 
 sh_binary(
