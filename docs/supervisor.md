@@ -132,3 +132,11 @@ evidence and checkpoint failure cleanup as risks; fresh cursor/turn correlation
 and unconditional owned-child cleanup address them. Live services are not adopted
 or restarted by this change. Registering sessions remains the separate existing
 session-registration tool.
+
+Focused local verification passes 17 standard-library tests via
+`//tools/supervisor:unit`, including actual CLI execution with a fake queue,
+split JSONL appends, inherited/wrong-model startup rejection, catch-up after
+steering, watcher failure followed by recap, ambiguous delivery without replay,
+status routing and TERM-resistant owned-helper cleanup. The catch-up regression
+was first reproduced as one failing test alongside 16 passes; latching the
+verified assignment turn made all 17 pass. Native fix-delta review is clean.

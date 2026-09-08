@@ -118,6 +118,58 @@ test('old recap before cursor cannot complete new step', async (t) => {
   assert.match((await f.messages()).at(-1)[4], /Recap deadline/);
 });
 
+test('inherited compaction before launch cursor cannot prove child compaction', async (t) => {
+  const inherited = startup();
+  const later = line('event_msg', { type: 'task_started', turn_id: 'new-turn' }) +
+    line('turn_context', { turn_id: 'new-turn', model: 'gpt-6-astra' }) +
+    line('event_msg', { type: 'user_message', message: 'do task' });
+  const f = await fixture(t, { rollout: inherited + later });
+  await writeFile(path.join(f.step, 'startup-cursor'), String(Buffer.byteLength(inherited)));
+  await writeFile(path.join(f.step, 'recap-cursor'), String(Buffer.byteLength(inherited)));
+  assert.equal(await supervise(f.config), 1);
+  await assert.rejects(access(path.join(f.step, 'ready')));
+});
+
+test('split append cannot borrow prior model before current assignment context arrives', async (t) => {
+  const prefix = line('session_meta', { id: 'child', forked_from_id: 'parent' }) +
+    line('turn_context', { model: 'gpt-6-astra', turn_id: 'old' }) +
+    line('event_msg', { type: 'context_compacted' }) +
+    line('event_msg', { type: 'task_started', turn_id: 'new' }) +
+    line('event_msg', { type: 'user_message', message: 'do task' });
+  const f = await fixture(t, { rollout: prefix });
+  const run = supervise(f.config);
+  await pause(50);
+  assert.equal((await f.messages()).length, 0);
+  await appendFile(f.rollout, line('turn_context', { turn_id: 'new', model: 'wrong' }));
+  assert.equal(await run, 1);
+  await assert.rejects(access(path.join(f.step, 'ready')));
+});
+
+test('catching up after later steering retains the already verified assignment turn', async (t) => {
+  const later = line('event_msg', { type: 'task_started', turn_id: 'steering-turn' }) +
+    line('turn_context', { turn_id: 'steering-turn', model: 'gpt-6-astra' }) +
+    line('event_msg', { type: 'user_message', message: 'Please continue' });
+  const f = await fixture(t, { rollout: startup() + later + JSON.stringify(message(marker)) + '\n' });
+  assert.equal(await supervise(f.config), 0);
+  assert.equal(JSON.parse(await readFile(path.join(f.step, 'ready'), 'utf8')).turn, 'task-turn');
+});
+
+test('status command failure sends parent failure wake and releases own watcher before lock', async (t) => {
+  const f = await fixture(t, { config: { statusSeconds: 0.05, statusGraceSeconds: 0 } });
+  const fake = path.join(f.directory, 'status-fake.mjs');
+  await writeFile(fake, `import {appendFileSync} from 'node:fs';\nappendFileSync(process.argv[2],JSON.stringify(process.argv.slice(3))+'\\n');\nprocess.exit(process.argv.includes('child')?8:0);\n`);
+  f.config.codexCommand = [process.execPath, fake, f.calls];
+  const watcher = path.join(f.directory, 'watcher.mjs');
+  const watcherPid = path.join(f.directory, 'watcher.pid');
+  await writeFile(watcher, `import {writeFileSync} from 'node:fs';writeFileSync(process.argv[2],String(process.pid));process.on('SIGTERM',()=>{});setInterval(()=>{},100);`);
+  f.config.watcherCommand = [process.execPath, watcher, watcherPid];
+  await assert.rejects(supervise(f.config), /Command exited 8/);
+  assert.match((await f.messages()).at(-1)[4], /supervisor tracking stopped/);
+  await assert.rejects(access(path.join(f.config.stateDirectory, 'supervisor.lock')));
+  const pid = Number(await readFile(watcherPid, 'utf8'));
+  assert.throws(() => process.kill(pid, 0), /ESRCH/);
+});
+
 test('failed optional watcher wakes parent but built-in reader still captures later completion', async (t) => {
   const f = await fixture(t, { config: { watcherCommand: [process.execPath, '-e', 'process.exit(7)', '--'] } });
   const run = supervise(f.config);

@@ -197,11 +197,17 @@ export async function supervise(config, signal = new AbortController().signal) {
             }
             for (const record of await entry.startReader.read(entry.rollout)) {
               if (record.type !== 'session_meta') startupProof(entry.proof, record, entry.assignment);
+              const p = entry.proof;
+              if (!entry.verifiedProof && typeof p.id === 'string' && p.id !== config.parentSession && p.parent === config.parentSession && p.model === config.model && p.compacted && p.exactTask) {
+                // Catch-up may include later steering turns. Preserve the exact
+                // successful startup turn instead of inspecting only the tail.
+                entry.verifiedProof = structuredClone(p);
+              }
             }
-            const p = entry.proof;
-            if (typeof p.id === 'string' && p.id !== config.parentSession && p.parent === config.parentSession && p.model === config.model && p.compacted && p.exactTask) {
+            if (entry.verifiedProof) {
+              entry.proof = entry.verifiedProof;
               entry.ready = Date.now();
-              await jsonSave(step('ready'), p);
+              await jsonSave(step('ready'), entry.proof);
               await notify(`${name}:startup`, config.parentSession, `STARTUP VERIFIED — ${name} (${role.window}) consumed its exact assignment after compaction as ${config.model}. Read ${step('ready')}. Startup is not completion.`);
               if (config.watcherCommand) {
                 entry.watcherAbort = new AbortController();
