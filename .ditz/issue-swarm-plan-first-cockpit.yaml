@@ -22,5 +22,13 @@ log_events:
   who: Ted Smith
   what: started
   comment: ""
+- time: 2026-09-08T13:36:02-00:00
+  who: Ted Smith
+  what: commented
+  comment: User asks for registered-agent tabs in the conversation pane and keyboard
+    cycling. Proposed Ctrl-Tab/Shift-Ctrl-Tab scoped to agent pane; preserve desktop
+    Alt-Tab, current focus, per-agent drafts and queued text. Switching or closing
+    UI tabs must not send or terminate agents. Scoped steering sent to cockpit owner;
+    see agent-tabs-feedback.md.
 blocks:
 - swarm-usability-join
