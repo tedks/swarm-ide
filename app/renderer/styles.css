@@ -193,6 +193,9 @@ button.truth-dot:disabled { cursor: wait; opacity: 0.72; }
 .fleet-file-link { margin-top: 4px; font-size: 11px; overflow-wrap: anywhere; }
 .fleet-event-detail header, .fleet-event-actions { display: flex; justify-content: space-between; gap: 10px; }
 .fleet-event-detail pre { padding: 10px; background: #081714; overflow: auto; font-size: 12px; }
+.design-center { grid-column: 2; grid-row: 3; min-height: 0; min-width: 0; overflow: hidden; }
+.design-center[hidden] { display: none; }
+.design-open-button { background: #19322a; color: #cae8d7; border: 1px solid #3a6452; border-radius: 4px; padding: 5px 8px; cursor: pointer; }
 .topology-node { width: 148px; min-width: 0; min-height: 48px; padding: 8px 10px; display: flex; flex-direction: column; gap: 2px; overflow: hidden; border: 1px solid #31504d; border-radius: 6px; background: linear-gradient(145deg, #142222, #0c1718); color: #d0dedb; box-shadow: 0 5px 20px #0005; }
 .topology-node.is-focused { border-color: var(--green); box-shadow: 0 0 0 1px #57d3ad44, 0 0 22px #57d3ad22; }
 .topology-node.is-ambiguous { border-style: dashed; }

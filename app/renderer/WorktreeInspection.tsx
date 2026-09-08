@@ -12,7 +12,7 @@ export function WorktreeInspection({ selection, bridge, generation, onReturn }: 
   const [result, setResult] = useState<WorktreeInspectionResult | null>(null);
   const [notice, setNotice] = useState("");
   const [refresh, setRefresh] = useState(0);
-  const [view, setView] = useState<"source" | "diff">(selection.patch ? "diff" : "source");
+  const [view, setView] = useState<"source" | "diff" | "patch">(selection.patch ? "patch" : "source");
   const heading = useRef<HTMLHeadingElement>(null);
   useEffect(() => { heading.current?.focus(); }, [selection]);
   useEffect(() => {
@@ -32,19 +32,20 @@ export function WorktreeInspection({ selection, bridge, generation, onReturn }: 
     return () => { current = false; };
   }, [bridge, generation, selection.sessionId, selection.path, refresh]);
   const shown = result?.sessionId === selection.sessionId && result.path === selection.path ? result : null;
-  const diff = selection.patch ?? shown?.diff ?? "";
+  const diff = view === "patch" ? selection.patch ?? "" : shown?.diff ?? "";
   return <section className="worktree-inspection" aria-label="Agent worktree file">
     <header><div><small>{shown?.label ?? "Agent worktree"} · read-only</small><h2 ref={heading} tabIndex={-1}>{selection.path}</h2></div>
       <button onClick={onReturn}>Return to source</button></header>
     {shown ? <p className="worktree-location" title={shown.worktree}>{shown.worktree}</p> : null}
     <nav aria-label="Worktree file views"><button aria-pressed={view === "source"} onClick={() => setView("source")}>Source</button>
-      <button aria-pressed={view === "diff"} onClick={() => setView("diff")}>{selection.patch ? "Recorded patch" : "Worktree diff"}</button>
+      {selection.patch ? <button aria-pressed={view === "patch"} onClick={() => setView("patch")}>Recorded patch</button> : null}
+      <button aria-pressed={view === "diff"} onClick={() => setView("diff")}>Worktree diff</button>
       <button onClick={() => setRefresh((value) => value + 1)}>Refresh file</button></nav>
     {notice ? <p role="status">{notice}</p> : !shown ? <p role="status">Reading worktree…</p> : null}
     {view === "source" && shown ? shown.content === null ? <p>File no longer exists. See its worktree diff.</p> : <pre className="worktree-source" tabIndex={0}>{shown.content}</pre> : null}
-    {view === "diff" && (shown || selection.patch) ? <div className="worktree-diff" tabIndex={0}>
-      {!selection.patch ? <p>Current changes against HEAD in this worktree.</p> : null}
-      {!selection.patch && shown?.diffNotice ? <p role="status">{shown.diffNotice}</p> : null}
+    {view !== "source" && (shown || selection.patch) ? <div className="worktree-diff" tabIndex={0}>
+      {view === "diff" ? <p>Current changes against HEAD in this worktree.</p> : null}
+      {view === "diff" && shown?.diffNotice ? <p role="status">{shown.diffNotice}</p> : null}
       {diff ? <pre>{diff.split("\n").map((line, index) => <span key={index} className={line.startsWith("+") ? "patch-addition" : line.startsWith("-") ? "patch-deletion" : ""}>{line}{"\n"}</span>)}</pre> : <p>No tracked changes for this file.</p>}
     </div> : null}
   </section>;

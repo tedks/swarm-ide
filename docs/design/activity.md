@@ -13,33 +13,32 @@ why it matters, what was checked and what remains. Active entries lead back to t
 running agents; completed sessions remain below. A completed Ditz issue should
 retain these outcome notes in-repo, not just disappear from the live roster.
 
-## Current implementation and next increment
+## Current implementation
 
 | Part | Actual source | Current behavior |
 | --- | --- | --- |
-| Observed agent activity | [ObservedActivity.tsx](../../app/renderer/external-agents/ObservedActivity.tsx), [external-agents.ts](../../core/external-agents.ts) | Bounded selected-session transcript tail |
+| Observed agent activity | [ObservedActivity.tsx](../../app/renderer/external-agents/ObservedActivity.tsx), [external-agents.ts](../../core/external-agents.ts), [FleetActivityView.tsx](../../app/renderer/FleetActivityView.tsx) | Bounded whole-fleet activity, with separate selected-session conversation |
+| Online Work Log | [WorkLogPanel.tsx](../../app/renderer/work-log/WorkLogPanel.tsx), [service.ts](../../core/work-log/service.ts) | Explicit Start/Stop, configurable summary worker and durable outcomes |
 | Recorded logical journal | [JournalPanel.tsx](../../app/renderer/changelog/JournalPanel.tsx), [changelog.ts](../../core/changelog.ts) | Reads validated `.swarm/changelog.json` |
 | Journal authoring | [changelog-authoring.ts](../../core/changelog-authoring.ts) | Exports evidence and validates supervised summary output |
 | GitHub PR view | [GithubPullRequests.tsx](../../app/renderer/changelog/GithubPullRequests.tsx), [github-prs.ts](../../core/github-prs.ts) | Deliberate bounded refresh through ordinary `gh` |
 | Readable times | [ActivityTime.tsx](../../app/renderer/ActivityTime.tsx) | Short visible time with full timestamp on hover |
 
-The saved journal is operational, but it is not a running in-app summarizer.
-K7's planned Work Log watches registered work at meaningful boundaries, batches
+The saved journal is operational, but it is not the running in-app summarizer.
+The separate Work Log watches registered work at meaningful boundaries, batches
 new evidence and uses one in-flight configurable harness/model worker, default
-Codex `gpt-5.6-luna`. It should write deduplicated Ditz accomplishment notes through
-the CLI. That online producer is prospective until integrated. F7 supplies the
+Codex `gpt-5.6-luna`. It writes deduplicated Ditz accomplishment notes through
+the CLI. F7 supplies the
 separate granular whole-fleet Activity stream.
 
-K7's proposed pipeline is concrete: known registered transcript tails → meaningful
+The pipeline is: known registered transcript tails → meaningful
 turn boundaries → one summary → human outcome entries in `.swarm/work-log.json`.
-Its planned modules are `protocol/work-log.ts`, `core/work-log/*` and
-`app/renderer/work-log/WorkLogPanel`. The panel offers explicit Start/Stop and
+Its modules are [protocol/work-log.ts](../../protocol/work-log.ts), [core/work-log/service.ts](../../core/work-log/service.ts) and
+[WorkLogPanel.tsx](../../app/renderer/work-log/WorkLogPanel.tsx). The panel offers explicit Start/Stop and
 configuration; reading its state alone must not launch a model. An explicit
 Record outcome action appends an idempotent Ditz comment to a known completed
 issue; it does not close worker issues. Private transcript bytes remain local.
 This is a small producer over the registered roster, not another fleet platform.
-These module names describe K7's integration seam, not files present in this
-baseline; promote them to source links when that implementation lands.
 
 ## Build connections
 
@@ -50,9 +49,8 @@ The listed modules feed `//:quality_sources` and `//:desktop-bundle`.
 Real summaries and controlled transcript fixtures must remain distinguishable in
 verification without covering the normal UI in diagnostic prose.
 
-The proposed Work Log modules use the same root source/bundle targets. Its
-dedicated `//tools/work-log:check` target is forthcoming and is not yet a current
-build-graph node in this design index.
+The Work Log modules use the same root source/bundle targets. Its dedicated
+`//tools/work-log:check` target runs the focused service/panel checks.
 
 See [logical changelog](../logical-changelog.md) for saved-report behavior and
 [the operator plan](../swarm-operator-hour.md) for the new online Work Log.

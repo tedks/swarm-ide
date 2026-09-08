@@ -9,7 +9,7 @@ import { initialSnapshot } from "../fixtures/world";
 import { PROTOCOL_VERSION, type CoreRequest, type CoreResponse } from "../protocol/schema";
 import { JournalPanel } from "../app/renderer/changelog/JournalPanel";
 import { syntheticJournal } from "./journal-fixture";
-import { FleetActivityView } from "../app/renderer/FleetActivityView";
+import { FleetActivityView, eventRepositoryPath } from "../app/renderer/FleetActivityView";
 import type { ExternalDetail } from "../protocol/external-agents";
 
 afterEach(cleanup);
@@ -32,6 +32,8 @@ describe("operator cockpit inspection", () => {
       ancestry: "root" as const, observationId: "a".repeat(64), observedAt: "2026-09-08T04:00:00Z", message: "", contextPaths: [], worktree: "/repos/child" };
     const entry = { id: "edit-1", at: "2026-09-08T04:00:00Z", kind: "tool-call" as const, attribution: "recorded-tool-event" as const,
       text: "Edited app/file.ts", path: "app/file.ts", patch: "+child-only" };
+    expect(eventRepositoryPath(session, "/repos/child/app/file.ts")).toBe("app/file.ts");
+    expect(eventRepositoryPath(session, "/repos/child-other/app/file.ts")).toBe("/repos/child-other/app/file.ts");
     const detail: ExternalDetail = { session, entries: [entry], handoff: "unavailable", coverage: { tailBytes: 200, partial: false, omittedRecords: 0, message: "" } };
     const onInspect = vi.fn(), onSelect = vi.fn();
     render(<FleetActivityView fleet={[detail]} selected={null} onSelect={onSelect} onAgent={vi.fn()} onInspect={onInspect} />);

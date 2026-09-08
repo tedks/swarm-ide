@@ -92,25 +92,16 @@ async function main() {
   await click(sessionSelector);
   await until(() => run((id) => document.querySelector('[aria-label="External agent information"]')?.dataset.externalSession === id,
     repository.target.id), 'selected real session');
-  // The Context details must be exposed by the real observer. Never inject a
-  // renderer row or call worktree.inspect directly to bypass the product join.
-  await until(() => run((filename) => [...document.querySelectorAll('.external-information button')]
-    .some((e) => e.textContent === filename), repository.target.path), 'registered cross-worktree Context path');
-  const contextSelectors = await run((filename) => {
-    const info = document.querySelector('[aria-label="External agent information"]');
-    const button = [...info.querySelectorAll('button')].find((e) => e.textContent === filename);
-    if (!button) throw new Error('Registered worktree Context path is not exposed by the current observer');
-    const details = button.closest('details');
-    return { summaryIndex: [...info.querySelectorAll(':scope > details')].indexOf(details) + 1,
-      buttonIndex: [...details.querySelectorAll('button')].indexOf(button) + 1, closed: !details.open };
-  }, repository.target.path);
-  // All details are siblings in the information surface; :nth-of-type is stable
-  // relative to details, not to mixed header/nav children.
-  const contextDetails = `.external-information > details:nth-of-type(${contextSelectors.summaryIndex})`;
-  if (contextSelectors.closed) await click(`${contextDetails} > summary`);
+  // Follow an actual recorded file event through the persistent Activity log.
+  // No renderer injection or direct bridge call supplies the navigation.
+  await click('.dock-activity .activity-open-heading');
+  const recordedPath = path.join(repository.target.root, repository.target.path);
+  const activityFile = `[data-activity-file=${JSON.stringify(recordedPath)}][data-session=${JSON.stringify(repository.target.id)}]`;
+  await until(() => run((s) => Boolean(document.querySelector(s)), activityFile), 'actual agent edit in live Activity');
   const before = await fs.readFile(path.join(repository.target.root, repository.target.path), 'utf8');
   stage = 'cross-worktree inspection';
-  await click(`${contextDetails} > button:nth-of-type(${contextSelectors.buttonIndex})`);
+  await click(activityFile);
+  await click('[aria-label="Worktree file views"] button:first-child');
   await until(() => run(() => Boolean(document.querySelector('.worktree-source'))), 'actual worktree source');
   const inspected = await run(() => ({ text: document.querySelector('.worktree-source').textContent,
     root: document.querySelector('.worktree-location').textContent, label: document.querySelector('.worktree-inspection header small').textContent,
@@ -124,6 +115,9 @@ async function main() {
   await fs.writeFile(path.join(evidence, 'agent-worktree-source.png'), (await wc.capturePage()).toPNG());
   await click('[aria-label="Worktree file views"] button:nth-of-type(2)');
   await until(() => run(() => Boolean(document.querySelector('.worktree-diff'))), 'worktree diff view');
+  assert((await run(() => document.querySelector('.worktree-diff').textContent)).includes('*** Begin Patch'), 'Recorded patch is shown separately from current worktree diff');
+  await fs.writeFile(path.join(evidence, 'agent-recorded-patch.png'), (await wc.capturePage()).toPNG());
+  await click('[aria-label="Worktree file views"] button:nth-of-type(3)');
   assert((await run(() => document.querySelector('.worktree-diff').textContent)).includes('Current changes against HEAD in this worktree.'));
   await fs.writeFile(path.join(evidence, 'agent-worktree-diff.png'), (await wc.capturePage()).toPNG());
   stage = 'retained local source';

@@ -46,6 +46,11 @@ it("Ctrl+W closes the agent inspection, not the underlying editor or file watch"
   fireEvent.click(screen.getByRole("button", { name: "Inspect C7" }));
   fireEvent.click(screen.getByRole("button", { name: "Inspect agent file" }));
   await screen.findByText("child source");
+  fireEvent.click(screen.getByRole("button", { name: "System design" }));
+  expect(document.querySelector<HTMLElement>(".design-center")?.hidden).toBe(false);
+  fireEvent.click(screen.getByRole("button", { name: "Worktree · file.ts" }));
+  await screen.findByText("child source");
+  expect(document.querySelector<HTMLElement>(".design-center")?.hidden).toBe(true);
   const before = request.mock.calls.length;
   fireEvent.keyDown(window, { key: "w", ctrlKey: true });
   expect(screen.queryByRole("region", { name: "Agent worktree file" })).toBeNull();
