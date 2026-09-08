@@ -18,3 +18,13 @@ log_events:
   who: Ted Smith
   what: started
   comment: ""
+- time: 2026-09-08T00:57:55-00:00
+  who: Ted Smith
+  what: commented
+  comment: PR73 ready e1c600a; ROOT-cleared F1 a6e7c8c and T5 ca1fd9a normally composed.
+    18 focused tests passed including exact native recovery RED/GREEN; native fix-delta
+    CLEAN. Owned strengthened controlled fleet proof2.127s cleanup1 zeroerrors and
+    no provider/model, retaining source logical cursor, independent run drafts, existing
+    agent draft and graph DOM/cameras. Actual deterministic protocol peer one-run
+    proof also passed. Full local quality underway; ROOT owns landing and real F1
+    runtime join.
