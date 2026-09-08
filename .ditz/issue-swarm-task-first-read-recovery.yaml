@@ -1,0 +1,23 @@
+id: swarm-task-first-read-recovery
+title: Recover automatically after the first task-list read fails
+desc: TaskBridgeClient currently marks needsInitial false before a first full scan
+  succeeds. Without any usable cached task list, subsequent visible/focus/reopen checks
+  remain cheap checks and cannot populate the list, so manual Refresh or core reconnection
+  is required. Existing test task-client.test.ts deliberately preserves this behavior.
+  Separate from PR113 changed-ref automatic adoption for an existing list. Follow
+  up with one bounded automatic recovery policy and direct failed-first-read then
+  healthy metadata test; no general retry scheduler. This is source/test policy evidence,
+  not proof of the operator historical startup error.
+type: bugfix
+component: default
+release:
+reporter: Ted Smith <tedks@riseup.net>
+status: unstarted
+disposition:
+creation_time: 2026-09-08T13:51:26-00:00
+references: []
+log_events:
+- time: 2026-09-08T13:51:26-00:00
+  who: Ted Smith
+  what: created
+  comment: ""
