@@ -1,0 +1,20 @@
+id: swarm-operator-demo
+title: Demonstrate root plus two real workers through the cockpit
+desc: 'ROOT: On merged preview, open design/task, watch real root+2 worktree children,
+  inspect timestamped events and correct source/diff, steer supported session or open
+  terminal, see actual completion Work Log persisted in Ditz. Direct checks, relevant
+  native review, installation handoff. Do not call fixtures live; no public repo migration
+  in this step.'
+type: task
+component: default
+release:
+reporter: Ted Smith <tedks@riseup.net>
+status: unstarted
+disposition:
+creation_time: 2026-09-08T03:40:02-00:00
+references: []
+log_events:
+- time: 2026-09-08T03:40:02-00:00
+  who: Ted Smith
+  what: created
+  comment: ""
