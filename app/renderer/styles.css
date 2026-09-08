@@ -64,7 +64,7 @@ kbd { border: 1px solid #314344; border-radius: 4px; padding: 2px 5px; backgroun
 .zoom-control button:focus-visible { box-shadow: inset 0 0 0 1px var(--green); }
 .zoom-control button[aria-disabled="true"] { color: #3f5350; }
 .zoom-control .zoom-value { border-right: 1px solid #263738; border-left: 1px solid #263738; color: #a8bbb7; font-size: 9px; }
-.global-truth { height: 100%; display: grid; grid-template-columns: auto auto; grid-template-rows: 1fr 1fr; align-content: center; column-gap: 7px; padding: 8px 18px; border-left: 1px solid #213031; font: 500 10px "DM Mono", monospace; text-transform: uppercase; }
+.global-truth { height: 100%; display: grid; grid-template-columns: auto auto; align-items: center; align-content: center; column-gap: 7px; padding: 8px 18px; border-left: 1px solid #213031; font: 500 10px "DM Mono", monospace; text-transform: uppercase; }
 .global-truth i { grid-row: 1 / 3; align-self: center; width: 7px; height: 7px; border-radius: 50%; background: currentColor; box-shadow: 0 0 12px currentColor; }
 .global-truth small { color: #5c7470; font-size: 8px; }
 .status-green { color: var(--green); }
@@ -290,8 +290,27 @@ button.truth-dot:disabled { cursor: wait; opacity: 0.72; }
 .field-toolbar > .build-button { grid-column: 2; grid-row: 1 / 3; }
 .field-toolbar strong { white-space: nowrap; }
 .field-toolbar small { white-space: nowrap; overflow: auto; }
+.field-toolbar > .topology-actions { grid-column: 2; grid-row: 1; position: relative; justify-self: end; z-index: 9; }
+.topology-actions > summary { cursor: pointer; list-style: none; padding: 1px 9px; color: #b1c5bb; font-size: 22px; border: 1px solid #34514a; border-radius: 4px; background: #10221d; }
+.topology-actions > div { position: absolute; right: 0; top: 100%; min-width: 170px; display: grid; gap: 4px; padding: 6px; background: #10221d; border: 1px solid #34514a; border-radius: 4px; }
+.topology-actions button { padding: 7px; text-align: left; color: #c8ded3; background: #17332b; border: 1px solid #34514a; border-radius: 3px; cursor: pointer; }
+.topology-actions button:disabled { opacity: .5; cursor: default; }
+.field-toolbar > .design-open-button { grid-column: 1; grid-row: 2; justify-self: start; }
 .world-chips span { padding: 2px 4px; }
 .navigation-field { grid-template-rows: 65px 32px minmax(0, 1fr); }
+.navigation-field.plan-home { grid-template-columns: minmax(0, 1fr); grid-template-rows: 52px minmax(0, 1fr); }
+.navigation-field.plan-home:has(> .surface-tabs-strip) { grid-template-rows: 52px 32px minmax(0, 1fr); }
+.navigation-field.plan-home > .planning-field { grid-column: 1; grid-row: 2; }
+.navigation-field.plan-home > .graphs-grid { grid-column: 1; grid-row: 2; }
+.navigation-field.plan-home:has(> .surface-tabs-strip) > .planning-field { grid-row: 3; }
+.navigation-field.plan-home > .surface-tabs-strip { grid-column: 1; grid-row: 2; }
+.navigation-field.plan-home > .graphs-grid.is-sidebar { width: var(--graph-share, 43%); grid-row: 2 / span 2; }
+/* The full-width Plan home can use two modest columns sooner than an embedded
+   standalone design view. Below this size keep the plan owner's readable stack. */
+@container (min-width: 760px) {
+  .navigation-field.plan-home .design-workspace:not([data-task-only]) .design-quadrants { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr); }
+  .navigation-field.plan-home .design-workspace:not([data-task-only]) .design-components { order: 0; min-height: 0; }
+}
 .graphs-grid { overflow: auto; grid-template-rows: repeat(2, minmax(100px, 1fr)); }
 .graph-pane { min-width: 0; grid-template-rows: 29px minmax(0, 1fr); }
 .graph-header > div:first-child { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }

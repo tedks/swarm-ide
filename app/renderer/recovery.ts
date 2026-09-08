@@ -1,13 +1,18 @@
 import { z } from "zod";
 import { FocusRefSchema, WorkspaceSnapshotSchema, type FocusRef, type WorkspaceSnapshot } from "../../protocol/schema";
 
+export function navigationLens(lens: string | undefined, hasDocuments = false): "Plan" | "Code" {
+  if (lens === "Code" || lens === "System" && hasDocuments) return "Code";
+  return "Plan";
+}
+
 export const NavigationSchema = z.object({
   paths: z.array(z.string().min(1).max(4096)).max(128),
   activeSurface: z.string().max(4096),
-  lens: z.enum(["System", "Plan", "Performance", "Refactor"]),
+  lens: z.enum(["Code", "System", "Plan", "Performance", "Refactor"]),
   focus: FocusRefSchema.nullable(),
   snapshot: WorkspaceSnapshotSchema.optional(),
-});
+}).transform((saved) => ({ ...saved, lens: navigationLens(saved.lens, saved.paths.length > 0) }));
 export const NAVIGATION_KEY = "swarm:document-navigation:v1";
 export function readNavigation() {
   try { return NavigationSchema.parse(JSON.parse(window.sessionStorage.getItem(NAVIGATION_KEY) ?? "null")); }

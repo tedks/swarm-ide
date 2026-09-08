@@ -84,7 +84,7 @@ describe("compact workbench presentation boundaries", () => {
     expect(selectedPanel()).toBe("none");
     expect(work.getAttribute("aria-expanded")).toBe("false");
     expect(information.getAttribute("aria-expanded")).toBe("false");
-    for (const instrument of [screen.getByRole("region", { name: "Build jobs" }), screen.getByRole("region", { name: "Recent activity" })]) {
+    for (const instrument of [screen.getByRole("region", { name: "Build jobs" }), screen.getByRole("region", { name: "Activity" })]) {
       expect(instrument.tabIndex).toBe(0);
       instrument.focus();
       expect(document.activeElement).toBe(instrument);
@@ -132,7 +132,9 @@ describe("compact workbench presentation boundaries", () => {
   it("explicitly reveals Work for a real launch draft and keeps its text and reload veto while inspecting Information", async () => {
     const request = await open();
     toggle("information");
-    fireEvent.click(screen.getByRole("button", { name: "Ask an agent about this focus" }));
+    fireEvent.keyDown(window, { key: "k", ctrlKey: true });
+    fireEvent.change(screen.getByRole("textbox", { name: "Workspace command" }), { target: { value: "Ask an agent about this focus" } });
+    fireEvent.click(screen.getByRole("button", { name: /Ask an agent about this focus/ }));
     expect(selectedPanel()).toBe("work");
     const task = screen.getByLabelText("Task") as HTMLTextAreaElement;
     const model = screen.getByLabelText("Requested model") as HTMLInputElement;
@@ -173,7 +175,7 @@ describe("compact workbench presentation boundaries", () => {
     const slider = screen.getByRole("slider", { name: "Run pane height" }) as HTMLInputElement;
     const output = screen.getByLabelText("Agent output");
     const heading = run.querySelector<HTMLElement>(".agent-pane-header strong")!;
-    const activity = screen.getByRole("region", { name: "Recent activity" });
+    const activity = screen.getByRole("region", { name: "Activity" });
     const jobs = screen.getByRole("region", { name: "Build jobs" });
     // Bounded scrolling regions and overflowed headings must remain native
     // keyboard focus targets. Actual scroll geometry is a virtual-X11 gate.

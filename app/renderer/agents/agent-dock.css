@@ -1,16 +1,18 @@
 .activity-dock:has(.activity-instruments) { display: flex; flex-direction: column; }
 .activity-dock:has(.activity-instruments) > .dock-header { flex-shrink: 0; }
-.activity-instruments { display: grid; grid-template-columns: minmax(125px, 1fr) minmax(260px, 2fr) minmax(145px, 1fr); flex: 1; min-height: 0; min-width: 0; overflow: auto; }
-.activity-instruments.has-work-log { grid-template-columns: minmax(110px, .7fr) minmax(260px, 1.6fr) minmax(220px, 1.1fr) minmax(180px, 1fr); }
+.activity-instruments { display: grid; grid-template-columns: minmax(110px, .65fr) minmax(320px, 2.4fr) minmax(145px, .85fr); flex: 1; min-height: 0; min-width: 0; overflow: auto; }
+.activity-instruments.has-work-log { grid-template-columns: minmax(100px, .6fr) minmax(320px, 2.4fr) minmax(180px, .85fr) minmax(155px, .8fr); }
 .dock-side-panel.dock-work-log { padding-top: 10px; border-right: 1px solid #284139; }
 .dock-work-log:focus-visible { outline: 2px solid #57d3ad; outline-offset: -2px; }
 .dock-side-panel { min-width: 0; min-height: 0; overflow: auto; padding: 0 12px 10px; }
-.dock-section-heading { padding: 10px 0; font: 10px "DM Mono", monospace; color: #7c9690; }
+.dock-section-heading { margin-bottom: 8px; padding: 10px 0; border-bottom: 1px solid #284139; font: 10px "DM Mono", monospace; color: #7c9690; }
 .dock-builds > .job { margin-bottom: 8px; }
 .dock-activity > .activity-list { grid-template-columns: minmax(0, 1fr); }
 .agent-interaction-dock { height: 100%; min-height: 0; min-width: 0; display: flex; flex-direction: column; background: #091715; border-inline: 1px solid #284139; container-type: inline-size; }
 .workbench:has(.agent-interaction-dock) { grid-template-rows: var(--topbar-height) minmax(0, 1fr) clamp(180px, 26vh, 320px); }
-.workbench:has(.agent-conversation) { grid-template-rows: var(--topbar-height) minmax(0, 1fr) clamp(340px, 42vh, 460px); }
+.workbench:has(.agent-conversation) { grid-template-rows: var(--topbar-height) minmax(0, 1fr) clamp(220px, 32vh, 400px); }
+.activity-dock:has(.dock-divider) { position: relative; padding-top: 6px; }
+.workspace-divider.dock-divider { position: absolute; inset: 0 0 auto; width: 100%; height: 6px; cursor: row-resize; transform: none; }
 .agent-dock-home > .agent-draft { max-width: 900px; margin: 0 auto; }
 .agent-dock-tabs { display: flex; flex-shrink: 0; min-width: 0; overflow-x: auto; border-bottom: 1px solid #284139; background: #0d1b18; }
 .agent-dock-tabs > button { display: flex; align-items: center; gap: 8px; flex-shrink: 0; max-width: 240px; min-height: 34px; padding: 7px 13px; border: 0; border-right: 1px solid #203830; border-bottom: 2px solid transparent; background: transparent; color: #90aaa1; font-size: 11px; text-align: left; }

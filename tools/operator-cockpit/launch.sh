@@ -17,8 +17,9 @@ const electron = process.env.SWARM_ELECTRON_BIN;
 if (!electron || !isAbsolute(electron)) throw new Error('Pinned Nix Electron required');
 const tabsOnly = process.env.SWARM_COCKPIT_TABS_ONLY === '1';
 const workLogOnly = process.env.SWARM_COCKPIT_WORKLOG_ONLY === '1';
-if (tabsOnly && workLogOnly) throw new Error('Choose one isolated cockpit proof mode');
-const isolatedMode = tabsOnly || workLogOnly;
+const planOnly = process.env.SWARM_COCKPIT_PLAN_ONLY === '1';
+if ([tabsOnly, workLogOnly, planOnly].filter(Boolean).length > 1) throw new Error('Choose one isolated cockpit proof mode');
+const isolatedMode = tabsOnly || workLogOnly || planOnly;
 let registered, targetRoot;
 const targetPath = 'app/renderer/App.tsx';
 if (!isolatedMode) {
@@ -76,11 +77,13 @@ try {
     if (!/^docs\/design\/[a-z-]+\.md$/.test(doc)) throw new Error('Unexpected design document path');
     files[doc] = await readFile(join(process.cwd(), doc), 'utf8');
   }
+  if (!planOnly) {
   const archivePath = process.env.SWARM_COCKPIT_WORK_LOG_ARCHIVE;
   if (!archivePath || !isAbsolute(archivePath)) throw new Error('Supply the archived generated Work Log');
   const workLogBytes = await readFile(archivePath, 'utf8'); workLog = JSON.parse(workLogBytes);
   if (workLog.version !== 1 || !workLog.entries?.[0]?.outcome) throw new Error('Invalid archived Work Log');
   files['.swarm/work-log.json'] = workLogBytes;
+  }
   }
   for (const name of Object.keys(files)) await mkdir(dirname(join(root, name)), { recursive: true });
   for (const [name, content] of Object.entries(files)) await writeFile(join(root, name), content);
@@ -95,7 +98,7 @@ try {
   // Only operator briefing metadata is added. Real rollout and worktree remain unchanged.
   await writeFile(privateRegistry, JSON.stringify({ version: 1, sessions: isolatedMode ? [] : [{ ...registered, contextPaths: [targetPath] }] }), { mode: 0o600 });
   await writeFile(join(evidence, 'repository.json'), JSON.stringify({ root, files,
-    ...(tabsOnly ? { tabsOnly: true, tabFiles } : workLogOnly ? { workLogOnly: true, controlledWorkLog: workLog.entries[0] }
+    ...(tabsOnly ? { tabsOnly: true, tabFiles } : planOnly ? { planOnly: true, capturedDesign: true } : workLogOnly ? { workLogOnly: true, controlledWorkLog: workLog.entries[0] }
       : { capturedWorkLog: { id: workLog.entries[0].id, outcome: workLog.entries[0].outcome }, capturedDesign: true,
       target: { id: registered.id, label: registered.label, root: targetRoot, path: targetPath } }) }, null, 2));
   execFileSync('tar', ['-xzf', archive, '-C', packaged], { timeout: 30000 });

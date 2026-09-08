@@ -71,18 +71,21 @@ async function openSource() {
   return EditorView.findFromDOM(document.querySelector(".cm-editor")!)!;
 }
 
-it("pauses Build demand while the independent Plan lens hides its consumers and resumes deliberately", async () => {
+it("keeps settled automatic build context quiet across Plan and Code lens changes", async () => {
+  vi.spyOn(document, "hasFocus").mockReturnValue(true);
+  vi.spyOn(document, "visibilityState", "get").mockReturnValue("visible");
   const { request } = setup(); render(<App />);
   await screen.findByRole("button", { name: "Select task task-fixture" });
   const reads = () => request.mock.calls.filter(([input]) => input.type === "buildGraph.observe").length;
-  fireEvent.click(screen.getByRole("button", { name: "Build graph" }));
   await waitFor(() => expect(reads()).toBeGreaterThan(0));
+  fireEvent.click(screen.getByRole("button", { name: "Code" }));
+  fireEvent.click(screen.getByRole("button", { name: "Build graph" }));
   fireEvent.click(screen.getByRole("button", { name: "Plan" }));
   const hiddenReads = reads();
   await act(async () => { await new Promise((resolve) => setTimeout(resolve, 750)); });
   expect(reads()).toBe(hiddenReads);
-  fireEvent.click(screen.getByRole("button", { name: "System" }));
-  await waitFor(() => expect(reads()).toBeGreaterThan(hiddenReads));
+  fireEvent.click(screen.getByRole("button", { name: "Code" }));
+  expect(reads()).toBe(hiddenReads);
 });
 
 it("revokes a held planning-task activation when the user switches lens", async () => {
@@ -98,7 +101,7 @@ it("revokes a held planning-task activation when the user switches lens", async 
   }) : original(input));
   fireEvent.click(screen.getByRole("button", { name: "Open graph task task-fixture" }));
   await waitFor(() => expect(finish).toBeTypeOf("function"));
-  const system = screen.getByRole("button", { name: "System" });
+  const system = screen.getByRole("button", { name: "Code" });
   fireEvent.pointerDown(system); fireEvent.click(system);
   await act(async () => finish());
   expect(document.querySelector(".artifact-context")?.getAttribute("data-context-kind")).not.toBe("task");
@@ -166,6 +169,9 @@ it("rejects a delayed backlink after file A to another source and back to A", as
 it("folds the Tasks consumer without stopping a visible file Context or duplicating its five-second timer", async () => {
   const intervals = vi.spyOn(globalThis, "setInterval"), cleared = vi.spyOn(globalThis, "clearInterval");
   const { request } = setup(); render(<App />); await screen.findByRole("button", { name: "Select task task-fixture" });
+  // Plan now contains a visible task projection; enter Code to isolate this
+  // test's sidebar/Context consumer union before folding the Tasks section.
+  fireEvent.click(screen.getByRole("button", { name: "Code" }));
   const fiveSecond = () => intervals.mock.calls.flatMap((args, index) => args[1] === 5000 ? [intervals.mock.results[index]!.value] : []);
   const first = fiveSecond().at(-1); expect(first).toBeDefined();
   fireEvent.click(screen.getByRole("button", { name: "Tasks" }));
@@ -203,6 +209,11 @@ async function selectTask() {
   await screen.findByRole("region", { name: "Task details" });
   await within(screen.getByRole("region", { name: "Task details" })).findByRole("heading", { name: "Inspect a repository task" });
 }
+function openDraftCommand() {
+  fireEvent.keyDown(window, { key: "k", ctrlKey: true });
+  fireEvent.change(screen.getByRole("textbox", { name: "Workspace command" }), { target: { value: "Ask an agent about this focus" } });
+  fireEvent.click(screen.getByRole("button", { name: /Ask an agent about this focus/ }));
+}
 function showDetails() {
   fireEvent.click(within(document.getElementById("information-panel")!).getByRole("button", { name: "Show task details" }));
 }
@@ -215,7 +226,7 @@ function reveal(path: string, line: number | null) {
 describe("task inspection in the source cockpit", () => {
   it("keeps dirty source, cursor, graph instances, compact choice and draft while inspecting metadata", async () => {
     const { request } = setup(); render(<App />); const editor = await openSource();
-    fireEvent.click(screen.getByRole("button", { name: "Ask an agent about this focus" }));
+    openDraftCommand();
     const draft = screen.getByLabelText("Task");
     fireEvent.change(draft, { target: { value: "Independent fixed-focus draft" } });
     act(() => editor.dispatch({ changes: { from: 0, insert: "unsaved\n" }, selection: { anchor: 4 } }));
@@ -411,7 +422,7 @@ describe("task inspection in the source cockpit", () => {
     await selectTask(); const before = test.request.mock.calls.length;
     reveal(source, 2);
     await waitFor(() => expect(editor.state.selection.main.head).toBe(4));
-    expect(test.request.mock.calls.slice(before).filter(([input]) => input.type !== "buildGraph.observe" || input.refresh).map(([input]) => input.type)).toEqual(["file.watch", "file.read", "focus.select"]);
+    expect(test.request.mock.calls.slice(before).filter(([input]) => input.type !== "trusted.snapshot" && (input.type !== "buildGraph.observe" || input.refresh)).map(([input]) => input.type)).toEqual(["file.watch", "file.read", "focus.select"]);
     expect(document.querySelector(".file-saved")).toBeTruthy();
   });
 
@@ -436,7 +447,7 @@ describe("task inspection in the source cockpit", () => {
     ["palette", "success"], ["palette", "failure"],
   ] as const)("retains newer %s input when a delayed Reveal ends in %s", async (destination, outcome) => {
     const test = setup(); render(<App />); const editor = await openSource();
-    fireEvent.click(screen.getByRole("button", { name: "Ask an agent about this focus" }));
+    openDraftCommand();
     const draft = screen.getByLabelText("Task") as HTMLTextAreaElement;
     await selectTask();
     const original = test.request.getMockImplementation()!;

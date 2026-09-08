@@ -159,14 +159,14 @@ describe("simultaneous build, agent-message and activity dock", () => {
     const input = props({ ...state(true), selectedRunId: firstId, paneOpen: true });
     render(<AgentDock {...input} />);
     const jobs = screen.getByRole("region", { name: "Build jobs" });
-    const activity = screen.getByRole("region", { name: "Recent activity" });
+    const activity = screen.getByRole("region", { name: "Activity" });
     const messages = screen.getByRole("region", { name: "Agent messages" });
     expect([...jobs.parentElement!.children]).toEqual([jobs, messages, activity]);
     expect(screen.queryByRole("tab", { name: "Jobs & activity" })).toBeNull();
     fireEvent.click(screen.getByRole("tab", { name: "Agents" }));
     fireEvent.click(screen.getByRole("tab", { name: "Run 2 completed" }));
     expect(screen.getByRole("region", { name: "Build jobs" })).toBe(jobs);
-    expect(screen.getByRole("region", { name: "Recent activity" })).toBe(activity);
+    expect(screen.getByRole("region", { name: "Activity" })).toBe(activity);
     expect(screen.getByText("Build job evidence").closest("[hidden]")).toBeNull();
     expect(screen.getByText("Recent change evidence").closest("[hidden]")).toBeNull();
   });

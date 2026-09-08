@@ -5,7 +5,6 @@ import {
   type CoreRequest,
   type FileEvent,
   type FocusRef,
-  type ReconciliationStatus,
 } from "../../protocol/schema";
 import { applyCoreEvent, emptyWorkspaceState, loadSnapshot, type WorkspaceState } from "./state";
 import { EditorPane, type EditorMemory, type SourceLineNavigation } from "./EditorPane";
@@ -20,7 +19,7 @@ import {
 } from "../view-shell";
 import { discardStoredZoom, persistZoom, readStoredZoom, stepZoom, zoomShortcut } from "./zoom";
 import type { Lifecycle } from "../lifecycle";
-import { NAVIGATION_KEY, readNavigation, protectsBuffer, staleSnapshot, retainDerived } from "./recovery";
+import { NAVIGATION_KEY, readNavigation, navigationLens, protectsBuffer, staleSnapshot, retainDerived } from "./recovery";
 import { hotMemory, pendingWrites } from "./hot-memory";
 import { RunRail } from "./agents/RunRail";
 import { RunPane } from "./agents/RunPane";
@@ -53,7 +52,6 @@ import { RepositoryNavigation } from "./repository/RepositoryNavigation";
 import { FileSearchPalette } from "./repository/FileSearchPalette";
 import { useFileSearch } from "./repository/file-search";
 import type { RepositorySearchRequest } from "../../protocol/repository-search";
-import { useStartupTopology } from "./startup-topology";
 import { WorkbenchSidebar } from "./WorkbenchSidebar";
 import { TopologyViews, type BuildTargetSelection } from "./repository/BuildGraphPane";
 import { resolveBazelReference } from "./bazel-reference";
@@ -79,10 +77,9 @@ import { WorktreeInspection, type WorktreeSelection } from "./WorktreeInspection
 import { FleetActivityView, type SelectedActivity } from "./FleetActivityView";
 import { WorkLogPanel, WorkLogEntryDetail, type WorkLogEntry } from "./work-log/WorkLogPanel";
 import { OverflowStrip } from "./OverflowStrip";
-import { DesignWorkspace } from "./plans/DesignWorkspace";
 import { ActivityTime } from "./ActivityTime";
 
-const lensTabs = ["System", "Plan", "Performance", "Refactor"] as const;
+const lensTabs = ["Plan", "Code"] as const;
 const FRAUDCHECK_IMPLEMENTATION = "examples/checkout-world/services/fraudcheck/fraudcheck.ts";
 const FRAUDCHECK_CONTRACT = "examples/checkout-world/services/fraudcheck/fraudcheck.proto";
 
@@ -109,10 +106,6 @@ interface HotWorkbench {
 }
 // Fast Refresh can remount a component (for example after a hook is added)
 // without beforeunload. Its module data survives that replacement, unlike hooks.
-
-function statusLabel(status: ReconciliationStatus): string {
-  return { gray: "Unobserved", yellow: "Reconciling", green: "Consistent", red: "Failed" }[status];
-}
 
 function focusLabel(focus: FocusRef): string {
   return focus.symbol ?? focus.path?.split("/").at(-1) ?? focus.key.split(":").at(-1) ?? focus.key;
@@ -141,10 +134,10 @@ export function App() {
   const [worktreeVisible, setWorktreeVisible] = useState(false);
   const [worktreeBrowserSession, setWorktreeBrowserSession] = useState<string | null>(null);
   const [selectedActivity, setSelectedActivity] = useState<SelectedActivity | null>(null);
-  const [designVisible, setDesignVisible] = useState(false);
   const [workLogEntry, setWorkLogEntry] = useState<WorkLogEntry | null>(null);
   const demo = useUiDemo();
-  const [contextWidth, setContextWidth] = useState(30), [graphShare, setGraphShare] = useState(43);
+  const [contextWidth, setContextWidth] = useState(23), [graphShare, setGraphShare] = useState(43);
+  const [dockShare, setDockShare] = useState<number | null>(null);
   const [graphReframe, setGraphReframe] = useState(0);
   const [showBuildVersion, setShowBuildVersion] = useState(0);
   const [buildTargetSelection, setBuildTargetSelection] = useState<BuildTargetSelection | null>(null);
@@ -186,7 +179,11 @@ export function App() {
   const githubPrs = useGithubPullRequests(workspace.snapshot?.project.id ?? null, workspace.snapshot?.world.id ?? null,
     !window.swarmLifecycle || lifecycle?.core.phase === "ready" ? lifecycle?.core.generation ?? 0 : null);
   const [error, setError] = useState<string | null>(null);
-  const [activeLens, setActiveLens] = useState<(typeof lensTabs)[number]>(hotCheckpoint?.lens ?? restoredNavigation?.lens ?? "System");
+  const [activeLens, setActiveLens] = useState<(typeof lensTabs)[number]>(() => navigationLens(hotCheckpoint?.lens ?? restoredNavigation?.lens, Boolean(hotCheckpoint?.files.length || restoredNavigation?.paths.length)));
+  const lensChosen = useRef(false);
+  const chooseLens = (lens: (typeof lensTabs)[number]) => { lensChosen.current = true; setActiveLens(lens); };
+  const designVisible = activeLens === "Plan";
+  const setDesignVisible = (visible: boolean) => chooseLens(visible ? "Plan" : "Code");
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [palettePathMode, setPalettePathMode] = useState(false);
   const [compactPanel, setCompactPanel] = useState<"work" | "info" | null>(null);
@@ -210,7 +207,7 @@ export function App() {
   const [commandQuery, setCommandQuery] = useState("");
   const [hmr, setHmr] = useState({ generation: 0, milliseconds: 0 });
   const [fileTabs, setFileTabs] = useState<FileTab[]>(hotCheckpoint?.files ?? []);
-  const [activeSurface, setActiveSurface] = useState<string>(hotCheckpoint?.activeSurface ?? "graphs");
+  const [activeSurface, setActiveSurface] = useState<string>(hotCheckpoint?.activeSurface ?? restoredNavigation?.activeSurface ?? "graphs");
   const [taskDocumentOpen, setTaskDocumentOpen] = useState(false);
   const [taskDocumentVisible, setTaskDocumentVisible] = useState(false);
   const [taskSidebarVisible, setTaskSidebarVisible] = useState(true);
@@ -1001,9 +998,14 @@ export function App() {
     if (!workspace.snapshot || navigationRestoredRef.current) return;
     navigationRestoredRef.current = true;
     if (!restoredNavigation || hotCheckpoint) return;
-    for (const path of restoredNavigation.paths) void openFile(path, false);
-    showSurface(restoredNavigation.activeSurface);
-    if (restoredNavigation.focus) void invoke({ type: "focus.select", requestId: requestId(), protocolVersion: PROTOCOL_VERSION, focus: { ...restoredNavigation.focus, revisionId: workspace.snapshot.revisions.working.id } });
+    for (const path of restoredNavigation.paths) void openFile(path, false, true);
+    // Restore the tabs in the background, but a choice made while the core was
+    // reconnecting outranks the older saved selection.
+    if (!lensChosen.current) {
+      showSurface(restoredNavigation.activeSurface);
+      setActiveLens(restoredNavigation.lens);
+      if (restoredNavigation.focus) void invoke({ type: "focus.select", requestId: requestId(), protocolVersion: PROTOCOL_VERSION, focus: { ...restoredNavigation.focus, revisionId: workspace.snapshot.revisions.working.id } });
+    }
   }, [workspace.snapshot, restoredNavigation, openFile, showSurface, invoke, hotCheckpoint, lifecycle?.core.phase, lifecycle?.core.generation, observedCoreGeneration]);
 
   const checkpointDocument = useCallback(() => {
@@ -1096,10 +1098,11 @@ export function App() {
   const serviceIdentity = JSON.stringify([snapshot?.project.id, snapshot?.world.id, coreGenerationRef.current, publication?.status,
     publication?.status === "observed" ? [publication.buildId, publication.sourceFingerprint, publication.inputDigest, publication.artifactUri, publication.observedAt] : publication?.reason]);
   const serviceIndex = useMemo(() => indexService(publication), [serviceIdentity]);
-  const [buildGraphVisible, setBuildGraphVisible] = useState(false), [directoryBuildVisible, setDirectoryBuildVisible] = useState(false);
+  const [, setBuildGraphVisible] = useState(false), [, setDirectoryBuildVisible] = useState(false);
   const contextSubject = attention.realm === contextRealm() ? attention.subject : null;
   const buildGraph = useBuildGraph(snapshot?.project.id, snapshot?.world.id, contextRealm(),
-    (activeLens !== "Plan" && (buildGraphVisible || directoryBuildVisible) || !agentContextVisible && contextSubject?.kind === "file") && (!window.swarmLifecycle || lifecycle?.core.phase === "ready"));
+    Boolean(snapshot) && observedCoreGeneration === coreGenerationRef.current && (!window.swarmLifecycle || lifecycle?.core.phase === "ready"),
+    { changeToken: snapshot?.revisions.working.fingerprint });
   const buildLinks = useMemo(() => buildGraphLinks(buildGraph.observation), [buildGraph.observation]);
   const openContextBuildTarget = (target: { topologyId: string; id: string }) => {
     const current = workspaceRef.current.snapshot;
@@ -1107,8 +1110,19 @@ export function App() {
       contextSubject?.repositoryId !== current.project.id || contextSubject.worldId !== current.world.id ||
       buildLinks.repositoryId !== current.project.id || buildGraph.observation?.worldId !== current.world.id) return;
     setBuildTargetSelection({ id: target.id, repositoryId: buildLinks.repositoryId, revision: buildLinks.revision, nonce: ++navigationIntent.current });
-    setActiveLens("System");
+    chooseLens("Code");
     setCompactPanel(null);
+  };
+  const openPlanBuildTarget = (label: string) => {
+    const current = workspaceRef.current.snapshot;
+    chooseLens("Code"); setCompactPanel(null); setShowBuildVersion((version) => version + 1);
+    if (!current || buildGraph.observation?.status !== "current" || buildLinks?.repositoryId !== current.project.id || buildGraph.observation.worldId !== current.world.id) {
+      setError("The build graph is not ready yet. Refresh it to locate this target."); return;
+    }
+    if (!buildLinks.targets?.some((target) => target.label === label && target.kind === "rule")) {
+      setError(`This repository's current build graph does not contain ${label}.`); return;
+    }
+    setBuildTargetSelection({ id: label, repositoryId: buildLinks.repositoryId, revision: buildLinks.revision, nonce: ++navigationIntent.current });
   };
   const openEditorReference = (path: string, reference: string): boolean => {
     const current = workspaceRef.current.snapshot;
@@ -1166,10 +1180,13 @@ export function App() {
       onAttach: (origin: HTMLButtonElement) => attachInspectedTask(id, origin) };
   };
   const textDocumentVisible = !workLogEntry && !journalVisible && !worktreeVisible && !designVisible && (taskDocumentVisible || (taskDocumentOpen && !activeFile));
-  const textOpen = Boolean(activeFile || textDocumentVisible || journalVisible || worktreeVisible || designVisible || workLogEntry);
-  useEffect(() => { if (textOpen && !textWasOpen.current) setGraphReframe((n) => n + 1); textWasOpen.current = textOpen; }, [textOpen]);
+  const textOpen = Boolean(activeFile || textDocumentVisible || journalVisible || worktreeVisible || workLogEntry);
+  const hasOpenDocument = Boolean(activeFile || taskDocumentOpen || journalOpen || worktreeSelection || worktreeBrowserSession || workLogEntry);
+  useEffect(() => { if (hasOpenDocument && !textWasOpen.current) setGraphReframe((n) => n + 1); textWasOpen.current = hasOpenDocument; }, [hasOpenDocument]);
   const reconciliationRunning = snapshot?.jobs.some((job) => job.kind === "build" && job.status === "running") ?? false;
-  const title = snapshot ? statusLabel(snapshot.reconciliation.status) : "Loading";
+  const buildContextStatus = buildGraph.observation?.status;
+  const title = buildContextStatus ? { current: "Build graph current", refreshing: "Updating build graph", stale: "Build graph needs refresh", error: "Build graph failed", unavailable: "No build graph" }[buildContextStatus] : "Build context";
+  const buildContextColor = buildContextStatus === "current" ? "green" : buildContextStatus === "error" ? "red" : buildContextStatus === "refreshing" || buildContextStatus === "stale" ? "yellow" : "gray";
   const coreUnavailable = Boolean(window.swarmLifecycle && lifecycle?.core.phase !== "ready");
   const lifecycleNotice = lifecycle?.reload === "pending" ? "Preload refresh pending — resolve protected file buffers and local agent intent to apply it." : lifecycle?.core.phase !== "ready" ? lifecycle?.core.message : lifecycle?.notice;
   const lifecycleTitle = import.meta.env.DEV && lifecycle ? ` — Core ${lifecycle.core.generation}:${lifecycle.core.phase} — Doc ${Math.round(performance.timeOrigin)} — Reload ${lifecycle.reload}${lifecycle.notice.includes("Build failed") ? " — Build failed" : ""}${lifecycle.notice.includes("restart required") ? " — Restart required" : ""}` : "";
@@ -1268,11 +1285,6 @@ export function App() {
     return invoke({ type: "reconciliation.start", requestId: requestId(), protocolVersion: PROTOCOL_VERSION, mode: "success" });
   }, [invoke]);
 
-  const startupReconcile = useCallback(() => { void invoke({ type: "reconciliation.start", requestId: requestId(), protocolVersion: PROTOCOL_VERSION, mode: "success" }); }, [invoke]);
-  useStartupTopology({ snapshot, coreGeneration: coreGenerationRef.current, observedCoreGeneration,
-    ready: Boolean(window.swarm) && !coreUnavailable, restoredDocument: Boolean(restoredNavigation),
-    automatic: import.meta.env.SWARM_AUTOMATIC_TOPOLOGY !== false }, startupReconcile);
-
   const commands = useMemo(() => palettePathMode ? [
     { label: "Open path", detail: "Exact repository-relative file path · not filename search", run: () => { setPaletteOpen(false); openLinkedFile(commandQuery); } },
   ] : [
@@ -1288,13 +1300,13 @@ export function App() {
     ] : []),
     { label: "Open repository path", detail: "Exact relative path fallback, independent of captured search coverage", run: () => { setPalettePathMode(true); setCommandQuery(""); requestAnimationFrame(() => commandInput.current?.focus()); } },
     { label: "Show repository Tasks", detail: "inspect planning metadata without moving source", run: () => { setPaletteOpen(false); setCompactPanel("work"); } },
-    { label: "Show planning graphs", detail: "Real Ditz blockage and repo-authored plans · selection does not execute", run: () => { setPaletteOpen(false); setActiveLens("Plan"); } },
+    { label: "Show planning graphs", detail: "System design, component connections and tasks", run: () => { setPaletteOpen(false); showDesign(); } },
     { label: "Refresh tasks", detail: "observe local metadata; no fetch, task mutation or dispatch", run: () => { setPaletteOpen(false); setCompactPanel("work"); void taskClient.refresh(); } },
     { label: "Show task details", detail: "retained task selection in Information", run: () => { setPaletteOpen(false); showTaskDetails(); } },
     { label: "Ask an agent about this focus", detail: "inspect disk context before explicit read-only launch", run: () => { setPaletteOpen(false); setCompactPanel("work"); if (workspaceRef.current.snapshot) agentClient.openDraft(workspaceRef.current.snapshot.focus); } },
     { label: "Build repository service topology", detail: "exact fingerprint → Bazel artifact → green", run: reconcile },
-    { label: "Show system graphs", detail: "focus the coordinated graphs without changing the open document", run: () => { setPaletteOpen(false); setCompactPanel("work"); inspectGraph(); requestAnimationFrame(() => document.querySelector<HTMLElement>(".graphs-grid")?.focus()); } },
-    { label: "Show build graph", detail: "Explore captured Bazel targets and dependencies · does not run a build", run: () => { setPaletteOpen(false); setShowBuildVersion((n) => n + 1); } },
+    { label: "Show system graphs", detail: "Repository, services and build dependencies", run: () => { setPaletteOpen(false); chooseLens("Code"); setCompactPanel(null); inspectGraph(); requestAnimationFrame(() => document.querySelector<HTMLElement>(".graphs-grid")?.focus()); } },
+    { label: "Show build graph", detail: "Explore Bazel targets and dependencies", run: () => { setPaletteOpen(false); chooseLens("Code"); setCompactPanel(null); setShowBuildVersion((n) => n + 1); } },
     ...(!repositoryObservation ? [
       { label: "Open FraudCheck implementation", detail: FRAUDCHECK_IMPLEMENTATION, run: () => { setPaletteOpen(false); void openFile(FRAUDCHECK_IMPLEMENTATION); } },
       { label: "Open FraudCheck protobuf contract", detail: FRAUDCHECK_CONTRACT, run: () => { setPaletteOpen(false); void openFile(FRAUDCHECK_CONTRACT); } },
@@ -1304,17 +1316,17 @@ export function App() {
 
   if (!snapshot) return <main className="loading-screen"><div className="loading-mark hmr-probe" />Opening the working world…{error ? <strong>{error}</strong> : null}<small>{lifecycleNotice}</small><AgentReloadGuard state={liveAgents} client={agentClient} /></main>;
   return (
-    <main className="workbench" onPointerDownCapture={interruptPendingReveal} onFocusCapture={interruptPendingReveal} onKeyDownCapture={(event) => { if (event.key === "Escape" && definitionRef.current) { event.preventDefault(); event.stopPropagation(); cancelDefinition(); } }} data-compact-panel={compactPanel ?? "none"} style={{ "--context-width": `${contextWidth}%`, ...(agents.selected || liveAgents.paneOpen ? { gridTemplateRows: `var(--topbar-height) minmax(0, 1fr) calc(160px + (clamp(180px, 40vh, 448px) - 160px) * ${Math.min(1, Math.max(0, ((liveAgents.paneOpen ? liveAgents.height : agentPaneHeight) - 230) / 190))})` } : {}) } as CSSProperties}>
+    <main className="workbench" onPointerDownCapture={interruptPendingReveal} onFocusCapture={interruptPendingReveal} onKeyDownCapture={(event) => { if (event.key === "Escape" && definitionRef.current) { event.preventDefault(); event.stopPropagation(); cancelDefinition(); } }} data-compact-panel={compactPanel ?? "none"} style={{ "--context-width": `${contextWidth}%`, ...(dockShare !== null ? { gridTemplateRows: `var(--topbar-height) minmax(0, 1fr) ${dockShare}%` } : agents.selected || liveAgents.paneOpen ? { gridTemplateRows: `var(--topbar-height) minmax(0, 1fr) calc(160px + (clamp(180px, 40vh, 448px) - 160px) * ${Math.min(1, Math.max(0, ((liveAgents.paneOpen ? liveAgents.height : agentPaneHeight) - 230) / 190))})` } : {}) } as CSSProperties}>
       <header className="topbar">
         <div className="product-mark"><span className="hmr-probe" />swarm</div>
-        <OverflowStrip className="lens-tabs-strip" label="workspace lenses" activeKey={activeLens}><nav className="lens-tabs" aria-label="Workspace lenses">{lensTabs.map((lens) => <button key={lens} className={activeLens === lens ? "active" : ""} onClick={() => setActiveLens(lens)}>{lens}</button>)}</nav></OverflowStrip>
+        <OverflowStrip className="lens-tabs-strip" label="workspace lenses" activeKey={activeLens}><nav className="lens-tabs" aria-label="Workspace lenses">{lensTabs.map((lens) => <button key={lens} aria-pressed={activeLens === lens} className={activeLens === lens ? "active" : ""} onClick={() => lens === "Plan" ? showDesign() : chooseLens(lens)}>{lens}</button>)}</nav></OverflowStrip>
         <button className="command-trigger" onClick={openPalette}><span>Search, navigate, direct…</span><kbd>Ctrl K</kbd></button>
         <div className="zoom-control" role="group" aria-label="Interface zoom" aria-busy={zoomPending}>
           <button aria-label="Zoom out" title="Zoom out (Ctrl+-)" aria-disabled={zoomPercent === INTERFACE_ZOOM_LEVELS[0]} onClick={() => { if (zoomPercent !== INTERFACE_ZOOM_LEVELS[0]) void zoomOut(); }}>−</button>
           <button className="zoom-value" aria-label={zoomPercent === null ? "Reset zoom to 100%. Current zoom unknown" : `Reset zoom to 100%. Current zoom ${zoomPercent}%`} title="Reset zoom (Ctrl+0)" onClick={() => void resetZoom()}>{zoomPercent === null ? "—" : `${zoomPercent}%`}</button>
           <button aria-label="Zoom in" title="Zoom in (Ctrl+=)" aria-disabled={zoomPercent === INTERFACE_ZOOM_LEVELS.at(-1)} onClick={() => { if (zoomPercent !== INTERFACE_ZOOM_LEVELS.at(-1)) void zoomIn(); }}>+</button>
         </div>
-        <div className={`global-truth status-${snapshot.reconciliation.status}`}><i />{title}<small>epoch {snapshot.reconciliation.epoch}</small></div>
+        <div className={`global-truth status-${buildContextColor}`}><i />{title}</div>
         <div className="compact-panel-controls" aria-label="Compact cockpit panels">
           <button aria-label="Toggle work panel" aria-controls="work-panel" aria-expanded={compactPanel === "work"} onClick={() => setCompactPanel((panel) => panel === "work" ? null : "work")}>Work{agentIntentProtected ? " · local intent" : ""}</button>
           <button aria-label="Toggle information panel" aria-controls="information-panel" aria-expanded={compactPanel === "info"} onClick={() => setCompactPanel((panel) => panel === "info" ? null : "info")}>Information</button>
@@ -1335,14 +1347,16 @@ export function App() {
         tasks={<TaskPanel observation={tasks.observation} refreshing={tasks.refreshing} connected={tasks.connected} notice={tasks.notice} selectedTaskId={tasks.selectedTaskId} onSelect={selectTask} onOpen={openTaskDocument} onRefresh={() => { void taskClient.refresh(); }} onShowDetails={showTaskDetails} />}
       />
 
-      <section className={`navigation-field ${textOpen ? "source-open" : ""}`} style={{ "--graph-share": `${graphShare}%` } as CSSProperties}>
+      <section className={`navigation-field ${designVisible ? "plan-home" : textOpen ? "source-open" : ""}`} style={{ "--graph-share": `${graphShare}%` } as CSSProperties}>
         <div className="field-toolbar">
           <div><span className="eyebrow">central navigation</span><strong>{workLogEntry ? `Work Log · ${workLogEntry.agent}` : designVisible ? "System design" : worktreeVisible ? worktreeSelection?.path : journalVisible ? "Activity log" : textDocumentVisible ? tasks.detail?.title ?? "Task document" : activeFile?.path ?? focusLabel(snapshot.focus)}</strong><small tabIndex={0}>{workLogEntry ? "What was accomplished" : designVisible ? "Architecture in the repository" : worktreeVisible ? "Agent worktree · read-only" : activeFile ? `${activeFile.status} · ${activeFile.message}` : snapshot.focus.domain}</small></div>
-          <button className="design-open-button" onClick={showDesign}>System design</button>
-          <button id="reconcile-success" className="build-button" onClick={() => void reconcile()} disabled={reconciliationRunning || coreUnavailable}>▶ Build topology</button>
+          {!designVisible ? <button className="design-open-button" onClick={showDesign}>System plan</button> : null}
+          <details className="topology-actions"><summary aria-label="Build and refresh actions" title="Build and refresh actions">⋯</summary><div>
+            <button disabled={coreUnavailable} onClick={() => { void buildGraph.refresh(); }}>Refresh build graph</button>
+            <button id="reconcile-success" onClick={() => void reconcile()} disabled={reconciliationRunning || coreUnavailable}>Build service topology</button>
+          </div></details>
         </div>
         {textOpen ? <OverflowStrip className="surface-tabs-strip" label="document tabs" activeKey={workLogEntry?.id ?? (designVisible ? "design" : worktreeVisible ? `worktree:${worktreeSelection?.path}` : journalVisible ? "journal" : textDocumentVisible ? "task" : activeSurface)}><nav className="surface-tabs" aria-label="Document tabs">
-          {designVisible ? <div className="surface-tab active"><span className="surface-tab-main">System design</span><button className="surface-tab-close" aria-label="Close system design" onClick={() => setDesignVisible(false)}>×</button></div> : null}
           {workLogEntry ? <div className="surface-tab active"><span className="surface-tab-main">Work Log · {workLogEntry.agent}</span><button className="surface-tab-close" aria-label="Close work log outcome" onClick={() => setWorkLogEntry(null)}>×</button></div> : null}
           {worktreeSelection || worktreeBrowserSession ? <div className={`surface-tab ${worktreeVisible ? "active" : ""}`}><button className="surface-tab-main" onClick={() => { setWorkLogEntry(null); setDesignVisible(false); setWorktreeVisible(true); setJournalVisible(false); setTaskDocumentVisible(false); }}>Worktree · {worktreeSelection?.path.split("/").at(-1) ?? "Browse"}</button><button className="surface-tab-close" aria-label="Close worktree inspection" onClick={() => { setWorktreeVisible(false); setWorktreeSelection(null); setWorktreeBrowserSession(null); }}>×</button></div> : null}
           {journalOpen ? <div className={`surface-tab ${journalVisible ? "active" : ""}`}><button className="surface-tab-main" onClick={() => showJournal()}>Activity log</button><button className="surface-tab-close" aria-label="Close activity document" onClick={() => { setJournalOpen(false); setJournalVisible(false); }}>×</button></div> : null}
@@ -1355,8 +1369,8 @@ export function App() {
         })}</div>
         <PlanWorkspace key={`${snapshot.project.id}:${snapshot.world.id}`} visible={activeLens === "Plan"} worldId={snapshot.world.id} repositoryId={snapshot.project.id}
           generation={coreGenerationRef.current} connected={!coreUnavailable && Boolean(window.swarm)} tasks={tasks} client={taskClient}
-          onOpenFile={openLinkedFile} onOpenTask={openPlanningTask} />
-        {textOpen ? <ResizeDivider label="Resize graphs and text" className="text-divider" container=".navigation-field" value={graphShare} minimum={25} maximum={70} initial={43} onChange={setGraphShare} /> : null}
+          onOpenFile={openLinkedFile} onOpenTask={openPlanningTask} onOpenBuild={openPlanBuildTarget} />
+        {textOpen && !designVisible ? <ResizeDivider label="Resize graphs and text" className="text-divider" container=".navigation-field" value={graphShare} minimum={25} maximum={70} initial={43} onChange={setGraphShare} /> : null}
         {activeFile ? <section hidden={textDocumentVisible || journalVisible || worktreeVisible || designVisible || Boolean(workLogEntry)} onPointerDown={sourceInformation} onFocusCapture={sourceInformation} className={`source-surface ${["conflict", "unknown", "error"].includes(activeFile.status) ? "has-banner" : ""}`}>
           <header><div><span className="eyebrow">source observatory</span><strong>{activeFile.path}</strong></div><div className={`file-state file-${activeFile.status}`}><i />{activeFile.status}<button onClick={() => void saveFile(activeFile.path)} disabled={activeFile.status !== "dirty" || coreUnavailable}>Save <kbd>Ctrl S</kbd></button></div></header>
           {activeFile.status === "loading" ? <div className="source-message">Loading the canonical working file…</div> : <>
@@ -1380,14 +1394,13 @@ export function App() {
         {worktreeVisible && worktreeSelection ? <WorktreeInspection key={`${worktreeSelection.sessionId}:${worktreeSelection.path}`} selection={worktreeSelection} bridge={window.swarm} generation={coreGenerationRef.current} onReturn={() => setWorktreeVisible(false)} /> : null}
         {worktreeBrowserSession ? <div className="worktree-browser-center" hidden={!worktreeVisible}><AgentWorktreeBrowser sessionId={worktreeBrowserSession} bridge={window.swarm} generation={coreGenerationRef.current} onReturn={() => setWorktreeVisible(false)} /></div> : null}
         {workLogEntry ? <div className="work-log-center"><WorkLogEntryDetail entry={workLogEntry} onAgent={showConversation} onTask={openTaskDocument} onClose={() => setWorkLogEntry(null)} /></div> : null}
-        <div className="design-center" hidden={!designVisible}><DesignWorkspace visible={designVisible} worldId={snapshot.world.id} repositoryId={snapshot.project.id} generation={coreGenerationRef.current} connected={!coreUnavailable && Boolean(window.swarm)} onOpenFile={openLinkedFile} onOpenTask={openTaskDocument} /></div>
         <JournalPanel key={snapshot.project.id} open={journalVisible} state={journal} selectedEntry={journalEntry} selectionVersion={journalSelection} pullRequests={githubPrs}
           liveContent={<FleetActivityView fleet={externalAgents.fleet ?? []} selected={selectedActivity} onSelect={setSelectedActivity} onAgent={showConversation} onInspect={inspectWorktree} />}
           onClose={() => setJournalVisible(false)} onOpenSource={openLinkedFile} />
         {taskDocumentOpen ? <div className="task-editor-surface" hidden={!textDocumentVisible} onPointerDownCapture={(event) => { if (!(event.target as Element).closest(".task-attach")) inspectTask(tasks.selectedTaskId); }} onFocusCapture={(event) => { if (!(event.target as Element).closest(".task-attach")) inspectTask(tasks.selectedTaskId); }}><TaskDetail surface="editor" selectedTaskId={tasks.selectedTaskId} snapshot={tasks.observation?.snapshot ?? null} detail={tasks.detail} detailRevision={tasks.detailRevision} detailStale={tasks.detailStale || tasks.observation?.status !== "observed" || Boolean(tasks.notice)} reading={tasks.reading} notice={tasks.detailNotice} attachment={taskAttachment(tasks.selectedTaskId)} onRefresh={() => { void taskClient.refresh(); }} onSelect={(id) => openTaskDocument(id)} onReveal={(ref) => { void revealTaskReference(ref); }} onReturnToSource={() => { setTaskDocumentVisible(false); if (!activeFile) setTaskDocumentOpen(false); returnToSourceInformation(); }} /></div> : null}
       </section>
 
-      <ResizeDivider label="Resize Context" className="context-divider" container=".workbench" value={contextWidth} minimum={23} maximum={44} initial={30} reverse onChange={setContextWidth} />
+      <ResizeDivider label="Resize Context" className="context-divider" container=".workbench" value={contextWidth} minimum={23} maximum={44} initial={23} reverse onChange={setContextWidth} />
       <aside id="information-panel" aria-label="Information panel" className="instrument-panel panel">
         <GlobalContext snapshot={snapshot} ready={observedCoreGeneration === coreGenerationRef.current && (!window.swarmLifecycle || lifecycle?.core.phase === "ready")} />
         <ProjectContextPanel repositoryId={snapshot.project.id} worldId={snapshot.world.id} generation={coreGenerationRef.current} ready={observedCoreGeneration === coreGenerationRef.current && (!window.swarmLifecycle || lifecycle?.core.phase === "ready")} />
@@ -1403,7 +1416,7 @@ export function App() {
       </aside>
 
       <section className="activity-dock panel">
-        <div className="dock-header"><div><span className="eyebrow">activity / jobs</span><strong>Live workspace</strong></div></div>
+        <ResizeDivider label="Resize plan and conversation" className="dock-divider" container=".workbench" axis="y" reverse value={dockShare ?? 32} minimum={22} maximum={55} initial={32} onChange={setDockShare} />
         <AgentDock state={liveAgents} client={agentClient} selectionVersion={agentDockSelection} fixtureSelectionVersion={fixtureDockSelection} trustedSelectionVersion={trustedSelection?.id} onOpenActivity={() => showJournal()}
           conversation={{ selectionVersion: conversationSelection ? String(conversationSelection) : undefined,
             content: <AgentConversation client={externalAgents} bridge={window.swarm} memory={steeringMemory} onWorktree={browseAgentWorktree} onContext={() => { setExternalInformation(true); setCompactPanel("info"); }} /> }}

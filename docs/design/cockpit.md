@@ -13,7 +13,8 @@ document should not throw away a draft, dirty file or graph camera.
 | Graph presentation | [GraphPane.tsx](../../app/renderer/GraphPane.tsx), [graph-adapter.ts](../../app/renderer/graph-adapter.ts) | Domain graph data becomes React Flow nodes/edges |
 | Contextual instruments | [ContextPane.tsx](../../app/renderer/context/ContextPane.tsx) | Facts and links for the current attention target |
 | Side instruments | [WorkbenchSidebar.tsx](../../app/renderer/WorkbenchSidebar.tsx) | Agent/task/activity surfaces beside the central work |
-| Persistent dock | [AgentDock.tsx](../../app/renderer/agents/AgentDock.tsx) | Build resources, agent messages, Work Log and Recent Activity in independently scrolling columns |
+| Persistent dock | [AgentDock.tsx](../../app/renderer/agents/AgentDock.tsx) | Build resources, agent messages, Work Log and Activity in independently scrolling columns |
+| Layout adjustment | [ResizeDivider.tsx](../../app/renderer/ResizeDivider.tsx) | Pointer and keyboard dividers resize Context/source horizontally and the conversation dock vertically |
 | File authority | [core/files.ts](../../core/files.ts) | Reads and conditional writes behind the typed bridge |
 | Agent worktree inspection | [WorktreeInspection.tsx](../../app/renderer/WorktreeInspection.tsx), [core/worktree-inspection.ts](../../core/worktree-inspection.ts) | Registered session selects the actual read-only worktree source and current diff |
 | Raw fleet activity | [FleetActivityView.tsx](../../app/renderer/FleetActivityView.tsx) | Timestamped session events open in the center, distinct from Work Log outcomes |
@@ -48,8 +49,16 @@ Both live Activity file events and operator-associated briefing links carry the
 registered session into this inspector. A different opened repository does not
 hide canonical worktree briefing links or redirect them into local same-path files.
 
-System design opens the living component diagram/document in the center. The
-Work Log is mounted once in a persistent dock column immediately left of Recent
+Plan is the fresh-start home for the living component diagram/document and its
+related planning views. Code opens the separate repository/service/build
+projections. There is one architectural entry point, not separate System and
+Plan hierarchies; empty Performance/Refactor lenses have been retired. Saved
+navigation retains paths and focus while migrating those old values to Plan
+(a saved System source session resumes Code). The Plan home never discards the
+mounted editor or graph instances. Explicit source, task and worktree activation
+returns to Code; background observations do not switch the lens.
+
+The Work Log is mounted once in a persistent dock column immediately left of
 Activity, independent of the scrolling or folded agent list, with explicit Start/Stop; live
 timestamped activity is separate in the persistent dock and center log. Saved
 summaries remain a separate log tab. Graph controls and required attribution use
@@ -61,7 +70,7 @@ selected outcome: the dock panel remains the single polling/control owner. Closi
 the outcome, switching documents or Ctrl+W preserves the mounted source editor.
 At narrow widths the dock scrolls horizontally while its columns retain usable
 minimum widths and independent vertical scrolling. This keeps agent messaging,
-summary settings and Recent Activity reachable without remounting their content.
+summary settings and Activity reachable without remounting their content.
 
 The dock's primary **Conversation** tab follows the selected registered agent.
 The unique real root is the initial default unless a previous explicit selection
@@ -73,8 +82,28 @@ remounts. Native trusted execution/history and New/Fork remain in a secondary
 tab; old stored runs retain their own tabs rather than a competing sidebar list.
 `//tools/conversation-cockpit:unit` and its owned-virtual `:smoke` cover this
 composition. Actual transcript reads are separate from controlled Send evidence.
-With a registered-conversation surface, the default dock takes about 42% of the
-viewport (340–460px), leaving room for both readable messages and the composer.
+With a registered-conversation surface, the default dock takes about 32% of the
+viewport (220–400px). Context starts at23% width so a normal desktop leaves room
+for a two-column Plan overview; smaller windows stack readable plan sections.
+Context and the outer dock can be resized. The horizontal dock divider supports
+dragging, Up/Down and Home; a deliberate adjustment takes22–55% of the workbench
+height, consistently using that container even when interface zoom makes it
+taller than the viewport. Pointer dragging preserves the editor's focus.
+Conversation also takes a larger horizontal share than either log, with useful
+minimum widths and independent scrolling retained for all instruments. A single
+Activity heading and divider replace the nested activity/jobs shell. The top
+health indicator reports the current build-graph observation rather than exposing
+internal reconciliation epochs. Operational document-title observations remain
+available to the local verification harness.
+
+`useBuildGraph` observes the current repository while the core is ready, regardless
+of selected Plan/Code lens, and receives the working-source fingerprint for
+debounced invalidation. The hook pauses on blur and keeps settled input quiet.
+The old automatic service-artifact binary build is not the repository graph:
+it stays an explicit **Build service topology** action under the toolbar's
+secondary build/refresh menu. **Refresh build graph** is a secondary retry;
+normal navigation does not require pressing it. See the repository design for
+the query owner's bounded scheduling and authority.
 The message list retains at least 80px after a delivery receipt; timestamps and
 message/receipt controls remain visible instead of squeezing chat to zero height.
 
@@ -92,3 +121,12 @@ overflow arrows are available only when needed and do not activate tabs. Selecti
 and resize reveal the active tab; a fixed control slot avoids layout jumps.
 Scrollbars elsewhere, including source editors and diffs, stay visible when needed
 with a slim dark theme. These renderer inputs use the same root build targets.
+
+`//tools/operator-cockpit:plan-first` checks startup, old-navigation migration,
+real CodeMirror text/cursor retention and mounted graph identities through Plan
+and Code, target activation, dock keyboard/pointer bounds and task-consumer
+compatibility. Domain graph correctness belongs to the corresponding provider
+checks; the mounted tests do not claim actual browser geometry. The owned
+`SWARM_COCKPIT_PLAN_ONLY=1` operator smoke mode opens the actual packaged app
+against a disposable repository containing the authored design, and checks the
+desktop/compact Plan layout, native source editing and retained cameras.

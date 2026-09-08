@@ -14,7 +14,7 @@ SWARM_ARTIFACT_DIR=$(mktemp -d "$cockpit_artifacts/run.XXXXXX")
 export SWARM_COCKPIT_EVIDENCE="$SWARM_ARTIFACT_DIR"
 # The operator supplies a private registry and a real, already-running session.
 # No transcript is manufactured and the shared registry is never edited.
-if [[ ${SWARM_COCKPIT_TABS_ONLY:-0} != 1 && ${SWARM_COCKPIT_WORKLOG_ONLY:-0} != 1 ]]; then
+if [[ ${SWARM_COCKPIT_TABS_ONLY:-0} != 1 && ${SWARM_COCKPIT_WORKLOG_ONLY:-0} != 1 && ${SWARM_COCKPIT_PLAN_ONLY:-0} != 1 ]]; then
   : "${SWARM_COCKPIT_REGISTRY:?Supply an existing private operator registry}"
   : "${SWARM_COCKPIT_SESSION:?Supply an existing registered session ID}"
 fi
