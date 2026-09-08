@@ -26,3 +26,10 @@ log_events:
     CLEAN, quality1804/135, focused8 and owned standalone component proof1308ms cleanup1.
     No actual admission/model or production App graph claim. ROOT-cleared F1/W6 join
     remains; issue stays in progress until integrated landing.'
+- time: 2026-09-08T00:51:59-00:00
+  who: Ted Smith
+  what: commented
+  comment: ROOT-authorized exact F1 a6e7c8c composed normally; replaced interim presentation
+    interfaces with F1 exported aliases/Pick. Actual schema-parsed snapshot component
+    regression, typecheck and9focused tests PASS10s; native delta CLEAN. No UI change
+    or repeated full/GUI proof; W6 App feed/selection join remains ROOT-owned.
