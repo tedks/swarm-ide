@@ -35,7 +35,7 @@ describe("living system design", () => {
     const legacy = { ...index, nodes: index.nodes.map(({ design: _design, ...node }) => node) };
     expect(PlanIndexSchema.safeParse(legacy).success).toBe(true);
   });
-  it("maps every design doc/source to actual files and every target to a declared local rule", () => {
+  it("maps every design doc/source to actual files and every target to a declared rule or referenced source", () => {
     for (const node of index.nodes.filter((node) => node.design)) {
       for (const path of [...node.docs, ...node.sourcePaths]) expect(existsSync(resolve(root, path)), path).toBe(true);
       const document = readFileSync(resolve(root, node.docs[0]!), "utf8");
@@ -43,7 +43,12 @@ describe("living system design", () => {
       for (const target of node.design!.buildTargets) for (const label of [target.label, ...target.dependencies.map((edge) => edge.label)]) {
         const [pkg, name] = label.slice(2).split(":");
         const build = readFileSync(resolve(root, pkg!, "BUILD.bazel"), "utf8");
-        expect(build, label).toMatch(new RegExp(`name\\s*=\\s*"${name!.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}"`));
+        const literal = name!.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+        const rule = new RegExp(`name\\s*=\\s*"${literal}"`).test(build);
+        // Bazel source labels can be implicit exports referenced by local rules,
+        // e.g. :virtual-desktop-run.sh. They are files, not named rules.
+        const referencedSource = new RegExp(`":?${literal}"`).test(build) && existsSync(resolve(root, pkg!, name!));
+        expect(rule || referencedSource, label).toBe(true);
       }
     }
   });
