@@ -14,3 +14,12 @@ log_events:
   who: Ted Smith
   what: created
   comment: ""
+- time: 2026-09-08T13:39:26-00:00
+  who: Ted Smith
+  what: commented
+  comment: 'User reports intermittent/startup stale warning, perhaps now improving.
+    Read-only diagnosis: current cheap polls detect changed metadata but deliberately
+    retain old rows until refresh:true, and an initial failed full scan has no automatic
+    full-read retry. Source evidence, not runtime reproduction. See /tmp/swarm-ide-usability.BirZCk/task-freshness-diagnosis.md.
+    Bound any change to current list auto-adoption/retry, preserving revision-pinned
+    attachments. No fix or new owner yet.'
