@@ -1,12 +1,13 @@
 id: demo-tour-task-attachment-activation-20260907
-title: Localize current connected-tour task attachment activation gap
-desc: L5 one authorized corrected connected-tour run on 9bf2d57 passes source-return/edit/draft
-  steps but helper then throws missing append proposal immediately after native Context
-  Attach. Failure DOM has no proposal or attachment error notice; actual input event
-  target is unrecorded, so no historical production cause is established. Evidence
-  /tmp/swarm-ide-release-ready.m7IMFZ/tour-corrected/run.iL69UI, cleanup1. Preserve
-  all assertions; no guessed delay/retry/waiver. Smallest next gate is bounded exact
-  event-target/proposal-state diagnosis under ROOT authority.
+title: Find why the connected tour stops after attaching a task
+desc: 'In the one authorized corrected L5 connected-tour run on 9bf2d57, source-return/edit/draft
+  steps pass, but the helper then throws missing append proposal immediately after
+  native Context Attach. The failure DOM shows neither a proposal nor an attachment-error
+  notice. The actual input event target was not recorded, so the run does not establish
+  a production cause. Evidence: /tmp/swarm-ide-release-ready.m7IMFZ/tour-corrected/run.iL69UI,
+  cleanup1. Preserve all assertions; do not add guessed delays or retries, or waive
+  checks. The smallest next check is a narrowly scoped investigation of the exact
+  event target and proposal state, under ROOT authority.'
 type: bugfix
 component: tooling
 release:
@@ -31,3 +32,11 @@ log_events:
     predicate changed or the prior missing-proposal cause. No positive driver mismatch,
     so no further correction/run authorized. Evidence attachment-trace/run.0Phbhh
     under release-ready.m7IMFZ; original failures retained.'
+- time: 2026-09-08T04:29:11-00:00
+  who: Ted Smith
+  what: changed title
+  comment: ""
+- time: 2026-09-08T04:29:11-00:00
+  who: Ted Smith
+  what: updated description
+  comment: ""
