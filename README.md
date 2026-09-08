@@ -1,18 +1,36 @@
 # Swarm IDE
 
 A Linux-first development cockpit: navigate a repository, inspect the context
-around a file or service, and prepare a precisely scoped task for an agent.
+around a file or service, and prepare and steer a focused agent conversation.
 Source, design, tasks, and instructions stay with the repository; separate views
 help you move between them without losing your place.
 
 This is a working prototype, not a general-purpose replacement for your editor.
 Repository browsing, source editing, Ditz tasks and dependency graphs, authored
 plan hierarchies, per-repository Bazel queries, and disk-context preparation are
-real. Explicitly registered external agent sessions are read-only observations;
-Logical changes contains supervised-generated, recorded summaries. Managed agent
-launch is currently unavailable. Mocks and deterministic rehearsals are not live
-agent execution. Start with [installation and troubleshooting](docs/evaluator-install.md),
+real. The separate **Codex · trusted local** profile supports explicit launch
+using your installed Codex's normal account, configuration, tools and approvals;
+the isolated read-only profile remains unavailable. Explicitly registered external
+sessions are read-only observations. Activity log contains supervised-generated,
+recorded summaries, not live in-app summarization. Mocks and deterministic
+rehearsals are not live execution. Start with [installation and troubleshooting](docs/evaluator-install.md),
 then the [connected walkthrough](docs/demo.md).
+
+## Current controls
+
+- Click a task to open its central document and Context metadata, recorded update
+  log and blocking relationships. See [task workspace](docs/task-workspace.md).
+- From a source-file draft, optionally attach a task, then **Prepare trusted-local
+  context**, review the exact prompt and confirm **Launch trusted-local Codex**.
+  No account is copied or extra autonomy granted. One conversation per core;
+  no IDE conversation restoration after core restart. See [execution and limits](docs/trusted-local-execution.md).
+- **Recent Activity → Activity log → Pull requests → Refresh PRs** reads the
+  opened repository's GitHub PRs using normal `gh` authentication. See
+  [Activity and PRs](docs/logical-changelog.md#github-pull-requests).
+- File Context shows observed direct/indirect build targets and separately labelled
+  **Illustrative** latency. **Builds & resources → Example profile** shows authored
+  CPU/memory distributions, not measured telemetry. Missing services/targets stay
+  compact and scoped; [Context details](docs/context-metrics-demo.md) explain the limits.
 
 ## Linux quick start
 
@@ -52,8 +70,9 @@ The IDE's dependencies and development output stay in the IDE checkout, not the
 target. A non-Bazel repository can still be browsed; unavailable build or service
 evidence is not replaced by demo data. Use trusted local repositories: explicit
 Build can execute their build rules and Bazel wrapper. Opening **Build graph**
-or enabling **Build links** also loads repository-controlled Bazel definitions
-for a query; that is not a security sandbox. Simply opening an external target
+or enabling **Build links**, including file Context's build-target observation,
+also loads repository-controlled Bazel definitions for a query; that is not a
+security sandbox. Simply opening an external target
 does not automatically start its topology build.
 
 Leave the terminal running. Renderer changes use hot reload; most local-core
