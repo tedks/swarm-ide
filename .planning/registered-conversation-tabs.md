@@ -11,7 +11,7 @@ Running registered agents should appear as named conversation tabs. The operator
 - [x] Read the user clarification and inspected existing selection, draft memory and keyboard ownership.
 - [x] Normally composed reviewed activity/lifecycle67be279 and outgoing-message8a599ea inputs; registered tabs implemented in4ab8faa.
 - [x] Added bounded per-session scroll while retaining the existing sender, outgoing rows and keyboard logic. The former outbox owner was already retired after merge; ROOT was notified of the exact viewport-only hunk.
-- [x] (2026-09-08 14:42 ET) Final code37cb8f8 passes70 focused tests/seven files, both TypeScript boundaries and the desktop package. Native convergence CLEAN; PR115 pushed above unchanged PR107.
+- [x] (2026-09-08 14:42 UTC / 10:42 ET) Final code37cb8f8 passes70 focused tests/seven files, both TypeScript boundaries and the desktop package. Native convergence CLEAN; PR115 pushed above unchanged PR107.
 
 ## Context and Orientation
 
