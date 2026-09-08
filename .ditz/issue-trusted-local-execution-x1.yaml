@@ -1,5 +1,5 @@
 id: trusted-local-execution-x1
-title: Trusted-local Codex conversation from fixed IDE draft
+title: Start a trusted-local Codex conversation from a fixed IDE draft
 desc: ""
 type: feature
 component: default
@@ -34,3 +34,11 @@ log_events:
     one-time approvals and owned Stop. Native fixpoint, 1687 tests, controlled packaged
     proof and one distinct real Codex smoke accepted. Cross-core history and namespace
     witness follow-ups remain open.
+- time: 2026-09-08T04:32:17-00:00
+  who: Ted Smith
+  what: changed title
+  comment: ""
+- time: 2026-09-08T04:32:17-00:00
+  who: Ted Smith
+  what: updated description
+  comment: ""
