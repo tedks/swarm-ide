@@ -10,10 +10,10 @@ Opening a repository should reveal its components, development servers, dependen
 
 - [x] (2026-09-08) Inspected PredictionBook, Pairmarket, Chaos/Speech, discord-agents, slowed and website using read-only native helpers; reported findings to the user and implementation plan to ROOT.
 - [x] (2026-09-08) Confirmed PR94 merged; continuation uses its unchanged reviewed source base in the same designated worktree and a new PR.
-- [ ] Extend runtime discovery and prove Electron exclusion plus nested Python/Hugo behavior.
-- [ ] Implement bounded manifest catalog and declared component relationships/sites.
-- [ ] Connect the catalog through the existing provider and dedicated panel without changing focus or App mounts.
-- [ ] Run proportional focused/native checks and one actual owned packaged user path; update design mappings, Ditz and ROOT handoff.
+- [x] (2026-09-08 05:46Z) Extended runtime discovery, nested-root ownership and desktop-specific Electron exclusion; independent nested web packages remain visible.
+- [x] (2026-09-08 05:54Z) Implemented bounded package/TOML/Dune/Bazel catalog, pnpm membership and local dependencies; excluded fixture-data manifests.
+- [x] (2026-09-08 05:46Z) Connected optional catalog through the existing provider/panel; empty instruments disappear without App or focus changes.
+- [x] (2026-09-08 05:55Z) Final code 03fd173 passed 96 focused tests, both typechecks and desktop package build. Native review converged CLEAN; owned packaged source-manifest/runtime path passed on fadd042 in 655ms with zero renderer errors and cleanup1. Preparing pushed documentation and ROOT handoff; merge/adoption remains ROOT-owned.
 
 ## Surprises & Discoveries
 
@@ -27,7 +27,9 @@ The first reviewable continuation implements broadly applicable local runtime an
 
 ## Outcomes & Retrospective
 
-Implementation in progress. PR94 remains independently complete; this continuation does not change its historical evidence or delay adoption.
+PR94 remains independently complete. PR96 delivers automatic Python/Hugo/Node discovery, nested build-root ownership, Electron-private server suppression, hidden empty instruments, source-declared components, local package relationships and configured Hugo destinations. Actual read-only probes found Pure Sky Python8000 and Node5173, both website hosts and Sui/OCaml/Node components in the scanned projects. No project scripts or peer repositories were changed.
+
+Native review drove retained underlying-read admission, bounded multiline TOML parsing, retained empty-timeout observations, exact workspace ownership (including recursive-pattern sibling rejection), and stronger Electron evidence. Final 96 tests and package build apply to 03fd173; the actual packaged 655ms proof applies to fadd042 before the narrow workspace/pnpm metadata corrections, not falsely to a later UI run. Native convergence covers the final correction delta. The owned display/processes were cleaned. Cloud/chain/application job metrics remain explicitly filed follow-ups rather than invented live values.
 
 ## Context and Orientation
 
@@ -47,7 +49,7 @@ Work only in `/home/tedks/Projects/swarm-ide/project-context`, branch `feature/p
 
 ## Validation and Acceptance
 
-A real disposable Python HTTP listener appears with its actual link; a declared Hugo site appears as a configured site, not observed deployment. Ordinary Electron internal servers do not appear as browser applications, while separately owned web packages remain visible. Deterministic tests cover malformed/oversized metadata, missing tools, nested roots, unrelated worktrees, stale replies, cancellation and finite coverage. A late observation for one repository cannot populate another. Native review checks actual code and corresponding design mappings; no broad historical suite or foreign-provider review is required under current user directions.
+A real disposable Node HTTP listener appears with its actual link; ordinary checked-in Hugo and Move manifests produce a configured site and local dependency in the packaged panel. Python availability is also demonstrated by the actual read-only Pure Sky process probe; Python/Hugo and Electron edge cases have deterministic native-boundary tests. Ordinary Electron internal servers do not appear as browser applications, while separately owned web packages remain visible. Tests cover malformed/oversized metadata, missing tools, nested roots, unrelated worktrees, stale replies, cancellation and finite coverage. A late observation for one repository cannot populate another. Native review checks actual code and corresponding design mappings; no broad historical suite or foreign-provider review is required under current user directions.
 
 ## Idempotence and Recovery
 
@@ -56,6 +58,8 @@ Discovery only reads. Repeated observations coalesce and have finite deadlines; 
 ## Artifacts and Notes
 
 The continuation plan and status are also summarized in `/tmp/swarm-ide-project-context.4Mi48a/continuation-plan.md`; final evidence will distinguish source-derived configuration from actual runtime observations and unimplemented integrations.
+
+Packaged evidence is retained in `artifacts/project-context-continuation-proof/project-context/run.hPEU01/`. Its proof names the actual process and browser handoff, real manifest catalog, configured Hugo site, local Move dependency, hidden empty containers and zero renderer errors. The owned harness reported 655ms scenario, 2.1s test and cleanup_complete=1 on :158/55372. No physical desktop was automated.
 
 ## Interfaces and Dependencies
 

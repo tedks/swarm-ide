@@ -50,11 +50,13 @@ addresses, not guessed web links. Containers are never started, stopped or chang
 Node packages, Python manifests, Hugo sites, Move packages, OCaml projects and Bazel
 markers supply component names and tooling. Package script names provide workflow
 categories; their commands are never executed or presented as passing tests.
-Local manifest dependencies connect discovered components; unresolved dependencies
+Package.json and pnpm workspace membership identify contained packages. Local
+manifest dependencies connect discovered components; unresolved dependencies
 do not become fabricated services. Hugo base URLs produce explicitly configured
 site links, not health or deployed-version badges.
 
-The catalog is independent of runtime discovery: a library can appear as a component
+Conventional fixture-data folders, generated outputs and dependency directories
+are skipped. The catalog is independent of runtime discovery: a library can appear as a component
 without being a server. Conversely, an observed Python server remains useful even
 when its project has no supported manifest. Source configuration is read afresh on
 the existing refresh cycle, not promoted to deployment state. Metadata failures keep
