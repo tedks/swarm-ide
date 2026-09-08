@@ -35,3 +35,10 @@ it("preserves focused event DOM across routine refresh and marks retained fleet 
   expect(screen.getAllByRole("listitem")).toHaveLength(2);
   expect(view.container.querySelector("[role=status],[aria-live]")).toBeNull();
 });
+
+it("does not label a synthetic fleet as live work", () => {
+  render(<ObservedActivity client={{ ...client(), fleet: fleet.map((d) => ({ ...d, session: { ...d.session, evidence: "synthetic" } })) }} onOpen={() => {}} />);
+  expect(screen.getByText("Example")).toBeTruthy();
+  expect(screen.queryByText("Live")).toBeNull();
+  expect(screen.getByRole("button", { name: "Worker 1 · example" })).toBeTruthy();
+});
