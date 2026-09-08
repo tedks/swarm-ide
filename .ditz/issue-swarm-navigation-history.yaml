@@ -5,7 +5,7 @@ type: feature
 component: default
 release:
 reporter: Ted Smith <tedks@riseup.net>
-status: unstarted
+status: in_progress
 disposition:
 creation_time: 2026-09-08T13:56:01-00:00
 references: []
@@ -35,6 +35,10 @@ log_events:
 - time: 2026-09-08T18:01:13-00:00
   who: Ted Smith
   what: blocks swarm-close-working-loop
+  comment: ""
+- time: 2026-09-08T18:09:27-00:00
+  who: Ted Smith
+  what: started
   comment: ""
 blocks:
 - swarm-close-working-loop
