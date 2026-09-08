@@ -36,3 +36,11 @@ log_events:
     keeps dismissed/history tabs and an enabled keyboard escape. Seventy focused tests
     plus both typechecks and the desktop package pass; native review converged clean.
     Ready for ROOT ordered landing above PR107; no real message or managed app change.
+- time: 2026-09-08T15:16:55-00:00
+  who: Ted Smith
+  what: commented
+  comment: PR115 is now ready against master at2ed9724 after PR107 landed. Tab behavior
+    is unchanged from the reviewed version; the only authored addition links the existing
+    message outbox and its checks into the living agent design. Exact JSON/source/Bazel
+    declaration checks passed. Recovery branch retained; no new tests or model turns.
+    ROOT can land and adopt.
