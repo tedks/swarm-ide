@@ -132,4 +132,15 @@ describe("live external observation", () => {
     expect(hook.result.current.detail?.entries[0]?.text).toBe("Recovered evidence");
     expect(hook.result.current.stale).toBe(false);
   });
+
+  it("clears registry-only failure state after recovery when no session is selected", async () => {
+    vi.useFakeTimers(); const f = setup(); f.setFailure(true);
+    const hook = renderHook(() => useExternalAgents(f.bridge, true, 1));
+    await act(async () => {});
+    expect(hook.result.current.stale).toBe(true); expect(hook.result.current.selected).toBeNull();
+    f.setFailure(false);
+    await act(async () => { await vi.advanceTimersByTimeAsync(3_000); });
+    expect(hook.result.current.snapshot?.sessions).toHaveLength(2);
+    expect(hook.result.current.stale).toBe(false); expect(hook.result.current.notice).toBe("");
+  });
 });

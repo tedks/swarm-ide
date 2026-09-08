@@ -100,8 +100,8 @@ class ExternalObserver {
             notice: "Registry unavailable; retaining the last recorded evidence. Automatic reads will retry while visible." });
         } else {
           const missing = selection === this.selection && this.state.selected && !result.snapshot.sessions.some((row) => row.id === this.state.selected);
-          this.publish({ snapshot: result.snapshot, ...(missing ? { selected: null, detail: null, stale: false } : {}),
-            notice: missing ? "Selected session is no longer registered. Choose another registered session." : this.state.stale ? this.state.notice : "" });
+          this.publish({ snapshot: result.snapshot, ...(!this.state.selected ? { stale: false } : {}), ...(missing ? { selected: null, detail: null, stale: false } : {}),
+            notice: missing ? "Selected session is no longer registered. Choose another registered session." : this.state.selected && this.state.stale ? this.state.notice : "" });
         }
       } else if (result.kind === "read" && selected()) {
         // IDs are offsets within this tail, not append identities. Replace it.
