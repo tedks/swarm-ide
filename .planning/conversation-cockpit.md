@@ -28,9 +28,12 @@ explicit user-message projection is needed for a two-sided conversation.
 
 ## Decision Log
 
-- Default only a unique locally observed root ancestry, never a role label or
+- Default only a unique locally observed top-level registered ancestor, never a role label or
   recent activity. Restore a still-registered explicit selection first. Do not
   switch a deliberate choice during refresh or after its removal.
+- Actual ROOT metadata has an unregistered parent. The first real UI check
+  exposed the overstrict null-parent assumption; root means the top of this
+  registered projection, not a fabricated claim of never having been forked.
 - Keep native controls mounted in a secondary dock tab. Moving presentation must
   not change their ownership or discard queued/unknown delivery state.
 - Preserve bounded conversation input/output as text, not executable markup;

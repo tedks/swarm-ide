@@ -40,6 +40,12 @@ describe("conversation-first selection", () => {
     expect(initialConversation([{ ...root, evidence: "synthetic" }], null)).toBeNull();
     expect(initialConversation([{ ...root, status: "unavailable" }], null)).toBeNull();
     expect(initialConversation([child], null)).toBeNull();
+    // The current CTO ROOT is itself a fork of a session outside this registry.
+    const registeredRoot = { ...root, ancestry: "unknown-parent" as const, parentId: id(99) };
+    expect(initialConversation([registeredRoot, child], null)).toBe(root.id);
+    expect(initialConversation([registeredRoot, { ...registeredRoot, id: id(3) }], null)).toBeNull();
+    expect(initialConversation([{ ...root, ancestry: "cycle" }], null)).toBeNull();
+    expect(initialConversation([registeredRoot, { ...root, id: id(99), status: "unavailable" }], null)).toBeNull();
   });
   it("waits for registry, restores explicit choice once and never steals after refresh/removal", () => {
     localStorage.setItem(conversationPreference, child.id);

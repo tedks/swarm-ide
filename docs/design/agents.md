@@ -21,7 +21,9 @@ Reading saved history never resumes a model or replays commands.
 
 The normal cockpit leads with the registered **Conversation** and its message
 box. On first observation it restores a still-registered previous selection, or
-chooses the unique locally observed root. Ambiguous roots and examples require
+chooses the unique locally observed top-level agent in the registered swarm.
+That agent may itself be a fork of an older, unregistered session; its actual
+parentage stays visible and is never rewritten. Ambiguous roots and examples require
 a deliberate choice. Refresh, core recovery and disappearance of a selected
 registration never silently select another agent. The preference contains only
 the session ID; a new observation still validates availability before controls

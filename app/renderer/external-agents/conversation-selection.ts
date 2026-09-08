@@ -5,7 +5,10 @@ import type { ExternalClient } from "./client";
 export const conversationPreference = "swarm.cockpit.selected-session.v1";
 export function initialConversation(sessions: ExternalAgentSummary[], remembered: string | null): string | null {
   if (remembered && ExternalSessionId.safeParse(remembered).success && sessions.some((row) => row.id === remembered)) return remembered;
-  const roots = sessions.filter((row) => row.evidence === "local" && row.status === "observed" && row.ancestry === "root" && row.parentId === null);
+  const registered = new Set(sessions.map((row) => row.id));
+  const roots = sessions.filter((row) => row.evidence === "local" && row.status === "observed" && (
+    row.ancestry === "root" && row.parentId === null ||
+    row.ancestry === "unknown-parent" && row.parentId !== null && !registered.has(row.parentId)));
   return roots.length === 1 ? roots[0]!.id : null;
 }
 
