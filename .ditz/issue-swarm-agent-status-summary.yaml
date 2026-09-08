@@ -5,8 +5,8 @@ type: bugfix
 component: default
 release:
 reporter: Ted Smith <tedks@riseup.net>
-status: in_progress
-disposition:
+status: closed
+disposition: fixed
 creation_time: 2026-09-08T15:47:40-00:00
 references: []
 log_events:
@@ -43,3 +43,10 @@ log_events:
     pass in one19.001s Bazel execution; native integration review CLEAN. No GUI/model/full-suite
     replay or historical status-fix claim. Original all-unknown report remains open/unlocalized.
     ROOT owns PR merge/adoption; same worktree preserved.'
+- time: 2026-09-08T16:23:01-00:00
+  who: Ted Smith
+  what: 'closed: fixed'
+  comment: 'Merged PR121: agent rows show the latest exact-session Work Log outcome;
+    selected details refresh through one shared reader, and historical outcomes no
+    longer imply current liveness. Joined header/Activity/composer checks passed.
+    Original operator-window status diagnosis remains tracked separately in swarm-agent-status-window.'
