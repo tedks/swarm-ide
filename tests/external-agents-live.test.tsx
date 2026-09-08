@@ -95,10 +95,15 @@ describe("live external observation", () => {
   });
 
   it("retains failed-read evidence with revoked handoff, retries boundedly, and clears removed registrations", async () => {
-    const f = setup(), hook = await start(f); f.setFailure(true);
+    const f = setup();
+    f.setTail({ ...detail(1), terminal: { attach: "tmux attach", switch: "tmux switch", location: "@1 / %1" } });
+    const hook = await start(f);
+    expect(hook.result.current.detail?.terminal).toBeDefined();
+    f.setFailure(true);
     await act(async () => { await vi.advanceTimersByTimeAsync(3_000); });
     expect(hook.result.current.detail?.entries[0]?.text).toBe("Original tail");
     expect(hook.result.current.detail?.handoff).toBe("unavailable");
+    expect(hook.result.current.detail?.terminal).toBeUndefined();
     expect(hook.result.current.notice).toContain("retaining"); expect(f.max()).toBe(1);
     f.setFailure(false); f.setSessions([row(2)]);
     await act(async () => { await vi.advanceTimersByTimeAsync(3_000); });

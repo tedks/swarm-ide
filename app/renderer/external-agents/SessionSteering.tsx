@@ -51,9 +51,8 @@ export function SessionSteering({ detail, bridge }: { detail: ExternalDetail | n
   };
   return <section className="session-steering" aria-label="Session steering">
     <h3>Message existing session</h3>
-    <p>Target: <strong>{session.label}</strong> <code>{session.id}</code></p>
-    <p>Explicit message only. Queued does not mean consumed or completed. No automatic retries.</p>
-    {!available ? <p>Sending requires an observed local session with an available checked tmux target and local-core connection.</p> : null}
+    <p>To <strong>{session.label}</strong></p>
+    {!available ? <p>Read-only. Refresh or open the session in your terminal.</p> : null}
     <form onSubmit={(event) => { event.preventDefault(); void send(); }}>
       <label htmlFor={fieldId}>Message to {session.label}</label>
       <textarea id={fieldId} value={target.draft} rows={3} disabled={!available || pending?.id === session.id}
@@ -64,11 +63,11 @@ export function SessionSteering({ detail, bridge }: { detail: ExternalDetail | n
     </form>
     {pending ? <p role="status">Sending to {pending.label} ({pending.id})…</p> : null}
     {target.receipt ? <div role="status" data-delivery-status={target.receipt.status}>
-      <p>{target.receipt.status === "queued" ? "Queued — consumption not confirmed."
+      <p>{target.receipt.status === "queued" ? "Message queued."
         : target.receipt.status === "rejected" ? "Rejected — message not queued. Draft retained."
           : "Delivery unknown — draft retained. Check the conversation before sending again."}</p>
       <p>{target.receipt.message}</p>
-      {target.receipt.receiptId ? <p>Receipt: <code>{target.receipt.receiptId}</code></p> : null}
+      {target.receipt.receiptId ? <details><summary>Delivery details</summary><code>{target.receipt.receiptId}</code></details> : null}
     </div> : null}
   </section>;
 }

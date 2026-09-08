@@ -112,24 +112,24 @@ describe("external observer presentation and lifecycle", () => {
     }
     render(<Harness />);
     fireEvent.click(await screen.findByRole("button", { name: "Inspect external agent Agent 1" }));
-    await screen.findByText("Synthetic example — not a real agent run");
+    await screen.findByText("Example session");
     expect(onSelect).toHaveBeenCalledTimes(1);
     expect(request.mock.calls.map(([r]) => r.type)).toEqual(["externalAgents.snapshot", "externalAgents.read"]);
-    expect(screen.getByText("Observe an existing session or deliberately send it an instruction. Launching new runs is separate.")).toBeTruthy();
+    expect(screen.getByRole("region", { name: "Session steering" })).toBeTruthy();
     const log = screen.getByRole("list", { name: "Recorded agent worklog" });
     expect(within(log).getAllByRole("listitem").map((item) => item.querySelector("p")?.textContent)).toEqual(detail(1).entries.map((entry) => entry.text));
     expect(within(log).queryByRole("button")).toBeNull(); expect(within(log).queryByRole("link")).toBeNull();
-    fireEvent.click(screen.getByRole("button", { name: "Conversation · read-only" }));
+    fireEvent.click(screen.getByRole("button", { name: "Conversation" }));
     expect(within(screen.getByRole("list", { name: "Recorded assistant conversation" })).getAllByRole("listitem")).toHaveLength(1);
     fireEvent.click(screen.getByText("Why this context?"));
     fireEvent.click(screen.getByRole("button", { name: "docs/architecture.md" }));
     expect(onOpen).toHaveBeenCalledExactlyOnceWith("docs/architecture.md");
     fireEvent.click(screen.getByRole("button", { name: "Return to source information" })); expect(onReturn).toHaveBeenCalledTimes(1);
     expect(request.mock.calls.filter(([r]) => r.type === "externalAgents.handoff")).toHaveLength(0);
-    fireEvent.click(screen.getByRole("button", { name: "Open conversation in tmux" }));
+    fireEvent.click(screen.getByRole("button", { name: "Select in tmux" }));
     await waitFor(() => expect(screen.getAllByText("Existing target selected.")).toHaveLength(2));
     expect(request.mock.calls.at(-1)?.[0]).toMatchObject({ type: "externalAgents.handoff", sessionId: id(1), observationId: "1".repeat(64) });
-    await waitFor(() => expect((screen.getByRole("button", { name: "Open conversation in tmux" }) as HTMLButtonElement).disabled).toBe(true));
+    await waitFor(() => expect((screen.getByRole("button", { name: "Select in tmux" }) as HTMLButtonElement).disabled).toBe(true));
   });
 
   it("waits for readiness and pauses automatic observation when hidden", async () => {

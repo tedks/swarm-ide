@@ -56,7 +56,7 @@ export async function queueExternalMessage(executable: string, sessionId: string
       if (cancelled || failed || code !== 0) { resolve(unknown()); return; }
       const ack = /^Queued message ([0-9a-f-]{36}) for thread ([0-9a-f-]{36})\.?\s*$/.exec(output);
       if (!ack || !ExternalSessionId.safeParse(ack[1]).success || ack[2] !== sessionId) { resolve(unknown()); return; }
-      resolve({ ...result("queued", "Codex accepted the message into the session queue. Consumption and completion are not confirmed."), receiptId: ack[1]! });
+      resolve({ ...result("queued", "Codex accepted the message."), receiptId: ack[1]! });
     });
     signal?.addEventListener("abort", stop, { once: true });
     timer = setTimeout(stop, timeoutMs);

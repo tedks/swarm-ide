@@ -36,12 +36,12 @@ describe("explicit observed-session steering", () => {
   it("targets the observed identity only on explicit Send and distinguishes queueing from consumption", async () => {
     const { bridge, request } = bridgeWith(async (input) => success(input));
     render(<SessionSteering detail={detail()} bridge={bridge} />);
-    expect(screen.getByText(id(1))).toBeTruthy();
+    expect(screen.getByText("Agent 1")).toBeTruthy();
     expect(sendButton().disabled).toBe(true);
     draft("Please inspect the failing test.");
     expect(request).not.toHaveBeenCalled();
     fireEvent.click(sendButton());
-    await screen.findByText("Queued — consumption not confirmed.");
+    await screen.findByText("Message queued.");
     expect(request).toHaveBeenCalledTimes(1);
     expect(request.mock.calls[0][0]).toMatchObject({ protocolVersion: PROTOCOL_VERSION, type: "externalAgents.send", sessionId: id(1),
       observationId: "1".repeat(64), text: "Please inspect the failing test." });

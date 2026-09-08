@@ -5,7 +5,8 @@ import { createHash, randomUUID } from "node:crypto";
 import { z } from "zod";
 import { ExternalSessionId, ExternalRequestSchema, ExternalResultSchema, type ExternalRequest, type ExternalResult,
   type ExternalAgentSummary, type ExternalDetail, type ExternalEntry, type ExternalSnapshot } from "../protocol/external-agents";
-import { validateHandoff, openHandoff } from "./external-agents-handoff";
+import { validateHandoff, openHandoff, terminalCommands } from "./external-agents-handoff";
+import { extractEntries } from "./external-agents-activity";
 import { Registry, type Registered } from "./external-agents-registry";
 import { queueExternalMessage, resolveExternalCodex, type QueueMessage, type ExternalSendReceipt } from "./external-agents-send";
 
@@ -69,7 +70,7 @@ export class ExternalAgentService {
       ancestry: "unavailable", observationId: "", observedAt: new Date().toISOString(), message: "Registered session could not be read safely.",
       ...(row.role ? { role: safe(row.role, 120) } : {}), ...(row.task ? { task: safe(row.task, 200) } : {}), contextPaths: row.contextPaths };
   }
-  private async read(row: Registered, tail: boolean): Promise<ExternalDetail> {
+  private async read(row: Registered, tail: boolean, checkHandoff = tail): Promise<ExternalDetail> {
     const summary = this.summary(row);
     const result: ExternalDetail = { session: summary, entries: [], handoff: row.tmux ? "unavailable" : "unconfigured",
       coverage: { tailBytes: 0, partial: true, omittedRecords: 0, message: "No transcript observed." } };
@@ -85,29 +86,38 @@ export class ExternalAgentService {
       summary.parentId = meta.payload.forked_from_id ?? null;
       summary.status = "observed"; summary.ancestry = summary.parentId ? "unknown-parent" : "root";
       summary.observationId = createHash("sha256").update(`${stat.dev}:${stat.ino}:${header.subarray(0, newline).toString("utf8")}`).digest("hex");
-      summary.message = "Parentage comes from the registered session header; role and task are operator descriptions.";
+      summary.message = "Registered session";
+      summary.control = row.tmux ? "tmux" : "read-only";
+      if (row.contextRoot && isAbsolute(row.contextRoot)) summary.worktree = row.contextRoot;
       if (tail) {
         const start = Math.max(0, stat.size - TAIL), buffer = Buffer.alloc(Math.min(stat.size, TAIL));
         const { bytesRead } = await file.read(buffer, 0, buffer.length, start); this.check();
         result.coverage.tailBytes = bytesRead;
-        let text = buffer.subarray(0, bytesRead).toString("utf8");
+        const bytes = buffer.subarray(0, bytesRead);
         let partial = start > 0;
-        if (start > 0) { const end = text.indexOf("\n"); text = end < 0 ? "" : text.slice(end + 1); }
-        if (!text.endsWith("\n")) { partial = true; text = text.slice(0, text.lastIndexOf("\n") + 1); }
+        // Byte offsets, not decoded character indices or tail-relative indices.
+        // A complete record keeps its identity as later appends shift this tail.
+        let cursor = start > 0 ? bytes.indexOf(10) + 1 : 0;
+        if (start > 0 && cursor === 0) cursor = bytesRead;
+        if (bytesRead && bytes[bytesRead - 1] !== 10) partial = true;
         const entries: ExternalEntry[] = [];
-        let omitted = 0, index = 0;
-        for (const line of text.split("\n")) {
+        let omitted = 0;
+        while (cursor < bytesRead) {
+          const end = bytes.indexOf(10, cursor); if (end < 0) break;
+          const offset = start + cursor, line = bytes.subarray(cursor, end).toString("utf8"); cursor = end + 1;
           if (!line) continue;
           if (line.length > 65536) { omitted++; partial = true; continue; }
           let item: unknown;
           try { item = JSON.parse(line); } catch { omitted++; partial = true; continue; }
-          const entry = extractEntry(item, `${start}:${index++}`);
-          if (entry) entries.push(entry); else omitted++;
+          const identity = `${stat.dev}:${stat.ino}:${offset}:${createHash("sha256").update(line).digest("hex").slice(0, 12)}`;
+          const extracted = extractEntries(item, identity);
+          if (extracted.length) entries.push(...extracted); else omitted++;
         }
         if (entries.length > MAX_ENTRIES) { omitted += entries.length - MAX_ENTRIES; partial = true; }
         result.entries = entries.slice(-MAX_ENTRIES);
         result.coverage = { tailBytes: bytesRead, partial, omittedRecords: omitted,
-          message: "Bounded recent assistant conversation and named tool events. User prompts, reasoning, arguments and tool output bytes omitted. Not all effective context or repository changes." };
+          message: "Recent activity; older entries may be outside this window." };
+        summary.lastActivityAt = result.entries.at(-1)?.at;
       }
       // An inode can be truncated and rewritten to another session without
       // shrinking its final size. Verify the accepted header on this descriptor
@@ -119,7 +129,10 @@ export class ExternalAgentService {
       const after = await file.stat(), current = await lstat(row.rollout); this.check();
       if (after.size < stat.size || current.ino !== stat.ino || current.dev !== stat.dev || current.isSymbolicLink())
         throw new Error("Transcript rotated or truncated");
-      if (tail && row.tmux) result.handoff = await validateHandoff(row.tmux, row.rollout, this.controller.signal) ? "available" : "unavailable";
+      if (checkHandoff && row.tmux) {
+        result.handoff = await validateHandoff(row.tmux, row.rollout, this.controller.signal) ? "available" : "unavailable";
+        if (result.handoff === "available") result.terminal = terminalCommands(row.tmux);
+      }
       this.check();
       return result;
     } catch {
@@ -181,11 +194,18 @@ export class ExternalAgentService {
       }
       this.check();
       if (request.type === "externalAgents.snapshot") {
-        const sessions: ExternalAgentSummary[] = [];
-        for (const row of rows) { sessions.push((await this.read(row, false)).session); this.check(); }
+        const fleet: ExternalDetail[] = [];
+        // Small bounded batches: all registered tails, no selected-session
+        // bottleneck and no process-control validation on passive fleet reads.
+        for (let index = 0; index < rows.length; index += 4) {
+          const batch = await Promise.allSettled(rows.slice(index, index + 4).map((row) => this.read(row, true, false)));
+          this.check();
+          for (const result of batch) { if (result.status === "rejected") throw result.reason; fleet.push(result.value); }
+        }
+        const sessions = fleet.map((detail) => detail.session);
         resolveAncestry(sessions);
-        return ExternalResultSchema.parse({ kind: "snapshot", snapshot: { status: "observed", sessions, observedAt: new Date().toISOString(),
-          message: "Explicit operator registrations only. Refresh to observe new records; sessions may be active or historical." } });
+        return ExternalResultSchema.parse({ kind: "snapshot", snapshot: { status: "observed", sessions, fleet, observedAt: new Date().toISOString(),
+          message: "Registered fleet" } });
       }
       const row = rows.find((candidate) => candidate.id === request.sessionId);
       if (!row) throw new Error("Session is not registered");
@@ -217,24 +237,7 @@ export function resolveAncestry(sessions: ExternalAgentSummary[]): void {
   }
 }
 
-/** Deliberately not a prose-to-facts parser. Tool payloads are never exposed. */
+/** Compatibility helper for callers that only need one record preview. */
 export function extractEntry(input: unknown, id: string): ExternalEntry | null {
-  if (!input || typeof input !== "object") return null;
-  const record = input as Record<string, unknown>, p = record.payload;
-  if (!p || typeof p !== "object") return null;
-  const payload = p as Record<string, unknown>;
-  const at = typeof record.timestamp === "string" ? safe(record.timestamp, 64) : "timestamp unavailable";
-  if (record.type === "response_item" && payload.type === "message" && payload.role === "assistant" &&
-      payload.phase !== "analysis" && Array.isArray(payload.content)) {
-    const chunks: string[] = [];
-    for (const item of payload.content) if (item?.type === "output_text" && typeof item.text === "string") chunks.push(item.text);
-    if (chunks.length) return { id, at, kind: "assistant", text: safe(chunks.join("\n")), attribution: "assistant-reported" };
-  }
-  if (record.type === "response_item" && (payload.type === "function_call" || payload.type === "custom_tool_call") && typeof payload.name === "string")
-    return { id, at, kind: "tool-call", text: `Tool requested: ${safe(payload.name, 160)} (arguments withheld; outcome not inferred)`, attribution: "recorded-tool-event" };
-  if (record.type === "response_item" && (payload.type === "function_call_output" || payload.type === "custom_tool_call_output"))
-    return { id, at, kind: "tool-result", text: "Tool response recorded (output withheld; not proof of success or a commit)", attribution: "recorded-tool-event" };
-  if (record.type === "event_msg" && (payload.type === "task_started" || payload.type === "task_complete"))
-    return { id, at, kind: payload.type === "task_started" ? "turn-start" : "turn-complete", text: payload.type === "task_started" ? "Harness turn started" : "Harness turn completed; product completion not inferred", attribution: "harness-event" };
-  return null;
+  return extractEntries(input, id)[0] ?? null;
 }
