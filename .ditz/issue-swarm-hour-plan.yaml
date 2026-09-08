@@ -1,8 +1,9 @@
 id: swarm-hour-plan
-title: Ground one-hour real swarm operator design
-desc: ROOT execution design in docs/swarm-operator-hour.md. Four bounded true-fork
-  streams, actual ROOT/two-child journey; local direct checks, no full-suite treadmill.
-  Complete when plan and dependency chain are pushed.
+title: Plan the one-hour real-swarm operator session
+desc: ROOT's execution plan is in docs/swarm-operator-hour.md. Use four limited-scope
+  true-fork workstreams and an operator walkthrough with the actual ROOT and two children.
+  Run targeted local checks; avoid repeated full-suite runs. Complete when the plan
+  and dependency chain are pushed.
 type: task
 component: default
 release:
@@ -37,6 +38,14 @@ log_events:
   what: 'closed: fixed'
   comment: ROOT authored and pushed docs/swarm-operator-hour.md; concrete ownership,
     operator acceptance and dependency chain created before dispatch.
+- time: 2026-09-08T04:31:39-00:00
+  who: Ted Smith
+  what: changed title
+  comment: ""
+- time: 2026-09-08T04:31:39-00:00
+  who: Ted Smith
+  what: updated description
+  comment: ""
 blocks:
 - swarm-live-fleet
 - swarm-operator-cockpit
