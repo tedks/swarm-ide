@@ -37,15 +37,27 @@ async function main() {
   await until(() => run(() => document.querySelector(".cm-content")?.textContent.includes("graph camera proof")), "source editor after native click");
   await until(() => inView(serviceSelector, "service:19"), "source click reveals exact offscreen service");
   assert.notEqual(await transform(), before);
+  // Opening source changes the graph group to its scrolling sidebar. Bring the
+  // retained service panel into the visible window before native input there.
+  await run(() => document.querySelector('[data-topology="service"] .graph-canvas').scrollIntoView({ block: "nearest" })); await frame();
   await run(() => document.querySelector('[data-topology="service"] [data-id="service:0"]').focus({ preventScroll: true }));
   wc.sendInputEvent({ type: "keyDown", keyCode: "Enter", modifiers: ["shift"] }); wc.sendInputEvent({ type: "keyUp", keyCode: "Enter", modifiers: ["shift"] });
   await until(() => inView(serviceSelector, "service:0"), "keyboard service reveal");
   // Native pointer gesture after reveal must survive a real declaration update.
-  const p = await run(() => { const r = document.querySelector('[data-topology="service"] .react-flow__pane').getBoundingClientRect(); return { x: Math.round(r.left + 15), y: Math.round(r.bottom - 15) }; });
+  const beforePan = await transform();
+  const p = await run(() => {
+    const pane = document.querySelector('[data-topology="service"] .react-flow__pane'), r = pane.getBoundingClientRect();
+    for (const [fx, fy] of [[.85, .8], [.85, .2], [.15, .2], [.5, .15]]) {
+      const x = Math.round(r.left + r.width * fx), y = Math.round(r.top + r.height * fy);
+      if (document.elementFromPoint(x, y) === pane) return { x, y };
+    }
+    throw new Error("No visible empty graph pane for native pan");
+  });
   wc.sendInputEvent({ type: "mouseMove", ...p }); wc.sendInputEvent({ type: "mouseDown", ...p, button: "left", clickCount: 1 });
   wc.sendInputEvent({ type: "mouseMove", x: p.x + 35, y: p.y - 20, movementX: 35, movementY: -20 });
   wc.sendInputEvent({ type: "mouseUp", x: p.x + 35, y: p.y - 20, button: "left", clickCount: 1 }); await frame();
   const camera = await transform();
+  assert.notEqual(camera, beforePan, "native pan did not move the viewport");
   const declaration = path.join(process.env.SWARM_RECENTER_FIXTURE, "service00", "service.swarm.json");
   const data = JSON.parse(await fs.readFile(declaration, "utf8")); data.service.displayName = "Renamed worker"; await fs.writeFile(declaration, JSON.stringify(data));
   await until(() => run(() => document.querySelector('[data-id="service:0"]')?.textContent.includes("Renamed worker")), "automatic declaration refresh"); await frame();
