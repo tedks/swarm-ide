@@ -18,3 +18,12 @@ log_events:
   who: Ted Smith
   what: started
   comment: ""
+- time: 2026-09-08T14:06:24-00:00
+  who: Ted Smith
+  what: commented
+  comment: Implemented live Bazel target/test/output milestones in existing job messages,
+    without guessing percentages or starting more builds. 27 focused tests plus both
+    TypeScript checks passed; a real owned Bazel build delivered a configured-target
+    message before exit and confirmed cleanup. Native review caught and verified fixes
+    for terminal-escape parsing cost and advisory close errors. PR114 is ready above
+    automatic-query PR108; ROOT owns landing. No App or shared preview changes.
