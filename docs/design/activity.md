@@ -94,6 +94,10 @@ The Work Log modules use the same root source/bundle targets. Its dedicated
 `//tools/live-observers:unit` checks raw operation ordering, originating-session
 activation and refresh retention; `//tools/build-resources:regressions` checks
 truthful counts, progress, examples and preserved source state.
+`//tools/activity-usability:smoke` exercises the packaged application with two
+explicitly labelled private JSONL proof fixtures on an owned virtual desktop.
+It checks raw event timestamps, keyboard settings and retained source/draft/cameras;
+those recorded operations are not executed commands or model responses.
 
 See [logical changelog](../logical-changelog.md) for saved-report behavior and
 [the operator plan](../swarm-operator-hour.md) for the new online Work Log.

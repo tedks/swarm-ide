@@ -9,13 +9,16 @@ Operators should see timestamped raw tool/file operations in Activity, completed
 ## Progress
 
 - [x] 2026-09-08 13:33Z: Read ownership, current panel implementations and start Ditz issue.
-- [ ] Add concrete presentation regressions and implement independent Activity/settings/jobs cleanup.
-- [ ] Consume the reviewed shared lifecycle producer and add accessible badges/status regressions.
-- [ ] Run focused local checks, native convergence, useful owned virtual proof, update docs, push and hand off.
+- [x] 2026-09-08 13:40Z: Added concrete presentation regressions and implemented independent Activity/settings/jobs cleanup.
+- [x] 2026-09-08 13:46Z: Normally composed reviewed lifecycle3e0b007 and plan loadera82034d; rendered shared status labels/shapes without a classifier.
+- [x] 2026-09-08 13:49Z: Four focused local targets passed (232 tests, one deliberately skipped real-send case), native convergence CLEAN, packaged UI proof passed1.67s with owned cleanup.
+- [ ] Finish final mapping validation, Ditz/push and executive handoff.
 
 ## Surprises & Discoveries
 
 Current Work Log entries use the producer's `working` state until explicitly recorded in Ditz. Activity previews include assistant paragraphs while the main raw stream excludes them. Normal observation refresh is rendered as extra explanatory labels. Real job contracts expose progress and status, but resource values have no measurement provenance; zero placeholders cannot be treated as live measurements.
+
+Native review found opaque event IDs sorted incorrectly across byte-offset digit boundaries when timestamps tied. The precise regression failed first, then passed after preserving source order. First packaged run passed raw Activity checks but exposed the test driver's leading-newline input assumption; a single-line input correction retained the exact-source assertion, and the corrected proof passed with no renderer errors. Neither is a live-agent execution claim.
 
 ## Decision Log
 
@@ -23,7 +26,7 @@ Use only the agent-state owner's lifecycle classification; this branch owns rend
 
 ## Outcomes & Retrospective
 
-Implementation and proof pending.
+Operators now see distinct accessible execution indicators, raw timestamped Activity without an inner heading/Live label, compact summary settings and truthful build job counts/progress. Current session state comes from the shared producer; Work Log outcome state remains historical and independent of Ditz recording. Shared App layout and outer heading changes remain the cockpit owner's work. Direct user research confirmed the existing Bazel BEP JSONL can be streamed; the privileged runner recommendation was sent to continuous-build, not implemented in this presentation branch.
 
 ## Context and Orientation
 
@@ -35,7 +38,7 @@ First add tests for raw operation filtering, stable focus and the settings gear.
 
 ## Concrete Steps
 
-From this worktree run `nix develop --command bazel test --jobs=3 //tools/live-observers:unit //tools/work-log:check //tools/build-resources:unit --test_output=errors`. Use the existing owned virtual launcher for one local visual check; never automate physical :0. Commit granular changes to feature/usability-activity-ui, push, open draft PR, and complete scoped native review. ROOT normally lands and adopts.
+From this worktree run `nix develop --command bazel test --jobs=3 //tools/live-observers:unit //tools/work-log:check //tools/build-resources:regressions //tools/living-design:checks --test_output=errors`. Run `nix develop --command bazel run --jobs=3 //tools/activity-usability:smoke` for the owned packaged proof. Do not automate physical :0. PR105 carries granular commits; ROOT normally lands and adopts.
 
 ## Validation and Acceptance
 
@@ -51,6 +54,7 @@ Authoritative handoff and evidence: `/tmp/swarm-ide-usability.BirZCk/activity-ui
 
 ## Interfaces and Dependencies
 
-Existing callbacks carry session IDs, source paths and recorded patches. Preserve them. Optional lifecycle data must render unknown when absent, not pretend progress. The agent-state committed seam will define its exact type. No new model calls or summarizer runs are needed.
+Existing callbacks carry session IDs, source paths and recorded patches. Preserve them. `protocol/agent-lifecycle.ts` defines AgentExecutionState and AGENT_EXECUTION_LABELS. `ExternalAgentSummary.lifecycle?.state` supplies current state; `WorkLogEntry.state` supplies historical outcome state. Missing lifecycle renders neutral Status unavailable. No new model calls or summarizer runs are needed.
 
 Initial plan written before implementation; records bounded ownership and assumptions.
+Updated after implementation and evidence to record exact reviewed inputs, bounded corrections and remaining integration ownership.
