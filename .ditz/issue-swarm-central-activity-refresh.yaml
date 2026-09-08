@@ -5,8 +5,8 @@ type: bugfix
 component: default
 release:
 reporter: Ted Smith <tedks@riseup.net>
-status: in_progress
-disposition:
+status: closed
+disposition: fixed
 creation_time: 2026-09-08T15:34:57-00:00
 references: []
 log_events:
@@ -26,3 +26,14 @@ log_events:
     20 focused mounted tests plus both TypeScript boundaries pass. Native review identified
     one rootless Inspect affordance to correct; owned packaged controlled-JSONL proof
     underway. No new timer, transport or model run.
+- time: 2026-09-08T15:56:00-00:00
+  who: Ted Smith
+  what: 'closed: fixed'
+  comment: PR119 implements current central Activity overview, explicit event inspection
+    and correct selected-reader Refresh with retained focus and registered-worktree
+    authority. 21 focused tests plus both TypeScript boundaries pass; native review
+    converged clean. Actual owned packaged observer/UI proof passed in 3.364s with
+    automatic publication in 1.303s, correct manual reader, retained source/draft/cameras,
+    zero renderer errors and cleanup. Controlled transcript records, no model/messages.
+    ROOT owns normal merge/adoption. Separate unchanged design-count test mismatch
+    filed.
