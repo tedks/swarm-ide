@@ -22,3 +22,13 @@ log_events:
   who: Ted Smith
   what: started
   comment: ""
+- time: 2026-09-08T04:45:20-00:00
+  who: Ted Smith
+  what: commented
+  comment: 'Implemented narrow default presentation: exact connected isolated ADAPTER_POLICY_UNAVAILABLE
+    capability notice and one-active-isolated-run caption hidden only with mounted
+    trusted-local controls. Other errors, disconnect notice, legacy-only behavior,
+    drafts/task ownership, run history and backend capability restrictions preserved.11
+    focused mounted/App tests and both typechecks passed14.35s; native CLEAN. No GUI/model/full-suite
+    run. Pushed33d7350 on fix/swarm-trusted-cockpit, ROOT normal landing/adoption
+    pending.'
