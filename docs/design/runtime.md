@@ -23,7 +23,7 @@ terminal process never makes that process owned by the IDE.
 | Contracts | [protocol/schema.ts](../../protocol/schema.ts) and domain modules | Shared request/result types and runtime schemas |
 | Providers | [provider.ts](../../core/provider.ts), files, tasks, build graph, agents | Filesystem, Git, Bazel and owned harness operations |
 | Installed Linux command | [launcher.mjs](../../tools/cli/launcher.mjs), [package.nix](../../nix/package.nix) | Resolves the invocation's project, launches the immutable production bundle and keeps host configuration available |
-| Live build messages | [build-progress.ts](../../core/build-progress.ts) → [provider.ts](../../core/provider.ts) | Private Bazel event file → bounded current-job message |
+| Service declarations | [service-discovery.ts](../../core/service-discovery.ts) → [provider.ts](../../core/provider.ts) | Read-only working declarations → source graph; no build or deployment |
 
 The Electron renderer has context isolation and no Node integration. The local
 core resolves workspace identity and canonical paths, manages process lifetimes
@@ -120,13 +120,12 @@ boundaries. Linux/amd64 browser proof does not imply macOS/ARM validation.
 
 ## Live build messages
 
-The explicit service build already writes a private [Bazel Build Event Protocol](https://bazel.build/remote/bep)
-JSON-lines file. While that process runs, the core reads newly appended complete
-lines and sends the latest changed target, test or output milestone through
-`job.changed`. The existing job widget displays the message; running progress
-stays indeterminate. Configuring or completing a target does not mark the build
-successful: process exit, artifact validation and the exact source fingerprint
-still control that decision.
+An explicitly selected target build writes a private Bazel Build Event Protocol
+JSON-lines file. While that process runs, the selected-target executor reads newly
+appended complete lines and reports the latest target, test or output milestone
+through its build-job observation. Running progress stays indeterminate; a
+milestone is not a successful process exit. The old service-provider build and
+artifact publication pipeline is removed: service discovery only reads declarations.
 
 One reader samples every 250 ms, with no overlapping reads, a 4 MiB total limit,
 a 256 KiB line limit and 300-character messages. Partial JSON/UTF-8 waits for a
@@ -139,10 +138,10 @@ lines and closes before temporary-file cleanup. A telemetry close error stays
 advisory rather than changing the build result.
 
 This does not start additional builds, monitor agent-launched Bazel processes,
-or turn lightweight repository queries into binary builds. The reader and provider
+or turn lightweight repository queries into binary builds. The reader and target executor
 are inputs of `//:quality_sources` and `//:desktop-bundle`.
-`//tools/build-graph:progress-checks` exercises the parser, reader, provider wiring
-and late-event guards plus both TypeScript boundaries.
+`//tools/build-graph:progress-checks` exercises the parser and reader plus both
+TypeScript boundaries; selected-target wiring has separate build-job checks.
 `//tools/build-graph:progress-probe` consumes the desktop bundle and runs a small
 real Bazel build in a disposable owned process namespace, proving that a target
 milestone arrives before exit and that process cleanup finishes.
@@ -211,11 +210,12 @@ retain owned process cleanup.
 Cancellation retains the old graph, prevents late publication and waits for
 cleanup before another query. Cancellation does not silently restart on return.
 
-The fixed FraudCheck adapter now requires an explicit
-`.swarm/service-topology.json` mapping with schemaVersion 1 and the exact demo
-target, plus its matching service manifest. Other projects receive no example
-build job from startup or the service-topology action. This special declaration
-does not restrict generic explicitly selected target builds.
+Service observation no longer owns a Bazel build pipeline. The provider reads
+generic Compose/native declarations, validates the working fingerprint around
+discovery and publishes source evidence. Its single active read is coalesced with
+source changes, aborted on disposal and prevented from publishing stale results.
+Selected-target builds remain a separate capability. No special example adapter
+or `.swarm/service-topology.json` gate remains.
 
 `//tools/build-graph:compat-checks` consumes `//:quality_sources` for these
 boundaries, renderer cancellation and both TypeScript configurations.

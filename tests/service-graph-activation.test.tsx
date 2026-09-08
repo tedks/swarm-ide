@@ -17,7 +17,7 @@ describe("actual GraphPane gesture wiring (ReactFlow seam)", () => {
     const snapshot = initialSnapshot(), onFocus = vi.fn(), onActivate = vi.fn();
     const { graph } = adaptServiceTopology(contextArtifact, "bazel://fixture", "b".repeat(64), "a".repeat(64), 1, "2026-09-07T03:00:00.000Z", snapshot.project.id);
     const props = { graph, focus: snapshot.focus, mappings: [], interfaceZoom: 100 as const, onFocus, onActivate, onConnectionFocus: vi.fn(), onReconcile: vi.fn(), reconciliationRunning: false };
-    const view = render(<GraphPane {...props} />), node = screen.getByText("service:fraud-check");
+    const view = render(<GraphPane {...props} />), node = screen.getByText("service:validator");
     expect(screen.getByTestId("flow").dataset.autoPan).toBe("false");
     fireEvent.mouseOver(node); fireEvent.focus(node); fireEvent.pointerMove(node); expect(onActivate).not.toHaveBeenCalled();
     fireEvent.click(node); expect(onActivate).toHaveBeenCalledTimes(1);

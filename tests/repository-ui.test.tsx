@@ -59,9 +59,9 @@ it("follows file targets, preserves a pinned manual pattern, and reports unmappe
   view.rerender(<BuildGraphPane {...input} mockAgents={true} focusedFile="core/files.ts" />);
   expect(flow.getAttribute("data-camera")).toContain('"x":73');
   expect(Number(flow.getAttribute("data-fits"))).toBe(before);
-  view.rerender(<BuildGraphPane {...input} focusedFile="tools/extract-service-topology.mjs" />);
+  view.rerender(<BuildGraphPane {...input} focusedFile="tools/build-app.sh" />);
   await waitFor(() => expect(Number(flow.getAttribute("data-fits"))).toBeGreaterThan(before));
-  expect(pane.getAttribute("data-file-focus")).toBe("tools/extract-service-topology.mjs");
+  expect(pane.getAttribute("data-file-focus")).toBe("tools/build-app.sh");
   fireEvent.change(screen.getByRole("combobox", { name: "Bazel target" }), { target: { value: "//..." } });
   fireEvent.click(screen.getByRole("button", { name: "Add target" }));
   expect((screen.getByRole("checkbox", { name: "Follow file" }) as HTMLInputElement).checked).toBe(false);
@@ -83,11 +83,11 @@ it("does not steal the service lens when file focus changes and updates the reta
   fireEvent.click(screen.getByRole("button", { name: /^Build graph$/ }));
   const flow = screen.getByTestId("repository-flow");
   fireEvent.click(service);
-  view.rerender(<TopologyViews {...input} focusedFile="tools/extract-service-topology.mjs" />);
+  view.rerender(<TopologyViews {...input} focusedFile="tools/build-app.sh" />);
   expect(service.getAttribute("aria-pressed")).toBe("true");
   fireEvent.click(screen.getByRole("button", { name: /^Build graph$/ }));
   expect(screen.getByTestId("repository-flow")).toBe(flow);
-  expect(screen.getByRole("region", { name: "Bazel build graph" }).getAttribute("data-file-focus")).toBe("tools/extract-service-topology.mjs");
+  expect(screen.getByRole("region", { name: "Bazel build graph" }).getAttribute("data-file-focus")).toBe("tools/build-app.sh");
 });
 
 it("adds and removes //... as one build-view pattern without invoking a source action", () => {

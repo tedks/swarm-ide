@@ -13,8 +13,7 @@ async function main() {
   const options = parseRehearsalArguments(process.argv.slice(2));
   if (options.help) { console.log(rehearsalHelp); return; }
   const workspace = await realpath(options.workspace);
-  // This prototype provider exposes this fixed registered example, not arbitrary repos.
-  await access(join(workspace, "examples/checkout-world/services/fraudcheck/fraudcheck.ts"), constants.R_OK);
+  // The selected repository supplies its own files and service declarations.
   execFileSync("git", ["-C", workspace, "rev-parse", "--verify", "HEAD"], { stdio: "ignore", timeout: 5000 });
   const virtual = options.mode === "owned-acceptance";
   if (virtual) {

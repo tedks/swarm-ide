@@ -13,19 +13,15 @@ import { directoryBuildLinks, withMockDirectoryAgents, type BuildLinkSnapshot } 
 import "./service-graph-status.css";
 export type { GraphConnectionFocus } from "./graph-adapter";
 
-function EmptyServiceGraph({ graph, running }: { graph: GraphSlice; running: boolean }) {
+function EmptyServiceGraph({ graph }: { graph: GraphSlice; running: boolean }) {
   if (graph.topologyId !== "service" || graph.nodes.length) return null;
   const message = graph.reconciliation === "gray"
-    ? ["Service topology not observed", "No service observation is available for this scope. Browse the repository, or use Build when service topology is configured."]
+    ? ["Looking for services", "Reading the project's service declarations."]
     : graph.reconciliation === "yellow"
-      ? running
-        ? ["Building service topology", "A topology build is in progress. Results will appear here when an observation is available."]
-        : ["Service topology needs a build", "The working state has changed. Use the existing Build control to request a fresh topology observation."]
+      ? ["Updating services", "Reading current declarations; no build or deployment is started."]
       : graph.reconciliation === "red"
-        ? ["Service observation failed", "Topology reconciliation failed. No usable observation is available here; an empty view does not mean the repository has no services."]
-        : graph.provenance.some((item) => item.sourceKind === "build")
-          ? ["No services in this observation", "The recorded build contains no service nodes for this scope, not the entire repository or its deployments."]
-          : ["Service topology unavailable", "No build-backed service observation is available for this scope. An empty canvas does not establish that no services exist."];
+        ? ["Could not read services", "Check the Compose or service.swarm.json declarations, then refresh."]
+        : ["No declared services", "Services appear automatically from Compose files or service.swarm.json declarations."];
   return <div className={`service-graph-status service-graph-status-${graph.reconciliation}`} role="status" aria-label="Service graph availability">
     <span className="service-graph-status-label">Service observation</span>
     <strong>{message[0]}</strong>
@@ -129,8 +125,8 @@ const GraphPaneContent = memo(function GraphPaneContent({ workspaceId, graph, fo
         {explorer ? <div className="repository-view-switch" aria-label="Repository presentation"><button aria-pressed={repositoryView === "tree"} onClick={() => setRepositoryView("tree")}>Explorer</button><button aria-pressed={repositoryView === "map"} onClick={() => setRepositoryView("map")}>Map</button></div> : null}
         {graph.directory && onNavigateDirectory ? <div className="directory-map-controls"><button disabled={!graph.directory.directory} aria-label="Map parent directory" onClick={() => navigate(parentDirectory(graph.directory!.directory))}>↑</button><button aria-label="Map repository root" onClick={() => navigate("")}>/</button><span title={graph.directory.directory || "/"}>{graph.directory.directory || "/"}</span></div> : null}
         <div className="graph-meta"><span>{graph.scope}</span><span>{graph.zoomBand}</span>{graph.directory ? <span aria-label="Directory observation, not build evidence">◷</span> : graph.reconciliation === "yellow"
-          ? <button className="truth-dot status-yellow" aria-label={reconciliationRunning ? "Topology build in progress" : "Build repository service topology"} title={reconciliationRunning ? "Topology build in progress" : "Working world changed — build topology"} disabled={reconciliationRunning} onClick={onReconcile} />
-          : <span className={`truth-dot status-${graph.reconciliation}`} role="status" aria-label={`Topology ${graph.reconciliation === "green" ? "consistent" : graph.reconciliation === "gray" ? "unobserved" : "failed"}`} title={graph.reconciliation === "green" ? "Topology consistent" : graph.reconciliation === "gray" ? "Topology unobserved" : "Topology build failed"} />}</div>
+          ? <button className="truth-dot status-yellow" aria-label="Refresh service declarations" title="Service declarations updating" disabled={reconciliationRunning} onClick={onReconcile} />
+          : <span className={`truth-dot status-${graph.reconciliation}`} role="status" aria-label={`Topology ${graph.reconciliation === "green" ? "consistent" : graph.reconciliation === "gray" ? "unobserved" : "failed"}`} title={graph.reconciliation === "green" ? "Declarations current" : graph.reconciliation === "gray" ? "Looking for declarations" : "Could not read declarations"} />}</div>
       </header>
       {graph.directory ? <div className="directory-layers" aria-label="Directory map layers">
         <button aria-pressed={buildLinksVisible} disabled={!buildLinkSnapshot && !onBuildLinksVisibility} title={buildLinkSnapshot?.observation ? `Bazel observation ${buildGraphStatus}; not a binary build` : "Show repository-scoped Bazel dependency observations"} onClick={() => { setBuildLinksVisible((shown) => !shown); setSelectedBuildLink(null); }}>{buildLinksVisible ? "☑" : "☐"} Build links</button>

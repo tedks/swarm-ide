@@ -4,7 +4,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import { TrustedLocalPane } from "../app/renderer/agents/TrustedLocalPane";
 import type { SwarmBridge } from "../app/electron/preload";
 import type { LiveAgentState } from "../app/renderer/agents/live-state";
-import { initialSnapshot, paymentsFileFocus } from "../fixtures/world";
+import { initialSnapshot, writerFileFocus } from "../fixtures/world";
 import { CoreResponseSchema, PROTOCOL_VERSION, type CoreRequest, type CoreResponse } from "../protocol/schema";
 import { TrustedSnapshotSchema, type TrustedSnapshot } from "../protocol/trusted-local";
 
@@ -20,7 +20,7 @@ function snapshot(token = A, extra: Partial<TrustedSnapshot> = {}): TrustedSnaps
     runs: [A, B].map((runToken) => ({ runToken, title: runToken === A ? "Run A" : "Run B", createdAt: at,
       updatedAt: at, status: "running", archived: false, approvalCount: 0, taskReference: null, message: "Observed" })), ...extra });
 }
-const draft: LiveAgentState["draft"] = { focus: { ...paymentsFileFocus, key: "file:services/payments/src/service.ts" },
+const draft: LiveAgentState["draft"] = { focus: { ...writerFileFocus, key: "file:services/writer/src/service.ts" },
   task: "Inspect fixed source", model: "", prepared: null, confirmed: false, preparing: false };
 interface Deferred {
   request: CoreRequest; settled: boolean;

@@ -14,10 +14,10 @@ swarm_window_key Return
 # transition before typing, and use human-paced native text under cold builds.
 swarm_window_wait_title "Palette open · exact path"
 swarm_window_key ctrl+a
-swarm_window_type "examples/checkout-world/services/fraudcheck/fraudcheck.ts" 10
+swarm_window_type "README.md" 10
 swarm_window_key Return
 swarm_window_wait_title "Palette open" absent
-swarm_window_wait_title "Source fraudcheck.ts"
+swarm_window_wait_title "Source README.md"
 node "${SWARM_SOURCE_WORKSPACE:?}/tools/agent-journey-client.mjs"
 swarm_window_assert_selected
 swarm_window_capture "${SWARM_ARTIFACT_DIR:?}/final-owned-window.png"

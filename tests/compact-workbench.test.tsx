@@ -3,7 +3,7 @@ import { openContextPath } from "./context-navigation";
 import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { EditorView } from "@codemirror/view";
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
-import { initialSnapshot, paymentsFileFocus } from "../fixtures/world";
+import { initialSnapshot, writerFileFocus } from "../fixtures/world";
 import { emptyAgentWorkbench } from "../app/renderer/agents/state";
 import { PROTOCOL_VERSION, type CoreRequest, type CoreResponse, type GraphSlice } from "../protocol/schema";
 
@@ -32,7 +32,7 @@ afterEach(() => {
 });
 
 function bridge() {
-  const snapshot = initialSnapshot(paymentsFileFocus);
+  const snapshot = initialSnapshot(writerFileFocus);
   const request = vi.fn(async (input: CoreRequest): Promise<CoreResponse> => {
     if (input.type.startsWith("agent.") && input.type !== "agent.snapshot") {
       return { protocolVersion: PROTOCOL_VERSION, requestId: input.requestId, ok: false,
@@ -54,7 +54,7 @@ async function open() {
   return request;
 }
 async function source() {
-  await openContextPath(paymentsFileFocus.path!);
+  await openContextPath(writerFileFocus.path!);
   await waitFor(() => expect(document.querySelector(".cm-content")?.textContent).toContain("disk source"));
   return EditorView.findFromDOM(document.querySelector(".cm-editor")!)!;
 }

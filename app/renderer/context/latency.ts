@@ -6,21 +6,19 @@ export interface LatencyProfile {
   rows: Array<{ operation: string; mean: number; median: number; p90: number; p99: number }>;
 }
 
-/** Authored demo profiles, never measurements or inferred cursor functions. */
-export function illustrativeLatency(subject: ContextSubject, file: ContextFile | undefined, targets: readonly string[]): LatencyProfile | undefined {
+/** Explicitly opted-in synthetic values, never measurements or inferred calls. */
+export function illustrativeLatency(subject: ContextSubject, file: ContextFile | undefined, _targets: readonly string[]): LatencyProfile | undefined {
   if (subject.kind !== "file") return undefined;
-  const target = "//examples/checkout-world/services/fraudcheck:fraudcheck_sources";
-  const tagged = file && /^\s*(?:\/\/|#)\s*@swarm-demo-latency checkout\.assess\s*$/m.test(file.savedContent);
-  const example = subject.path === "examples/checkout-world/services/fraudcheck/fraudcheck.ts" && targets.includes(target);
-  if (!tagged && !example) return undefined;
+  const tagged = file && /^\s*(?:\/\/|#)\s*@swarm-demo-latency operations\s*$/m.test(file.savedContent);
+  if (!tagged) return undefined;
   return {
-    association: tagged ? "Saved-source demo tag · checkout.assess" : `Authored target profile · ${target}`,
-    scope: "Checkout assessment · named example operations, not cursor matching",
+    association: "Saved-source illustrative tag · operations",
+    scope: "Synthetic operation timings · not measured functions or calls",
     window: "Illustrative 15-minute load window", samples: 12000,
     rows: [
-      { operation: "Assess request", mean: 8.4, median: 6.2, p90: 14.8, p99: 31.6 },
-      { operation: "Evaluate rules", mean: 2.1, median: 1.4, p90: 4.0, p99: 8.7 },
-      { operation: "Risk lookup", mean: 4.7, median: 3.2, p90: 9.1, p99: 22.4 },
+      { operation: "Operation A", mean: 8.4, median: 6.2, p90: 14.8, p99: 31.6 },
+      { operation: "Operation B", mean: 2.1, median: 1.4, p90: 4.0, p99: 8.7 },
+      { operation: "Operation C", mean: 4.7, median: 3.2, p90: 9.1, p99: 22.4 },
     ],
   };
 }

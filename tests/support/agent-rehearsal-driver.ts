@@ -9,8 +9,8 @@ import type { BrowserWindow } from "electron";
 import { AGENT_LIMITS, type AgentResult } from "../../protocol/agents";
 import { PROTOCOL_VERSION, type CoreResponse } from "../../protocol/schema";
 
-const SOURCE = "examples/checkout-world/services/fraudcheck/fraudcheck.ts";
-const CONTRACT = "examples/checkout-world/services/fraudcheck/fraudcheck.proto";
+const SOURCE = "README.md";
+const CONTRACT = "AGENTS.md";
 const LITERAL = "<img src=x onerror=alert('rehearsal')>";
 const FIRST_TASK = `REHEARSAL: réponse 🧪 ${LITERAL}`;
 const SECOND_TASK = "REHEARSAL: inspect bounded historical output.";

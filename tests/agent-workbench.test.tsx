@@ -4,7 +4,7 @@ import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-libra
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { AgentSnapshotSchema, RunSchema, utf8Bytes } from "../protocol/agents";
 import { PROTOCOL_VERSION, type CoreRequest, type CoreResponse, type GraphSlice } from "../protocol/schema";
-import { initialSnapshot, paymentsFileFocus } from "../fixtures/world";
+import { initialSnapshot, writerFileFocus } from "../fixtures/world";
 import { fixtureLaunchContext, fixturePreviewEnabled } from "../app/renderer/agents/client";
 import { canPrepareFixture, emptyAgentWorkbench, fixtureReducer } from "../app/renderer/agents/state";
 import { LaunchDraft } from "../app/renderer/agents/LaunchDraft";
@@ -15,7 +15,7 @@ vi.mock("../app/renderer/EditorPane", () => ({ EditorPane: ({ content, onChange 
 import { App } from "../app/renderer/App";
 
 afterEach(() => { cleanup(); vi.unstubAllEnvs(); vi.restoreAllMocks(); window.sessionStorage.clear(); window.localStorage.clear(); delete window.swarm; delete window.swarmView; delete window.swarmLifecycle; });
-const context = () => fixtureLaunchContext(paymentsFileFocus, "Explain interface failures", "", "");
+const context = () => fixtureLaunchContext(writerFileFocus, "Explain interface failures", "", "");
 const started = () => fixtureReducer(emptyAgentWorkbench(), { type: "launch", context: context() });
 const advance = (state: ReturnType<typeof started>) => fixtureReducer(state, { type: "advance" });
 
@@ -68,7 +68,7 @@ describe("bounded schema-valid fixture playback", () => {
     expect(RunSchema.safeParse(state.run).success).toBe(true);
   });
   it("bounds transcript, instructions and multibyte labels, preserving explicit truncation", () => {
-    let state = fixtureReducer(emptyAgentWorkbench(), { type: "launch", context: fixtureLaunchContext(paymentsFileFocus, "🌳".repeat(300), "", "") });
+    let state = fixtureReducer(emptyAgentWorkbench(), { type: "launch", context: fixtureLaunchContext(writerFileFocus, "🌳".repeat(300), "", "") });
     state = advance(advance(state));
     for (let i = 0; i < 140; i++) state = fixtureReducer(state, { type: "steer", text: "x", outcome: "accepted" });
     expect(state.records).toHaveLength(32);
@@ -87,7 +87,7 @@ describe("bounded schema-valid fixture playback", () => {
     expect(fixtureReducer(state, { type: "launch", context: context() })).toBe(state);
   });
   it("keeps a nonempty label for a schema-valid whitespace-only path", () => {
-    const launchContext = fixtureLaunchContext({ ...paymentsFileFocus, path: " " }, "Analyze", "", "");
+    const launchContext = fixtureLaunchContext({ ...writerFileFocus, path: " " }, "Analyze", "", "");
     const state = fixtureReducer(emptyAgentWorkbench(), { type: "launch", context: launchContext });
     expect(state.snapshot.runs[0]!.focusLabel).toBe("(whitespace-only)");
     expect(state.run?.launchContext.focus.path).toBe(" ");
@@ -96,13 +96,13 @@ describe("bounded schema-valid fixture playback", () => {
 
 describe("run-specific presentation", () => {
   it("requires explicit working-world mapping before launch", () => {
-    render(<LaunchDraft focus={{ ...paymentsFileFocus, revisionKind: "built" }} onLaunch={() => undefined} onClose={() => undefined} />);
+    render(<LaunchDraft focus={{ ...writerFileFocus, revisionKind: "built" }} onLaunch={() => undefined} onClose={() => undefined} />);
     expect((screen.getByRole("button", { name: "Launch fixture — no provider" }) as HTMLButtonElement).disabled).toBe(true);
     expect(screen.getByRole("alert").textContent).toContain("working-world");
   });
   it("refuses aggregate JSON escaping overflow without throwing on submit", () => {
     const onLaunch = vi.fn();
-    render(<LaunchDraft focus={paymentsFileFocus} onLaunch={onLaunch} onClose={() => undefined} />);
+    render(<LaunchDraft focus={writerFileFocus} onLaunch={onLaunch} onClose={() => undefined} />);
     fireEvent.change(screen.getByLabelText("Task"), { target: { value: "\u0001".repeat(16 * 1024) } });
     expect((screen.getByRole("button", { name: "Launch fixture — no provider" }) as HTMLButtonElement).disabled).toBe(true);
     fireEvent.submit(document.querySelector(".agent-draft")!);
@@ -111,12 +111,12 @@ describe("run-specific presentation", () => {
   });
   it("freezes draft focus and discloses disk/no-bytes/provenance limits", () => {
     const onLaunch = vi.fn();
-    const view = render(<LaunchDraft focus={paymentsFileFocus} onLaunch={onLaunch} onClose={() => undefined} />);
-    view.rerender(<LaunchDraft focus={{ ...paymentsFileFocus, key: "changed", path: "changed.ts" }} onLaunch={onLaunch} onClose={() => undefined} />);
+    const view = render(<LaunchDraft focus={writerFileFocus} onLaunch={onLaunch} onClose={() => undefined} />);
+    view.rerender(<LaunchDraft focus={{ ...writerFileFocus, key: "changed", path: "changed.ts" }} onLaunch={onLaunch} onClose={() => undefined} />);
     expect(screen.getByText(/unsaved edits are not included/)).toBeTruthy();
     expect(document.activeElement).toBe(screen.getByLabelText("Task"));
     fireEvent.keyDown(screen.getByLabelText("Task"), { key: "Enter", ctrlKey: true });
-    expect(onLaunch.mock.calls[0]![0].focus).toEqual(paymentsFileFocus);
+    expect(onLaunch.mock.calls[0]![0].focus).toEqual(writerFileFocus);
     expect(onLaunch.mock.calls[0]![0].attachments).toEqual([]);
   });
   it("renders text safely, retains instruction after unknown delivery, and exposes keyboard resize", () => {
@@ -135,18 +135,18 @@ describe("run-specific presentation", () => {
     expect(onHeight).toHaveBeenCalledWith(330);
     expect(reveal).not.toHaveBeenCalled();
     fireEvent.click(screen.getByRole("button", { name: "Reveal launch focus" }));
-    expect(reveal).toHaveBeenCalledWith(paymentsFileFocus);
+    expect(reveal).toHaveBeenCalledWith(writerFileFocus);
   });
   it("keeps source buffer and graph instances through launch, selection, output and pane resizing", async () => {
     vi.stubEnv("VITE_SWARM_AGENT_DEMO", "1");
-    const snapshot = initialSnapshot(paymentsFileFocus);
+    const snapshot = initialSnapshot(writerFileFocus);
     const request = vi.fn(async (input: CoreRequest): Promise<CoreResponse> => ({ protocolVersion: PROTOCOL_VERSION, requestId: input.requestId,
       ok: true, snapshot, sequence: 0, ...(input.type === "file.read" ? { file: { kind: "read" as const, path: input.path, content: "disk source", revision: "a".repeat(64), size: 11 } } : {}) }));
     window.swarm = { request, onEvent: () => () => undefined };
     window.swarmView = { setZoomPercent: async () => ({ ok: true, percent: 100 }) };
     render(<App />);
     await screen.findByRole("button", { name: "Preview agent fixture" });
-    await openContextPath(paymentsFileFocus.path!);
+    await openContextPath(writerFileFocus.path!);
     const source = await screen.findByLabelText("Source buffer");
     fireEvent.change(source, { target: { value: "UNSAVED PRIVATE BUFFER" } });
     const graph = screen.getAllByTestId("agent-test-graph")[0]!;

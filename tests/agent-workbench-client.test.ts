@@ -9,18 +9,18 @@ import type { SwarmBridge } from "../app/electron/preload";
 import type { Lifecycle, LifecycleBridge } from "../app/lifecycle";
 import { AgentSnapshotSchema, PreparedAgentContextSchema, type AgentCapabilities, type AgentResult, type AgentSnapshot, type Run, type TranscriptRecord } from "../protocol/agents";
 import { CoreResponseSchema, PROTOCOL_VERSION, type CoreRequest, type CoreResponse } from "../protocol/schema";
-import { initialSnapshot, paymentsFileFocus } from "../fixtures/world";
+import { initialSnapshot, writerFileFocus } from "../fixtures/world";
 
 afterEach(() => vi.restoreAllMocks());
 const drain = async () => { for (let i = 0; i < 8; i++) await Promise.resolve(); };
 const deferred = <T,>() => { let resolve!: (value: T) => void; const promise = new Promise<T>((done) => { resolve = done; }); return { promise, resolve }; };
-const workspace = initialSnapshot(paymentsFileFocus);
+const workspace = initialSnapshot(writerFileFocus);
 // Test injection only: this does not select or attest a production provider.
 const testCapabilities: AgentCapabilities = { availability: "available", reason: null, provider: "deterministic-test-only", version: "test-1",
   policy: "verified-read-only", controls: { launch: true, steer: true, cancel: true } };
 const emptySnapshot = (): AgentSnapshot => AgentSnapshotSchema.parse({ ...emptyAgentWorkbench().snapshot, capabilities: testCapabilities });
 function fixture(steps = 1) {
-  let state = fixtureReducer(emptyAgentWorkbench(), { type: "launch", context: fixtureLaunchContext(paymentsFileFocus, "Explain interfaces", "", "") });
+  let state = fixtureReducer(emptyAgentWorkbench(), { type: "launch", context: fixtureLaunchContext(writerFileFocus, "Explain interfaces", "", "") });
   for (let i = 0; i < steps; i++) state = fixtureReducer(state, { type: "advance" });
   return { ...state, snapshot: AgentSnapshotSchema.parse({ ...state.snapshot, capabilities: testCapabilities }) };
 }
@@ -36,7 +36,7 @@ function harness() {
   };
   const lifecycle: LifecycleBridge = {
     onStatus(listener) { order.push("subscribe-status"); status = listener; return () => { status = () => undefined; }; },
-    status() { order.push("read-status"); return initialStatus.promise; }, reload() { throw new Error("Reload is not authorized by client tests"); },
+    status() { order.push("read-status"); return initialStatus.promise; }, reload() { throw new Error("Reload is not writed by client tests"); },
   };
   const latest = (type: CoreRequest["type"]) => calls.filter((call) => call.input.type === type).at(-1)!;
   const reply = (call: Pending, agent: AgentResult, sequence = 1) => call.resolve(CoreResponseSchema.parse({
@@ -121,15 +121,15 @@ describe("agent bridge observation and recovery (injected transport, never a pro
     const state = fixture(); const runId = state.run!.runId;
     const checkpoint: LiveAgentState = { ...emptyLiveAgentState(), connected: true, selectedRunId: runId, paneOpen: true, height: 350,
       snapshot: state.snapshot, run: state.run, reading: true, detailStale: false, instructions: { [runId]: "unsent text" },
-      draft: { focus: paymentsFileFocus, task: "draft text", model: "requested-model", prepared: null, preparing: true, confirmed: true },
+      draft: { focus: writerFileFocus, task: "draft text", model: "requested-model", prepared: null, preparing: true, confirmed: true },
       operations: [{ requestId: "pending-test", runId, kind: "steer", text: "dispatched text", status: "pending", message: "Awaiting acknowledgement" }],
     };
     const save = vi.fn(); const client = new AgentBridgeClient(checkpoint, save); const recovered = client.getSnapshot();
     expect(recovered).toMatchObject({ selectedRunId: runId, height: 350, paneOpen: true, connected: false, reading: false, detailStale: true,
       instructions: { [runId]: "unsent text" }, draft: { task: "draft text", model: "requested-model", preparing: false, confirmed: false } });
     expect(recovered.operations[0]).toMatchObject({ text: "dispatched text", status: "delivery-unknown" });
-    client.openDraft({ ...paymentsFileFocus, key: "different-focus" });
-    expect(client.getSnapshot().draft?.focus).toEqual(paymentsFileFocus);
+    client.openDraft({ ...writerFileFocus, key: "different-focus" });
+    expect(client.getSnapshot().draft?.focus).toEqual(writerFileFocus);
     expect(checkpoint.operations[0]?.status).toBe("pending");
     client.resize(900); expect(save.mock.lastCall?.[0].height).toBe(420);
   });
@@ -186,7 +186,7 @@ describe("agent bridge observation and recovery (injected transport, never a pro
   });
 
   it("rejects a schema-valid prepared reply that changes requested task context", async () => {
-    const { h, client } = await connected(); client.openDraft(paymentsFileFocus); const preparing = client.prepare(); const call = h.latest("agent.prepare");
+    const { h, client } = await connected(); client.openDraft(writerFileFocus); const preparing = client.prepare(); const call = h.latest("agent.prepare");
     const draft = prepared(call); draft.launchContext.taskText = "Different task";
     h.reply(call, { kind: "prepare", draft: fixtureV2Draft(draft) }); await preparing;
     expect(client.getSnapshot().draft?.prepared).toBeNull(); expect(client.getSnapshot().draft?.preparing).toBe(false);
@@ -195,7 +195,7 @@ describe("agent bridge observation and recovery (injected transport, never a pro
   });
 
   it("requires explicit inspected confirmation and unexpired launch capabilities, with admission separate from running", async () => {
-    const { h, client } = await connected(); client.openDraft(paymentsFileFocus); client.editDraft({ task: "Inspect the disk context", model: "requested-model" });
+    const { h, client } = await connected(); client.openDraft(writerFileFocus); client.editDraft({ task: "Inspect the disk context", model: "requested-model" });
     const preparing = client.prepare(); const call = h.latest("agent.prepare"); const draft = prepared(call);
     expect(call.input).toMatchObject({ model: "requested-model", effort: null });
     h.reply(call, { kind: "prepare", draft }); await preparing;
@@ -227,7 +227,7 @@ describe("agent bridge observation and recovery (injected transport, never a pro
     const historical = fixture(4); const { h, client } = await connected(historical.snapshot);
     client.select(historical.run!.runId); const oldRead = h.latest("agent.read");
     expect(client.getSnapshot().reading).toBe(true);
-    client.openDraft(paymentsFileFocus); const preparing = client.prepare(); const draft = {
+    client.openDraft(writerFileFocus); const preparing = client.prepare(); const draft = {
       ...prepared(h.latest("agent.prepare")), runId: "33333333-3333-4333-8333-333333333333",
     };
     h.reply(h.latest("agent.prepare"), { kind: "prepare", draft }); await preparing; client.confirmDraft(true);
@@ -249,12 +249,12 @@ describe("agent bridge observation and recovery (injected transport, never a pro
 
   it.each(["edit-current", "replace-draft"] as const)("late admission preserves newer %s text, historical selection and pane closure", async (intent) => {
     const historical = fixture(4); const { h, client } = await connected(historical.snapshot);
-    client.openDraft(paymentsFileFocus); const preparing = client.prepare(); const draft = {
+    client.openDraft(writerFileFocus); const preparing = client.prepare(); const draft = {
       ...prepared(h.latest("agent.prepare")), runId: "33333333-3333-4333-8333-333333333333",
     };
     h.reply(h.latest("agent.prepare"), { kind: "prepare", draft }); await preparing; client.confirmDraft(true);
     const launching = client.launch(); const pendingLaunch = h.latest("agent.launch");
-    if (intent === "replace-draft") { client.closeDraft(); client.openDraft({ ...paymentsFileFocus, key: "new-draft-focus" }); }
+    if (intent === "replace-draft") { client.closeDraft(); client.openDraft({ ...writerFileFocus, key: "new-draft-focus" }); }
     client.editDraft({ task: "Newer user intent must survive admission", model: "new-model-request" });
     client.select(historical.run!.runId); h.read(h.latest("agent.read"), historical.run!, historical.records); await drain();
     client.closePane(); const newerFocus = client.getSnapshot().draft!.focus;

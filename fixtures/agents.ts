@@ -32,17 +32,17 @@ const capabilities = () => AgentCapabilitiesSchema.parse({
  * attached bytes, focus and other launch fields. This is not a drift detector.
  */
 export function agentFixtureContext(): PreparedAgentContext {
-  const prompt = "FIXTURE ONLY: explain the synthetic FraudCheck interface; no provider contacted.";
-  const content = "// FIXTURE ONLY\nexport const fraudcheck = (amount: number) => amount < 100;\n";
+  const prompt = "FIXTURE ONLY: explain the synthetic Validator interface; no provider contacted.";
+  const content = "// FIXTURE ONLY\nexport const validator = (value: string) => value.length > 0;\n";
   const fields = {
     contextVersion: 2, sourceLinks: [],
     worldId: "fixture-world", repositoryId: "synthetic-fixture", root: "/fixture/not-a-real-workspace", head: null,
     workingFingerprint: digest("synthetic fixture world"),
     focus: { worldId: "fixture-world", revisionKind: "working", revisionId: "working", domain: "repo",
-      key: "fixture-file", path: "examples/services/fraudcheck.ts" },
+      key: "fixture-file", path: "examples/services/validator.ts" },
     taskText: prompt, links: { parentRunId: null, task: null, spec: null },
     requested: { model: null, effort: null },
-    attachments: [{ path: "examples/services/fraudcheck.ts", content, digest: digest(content), startLine: 1, endLine: 2 }],
+    attachments: [{ path: "examples/services/validator.ts", content, digest: digest(content), startLine: 1, endLine: 2 }],
     instructionSources: [], configurationSources: [], diskOnly: true,
     access: { policy: "read-only", toolNetwork: false, approvals: "never", hostConfidentiality: false,
       sendsSelectedContentToProvider: true },
@@ -152,7 +152,7 @@ export function agentFixtureFrames(input = agentFixtureContext()) {
     const active = checked.endedAt === null;
     const snapshot = AgentSnapshotSchema.parse({
       runs: [{ runId: checked.runId, state: checked.state, createdAt: checked.createdAt, updatedAt: checked.updatedAt,
-        endedAt: checked.endedAt, taskLabel: "FIXTURE: explain FraudCheck", focusLabel: "FIXTURE: fraudcheck.ts" }],
+        endedAt: checked.endedAt, taskLabel: "FIXTURE: explain Validator", focusLabel: "FIXTURE: validator.ts" }],
       activeRunId: active ? checked.runId : null, capabilities: context.capabilities,
       tail: active ? records.slice(-AGENT_LIMITS.tailRecords) : [],
     });

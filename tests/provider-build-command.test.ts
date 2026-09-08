@@ -1,61 +1,57 @@
 // @vitest-environment node
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { execFile } from "node:child_process";
-import { writeFile } from "node:fs/promises";
-import { RealWorkspaceProvider, SERVICE_TOPOLOGY_TARGET } from "../core/provider";
+import { RealWorkspaceProvider } from "../core/provider";
 import { readCanonicalWorkspaceBytes } from "../core/files";
 
 vi.mock("../core/files", async (original) => ({ ...await original<typeof import("../core/files")>(),
-  readCanonicalWorkspaceBytes: vi.fn(async (_root: string, path: string) => Buffer.from(JSON.stringify(path === ".swarm/service-topology.json" ?
-    { schemaVersion: 1, target: "//examples/checkout-world/services/fraudcheck:service_topology" } : { schemaVersion: 1, service: { id: "service:fraud-check" } }))) }));
-
+  readCanonicalWorkspaceBytes: vi.fn(), resolveWorkspaceFile: vi.fn(async (_root: string, path: string) => "/registered/workspace/" + path) }));
 vi.mock("node:child_process", () => ({ execFile: vi.fn() }));
-vi.mock("../core/fingerprint", () => ({
-  computeWorkingWorldFingerprint: vi.fn(async () => "a".repeat(64)),
-}));
-vi.mock("../core/repository-registration", () => ({
-  registerRepository: vi.fn(async (root: string) => ({ root, id: `repository:${"a".repeat(64)}`, name: "Build invocation fixture" })),
-}));
+vi.mock("../core/fingerprint", () => ({ computeWorkingWorldFingerprint: vi.fn(async () => "a".repeat(64)) }));
+vi.mock("../core/repository-registration", () => ({ registerRepository: vi.fn(async (root: string) => ({ root, id: "repository:" + "a".repeat(64), name: "Discovery invocation fixture" })) }));
+const providers: RealWorkspaceProvider[] = [];
+beforeEach(() => vi.clearAllMocks());
+afterEach(() => providers.splice(0).forEach((provider) => provider.dispose()));
+function trackedFiles(paths: string[]) {
+  vi.mocked(execFile).mockImplementation(((file: string, args: string[], _options: unknown, callback: Function) => {
+    if (file !== "git" || args.join(" ") !== "ls-files --cached --others --exclude-standard -z") throw new Error("Discovery launched an unexpected process: " + file);
+    queueMicrotask(() => callback(null, Buffer.from(paths.length ? paths.join("\0") + "\0" : ""), Buffer.alloc(0)));
+    return {};
+  }) as typeof execFile);
+}
+async function observe() {
+  const provider = await RealWorkspaceProvider.create("/registered/workspace"); providers.push(provider);
+  await provider.startReconciliation(() => {}); return provider.snapshot();
+}
 
-describe("fixed topology build invocation", () => {
-  it("never launches the default builder without an applicable declaration", async () => {
-    vi.mocked(execFile).mockClear();
-    vi.mocked(readCanonicalWorkspaceBytes).mockRejectedValueOnce(new Error("missing declaration"));
-    const provider = await RealWorkspaceProvider.create("/other/project");
-    await provider.startReconciliation(() => {});
-    expect(execFile).not.toHaveBeenCalled(); expect(provider.snapshot().jobs).toEqual([]);
-    provider.dispose();
+describe("service discovery command boundary", () => {
+  it("lists declarations with Git only, and never compiles a target in an unrelated repository", async () => {
+    trackedFiles(["MODULE.bazel", "BUILD.bazel", "package.json", "src/main.ts"]);
+    const snapshot = await observe();
+    expect(execFile).toHaveBeenCalledExactlyOnceWith("git", ["ls-files", "--cached", "--others", "--exclude-standard", "-z"],
+      expect.objectContaining({ cwd: "/registered/workspace", encoding: "buffer", timeout: 10_000, signal: expect.any(AbortSignal) }), expect.any(Function));
+    expect(readCanonicalWorkspaceBytes).not.toHaveBeenCalled(); expect(snapshot.jobs).toEqual([]);
+    expect(snapshot.graphs.find((graph) => graph.topologyId === "service")?.nodes).toEqual([]);
+    expect(snapshot.reconciliation.message).toBe("No service declarations found");
   });
-  it("streams a complete BEP milestone before the existing build process completes", async () => {
-    let finish!: Function;
-    vi.mocked(execFile).mockImplementation(((_file: string, args: string[], _options: unknown, callback: Function) => {
-      finish = callback;
-      const path = args.find((arg) => arg.startsWith("--build_event_json_file="))!.slice("--build_event_json_file=".length);
-      void writeFile(path, JSON.stringify({ id: { targetConfigured: { label: SERVICE_TOPOLOGY_TARGET } }, configured: {} }) + "\n");
-      return {};
-    }) as typeof execFile);
-    const provider = await RealWorkspaceProvider.create("/registered/workspace"), published = vi.fn();
-    const running = provider.startReconciliation(published);
-    await vi.waitFor(() => expect(published.mock.calls.some(([type]) => type === "job.changed")).toBe(true));
-    expect(provider.snapshot().jobs[0]).toMatchObject({ status: "running", progress: 0, message: `Configured ${SERVICE_TOPOLOGY_TARGET}` });
-    finish(new Error("controlled final rejection"), "", "controlled final rejection"); await running;
-    expect(provider.snapshot().reconciliation.status).toBe("red");
-    provider.dispose();
-    vi.mocked(execFile).mockClear();
+
+  it("reads Compose directly without running Docker, scripts, or a build command", async () => {
+    trackedFiles(["compose.yaml"]);
+    vi.mocked(readCanonicalWorkspaceBytes).mockResolvedValue(Buffer.from("services:\n  alpha:\n    image: local/alpha\n    depends_on: [beta]\n  beta:\n    image: local/beta\n"));
+    const snapshot = await observe(), service = snapshot.graphs.find((graph) => graph.topologyId === "service")!;
+    expect(execFile).toHaveBeenCalledTimes(1); expect(execFile).toHaveBeenCalledWith("git", expect.any(Array), expect.any(Object), expect.any(Function));
+    expect(service.nodes.map((node) => node.label)).toEqual(["alpha", "beta"]);
+    expect(service.edges.map((edge) => edge.kind)).toEqual(["starts-after"]);
+    expect(snapshot.jobs).toEqual([]); expect(snapshot.revisions.built.sourceFingerprint).toBe("");
   });
-  it("bounds nested concurrency independently of the caller's Bazel flags", async () => {
-    // Exercise the default builder, but never launch a process. Rejection also
-    // proves a bounded command does not manufacture a successful publication.
-    vi.mocked(execFile).mockImplementation(((_file: string, _args: string[], _options: unknown, callback: Function) => {
-      queueMicrotask(() => callback(new Error("fixture build rejection"), "", "fixture build rejection"));
-      return {};
-    }) as typeof execFile);
-    const provider = await RealWorkspaceProvider.create("/registered/workspace");
-    await provider.startReconciliation(() => undefined);
-    expect(execFile).toHaveBeenCalledExactlyOnceWith("bazel", [
-      "build", SERVICE_TOPOLOGY_TARGET, "--jobs=3", "--color=no", "--curses=no",
-      expect.stringMatching(/^--build_event_json_file=.+\/swarm-ide-build-events-[^/]+\/topology\.jsonl$/),
-    ], { cwd: "/registered/workspace", encoding: "utf8", maxBuffer: 8 * 1024 * 1024 }, expect.any(Function));
-    expect(provider.snapshot().reconciliation.status).toBe("red");
+
+  it("reads a generic native declaration with explicit target metadata but never builds that target", async () => {
+    trackedFiles(["services/alpha/service.swarm.json"]);
+    vi.mocked(readCanonicalWorkspaceBytes).mockResolvedValue(Buffer.from(JSON.stringify({ schemaVersion: 1,
+      service: { id: "service:alpha", displayName: "Alpha" }, owningTarget: "//services/alpha:sources", implementationPaths: ["services/alpha/main.ts"] })));
+    const snapshot = await observe();
+    expect(execFile).toHaveBeenCalledTimes(1); expect(snapshot.serviceDeclarations?.services[0]).toMatchObject({ id: "service:alpha", owningTarget: "//services/alpha:sources" });
+    expect(snapshot.jobs).toEqual([]); expect(snapshot.serviceContext).toBeUndefined();
+    expect(snapshot.revisions.built).toEqual({ id: "", sourceFingerprint: "" });
   });
 });

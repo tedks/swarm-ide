@@ -15,6 +15,8 @@ export const TrustedRequestSchema = z.discriminatedUnion("type", [
   base.extend({ type: z.literal("trusted.snapshot"), token: id.optional() }).strict(),
   base.extend({ type: z.literal("trusted.start"), token: id,
     text: text(16384).refine((s) => Boolean(s.trim()) && !s.includes("\0")),
+    effort: z.enum(["low", "medium", "high", "xhigh"]).nullable().optional(),
+    purpose: z.literal("component-plan").optional(),
     model: text(256).min(1).nullable().optional() }).strict(),
   base.extend({ type: z.literal("trusted.prepare"), input: AgentPrepareInputSchema }).strict(),
   base.extend({ type: z.literal("trusted.launch"), token: id }).strict(),
@@ -38,6 +40,7 @@ export const TrustedRunSummarySchema = z.object({
   status: TrustedStatusSchema, archived: z.boolean(), approvalCount: z.number().int().min(0).max(16),
   taskReference: AgentTaskReferenceSchema.nullable(), message: text(4096),
   workspace: text(4096).min(1).optional(), initialText: text(16384).optional(),
+  purpose: z.literal("component-plan").optional(),
   fork: TrustedForkLineageSchema.optional(),
 }).strict();
 export type TrustedRunSummary = z.infer<typeof TrustedRunSummarySchema>;

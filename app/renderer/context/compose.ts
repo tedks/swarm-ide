@@ -60,6 +60,32 @@ export function composeContext(subject: ContextSubject | null, input: ContextObs
     }, rows: [{ label: "Captured entries", value: String(directory.capturedCount) }, { label: "Filtered entries", value: String(directory.filteredCount) }, { label: "Page entries", value: String(directory.entries.length) }], notice: bounded(directory.notice ?? "Immediate children only; no recursive coverage claim") } : { id: "directory", title: "Directory observation", notice: "This directory has no matching current page observation.", rows: [] });
   }
   if (["file", "service", "interface", "edge"].includes(subject.kind)) {
+    const declarations = snapshot.serviceDeclarations;
+    if (declarations && declarations.repositoryId === subject.repositoryId && declarations.worldId === subject.worldId) {
+      const graph = snapshot.graphs.find((entry) => entry.topologyId === "service");
+      const edge = subject.kind === "edge" && subject.topologyId === "service" ? graph?.edges.find((entry) => entry.id === subject.id) : undefined;
+      const records = declarations.services.filter((entry) => subject.kind === "file"
+        ? entry.declarationPath === subject.path || entry.implementationPaths.includes(subject.path) || entry.interfaces.some((item) => item.path === subject.path)
+        : subject.kind === "service" ? entry.id === subject.id
+        : subject.kind === "interface" ? entry.interfaces.some((item) => item.id === subject.id)
+        : Boolean(edge && [edge.source, edge.target].includes(entry.id)));
+      const rows: ContextSection["rows"] = [];
+      if (edge) rows.push({ label: "Relationship", value: edge.kind === "starts-after" ? "Declared startup dependency" : edge.label ?? edge.kind });
+      for (const record of records) {
+        rows.push({ label: "Service", value: record.displayName },
+          { label: "Declaration", value: record.declarationPath, link: { kind: "source", path: record.declarationPath } });
+        if (record.owningTarget) rows.push({ label: "Declared target", value: record.owningTarget, link: { kind: "graph", topologyId: "build", id: record.owningTarget } });
+        for (const path of record.implementationPaths) rows.push({ label: "Implementation", value: path, link: { kind: "source", path } });
+        for (const item of record.interfaces) rows.push({ label: item.role === "provided" ? "Provides" : "Requires", value: item.name, link: { kind: "source", path: item.path } });
+      }
+      const current = input.ready && snapshot.revisions.working.evidence === "observed" && declarations.sourceFingerprint === snapshot.revisions.working.fingerprint && graph?.reconciliation === "green";
+      sections.push({ id: "services", title: "Declared services", rows, empty: rows.length ? undefined : "No services",
+        notice: declarations.issues.length ? declarations.issues.join(" ") : !current ? "Showing the last service declarations." : undefined,
+        evidence: { provider: "Service declarations", repositoryId: subject.repositoryId, worldId: subject.worldId,
+          origin: records[0] ? `repo://${records[0].declarationPath}` : "repo://service-declarations", revisionKind: "source-read",
+          revision: declarations.sourceFingerprint, observedAt: declarations.observedAt, timeBasis: "producer", freshness: current ? "current" : "retained",
+          coverage: `${declarations.paths.length} declaration files; ${declarations.status === "partial" ? "partial discovery" : "tracked and nonignored files"}` } });
+    } else {
     const p = service.publication;
     const matching = p?.status === "observed" && p.repositoryId === subject.repositoryId && p.worldId === subject.worldId && p.buildId === snapshot.revisions.built.id && p.sourceFingerprint === snapshot.revisions.built.sourceFingerprint;
     if (!matching) sections.push({ id: "services", title: "Declared services", empty: "No services", notice: "No matching service observation.", rows: [] });
@@ -86,6 +112,7 @@ export function composeContext(subject: ContextSubject | null, input: ContextObs
         notice: !rows.length ? "No association in this service artifact; other service coverage unavailable." : edge ? "Declared relationship, not an observed callsite." : !current ? "Retained build facts; not verified against the current inspected source." : undefined });
     }
   }
+    }
   if (subject.kind === "file") {
     const c = capture.capture;
     const membership = c?.repositoryId === subject.repositoryId && (!capture.worldId || capture.worldId === subject.worldId) ? capture.forFile(subject.path) : undefined;

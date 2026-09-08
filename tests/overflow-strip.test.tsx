@@ -21,7 +21,7 @@ it("shows only needed arrows, preserves native scrolling and reveals newly selec
   strip.getBoundingClientRect = () => ({ left: 0, right: width }) as DOMRect;
   screen.getAllByRole("button", { name: /^Tab/ }).forEach((button) => {
     button.getBoundingClientRect = () => {
-      const index = [...strip.querySelectorAll("button")].indexOf(button);
+      const index = [...strip.querySelectorAll<HTMLButtonElement>("button")].indexOf(button as HTMLButtonElement);
       return { left: index * 100 - strip.scrollLeft, right: (index + 1) * 100 - strip.scrollLeft } as DOMRect;
     };
   });

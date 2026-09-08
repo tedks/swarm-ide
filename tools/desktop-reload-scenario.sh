@@ -87,15 +87,13 @@ fs.renameSync(path + '.scenario-tmp', path);
 NODE
 }
 
-command_palette 'Build repository service topology'
-swarm_window_wait_title 'Consistent' present 60000
-swarm_window_wait_title 'FraudCheck visible'
-command_palette 'Open repository path' 'examples/checkout-world/services/fraudcheck/fraudcheck.ts'
-swarm_window_wait_title 'fraudcheck.ts:saved'
+# Source/reload correctness is independent of declared service availability.
+command_palette 'Open repository path' 'README.md'
+swarm_window_wait_title 'README.md:saved'
 swarm_window_capture "$artifacts/source-before.png"
 background
 start=$(date +%s%3N)
-edit app/renderer/App.tsx 'real local repository' 'live renderer update verified'
+edit app/renderer/App.tsx 'central navigation' 'live renderer update verified'
 swarm_window_wait_title 'HMR '
 [[ $(doc) == "$original_doc" && $(core) == 1 ]]
 assert_stable renderer
@@ -112,9 +110,8 @@ edit core/worker.ts 'let sequence = 0;' 'console.log("RELOAD_CORE_V2_EXECUTED");
 wait_core_change 1
 grep -q RELOAD_CORE_V2_EXECUTED "$artifacts/app.log"
 [[ $(doc) == "$original_doc" ]]
-swarm_window_wait_title 'fraudcheck.ts:saved'
+swarm_window_wait_title 'README.md:saved'
 assert_stable core
-swarm_window_wait_title 'FraudCheck visible'
 echo "core_edit_to_recovery_ms=$(( $(date +%s%3N) - start ))"
 
 # An invalid core build leaves the running generation and document untouched.
@@ -143,11 +140,11 @@ swarm_window_activate
 swarm_window_click "$((width * 60 / 100))" "$((height * 45 / 100))"
 swarm_window_key ctrl+End
 swarm_window_type '// UNSAVED_RELOAD_SENTINEL' 1
-swarm_window_wait_title 'fraudcheck.ts:dirty'
+swarm_window_wait_title 'README.md:dirty'
 # Changing the hook signature remounts App without unloading the document.
 edit app/renderer/App.tsx 'export function App() {' 'export function App() { useState("structural-refresh-probe");'
 sleep 1
-swarm_window_wait_title 'fraudcheck.ts:dirty'
+swarm_window_wait_title 'README.md:dirty'
 [[ $(doc) == "$original_doc" ]]
 swarm_window_key ctrl+r
 sleep 0.3
@@ -165,10 +162,9 @@ start=$(date +%s%3N)
 # Move focus away before the safe document refresh is acknowledged.
 background
 wait_doc_change "$original_doc"
-swarm_window_wait_title 'fraudcheck.ts:saved'
-grep -q UNSAVED_RELOAD_SENTINEL "$workspace/examples/checkout-world/services/fraudcheck/fraudcheck.ts"
+swarm_window_wait_title 'README.md:saved'
+grep -q UNSAVED_RELOAD_SENTINEL "$workspace/README.md"
 assert_stable safe_preload_refresh
-swarm_window_wait_title 'FraudCheck visible'
 echo "save_to_preload_refresh_ms=$(( $(date +%s%3N) - start ))"
 original_doc=$(doc)
 
@@ -183,16 +179,15 @@ grep -q RELOAD_CORE_V5_EXECUTED "$artifacts/app.log"
 [[ $(doc) == "$original_doc" ]]
 assert_stable rapid_core_edits
 
-# Coalesce core+preload invalidation; both new boundaries execute, old topology
-# remains visible and source/navigation survive the required document refresh.
+# Coalesce core+preload invalidation; both new boundaries execute, and
+# source/navigation survive the required document refresh.
 old_core=$(core)
 edit core/worker.ts 'RELOAD_CORE_V5_EXECUTED' 'RELOAD_CORE_V6_EXECUTED'
 edit app/electron/preload.ts 'String("request")' 'String("request").trim()'
 wait_core_change "$old_core"
 wait_doc_change "$original_doc"
 original_doc=$(doc)
-swarm_window_wait_title 'FraudCheck visible'
-swarm_window_wait_title 'fraudcheck.ts:saved'
+swarm_window_wait_title 'README.md:saved'
 assert_stable combined_update
 
 edit app/electron/main.ts 'width: 1480' 'width: 1481'

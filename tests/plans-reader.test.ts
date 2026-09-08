@@ -139,7 +139,7 @@ describe("contained authored plan index reader", () => {
   it("does not fabricate an index when missing and sanitizes private-path read failures", async () => {
     const root = await repository();
     await writeFile(join(root, "plans.json"), JSON.stringify(index(node("ignored"))));
-    expect(await readPlanIndex(root)).toEqual(unavailable("PLAN_INDEX_UNAVAILABLE"));
+    expect(await readPlanIndex(root)).toEqual({ ...unavailable("PLAN_INDEX_UNAVAILABLE"), missing: true });
     const result = await readPlanIndex(join(root, "private-unavailable-directory"));
     expect(result).toEqual(unavailable("PLAN_INDEX_UNAVAILABLE"));
     expect(JSON.stringify(result)).not.toContain(root);

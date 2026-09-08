@@ -9,7 +9,7 @@ import { createProductionAgentService, type ProductionAgentService } from "../co
 import { readWorkspaceFile } from "../core/files";
 import { computeWorkingWorldFingerprint } from "../core/fingerprint";
 import { RealWorkspaceProvider, type ProviderDependencies } from "../core/provider";
-import type { ServiceTopologyArtifact } from "../core/service-topology";
+import { discoverServices, type ServiceDiscovery } from "../core/service-discovery";
 import { PROTOCOL_VERSION, type WorkspaceSnapshot } from "../protocol/schema";
 import { repositoryEntryId, type RepositoryObservation, type RepositoryRequest } from "../protocol/repository";
 import { WorkingWorldObserver } from "../core/working-world-observer";
@@ -42,20 +42,17 @@ function deferred<T>() {
   const promise = new Promise<T>((done) => { resolve = done; });
   return { promise, resolve };
 }
-const artifact: ServiceTopologyArtifact = {
-  schemaVersion: 1, service: { id: "service:fraud-check", displayName: "FraudCheck" },
-  providedInterfaces: [{ id: "interface:fraud-check.assess", name: "Assess", requestType: "fixture.Request", responseType: "fixture.Decision" }],
-  requiredInterfaces: [], owningTarget: "//examples/checkout-world/services/fraudcheck:fraudcheck_sources",
-  implementationPaths: ["examples/checkout-world/services/fraudcheck/fraudcheck.ts"],
-  interfaceDeclarationPaths: [{ interfaceId: "interface:fraud-check.assess", path: "examples/checkout-world/services/fraudcheck/fraudcheck.proto" }],
-  inputDigest: "d".repeat(64),
+const declaration: ServiceDiscovery = {
+  services: [{ id: "service:alpha", displayName: "Alpha", declarationPath: "services/alpha/service.swarm.json",
+    implementationPaths: ["services/alpha/main.ts"],
+    interfaces: [{ id: "interface:alpha.read", name: "Read", role: "provided", path: "services/alpha/api.proto", requestType: "fixture.Request", responseType: "fixture.Decision" }] }],
+  dependencies: [], paths: ["services/alpha/service.swarm.json"], issues: [],
 };
 function fixtureDependencies(overrides: Partial<ProviderDependencies> = {}): ProviderDependencies {
   return {
     register: async (root) => ({ root, id: repositoryId, name: "Provider composition fixture" }),
     fingerprint: async () => fingerprint,
-    build: async () => ({ artifactPath: "/fixture/topology.json" }),
-    readArtifact: async () => ({ bytes: Buffer.from(JSON.stringify(artifact)), artifact }),
+    discover: async () => declaration,
     now: () => now,
     repository: () => ({ list: async (request) => observation(request.directory, ["file.ts"]), markStale() {}, dispose() {} }),
     ...overrides,
@@ -78,10 +75,9 @@ async function actualRepository() {
   } });
   git("init", "-q"); git("config", "user.name", "Repository fixture"); git("config", "user.email", "fixture@example.invalid");
   git("add", "."); git("commit", "-qm", "actual repository fixture");
-  const build = vi.fn(async () => { throw new Error("No service target exists in this unfamiliar repository"); });
-  const dependencies: ProviderDependencies = { fingerprint: computeWorkingWorldFingerprint, build,
-    readArtifact: async () => { throw new Error("No artifact was built"); }, now: () => now };
-  return { directory, root, build, dependencies };
+  const discover = vi.fn(discoverServices);
+  const dependencies: ProviderDependencies = { fingerprint: computeWorkingWorldFingerprint, discover, now: () => now };
+  return { directory, root, discover, dependencies };
 }
 
 describe("repository navigation independent of working and service evidence", () => {
@@ -116,7 +112,7 @@ describe("repository navigation independent of working and service evidence", ()
   it("recovers unchanged observer evidence after a reconciliation-only fingerprint failure", async () => {
     let failPreflight = false;
     const subject = await provider(fixtureDependencies({ fingerprint: async () => {
-      if (failPreflight) throw new Error("Build preflight temporarily unavailable");
+      if (failPreflight) throw new Error("Source preflight temporarily unavailable");
       return fingerprint;
     } }));
     await subject.observeWorkingWorld(ignorePublish);
@@ -162,7 +158,7 @@ describe("repository navigation independent of working and service evidence", ()
       await subject.listRepository(listRequest("core"), ignorePublish);
       expect(repo(subject).nodes.map((node) => node.focus.path)).toEqual(["core", "core/files.ts"]);
       expect(await readWorkspaceFile(fixture.root, "core/files.ts")).toMatchObject({ content: "export const source = 'actual disk';\n" });
-      expect(fixture.build).not.toHaveBeenCalled();
+      expect(fixture.discover).not.toHaveBeenCalled();
       expect(subject.snapshot().revisions.working.evidence).toBe("unavailable");
     } finally { pending.resolve(fingerprint); await observing; }
     expect(subject.snapshot().revisions.working.evidence).toBe("observed");
@@ -191,7 +187,7 @@ describe("repository navigation independent of working and service evidence", ()
     await subject.listRepository(listRequest("core"), ignorePublish);
     expect(await readWorkspaceFile(fixture.root, "core/files.ts")).toMatchObject({ content: "export const source = 'actual disk';\n" });
     await subject.startReconciliation(ignorePublish);
-    expect(fixture.build).not.toHaveBeenCalled();
+    expect(fixture.discover).not.toHaveBeenCalled();
     expect(subject.snapshot().reconciliation).toMatchObject({ status: "red", lastConsistentFingerprint: "unobserved" });
     expect(repo(subject).directory?.directory).toBe("core");
     expect(repo(subject).reconciliation).toBe("gray");
@@ -223,7 +219,7 @@ describe("repository navigation independent of working and service evidence", ()
     expect(repo(subject)).toMatchObject({ reconciliation: "gray", directory: { directory: "core" } });
     expect(repo(subject).nodes.every((node) => node.status === "gray")).toBe(true);
     const candidates = subject.snapshot().mappings.filter((mapping) => mapping.targetTopology === "repo").flatMap((mapping) => mapping.candidates);
-    expect(candidates).toHaveLength(2);
+    expect(candidates).toHaveLength(3);
     expect(candidates.every((candidate) => candidate.revealPath !== undefined && candidate.nodeId === undefined)).toBe(true);
   });
 
@@ -245,11 +241,30 @@ describe("repository navigation independent of working and service evidence", ()
     expect(repo(subject).directory?.directory).toBe("b");
   });
 
+  it("rebinds declaration and interface links to actual directory nodes and back to reveal paths", async () => {
+    const subject = await provider(fixtureDependencies({ repository: () => ({
+      list: async (request) => observation(request.directory, request.directory === "services/alpha" ? ["service.swarm.json", "main.ts", "api.proto"] : ["files.ts"]),
+      markStale() {}, dispose() {},
+    }) }));
+    await subject.startReconciliation(ignorePublish);
+    const service = structuredClone(subject.snapshot().graphs.find((graph) => graph.topologyId === "service"));
+    const candidates = () => subject.snapshot().mappings.filter((mapping) => mapping.targetTopology === "repo").flatMap((mapping) => mapping.candidates);
+    expect(candidates().every((candidate) => candidate.revealPath && !candidate.nodeId)).toBe(true);
+    await subject.listRepository(listRequest("services/alpha"), ignorePublish);
+    for (const candidate of candidates()) {
+      expect(candidate.nodeId).toBe(repo(subject).nodes.find((node) => node.focus.path === candidate.focus.path)?.id);
+      expect(candidate.nodeId).toBeDefined(); expect(candidate.revealPath).toBeUndefined();
+    }
+    await subject.listRepository(listRequest("core"), ignorePublish);
+    expect(candidates().every((candidate) => candidate.revealPath === candidate.focus.path && !candidate.nodeId)).toBe(true);
+    expect(subject.snapshot().graphs.find((graph) => graph.topologyId === "service")).toEqual(service);
+  });
+
   it("retains the last successful slice on failure and preserves surviving positions across refresh and red/green transitions", async () => {
-    let refreshed = false, buildFails = false;
-    const subject = await provider(fixtureDependencies({ build: async () => {
-      if (buildFails) throw new Error("fixture build failed");
-      return { artifactPath: "/fixture/topology.json" };
+    let refreshed = false, discoveryFails = false;
+    const subject = await provider(fixtureDependencies({ discover: async () => {
+      if (discoveryFails) throw new Error("fixture declaration scan failed");
+      return declaration;
     }, repository: () => ({ list: async (request) => {
       if (request.directory === "missing") throw new Error("missing directory fixture");
       return observation("core", refreshed ? ["a.ts", "b.ts", "c.ts"] : ["b.ts", "c.ts"], refreshed ? "capture:new" : "capture:old");
@@ -269,7 +284,7 @@ describe("repository navigation independent of working and service evidence", ()
     expect(repo(subject).directory).toMatchObject({ state: "stale", observationId: "capture:new", directory: "core" });
     subject.markWorkingWorldUnknown("observer failure", ignorePublish);
     expect(repo(subject).reconciliation).toBe("gray");
-    buildFails = true;
+    discoveryFails = true;
     await subject.startReconciliation(ignorePublish);
     expect(subject.snapshot().reconciliation.status).toBe("red");
     expect(repo(subject).nodes.map(({ id, position, status }) => ({ id, position, status })))

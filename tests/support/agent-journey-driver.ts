@@ -9,10 +9,10 @@ import type { BrowserWindow } from "electron";
 import { AGENT_LIMITS, type AgentResult, type AgentSnapshot, type Run } from "../../protocol/agents";
 import { PROTOCOL_VERSION, type CoreResponse } from "../../protocol/schema";
 
-const IMPLEMENTATION = "examples/checkout-world/services/fraudcheck/fraudcheck.ts";
-const CONTRACT = "examples/checkout-world/services/fraudcheck/fraudcheck.proto";
-const FIRST_TASK = "FIXTURE ONLY: explain FraudCheck inputs, outputs and interface failures.";
-const SECOND_TASK = "FIXTURE ONLY: inspect the protobuf contract; demonstrate unknown delivery.";
+const IMPLEMENTATION = "README.md";
+const CONTRACT = "AGENTS.md";
+const FIRST_TASK = "FIXTURE ONLY: explain the repository documentation and its assumptions.";
+const SECOND_TASK = "FIXTURE ONLY: inspect repository instructions; demonstrate unknown delivery.";
 
 type RendererAction =
   | { action: "observe" | "remember" | "continuity" | "install-observer" | "ledger" | "palette" | "confirm" | "remove-observer" }
@@ -209,7 +209,7 @@ export async function runJourney(options: {
     await until("open exact path", async () => {
       try { return await evaluate<boolean>({ action: "click", label: "Open path" }); } catch { return false; }
     }, Boolean);
-    await ui("protobuf source ready", (value) => value.source === CONTRACT && value.editor);
+    await ui("repository instructions ready", (value) => value.source === CONTRACT && value.editor);
   };
   const prepare = async (task: string) => {
     await evaluate({ action: "text", field: "task", value: task });
@@ -318,7 +318,7 @@ export async function runJourney(options: {
     await evaluate({ action: "remember" });
     await click(`Select run: ${FIRST_TASK}`);
     await ui("first historical run selected", (value) => value.state === "completed");
-    await continuity("history selection does not retarget protobuf source");
+    await continuity("history selection does not retarget repository instructions");
     await screenshot("05-terminal-history-source-retained");
     await click("Reveal launch focus");
     await ui("deliberate Reveal retargets source", (value) => value.source === IMPLEMENTATION && value.editor);
