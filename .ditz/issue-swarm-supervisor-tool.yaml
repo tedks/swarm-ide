@@ -1,0 +1,19 @@
+id: swarm-supervisor-tool
+title: Make fork supervision and CTO checkpoints reusable
+desc: 'S7: package existing ROOT supervisor startup proof, marker-qualified recap
+  notification and ten-minute status requests as configurable repo tools with narrow
+  tests/docs. Reuse existing spawn skill; no harness rewrite or replacement of active
+  wave watchers. Isolated optional tooling, not blocking operator MVP.'
+type: task
+component: default
+release:
+reporter: Ted Smith <tedks@riseup.net>
+status: unstarted
+disposition:
+creation_time: 2026-09-08T03:46:52-00:00
+references: []
+log_events:
+- time: 2026-09-08T03:46:52-00:00
+  who: Ted Smith
+  what: created
+  comment: ""
