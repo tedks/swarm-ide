@@ -11,11 +11,24 @@ broker. A dirty buffer and its cursor are retained; the metadata line is not
 treated as an exact location in unsaved text.
 
 The labelled metadata revision is distinct from working, built and deployed
-source. A cheap check marks an advanced local ref stale; **Refresh tasks**
-adopts a complete newer revision. Malformed, missing or oversized metadata
-retains the last complete snapshot with an honest failure state. No metadata
+source. While a task consumer is visible, a cheap check every five seconds (and
+on window focus or reopening) detects changes to the local metadata ref. A changed
+ref automatically starts one complete read; the existing rows stay visible until
+the new revision is ready. No **Refresh tasks** click is needed for normal updates.
+If metadata advances again during that read, the next normal check catches up,
+without overlapping reads or an immediate read loop.
+
+Malformed, missing or oversized metadata retains the last complete snapshot and
+the failure reason. The same failed revision is not repeatedly parsed: a different
+ref or **Refresh tasks** can try again. If the initial read fails before any usable
+list exists, manual Refresh (or core reconnection) remains the recovery path.
+No metadata
 branch means unavailable, not an empty backlog. This prototype supports at most
 256 issues and the bounds in `docs/repo-task-surface.md`.
+
+Automatic list updates do not rewrite a task opened from a revision-pinned graph
+or file backlink, or a task already attached to an agent draft. Those keep the
+revision the operator selected; select or reattach deliberately to use newer text.
 
 ## Explicit human launch
 

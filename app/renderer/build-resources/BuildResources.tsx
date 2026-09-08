@@ -29,11 +29,13 @@ function JobCard({ job }: { job: Job }) {
   // sends all-zero placeholders; fixtures can send nonzero values. Show neither
   // as verified live telemetry, and never derive percentiles from repaint events.
   const hasValues = job.resources.cpuPercent > 0 || job.resources.memoryMiB > 0;
+  const status = { queued: "Queued", running: "Running", failed: "Failed", succeeded: "Complete" }[job.status];
+  const indeterminate = job.status === "running" && job.progress === 0;
   return <article className={`resource-job status-${job.status === "failed" ? "red" : job.status === "succeeded" ? "green" : "yellow"}`} data-job-id={job.id}>
-    <header><strong title={job.label}>{job.label}</strong><span>{job.status}</span></header>
+    <header><strong title={job.label}>{job.label}</strong><span>{status}</span></header>
     <div className="resource-progress-row">
-      <progress value={job.progress} max={1} aria-label={`${job.label} progress`} />
-      <span>{Math.round(job.progress * 100)}%</span>
+      <progress value={indeterminate ? undefined : job.progress} max={1} aria-label={`${job.label} progress`} />
+      <span>{indeterminate ? "Progress unavailable" : `${Math.round(job.progress * 100)}%`}</span>
     </div>
     {job.message ? <p className="resource-job-message">{job.message}</p> : null}
     {hasValues ? <details className="resource-snapshot"><summary>Unverified resource snapshot</summary>
@@ -46,11 +48,17 @@ function JobCard({ job }: { job: Job }) {
 export function BuildResources({ jobs }: { jobs: readonly Job[] }) {
   const [example, setExample] = useState(false);
   const id = useId();
+  const rank = { running: 0, queued: 1, failed: 2, succeeded: 3 };
+  const ordered = [...jobs].sort((a, b) => rank[a.status] - rank[b.status]);
+  const summary = (["running", "queued", "failed", "succeeded"] as const).map((state) => {
+    const count = jobs.filter((job) => job.status === state).length;
+    return count ? `${count} ${state === "succeeded" ? "complete" : state}` : null;
+  }).filter(Boolean).join(" · ");
   // React Flow's input guard also recognizes .nokey. Without it,
   // its window-level Space pan shortcut cancels native <summary> activation.
   return <div className="build-resources nokey">
-    {jobs.length ? <div className="resource-jobs">{jobs.map((job) => <JobCard job={job} key={job.id} />)}</div>
-      : <p className="resource-idle">No derived work running</p>}
+    {jobs.length ? <><p className="resource-job-summary" aria-label="Build job counts">{summary}</p><div className="resource-jobs">{ordered.map((job) => <JobCard job={job} key={job.id} />)}</div></>
+      : <p className="resource-idle">No build jobs</p>}
     <button type="button" className="resource-example-toggle" aria-expanded={example} aria-controls={id} onClick={() => setExample((open) => !open)}>
       <span aria-hidden="true">{example ? "▾" : "▸"}</span> Example profile
       <small>illustrative</small>

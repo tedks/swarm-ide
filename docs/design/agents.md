@@ -11,6 +11,7 @@ showing them together must not launch a second copy of a running conversation.
 | Native trusted conversations/forks | [trusted-local-session.ts](../../core/agents/trusted-local-session.ts), [trusted-local.ts](../../core/agents/trusted-local.ts) | IDE-owned persistent Codex app-server |
 | Native history and fleet UI | [trusted-local-store.ts](../../core/agents/trusted-local-store.ts), [TrustedLocalPane](../../app/renderer/agents/TrustedLocalPane.tsx) | Per-workspace persisted observations; targeted controls |
 | Registered terminal sessions | [external-agents-registry.ts](../../core/external-agents-registry.ts), [external-agents.ts](../../core/external-agents.ts) | Existing terminal/TUI remains owner |
+| Execution lifecycle | [agent-lifecycle.ts](../../core/agent-lifecycle.ts), [shared lifecycle](../../protocol/agent-lifecycle.ts) | Own-session start, completion and blocking-input evidence; separate from availability |
 | Send and terminal handoff | [external-agents-send.ts](../../core/external-agents-send.ts), [external-agents-handoff.ts](../../core/external-agents-handoff.ts) | Queue to checked existing session; select checked pane |
 | Registration | [tools/session-registration](../../tools/session-registration/BUILD.bazel) | Explicit known rollout/session/pane/worktree, not an account-wide scan |
 
@@ -38,9 +39,37 @@ input. The tool Activity stream excludes user messages.
 
 `SessionSteering.tsx` uses one `SteeringMemory` owner in App. Per-target drafts,
 pending sends and receipts survive selection, loading, tab changes and development
-remounts. An uncertain result retains its draft/receipt without replay. A full
-application restart does not persist these in-memory drafts. Terminal-owned
-sessions keep their existing queue and tmux owner; viewing them launches nothing.
+remounts. Before a send, `message-outbox.ts` saves its exact text, target and local
+message ID in the operator profile's browser storage. `AgentConversation.tsx`
+shows that outgoing row immediately, interleaved by time with transcript messages,
+with a compact queue state and exact-text Copy action. Submitted messages survive
+renderer reload and application restart in that same profile/origin; unsent
+composer drafts still live only in memory. Outgoing text is never inserted into
+the agent's message body as marker or bookkeeping data.
+
+Queue acceptance remains **Queued**, not delivered: the queue receipt identifies
+a queue item, not the separate client ID in a consumed user-message event. A
+matching text, a later reply, or a missing queue item does not establish receipt.
+Consequently a consumed message may appear in the transcript alongside its saved
+queued copy until a future supported correlation path is added. Interrupted sends
+reload as **Unconfirmed**, never retry. The outbox holds at most 100 messages and
+512 KiB; capacity, invalid storage or write failure before dispatch stops sending
+and preserves the draft, rather than silently evicting unresolved messages. An
+explicit archive/export workflow is tracked as `swarm-outbox-archive`.
+
+Terminal-owned sessions keep their existing queue and tmux owner; viewing them
+launches nothing. Official app-server `turn/steer` requires the running owner and
+its active turn ID. The inspected installation has no running default app-server
+control socket; creating another server/resume is not a supported shortcut for
+steering that existing TUI. The checked tmux command is the immediate manual route.
+
+Both registered-session and native Codex message boxes use `use-chat-submit.ts`:
+Enter submits their existing form, Shift-Enter inserts a newline, and composition
+confirmation or a held Enter never sends. The form's original target, validity
+and pending-request guards remain authoritative; this keyboard shortcut adds no
+sender, retry or delivery claim. The shortcut is also available in the textarea's
+hover hint. Focused checks in `tests/chat-input.test.tsx` mount both real forms
+and test their existing bridge paths with controlled responses.
 
 Native trusted conversations, approvals, forks, new drafts and saved history
 remain mounted in the secondary **Native agents / New** tab. Legacy stored runs
@@ -63,9 +92,39 @@ platform. Native app-server execution remains a separate owner path. App joins
 event activation to the correct-worktree source view; a fleet observation does
 not itself grant authority to send to or take over that session.
 
+Each observed session carries an optional `lifecycle`: working means **In
+progress**, blocking input means **Waiting on you**, an explicit failed completion
+means **Failed**, and successful `task_complete` means **Complete**. The object
+also records the evidence time and turn ID. Unknown evidence never becomes
+working merely because a transcript or terminal exists. Intentional interruption
+is not success or failure. A completed turn does not close every assigned issue.
+
+The core reduces lifecycle before Activity trimming. A bounded per-registration
+cache bridges observed append intervals only while the file identity and a raw
+overlap anchor agree. Missing bytes, unreadable records, replacement or truncation
+discard that continuity. A cold read without a usable boundary can be unknown.
+Forks rewrite outer timestamps: preserved `started_at` must establish the turn
+after the child's metadata birth; ambiguous second-precision birth-time turns
+are not borrowed from the parent. Blocking `request_user_input` waits for its
+correlated response; async questions do not pause work. A nonzero tool command or
+provider diagnostic is not a failed turn. These modules are shared inputs to
+`//:quality_sources` and `//:desktop-bundle`, with focused observer checks at
+`//tools/demo-agents:unit`.
+
+Native ownership remains distinct. Its `ready` status alone is not completion:
+it also returns to ready after failure or interruption. A consumer must inspect
+the known terminal outcome, not label every ready native run successful.
+
 The terminal handoff selects an existing tmux pane and exposes checked copyable
 attach/switch commands. Neither copying nor selecting resumes another process.
 Queue support reuses the normal harness rather than another exec/resume loop.
+The conversation's compact **Terminal** action copies that same checked attach
+command for use outside tmux; **Agent details** retains both the attach and
+inside-tmux switch commands. It is offered only for the currently selected local,
+available detail, and hidden during stale observation or history-only access.
+Copying is display-only: a pasted command is not a new identity check and does not
+replay pending message text. Explicit launch-time project/tmux association reuses
+registration; it does not convert terminal-owned agents into IDE-owned runs.
 
 ## Build connections
 
@@ -75,6 +134,20 @@ checks initial selection, per-target drafts, remount/unknown-delivery behavior,
 native controls and the existing observation/messaging cases. Its `:smoke` target
 reads actual registered sessions on an owned virtual desktop, but intercepts Send
 with a controlled receipt before core; it is not a real message to those agents.
+That packaged journey uses native Enter and Shift-Enter in the registered
+conversation textarea and samples the source caret across a real background
+conversation read, retaining the exact editor instance, state and focus.
+The shared keyboard cases can be run with
+`//tools/demo-syntax:editor-tests --test_arg=tests/chat-input.test.tsx`;
+the helper is already part of the shared application source inputs.
+
+`//tools/message-outbox:checks` exercises saved exact text, queue/error/unknown
+states, storage refusal, target identity, restart recovery, chronological rows,
+clipboard fallback and the existing bounded queue transport. Its `:smoke` target
+uses the actual packaged Electron renderer and profile storage on an owned virtual
+desktop: a controlled held send is saved, acknowledged, reloaded, and copied to
+that desktop's clipboard. It never sends an instruction to the observed agent.
+The new renderer modules are real `//:quality_sources` inputs to `//:desktop-bundle`.
 
 The observed fork rail has local subtree disclosures and an **Older sessions**
 toggle. Its default recency view keeps the seven newest dated registrations,

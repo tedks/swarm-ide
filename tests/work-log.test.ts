@@ -5,13 +5,14 @@ import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { WorkLogService } from "../core/work-log/service";
-import { cleanWorkText, readWorkInputs, type WorkInput } from "../core/work-log/transcripts";
+import { cleanWorkText, readWorkCompletions, readWorkInputs, type WorkInput } from "../core/work-log/transcripts";
 import { recordWorkOutcome, runWorkCommand, withWorkLock } from "../core/work-log/commands";
+import * as workCommands from "../core/work-log/commands";
 import { WorkLogSettingsSchema, type WorkLogRequest } from "../protocol/work-log";
 import { PROTOCOL_VERSION, CoreRequestSchema } from "../protocol/schema";
 
 const roots: string[] = [], services: WorkLogService[] = [];
-afterEach(async () => { await Promise.all(services.splice(0).map((s) => s.dispose())); await Promise.all(roots.splice(0).map((r) => rm(r, { recursive: true, force: true }))); });
+afterEach(async () => { await Promise.all(services.splice(0).map((s) => s.dispose())); vi.restoreAllMocks(); await Promise.all(roots.splice(0).map((r) => rm(r, { recursive: true, force: true }))); });
 async function fixture() {
   const dir = await mkdtemp(join(tmpdir(), "swarm-work-log-test.")); roots.push(dir);
   const root = join(dir, "repo"); await mkdir(root); execFileSync("git", ["init", "-q", root]);
@@ -31,6 +32,7 @@ describe("online Work Log", () => {
     expect((await service.request(read)).running).toBe(false); expect(summarize).not.toHaveBeenCalled();
     await service.request(request("workLog.start", { settings }));
     await vi.waitFor(async () => expect((await service.request(read)).entries).toHaveLength(1));
+    expect((await service.request(read)).entries[0]).toMatchObject({ state: "completed", recorded: false });
     await service.request(request("workLog.stop"));
     expect(JSON.parse(await readFile(join(f.root, ".swarm/work-log.json"), "utf8")).entries[0].outcome).toBe(summary.outcome);
     await service.dispose();
@@ -62,6 +64,65 @@ describe("online Work Log", () => {
     await b.request(request("workLog.start", { settings }));
     await vi.waitFor(async () => expect((await b.request(read)).entries).toHaveLength(2));
     expect(JSON.parse(await readFile(join(f.root, ".swarm/work-log.json"), "utf8")).entries).toHaveLength(2);
+    expect((await b.request(read)).entries.map((entry) => entry.state)).toEqual(["completed", "completed"]);
+  });
+  it("retains explicit failed completion independently of recording", async () => {
+    const f = await fixture(), row = { ...input(), state: "failed" as const };
+    const service = new WorkLogService(f.root, undefined, { inputs: async () => [row], summarize: async () => [summary] }); services.push(service);
+    await service.request(request("workLog.start", { settings }));
+    await vi.waitFor(async () => expect((await service.request(read)).entries).toHaveLength(1));
+    await service.request(request("workLog.stop"));
+    const entry = (await service.request(read)).entries[0];
+    const record = vi.spyOn(workCommands, "recordWorkOutcome").mockResolvedValue(undefined);
+    const recorded = await service.request(request("workLog.record", { entryId: entry.id, taskId: "task-a" }));
+    expect(record).toHaveBeenCalledTimes(1);
+    expect(recorded.entries[0]).toEqual({ ...entry, recorded: true });
+  });
+  it("repairs exact legacy completions while stopped without changing outcomes, recording or attempts", async () => {
+    const f = await fixture(), at = new Date().toISOString();
+    const base = { sessionId: "a", agent: "Worker", taskId: "task-a", at, state: "working", recorded: false, ...summary, outcome: "  Original outcome\nwith spacing.  " };
+    const entries = [
+      { ...base, id: `a:seen:${at}` },
+      { ...base, id: `a:older:${at}`, recorded: true },
+      { ...base, id: `a:failed:${at}` },
+      { ...base, id: `other:seen:${at}`, sessionId: "other" },
+      { ...base, id: `a:unknown:${at}` },
+      { ...base, id: `a:mismatch:${at}`, at: "2020-01-01T00:00:00.000Z" },
+    ];
+    await mkdir(join(f.root, ".swarm")); await writeFile(join(f.root, ".swarm/work-log.json"), JSON.stringify({ version: 1, entries }));
+    await mkdir(join(f.root, ".git/swarm-work-log"));
+    const state = JSON.stringify({ version: 1, settings, seen: { a: `seen:${at}` } });
+    await writeFile(join(f.root, ".git/swarm-work-log/state.json"), state);
+    const summarize = vi.fn(async () => [summary]), inputs = vi.fn(async () => []);
+    const completions = vi.fn(async () => [
+      { sessionId: "a", boundary: `older:${at}`, at },
+      { sessionId: "a", boundary: `failed:${at}`, at, state: "failed" as const },
+      { sessionId: "a", boundary: `mismatch:${at}`, at },
+    ]);
+    const service = new WorkLogService(f.root, undefined, { inputs, completions, summarize }); services.push(service);
+    const snapshot = await service.request(read);
+    expect(snapshot.running).toBe(false);
+    expect(snapshot.entries).toEqual(entries.map((entry, index) => ({ ...entry, state: index === 0 ? "unknown" : index === 1 ? "completed" : index === 2 ? "failed" : "working" })));
+    expect(JSON.parse(await readFile(join(f.root, ".swarm/work-log.json"), "utf8")).entries).toEqual(snapshot.entries);
+    expect(await readFile(join(f.root, ".git/swarm-work-log/state.json"), "utf8")).toBe(state);
+    await service.request(read);
+    expect(completions).toHaveBeenCalledTimes(1); expect(inputs).not.toHaveBeenCalled(); expect(summarize).not.toHaveBeenCalled();
+  });
+  it("defers legacy repair behind another producer and preserves its newer document", async () => {
+    const f = await fixture(), at = new Date().toISOString();
+    const entry = { id: `a:old:${at}`, sessionId: "a", agent: "Worker", taskId: "task-a", at, state: "working", recorded: false, ...summary };
+    await mkdir(join(f.root, ".swarm")); await writeFile(join(f.root, ".swarm/work-log.json"), JSON.stringify({ version: 1, entries: [entry] }));
+    let release!: () => void;
+    const held = withWorkLock(join(f.root, ".git/swarm-work-log/producer.lock"), () => new Promise<void>((resolve) => { release = resolve; }));
+    await vi.waitFor(() => expect(release).toBeTypeOf("function"));
+    const summarize = vi.fn(async () => [summary]);
+    const service = new WorkLogService(f.root, undefined, { inputs: async () => [], completions: async () => [{ sessionId: "a", boundary: `old:${at}`, at }], summarize }); services.push(service);
+    expect((await service.request(read)).entries).toEqual([entry]);
+    const newer = { ...entry, id: "newer", state: "completed", recorded: true };
+    await writeFile(join(f.root, ".swarm/work-log.json"), JSON.stringify({ version: 1, entries: [newer, { ...entry, recorded: true }] }));
+    release(); await held;
+    expect((await service.request(read)).entries).toEqual([newer, { ...entry, recorded: true, state: "completed" }]);
+    expect(summarize).not.toHaveBeenCalled();
   });
   it("keeps fifth and later fresh boundaries eligible for the next batch", async () => {
     const f = await fixture(); const rows = Array.from({ length: 5 }, (_, index) => ({ ...input(), sessionId: String(index) }));
@@ -121,6 +182,66 @@ describe("online Work Log", () => {
     await writeFile(registry, JSON.stringify({ version: 1, sessions: [{ id, label: "Worker", rollout }] }), { mode: 0o600 });
     const result = await readWorkInputs(f.root, registry);
     expect(result[0].text).toBe("Added completed behavior"); expect(result[0].boundary).toContain("finished:");
+  });
+  it("uses preserved fork turn starts, not rewritten parent timestamps or nested headers", async () => {
+    const f = await fixture(), id = "01a07f1d-d6d0-7f01-b2bd-4154876ec187", rollout = join(f.dir, "session.jsonl"), registry = join(f.dir, "registry.json");
+    const at = "2026-09-08T10:00:00.000Z", before = "2026-09-08T09:00:00.000Z", started = Date.parse(at) / 1000;
+    const header = { type: "session_meta", timestamp: before, payload: { id, timestamp: at, forked_from_id: "parent" } };
+    const inherited = [
+      header,
+      { type: "session_meta", timestamp: at, payload: { id: "parent", timestamp: before } },
+      { type: "event_msg", timestamp: at, payload: { type: "task_started", turn_id: "parent", started_at: started - 3600 } },
+      { type: "event_msg", timestamp: at, payload: { type: "agent_message", message: "Inherited parent prose" } },
+      { type: "response_item", timestamp: at, payload: { type: "function_call_output", output: "Inherited tool output" } },
+      { type: "event_msg", timestamp: at, payload: { type: "task_complete", turn_id: "parent", started_at: started - 3600, last_agent_message: "Inherited completion" } },
+    ];
+    await writeFile(registry, JSON.stringify({ version: 1, sessions: [{ id, label: "Child", rollout }] }), { mode: 0o600 });
+    const save = async (rows: unknown[]) => writeFile(rollout, rows.map((row) => JSON.stringify(row)).join("\n") + "\n");
+    await save(inherited);
+    expect(await readWorkInputs(f.root, registry)).toEqual([]);
+    await save([...inherited,
+      { type: "event_msg", timestamp: at, payload: { type: "task_started", turn_id: "child", started_at: started } },
+      { type: "event_msg", timestamp: before, payload: { type: "agent_message", message: "Pre-birth evidence" } },
+      { type: "event_msg", timestamp: at, payload: { type: "agent_message", message: "Own work" } },
+      { type: "event_msg", timestamp: at, payload: { type: "task_complete", turn_id: "child", started_at: started, last_agent_message: "Own completion" } },
+      { type: "event_msg", timestamp: at, payload: { type: "task_started", turn_id: "next", started_at: started } },
+      { type: "event_msg", timestamp: at, payload: { type: "agent_message", message: "Unfinished next turn" } },
+    ]);
+    const [result] = await readWorkInputs(f.root, registry);
+    expect(result.text).toBe("Own work\nOwn completion"); expect(result.boundary).toContain("child:"); expect(result.state).toBe("completed");
+    await save([...inherited,
+      { type: "event_msg", timestamp: at, payload: { type: "task_started", turn_id: "child", started_at: started } },
+      { type: "event_msg", timestamp: at, payload: { type: "agent_message", message: "Own work before nested header" } },
+      { type: "session_meta", payload: { id: "parent" } },
+      { type: "event_msg", timestamp: at, payload: { type: "agent_message", message: "Copied nested evidence" } },
+      { type: "event_msg", timestamp: at, payload: { type: "task_complete", turn_id: "child", started_at: started, last_agent_message: "Own completion after nested header" } },
+    ]);
+    expect((await readWorkInputs(f.root, registry))[0].text).toBe("Own completion after nested header");
+    await save([...inherited, { type: "event_msg", timestamp: at, payload: { type: "task_complete", turn_id: "child", started_at: started, last_agent_message: "Own final only", error: { message: "Provider failed" } } }]);
+    expect((await readWorkInputs(f.root, registry))[0]).toMatchObject({ text: "Own final only", state: "failed" });
+    await save([{ ...header, payload: { id, forked_from_id: "parent" } }, ...inherited.slice(1)]);
+    expect(await readWorkInputs(f.root, registry)).toEqual([]);
+    await save([{ ...header, payload: { ...header.payload, timestamp: "invalid" } }, ...inherited.slice(1)]);
+    expect(await readWorkInputs(f.root, registry)).toEqual([]);
+    await save([{ ...header, payload: { ...header.payload, timestamp: "2026-09-08T10:00:00.250Z" } },
+      { type: "event_msg", timestamp: "2026-09-08T10:00:01.000Z", payload: { type: "task_started", turn_id: "ambiguous", started_at: started } },
+      { type: "event_msg", timestamp: "2026-09-08T10:00:01.000Z", payload: { type: "task_complete", turn_id: "ambiguous", started_at: started, last_agent_message: "Ambiguous same-second ownership" } },
+    ]);
+    expect(await readWorkInputs(f.root, registry)).toEqual([]);
+  });
+  it("corroborates older and empty completion boundaries in the bounded tail without summarizing them", async () => {
+    const f = await fixture(), id = "01a07f1d-d6d0-7f01-b2bd-4154876ec187", rollout = join(f.dir, "session.jsonl"), registry = join(f.dir, "registry.json"), at = new Date().toISOString();
+    await writeFile(rollout, [
+      { type: "session_meta", timestamp: at, payload: { id } },
+      { type: "event_msg", timestamp: at, payload: { type: "task_complete", turn_id: "older", last_agent_message: "Older outcome" } },
+      { type: "event_msg", timestamp: at, payload: { type: "task_complete", turn_id: "empty", error: { message: "Provider unavailable" } } },
+    ].map((row) => JSON.stringify(row)).join("\n") + "\n");
+    await writeFile(registry, JSON.stringify({ version: 1, sessions: [{ id, label: "Worker", rollout }] }), { mode: 0o600 });
+    expect(await readWorkCompletions(f.root, registry)).toEqual([
+      { sessionId: id, boundary: `older:${at}`, at, state: "completed" },
+      { sessionId: id, boundary: `empty:${at}`, at, state: "failed" },
+    ]);
+    expect(await readWorkInputs(f.root, registry)).toEqual([]);
   });
   it("does not buy a summary for an empty startup turn", async () => {
     const f = await fixture(), id = "01a07f1d-d6d0-7f01-b2bd-4154876ec187", rollout = join(f.dir, "session.jsonl"), registry = join(f.dir, "registry.json"), at = new Date().toISOString();

@@ -1,9 +1,9 @@
 // @vitest-environment node
 import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { mkdir, mkdtemp, rm, symlink, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { readPlanIndex } from "../core/plans";
 import { PLAN_INDEX_PATH, PLAN_LIMITS, PLAN_READ_MESSAGES, PlanIndexSchema, PlanReadResultSchema, type PlanIndex, type PlanNode } from "../protocol/plans";
@@ -65,8 +65,6 @@ describe("authored plan index contract", () => {
 
   it("bounds each list and UTF-8 text, shares task IDs and keeps context references strict", () => {
     for (const refs of [
-      { docs: Array(PLAN_LIMITS.pathsPerNode + 1).fill("docs/a.md") },
-      { sourcePaths: Array(PLAN_LIMITS.pathsPerNode + 1).fill("core/a.ts") },
       { taskIds: Array(PLAN_LIMITS.taskIdsPerNode + 1).fill("task") },
       { taskIds: ["task:unsupported"] },
       { contextRefs: Array(PLAN_LIMITS.contextRefsPerNode + 1).fill({ kind: "lesson", path: "docs/a.md", note: null }) },
@@ -84,6 +82,13 @@ describe("authored plan index contract", () => {
     expect(PlanIndexSchema.safeParse(index(...nodes)).success).toBe(false);
   });
 
+  it("preserves large component reference lists instead of imposing a presentation limit on data", () => {
+    const sourcePaths = Array.from({ length: 300 }, (_, i) => `core/source-${i}.ts`);
+    const authored = index({ ...node("component"), sourcePaths, docs: sourcePaths });
+    expect(PlanIndexSchema.parse(authored)).toEqual(authored);
+    expect(PlanIndexSchema.safeParse(index({ ...node("component"), sourcePaths: Array(8000).fill("core/long-source-name.ts") })).success).toBe(false);
+  });
+
   it("requires exact safe diagnostics and bounded observed provenance", () => {
     for (const code of Object.keys(PLAN_READ_MESSAGES) as (keyof typeof PLAN_READ_MESSAGES)[]) {
       expect(PlanReadResultSchema.parse(unavailable(code))).toEqual(unavailable(code));
@@ -99,6 +104,16 @@ describe("authored plan index contract", () => {
 });
 
 describe("contained authored plan index reader", () => {
+  it("loads the actual committed plan without losing any design source links", async () => {
+    const committedRoot = resolve(import.meta.dirname, "..");
+    const authored = JSON.parse(await readFile(join(committedRoot, PLAN_INDEX_PATH), "utf8"));
+    const result = await readPlanIndex(committedRoot);
+    expect(result.status).toBe("observed");
+    if (result.status !== "observed") throw new Error(result.code);
+    expect(result.index).toEqual(authored);
+    expect(result.index.nodes.find((entry) => entry.id === "design:repository")!.sourcePaths.length).toBeGreaterThan(16);
+  });
+
   it("reads only the fixed index and preserves raw-byte provenance and literal references", async () => {
     const root = await repository();
     const authored = index(node("plan:root"), { ...node("component:core", "plan:root"), kind: "component",

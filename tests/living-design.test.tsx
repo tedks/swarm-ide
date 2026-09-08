@@ -1,12 +1,18 @@
 // @vitest-environment jsdom
-import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, renderHook, screen, waitFor, within } from "@testing-library/react";
+import { StrictMode } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { readFileSync, existsSync } from "node:fs";
 import { resolve } from "node:path";
 import { PlanIndexSchema } from "../protocol/plans";
-import { DesignWorkspace, designProjection, designLinkPath } from "../app/renderer/plans/DesignWorkspace";
+import { DesignWorkspace, designProjection, implementationProjection, designLinkPath } from "../app/renderer/plans/DesignWorkspace";
 import { initialSnapshot } from "../fixtures/world";
 import { PROTOCOL_VERSION, type CoreRequest, type CoreResponse } from "../protocol/schema";
+import { PlanWorkspace } from "../app/renderer/plans/PlanWorkspace";
+import { TaskBridgeClient } from "../app/renderer/tasks/client";
+import { resolveBazelTarget } from "../app/renderer/bazel-reference";
+import type { BuildLinkSnapshot } from "../app/renderer/repository/layers";
+import { usePlanNavigation } from "../app/renderer/plans/navigation";
 
 vi.mock("@xyflow/react", () => ({ Background: () => null, Controls: () => null, MarkerType: { ArrowClosed: "arrow" }, Position: { Right: "right", Left: "left" },
   ReactFlow: ({ nodes, onNodeClick }: { nodes: { id: string }[]; onNodeClick: (event: unknown, node: { id: string }) => void }) => <div>{nodes.map((node) => <button key={node.id} onClick={() => onNodeClick({}, node)}>{node.id}</button>)}</div> }));
@@ -20,6 +26,19 @@ function reply(request: CoreRequest): CoreResponse {
       : request.type === "file.read" ? { file: { kind: "read" as const, path: request.path, content: `# Actual document\n\n${request.path}`, revision: "a".repeat(64), size: 64 } } : {}) };
 }
 describe("living system design", () => {
+  it("opens only exact observed build declarations, including BUILD without the bazel suffix", () => {
+    const capture: BuildLinkSnapshot = { repositoryId: base.repositoryId, revision: "a", capturedAt: "now", command: "query", links: [], targets: [
+      { label: "//core:runtime", kind: "rule", path: "core", buildFile: "core/BUILD" },
+      { label: "//core:service.ts", kind: "source", path: "core/service.ts", buildFile: "core/BUILD" },
+      { label: "//core:generated.ts", kind: "generated", path: "core/generated.ts" },
+    ] };
+    expect(resolveBazelTarget("//core:runtime", capture)).toEqual({ path: "core/BUILD", target: "//core:runtime" });
+    expect(resolveBazelTarget("//core:service.ts", capture)?.path).toBe("core/service.ts");
+    for (const label of ["//core:missing", "//core:generated.ts", ":runtime", "@external//core:runtime", "//../private:target"]) expect(resolveBazelTarget(label, capture)).toBeNull();
+    expect(resolveBazelTarget("//core:runtime", undefined)).toBeNull();
+    expect(resolveBazelTarget("//core:runtime", { ...capture, targets: [...capture.targets!, capture.targets![0]!] })).toBeNull();
+    expect(resolveBazelTarget("//core:runtime", { ...capture, targets: [...capture.targets!, { label: "//core:other", kind: "rule", path: "core", buildFile: "core/BUILD.bazel" }] })).toBeNull();
+  });
   it("resolves repo document links without external URLs or repository escape", () => {
     expect(designLinkPath("docs/design/system.md", "cockpit.md")).toBe("docs/design/cockpit.md");
     expect(designLinkPath("docs/design/system.md", "../../core/plans.ts")).toBe("core/plans.ts");
@@ -35,7 +54,7 @@ describe("living system design", () => {
     const legacy = { ...index, nodes: index.nodes.map(({ design: _design, ...node }) => node) };
     expect(PlanIndexSchema.safeParse(legacy).success).toBe(true);
   });
-  it("maps every design doc/source to actual files and every target to a declared local rule", () => {
+  it("maps every design doc/source to actual files and every target to a declared rule or referenced source", () => {
     for (const node of index.nodes.filter((node) => node.design)) {
       for (const path of [...node.docs, ...node.sourcePaths]) expect(existsSync(resolve(root, path)), path).toBe(true);
       const document = readFileSync(resolve(root, node.docs[0]!), "utf8");
@@ -43,16 +62,94 @@ describe("living system design", () => {
       for (const target of node.design!.buildTargets) for (const label of [target.label, ...target.dependencies.map((edge) => edge.label)]) {
         const [pkg, name] = label.slice(2).split(":");
         const build = readFileSync(resolve(root, pkg!, "BUILD.bazel"), "utf8");
-        expect(build, label).toMatch(new RegExp(`name\\s*=\\s*"${name!.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}"`));
+        const literal = name!.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+        const rule = new RegExp(`name\\s*=\\s*"${literal}"`).test(build);
+        // Bazel source labels can be implicit exports referenced by local rules,
+        // e.g. :virtual-desktop-run.sh. They are files, not named rules.
+        const referencedSource = new RegExp(`":?${literal}"`).test(build) && existsSync(resolve(root, pkg!, name!));
+        expect(rule || referencedSource, label).toBe(true);
       }
     }
   });
   it("renders connected top components then real target/input edges at component depth", () => {
     const top = designProjection(index, index.nodes[0]!);
     expect(top.nodes).toHaveLength(7);
-    expect(top.edges.some((edge) => edge.label === "navigates")).toBe(true);
-    const leaf = designProjection(index, index.nodes[1]!);
+    expect(top.edges.some((edge) => edge.label === "Files & target definitions")).toBe(true);
+    const leaf = implementationProjection(index.nodes[1]!);
     expect(leaf.edges).toContainEqual(expect.objectContaining({ source: "//:desktop-bundle", target: "//:quality_sources", label: "srcs" }));
+  });
+  it("shows the component's inbound and outbound connections without inventing hierarchy", () => {
+    const graph = designProjection(index, index.nodes[1]!);
+    expect(graph.nodes.some((node) => node.id === "design:repository")).toBe(true);
+    expect(graph.edges).toContainEqual(expect.objectContaining({ source: "design:cockpit", target: "design:repository", label: "Files & target definitions" }));
+    expect(graph.nodes.some((node) => node.id.startsWith("//"))).toBe(false);
+    expect(graph.edges.some((edge) => edge.label === "contains")).toBe(false);
+  });
+  it("does not invent a build filename when no target activation is wired", async () => {
+    window.swarm = { request: vi.fn(async (req: CoreRequest) => reply(req)), onEvent: () => () => {} };
+    const onOpenFile = vi.fn();
+    render(<DesignWorkspace {...base} onOpenFile={onOpenFile} />);
+    await screen.findByText("docs/design/system.md");
+    fireEvent.click(screen.getByRole("button", { name: "design:cockpit" }));
+    await screen.findByText("docs/design/cockpit.md");
+    fireEvent.click(screen.getAllByRole("button", { name: "//:desktop-bundle" })[0]!);
+    expect(onOpenFile).not.toHaveBeenCalled();
+    expect(screen.getByText(/Open the Build view/)).toBeTruthy();
+  });
+  it("collapses large source lists but lets the operator expand and open the last link", async () => {
+    window.swarm = { request: vi.fn(async (req: CoreRequest) => reply(req)), onEvent: () => () => {} };
+    const onOpenFile = vi.fn();
+    render(<DesignWorkspace {...base} onOpenFile={onOpenFile} />);
+    await screen.findByText("docs/design/system.md");
+    fireEvent.click(screen.getByRole("button", { name: "design:repository" }));
+    await screen.findByText("docs/design/repository.md");
+    expect(screen.queryByRole("button", { name: "BUILD.bazel" })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Show all 20 source files" }));
+    fireEvent.click(screen.getByRole("button", { name: "BUILD.bazel" }));
+    expect(onOpenFile).toHaveBeenCalledExactlyOnceWith("BUILD.bazel");
+    fireEvent.click(screen.getByRole("button", { name: "Show fewer source files" }));
+    expect(screen.queryByRole("button", { name: "BUILD.bazel" })).toBeNull();
+  });
+  it("opens the top design by default and shares one selection/read across outline and design", async () => {
+    const request = vi.fn(async (req: CoreRequest) => reply(req));
+    window.swarm = { request, onEvent: () => () => {} };
+    const client = new TaskBridgeClient();
+    const onOpenFile = vi.fn();
+    render(<PlanWorkspace {...base} client={client} tasks={client.getSnapshot()} onOpenFile={onOpenFile} onOpenTask={vi.fn(async () => true)} />);
+    await screen.findByText("docs/design/system.md");
+    expect(request.mock.calls.filter(([req]) => req.type === "plans.read")).toHaveLength(1);
+    fireEvent.click(screen.getByRole("button", { name: "Plans & components" }));
+    fireEvent.click(screen.getByRole("button", { name: "Inspect plan design:repository" }));
+    fireEvent.click(within(screen.getByRole("navigation", { name: "Planning projections" })).getByRole("button", { name: "System design" }));
+    await screen.findByText("docs/design/repository.md");
+    expect(within(screen.getByRole("navigation", { name: "Design breadcrumb" })).getByRole("button", { name: "Repository, build & context" }).getAttribute("aria-current")).toBe("page");
+    expect(request.mock.calls.filter(([req]) => req.type === "plans.read")).toHaveLength(1);
+    expect(onOpenFile).not.toHaveBeenCalled();
+  });
+  it("loads under React strict effect replay and ignores another repository's pending plan", async () => {
+    const request = vi.fn(async (req: CoreRequest) => reply(req));
+    window.swarm = { request, onEvent: () => () => {} };
+    const view = render(<StrictMode><DesignWorkspace {...base} onOpenFile={vi.fn()} /></StrictMode>);
+    await screen.findByText("docs/design/system.md");
+    request.mockImplementation(() => new Promise(() => {}));
+    view.rerender(<StrictMode><DesignWorkspace {...base} repositoryId="different-project" onOpenFile={vi.fn()} /></StrictMode>);
+    expect(screen.queryByRole("button", { name: "design:cockpit" })).toBeNull();
+    expect(screen.queryByText("docs/design/system.md")).toBeNull();
+  });
+  it.each([false, true])("reconnects at the same generation without reauthorizing an old completed/pending read (%s)", async (completeFirst) => {
+    const pending: Array<{ request: CoreRequest; resolve: (reply: CoreResponse) => void }> = [];
+    window.swarm = { request: (request) => new Promise((resolve) => { pending.push({ request, resolve }); }), onEvent: () => () => {} };
+    const view = renderHook((props) => usePlanNavigation(props), { initialProps: base });
+    if (completeFirst) { await act(async () => pending[0]!.resolve(reply(pending[0]!.request))); expect(view.result.current.current).toBe(true); }
+    view.rerender({ ...base, connected: false });
+    expect(view.result.current.current).toBe(false);
+    view.rerender(base);
+    expect(view.result.current.current).toBe(false);
+    expect(pending).toHaveLength(2);
+    if (!completeFirst) await act(async () => pending[0]!.resolve(reply(pending[0]!.request)));
+    expect(view.result.current.current).toBe(false);
+    await act(async () => pending[1]!.resolve(reply(pending[1]!.request)));
+    expect(view.result.current.current).toBe(true);
   });
   it("drills down, reads design without changing source, and activates explicit source/task/build callbacks", async () => {
     const request = vi.fn(async (req: CoreRequest) => reply(req));

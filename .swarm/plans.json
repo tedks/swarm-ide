@@ -19,6 +19,10 @@
     "design": {
       "summary": "An engineering organization in a box: navigate the system, understand actual work, and steer its agents from one repo-grounded cockpit.",
       "state": "implemented",
+      "constraints": [
+        "Keep graph perspectives coordinated without merging their meanings.",
+        "Distinguish working, built and deployed observations."
+      ],
       "connections": [],
       "buildTargets": []
     }
@@ -48,18 +52,22 @@
     "design": {
       "summary": "Keep the operator oriented while switching graphs, tasks, source and agent work.",
       "state": "implemented",
+      "constraints": [
+        "Navigation preserves dirty source, cursor and graph cameras.",
+        "Late results must not override newer navigation."
+      ],
       "connections": [
         {
           "targetId": "design:repository",
-          "label": "navigates"
+          "label": "Files & target definitions"
         },
         {
           "targetId": "design:planning",
-          "label": "navigates"
+          "label": "Design & task documents"
         },
         {
           "targetId": "design:agents",
-          "label": "navigates"
+          "label": "Conversations & steering"
         }
       ],
       "buildTargets": [
@@ -105,6 +113,8 @@
       "app/renderer/AgentWorktreeBrowser.tsx",
       "tools/worktree-browser/BUILD.bazel",
       "core/build-graph.ts",
+      "app/renderer/repository/use-build-graph.ts",
+      "tools/build-graph/BUILD.bazel",
       "app/renderer/context/ContextPane.tsx",
       "core/project-context/provider.ts",
       "app/renderer/bazel-reference.ts",
@@ -125,17 +135,26 @@
     "design": {
       "summary": "Observe the working repository and Bazel inputs; show exact file membership, project-owned runtimes and manifest-declared components, connections and sites.",
       "state": "implemented",
+      "constraints": [
+        "Open only observed target identities and declaration paths.",
+        "Keep the last topology visible when a new observation fails."
+      ],
       "connections": [
         {
           "targetId": "design:runtime",
-          "label": "uses"
+          "label": "Repository & build queries"
         },
         {
           "targetId": "design:cockpit",
-          "label": "uses"
+          "label": "Graphs & Context links"
         }
       ],
       "buildTargets": [
+        {
+          "label": "//tools/build-graph:checks",
+          "role": "Checks automatic repository build observation, invalidation and retained graph context",
+          "dependencies": [{ "label": "//:quality_sources", "relation": "data" }]
+        },
         {
           "label": "//tools/project-context:checks",
           "role": "Checks automatic runtime ownership, bounded manifest discovery and Context rendering",
@@ -200,23 +219,32 @@
       "core/plans.ts",
       "core/tasks/draft-context.ts",
       "app/renderer/plans/DesignWorkspace.tsx",
+      "app/renderer/plans/navigation.ts",
+      "app/renderer/plans/PlanWorkspace.tsx",
+      "app/renderer/plans/PlanHierarchy.tsx",
+      "protocol/plans.ts",
       "BUILD.bazel"
     ],
     "taskIds": [
-      "swarm-living-design"
+      "swarm-living-design",
+      "swarm-plan-index-startup"
     ],
     "contextRefs": [],
     "design": {
       "summary": "Version the design hierarchy and Ditz dependency graph; deliberately attach task context to a fixed draft.",
       "state": "implemented",
+      "constraints": [
+        "Read tasks at a fixed metadata revision.",
+        "Refreshing metadata must not silently retarget an attached draft."
+      ],
       "connections": [
         {
           "targetId": "design:runtime",
-          "label": "uses"
+          "label": "Plans & pinned task reads"
         },
         {
           "targetId": "design:agents",
-          "label": "uses"
+          "label": "Fixed task/source context"
         }
       ],
       "buildTargets": [
@@ -235,11 +263,15 @@
           ]
         },
         {
-          "label": "//tools/demo-plans:regressions",
+          "label": "//tools/living-design:checks",
           "role": "Component checks or authoring entry",
           "dependencies": [
             {
               "label": "//:quality_sources",
+              "relation": "data"
+            },
+            {
+              "label": "//docs/design:sources",
               "relation": "data"
             }
           ]
@@ -257,6 +289,8 @@
     ],
     "sourcePaths": [
       "core/agents/trusted-local-session.ts",
+      "core/agent-lifecycle.ts",
+      "protocol/agent-lifecycle.ts",
       "core/external-agents.ts",
       "core/external-agents-send.ts",
       "protocol/external-agents.ts",
@@ -272,14 +306,18 @@
     "design": {
       "summary": "Read and steer the selected registered conversation by default, with native execution/history in secondary controls and the real parent, worktree and execution owner preserved.",
       "state": "implemented",
+      "constraints": [
+        "Observing a terminal does not launch or take ownership of it.",
+        "Keep uncertain messages and receipts; never resend automatically."
+      ],
       "connections": [
         {
           "targetId": "design:runtime",
-          "label": "uses"
+          "label": "Owned runs & terminal sends"
         },
         {
           "targetId": "design:activity",
-          "label": "uses"
+          "label": "Agent operations & edits"
         }
       ],
       "buildTargets": [
@@ -309,7 +347,7 @@
         },
         {
           "label": "//tools/demo-agents:unit",
-          "role": "Registered fleet creation ordering, deep lineage disclosures and observer checks",
+          "role": "Agent lifecycle evidence, registered fleet creation ordering, deep lineage disclosures and observer checks",
           "dependencies": [
             { "label": "//:quality_sources", "relation": "data" },
             { "label": "//tools/demo-agents:sources", "relation": "data" }
@@ -340,6 +378,9 @@
       "app/renderer/changelog/JournalPanel.tsx",
       "app/renderer/FleetActivityView.tsx",
       "app/renderer/external-agents/ObservedActivity.tsx",
+      "app/renderer/external-agents/activity-entries.ts",
+      "app/renderer/external-agents/RunStatus.tsx",
+      "app/renderer/build-resources/BuildResources.tsx",
       "app/renderer/work-log/WorkLogPanel.tsx",
       "core/work-log/service.ts",
       "BUILD.bazel"
@@ -349,14 +390,18 @@
     "design": {
       "summary": "Read timestamped commands and edits separately from concrete accomplishments retained in repo task history.",
       "state": "implemented",
+      "constraints": [
+        "Opening the Work Log does not start a summarizer.",
+        "Recording an outcome adds one note; it does not close the issue."
+      ],
       "connections": [
         {
           "targetId": "design:agents",
-          "label": "summarizes / links"
+          "label": "Events → responsible agent"
         },
         {
           "targetId": "design:planning",
-          "label": "summarizes / links"
+          "label": "Completed outcome notes"
         }
       ],
       "buildTargets": [
@@ -383,6 +428,21 @@
               "relation": "data"
             }
           ]
+        },
+        {
+          "label": "//tools/live-observers:unit",
+          "role": "Checks lifecycle badges, raw activity and refresh retention",
+          "dependencies": [{ "label": "//:quality_sources", "relation": "data" }]
+        },
+        {
+          "label": "//tools/work-log:check",
+          "role": "Checks logical outcomes and explicit summary controls",
+          "dependencies": [{ "label": "//:quality_sources", "relation": "data" }]
+        },
+        {
+          "label": "//tools/activity-usability:smoke",
+          "role": "Packaged raw activity, keyboard settings and retained work proof",
+          "dependencies": [{ "label": "//:desktop-bundle", "relation": "data" }]
         }
       ]
     }
@@ -393,7 +453,8 @@
     "title": "Typed local core & configuration",
     "parentId": "design:system",
     "docs": [
-      "docs/design/runtime.md"
+      "docs/design/runtime.md",
+      "docs/container-demo.md"
     ],
     "sourcePaths": [
       "protocol/schema.ts",
@@ -402,21 +463,31 @@
       "nix/package.nix",
       "tools/cli/launcher.mjs",
       "tools/cli/BUILD.bazel",
-      "BUILD.bazel"
+      "Dockerfile",
+      "tools/container/runtime.nix",
+      "tools/container/entrypoint.sh",
+      "tools/container/BUILD.bazel",
+      "BUILD.bazel",
+      "core/build-progress.ts",
+      "core/provider.ts"
     ],
     "taskIds": [],
     "contextRefs": [],
     "design": {
       "summary": "Route validated requests from the sandboxed renderer to registered local capabilities and preserve recoverable state.",
       "state": "implemented",
+      "constraints": [
+        "Filesystem and process access goes through the typed local core.",
+        "Older results must not replace newer source state."
+      ],
       "connections": [
         {
           "targetId": "design:repository",
-          "label": "hosts"
+          "label": "Filesystem, Git & Bazel results"
         },
         {
           "targetId": "design:agents",
-          "label": "hosts"
+          "label": "Process & terminal ownership"
         }
       ],
       "buildTargets": [
@@ -457,6 +528,32 @@
               "label": "//:quality_sources",
               "relation": "data"
             }
+          ]
+        },
+        {
+          "label": "//tools/container:checks",
+          "role": "Checks the browser-display container transport",
+          "dependencies": [{ "label": "//tools/container:sources", "relation": "data" }]
+        },
+        {
+          "label": "//tools/container:smoke",
+          "role": "Exercises the Docker-packaged desktop through noVNC",
+          "dependencies": [{ "label": "//tools/container:sources", "relation": "data" }]
+        },
+        {
+          "label": "//tools/build-graph:progress-checks",
+          "role": "Checks explicit-build progress reading and late-event guards",
+          "dependencies": [
+            { "label": "//:quality_sources", "relation": "data" }
+          ]
+        },
+        {
+          "label": "//tools/build-graph:progress-probe",
+          "role": "Exercises real build milestones and owned process cleanup",
+          "dependencies": [
+            { "label": "//tools/build-graph:sources", "relation": "data" },
+            { "label": "//tools/build-graph:progress-probe-module", "relation": "data" },
+            { "label": "//:desktop-bundle", "relation": "data" }
           ]
         }
       ]

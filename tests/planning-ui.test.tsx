@@ -35,7 +35,7 @@ function harness() {
   const request = vi.fn(async (request: CoreRequest) => wrap(request, observedPlans()));
   window.swarm = { request, onEvent: () => () => {} };
   const props = { visible: true, worldId: "world:working", repositoryId: "project:swarm-ide", generation: 1, connected: true,
-    tasks, client, onOpenTask, onOpenFile };
+    tasks, client, onOpenTask, onOpenFile, initialView: "tasks" as const };
   return { props, readGraphDetail, request, onOpenTask, onOpenFile, nextLifetime: () => { lifetime++; } };
 }
 describe("playable separate planning projections", () => {
@@ -76,7 +76,7 @@ describe("playable separate planning projections", () => {
     fireEvent.click(screen.getByRole("button", { name: "Move own camera" }));
     const taskCamera = screen.getByTestId("projection-camera");
     fireEvent.click(screen.getByRole("button", { name: "Plans & components" }));
-    fireEvent.click(screen.getByRole("button", { name: "Load plan index" })); await screen.findByText(/6?3 authored nodes/);
+    await screen.findByText(/3 components/);
     expect(h.request).toHaveBeenCalledWith(expect.objectContaining({ type: "plans.read", repositoryId: "project:swarm-ide" }));
     expect(h.onOpenFile).not.toHaveBeenCalled();
     fireEvent.click(screen.getByRole("button", { name: "Inspect plan component:engine" }));
@@ -93,26 +93,24 @@ describe("playable separate planning projections", () => {
     expect(h.readGraphDetail).toHaveBeenCalledTimes(1);
   });
   it("rejects late old-generation plan response and reports missing/invalid metadata without a fallback", async () => {
-    const h = harness(); let finish!: (response: CoreResponse) => void;
-    h.request.mockImplementationOnce(() => new Promise((resolve) => { finish = resolve; }));
+    const h = harness(); const pending: Array<(response: CoreResponse) => void> = [];
+    h.request.mockImplementation(() => new Promise((resolve) => { pending.push(resolve); }));
     const view = render(<PlanWorkspace {...h.props} />);
     fireEvent.click(screen.getByRole("button", { name: "Plans & components" }));
-    fireEvent.click(screen.getByRole("button", { name: "Load plan index" }));
     view.rerender(<PlanWorkspace {...h.props} generation={2} />);
-    await act(async () => finish(wrap(h.request.mock.calls[0]![0], observedPlans())));
-    expect(screen.queryByText(/3 authored nodes/)).toBeNull();
-    h.request.mockImplementationOnce(async (request) => wrap(request, { status: "unavailable", code: "PLAN_INDEX_MALFORMED", message: PLAN_READ_MESSAGES.PLAN_INDEX_MALFORMED }));
-    fireEvent.click(screen.getByRole("button", { name: "Load plan index" }));
-    await screen.findByText(/PLAN_INDEX_MALFORMED/); expect(screen.queryByRole("button", { name: "Inspect plan plan:demo" })).toBeNull();
+    await act(async () => pending[0]!(wrap(h.request.mock.calls[0]![0], observedPlans())));
+    expect(screen.queryByText(/3 components/)).toBeNull();
+    await act(async () => pending[1]!(wrap(h.request.mock.calls[1]![0], { status: "unavailable", code: "PLAN_INDEX_MALFORMED", message: PLAN_READ_MESSAGES.PLAN_INDEX_MALFORMED })));
+    expect((await screen.findAllByText(/The plan needs a correction/)).length).toBeGreaterThan(0); expect(screen.queryByRole("button", { name: "Inspect plan plan:demo" })).toBeNull();
   });
   it("marks retained plans unavailable for link activation after a core replacement", async () => {
     const h = harness(); const view = render(<PlanWorkspace {...h.props} />);
     fireEvent.click(screen.getByRole("button", { name: "Plans & components" }));
-    fireEvent.click(screen.getByRole("button", { name: "Load plan index" })); await screen.findByText(/3 authored nodes/);
+    await screen.findByText(/3 components/);
     fireEvent.click(screen.getByRole("button", { name: "Inspect plan plan:demo" }));
     view.rerender(<PlanWorkspace {...h.props} generation={2} />);
     expect((screen.getByRole("button", { name: "Read doc · docs/design.md" }) as HTMLButtonElement).disabled).toBe(true);
-    expect(screen.getByText(/RETAINED — load again/)).toBeTruthy();
+    expect(screen.getByText(/Refresh to navigate/)).toBeTruthy();
   });
 });
 describe("plan bridge authority", () => {

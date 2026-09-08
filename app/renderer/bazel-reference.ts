@@ -86,10 +86,7 @@ function observedBuildFile(target: BuildTarget): string | undefined {
  * The caller remains responsible for matching this snapshot to the selected
  * repository/worktree and sending the result through ordinary source opening.
  */
-export function resolveBazelReference(sourcePath: string, reference: string, capture: BuildLinkSnapshot | undefined): { path: string; target?: string } | null {
-  if (!isRepositoryPath(sourcePath) || !(buildName.test(sourcePath) || sourcePath.endsWith(".bzl")) ||
-      !reference || reference.length > MAX_REFERENCE || !capture?.targets || capture.targets.length > 2000) return null;
-  const targets = capture.targets;
+function observedPackages(targets: BuildTarget[]) {
   const packages = new Map<string, Set<string>>();
   for (const target of targets) {
     const path = observedBuildFile(target);
@@ -97,6 +94,13 @@ export function resolveBazelReference(sourcePath: string, reference: string, cap
     const pkg = directory(path), files = packages.get(pkg) ?? new Set<string>();
     files.add(path); packages.set(pkg, files);
   }
+  return packages;
+}
+
+export function resolveBazelReference(sourcePath: string, reference: string, capture: BuildLinkSnapshot | undefined): { path: string; target?: string } | null {
+  if (!isRepositoryPath(sourcePath) || !(buildName.test(sourcePath) || sourcePath.endsWith(".bzl")) ||
+      !reference || reference.length > MAX_REFERENCE || !capture?.targets || capture.targets.length > 2000) return null;
+  const targets = capture.targets, packages = observedPackages(targets);
   let label = reference;
   if (!reference.startsWith("//")) {
     if (reference.startsWith("@") || reference.startsWith("/")) return null;
@@ -110,6 +114,17 @@ export function resolveBazelReference(sourcePath: string, reference: string, cap
     const name = reference.startsWith(":") ? reference.slice(1) : reference;
     label = `//${pkg}:${name}`;
   }
+  return resolveObservedTarget(label, targets, packages);
+}
+
+/** Absolute authored links use the same observed-target checks as editor links,
+ * without inventing an editor source path to establish a package. */
+export function resolveBazelTarget(label: string, capture: BuildLinkSnapshot | undefined): { path: string; target?: string } | null {
+  if (!capture?.targets || capture.targets.length > 2000) return null;
+  return resolveObservedTarget(label, capture.targets, observedPackages(capture.targets));
+}
+
+function resolveObservedTarget(label: string, targets: BuildTarget[], packages: Map<string, Set<string>>): { path: string; target?: string } | null {
   const parts = labelParts(label);
   if (!parts) return null;
   const matches = targets.filter((target) => target.label === label);

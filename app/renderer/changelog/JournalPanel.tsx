@@ -83,7 +83,7 @@ export function JournalPanel({ open, state, selectedEntry, selectionVersion = 0,
   return <section className="journal-panel" aria-label="Activity log" hidden={!open} data-journal-digest={observation?.document.inputDigest ?? ""}>
     <header className="journal-header"><div><h2 ref={heading} tabIndex={-1}>Activity log</h2></div>
       <div className="journal-controls"><button onClick={() => void refresh()} disabled={busy} aria-label="Refresh logical changes">{busy ? "Reading…" : "Refresh"}</button><button onClick={onClose} aria-label="Close logical changes">×</button></div></header>
-    {pullRequests || liveContent ? <nav className="journal-view-tabs" aria-label="Activity views">{liveContent ? <button aria-pressed={view === "activity"} onClick={() => setView("activity")}>Live activity</button> : null}<button aria-pressed={view === "changes"} onClick={() => setView("changes")}>Saved summaries</button>{pullRequests ? <button aria-pressed={view === "prs"} onClick={() => setView("prs")}>Pull requests</button> : null}</nav> : null}
+    {pullRequests || liveContent ? <nav className="journal-view-tabs" aria-label="Activity views">{liveContent ? <button aria-pressed={view === "activity"} onClick={() => setView("activity")}>Activity</button> : null}<button aria-pressed={view === "changes"} onClick={() => setView("changes")}>Saved summaries</button>{pullRequests ? <button aria-pressed={view === "prs"} onClick={() => setView("prs")}>Pull requests</button> : null}</nav> : null}
     <div className="journal-body" ref={body}>
       {pullRequests ? <div hidden={view !== "prs"}><GithubPullRequests state={pullRequests} onOpenSource={onOpenSource} /></div> : null}
       {liveContent ? <div hidden={view !== "activity"}>{liveContent}</div> : null}

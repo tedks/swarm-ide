@@ -125,7 +125,8 @@ describe("one mounted target-specific message owner", () => {
     second.rerender(panel(client()));
     expect((screen.getByRole("textbox", { name: "Message to ROOT" }) as HTMLTextAreaElement).value).toBe("send once");
     expect(document.querySelector("[data-delivery-status]")?.getAttribute("data-delivery-status")).toBe("delivery-unknown");
-    expect(screen.getByText(id(9))).toBeTruthy(); expect(request).toHaveBeenCalledTimes(1);
+    expect(screen.queryByText(id(9))).toBeNull();
+    expect(localStorage.getItem("swarm.message-outbox.v1")).toContain(id(9)); expect(request).toHaveBeenCalledTimes(1);
   });
   it("never labels old detail as a new selected agent or enables send from it", () => {
     render(<AgentConversation client={client(child.id, detail())} bridge={{ request: vi.fn(), onEvent: () => () => {} }} onContext={vi.fn()} />);

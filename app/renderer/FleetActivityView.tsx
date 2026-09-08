@@ -1,5 +1,6 @@
 import type { ExternalAgentSummary, ExternalDetail, ExternalEntry } from "../../protocol/external-agents";
 import { ActivityTime } from "./ActivityTime";
+import { activityEntries } from "./external-agents/activity-entries";
 
 export type SelectedActivity = { session: ExternalAgentSummary; entry: ExternalEntry };
 /** Only the registered worktree prefix may turn a recorded absolute path into
@@ -12,9 +13,7 @@ export function FleetActivityView({ fleet, selected, onSelect, onAgent, onInspec
   fleet: ExternalDetail[]; selected: SelectedActivity | null; onSelect(value: SelectedActivity | null): void;
   onAgent(id: string): void; onInspect(id: string, path: string, patch?: string): void;
 }) {
-  const entries = fleet.flatMap(({ session, entries }) => entries.map((entry) => ({ session, entry })))
-    .filter(({ entry }) => entry.kind !== "assistant" && entry.kind !== "user")
-    .sort((a, b) => b.entry.at.localeCompare(a.entry.at)).slice(0, 200);
+  const entries = activityEntries(fleet, 200);
   return <section className="fleet-activity-view" aria-label="Live swarm activity">
     {selected ? <article className="fleet-event-detail">
       <header><button onClick={() => onSelect(null)}>All activity</button><ActivityTime at={selected.entry.at} /></header>
