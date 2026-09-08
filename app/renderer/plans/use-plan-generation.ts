@@ -4,13 +4,13 @@ import type { TrustedSnapshot } from "../../../protocol/trusted-local";
 import type { PlanGenerationAction } from "./PlanGeneration";
 
 export class PlanGenerationUnconfirmedError extends Error {}
-type Run = { token: string; pending: boolean; notice: string };
+type Run = { token: string; pending: boolean; notice: string; retry?: boolean };
 const storageKey = (identity: string) => `swarm.component-plan.run.v1:${identity}`;
 function restore(identity: string): Run | null {
   try {
     const saved: unknown = JSON.parse(sessionStorage.getItem(storageKey(identity)) ?? "null");
     if (saved && typeof saved === "object" && "token" in saved && typeof saved.token === "string" && /^[a-f0-9-]{36}$/.test(saved.token))
-      return { token: saved.token, pending: true, notice: "Checking the generation agent…" };
+      return { token: saved.token, pending: true, retry: true, notice: "Checking the generation agent…" };
   } catch { /* Core admission also rejects a second active generation. */ }
   return null;
 }
@@ -46,10 +46,14 @@ export function usePlanGeneration({ identity, connected, launch, onOpen, observa
       : (observation.runToken === run.token ? observation.message : summary?.message) || "Generation failed. Open the agent to inspect its output." });
     setRefreshVersion(value => value + 1);
   }, [identity, connected, observation, run]);
-  const start = (settings: PlanGenerationSettings) => {
-    if (!live.current || !connected || boundary.current.epoch !== origin || admissions.current.has(identity) || runs.current.get(identity)?.pending) return;
+  const start = (settings: PlanGenerationSettings, retry = false) => {
+    const previous = runs.current.get(identity);
+    if (!live.current || !connected || boundary.current.epoch !== origin || admissions.current.has(identity) ||
+      (retry ? !previous?.retry : previous?.pending)) return;
     admissions.current.add(identity);
-    const token = crypto.randomUUID();
+    // Explicit recovery reuses the permanently reserved identity. If the first
+    // request reached core, its admission guard rejects this without execution.
+    const token = retry && previous ? previous.token : crypto.randomUUID();
     setRun(identity, { token, pending: true, notice: "Starting design agent…" });
     // Capture this workspace's launch closure before any asynchronous work.
     void launch(token, settings).then(() => {
@@ -57,10 +61,11 @@ export function usePlanGeneration({ identity, connected, launch, onOpen, observa
       if (live.current && boundary.current.epoch === origin) onOpen(token);
     }).catch((error: unknown) => {
       const uncertain = error instanceof PlanGenerationUnconfirmedError;
-      setRun(identity, { token, pending: uncertain, notice: error instanceof Error ? error.message : "Could not start the design agent." });
+      setRun(identity, { token, pending: uncertain, retry: uncertain, notice: error instanceof Error ? error.message : "Could not start the design agent." });
       if (live.current && boundary.current.epoch === origin) setRefreshVersion(value => value + 1);
     }).finally(() => { admissions.current.delete(identity); });
   };
   return { pending: run?.pending ?? false, notice: run?.notice ?? "", start, refreshVersion,
+    ...(run?.retry ? { retry: (settings: PlanGenerationSettings) => start(settings, true) } : {}),
     ...(run ? { open: () => { if (live.current && boundary.current.epoch === origin) onOpen(run.token); } } : {}) };
 }

@@ -42,6 +42,25 @@ describe("component-plan generation admission", () => {
       expect(createSession).not.toHaveBeenCalled();
     } finally { await service.shutdown(); }
   });
+  it("holds exclusion after failure until the old writer confirms cleanup", async () => {
+    const path = await root(); let cleaned = false;
+    const session = { snapshot: () => ({ status: "failed" as const, threadId: "thread", turnId: "turn", output: "", message: "Transport failed", approvals: [] }),
+      cleanupConfirmed: () => cleaned, start: vi.fn(async () => {}), stop: vi.fn(async () => {}), send: vi.fn(), decide: vi.fn() };
+    const createSession = vi.fn(async () => session);
+    const service = new TrustedLocalService({ root: path, context: { prepare: vi.fn(), dispose: vi.fn() }, createSession });
+    const request = () => TrustedRequestSchema.parse({ protocolVersion: PROTOCOL_VERSION, requestId: randomUUID(), type: "trusted.start", purpose: "component-plan",
+      token: randomUUID(), text: "Plan this project", model: "gpt-5.6-sol", effort: "xhigh" });
+    try {
+      const first = request(); await service.request(first);
+      await expect(service.request(request())).rejects.toThrow("already working");
+      expect(createSession).toHaveBeenCalledTimes(1);
+      cleaned = true;
+      await service.request(request());
+      expect(createSession).toHaveBeenCalledTimes(2);
+      await expect(service.request({ ...first, requestId: randomUUID() })).rejects.toThrow("already submitted");
+      expect(createSession).toHaveBeenCalledTimes(2);
+    } finally { await service.shutdown(); }
+  });
   it("starts only when the canonical index is genuinely absent", async () => {
     const path = await root();
     expect(await componentPlanMissing(path)).toBe(true);

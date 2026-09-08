@@ -40,7 +40,10 @@ or Stop: they remain inspectable. A final message is not validation; completion
 refreshes the existing plan reader, and malformed output remains an error.
 No background generation, fabricated runtime relationships or silent model
 substitution is permitted. Run identity survives worktree switching and renderer
-reload; an uncertain send is observed instead of replayed.
+reload; an uncertain send is observed instead of replayed. Explicit Check or
+retry launch uses the same permanently admitted identity, so recovering a
+rejected request cannot duplicate a run whose acknowledgement was lost. Failed
+writers keep their generation slot until owned process cleanup is confirmed.
 
 The unified workspace starts with a component responsibility hierarchy, task
 dependencies, repository navigation and the existing build/services chooser.

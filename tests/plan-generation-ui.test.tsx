@@ -24,7 +24,7 @@ describe("explicit plan generation", () => {
   it("dispatches one schema-valid start through the captured selected-worktree bridge", async () => {
     const token = crypto.randomUUID();
     const request = vi.fn(async (input: CoreRequest) => ({ protocolVersion: PROTOCOL_VERSION, requestId: input.requestId, ok: true as const, sequence: 1,
-      snapshot: initialSnapshot(), workspaceId: input.workspaceId, trusted: { kind: "trusted" as const, snapshot: snapshot(token, "running") } }));
+      snapshot: { ...initialSnapshot(), project: { ...initialSnapshot().project, id: input.workspaceId ?? initialSnapshot().project.id } }, workspaceId: input.workspaceId, trusted: { kind: "trusted" as const, snapshot: snapshot(token, "running") } }));
     const bridge = workspaceBridge({ request, onEvent: () => () => {} }, "repo:selected")!;
     await startComponentPlan(bridge, token, PlanGenerationSettingsSchema.parse({ model: "custom-model", effort: "high", prompt: "Explain the scheduler." }));
     expect(request).toHaveBeenCalledTimes(1);
@@ -96,6 +96,19 @@ describe("explicit plan generation", () => {
     await waitFor(() => expect(result.current.notice).toContain("Connection lost"));
     act(() => result.current.start(PlanGenerationSettingsSchema.parse({})));
     expect(launch).toHaveBeenCalledTimes(1); expect(result.current.pending).toBe(true); expect(result.current.open).toBeTypeOf("function");
+  });
+  it("offers explicit same-token recovery for rejection without inventing another run", async () => {
+    const launch = vi.fn(async (_token: string) => { throw new PlanGenerationUnconfirmedError("Capacity unavailable"); });
+    const { result, unmount } = renderHook(() => usePlanGeneration({ identity: "retry-root", connected: true, launch, onOpen: vi.fn(), observation: null }));
+    act(() => result.current.start(PlanGenerationSettingsSchema.parse({})));
+    await waitFor(() => expect(result.current.retry).toBeTypeOf("function"));
+    const token = launch.mock.calls[0]![0];
+    await act(async () => result.current.retry!(PlanGenerationSettingsSchema.parse({})));
+    expect(launch.mock.calls.map(call => call[0])).toEqual([token, token]);
+    unmount();
+    const restored = renderHook(() => usePlanGeneration({ identity: "retry-root", connected: true, launch, onOpen: vi.fn(), observation: null }));
+    await act(async () => restored.result.current.retry!(PlanGenerationSettingsSchema.parse({})));
+    expect(launch.mock.calls.map(call => call[0])).toEqual([token, token, token]);
   });
   it("has working defaults and settings edits/save never start an agent", () => {
     const start = vi.fn();

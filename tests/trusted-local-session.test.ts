@@ -43,6 +43,17 @@ function fixture(cleanup: "confirmed" | "unknown" = "confirmed") {
 }
 
 describe("trusted-local app-server conversation", () => {
+  it("does not confirm failure cleanup until transport closure actually finishes", async () => {
+    const f = fixture(); await f.running();
+    let finish!: (value: { status: "confirmed"; observedAt: string; detail: string }) => void;
+    f.close.mockImplementationOnce(() => new Promise(resolve => { finish = resolve; }));
+    f.sink.error(); await flush();
+    expect(f.session.snapshot().status).toBe("failed"); expect(f.session.cleanupConfirmed()).toBe(false);
+    finish({ status: "confirmed", observedAt: new Date().toISOString(), detail: "closed" }); await flush();
+    expect(f.session.snapshot().status).toBe("failed"); expect(f.session.cleanupConfirmed()).toBe(true);
+    const uncertain = fixture("unknown"); await uncertain.running(); uncertain.sink.error(); await flush();
+    expect(uncertain.session.cleanupConfirmed()).toBe(false);
+  });
   it("forwards explicit generation reasoning effort to the actual turn request", async () => {
     const f = fixture(); await f.setup("gpt-5.6-sol", "xhigh");
     expect(f.sent.find(message => message.method === "turn/start")?.params).toMatchObject({ model: "gpt-5.6-sol", effort: "xhigh" });

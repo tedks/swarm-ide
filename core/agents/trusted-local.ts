@@ -34,7 +34,7 @@ export async function findTrustedExecutable(name: string): Promise<string> {
 }
 
 type Context = Pick<RegisteredAgentContextProvider, "prepare" | "dispose">;
-type Session = Pick<TrustedLocalSession, "snapshot" | "start" | "send" | "decide" | "stop"> & { activity?(): TrustedActivity[]; forkPoint?(): TrustedForkPoint | null };
+type Session = Pick<TrustedLocalSession, "snapshot" | "start" | "send" | "decide" | "stop"> & { activity?(): TrustedActivity[]; forkPoint?(): TrustedForkPoint | null; cleanupConfirmed?(): boolean };
 export interface TrustedLocalOptions {
   root: string;
   context: Context;
@@ -259,7 +259,8 @@ export class TrustedLocalService {
       for (const run of this.runs.values()) {
         this.refresh(run);
         if (run.saved.summary.purpose === "component-plan" && run.saved.summary.workspace === root &&
-          (run.launching || ["starting", "running", "stopping"].includes(run.saved.summary.status)))
+          (run.launching || ["starting", "running", "stopping"].includes(run.saved.summary.status) ||
+            (run.saved.summary.status === "failed" && run.session && !run.session.cleanupConfirmed?.())))
           throw new Error("A design agent is already working in this worktree. Open that conversation before starting another.");
       }
     }

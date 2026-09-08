@@ -12,6 +12,7 @@ import { parseCoreRequest, PROTOCOL_VERSION } from "../../protocol/schema";
 import { TrustedRequestSchema } from "../../protocol/trusted-local";
 import { readPlanIndex } from "../../core/plans";
 import type { CleanupEvidence } from "../../protocol/agents";
+import { readCanonicalWorkspaceBytes } from "../../core/files";
 
 async function main() {
   if (process.env.SWARM_PLAN_GENERATION_LIVE !== "1") throw new Error("Explicit real-generation authorization required.");
@@ -27,6 +28,8 @@ async function main() {
   await writeFile(join(root, "BUILD.bazel"), 'filegroup(name="sources", srcs=["main.js", "greet.js"])\n');
   await writeFile(join(root, "MODULE.bazel"), 'module(name="greeting_app")\n');
   for (const args of [["init", "-q"], ["add", "."], ["-c", "user.name=Proof", "-c", "user.email=proof@example.invalid", "-c", "commit.gpgsign=false", "commit", "-qm", "Owned plan-generation source"]]) execFileSync("git", args, { cwd: root });
+  const originalHead = execFileSync("git", ["rev-parse", "HEAD"], { cwd: root, encoding: "utf8" }).trim();
+  const originals = await Promise.all(["main.js", "greet.js", "README.md", "BUILD.bazel", "MODULE.bazel"].map(async path => ({ path, bytes: await readFile(join(root, path), "utf8") })));
   const [codex, node, unshare, setpriv] = await Promise.all(["/tmp/swarm-ide-codex-runtime.70xtjj/codex", "node", "unshare", "setpriv"].map(findTrustedExecutable));
   const ownerScript = await realpath(process.argv[2]!);
   let cleanup: CleanupEvidence | undefined, starts = 0;
@@ -51,14 +54,30 @@ async function main() {
       await new Promise(resolve => setTimeout(resolve, 150));
     }
   } catch (error) { reason = error instanceof Error ? error.message : "generation failed"; }
-  finally { await service.shutdown(); }
+  finally { try { await service.shutdown(); } catch { reason = "owned-shutdown-unconfirmed"; } }
   const plan = await readPlanIndex(root);
   const docs = plan.status === "observed" ? [...new Set(plan.index.nodes.flatMap(item => item.docs))] : [];
-  const contents = await Promise.all(docs.map(async path => ({ path, content: await readFile(join(root, path), "utf8") })));
-  const sourceUnchanged = execFileSync("git", ["diff", "--name-only"], { cwd: root, encoding: "utf8" }).trim() === "";
-  const ok = reason === "ready" && plan.status === "observed" && plan.index.nodes.length > 0 && contents.length > 0 && sourceUnchanged && cleanup?.status === "confirmed";
+  const contents: { path: string; content: string }[] = [], validationErrors: string[] = [];
+  for (const path of docs) {
+    try { contents.push({ path, content: (await readCanonicalWorkspaceBytes(root, path, 128 * 1024)).toString("utf8") }); }
+    catch { validationErrors.push(`Document cannot be read: ${path}`); }
+  }
+  if (plan.status === "observed") for (const node of plan.index.nodes) {
+    for (const path of node.sourcePaths) {
+      try { await readCanonicalWorkspaceBytes(root, path, 128 * 1024); } catch { validationErrors.push(`Source does not exist: ${path}`); }
+    }
+    for (const target of node.design?.buildTargets ?? []) {
+      if (target.label !== "//:sources") validationErrors.push(`Undeclared fixture target: ${target.label}`);
+      for (const dependency of target.dependencies) if (dependency.relation !== "srcs" || !["//:main.js", "//:greet.js"].includes(dependency.label)) validationErrors.push(`Undeclared fixture input: ${dependency.label}`);
+    }
+  }
+  const sourceUnchanged = (await Promise.all(originals.map(async source => {
+    try { return (await readCanonicalWorkspaceBytes(root, source.path, 128 * 1024)).toString("utf8") === source.bytes; } catch { return false; }
+  }))).every(Boolean) && execFileSync("git", ["rev-parse", "HEAD"], { cwd: root, encoding: "utf8" }).trim() === originalHead
+    && execFileSync("git", ["diff", "--cached", "--name-only", originalHead], { cwd: root, encoding: "utf8" }).trim() === "";
+  const ok = reason === "ready" && plan.status === "observed" && plan.index.nodes.length > 0 && contents.length > 0 && !validationErrors.length && sourceUnchanged && cleanup?.status === "confirmed";
   const result = { ok, root, reason, model: settings.model, effort: settings.effort, providerStarts: starts, sourceUnchanged,
-    output: before.output, message: before.message, plan, docs: contents, cleanup };
+    output: before.output, message: before.message, plan, docs: contents, validationErrors, cleanup };
   await mkdir(join(evidence, "generated"), { recursive: true });
   await writeFile(join(evidence, "real-generation.json"), JSON.stringify(result, null, 2));
   console.log(JSON.stringify({ ok, reason, root, providerStarts: starts, nodes: plan.status === "observed" ? plan.index.nodes.length : 0, docs: docs.length, cleanup: cleanup?.status }));

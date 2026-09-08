@@ -5,6 +5,7 @@ import { readPlanGenerationSettings, savePlanGenerationSettings } from "./genera
 export interface PlanGenerationAction {
   pending: boolean; notice: string;
   start(settings: PlanGenerationSettings): void;
+  retry?(settings: PlanGenerationSettings): void;
   open?(): void;
 }
 
@@ -19,6 +20,7 @@ export function PlanGeneration({ action, disabled }: { action: PlanGenerationAct
       try { savePlanGenerationSettings(settings); setNotice(""); action.start(settings); }
       catch { setNotice("Could not save generation settings. Check local storage and try again."); }
     }}>{action.pending ? "Generating component plan…" : "Generate component plan"}</button>
+    {action.retry ? <button disabled={disabled} onClick={() => action.retry?.(settings)}>Check or retry launch</button> : null}
     {action.open ? <button onClick={action.open}>View generation agent</button> : null}
     <details><summary>Generation settings</summary>
       <label>Harness<select value={settings.harness} disabled={action.pending} onChange={() => {}}><option value="codex">Codex</option></select></label>

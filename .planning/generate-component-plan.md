@@ -9,10 +9,12 @@ When a repository has no `.swarm/plans.json`, its Components view offers Generat
 ## Progress
 
 - [x] (2026-09-08) Read instructions, inspect current plan reader and agent owner, start `swarm-generate-component-plan`.
-- [ ] Publish direct-start requirements and open draft PR.
-- [ ] Add saved generation settings, absence protection, prompt and empty-view action.
-- [ ] Join reviewed normal start; prove focused behavior and one owned real generation.
-- [ ] Native review, design mappings, accomplishment notes, push and handoff.
+- [x] (2026-09-08) Publish direct-start requirements; draft PR133 now stacks on PR132.
+- [x] (2026-09-08) Saved generation settings, absence protection, prompt and empty-view action.
+- [x] (2026-09-08) Normally join pushed c192151, add explicit effort forwarding and selected-registration recovery; focused checks and both typechecks pass.
+- [x] (2026-09-08) Native convergence clean after retained identity, stale callback, nested boundary and failed-process cleanup corrections.
+- [ ] One authorized owned real generation and controlled packaged UI proof running; inspect actual results.
+- [ ] Final accomplishment notes, push, cleanup and handoff.
 
 ## Context and Orientation
 
@@ -40,15 +42,17 @@ Tests cover missing versus existing/malformed plan, custom prompt/model/effort p
 
 ## Idempotence and Recovery
 
-Reads and settings edits never start agents. Only the explicit action starts a fresh token; uncertain outcomes are observed rather than replayed. Existing index files withhold generation. Partial outputs remain inspectable. Stop and disposal stay with the existing normal agent owner. No other worktrees or user project files are edited.
+Reads and settings edits never start agents. Only the explicit action starts a fresh token. Uncertain outcomes remain attached to that token; explicit Check or retry launch reuses it, so core's permanent admission guard prevents a second process if the original was accepted. Existing index files withhold generation. Partial outputs remain inspectable. Failed writers retain exclusion until owned cleanup is confirmed. Stop and disposal stay with the existing normal agent owner. No other worktrees or user project files are edited.
 
 ## Interfaces and Dependencies
 
-The launch consumer needs `text`, `model`, `effort`, stable token and selected-workspace identity; the core generates/validates the prompt and protects absence before forwarding to the existing owner. No new provider library. The existing plan reader remains the source of success, not a final assistant message.
+The launch consumer builds the inspected prompt from the shared browser-safe format and sends `text`, `model`, `effort`, stable token and selected-workspace identity. Core validates the request and protects absence before forwarding to the existing owner. No new provider library. The existing plan reader remains the source of success, not a final assistant message.
 
 ## Surprises & Discoveries
 
 The current PLAN_INDEX_UNAVAILABLE diagnosis combines missing and unreadable files; a distinct verified absence signal is necessary before offering generation.
+
+Native review found that failure precedes process cleanup, so failure alone cannot authorize another writer. It also found that generic failed bridge responses cannot distinguish rejected admission from a lost post-admission reply; same-token explicit recovery solves both cases without guessing or replaying. A selected-root runtime cache retained an old registration identity; the narrowly scoped cache refresh now has an S1→S2 recovery regression.
 
 ## Decision Log
 
@@ -60,4 +64,6 @@ Progress and proof attribution are recorded in `/tmp/swarm-ide-startup-simple.Wz
 
 ## Outcomes & Retrospective
 
-Implementation not complete. This initial plan records scope and safeguards before code.
+The normal owner now receives the configured model and reasoning, with no source/task preparation workaround. Focused checks pass and native production review converged. Final real-generation and packaged-GUI evidence are still being collected and must not be claimed before their results are read.
+
+Revision note: updated after normal producer composition and native review fixes; real model and controlled GUI runs remain separately attributed.

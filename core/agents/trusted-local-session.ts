@@ -108,6 +108,7 @@ export class TrustedLocalSession {
   private completedTurns = new Set<string>();
   private dispatch?: { id: string | null; done: boolean; early: Array<{ method: string; params: unknown }>; earlyBytes: number; activityId?: string };
   private closePromise?: Promise<void>;
+  private cleaned = false;
   private stopPromise?: Promise<void>;
   private interrupted?: () => void;
   private exitTimer?: ReturnType<typeof setTimeout>;
@@ -125,6 +126,7 @@ export class TrustedLocalSession {
     return { ...this.state, approvals: this.state.approvals.map((approval) => ({ ...approval, choices: [...approval.choices] })) };
   }
   activity(): TrustedLocalActivity[] { return this.activities.map((entry) => ({ ...entry })); }
+  cleanupConfirmed(): boolean { return this.cleaned; }
   forkPoint(): TrustedForkPoint | null {
     return !this.busy && this.state.status === "ready" && this.dispatch?.done && this.successfulTurn === this.state.turnId && this.state.threadId && this.state.turnId
       ? { threadId: this.state.threadId, turnId: this.state.turnId } : null;
@@ -203,6 +205,7 @@ export class TrustedLocalSession {
       try {
         const result = await Promise.race([this.transport?.close() ?? Promise.resolve({ status: "not-needed" }),
           new Promise<{ status: string }>((resolve) => { timer = setTimeout(() => resolve({ status: "unknown" }), 5000); })]);
+        this.cleaned = result.status === "confirmed" || result.status === "not-needed";
         if (this.state.status !== "failed") {
           this.state.status = result.status === "confirmed" || result.status === "not-needed" ? "closed" : "failed";
           this.state.message = this.state.status === "closed" ? "Local session closed." : "Session closed, but owned process cleanup is unconfirmed.";
