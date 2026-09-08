@@ -65,5 +65,12 @@ log_events:
     app adoption waits for an unsent-draft check and one restart to replace old HMR
     memory. Prior controlled-send/reload/clipboard evidence stays accurately attributed;
     no new real model turn.
+- time: 2026-09-08T14:09:17-00:00
+  who: Ted Smith
+  what: 'closed: fixed'
+  comment: 'Merged PR110: submitted text is saved before dispatch, stays visible/copyable
+    across reload and uncertainty, compact receipts and same-agent terminal copy retained
+    with Enter/Shift-Enter. No automatic replay or unsupported delivered claim. ROOT
+    will adopt with one protected restart.'
 blocks:
 - swarm-usability-join
