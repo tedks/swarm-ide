@@ -139,7 +139,12 @@ describe("saved outgoing messages", () => {
       ancestry: "root", observationId: "a".repeat(64), observedAt: "2026-09-08T12:00:03.000Z", message: "", contextPaths: [] },
       handoff: "available", coverage: { tailBytes: 0, partial: false, omittedRecords: 0, message: "" }, entries: [] };
     let resolve!: (value: CoreResponse) => void;
-    const request = vi.fn((_input: CoreRequest) => new Promise<CoreResponse>((yes) => { resolve = yes; }));
+    const request = vi.fn((input: CoreRequest) => {
+      expect(input.type).toBe("externalAgents.send");
+      if (input.type !== "externalAgents.send") throw new Error("Wrong request");
+      expect(readOutbox(disk)).toEqual([expect.objectContaining({ sessionId: input.sessionId, text: input.text, status: "sending" })]);
+      return new Promise<CoreResponse>((yes) => { resolve = yes; });
+    });
     const bridge = { request, onEvent: () => () => {} };
     const view = render(<AgentConversation client={selected} bridge={bridge} memory={memory} onContext={() => {}} />);
     const text = "  Exact submitted text\n👋\n";

@@ -25,7 +25,7 @@ if (!registration) throw new Error("Registered ROOT required for read-only obser
 const registry = join(scratch, "registry.json");
 await writeFile(registry, JSON.stringify({ version: 1, sessions: [registration] }), { mode: 0o600 });
 const runfiles = process.env.TEST_SRCDIR || process.env.RUNFILES_DIR;
-execFileSync("tar", ["-xzf", runfiles ? join(runfiles, "_main/swarm-ide-foundation.tar.gz") : join(process.cwd(), "bazel-bin/swarm-ide-foundation.tar.gz"), "-C", archive], { timeout: 30000 });
+execFileSync("tar", ["-xzf", runfiles ? join(runfiles, "_main/swarm-ide-foundation.tar.gz") : join(process.env.SWARM_SOURCE_WORKSPACE, "bazel-bin/swarm-ide-foundation.tar.gz"), "-C", archive], { timeout: 30000 });
 const server = createServer((_request, response) => response.end("Owned outbox proof"));
 await new Promise((resolve, reject) => { server.once("error", reject); server.listen(+port, "127.0.0.1", resolve); });
 const env = { ...process.env, NODE_PATH: "", SWARM_EXTERNAL_AGENTS_REGISTRY: registry, SWARM_OUTBOX_PACKAGE: archive };

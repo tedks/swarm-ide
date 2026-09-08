@@ -59,7 +59,11 @@ async function main() {
   const saved = await run(() => JSON.parse(localStorage.getItem("swarm.message-outbox.v1")));
   assert.equal(saved.messages[0].text, text); assert.equal(saved.messages[0].status, "sending");
   release(); await until(async () => (await row())?.status === "queued", "queued without consumption claim");
-  stage = "full renderer reload"; wc.reload();
+  stage = "full renderer reload";
+  await run(() => { globalThis.__outboxPriorDocument = true; });
+  const loaded = new Promise((resolve) => wc.once("did-finish-load", resolve));
+  wc.reload(); await loaded;
+  assert.equal(await run(() => globalThis.__outboxPriorDocument), undefined, "Full document was replaced");
   await until(async () => { try { return (await row())?.status === "queued"; } catch { return false; } }, "retained after full reload");
   assert.equal((await row()).text, text); assert.equal(sends.length, 1);
   await click(".conversation-outgoing button[aria-label='Copy message']");
@@ -67,7 +71,7 @@ async function main() {
   assert.deepEqual(errors, []);
   await fs.writeFile(path.join(evidence, "saved-after-reload.json"), JSON.stringify(await run(() => JSON.parse(localStorage.getItem("swarm.message-outbox.v1"))), null, 2));
   await fs.writeFile(path.join(evidence, "proof.json"), JSON.stringify({ elapsedMs: Date.now() - started, sends: sends.length,
-    controlledTransport: true, realModelTurns: 0, savedBeforeDispatch: true, reloaded: true, exactClipboard: true, errors }, null, 2));
+    controlledTransport: true, realModelTurns: 0, savedBeforeReceipt: true, reloaded: true, exactClipboard: true, errors }, null, 2));
   await until(() => fs.access(path.join(evidence, "close-request")).then(() => true, () => false), "close request"); win.close();
 }
 main().catch(async (error) => { await fs.writeFile(path.join(evidence, "failure.json"), JSON.stringify({ stage, message: error.stack, errors, sends: sends.length }, null, 2)); app.exit(1); });

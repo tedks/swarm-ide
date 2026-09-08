@@ -26,9 +26,10 @@ export class SteeringMemory {
   beginSend(id: string, text: string, label: string): string | null {
     if (this.state.pending) return null;
     if (!ExternalSessionId.safeParse(id).success || !ExternalMessageSchema.safeParse(text).success) return null;
+    let capacity = false;
     try {
       const saved = readOutbox(this.storage).map((row): OutgoingMessage => row.status === "sending" ? { ...row, status: "delivery-unknown" } : row);
-      if (saved.length >= OUTBOX_MAX_MESSAGES) throw new Error("Outbox full");
+      if (saved.length >= OUTBOX_MAX_MESSAGES) { capacity = true; throw new Error("Outbox full"); }
       const row: OutgoingMessage = { id: crypto.randomUUID(), sessionId: id, text, at: new Date().toISOString(), status: "sending" };
       const outgoing = [...saved, row];
       writeOutbox(this.storage, outgoing);
@@ -37,7 +38,8 @@ export class SteeringMemory {
       this.publish({ ...this.state, targets, pending: { id, label }, outgoing, storageNotice: "" });
       return row.id;
     } catch {
-      const message = "Could not save this message. Nothing was sent; copy your draft to the terminal.";
+      const message = capacity ? "Saved messages are full (100). Nothing was sent; copy your draft to the terminal."
+        : "Could not save this message. Nothing was sent; copy your draft to the terminal.";
       this.update(id, (prior) => ({ ...prior, receipt: { status: "rejected", message } }));
       this.publish({ ...this.state, storageNotice: message });
       return null;
