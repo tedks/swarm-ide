@@ -1,10 +1,5 @@
 # Agent owners, observation and steering
 
-Composer polish is planned in `swarm-chat-composer-polish`: keep the textarea
-focused but read-only during a pending send, and put a compact send arrow inside
-its frame. Only an explicit submission may restore focus; late receipts must
-not take focus from another agent, source file or dialog.
-
 An agent has a conversation, a task, a parent and a source world. It also has one
 execution owner. Swarm observes normal terminal agents and owns native IDE agents;
 showing them together must not launch a second copy of a running conversation.
@@ -75,6 +70,13 @@ and pending-request guards remain authoritative; this keyboard shortcut adds no
 sender, retry or delivery claim. The shortcut is also available in the textarea's
 hover hint. Focused checks in `tests/chat-input.test.tsx` mount both real forms
 and test their existing bridge paths with controlled responses.
+
+The registered-session composer keeps its textarea mounted and read-only during
+a pending send, rather than disabling it and losing browser focus. Its compact
+send arrow sits inside the textbox frame. An accepted explicit submission returns
+focus synchronously to the composer; receipts and observation updates never take
+focus back from another agent, source file or dialog. Unavailable sessions remain
+disabled. These are presentation rules, not a new sender or delivery guarantee.
 
 Native trusted conversations, approvals, forks, new drafts and saved history
 remain mounted in the secondary **Native agents / New** tab. Legacy stored runs
@@ -150,8 +152,12 @@ the helper is already part of the shared application source inputs.
 states, storage refusal, target identity, restart recovery, chronological rows,
 clipboard fallback and the existing bounded queue transport. Its `:smoke` target
 uses the actual packaged Electron renderer and profile storage on an owned virtual
-desktop: a controlled held send is saved, acknowledged, reloaded, and copied to
-that desktop's clipboard. It never sends an instruction to the observed agent.
+desktop: a controlled held send is saved, keeps the same focused read-only
+textarea, accepts the next message without a click after the receipt, and retains
+the outgoing message through reload and exact clipboard copying. The scoped
+composer cases live in `tests/session-steering-ui.test.tsx`; both that file and
+the styles remain existing shared application inputs. It never sends an
+instruction to the observed agent.
 The new renderer modules are real `//:quality_sources` inputs to `//:desktop-bundle`.
 
 The observed fork rail has local subtree disclosures and an **Older sessions**

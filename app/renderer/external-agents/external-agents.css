@@ -46,9 +46,8 @@
 .conversation-empty, .conversation-notice { padding: 4px 12px; color: #9eb7ab; font-size: 11px; margin: 0; }
 .agent-conversation .session-steering { flex-shrink: 0; padding: 6px 10px; margin: 0; border: 0; border-top: 1px solid #294239; }
 .agent-conversation .session-steering h3 { display: none; }
-.agent-conversation .session-steering form { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 8px; align-items: end; }
-.agent-conversation .session-steering form > label { grid-column: 1 / -1; font-size: 10px; }
-.agent-conversation .session-steering textarea { grid-column: 1; min-height: 42px; height: 48px; }
-.agent-conversation .session-steering form > p { grid-column: 1; grid-row: 3; margin: 0; font-size: 9px; }
-.agent-conversation .session-steering form > button { grid-column: 2; grid-row: 2; }
+.agent-conversation .session-steering form { display: grid; grid-template-columns: minmax(0, 1fr); gap: 4px; }
+.agent-conversation .session-steering form > label { font-size: 10px; }
+.agent-conversation .session-steering textarea { height: 48px; }
+.agent-conversation .session-steering form > p { margin: 0; font-size: 9px; }
 .agent-conversation .session-steering [data-delivery-status] p { margin: 4px 0; font-size: 11px; line-height: 1.35; }

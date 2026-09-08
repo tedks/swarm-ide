@@ -3,7 +3,12 @@
 .session-steering p { line-height: 1.5; overflow-wrap: anywhere; }
 .session-steering code { overflow-wrap: anywhere; }
 .session-steering label { display: block; margin-bottom: 5px; }
-.session-steering textarea { box-sizing: border-box; display: block; width: 100%; resize: vertical; color: #dce8e3; background: #14201e; border: 1px solid #567b73; border-radius: 4px; padding: 7px; font: inherit; }
+.session-steering .session-composer { position: relative; min-width: 0; }
+.session-steering textarea { box-sizing: border-box; display: block; width: 100%; min-height: 48px; resize: vertical; color: #dce8e3; background: #14201e; border: 1px solid #567b73; border-radius: 4px; padding: 7px 48px 7px 7px; font: inherit; }
 .session-steering textarea:focus-visible { outline: 2px solid #77c9bb; outline-offset: 2px; }
 .session-steering textarea:disabled { opacity: .6; }
+.session-steering .session-send { position: absolute; right: 9px; bottom: 8px; display: grid; place-items: center; width: 28px; height: 28px; padding: 0; color: #c6ded9; background: #244039; border: 1px solid #567b73; border-radius: 5px; cursor: pointer; }
+.session-steering .session-send:hover:not(:disabled) { color: #e0f2e9; background: #365b50; border-color: #77c9bb; }
+.session-steering .session-send:focus-visible { outline: 2px solid #77c9bb; outline-offset: 2px; }
+.session-steering .session-send:disabled { opacity: .45; cursor: default; }
 .session-steering [data-delivery-status="delivery-unknown"], .session-steering [data-delivery-status="rejected"] { color: #eac28e; }

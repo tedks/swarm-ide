@@ -53,12 +53,42 @@ async function main() {
   });
   await until(() => run((s) => !!document.querySelector(s) && !document.querySelector(s).disabled, input), "real registered composer");
   win.focus(); wc.focus(); stage = "saved before controlled dispatch";
-  await click(input); await wc.insertText(text); await click(send);
+  await click(input); await wc.insertText(text);
+  await run((s) => { globalThis.__outboxComposer = document.querySelector(s); }, input);
+  const arrow = await run((s, b) => {
+    const e = document.querySelector(s), button = document.querySelector(b);
+    const frame = e.getBoundingClientRect(), r = button.getBoundingClientRect();
+    return { inside: r.left > frame.left && r.right < frame.right && r.top > frame.top && r.bottom < frame.bottom,
+      width: r.width, height: r.height, textPadding: parseFloat(getComputedStyle(e).paddingRight),
+      name: button.getAttribute("aria-label"), title: button.title };
+  }, input, send);
+  assert.equal(arrow.inside, true); assert.equal(arrow.name, "Send message"); assert.equal(arrow.title, "Send message");
+  assert(arrow.width >= 24 && arrow.width <= 32 && arrow.height >= 24 && arrow.height <= 32);
+  assert(arrow.textPadding >= arrow.width + 9);
+  await click(send);
   await until(async () => (await row())?.status === "sending", "immediate saved message");
   assert.equal((await row()).text, text); assert.equal(sends.length, 1); assert.equal(sends[0].text, text);
   const saved = await run(() => JSON.parse(localStorage.getItem("swarm.message-outbox.v1")));
   assert.equal(saved.messages[0].text, text); assert.equal(saved.messages[0].status, "sending");
+  stage = "pending native composer focus";
+  const pendingFocus = await run((s) => {
+    const e = document.querySelector(s);
+    return { same: e === globalThis.__outboxComposer, focused: document.activeElement === e,
+      activeTag: document.activeElement?.tagName, disabled: e.disabled, readOnly: e.readOnly };
+  }, input);
+  await fs.writeFile(path.join(evidence, "pending-focus.json"), JSON.stringify(pendingFocus, null, 2));
+  assert.deepEqual(pendingFocus, { same: true, focused: true, activeTag: "TEXTAREA", disabled: false, readOnly: true });
   release(); await until(async () => (await row())?.status === "queued", "queued without consumption claim");
+  assert.equal(await run((s) => document.activeElement === document.querySelector(s) &&
+    document.querySelector(s) === globalThis.__outboxComposer && !document.querySelector(s).readOnly, input), true);
+  await wc.insertText("Next message without another click");
+  assert.equal(await run((s) => document.querySelector(s).value, input), "Next message without another click");
+  // Clear only this unsent proof draft using native keys before the existing full-reload check.
+  wc.sendInputEvent({ type: "keyDown", keyCode: "A", modifiers: ["control"] });
+  wc.sendInputEvent({ type: "keyUp", keyCode: "A", modifiers: ["control"] });
+  wc.sendInputEvent({ type: "keyDown", keyCode: "Backspace" });
+  wc.sendInputEvent({ type: "keyUp", keyCode: "Backspace" });
+  await until(() => run((s) => document.querySelector(s).value === "", input), "native draft clear");
   stage = "full renderer reload";
   await run(() => { globalThis.__outboxPriorDocument = true; });
   const loaded = new Promise((resolve) => wc.once("did-finish-load", resolve));
@@ -71,7 +101,8 @@ async function main() {
   assert.deepEqual(errors, []);
   await fs.writeFile(path.join(evidence, "saved-after-reload.json"), JSON.stringify(await run(() => JSON.parse(localStorage.getItem("swarm.message-outbox.v1"))), null, 2));
   await fs.writeFile(path.join(evidence, "proof.json"), JSON.stringify({ elapsedMs: Date.now() - started, sends: sends.length,
-    controlledTransport: true, realModelTurns: 0, savedBeforeReceipt: true, reloaded: true, exactClipboard: true, errors }, null, 2));
+    controlledTransport: true, realModelTurns: 0, savedBeforeReceipt: true, pendingFocus, arrow,
+    typedNextWithoutClick: true, reloaded: true, exactClipboard: true, errors }, null, 2));
   await until(() => fs.access(path.join(evidence, "close-request")).then(() => true, () => false), "close request"); win.close();
 }
 main().catch(async (error) => { await fs.writeFile(path.join(evidence, "failure.json"), JSON.stringify({ stage, message: error.stack, errors, sends: sends.length }, null, 2)); app.exit(1); });

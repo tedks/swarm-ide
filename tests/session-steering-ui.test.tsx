@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { SwarmBridge } from "../app/electron/preload";
 import { SessionSteering } from "../app/renderer/external-agents/SessionSteering";
@@ -33,6 +34,71 @@ const textbox = () => screen.getByRole("textbox") as HTMLTextAreaElement;
 const draft = (text: string) => fireEvent.change(textbox(), { target: { value: text } });
 
 describe("explicit observed-session steering", () => {
+  it.each(["keyboard", "button"] as const)("keeps the same focused composer through a held %s send and queued receipt", async (method) => {
+    const user = userEvent.setup(), held = deferred<CoreResponse>();
+    const { bridge, request } = bridgeWith(() => held.promise);
+    render(<SessionSteering detail={detail()} bridge={bridge} />);
+    const composer = textbox();
+    await user.click(composer); await user.type(composer, "First message");
+    if (method === "keyboard") await user.keyboard("{Enter}");
+    else await user.click(sendButton());
+    expect(textbox()).toBe(composer);
+    expect(composer.disabled).toBe(false);
+    expect(composer.readOnly).toBe(true);
+    expect(document.activeElement).toBe(composer);
+    expect(sendButton().disabled).toBe(true);
+    await user.keyboard("ignored while pending{Enter}");
+    expect(composer.value).toBe("First message");
+    expect(request).toHaveBeenCalledTimes(1);
+    expect(JSON.parse(localStorage.getItem("swarm.message-outbox.v1")!).messages[0].text).toBe("First message");
+    await act(async () => { held.resolve(success(request.mock.calls[0][0])); });
+    expect(textbox()).toBe(composer);
+    expect(document.activeElement).toBe(composer);
+    expect(composer.readOnly).toBe(false);
+    expect(composer.value).toBe("");
+    await user.keyboard("Next message");
+    expect(composer.value).toBe("Next message");
+    expect(request).toHaveBeenCalledTimes(1);
+    expect(sendButton().title).toBe("Send message");
+    expect(sendButton().textContent).toBe("");
+    expect(sendButton().querySelector("svg[aria-hidden='true']")).toBeTruthy();
+  });
+
+  it.each(["rejected", "delivery-unknown"] as const)("keeps focus and exact draft for a held %s outcome", async (status) => {
+    const user = userEvent.setup(), held = deferred<CoreResponse>();
+    const { bridge, request } = bridgeWith(() => held.promise);
+    render(<SessionSteering detail={detail()} bridge={bridge} />);
+    const composer = textbox();
+    await user.click(composer); await user.type(composer, "  Keep this text 👋");
+    await user.click(sendButton());
+    await act(async () => { held.resolve(success(request.mock.calls[0][0], status)); });
+    expect(textbox()).toBe(composer);
+    expect(document.activeElement).toBe(composer);
+    expect(composer.value).toBe("  Keep this text 👋");
+    expect(composer.readOnly).toBe(false);
+    expect(request).toHaveBeenCalledTimes(1);
+  });
+
+  it.each([false, true])("never takes focus after navigation before a late receipt (changed agent: %s)", async (switchAgent) => {
+    const user = userEvent.setup(), held = deferred<CoreResponse>();
+    const { bridge, request } = bridgeWith(() => held.promise);
+    const ui = (n: number) => <><button>Source or modal</button><SessionSteering detail={detail(n)} bridge={bridge} /></>;
+    const view = render(ui(1));
+    await user.type(textbox(), "Send once"); await user.click(sendButton());
+    if (switchAgent) {
+      view.rerender(ui(2));
+      await user.type(textbox(), "Other agent draft");
+    }
+    const elsewhere = screen.getByRole("button", { name: "Source or modal" });
+    await user.click(elsewhere);
+    view.rerender(ui(switchAgent ? 2 : 1));
+    expect(document.activeElement).toBe(elsewhere);
+    await act(async () => { held.resolve(success(request.mock.calls[0][0])); });
+    expect(document.activeElement).toBe(elsewhere);
+    expect(textbox().value).toBe(switchAgent ? "Other agent draft" : "");
+    expect(request).toHaveBeenCalledTimes(1);
+  });
+
   it("targets the observed identity only on explicit Send and distinguishes queueing from consumption", async () => {
     const { bridge, request } = bridgeWith(async (input) => success(input));
     render(<SessionSteering detail={detail()} bridge={bridge} />);
