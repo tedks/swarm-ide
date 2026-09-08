@@ -1,0 +1,22 @@
+id: demo-tour-task-attachment-activation-20260907
+title: Localize current connected-tour task attachment activation gap
+desc: L5 one authorized corrected connected-tour run on 9bf2d57 passes source-return/edit/draft
+  steps but helper then throws missing append proposal immediately after native Context
+  Attach. Failure DOM has no proposal or attachment error notice; actual input event
+  target is unrecorded, so no historical production cause is established. Evidence
+  /tmp/swarm-ide-release-ready.m7IMFZ/tour-corrected/run.iL69UI, cleanup1. Preserve
+  all assertions; no guessed delay/retry/waiver. Smallest next gate is bounded exact
+  event-target/proposal-state diagnosis under ROOT authority.
+type: bugfix
+component: tooling
+release:
+reporter: Ted Smith <tedks@riseup.net>
+status: unstarted
+disposition:
+creation_time: 2026-09-08T02:21:09-00:00
+references: []
+log_events:
+- time: 2026-09-08T02:21:09-00:00
+  who: Ted Smith
+  what: created
+  comment: ""
