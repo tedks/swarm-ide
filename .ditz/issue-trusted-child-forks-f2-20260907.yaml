@@ -5,8 +5,8 @@ type: feature
 component: agents
 release:
 reporter: Ted Smith <tedks@riseup.net>
-status: in_progress
-disposition:
+status: closed
+disposition: fixed
 creation_time: 2026-09-08T01:40:53-00:00
 references: []
 log_events:
@@ -46,3 +46,9 @@ log_events:
     docs-only53f6131 pushed PR79; old1977PASS/1FAIL preserved, no GUI/model/provider/app
     rerun. task-test-verification.md records evidence. Ready ROOT normal landing/adoption
     and final issue closure.'
+- time: 2026-09-08T02:42:05-00:00
+  who: Ted Smith
+  what: 'closed: fixed'
+  comment: PR79 normally merged after native review and final corrected local quality
+    1978 pass; actual native fork proof and separately labelled packaged GUI passed.
+    Shared-workspace limit and unrelated follow-ups preserved.
