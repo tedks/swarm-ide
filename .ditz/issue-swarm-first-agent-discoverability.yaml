@@ -20,3 +20,11 @@ log_events:
   who: Ted Smith
   what: created
   comment: ""
+- time: 2026-09-08T18:41:35-00:00
+  who: Ted Smith
+  what: commented
+  comment: 'User also rejects Registry unavailable; retaining the last recorded evidence.
+    Automatic reads will retry while visible. Empty/unconfigured registry should not
+    produce a persistent failure paragraph: show New agent composer or No agents connected.
+    Actual refresh failure: Could not refresh agents, with useful retry/last-update
+    context only.'
