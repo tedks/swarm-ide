@@ -2,6 +2,7 @@
 // A local observer, never the execution owner of the sessions it watches.
 import { spawn } from 'node:child_process';
 import { constants } from 'node:fs';
+import { randomUUID } from 'node:crypto';
 import { open, readFile, writeFile, rename, mkdir, unlink } from 'node:fs/promises';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -18,6 +19,10 @@ const save = async (file, value) => {
   await rename(`${file}.pending`, file);
 };
 const jsonSave = (file, value) => save(file, `${JSON.stringify(value, null, 2)}\n`);
+const statusWritten = async (file) => {
+  const text = await textFile(file);
+  return !!text?.endsWith('\n') && text.trim().split(/\r?\n/).length >= 5;
+};
 
 export function configure(input, directory) {
   const required = (value, name) => {
@@ -37,6 +42,7 @@ export function configure(input, directory) {
   const resolve = (value, name) => path.resolve(directory, required(value, name));
   const config = {
     parentSession: required(input.parentSession, 'parentSession'),
+    generation: required(input.generation ?? 'initial', 'generation'),
     model: required(input.model ?? 'gpt-6-astra', 'model'),
     codexCommand: command(input.codexCommand, 'codexCommand'),
     watcherCommand: input.watcherCommand ? command(input.watcherCommand, 'watcherCommand') : null,
@@ -138,16 +144,34 @@ export async function supervise(config, signal = new AbortController().signal) {
   const stateFile = path.join(config.stateDirectory, 'state.json');
   let state; let failed = false; let operational = false;
   const active = new Map();
-  const persist = () => jsonSave(stateFile, state);
+  const hasActiveRequest = () => [...active].some(([name, entry]) => entry.ready && (
+    state.requests[name] || Object.values(state.requests).some((request) => request.child === entry.proof.id)
+  ));
+  const currentFile = path.join(config.stateDirectory, 'current.json');
+  const persist = async () => {
+    await jsonSave(stateFile, state);
+    await jsonSave(currentFile, {
+      generation: config.generation, instance: state.instance, updatedAt: new Date().toISOString(), tick: state.tick,
+      pendingCheckpoint: state.checkpointWake ?? null,
+      roles: config.roles.map((role) => ({
+        name: role.name, marker: role.marker, stepDirectory: role.stepDirectory,
+        outcome: state.roles[role.name]?.outcome ?? 'tracking',
+        status: state.requests?.[role.name] ?? null,
+      })),
+    });
+  };
+  const queued = (value) => value === 'queued' || value === 'sent'; // legacy: sent meant only CLI success
   const notify = async (key, thread, message) => {
     if (state.notifications[key]) {
-      if (state.notifications[key] !== 'sent') throw new Error(`Notification ${key} needs manual reconciliation; not resent`);
+      if (!queued(state.notifications[key])) throw new Error(`Notification ${key} needs manual reconciliation; not resent`);
       return;
     }
-    state.notifications[key] = 'pending'; await persist();
+    state.notifications[key] = 'pending';
+    state.delivery[key] = { attemptedAt: new Date().toISOString() }; await persist();
     try {
       await execute(config.codexCommand, ['queue', '--thread', thread, '--message', message], config.commandSeconds, signal);
-      state.notifications[key] = 'sent'; await persist();
+      state.notifications[key] = 'queued';
+      state.delivery[key].queuedAt = new Date().toISOString(); await persist();
     } catch (e) {
       state.notifications[key] = 'unconfirmed'; await persist(); throw e;
     }
@@ -155,17 +179,33 @@ export async function supervise(config, signal = new AbortController().signal) {
   try {
     const prior = await textFile(stateFile);
     state = prior ? JSON.parse(prior) : { config, notifications: {}, roles: {}, tick: 0 };
-    if (JSON.stringify(state.config) !== JSON.stringify(config)) throw new Error('State belongs to different config; use a new stateDirectory');
+    if (JSON.stringify(configure(state.config, config.stateDirectory)) !== JSON.stringify(config)) throw new Error('State belongs to different config/generation; use a new stateDirectory');
+    state.config = config;
+    const legacy = !state.instance;
+    state.instance ??= randomUUID(); state.requests ??= {}; state.delivery ??= {};
+    if (legacy && prior) {
+      // Old "sent" receipts cannot tell us whether requests were consumed.
+      // Preserve them as outstanding instead of enqueueing fresh duplicates.
+      for (const role of config.roles) {
+        const prefix = `${role.name}:status:`;
+        const paths = Object.keys(state.notifications).filter((key) => key.startsWith(prefix) && /^\d+$/.test(key.slice(prefix.length)))
+          .map((key) => path.join(role.stepDirectory, `status-${key.slice(prefix.length)}.md`));
+        if (paths.length) state.requests[role.name] = { phase: 'waiting', legacyResponsePaths: paths };
+      }
+      if (Object.keys(state.notifications).some((key) => /^checkpoint:\d+$/.test(key))) {
+        state.checkpointWake = { token: `${state.instance}:legacy`, generation: config.generation, queuedAt: null, legacy: true };
+      }
+    }
     for (const role of config.roles) {
       await mkdir(role.stepDirectory, { recursive: true, mode: 0o700 });
       const result = state.roles[role.name];
       if (result?.done) continue;
       active.set(role.name, { role, proof: {}, reader: new Records(), started: Date.now(), ...result });
     }
-    if (Object.values(state.notifications).some((value) => value !== 'sent')) throw new Error('Unconfirmed prior notification; inspect state.json and parent queue before restarting');
+    if (Object.values(state.notifications).some((value) => !queued(value))) throw new Error('Unconfirmed prior notification; inspect state.json and parent queue before restarting');
     operational = true;
+    await persist();
     let nextStatus = Date.now() + config.statusSeconds * 1000;
-    let checkpoint = null;
     while (active.size && !signal.aborted) {
       for (const [name, entry] of active) {
         const { role } = entry;
@@ -209,7 +249,7 @@ export async function supervise(config, signal = new AbortController().signal) {
               entry.proof = entry.verifiedProof;
               entry.ready = Date.now();
               await jsonSave(step('ready'), entry.proof);
-              await notify(`${name}:startup`, config.parentSession, `STARTUP VERIFIED — ${name} (${role.window}) consumed its exact assignment after compaction as ${config.model}. Read ${step('ready')}. Startup is not completion.`);
+              await notify(`${name}:startup`, config.parentSession, `STARTUP VERIFIED — ${name} (${role.window}), generation ${config.generation}. Current state: ${currentFile}; proof: ${step('ready')}.`);
               if (config.watcherCommand) {
                 entry.watcherAbort = new AbortController();
                 // Compatibility accelerator only: the structured reader remains
@@ -224,11 +264,14 @@ export async function supervise(config, signal = new AbortController().signal) {
             for (const record of await entry.recapReader.read(entry.rollout)) recap ??= finalMessage(record, role.marker);
             if (recap) {
               await save(step('final-recap'), `${recap}\n`);
-              await notify(`${name}:complete`, config.parentSession, `SUPERVISOR WAKE — ${name} completed. Read ${step('final-recap')} and verification.md. Intake the existing worker; do not duplicate it.`);
+              // Completing work does not consume an already queued status ask.
+              // Keep that request outstanding even when another role uses the
+              // same child, until its actual response receipt arrives.
+              await notify(`${name}:complete`, config.parentSession, `SUPERVISOR WAKE — ${name} completed. Generation ${config.generation}; current state: ${currentFile}; recap: ${step('final-recap')}.`);
               state.roles[name] = { done: true, outcome: 'complete' }; await persist(); active.delete(name);
             } else if (entry.watcherError) {
               await save(step('watcher-error'), `${entry.watcherError}\n`);
-              await notify(`${name}:watcher`, config.parentSession, `SUPERVISOR WAKE — ${name} external watcher failed. Read ${step('watcher-error')}. Built-in JSONL tracking continues; do not duplicate the worker.`);
+              await notify(`${name}:watcher`, config.parentSession, `SUPERVISOR WAKE — ${name} external watcher failed. Generation ${config.generation}; current state: ${currentFile}; error: ${step('watcher-error')}. Built-in tracking continues.`);
               entry.watcherError = null;
             }
           }
@@ -243,19 +286,43 @@ export async function supervise(config, signal = new AbortController().signal) {
         }
         if (!active.has(name) && entry.watcher) { entry.watcherAbort.abort(); await entry.watcher; }
       }
-      if (config.statusSeconds && active.size && Date.now() >= nextStatus && !checkpoint) {
+      // A response receipt, not CLI success or elapsed time, frees the child
+      // status slot. UUID-scoped filenames cannot acknowledge an older step.
+      for (const request of Object.values(state.requests)) {
+        const paths = request?.legacyResponsePaths ?? (request?.responsePath ? [request.responsePath] : []);
+        if (request?.phase === 'waiting' && paths.length && (await Promise.all(paths.map(statusWritten))).every(Boolean)) {
+          request.phase = 'answered'; request.answeredAt = new Date().toISOString(); await persist();
+        }
+      }
+      if (state.checkpointWake && await textFile(path.join(config.stateDirectory, 'checkpoint-ack')) === `${state.checkpointWake.token}\n`) {
+        state.checkpointWake = null; await persist();
+      }
+      if (config.statusSeconds && active.size && Date.now() >= nextStatus) {
         const tick = ++state.tick; await persist();
         for (const [name, entry] of active) {
-          if (!entry.ready) continue;
-          await notify(`${name}:status:${tick}`, entry.proof.id, `CTO CHECKPOINT ${tick} — Write ${path.join(entry.role.stepDirectory, `status-${tick}.md`)} with five short lines:\n1. Done and visible proof.\n2. Next bounded deliverable.\n3. Blocker or dependency.\n4. Scope growth or drift.\n5. PR and pushed commit.\nThen continue the existing assignment; no extra test/review cycle.`);
+          if (!entry.ready || state.requests[name]?.phase === 'waiting' || Object.values(state.requests).some((request) => request.phase === 'waiting' && (!request.child || request.child === entry.proof.id))) continue;
+          const responsePath = path.join(entry.role.stepDirectory, `status-${state.instance}-${tick}.md`);
+          state.requests[name] = { phase: 'waiting', child: entry.proof.id, tick, responsePath, requestedAt: new Date().toISOString() };
+          state.checkpointDue ??= Date.now() + config.statusGraceSeconds * 1000;
+          await persist();
+          await notify(`${name}:status:${tick}`, entry.proof.id, `CTO CHECKPOINT ${tick}, generation ${config.generation} — Current assignment state: ${currentFile}. If still active, write ${responsePath} with five short lines:\n1. Done and visible proof.\n2. Next bounded deliverable.\n3. Blocker or dependency.\n4. Scope growth or drift.\n5. PR and pushed commit.\nNo new work or test/review cycle is requested.`);
         }
-        checkpoint = { tick, due: Date.now() + config.statusGraceSeconds * 1000 };
+        if (hasActiveRequest()) state.checkpointDue ??= Date.now() + config.statusGraceSeconds * 1000;
+        await persist();
         nextStatus = Date.now() + config.statusSeconds * 1000;
       }
-      if (checkpoint && Date.now() >= checkpoint.due) {
-        await notify(`checkpoint:${checkpoint.tick}`, config.parentSession, `CTO CHECKPOINT ${checkpoint.tick} — Collect role/status-${checkpoint.tick}.md under the configured step directories (state: ${stateFile}). Responses may still be pending. Assess drift, steer only affected owners, and report to the user.`);
-        checkpoint = null;
+      if (state.checkpointDue && Date.now() >= state.checkpointDue) {
+        // Completion may overtake the grace period. Never queue a routine wake
+        // with no active participant; genuine completion/error wakes are separate.
+        if (active.size && !state.checkpointWake && hasActiveRequest()) {
+          const token = `${state.instance}:${state.tick}`;
+          state.checkpointWake = { token, generation: config.generation, queuedAt: null };
+          await notify(`checkpoint:${state.tick}`, config.parentSession, `CTO CHECKPOINT — Current generation ${config.generation}: ${currentFile}. Acknowledge routine wake token ${token} after reading; unhandled completion/error notices remain separate.`);
+          state.checkpointWake.queuedAt = new Date().toISOString();
+        }
+        state.checkpointDue = null; await persist();
       }
+      if (!active.size) { state.checkpointDue = null; await persist(); }
       await sleep(config.pollSeconds * 1000, signal);
     }
     return failed || Object.values(state.roles).some((role) => role.outcome === 'failed') ? 1 : signal.aborted ? 130 : 0;
@@ -273,9 +340,21 @@ export async function supervise(config, signal = new AbortController().signal) {
   }
 }
 
+// Explicit operator receipt for our own supersedable checkpoint only. This does
+// not inspect, delete or acknowledge any Codex queue item or completion.
+export async function acknowledgeStatus(directory, token) {
+  const current = JSON.parse(await readFile(path.join(directory, 'current.json'), 'utf8'));
+  if (typeof token !== 'string' || current.pendingCheckpoint?.token !== token) throw new Error('Checkpoint token is not current');
+  await save(path.join(directory, 'checkpoint-ack'), `${token}\n`);
+}
+
 async function main() {
+  if (process.argv[2] === 'ack-status' && process.argv.length === 5) {
+    await acknowledgeStatus(path.resolve(process.argv[3]), process.argv[4]); return 0;
+  }
   if (process.argv.length !== 3 || process.argv[2] === '--help') {
     console.log('Usage: bazel run //tools/supervisor:run -- /absolute/path/config.json');
+    console.log('       bazel run //tools/supervisor:run -- ack-status /absolute/state-directory CURRENT-TOKEN');
     return process.argv[2] === '--help' ? 0 : 2;
   }
   const file = path.resolve(process.argv[2]);
