@@ -129,10 +129,18 @@ automatically poll them. Accounts and credentials are not bundled with Swarm.
 
 Save with Ctrl-S, then close the window or interrupt the launch command.
 Ordinary installed use requires no service-manager setup and no Vite port.
-To update a clone, preserve local work, pull the chosen reviewed revision, and
-run `nix profile install .#swarm-ide` from it again. Save/close the old app before
-relaunching. For a reproducible fleet install use the
-[pinned-revision command](linux-install.md#run-or-install).
+To update an install made from a clone, preserve local work and pull the chosen
+reviewed revision in that same clone. Run `nix profile list`, find Swarm's entry
+by its source/flake attribute, then use its actual **Name**:
+
+```bash
+nix profile upgrade NAME
+```
+
+Replace `NAME`; do not add a second install over the existing `swarm` command.
+Save/close the old app before relaunching. An install pinned with `rev=COMMIT`
+does not advance automatically; fleet rollout chooses a new reviewed pin.
+See the [installation reference](linux-install.md#run-or-install).
 
 | Symptom | Next action |
 | --- | --- |

@@ -29,6 +29,14 @@ For a repeatable fleet rollout, replace `ref=master` with `rev=COMMIT` after the
 chosen commit has landed. Do not share your SSH keys or agent configuration with
 evaluators.
 
+For later updates, use `nix profile list` to find the Swarm entry's actual
+**Name**, then `nix profile upgrade NAME`. If its source is your local clone,
+first preserve local work and pull the intended reviewed revision there.
+Do not repeat `profile install` to update an existing entry: it can collide with
+the installed `swarm` command. A `rev=COMMIT` pin stays fixed; deploying a new
+fleet revision requires choosing a new pin rather than expecting upgrade to
+advance it. Save and close the old window before launching the updated app.
+
 ## Choose the project
 
 `swarm` with no arguments opens the invocation directory. `--workspace` resolves
