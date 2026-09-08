@@ -1,0 +1,21 @@
+id: swarm-install-source-filter
+title: Avoid rebuilding the installed app for unrelated documentation changes
+desc: flake.nix passes src=self into nix/package.nix buildBazelPackage. The whole
+  tracked Swarm source enters derivation; ui-sprint advances on every normal merge,
+  including docs. nix run is cached for the same inputs, but moving checkout invalidates
+  package. Narrow package inputs to real build/runtime requirements and verify unchanged
+  package derivation for unrelated docs; do not omit runtime fixtures or required
+  data. Normal installed swarm remains stable until explicitly upgraded.
+type: bugfix
+component: default
+release:
+reporter: Ted Smith <tedks@riseup.net>
+status: unstarted
+disposition:
+creation_time: 2026-09-08T18:41:34-00:00
+references: []
+log_events:
+- time: 2026-09-08T18:41:34-00:00
+  who: Ted Smith
+  what: created
+  comment: ""
