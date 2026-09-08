@@ -1,0 +1,19 @@
+id: swarm-living-design
+title: Browse system and component designs down to Bazel
+desc: 'P7: Whole-system doc+component graph; recursive component docs+graphs terminating
+  at real Bazel targets and dependencies. Reuse .swarm/plans.json and plan renderer,
+  main-pane surface. Maintain design/code invariant in implementer and reviewer instructions,
+  actual links/labels and clean overview. docs/swarm-operator-hour.md.'
+type: task
+component: default
+release:
+reporter: Ted Smith <tedks@riseup.net>
+status: unstarted
+disposition:
+creation_time: 2026-09-08T03:40:02-00:00
+references: []
+log_events:
+- time: 2026-09-08T03:40:02-00:00
+  who: Ted Smith
+  what: created
+  comment: ""
