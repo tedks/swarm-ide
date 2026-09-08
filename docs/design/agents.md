@@ -109,6 +109,18 @@ platform. Native app-server execution remains a separate owner path. App joins
 event activation to the correct-worktree source view; a fleet observation does
 not itself grant authority to send to or take over that session.
 
+The renderer observer (`external-agents/client.ts`) shares one request lane
+between fleet and selected-conversation reads. It starts automatic conversation
+reads no more often than once a second and fleet reads no more often than every
+three seconds, measured from request start rather than completion. The oldest
+due deadline wins, with conversation reads first on ties; this keeps the fleet
+from starving while avoiding unnecessary conversation delay. Initial/core-reset
+registry discovery and explicit user requests retain priority. Missed intervals
+collapse into one read, never a catch-up batch. An already-running fleet request
+still has to finish; this does not change native message queues or model latency.
+`tests/external-agents-live.test.tsx`, included in `//tools/demo-agents:unit`, checks
+slow reads, tied deadlines, fleet fairness and selection while a read is held.
+
 Each observed session carries an optional `lifecycle`: working means **In
 progress**, blocking input means **Waiting on you**, an explicit failed completion
 means **Failed**, and successful `task_complete` means **Complete**. The object

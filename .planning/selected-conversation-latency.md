@@ -14,9 +14,13 @@ This changes display scheduling only, not message delivery or model response tim
 
 - [x] (2026-09-08 18:07Z) Confirmed clean assigned worktree/base and started Ditz
   `swarm-selected-conversation-latency`; inspected observer and direct tests.
-- [ ] Add deterministic regressions that expose the delay before changing code.
-- [ ] Apply a small scheduling correction and update the living design.
-- [ ] Run focused tests/typechecks, native review, push ready PR and hand back.
+- [x] (2026-09-08 18:09Z) Added deterministic regressions before code: 3 failed,
+  9 passed, including preserved held-fleet selection behavior.
+- [x] (2026-09-08 18:10Z) Applied the scheduling correction and living design text.
+- [x] (2026-09-08 18:13Z) Focused observer/steering checks: 148 passed, 1 existing
+  opt-in real-send case skipped; both typechecks passed. Native review and the
+  subsequent test-only review returned CLEAN.
+- [ ] Push ready PR and hand back; ROOT merges and adopts.
 
 ## Surprises & Discoveries
 
@@ -24,6 +28,12 @@ This changes display scheduling only, not message delivery or model response tim
 `run` sets the next deadline from completion time, so a 700 ms read makes the next
 automatic read start 1.7 seconds later. The bridge cannot cancel a read: an already
 running fleet request must drain before the selected conversation can refresh.
+
+The first corrected run passed 11 cases but exposed an incorrect new fairness
+expectation. With 1.5-second reads, the selected deadline at 6.5s is older than the
+fleet deadline at 7s, so fleet correctly runs at 8.5s, not 7s. Corrected only that
+expected schedule and added a real-file observation test. The original baseline
+and intermediate failure remain recorded; no production retry was called a fix.
 
 ## Decision Log
 
@@ -39,7 +49,12 @@ Selection, core generation and visibility invalidation remain unchanged.
 
 ## Outcomes & Retrospective
 
-Implementation and evidence pending. No measured terminal-to-IDE latency claim.
+The production change is 15 lines in the existing observer, without public API,
+protocol, sender, App or layout changes. A controlled 700ms read now starts its
+successor at 2.0s rather than 2.7s. Equal deadlines publish the selected reply before
+a held fleet request. Sustained slow reads still allow fleet progress, one lane
+and no catch-up bursts. The real owned JSONL/core/hook append case passed in
+1.064s total case time; that is not a physical desktop or model latency metric.
 
 ## Context and Orientation
 
@@ -95,6 +110,9 @@ and issue history, and file any unrelated limitation rather than extending scope
 
 Keep concise progress and evidence in `/tmp/swarm-ide-demo-close.BrSWmt/chat-speed/`:
 `seam.md`, `verification.md` and the final marker-qualified `final-recap`.
+PR125 contains the implementation. `baseline.log` records 3 failed/9 passed;
+`corrected.log` records the wrong fairness expectation; `focused.log` and
+`focused-tests.log` record the final 148 passed/1 intentionally skipped result.
 
 ## Interfaces and Dependencies
 
@@ -105,3 +123,6 @@ architecture owner, who owns `.swarm/plans.json` for this wave.
 
 Revision 1: recorded the observed scheduling mechanism and narrow acceptance
 before implementation, rather than attributing upstream message delay to it.
+
+Revision 2: recorded the implemented 1s/3s start cadence, corrected test-only
+expectation, actual append check and native clean review before PR handoff.

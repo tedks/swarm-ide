@@ -71,8 +71,14 @@ class ExternalObserver {
     if (!this.enabled() || this.inFlight) return;
     let job = this.pending; this.pending = null;
     const now = Date.now();
+    // Oldest due read wins; ties favor the visible conversation. Advancing each
+    // deadline from request start keeps an overdue fleet from being starved by it.
+    // Discover the registry first when no snapshot exists (startup/core reset).
+    if (!job && this.state.selected && now >= this.nextDetail &&
+      (now < this.nextRegistry || (this.state.snapshot !== null && this.nextDetail <= this.nextRegistry))) {
+      job = { kind: "read", id: this.state.selected, done() {}, manual: false };
+    }
     if (!job && now >= this.nextRegistry) job = { kind: "snapshot", done() {}, manual: false };
-    if (!job && this.state.selected && now >= this.nextDetail) job = { kind: "read", id: this.state.selected, done() {}, manual: false };
     if (job) { void this.run(job); return; }
     const due = this.state.selected ? Math.min(this.nextRegistry, this.nextDetail) : this.nextRegistry;
     this.timer = setTimeout(this.pump, Math.max(1, due - now));
@@ -80,6 +86,7 @@ class ExternalObserver {
 
   private async run(job: Job) {
     this.inFlight = true;
+    const startedAt = Date.now();
     const epoch = this.epoch, selection = this.selection, bridge = this.bridge!;
     const current = () => this.enabled() && epoch === this.epoch;
     const selected = () => current() && selection === this.selection && job.id === this.state.selected;
@@ -116,8 +123,10 @@ class ExternalObserver {
     } finally {
       this.inFlight = false;
       if (current()) {
-        if (job.kind === "snapshot") this.nextRegistry = Date.now() + registryInterval;
-        if (job.kind === "read") this.nextDetail = Date.now() + detailInterval;
+        // Keep minimum start intervals, not a full extra wait after slow reads.
+        // A missed interval becomes one due read, never a backlog of polls.
+        if (job.kind === "snapshot") this.nextRegistry = startedAt + registryInterval;
+        if (job.kind === "read") this.nextDetail = startedAt + detailInterval;
         this.publish({ busy: Boolean(this.pending), refreshing: false });
       }
       job.done(); this.pump();
