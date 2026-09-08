@@ -7,8 +7,8 @@ type: task
 component: documentation
 release:
 reporter: Ted Smith <tedks@riseup.net>
-status: in_progress
-disposition:
+status: closed
+disposition: fixed
 creation_time: 2026-09-08T02:10:46-00:00
 references: []
 log_events:
@@ -56,3 +56,10 @@ log_events:
     interpretation CLEAN; no driver correction/another run authorized. Accepted installation/docs
     unchanged, remaining issue OPEN. ROOT owns PR80 landing/disposition and final
     closure.'
+- time: 2026-09-08T02:42:09-00:00
+  who: Ted Smith
+  what: 'closed: fixed'
+  comment: 'PR80 normally merged under explicit user authority: reviewed evaluator
+    docs and three-repository install rehearsal complete; connected-tour attachment
+    failure remains separately OPEN as demo-tour-task-attachment-activation-20260907.
+    No complete-tour success claim.'
