@@ -1,13 +1,14 @@
 id: desktop-native-input-delivery
-title: Distinguish high-rate synthetic keyboard loss from product input handling
-desc: N2 full desktop validation observed actual FILE_NOT_FOUND after 1-2ms native
-  xdotool input lost one character (fraudchek.ts or fraudcheck.s). Exact palette-mode
-  transition waits plus 10ms human-paced input retain all assertions and are the bounded
-  harness mitigation. Cause is not proven to be X11 delivery versus controlled-input
-  handling; investigate with an instrumented disposable-owned window if this operational
-  stress case matters. Do not suppress errors, automate the human preview, or keep
-  increasing delay if loss recurs at 10ms. Production search typing also has separate
-  native packaged and deterministic fast-query evidence.
+title: Find whether fast synthetic typing loses keys before or inside the app
+desc: N2 full desktop validation observed FILE_NOT_FOUND after native xdotool input
+  at 1-2ms lost one character (fraudchek.ts or fraudcheck.s). Waiting for the exact
+  palette-mode transition and using 10ms human-paced input keeps all assertions and
+  is the limited test-harness mitigation. It is not established whether X11 delivery
+  or controlled-input handling caused the loss. If this operational stress case matters,
+  investigate with an instrumented disposable window created and controlled for the
+  test. Do not suppress errors, automate the human preview, or keep increasing delay
+  if loss recurs at 10ms. Production search typing also has separate evidence from
+  native input in the packaged app and deterministic fast-query tests.
 type: task
 component: default
 release:
@@ -20,4 +21,12 @@ log_events:
 - time: 2026-09-07T01:54:05-00:00
   who: Ted Smith
   what: created
+  comment: ""
+- time: 2026-09-08T04:29:13-00:00
+  who: Ted Smith
+  what: changed title
+  comment: ""
+- time: 2026-09-08T04:29:13-00:00
+  who: Ted Smith
+  what: updated description
   comment: ""
