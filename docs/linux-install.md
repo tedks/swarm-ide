@@ -46,6 +46,49 @@ The command rejects missing directories and unknown options instead of silently
 opening its installation directory. The IDE trusts your chosen local project and
 tools; deliberate build or agent actions may execute those tools normally.
 
+## Connect an existing tmux swarm
+
+Choose the project and the exact tmux server/session independently. Agents can
+have sibling worktrees; their source links use each checked owner's actual Git
+worktree, not the project shown by the main directory browser.
+
+```sh
+swarm --workspace ~/Projects/goals/master --tmux-server personal --tmux-session goals
+# Or select a socket explicitly, including one outside tmux's default directory:
+swarm --workspace ./project --tmux-socket /absolute/path/to/socket --tmux-session project
+```
+
+This performs one bounded scan of that session (at most 64 panes), reusing Swarm's
+exact process/rollout registration checks. It does not scan every tmux server or
+the account's conversation history. It currently recognizes Codex owners with
+one discoverable open rollout; shells, ambiguous owners and unavailable worktree
+roots are skipped. If nothing can be registered, the command explains that before
+opening a window; remove the tmux flags to open the project by itself.
+
+The command prints the private registry path and an exact tmux attach command.
+In the IDE, selecting a checked agent exposes the existing per-agent terminal
+navigation/copy action. The terminal and IDE refer to the same running owner.
+Closing or restarting Swarm does not close tmux, clone/resume an agent, or send a
+message. Activity refreshes live for registered agents. Discovering newly created
+panes requires another explicit association or adding them through the existing
+checked registration tool; this launcher adds no background discovery daemon.
+
+Each association writes a fresh private generation under
+`${XDG_STATE_HOME:-$HOME/.local/state}/swarm-ide/fleets/`. This prevents a restarted
+server from inheriting another session's conversations, and avoids a permanent
+64-lifetime-agent limit. Prior registries remain private history, but are not
+silently mixed into a new association. To reuse an explicitly maintained or
+previous registry instead of scanning tmux:
+
+```sh
+swarm --workspace ./project --agent-registry /absolute/private/agents.json
+```
+
+An existing `SWARM_EXTERNAL_AGENTS_REGISTRY` also remains supported. Explicit
+tmux flags replace it for that invocation. An old registry can contain historical
+agents; the core still rechecks live ownership before allowing steering. This is
+a Linux host feature, not a claim that the Mac container can see host tmux.
+
 ## State and tools
 
 Application files live in the immutable Nix store. Electron uses the application
@@ -88,12 +131,14 @@ its real source through the normal palette, and captures the result. Its small
 loopback server is only the test harness's readiness handshake; renderer assets
 still load from the installed `file://` bundle.
 
-The flake exposes x86_64-linux and aarch64-linux. Actual package/GUI evidence must
-name the tested architecture; exposing the second output does not prove it was
-run. macOS is not a native target of this package. The separate container demo
+This increment was built and run on x86_64-linux, including a disposable Nix
+profile installation and real source opening on an owned virtual desktop. The
+flake's aarch64-linux output evaluates but has not been built or run here.
+macOS is not a native target of this package. The separate container demo
 work supplies an evaluator option, with its own host-integration limits.
 
-The Nix derivation builds through `//:desktop-bundle`. It fetches locked pnpm
+The Nix derivation builds through `//:desktop-bundle` and
+`//tools/cli:registration-bundle`. It fetches locked pnpm
 packages and Bazel's built-in workspace dependencies as fixed build inputs,
 installs JavaScript dependencies offline, and bundles in a network-restricted
 build. It uses Bazel's legacy workspace mode only inside the package because the

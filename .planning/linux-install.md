@@ -9,22 +9,31 @@ An operator should be able to install Swarm IDE once, then run `swarm --workspac
 ## Progress
 
 - [x] (2026-09-08) Inspected the production bundle, fixed local-core launch, Nix shell and task scope.
-- [ ] Add a strict invocation-relative launcher and direct Bazel-owned tests.
-- [ ] Add a real Nix package and app with fixed dependency fetching and production bundle build.
-- [ ] Prove installed launch against a disposable Git repository on an owned virtual desktop.
-- [ ] Complete focused native review, docs, Ditz accomplishment notes and pushed PR.
+- [x] (2026-09-08 13:53Z) Added invocation-relative launcher, explicit profile bootstrap and twelve direct Bazel-owned tests.
+- [x] (2026-09-08 13:53Z) Built the real Nix package with actual fixed pnpm/Bazel dependency hashes; `nix run` help and disposable profile installation passed.
+- [x] (2026-09-08 13:53Z) Installed launch opened a real separate Git repository/source with development-tool PATH removed, confirmed the effective profile, and cleaned owned X11 resources.
+- [x] (2026-09-08 14:07Z) Added the user's targeted tmux association request using existing checked registration and explicit server/session selection; direct tests and package pass.
+- [ ] Complete final native delta review, coordinated plan mappings, final docs/Ditz and pushed handoff.
 
 ## Surprises & Discoveries
 
 The existing `//:desktop-bundle` already contains Electron main/preload, the local core including its YAML module and owner helper, and relative renderer assets. It is built from checkout `node_modules` by a local Bazel rule, not yet an installable derivation. The flake exports only Linux development shells.
 
+The first offline package attempt showed that Nix's Bazel dependency archive does not include Bzlmod registry metadata. Legacy workspace mode inside this derivation captures the actual toolchain archives and then builds offline. No normal-development Bazel configuration changed. pnpm's Electron installer includes unused musl native modules, so only host GNU bindings are patched before Vite runs.
+
+The first installed GUI proof opened the correct source but did not check profile state. A stronger file-existence check failed because `Local State` was absent during the run; that failure alone does not establish why. The installed entry now explicitly sets Electron's userData before launching the fixed main and reports `app.getPath`, allowing the final proof to verify the actual chosen profile without assuming a Chromium flag or file-flush timing.
+
 ## Decision Log
 
 Preserve the existing `app/`, `core/`, `renderer/` tar layout so the parallel container worker can consume the same production artifact independently. Keep installed application files immutable and preserve ordinary user state/config locations. Do not introduce a dev server or a persistent service for normal launch. The package supplies Git, Node, tmux, util-linux and the pinned Bazel/Java runtime while leaving the operator's harness discovery intact.
 
+Use a fixed installed `cli/electron-main.cjs` bootstrap for the optional profile and then require the unchanged production main. The launcher clears only development controls and its own inherited profile transport. It does not relocate Codex/GitHub/tool configuration or disable Chromium's sandbox by default.
+
+The targeted launch addition in `/tmp/swarm-ide-usability.BirZCk/project-tmux-feedback.md` adds explicit server/socket plus exact session selection. Reuse `tools/session-registration` discovery/writes; do not duplicate process/rollout authority. Per-launch private registry generations prevent server-ID reuse from mixing scopes and avoid lifetime capacity exhaustion. Prior generations remain available only when explicitly selected. This adds no agent, message, resume, tmux mutation or background daemon.
+
 ## Outcomes & Retrospective
 
-Implementation and actual Linux install proof are pending. This work makes no macOS execution claim; the container worker owns that evaluator path. aarch64 Linux support can be exposed through the existing flake system list but will be explicitly distinguished from this host's x86_64 proof.
+Implementation is pushed in PR111. The x86_64-linux production package launches from its Nix store output; `nix run` and disposable `nix profile install` work. Final owned GUI proof took2.032s including startup, with the chosen source unchanged and actual userData matching the requested relative profile. aarch64-linux output evaluates but has not been built/run here. This work makes no macOS claim. The source tar and development entrypoints remain unchanged.
 
 ## Context and Orientation
 
@@ -56,4 +65,6 @@ Step handoff and proof live in `/tmp/swarm-ide-usability.BirZCk/linux-install/`.
 
 ## Interfaces and Dependencies
 
-The public command is `swarm [--workspace PATH] [--user-data-dir PATH]`. Help documents the default invocation directory. The installed bundle remains `app/electron/main.js`, `app/electron/preload.js`, `core/**`, `renderer/**`. Existing development and virtual desktop entrypoints remain unchanged.
+The public command is `swarm [--workspace PATH] [--user-data-dir PATH]`, optionally with `--tmux-server NAME` or `--tmux-socket PATH` plus `--tmux-session NAME`. `--agent-registry PATH` instead selects an existing maintained registry. Help documents the default invocation directory. The installed bundle remains `app/electron/main.js`, `app/electron/preload.js`, `core/**`, `renderer/**`, with a fixed package-local CLI/bootstrap outside those original tar entries. Existing development and virtual desktop entrypoints remain unchanged.
+
+Revision note: updated after actual package/profile tests; preserved the first profile-check failure without attributing an unproved historical cause.

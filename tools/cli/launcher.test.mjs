@@ -19,6 +19,7 @@ test("unknown, repeated and missing options fail before Electron", () => {
 test("tmux scope is explicit and cannot be confused with a Codex session or registry", () => {
   assert.deepEqual(parseArguments(["--tmux-server", "personal", "--tmux-session", "project"]), { tmuxServer: "personal", tmuxSession: "project" });
   assert.deepEqual(parseArguments(["--tmux-socket", "./socket", "--tmux-session", "project"]), { tmuxSocket: "./socket", tmuxSession: "project" });
+  for (const name of ["project:window", "project.1"]) assert.throws(() => parseArguments(["--tmux-server", "personal", "--tmux-session", name]), /Invalid tmux session/);
   for (const args of [["--tmux-session", "project"], ["--tmux-server", "personal"], ["--tmux-server", "../bad", "--tmux-session", "project"], ["--tmux-server", "personal", "--tmux-socket", "/socket", "--tmux-session", "project"], ["--tmux-server", "personal", "--tmux-session", "project", "--agent-registry", "/registry"]]) assert.throws(() => parseArguments(args));
 });
 test("relative workspace/profile resolve from invocation, not immutable bundle", () => {

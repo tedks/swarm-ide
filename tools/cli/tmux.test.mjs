@@ -4,7 +4,24 @@ import { createServer } from "node:net";
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { execFile } from "node:child_process";
+import { promisify } from "node:util";
 import { associateTmux, selectPanes } from "./tmux.mjs";
+
+test("actual tmux selects the named session rather than an empty pane target", async () => {
+  const dir = await mkdtemp(join(tmpdir(), "swarm-tmux-real-")), socket = join(dir, "socket");
+  const exec = promisify(execFile);
+  try {
+    await exec("tmux", ["-S", socket, "-f", "/dev/null", "new-session", "-d", "-s", "selected", "sleep", "30"], { timeout: 5000 });
+    const result = await selectPanes({ tmuxSocket: socket, tmuxSession: "selected", cwd: dir });
+    assert.equal(result.sessionId, "$0");
+    assert.deepEqual(result.panes, ["%0"]);
+    await assert.rejects(selectPanes({ tmuxSocket: socket, tmuxSession: "absent", cwd: dir }));
+  } finally {
+    await exec("tmux", ["-S", socket, "kill-server"], { timeout: 5000 }).catch(() => {});
+    await rm(dir, { recursive: true, force: true });
+  }
+});
 
 async function fixture(run) {
   const dir = await mkdtemp(join(tmpdir(), "swarm-tmux-cli-")), socket = join(dir, "socket");
@@ -19,7 +36,7 @@ test("lists only the exact selected tmux session using literal argv", () => fixt
     assert.equal(exe, "tmux"); commands.push(args);
     return commands.length === 1 ? `${socket}\t$7\n` : "%10\n%11\n";
   });
-  assert.deepEqual(commands, [["-L", "personal", "display-message", "-p", "-t", "=a*project", "#{socket_path}\t#{session_id}"], ["-S", socket, "list-panes", "-s", "-t", "$7", "-F", "#{pane_id}"]]);
+  assert.deepEqual(commands, [["-L", "personal", "display-message", "-p", "-t", "=a*project:", "#{socket_path}\t#{session_id}"], ["-S", socket, "list-panes", "-s", "-t", "$7", "-F", "#{pane_id}"]]);
   assert.deepEqual(selected.panes, ["%10", "%11"]);
 }));
 test("ambiguous, duplicated and oversized pane lists fail before registration", () => fixture(async ({ socket }) => {

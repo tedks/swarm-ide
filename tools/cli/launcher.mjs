@@ -35,7 +35,7 @@ export function parseArguments(args) {
   if (options.tmuxServer && options.tmuxSocket) throw new Error("Choose --tmux-server or --tmux-socket, not both.");
   if (Boolean(options.tmuxServer || options.tmuxSocket) !== Boolean(options.tmuxSession)) throw new Error("Tmux association requires --tmux-session and one server/socket.");
   if (options.tmuxServer && (!/^[A-Za-z0-9_.-]{1,100}$/.test(options.tmuxServer) || [".", ".."].includes(options.tmuxServer))) throw new Error("Invalid tmux server name.");
-  if (options.tmuxSession && (options.tmuxSession.length > 128 || /[\x00-\x1f\x7f]/.test(options.tmuxSession))) throw new Error("Invalid tmux session name.");
+  if (options.tmuxSession && (options.tmuxSession.length > 128 || /[\x00-\x1f\x7f:.]/.test(options.tmuxSession))) throw new Error("Invalid tmux session name.");
   if (options.agentRegistry && options.tmuxSession) throw new Error("Choose an existing registry or a tmux session, not both.");
   return options;
 }

@@ -59,7 +59,9 @@ installs its `app/`, `core/` and `renderer/` trees plus the `swarm` command.
 `apps.default` invokes that command. `swarm --workspace PATH` resolves the project
 from the caller's directory and launches packaged Electron; it does not start
 Vite or rebuild the project. An installed `package.json` gives Electron the stable
-`swarm-ide` user-data identity. Writable history stays in the user profile, not
+`swarm-ide` user-data identity. The fixed installed CLI bootstrap applies any
+explicit profile with Electron's userData API before starting the unchanged main.
+Writable history stays in the user profile, not
 the Nix store. The host's agent tools and configuration remain the source of truth.
 
 The direct launcher boundary is tested by `//tools/cli:checks`; the installed
@@ -67,3 +69,12 @@ command and real workspace/source path are exercised by the owned virtual
 `//tools/cli:smoke`. See [Linux installation](../linux-install.md). The container
 path can consume the existing production tar independently; it is not a reason
 to route installed desktop execution through a development server.
+
+An explicit `--tmux-server`/`--tmux-socket` and `--tmux-session` association uses
+`//tools/cli:registration-bundle`, which packages the existing exact-pane discovery
+and registry writer from `tools/session-registration`. Only that chosen session's
+panes are inspected. Each verified process supplies its own canonical Git worktree;
+the opened project never substitutes for an unavailable agent context. A fresh
+private bounded registry generation feeds the unchanged observer. Older private
+generations remain available explicitly, not merged automatically into new scope.
+No agent or tmux lifecycle is transferred to the installed app.

@@ -12,14 +12,16 @@ const command = async (executable, args) => (await exec(executable, args, {
 
 export async function selectPanes(options, run = command) {
   const target = options.tmuxSocket ? ["-S", resolve(options.cwd, options.tmuxSocket)] : ["-L", options.tmuxServer];
-  const selection = (await run("tmux", [...target, "display-message", "-p", "-t", `=${options.tmuxSession}`, "#{socket_path}\t#{session_id}"])).trimEnd().split("\t");
+  // display-message takes a pane target: the colon makes this an exact session
+  // selection rather than an unresolved window/pane name.
+  const selection = (await run("tmux", [...target, "display-message", "-p", "-t", `=${options.tmuxSession}:`, "#{socket_path}\t#{session_id}"])).trimEnd().split("\t");
   if (selection.length !== 2 || !isAbsolute(selection[0]) || !/^\$\d+$/.test(selection[1])) throw new Error("The selected tmux session could not be identified.");
   const [socket, sessionId] = selection;
   const info = await lstat(socket);
   if (!info.isSocket() || info.uid !== process.getuid() || await realpath(socket) !== socket) throw new Error("Tmux socket must be canonical and owned by this user.");
   const output = await run("tmux", ["-S", socket, "list-panes", "-s", "-t", sessionId, "-F", "#{pane_id}"]);
   const panes = output.trimEnd().split("\n");
-  if (!panes.length || panes.length > 64 || new Set(panes).size !== panes.length || panes.some((id) => !/^%\d+$/.test(id))) throw new Error("Tmux session has invalid or more than64 panes; choose a smaller session.");
+  if (!panes.length || panes.length > 64 || new Set(panes).size !== panes.length || panes.some((id) => !/^%\d+$/.test(id))) throw new Error("Tmux session has invalid or more than 64 panes; choose a smaller session.");
   return { socket, sessionId, panes, socketDev: info.dev, socketIno: info.ino };
 }
 
