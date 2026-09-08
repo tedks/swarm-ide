@@ -23,6 +23,11 @@ that prop is a separately coordinated follow-up to the complete-task-graph repai
 `//tools/graph-recenter:checks` consumes `//:quality_sources` and exercises click,
 measurement, hidden-panel, manual-move and publication fences plus the ordinary
 retention checks and both TypeScript boundaries.
+`//tools/graph-recenter:smoke` uses the real packaged application in an owned
+virtual desktop and a disposable Git repository: source-to-service reveal,
+service keyboard selection, a native build-node click, and a user pan retained
+across an actual declaration edit. It launches no agent and does not build the
+fixture targets.
 
 ## Lower-level map
 

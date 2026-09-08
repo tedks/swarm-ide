@@ -41,6 +41,7 @@
       "app/renderer/GraphPane.tsx",
       "app/renderer/repository/reveal.ts",
       "app/renderer/repository/focus-reveal.ts",
+      "tools/graph-recenter/BUILD.bazel",
       "app/renderer/WorktreeInspection.tsx",
       "core/worktree-inspection.ts",
       "app/renderer/FleetActivityView.tsx",
@@ -86,6 +87,18 @@
           "label": "//tools/graph-recenter:checks",
           "role": "Checks deliberate node reveal, camera retention and stale/manual-move cancellation",
           "dependencies": [{ "label": "//:quality_sources", "relation": "data" }]
+        },
+        {
+          "label": "//tools/graph-recenter:smoke",
+          "role": "Owned packaged source/service/build click and passive camera-retention proof",
+          "dependencies": [
+            { "label": "//:desktop-bundle", "relation": "data" },
+            { "label": "//tools/graph-recenter:sources", "relation": "data" },
+            { "label": "//tools:virtual-desktop-run.sh", "relation": "data" },
+            { "label": "//tools:x11-driver-source", "relation": "data" },
+            { "label": "//tools:electron-runtime-source", "relation": "data" },
+            { "label": "//tools/task-integration:sources", "relation": "data" }
+          ]
         },
         {
           "label": "//:desktop-bundle",

@@ -7,7 +7,7 @@ import type { BuildLinkSnapshot } from "../app/renderer/repository/layers";
 const { fits, targets, moves, flows, dimensions } = vi.hoisted(() => ({ fits: vi.fn(async (_options?: unknown) => true), targets: vi.fn((_ids: string[]) => ({ x: 1000, y: 500, width: 170, height: 60 })), moves: vi.fn(async (_viewport: unknown, _options?: unknown) => true), flows: [] as Array<{ props: Record<string, any> }>, dimensions: { measured: true, visible: true } }));
 vi.mock("@xyflow/react", async () => {
   const React = await import("react");
-  return { Background: () => null, Controls: () => null, Handle: () => null, BaseEdge: () => null,
+  return { Background: () => null, Controls: () => <div className="react-flow__controls"><button>Fit control</button></div>, Handle: () => null, BaseEdge: () => null,
     getViewportForBounds: (_bounds: unknown, _width: number, _height: number, _min: number, maxZoom: number) => ({ x: -900, y: -400, zoom: maxZoom }),
     MarkerType: { ArrowClosed: "arrow" }, Position: { Left: "left", Right: "right", Top: "top", Bottom: "bottom" },
     ReactFlow: (props: Record<string, any>) => {
@@ -160,4 +160,15 @@ it.each([false, true])("waits for the requested file layout even if its owner ex
   if (pan) fireEvent.click(screen.getByRole("button", { name: "Manual pan" }));
   view.rerender(<BuildGraphPane {...props} focusedFile="b/lib.ts" navigation={navigation} />); settle();
   if (pan) expect(targets).not.toHaveBeenCalled(); else expect(targets).toHaveBeenCalledExactlyOnceWith(["//b:lib"]);
+});
+
+it.each(["pointer", "keyboard"])("a deliberate Fit control cancels an older waiting reveal (%s)", (gesture) => {
+  dimensions.measured = false;
+  render(<GraphPane {...serviceProps} />); settle();
+  fireEvent.click(screen.getByRole("button", { name: service.nodes[0]!.id })); settle();
+  const fit = screen.getByRole("button", { name: "Fit control" });
+  if (gesture === "pointer") fireEvent.pointerDown(fit); else fireEvent.keyDown(fit, { key: "Enter" });
+  dimensions.measured = true;
+  act(() => flows[0]!.props.onNodesChange([{ type: "dimensions", id: service.nodes[0]!.id }])); settle();
+  expect(targets).not.toHaveBeenCalled();
 });
