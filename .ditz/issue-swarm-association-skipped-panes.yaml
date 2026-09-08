@@ -1,0 +1,23 @@
+id: swarm-association-skipped-panes
+title: Explain and improve skipped live panes during tmux association
+desc: 'Installed selected-session association now recognizes one CLI with same-process
+  direct native children. Actual proof found five of seven current panes; ROOT and
+  the verifier were not covered by that bounded run. The particular skip cause remains
+  unlocalized, not proved to be recursion or process-count bounds. Keep the working
+  explicit-registry fallback and current ownership checks. Add useful per-pane diagnostics,
+  then improve only a reproduced omission; do not broaden scanning or guess native
+  lineage. Evidence: /tmp/swarm-ide-usability.BirZCk/linux-install/installed-native-association-smoke.log
+  and installed-selected-worker-smoke.log.'
+type: task
+component: default
+release:
+reporter: Ted Smith <tedks@riseup.net>
+status: unstarted
+disposition:
+creation_time: 2026-09-08T14:36:22-00:00
+references: []
+log_events:
+- time: 2026-09-08T14:36:22-00:00
+  who: Ted Smith
+  what: created
+  comment: ""
