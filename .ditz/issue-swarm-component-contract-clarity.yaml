@@ -9,8 +9,8 @@ type: feature
 component: default
 release:
 reporter: Ted Smith <tedks@riseup.net>
-status: in_progress
-disposition:
+status: closed
+disposition: fixed
 creation_time: 2026-09-08T18:01:06-00:00
 references: []
 log_events:
@@ -35,5 +35,13 @@ log_events:
     CLEAN; 91 focused checks plus both TypeScript boundaries passed, real owned packaged
     default/selected contract and dirty-source/task-camera retention passed. Final
     small screenshot spacing and handoff finish next.
+- time: 2026-09-08T18:34:12-00:00
+  who: Ted Smith
+  what: 'closed: fixed'
+  comment: 'Implemented and reviewed in PR127: responsibility hierarchy, typed directed
+    contracts and one-contract inspection, corrected ownership/query/outcome semantics,
+    preserved source/build mappings and camera/editor state. 91 focused tests/types
+    and real owned packaged proof passed; native convergence clean. ROOT owns normal
+    merge/adoption; compact control overlap tracked separately.'
 blocks:
 - swarm-close-working-loop
