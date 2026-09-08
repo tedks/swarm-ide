@@ -1,8 +1,10 @@
 id: agent-run-workbench
-title: Add the inspectable steerable run surface beside source and graphs
-desc: 'W1/W2/W3: fixture-first rail/draft/run dock; source and graph persistence;
-  actual provider activity; run-specific steering/Stop, context and uncertainty; integrate
-  existing bridge without generic chat replacement. See first-agent-run-wave plan.'
+title: Show and steer agent runs beside the source editor and graphs
+desc: 'W1/W2/W3: start with fixture-backed run lists, drafts and a run dock, then
+  show actual provider activity. Preserve source and graph state while offering messages
+  and Stop for the selected run, its context, and uncertain outcomes. Use the existing
+  bridge; do not replace the workbench with generic chat. See the first-agent-run-wave
+  plan.'
 type: feature
 component: default
 release:
@@ -68,6 +70,14 @@ log_events:
     Scope seam /tmp/swarm-ide-workbench-w2b.vi2P3j/seam.md; master/artifacts/overnight-wave/workbench-w2b/handoff.md.
     Small copy followups tracked; separate post-admission classification audit gates
     vertical proof.'
+- time: 2026-09-08T04:28:10-00:00
+  who: Ted Smith
+  what: changed title
+  comment: ""
+- time: 2026-09-08T04:28:10-00:00
+  who: Ted Smith
+  what: updated description
+  comment: ""
 blocks:
 - agent-run-vertical-proof
 blocked_by:
