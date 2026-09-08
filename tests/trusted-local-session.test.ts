@@ -113,6 +113,18 @@ describe("trusted-local app-server conversation", () => {
     f.notify("item/started", { threadId: "thread", turnId: "turn-1", item: { type: "mcpToolCall", id: "tool-0", status: "inProgress" } });
     expect(f.session.activity()).toEqual(before); f.complete();
   });
+  it("does not use inherited command-action labels and bounds terminal growth for long identities", async () => {
+    const f = fixture(); await f.setup(); const turnId = "\\".repeat(256);
+    await f.reply("turn/start", { turn: { id: turnId } }); await f.started;
+    f.notify("item/started", { threadId: "thread", turnId, item: { type: "commandExecution", id: "prototype", status: "inProgress", commandActions: [{ type: "toString" }] } });
+    expect(f.session.activity().at(-1)!.summary).toBe("Shell command");
+    for (let i = 0; i < 180; i++) f.notify("item/started", { threadId: "thread", turnId, item: { type: "mcpToolCall", id: `tool-${i}`, status: "inProgress" } });
+    f.sink.error(); await flush();
+    expect(f.session.snapshot().status).toBe("failed");
+    expect(f.session.activity().length).toBeGreaterThan(0);
+    expect(f.session.activity().every((entry) => entry.status === "failed" && entry.summary.includes("outcome unconfirmed"))).toBe(true);
+    expect(Buffer.byteLength(JSON.stringify(f.session.activity()))).toBeLessThanOrEqual(64 * 1024);
+  });
   it("inherits thread settings exactly and preserves explicit model only at turn start", async () => {
     const f = fixture(); await f.setup("chosen-model");
     expect(f.sent.map((message) => message.method)).toEqual(["initialize", "initialized", "thread/start", "turn/start"]);
