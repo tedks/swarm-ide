@@ -38,8 +38,10 @@ To find them in the rail, select **All** and search the full ID.
 Clicking a task title or task-graph node opens its document in the main area;
 **Show task document** also returns to it from Context. Context shows actual issue
 metadata, recorded updates, **Blocked by** / **Blocking**, explicit source links
-and only explicitly associated agent evidence. It does not include the separate
-trusted-local conversation. See [task workspace](task-workspace.md).
+and only explicitly associated agent evidence. **Trusted conversations** lists
+runs actually admitted with this task attached; **Open conversation** or **Open
+saved conversation** selects that run in the dock. Completing a turn does not
+close the issue. See [task workspace](task-workspace.md).
 
 **Plan → Task blockage →
 Load dependency graph** shows recorded dependencies, separately from plan
@@ -111,9 +113,13 @@ runs a model using normal configuration, tools and approvals—not extra autonom
 or a copied account. **Send next turn**, **Steer current turn** and **Stop
 conversation** operate on that conversation.
 
-One trusted conversation is active per core. Renderer refresh can observe it;
-app/core shutdown stops it, and the IDE does not restore it across core restarts
-or add it to task history. Save first to include editor changes. The
+Use **New conversation** to prepare another run, then the run list to switch
+between up to eight live conversations with independent message composers.
+Controls affect the selected conversation, not every agent. Renderer refresh
+can re-observe live runs while the core stays alive; app/core shutdown stops
+them. Up to twenty retained records preserve bounded output, activity and actual
+admitted task links. Restart archives history without automatic resume or replay;
+unsent composers are not a durable backup. Save first to include editor changes. The
 [trusted-local guide](trusted-local-execution.md) covers supported approvals and
 unsupported interactions. Skip this segment to keep the tour model-free.
 
@@ -141,13 +147,20 @@ performed. Skip it if GitHub access is unavailable; recorded Changes still work.
 Optional, on an operator-configured installation: **Agent runs → External
 sessions → Refresh external sessions** shows fork ancestry, **Conversation ·
 read-only** and **Worklog**. **Open conversation in tmux** requires a checked live target.
-A private registry is required and is not shipped. D4/D5/D6 labels in a report
+A private registry is required and is not shipped; the optional
+[known-worker registration helper](session-registration.md) creates explicit
+entries, not global discovery. D4/D5/D6 labels in a report
 are not verified session IDs and do not automatically select an agent; choose a
-known registration manually or skip this segment. See
+known registration manually or skip this segment. Observation does not send a
+message. To steer a checked live target, review its identity, enter an instruction
+and deliberately choose **Send message**. A queued receipt is not proof the agent
+consumed or completed it; uncertain outcomes are not retried automatically. The
+external process is not IDE-owned and is not stopped when the IDE closes. See
 [external observations](demo-agents.md).
 
 The result is one inspectable story across distinct views—not one universal
 graph. Local browsing and preparation need no model account. Trusted-local
 execution is an optional real operation with your installed account; external
-session observation stays read-only. Automatic task-to-session linking and
-autonomous summarization are not implemented.
+session observation stays read-only unless you explicitly Send to a checked
+target. Task links come from actual trusted-run admission or explicit external
+registration, not inference from labels. Autonomous summarization is not implemented.
