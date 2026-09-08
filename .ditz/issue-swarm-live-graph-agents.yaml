@@ -21,3 +21,17 @@ log_events:
   who: Ted Smith
   what: started
   comment: ""
+- time: 2026-09-08T20:50:28-00:00
+  who: Ted Smith
+  what: commented
+  comment: PR136 implements registered agent sprites on exact current-worktree files/directories,
+    direct Bazel file targets, authored component sources and declared services/interfaces.
+    Shared lifecycle/last-touch labels, exact conversation click, isolated gestures
+    and independent graph-context overlays preserve layout/cameras. Native review
+    found/fixed fresh-window canonical root discovery. 33 focused plus1 mounted startup
+    tests/types pass; package passes. One real registered packaged execution displayed/clicked
+    exact session and retained dirty source/cameras, zero renderer errors, cleanup1;
+    scenario failed when dirty buffer vetoed quit. Corrected native-visible-pointer/undo-close
+    driver not rerun under one-GUI bound, tracked swarm-live-sprite-pointer-proof.
+    Native generic activity has no typed path, tracked swarm-native-graph-locations.
+    Ready code pending ROOT merge/disposition, no shared adoption.
