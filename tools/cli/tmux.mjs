@@ -1,6 +1,5 @@
 import { execFile } from "node:child_process";
-import { createHash } from "node:crypto";
-import { lstat, mkdir, readlink, realpath } from "node:fs/promises";
+import { lstat, mkdir, mkdtemp, readlink, realpath } from "node:fs/promises";
 import { homedir } from "node:os";
 import { isAbsolute, join, resolve } from "node:path";
 import { promisify } from "node:util";
@@ -36,11 +35,11 @@ export async function associateTmux(options, dependencies = {}) {
   const api = dependencies.api ?? await import("./registration.cjs");
   const stateRoot = dependencies.stateRoot ?? (process.env.XDG_STATE_HOME || join(homedir(), ".local/state"));
   if (!isAbsolute(stateRoot)) throw new Error("XDG_STATE_HOME must be absolute for tmux association.");
-  // Internal storage identity only: keep one private registry per selected server
-  // and session, without placing socket text into arbitrary filesystem names.
-  const key = createHash("sha256").update(`${selected.socket}\0${selected.sessionId}`).digest("hex").slice(0, 24);
-  const directory = join(stateRoot, "swarm-ide/fleets", key);
-  await mkdir(directory, { recursive: true, mode: 0o700 });
+  // A fresh bounded generation cannot mix an old server's sessions or fill up
+  // with lifetime agent IDs. Prior private registries remain available explicitly.
+  const parent = join(stateRoot, "swarm-ide/fleets");
+  await mkdir(parent, { recursive: true, mode: 0o700 });
+  const directory = await mkdtemp(join(parent, "association-"));
   const registry = join(directory, "agents.json"), registered = [], skipped = [];
   const deadline = Date.now() + 30000;
   for (let start = 0; start < selected.panes.length; start += 4) {
@@ -52,11 +51,14 @@ export async function associateTmux(options, dependencies = {}) {
         const root = await (dependencies.contextRoot ?? contextRoot)(found.target);
         const currentSocket = await lstat(selected.socket);
         if (currentSocket.dev !== selected.socketDev || currentSocket.ino !== selected.socketIno) throw new Error("Selected tmux server changed");
+        let windowName = "";
+        try { windowName = (await (dependencies.command ?? command)("tmux", ["-S", selected.socket, "display-message", "-p", "-t", pane, "#{window_name}"])).replace(/[\x00-\x1f\x7f]/g, "").trim(); } catch { /* Labels do not confer authority. */ }
+        const label = `${options.tmuxSession}:${windowName || pane}`.slice(0, 120);
         const receipt = await api.updateRegistry({ action: "register", registry,
-          label: `${options.tmuxSession} ${pane}`, rollout: found.rollout,
+          label, rollout: found.rollout,
           pane: { socket: selected.socket, pane, processPid: found.target.processPid, processStart: found.target.processStart },
           contextRoot: root, evidence: "local" });
-        registered.push({ pane, contextRoot: root, ...receipt });
+        registered.push({ pane, label, contextRoot: root, ...receipt });
       } catch (error) { skipped.push({ pane, reason: error.message }); }
     }));
   }

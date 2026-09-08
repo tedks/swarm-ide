@@ -53,3 +53,17 @@ test("unknown owner roots do not fall back to the opened project or create autho
   }), /owner worktree unavailable/);
   assert.equal(writes, 0);
 }));
+test("each association starts a fresh bounded registry while preserving the old generation", () => fixture(async ({ socket, dir }) => {
+  const writes = [];
+  const dependencies = {
+    stateRoot: join(dir, "state"),
+    command: async (_exe, args) => args.at(-1) === "#{socket_path}\t#{session_id}" ? `${socket}\t$0\n` : args.at(-1) === "#{window_name}" ? "Long window name" : "%10\n",
+    api: { discover: async () => ({ target: { processPid: 10, processStart: "1" }, rollout: "/known/a.jsonl" }), updateRegistry: async (input) => { writes.push(input); return { sessionId: "a", authority: "checked-live" }; } },
+    contextRoot: async () => "/project/actual",
+  };
+  const options = { tmuxServer: "personal", tmuxSession: "x".repeat(128), cwd: "/caller" };
+  const first = await associateTmux(options, dependencies), next = await associateTmux(options, dependencies);
+  assert.notEqual(first.registry, next.registry);
+  assert.equal(writes.length, 2); assert(writes.every((row) => row.label.length === 120));
+  assert.equal(writes[0].registry, first.registry); assert.equal(writes[1].registry, next.registry);
+}));

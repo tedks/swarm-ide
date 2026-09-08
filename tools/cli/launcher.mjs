@@ -24,7 +24,8 @@ export function parseArguments(args) {
   for (let i = 0; i < args.length; i += 1) {
     const arg = args[i];
     if (arg === "--help" || arg === "-h") { options.help = true; continue; }
-    const key = { "--workspace": "workspace", "--user-data-dir": "userDataDir", "--tmux-server": "tmuxServer", "--tmux-socket": "tmuxSocket", "--tmux-session": "tmuxSession", "--agent-registry": "agentRegistry" }[arg];
+    const keys = new Map([["--workspace", "workspace"], ["--user-data-dir", "userDataDir"], ["--tmux-server", "tmuxServer"], ["--tmux-socket", "tmuxSocket"], ["--tmux-session", "tmuxSession"], ["--agent-registry", "agentRegistry"]]);
+    const key = keys.get(arg);
     if (!key) throw new Error(`Unknown argument: ${arg}. Use swarm --help.`);
     if (options[key] !== undefined) throw new Error(`${arg} may be specified only once.`);
     const value = args[++i];

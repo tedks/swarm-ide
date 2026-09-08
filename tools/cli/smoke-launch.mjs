@@ -24,7 +24,13 @@ try {
   const env = { ...process.env, PATH: "/usr/bin:/bin" };
   // Do not let the test's development shell supply the installed app's tools.
   for (const key of ["NODE_OPTIONS", "NODE_PATH", "IN_NIX_SHELL", "SWARM_EXTERNAL_AGENTS_REGISTRY", "SWARM_WORKSPACE_ROOT", "SWARM_AGENT_STORE_ROOT", "SWARM_BAZEL_BIN", "SWARM_BAZEL_JAVA_HOME", "SWARM_ELECTRON_BIN", "SWARM_SOURCE_WORKSPACE", "BUILD_WORKSPACE_DIRECTORY"]) delete env[key];
-  desktop = spawn(process.env.SWARM_INSTALLED_CLI, ["--workspace", "../chosen repository", "--user-data-dir", "../profile"], { cwd: caller, env, stdio: "inherit" });
+  const args = ["--workspace", "../chosen repository", "--user-data-dir", "../profile"];
+  if (process.env.SWARM_CLI_TEST_TMUX_SESSION) {
+    if (!process.env.SWARM_CLI_TEST_TMUX_SERVER) throw new Error("Explicit test tmux server is required");
+    args.push("--tmux-server", process.env.SWARM_CLI_TEST_TMUX_SERVER, "--tmux-session", process.env.SWARM_CLI_TEST_TMUX_SESSION);
+    env.XDG_STATE_HOME = join(scratch, "state");
+  }
+  desktop = spawn(process.env.SWARM_INSTALLED_CLI, args, { cwd: caller, env, stdio: "inherit" });
   for (const signal of ["SIGTERM", "SIGINT", "SIGHUP"]) {
     const handler = () => { if (desktop.exitCode === null) desktop.kill(signal); };
     handlers.set(signal, handler); process.on(signal, handler);

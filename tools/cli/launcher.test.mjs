@@ -14,7 +14,7 @@ test("arguments accept explicit workspace/profile and help", () => {
   assert.deepEqual(parseArguments([]), {});
 });
 test("unknown, repeated and missing options fail before Electron", () => {
-  for (const args of [["--workspce", "."], ["--workspace"], ["--workspace", ""], ["--workspace", "--help"], ["--workspace", ".", "--workspace", ".."], ["--user-data-dir", "x", "--user-data-dir", "y"], ["--no-sandbox"]]) assert.throws(() => parseArguments(args));
+  for (const args of [["toString", "x"], ["__proto__", "x"], ["--workspce", "."], ["--workspace"], ["--workspace", ""], ["--workspace", "--help"], ["--workspace", ".", "--workspace", ".."], ["--user-data-dir", "x", "--user-data-dir", "y"], ["--no-sandbox"]]) assert.throws(() => parseArguments(args));
 });
 test("tmux scope is explicit and cannot be confused with a Codex session or registry", () => {
   assert.deepEqual(parseArguments(["--tmux-server", "personal", "--tmux-session", "project"]), { tmuxServer: "personal", tmuxSession: "project" });

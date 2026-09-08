@@ -8,4 +8,5 @@ export SWARM_ARTIFACT_DIR="${SWARM_ARTIFACT_DIR:-$(mktemp -d /tmp/swarm-installe
 export SWARM_VIRTUAL_DESKTOP_PORT="${SWARM_VIRTUAL_DESKTOP_PORT:-55417}"
 export SWARM_APP_START_TIMEOUT_MS=30000
 export SWARM_SCENARIO_TIMEOUT_SECONDS=45
-exec "$cli_scripts/../virtual-desktop-run.sh" "$cli_scripts/scenario.sh" "$cli_scripts/smoke-launch.sh" installed-cli
+"$cli_scripts/../virtual-desktop-run.sh" "$cli_scripts/scenario.sh" "$cli_scripts/smoke-launch.sh" installed-cli
+node "$cli_scripts/postclose.mjs"
