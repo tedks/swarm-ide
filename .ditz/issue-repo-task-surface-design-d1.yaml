@@ -1,8 +1,8 @@
 id: repo-task-surface-design-d1
-title: Design repo-native task browsing and explicit draft provenance
-desc: D1 design-only contract and executable next slices for bounded revision-pinned
-  Ditz browsing, explicit source links and a separately gated task-to-draft attachment.
-  No product implementation.
+title: Design repository task browsing and explicit task details for drafts
+desc: 'D1 is design only: define the contract and actionable next implementation steps
+  for Ditz browsing with explicit limits and pinned revisions, explicit source links,
+  and task-to-draft attachment requiring separate approval. No product implementation.'
 type: task
 component: workbench
 release:
@@ -38,3 +38,11 @@ log_events:
     landing under conditional local-docs verification waiver, not green. No product
     build/test/model/GUI or master adoption. Implementation remains open under repo-task-surface,
     first repo-task-contract-t0; subsequent repo-task-draft-provenance deferred.'
+- time: 2026-09-08T04:31:04-00:00
+  who: Ted Smith
+  what: changed title
+  comment: ""
+- time: 2026-09-08T04:31:04-00:00
+  who: Ted Smith
+  what: updated description
+  comment: ""
