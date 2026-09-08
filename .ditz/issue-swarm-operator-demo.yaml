@@ -1,10 +1,11 @@
 id: swarm-operator-demo
 title: Demonstrate root plus two real workers through the cockpit
-desc: 'ROOT: On merged preview, open design/task, watch real root+2 worktree children,
-  inspect timestamped events and correct source/diff, steer supported session or open
-  terminal, see actual completion Work Log persisted in Ditz. Direct checks, relevant
-  native review, installation handoff. Do not call fixtures live; no public repo migration
-  in this step.'
+desc: 'ROOT: In the merged preview, open a design or task, watch the real root and
+  two child agents in their worktrees, and inspect timestamped events with the correct
+  source or diff. Steer a session that supports it, or open its terminal. Confirm
+  that Work Log records actual completed work and saves it in Ditz. Run direct checks
+  and the relevant native review, then provide an installation handoff. Do not call
+  fixtures live. Do not migrate this project to a public repository in this step.'
 type: task
 component: default
 release:
@@ -37,6 +38,10 @@ log_events:
 - time: 2026-09-08T03:40:09-00:00
   who: Ted Smith
   what: blocked by swarm-owner-steering
+  comment: ""
+- time: 2026-09-08T04:31:49-00:00
+  who: Ted Smith
+  what: updated description
   comment: ""
 blocked_by:
 - swarm-live-fleet
