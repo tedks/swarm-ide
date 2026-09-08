@@ -38,13 +38,22 @@ async function main() {
     for (const element of document.querySelectorAll(`.graph-agent-sprite[data-agent-id='${id}']`)) {
       element.scrollIntoView({ block: "nearest", inline: "nearest" });
       const box = element.getBoundingClientRect(), x = box.left + box.width / 2, y = box.top + box.height / 2;
-      if (box.width > 0 && box.height > 0 && element.contains(document.elementFromPoint(x, y))) return { x, y };
+      if (box.width > 0 && box.height > 0 && element.contains(document.elementFromPoint(x, y))) {
+        // Selection may already name this single registered session. Record
+        // the actual native click rather than treating identity alone as proof.
+        window.__spritePointerWitness = null;
+        element.addEventListener("click", (event) => {
+          window.__spritePointerWitness = { trusted: event.isTrusted, sessionId: element.dataset.agentId };
+        }, { capture: true, once: true });
+        return { x, y };
+      }
     }
     return null;
   }, sessionId);
   assert(hit, "A real agent sprite must be visible and unobscured");
   contents.sendInputEvent({ type: "mouseDown", button: "left", clickCount: 1, x: Math.round(hit.x), y: Math.round(hit.y) });
   contents.sendInputEvent({ type: "mouseUp", button: "left", clickCount: 1, x: Math.round(hit.x), y: Math.round(hit.y) });
+  await until(() => run((id) => window.__spritePointerWitness?.trusted === true && window.__spritePointerWitness.sessionId === id, sessionId), "trusted pointer click reached exact sprite");
   await until(() => run((id) => document.querySelector(".agent-conversation")?.dataset.externalSession === id, sessionId), "exact conversation selection");
   const after = await run(() => ({ text: document.querySelector(".cm-content").textContent, cameras: [...document.querySelectorAll(".react-flow__viewport")].map((node) => node.style.transform) }));
   assert.equal(after.text, before.text); assert.deepEqual(after.cameras, before.cameras); assert.deepEqual(errors, []);

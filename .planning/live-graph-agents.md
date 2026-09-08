@@ -15,7 +15,7 @@ An operator looking at a repository, build target, service or component should s
 - [x] One owned GUI execution displayed real registered locations and selected the exact conversation while retaining the local editor and graph cameras, with zero renderer errors. Scenario did not pass: the intentionally dirty editor vetoed normal quit. Cleanup confirmed.
 - [ ] Corrected visible-pointer/undo-before-close driver is reviewed and syntax-checked but requires separately authorized GUI execution; issue swarm-live-sprite-pointer-proof tracks this.
 - [x] Living design and actual source/Bazel mapping updated; PR136 implementation pushed.
-- [ ] Final ready push, Ditz sync and executive handoff.
+- [x] Final driver correction reviewed, Ditz accomplishments and follow-ups synced; ready push and executive handoff recorded in the step directory.
 
 ## Surprises & Discoveries
 
@@ -33,7 +33,7 @@ Use a React context overlay inside graph nodes so transcript changes do not alte
 
 The real registered fleet is connected to repository, build, declared service and authored component graph overlays. Native runs whose observations contain no file location are deliberately unplaced, not assigned guessed nodes; issue `swarm-native-graph-locations` tracks the necessary structured producer addition.
 
-Direct tests cover the requested negative worktree/status and interaction boundaries. The one actual packaged run rendered this session's real `docs/design/graph-agent-locations.md` event on the cockpit component and docs directory, then opened the exact conversation while retaining a deliberately dirty README buffer and graph cameras. It recorded zero renderer errors and owned cleanup, but not a green scenario: ordinary quit was vetoed by the dirty buffer. The driver now undoes only its own edit before close and requires a visible unobscured native pointer hit. Those corrections have not had a second GUI run because the assignment allowed at most one. ROOT receives this explicit boundary, not a clean-close or native-pointer overclaim.
+Direct tests cover the requested negative worktree/status and interaction boundaries. The one actual packaged run rendered this session's real `docs/design/graph-agent-locations.md` event on the cockpit component and docs directory, then checked the exact conversation after a programmatic click while retaining a deliberately dirty README buffer and graph cameras. It recorded zero renderer errors and owned cleanup, but not a green scenario: ordinary quit was vetoed by the dirty buffer. The driver now undoes only its own edit before close and requires a visible unobscured native pointer hit plus a trusted click witness on that exact sprite. The witness matters because the single registered conversation may already be selected. Those corrections have not had a second GUI run because the assignment allowed at most one. ROOT receives this explicit boundary, not a clean-close or native-pointer overclaim.
 
 ## Context and Orientation
 
