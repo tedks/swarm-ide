@@ -127,6 +127,9 @@ async function main() {
   await shot("05-build-relationships.png");
 
   stage = "fixed-source-draft";
+  await click(".task-editor-surface:not([hidden]) .task-document button", "Return to source");
+  await until(async () => (await has(".source-surface:not([hidden]) .cm-content")) &&
+    (await source())?.text === sourceBytes, "return to original implementation source");
   await click(".source-surface:not([hidden]) .cm-content");
   await key("End", ["control"]); await wc.insertText("\n// unsaved evaluator tour note\n");
   await until(async () => (await source())?.text.endsWith("// unsaved evaluator tour note\n"), "native unsaved edit");
