@@ -18,7 +18,8 @@ task, graphs and worktree inspection remain in the central work area.
 - [x] Preserve native runs, drafts and errors in secondary controls.
 - [x] Join reviewed navigation and worktree producer APIs with separate App mounts.
 - [x] Focused native/local checks and functional owned virtual proof.
-- [ ] Final readable-layout proof, documentation/push and handoff.
+- [x] Final readable-layout proof, documentation/push and implementation handoff;
+  ROOT retains normal merge and managed-app adoption.
 
 ## Surprises & Discoveries
 
@@ -108,6 +109,12 @@ unknown-receipt retention, worktree open/return and source/cameras. Send was
 intercepted before core, not delivered to an agent. Native review found and
 verified fixes for automatic-selection theft and transcript collapse. Final
 proof adds visible message-height and composer bounds, not only DOM presence.
+The final real registered journey passed in 2.073 seconds with no renderer
+errors and complete owned-desktop cleanup. Visible transcript height stayed
+145px before and 105px after the controlled receipt. The three final scoped
+Bazel targets (conversation, navigation, worktree) passed together in 18.309
+seconds; native review converged CLEAN. One opt-in live-send test remained
+disabled deliberately, because working agents were not test-message targets.
 No ROOT merge or managed-app adoption is performed by this implementation owner.
 
 ## Artifacts and Notes
