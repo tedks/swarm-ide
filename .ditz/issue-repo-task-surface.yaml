@@ -1,8 +1,9 @@
 id: repo-task-surface
 title: Connect real Ditz tasks to cockpit browsing and source navigation
-desc: 'Implement reviewed D1 docs/repo-task-surface.md and .planning/repo-task-surface.md:
-  T0 contract base, T1/T2 parallel pinned local metadata provider and UI, T3 real-data/owned-virtual
-  proof. Read-only; no provider policy dependency or agent dispatch.'
+desc: 'Implement the reviewed D1 plans in docs/repo-task-surface.md and .planning/repo-task-surface.md:
+  T0 shared contracts; parallel T1/T2 work on a local metadata provider pinned to
+  a revision and its UI; then T3 verification with real data on a virtual desktop
+  owned by the test. Read-only; no provider-policy dependency or agent dispatch.'
 type: feature
 component: workbench
 release:
@@ -61,6 +62,10 @@ log_events:
     incorrectly says the default worker does not install the real reader. Retained
     this umbrella because that explicit blocker remains. No missing real-provider
     authority is a blocker for its read-only T0-T3 scope.'
+- time: 2026-09-08T04:31:02-00:00
+  who: Ted Smith
+  what: updated description
+  comment: ""
 blocks:
 - repo-task-draft-provenance
 blocked_by:
