@@ -5,8 +5,8 @@ type: bugfix
 component: default
 release:
 reporter: Ted Smith <tedks@riseup.net>
-status: in_progress
-disposition:
+status: closed
+disposition: fixed
 creation_time: 2026-09-08T21:05:20-00:00
 references: []
 log_events:
@@ -30,3 +30,12 @@ log_events:
     Earlier failed driver/grid proofs retained separately. Same-ID sidebar re-click
     follow-up filed swarm-task-repeat-sidebar-reveal. Pushed ready PR awaits ROOT
     normal landing/adoption; no shared app or model turn.'
+- time: 2026-09-08T22:02:18-00:00
+  who: Ted Smith
+  what: 'closed: fixed'
+  comment: 'Normally merged PR139 (7231e402): explicit task/service/build node reveal,
+    exact source membership, hidden readiness, and manual-pan/control precedence;
+    task selection joined and service sprite-header grid fixed. Focused camera/task/sprite
+    checks and both TS boundaries passed, native final review clean, owned packaged
+    source/service/build and real pan-retention proof passed 5.09s with zero renderer
+    errors and cleanup. Same-task sidebar re-click remains tracked as swarm-task-repeat-sidebar-reveal.'
