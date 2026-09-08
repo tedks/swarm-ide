@@ -30,5 +30,12 @@ log_events:
     Alt-Tab, current focus, per-agent drafts and queued text. Switching or closing
     UI tabs must not send or terminate agents. Scoped steering sent to cockpit owner;
     see agent-tabs-feedback.md.
+- time: 2026-09-08T13:41:48-00:00
+  who: Ted Smith
+  what: commented
+  comment: Plan and Code now replace the empty lens tabs; explicit source/worktree
+    navigation retains dirty buffers and cameras. Conversation is wider and Activity
+    has one outer heading. Focused retention and migration tests pass; plan hierarchy
+    and automatic build joins are next.
 blocks:
 - swarm-usability-join
