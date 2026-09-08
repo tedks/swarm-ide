@@ -138,6 +138,8 @@ async function main() {
   await until(() => has(".work-log-settings[hidden]"), "keyboard closed settings");
   assert.equal(await run((s) => document.querySelector(s).getAttribute("aria-expanded"), toggle), "false");
   await retained();
+  const centralRefresh = process.env.SWARM_ACTIVITY_CENTRAL_REFRESH === "1"
+    ? await require("./central-refresh.cjs")({ repository, run, click, until, retained, shot, requests, stage: (next) => { stage = next; } }) : null;
   assert.equal(await fs.readFile(path.join(repository.root, repository.sourcePath), "utf8"), repository.sourceText, "source was never saved or replaced");
   assert.equal(await fs.readFile(repository.registry, "utf8"), repository.registryText, "registrations unchanged");
   const productMutations = requests.filter(({ type }) => /^(agent\.(prepare|launch|steer|cancel)|externalAgents\.(send|handoff)|trusted\.(prepare|launch|fork|send|decide|stop)|workLog\.(start|stop|record)|reconciliation\.start|fixture\.reset|file\.write)$/.test(type));
@@ -151,7 +153,7 @@ async function main() {
   await fs.writeFile(path.join(evidence, "proof.json"), JSON.stringify({ ok: true, packagedCore: true, keyboard: true,
     rawActivity: true, exactTimestamps: true, retained: true, sourceDiskUnchanged: true, controlledFixture: true, modelMessages: 0,
     actualSource: repository.sourcePath, graphCount: retainedCameras.length, observed, requests, productMutations, startupBuildRequests,
-    unexpectedMutations, rendererErrors: errors, interactionMilliseconds,
+    unexpectedMutations, rendererErrors: errors, interactionMilliseconds, centralRefresh,
     boundary: "Private JSONL proof fixture only; recorded invocations are not executed operations. Existing startup reconciliation recorded separately. No lifecycle glyph claim." }, null, 2));
 }
 main().catch(async (error) => {
