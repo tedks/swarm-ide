@@ -30,3 +30,10 @@ log_events:
   comment: ROOT cleared composed base2d6a9342. PR81 finalff0134e presentation correction
     ready; prior65focused/typechecks,bundle,nativeCLEAN unchanged. ROOT owns merge/adoption
     and closure.
+- time: 2026-09-08T03:15:03-00:00
+  who: Ted Smith
+  what: commented
+  comment: User manually confirms checking tasks no longer flashes. Accepted0348e2b
+    TaskPanel/CSS/tests unchanged through final0102861. Included in J3 independently
+    attributed67focused/typechecks PASS; native prior refresh and final timestamp
+    review CLEAN. ROOT owns landing/closure; no new work.
