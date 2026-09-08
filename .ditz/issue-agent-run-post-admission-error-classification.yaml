@@ -1,13 +1,13 @@
 id: agent-run-post-admission-error-classification
-title: Audit post-admission launch failures for uncertain delivery classification
-desc: 'Anthropic W2B final review flagged out-of-delta boundary: service.ts after
-  store.admit can return a store.read error, while bridge-client mutation mapping
-  treats ordinary storage codes as rejected rather than delivery-unknown. Default
-  file-store.read uses admitted in-memory entries, so triggering conditions need a
-  bounded fault-injection audit, not an asserted live bug. Verify failure-after-persist/uncertain
-  durability cannot imply no admission or enable unsafe retry. Existing real-policy
-  gate remains closed; Runtime/integration owns follow-up before credentialed vertical
-  proof.'
+title: Check whether failures after saving a launch are incorrectly reported as rejected
+desc: 'Anthropic''s W2B review identified a case outside that change: after store.admit,
+  service.ts can return a store.read error, while bridge-client maps ordinary storage
+  errors to rejected instead of delivery-unknown. The default file-store.read uses
+  already admitted in-memory entries, so reproduce the triggering conditions with
+  targeted fault injection before calling it a live bug. Check that failure after
+  persistence, or uncertain durability, cannot imply that no run was admitted or allow
+  an unsafe retry. The real-policy profile remains unavailable. Runtime/integration
+  owns this follow-up before an authenticated end-to-end test.'
 type: task
 component: default
 release:
@@ -57,5 +57,13 @@ log_events:
     tests/all8/full24 build and owned virtual agent journey passed. OpenAI+Google
     CLEAN; Anthropic session limit missing. Production policy and watched-app adoption
     remain gated.
+- time: 2026-09-08T04:27:48-00:00
+  who: Ted Smith
+  what: changed title
+  comment: ""
+- time: 2026-09-08T04:27:48-00:00
+  who: Ted Smith
+  what: updated description
+  comment: ""
 blocks:
 - agent-run-vertical-proof
