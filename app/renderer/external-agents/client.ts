@@ -104,7 +104,7 @@ class ExternalObserver {
             notice: missing ? "Selected session is no longer registered. Choose another registered session." : this.state.selected && this.state.stale ? this.state.notice : "" });
         }
       } else if (result.kind === "read" && selected()) {
-        // IDs are offsets within this tail, not append identities. Replace it.
+        // Replace the bounded tail; stable entry IDs survive a shifted read window.
         if (result.detail.session.status === "unavailable") this.publish({ detail: this.revoke(this.state.detail ?? result.detail), stale: true,
           notice: "Transcript unavailable; retaining the last recorded evidence. Automatic reads will retry while visible." });
         else this.publish({ detail: result.detail, notice: "", stale: false });
@@ -133,6 +133,6 @@ export function useExternalAgents(bridge: SwarmBridge | undefined, ready: boolea
     configure(); document.addEventListener("visibilitychange", configure);
     return () => { document.removeEventListener("visibilitychange", configure); observer.pause(); };
   }, [observer, bridge, ready, generation, visible]);
-  return { ...state, read: observer.read, refresh: observer.refresh, handoff: observer.handoff };
+  return { ...state, fleet: state.snapshot?.fleet ?? [], read: observer.read, refresh: observer.refresh, handoff: observer.handoff };
 }
 export type ExternalClient = ReturnType<typeof useExternalAgents>;
