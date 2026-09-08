@@ -37,6 +37,7 @@ filegroup(
         "//tools/demo-agents:sources",
         "//tools/build-graph:sources",
         "//tools/session-registration:sources",
+        "//tools/work-log:sources",
     ],
 )
 
