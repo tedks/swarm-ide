@@ -127,6 +127,14 @@ async function selectWorktree(value: string, root: string) {
 }
 
 describe("ordinary worktree navigation in the mounted cockpit", () => {
+  it("places fresh-launch graph agents against a canonical root learned without switching worktrees", async () => {
+    const test = setup(); render(<App />);
+    const context = await screen.findByRole("region", { name: "Worktree context" });
+    expect(context.textContent).toContain("/repo/master");
+    expect(test.request.mock.calls.filter(([request]) => request.type === "workspace.open").map(([request]) => request))
+      .toEqual([expect.objectContaining({ type: "workspace.open", sessionId: null })]);
+    expect(test.request.mock.calls.some(([request]) => request.type === "workspace.snapshot")).toBe(false);
+  });
   it("keeps separate same-path dirty editors and steering through ordinary browsing and Back/Forward", async () => {
     const test = setup(); render(<App />);
     await openSource("A disk source\n");
