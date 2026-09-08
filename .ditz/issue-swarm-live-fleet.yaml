@@ -25,7 +25,12 @@ log_events:
   who: Ted Smith
   what: blocks swarm-owner-steering
   comment: ""
+- time: 2026-09-08T03:40:07-00:00
+  who: Ted Smith
+  what: blocks swarm-operator-demo
+  comment: ""
 blocks:
 - swarm-owner-steering
+- swarm-operator-demo
 blocked_by:
 - swarm-hour-plan
