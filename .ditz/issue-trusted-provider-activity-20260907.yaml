@@ -1,0 +1,16 @@
+id: trusted-provider-activity-20260907
+title: Readable trusted provider activity
+desc: ""
+type: feature
+component: agents
+release:
+reporter: Ted Smith <tedks@riseup.net>
+status: unstarted
+disposition:
+creation_time: 2026-09-08T00:36:03-00:00
+references: []
+log_events:
+- time: 2026-09-08T00:36:03-00:00
+  who: Ted Smith
+  what: created
+  comment: ""
