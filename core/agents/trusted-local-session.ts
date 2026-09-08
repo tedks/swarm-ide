@@ -108,11 +108,13 @@ export class TrustedLocalSession {
   private completedTurns = new Set<string>();
   private dispatch?: { id: string | null; done: boolean; early: Array<{ method: string; params: unknown }>; earlyBytes: number; activityId?: string };
   private closePromise?: Promise<void>;
+  private cleaned = false;
   private stopPromise?: Promise<void>;
   private interrupted?: () => void;
   private exitTimer?: ReturnType<typeof setTimeout>;
   private stdoutEnded = false;
   private model: string | null = null;
+  private effort: "low" | "medium" | "high" | "xhigh" | null = null;
   private successfulTurn: string | null = null;
 
   constructor(private options: TrustedLocalSessionOptions, private onChange: () => void) {
@@ -124,6 +126,7 @@ export class TrustedLocalSession {
     return { ...this.state, approvals: this.state.approvals.map((approval) => ({ ...approval, choices: [...approval.choices] })) };
   }
   activity(): TrustedLocalActivity[] { return this.activities.map((entry) => ({ ...entry })); }
+  cleanupConfirmed(): boolean { return this.cleaned; }
   forkPoint(): TrustedForkPoint | null {
     return !this.busy && this.state.status === "ready" && this.dispatch?.done && this.successfulTurn === this.state.turnId && this.state.threadId && this.state.turnId
       ? { threadId: this.state.threadId, turnId: this.state.turnId } : null;
@@ -202,6 +205,7 @@ export class TrustedLocalSession {
       try {
         const result = await Promise.race([this.transport?.close() ?? Promise.resolve({ status: "not-needed" }),
           new Promise<{ status: string }>((resolve) => { timer = setTimeout(() => resolve({ status: "unknown" }), 5000); })]);
+        this.cleaned = result.status === "confirmed" || result.status === "not-needed";
         if (this.state.status !== "failed") {
           this.state.status = result.status === "confirmed" || result.status === "not-needed" ? "closed" : "failed";
           this.state.message = this.state.status === "closed" ? "Local session closed." : "Session closed, but owned process cleanup is unconfirmed.";
@@ -212,9 +216,10 @@ export class TrustedLocalSession {
     });
   }
 
-  async start(prompt: string, model: string | null, fork?: TrustedForkPoint): Promise<void> {
+  async start(prompt: string, model: string | null, fork?: TrustedForkPoint, effort?: "low" | "medium" | "high" | "xhigh" | null): Promise<void> {
     if (this.started || !this.active()) throw new Error("This session cannot be started again.");
     this.started = true; this.busy = true; this.model = model;
+    this.effort = effort ?? null;
     try {
       input(prompt, 128 * 1024);
       if (model !== null) identity(model);
@@ -292,7 +297,7 @@ export class TrustedLocalSession {
     this.append(`\nYou: ${text}\n\n`);
     if (!this.active()) throw new Error("Session stopped before dispatch.");
     const response = object(await this.request("turn/start", { threadId: this.state.threadId, input: content,
-      ...(this.model === null ? {} : { model: this.model }) }));
+      ...(this.model === null ? {} : { model: this.model }), ...(this.effort === null ? {} : { effort: this.effort }) }));
     this.confirm(identity(object(response.turn).id));
   }
   private confirm(id: string): void {

@@ -281,6 +281,12 @@
     ],
     "sourcePaths": [
       "core/plans.ts",
+      "core/plan-generation.ts",
+      "protocol/plan-generation.ts",
+      "app/renderer/plans/PlanGeneration.tsx",
+      "app/renderer/plans/generation-settings.ts",
+      "app/renderer/plans/use-plan-generation.ts",
+      "app/renderer/plans/start-generation.ts",
       "core/tasks/draft-context.ts",
       "app/renderer/plans/DesignWorkspace.tsx",
       "app/renderer/plans/design.css",
@@ -294,6 +300,7 @@
     ],
     "taskIds": [
       "swarm-living-design",
+      "swarm-generate-component-plan",
       "swarm-plan-index-startup"
     ],
     "contextRefs": [],
@@ -313,9 +320,9 @@
         },
         {
           "targetId": "design:agents",
-          "label": "Fixed task/source context",
+          "label": "Task context & design generation",
           "kind": "data",
-          "detail": "A deliberate attachment carries revision-pinned task text alongside the draft's fixed source. Core preparation materializes and revalidates that context; merely selecting a task does not launch an agent."
+          "detail": "Explicit task attachment carries pinned context. Generate component plan deliberately starts a normal agent in the selected worktree using saved prompt/model/reasoning; its repository files pass the ordinary plan reader before display. Selection alone starts no agent."
         }
       ],
       "buildTargets": [
@@ -331,6 +338,40 @@
               "label": "//tools:build-app",
               "relation": "tools"
             }
+          ]
+        },
+        {
+          "label": "//tools/component-plan:checks",
+          "role": "Plan generation settings, absence and lifecycle checks",
+          "dependencies": [
+            { "label": "//:quality_sources", "relation": "data" },
+            { "label": "//tools/component-plan:sources", "relation": "data" }
+          ]
+        },
+        {
+          "label": "//tools/component-plan:smoke",
+          "role": "Owned packaged Generate-to-graph proof with a controlled provider",
+          "dependencies": [
+            { "label": "//:desktop-bundle", "relation": "data" },
+            { "label": "//tools/component-plan:sources", "relation": "data" },
+            { "label": "//tools:virtual-desktop-run.sh", "relation": "data" }
+          ]
+        },
+        {
+          "label": "//tools/component-plan:live",
+          "role": "Explicitly authorized single real generation in an owned repository",
+          "dependencies": [
+            { "label": "//tools/component-plan:live-bundle", "relation": "data" },
+            { "label": "//:quality_sources", "relation": "data" }
+          ]
+        },
+        {
+          "label": "//tools/component-plan:live-bundle",
+          "role": "Bundle the normal owner and contained real-output checks",
+          "dependencies": [
+            { "label": "//tools/component-plan:sources", "relation": "srcs" },
+            { "label": "//:quality_sources", "relation": "srcs" },
+            { "label": "//:package.json", "relation": "srcs" }
           ]
         },
         {
