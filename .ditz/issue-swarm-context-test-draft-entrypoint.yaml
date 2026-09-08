@@ -1,0 +1,21 @@
+id: swarm-context-test-draft-entrypoint
+title: Update Context tests to use the current agent draft entrypoint
+desc: 'Five tests/context-workbench.test.tsx setups fail looking for the old visible
+  Ask an agent about this focus button. Observed during PR105 narrow directory Evidence
+  disclosure cleanup: all8 context-metrics tests and updated Back/current directory
+  assertions pass; aggregate48PASS5FAIL. Preserve source-handoff and cancellation
+  assertions while replacing only retired setup gestures with current dock/palette
+  entry. No product lifecycle rewrite or waived assertions. Evidence /tmp/swarm-ide-usability.BirZCk/activity-ui/context-disclosure-corrected.log.'
+type: task
+component: default
+release:
+reporter: Ted Smith <tedks@riseup.net>
+status: unstarted
+disposition:
+creation_time: 2026-09-08T14:01:13-00:00
+references: []
+log_events:
+- time: 2026-09-08T14:01:13-00:00
+  who: Ted Smith
+  what: created
+  comment: ""
