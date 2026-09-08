@@ -18,3 +18,13 @@ log_events:
   who: Ted Smith
   what: started
   comment: ""
+- time: 2026-09-08T15:48:08-00:00
+  who: Ted Smith
+  what: commented
+  comment: Implemented one named conversation header with right-aligned Terminal copy,
+    Worktree and Details icons. Removed the permanent Native/New category; explicit
+    Agent tools retains native controls and real drafts keep tabs. PR120 pushed. Focused
+    74 checks/types passed before the native-review focus correction; real registered
+    ROOT/child packaged read-only proof passed 1.497s with keyboard switching, retained
+    source/drafts/cameras, 320px layout, zero errors and cleanup. No messages sent.
+    Final focus regression/check/review in progress.
