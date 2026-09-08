@@ -22,3 +22,18 @@ log_events:
   who: Ted Smith
   what: started
   comment: ""
+- time: 2026-09-08T05:37:41-00:00
+  who: Ted Smith
+  what: commented
+  comment: Moved the existing single WorkLogPanel from the scrolling/folding agent
+    sidebar into a persistent dock column immediately left of Recent Activity. Kept
+    Start/Stop/settings, core generation, outcome/agent/task callbacks and central
+    detail unchanged; no backend, model or autostart behavior changed. Independent
+    vertical columns retain useful minimum widths with narrow horizontal scrolling.
+    Component docs/graph mapping updated. PR98 pushed05514d6;31 focused tests/types/syntax
+    PASS, native implementation review CLEAN. One actual packaged wide/compact layout
+    journey PASS2.112s on owned:90/55332 with single panel, sidebar folding independence,
+    native settings/outcome navigation and exact dirty source/cursor/cameras/graph
+    retention, zero renderer errors/resize warnings/control writes and cleanup1. Used
+    a labelled controlled saved outcome, not a generated summary/provider proof. ROOT
+    normal merge/adoption and issue closure pending.
