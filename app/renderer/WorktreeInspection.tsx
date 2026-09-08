@@ -43,10 +43,10 @@ export function WorktreeInspection({ selection, bridge, generation, onReturn }: 
       <button onClick={() => setRefresh((value) => value + 1)}>Refresh file</button></nav>
     {notice ? <p role="status">{notice}</p> : !shown ? <p role="status">Reading worktree…</p> : null}
     {view === "source" && shown ? shown.content === null ? <p>File no longer exists. See its worktree diff.</p> : <pre className="worktree-source" tabIndex={0}>{shown.content}</pre> : null}
-    {view !== "source" && (shown || selection.patch) ? <div className="worktree-diff" tabIndex={0}>
+    {view !== "source" && (view === "patch" ? selection.patch : shown) ? <div className="worktree-diff" tabIndex={0}>
       {view === "diff" ? <p>Current changes against HEAD in this worktree.</p> : null}
       {view === "diff" && shown?.diffNotice ? <p role="status">{shown.diffNotice}</p> : null}
-      {diff ? <pre>{diff.split("\n").map((line, index) => <span key={index} className={line.startsWith("+") ? "patch-addition" : line.startsWith("-") ? "patch-deletion" : ""}>{line}{"\n"}</span>)}</pre> : <p>No tracked changes for this file.</p>}
+      {diff ? <pre>{diff.split("\n").map((line, index) => <span key={index} className={line.startsWith("+") ? "patch-addition" : line.startsWith("-") ? "patch-deletion" : ""}>{line}{"\n"}</span>)}</pre> : view === "diff" && !shown?.diffNotice ? <p>No tracked changes for this file.</p> : null}
     </div> : null}
   </section>;
 }

@@ -177,7 +177,7 @@ button.truth-dot:disabled { cursor: wait; opacity: 0.72; }
 .worktree-inspection small, .worktree-location { color: #9ab5a8; }
 .worktree-location { padding: 0 10px; overflow-wrap: anywhere; font-size: 10px; }
 .worktree-inspection nav { display: flex; gap: 6px; padding: 8px 10px; }
-.worktree-inspection button { background: #19322a; color: #cae8d7; border: 1px solid #3a6452; border-radius: 4px; padding: 5px 8px; cursor: pointer; }
+.worktree-inspection button { background: #19322a; color: #cae8d7; border: 1px solid #3a6452; border-radius: 4px; padding: 5px 8px; cursor: pointer; font: 11px system-ui; }
 .worktree-inspection button[aria-pressed="true"] { background: #315943; }
 .worktree-inspection pre { margin: 0; padding: 12px; font: 12px/1.6 monospace; white-space: pre; }
 .worktree-inspection p { padding-inline: 10px; }
@@ -195,7 +195,7 @@ button.truth-dot:disabled { cursor: wait; opacity: 0.72; }
 .fleet-event-detail pre { padding: 10px; background: #081714; overflow: auto; font-size: 12px; }
 .design-center { grid-column: 2; grid-row: 3; min-height: 0; min-width: 0; overflow: hidden; }
 .design-center[hidden] { display: none; }
-.design-open-button { background: #19322a; color: #cae8d7; border: 1px solid #3a6452; border-radius: 4px; padding: 5px 8px; cursor: pointer; }
+.design-open-button { background: #19322a; color: #cae8d7; border: 1px solid #3a6452; border-radius: 4px; padding: 4px 8px; cursor: pointer; font: 10px system-ui; justify-self: start; }
 .topology-node { width: 148px; min-width: 0; min-height: 48px; padding: 8px 10px; display: flex; flex-direction: column; gap: 2px; overflow: hidden; border: 1px solid #31504d; border-radius: 6px; background: linear-gradient(145deg, #142222, #0c1718); color: #d0dedb; box-shadow: 0 5px 20px #0005; }
 .topology-node.is-focused { border-color: var(--green); box-shadow: 0 0 0 1px #57d3ad44, 0 0 22px #57d3ad22; }
 .topology-node.is-ambiguous { border-style: dashed; }

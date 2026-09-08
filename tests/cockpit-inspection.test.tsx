@@ -21,6 +21,16 @@ function response(input: CoreRequest, content: string): CoreResponse {
     worktreeInspection: { sessionId: input.sessionId, path: input.path, label: "C7", worktree: "/repos/agent-worktree", content, diff: "-old\n+agent change\n" } };
 }
 describe("operator cockpit inspection", () => {
+  it("does not present unavailable current diff as empty just because a recorded patch exists", async () => {
+    const bridge: SwarmBridge = { request: vi.fn(async () => { throw new Error("Worktree disconnected"); }), onEvent: () => () => {} };
+    render(<WorktreeInspection selection={{ ...selection, patch: "+recorded" }} bridge={bridge} generation={1} onReturn={vi.fn()} />);
+    await screen.findByText("Worktree disconnected");
+    fireEvent.click(screen.getByRole("button", { name: "Worktree diff" }));
+    expect(screen.queryByText("No tracked changes for this file.")).toBeNull();
+    expect(document.querySelector(".worktree-diff")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Recorded patch" }));
+    expect(screen.getByText("+recorded")).toBeTruthy();
+  });
   it.each(["/repo/file.ts", "../file.ts", "./file.ts"])("keeps noncanonical event path %s as an actionable notice, not a renderer exception", async (path) => {
     const request = vi.fn(), bridge: SwarmBridge = { request, onEvent: () => () => {} };
     render(<WorktreeInspection selection={{ ...selection, path }} bridge={bridge} generation={1} onReturn={vi.fn()} />);
