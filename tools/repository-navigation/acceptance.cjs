@@ -121,90 +121,92 @@ async function main() {
   assert(agent.ok && agent.agent.snapshot.runs.length === 0 && !agent.agent.snapshot.capabilities.controls.launch);
   const facts = ["actual archive main/preload/core", "actual committed repository root and directory activation", "native Enter opens exact source", "zero agent runs"];
   facts.push("Q1 exact foreground file identity and actual broker content receipt");
-  let builtServiceEvidence;
-  const providedDeclaration = "examples/checkout-world/services/fraudcheck/fraudcheck.proto";
-  const requiredDeclaration = "examples/checkout-world/services/payments/payments.proto";
+  let declaredServiceEvidence;
+  const manifestDeclaration = "navigation-proof/service.swarm.json";
+  const providedDeclaration = "navigation-proof/validator.proto";
+  const requiredDeclaration = "navigation-proof/writer.proto";
+  const serviceId = "service:navigation-validator";
+  const providedId = serviceId + ":provided:interface:validate";
+  const requiredId = serviceId + ":required:interface:writer.write";
   const serviceNode = (id) => `[data-topology='service'] .react-flow__node[data-id=${JSON.stringify(id)}]`;
 
   if (fixture.kind === "swarm") {
     stage = "q1-real-service-context";
-    await until(async () => !(await snapshot()).jobs.some((job) => job.status === "running"), "initial topology attempt settled", 90000);
-    if ((await snapshot()).reconciliation.status !== "green") {
-      await click("#reconcile-success");
-      await until(async () => (await snapshot()).reconciliation.status === "green", "actual package Bazel service artifact", 90000);
-    }
-    const built = await snapshot();
-    builtServiceEvidence = built.serviceContext;
-    assert.equal(built.serviceContext?.status, "observed");
-    assert.equal(built.serviceContext.repositoryId, built.project.id);
-    assert.equal(built.serviceContext.buildId, built.revisions.built.id);
-    assert(!(await contextText("services")).includes("Implementation member of"), "ordinary core/files.ts must not inherit FraudCheck ownership");
-    assert((await contextText("services")).includes("other service coverage unavailable"));
+    await until(async () => { const current = await snapshot(); return current.reconciliation.status === "green" &&
+      current.serviceDeclarations?.services.some((service) => service.id === serviceId); }, "automatic native service declaration");
+    const declared = await snapshot();
+    declaredServiceEvidence = declared.serviceDeclarations;
+    assert.equal(declaredServiceEvidence.status, "current");
+    assert.equal(declaredServiceEvidence.repositoryId, declared.project.id);
+    assert.equal(declaredServiceEvidence.sourceFingerprint, declared.revisions.working.fingerprint);
+    assert.equal(declared.serviceContext, undefined, "source declarations are not a compiled artifact");
+    assert.equal(declared.revisions.built.id, ""); assert.equal(declared.revisions.deployed.id, "");
+    const record = declaredServiceEvidence.services.find((service) => service.id === serviceId);
+    assert.deepEqual(record.implementationPaths, ["navigation-proof/validator.ts"]);
+    assert.deepEqual(record.interfaces.map(({ id, role, path }) => ({ id, role, path })), [
+      { id: providedId, role: "provided", path: providedDeclaration }, { id: requiredId, role: "required", path: requiredDeclaration },
+    ]);
+    assert.equal(record.owningTarget, undefined);
+    assert(!(await contextText("services")).includes(record.displayName), "ordinary core/files.ts has no service association");
     await screenshot("q1-ordinary-source.png");
-    const implementation = "examples/checkout-world/services/fraudcheck/fraudcheck.ts";
-    const provided = "examples/checkout-world/services/fraudcheck/fraudcheck.proto";
-    const required = "examples/checkout-world/services/payments/payments.proto";
     const inspected = [];
-    for (const [file, relation, owns] of [[implementation, "Implementation member of", true], [provided, "Declares provided interface", true], [required, "Declares required interface", false]]) {
+    for (const [file, relation] of [["navigation-proof/validator.ts", "Implementation"], [providedDeclaration, "Provides"], [requiredDeclaration, "Requires"]]) {
       await openPath(file); await until(async () => await contextSubject() === file, `Q1 inspected ${file}`);
       const bytes = await fs.readFile(path.join(fixture.root, file), "utf8");
       assert.equal(await run(() => document.querySelector(".cm-content").cmView.rootView.view.state.doc.toString()), bytes);
       const serviceText = await contextText("services");
-      assert(serviceText.includes(relation)); assert.equal(serviceText.includes("Implementation member of"), owns);
-      inspected.push({ file, relation, owns, serviceText });
+      assert(serviceText.includes(relation) && serviceText.includes(record.displayName));
+      inspected.push({ file, relation, serviceText });
       await screenshot(`q1-${path.basename(file)}.png`);
     }
     const beforeLink = await contextSubject();
-    await focus(serviceNode("service:fraud-check")); key("Enter", ["shift"]);
-    await until(async () => await contextSubject() === "service:fraud-check", "explicit graph inspection owns Context while source stays visible");
+    await focus(serviceNode(serviceId)); key("Enter", ["shift"]);
+    await until(async () => await contextSubject() === serviceId, "explicit graph inspection owns Context while source stays visible");
     assert.equal(await run(() => document.querySelector(".source-surface header strong").textContent), beforeLink);
     await run((destination) => {
       const link = [...document.querySelectorAll("[data-context-section='services'] .source-link")].find((node) => node.textContent.includes(destination));
       if (!link) throw new Error("Missing actual required-declaration link"); link.click();
-    }, "Payments.Authorize");
-    await until(async () => await contextSubject() === required, "explicit built declaration link opens current real source");
+    }, "Writer.Write");
+    await until(async () => await contextSubject() === requiredDeclaration, "explicit declared interface link opens current real source");
     stage = "q2-real-definition-activation";
     const declarationGestures = [];
     for (const [id, destination, role, gesture] of [
-      ["service:fraud-check", provided, "provided", "click"],
-      ["interface:payments.authorize", required, "required", "keyboard"],
-      ["interface:fraud-check.assess", provided, "provided", "keyboard"],
+      [serviceId, manifestDeclaration, "service", "click"],
+      [requiredId, requiredDeclaration, "required", "keyboard"],
+      [providedId, providedDeclaration, "provided", "keyboard"],
     ]) {
       const camera = await viewport("service");
       if (gesture === "click") await click(serviceNode(id)); else { await focus(serviceNode(id)); key("Enter"); }
       await until(async () => await contextSubject() === destination, `Q2 actual ${id} declaration`);
-      await until(() => run((expected) => document.querySelector(".tasks-reveal-notice")?.textContent.includes(expected), role === "provided" ? "Provided interface declarations" : "Required interface declarations"), "Q2 role notice");
       const bytes = await fs.readFile(path.join(fixture.root, destination), "utf8");
       assert.equal(await run(() => document.querySelector(".cm-content").cmView.rootView.view.state.doc.toString()), bytes);
       await directory(path.dirname(destination)); await paint();
       assert.equal(await viewport("service"), camera, "definition navigation preserves service camera");
-      const notice = await run(() => document.querySelector(".tasks-reveal-notice").textContent);
-      if (role === "required") assert(notice.includes("external implementation unavailable"));
-      declarationGestures.push({ id, destination, role, gesture, notice });
+      declarationGestures.push({ id, destination, role, gesture });
     }
     await screenshot("q2-provided-declaration.png");
-    await fs.writeFile(path.join(evidence, "q2-declaration-proof.json"), JSON.stringify({ declarationGestures, actualBazel: true, actualBrokerBytes: true, callsites: false, externalServiceNode: "mounted-only", ambiguity: "mounted-only" }, null, 2));
-    facts.push("Q2 actual service click and interface Enter open recorded provided/required declarations through package broker; service camera preserved; no callsite or external implementation claim");
+    await fs.writeFile(path.join(evidence, "q2-declaration-proof.json"), JSON.stringify({ declarationGestures, compiledArtifact: false, actualBrokerBytes: true, callsites: false, externalImplementation: false }, null, 2));
+    facts.push("Q2 declared service/interface activation opens actual authored source; service camera retained; no compiled/callsite/external implementation claim");
     stage = "q1-retained-failed-publication";
-    const manifestPath = path.join(fixture.root, "examples/checkout-world/services/fraudcheck/service.swarm.json");
+    const manifestPath = path.join(fixture.root, manifestDeclaration);
     const manifestBytes = await fs.readFile(manifestPath);
     try {
       await fs.writeFile(manifestPath, "{ intentionally invalid owned-test manifest\n");
-      await until(async () => (await snapshot()).revisions.working.fingerprint !== built.revisions.working.fingerprint, "actual working change observed");
-      const epoch = (await snapshot()).reconciliation.epoch;
-      await click("#reconcile-success");
-      await until(async () => { const next = await snapshot(); return next.reconciliation.epoch > epoch && next.reconciliation.status === "red"; }, "actual Bazel failure retains old publication", 90000);
-      assert.deepEqual((await snapshot()).serviceContext, built.serviceContext, "failed publication preserves exact original context evidence");
+      await until(async () => { const next = await snapshot(); return next.revisions.working.fingerprint !== declared.revisions.working.fingerprint &&
+        next.reconciliation.status === "red"; }, "automatic invalid declaration refresh retains old publication");
+      assert.deepEqual((await snapshot()).serviceDeclarations, declared.serviceDeclarations, "failed refresh preserves the exact original source receipt");
       assert.equal(await run(() => document.querySelector("[data-context-section='services'] [data-context-freshness]")?.textContent), "retained");
       await screenshot("q1-retained-failure.png");
     } finally { await fs.writeFile(manifestPath, manifestBytes); }
+    await until(async () => (await snapshot()).reconciliation.status === "green", "restored declaration observed automatically");
     await openPath(fixture.sourcePath); await until(async () => await contextSubject() === fixture.sourcePath, "return ordinary source attention");
     await directory(fixture.directory);
-    await fs.writeFile(path.join(evidence, "q1-context-proof.json"), JSON.stringify({ buildId: built.revisions.built.id, sourceFingerprint: built.revisions.built.sourceFingerprint, inspected, declarationLinkOpened: true, rendererErrors: [] }, null, 2));
-    facts.push("Q1 actual Bazel artifact, ordinary/implementation/provided/required distinction, explicit declaration link, graph inspection without source activation", "Q1 actual owned manifest build failure retains original build identity and historical relationships");
+    await fs.writeFile(path.join(evidence, "q1-context-proof.json"), JSON.stringify({ sourceFingerprint: declaredServiceEvidence.sourceFingerprint, observedAt: declaredServiceEvidence.observedAt, inspected, declarationLinkOpened: true, rendererErrors: [] }, null, 2));
+    facts.push("Q1 source-backed service/interface links, ordinary-source negative and graph inspection without source activation", "Q1 invalid native declaration retains source provenance; restored declarations refresh automatically");
   } else {
-    assert((await contextText("services")).includes("No services") && (await contextText("services")).includes("No matching service observation."), "unfamiliar/degraded repository does not invent service facts");
-    assert((await contextText("capture")).includes("No targets") && (await contextText("capture")).includes("No build observation yet."));
+    assert((await contextText("services")).includes("No services"), "unfamiliar/degraded repository does not invent service facts");
+    assert((await snapshot()).serviceDeclarations?.services.length === 0 || !(await snapshot()).serviceDeclarations, "no declarations in unrelated fixture");
+    assert((await contextText("capture")).includes("No targets"));
   }
 
   if (["invalid-name", "fingerprint-budget"].includes(fixture.kind)) {
@@ -401,7 +403,11 @@ async function main() {
 
     if (fixture.kind === "swarm") {
       stage = "q2-retained-service-core-recovery";
-      assert(builtServiceEvidence?.status === "observed");
+      await until(async () => (await snapshot()).reconciliation.status === "green", "current declaration receipt before recovery fault");
+      // Automatic observation may have adopted source changes since Q1. Capture
+      // this exact last usable receipt before making source evidence unavailable.
+      declaredServiceEvidence = (await snapshot()).serviceDeclarations;
+      assert.equal(declaredServiceEvidence?.status, "current");
       const budgetPath = path.join(fixture.root, "q2-fingerprint-budget.bin");
       const oversized = await fs.open(budgetPath, "wx");
       try { await oversized.truncate(64 * 1024 * 1024 + 1); } finally { await oversized.close(); }
@@ -431,13 +437,13 @@ async function main() {
           document.addEventListener("focusin", focusEvent, true); document.addEventListener("keydown", keyEvent, true);
           globalThis.__q2FocusTrace = { record, finish: () => { document.removeEventListener("focusin", focusEvent, true); document.removeEventListener("keydown", keyEvent, true); return { events, dropped }; } };
           record("before-focus");
-        }, serviceNode("service:fraud-check"));
+        }, serviceNode(serviceId));
         let gestureFailure;
         try {
-          await focus(serviceNode("service:fraud-check"));
+          await focus(serviceNode(serviceId));
           await run(() => globalThis.__q2FocusTrace.record("after-focus"));
           key("Enter", ["shift"]);
-          await until(async () => await contextSubject() === "service:fraud-check", "Q2 retained service inspect after recovery");
+          await until(async () => await contextSubject() === serviceId, "Q2 retained service inspect after recovery");
         } catch (error) { gestureFailure = error; throw error; }
         finally {
           try {
@@ -446,26 +452,27 @@ async function main() {
           } catch (diagnosticError) { if (!gestureFailure) throw diagnosticError; console.warn("Q2 diagnostic unavailable; original gesture failure preserved"); }
         }
         const retained = await contextText("services");
-        for (const value of [builtServiceEvidence.buildId, builtServiceEvidence.sourceFingerprint, builtServiceEvidence.inputDigest, builtServiceEvidence.observedAt]) assert(retained.includes(value), "Q2 original service provenance remains visible");
+        for (const value of [`repo://${manifestDeclaration}`, declaredServiceEvidence.observedAt]) assert(retained.includes(value), "Q2 original declaration provenance remains visible");
+        assert(!retained.includes(declaredServiceEvidence.sourceFingerprint), "source receipt hash stays internal, not Context display");
         assert.equal(await run(() => document.querySelector("[data-context-section='services'] [data-context-freshness]")?.textContent), "retained");
-        assert(await run(() => !document.querySelector(".global-truth.status-green") && !document.querySelector("[data-topology='service'] .status-green")), "unavailable fingerprint never green");
+        assert(await run(() => !document.querySelector("[data-topology='service'] .truth-dot.status-green")), "unavailable source never confers current service authority; build status is independent");
         await screenshot("q2-retained-service-recovery.png");
-        const destination = path.join(fixture.root, providedDeclaration), held = `${destination}.q2-held`;
+        const destination = path.join(fixture.root, manifestDeclaration), held = `${destination}.q2-held`;
         await fs.rename(destination, held);
         try {
-          await click(serviceNode("service:fraud-check"));
+          await click(serviceNode(serviceId));
           await until(() => run(() => document.querySelector(".tasks-reveal-notice")?.textContent.includes("No workspace file")), "Q2 retained link revalidates deleted current destination");
-          assert.equal(await contextSubject(), "service:fraud-check"); await preserved();
+          assert.equal(await contextSubject(), serviceId); await preserved();
         } finally { await fs.rename(held, destination); }
-        await click(serviceNode("service:fraud-check"));
-        await until(async () => await contextSubject() === providedDeclaration, "Q2 explicit retained declaration after recovery");
+        await click(serviceNode(serviceId));
+        await until(async () => await contextSubject() === manifestDeclaration, "Q2 explicit retained declaration after recovery");
         assert.equal(await run(() => document.querySelector(".cm-content").cmView.rootView.view.state.doc.toString()), await fs.readFile(destination, "utf8"));
-        assert((await run(() => document.querySelector(".tasks-reveal-notice").textContent)).includes("Retained built artifact"));
+        assert.equal(await run(() => document.querySelector("[data-context-section='services'] [data-context-freshness]")?.textContent), "retained");
         await returnSource();
-        await fs.writeFile(path.join(evidence, "q2-recovery-proof.json"), JSON.stringify({ recovery, originalEvidence: builtServiceEvidence, retainedContextText: retained,
+        await fs.writeFile(path.join(evidence, "q2-recovery-proof.json"), JSON.stringify({ recovery, originalEvidence: declaredServiceEvidence, retainedContextText: retained,
           currentCore: (await snapshot()).revisions, sourceDraftCursorAndServiceCameraRetained: true, deletedCurrentDestinationRejected: true,
           explicitRestoredDestinationOpened: true, noNavigationReplay: true, modelTurns: 0 }, null, 2));
-        facts.push("Q2 actual Swarm core replacement retains original built service evidence as historical while new fingerprint unavailable; explicit declaration revalidates deleted/restored current file; dirty source/cursor/draft/camera retained");
+        facts.push("Q2 owned core replacement retains source-declaration provenance while the new fingerprint is unavailable; explicit declaration revalidates deleted/restored current file; dirty source/cursor/draft/camera retained");
       } finally { await fs.unlink(budgetPath); }
     }
     if (fixture.kind === "unfamiliar") {

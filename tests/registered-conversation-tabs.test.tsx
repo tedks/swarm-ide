@@ -8,7 +8,7 @@ import { emptyLiveAgentState } from "../app/renderer/agents/live-state";
 import { AgentConversation, AgentConversationActions } from "../app/renderer/external-agents/AgentConversation";
 import { SteeringMemory } from "../app/renderer/external-agents/steering-memory";
 import type { ExternalAgentSummary, ExternalDetail } from "../protocol/external-agents";
-import { paymentsFileFocus } from "../fixtures/world";
+import { writerFileFocus } from "../fixtures/world";
 
 const id = (n: number) => `00000000-0000-4000-8000-${String(n).padStart(12, "0")}`;
 const at = "2026-09-08T06:00:00.000Z";
@@ -31,7 +31,7 @@ function setup(initial: ExternalAgentSummary[] = [root, child, history], selecte
     const client = { snapshot: sessions ? { status: "observed" as const, observedAt: at, message: "Recent", sessions } : null, selected: selection,
       detail: current ? detail(current) : null, busy: false, notice: "", read: async (id: string) => open(id), refresh: vi.fn(), handoff: vi.fn() };
     return <><textarea aria-label="Source" defaultValue="source and cursor retained" />
-      <AgentDock state={{ ...state, draft: draft ? { focus: paymentsFileFocus, task: "Retained", model: "", prepared: null, confirmed: false, preparing: false } : null }} client={native} onDraft={() => setDraft(true)} runContent={null} draftContent={<textarea aria-label="Native draft" />} jobsContent={null} activityContent={null}
+      <AgentDock state={{ ...state, draft: draft ? { focus: writerFileFocus, task: "Retained", model: "", prepared: null, confirmed: false, preparing: false } : null }} client={native} onDraft={() => setDraft(true)} runContent={null} draftContent={<textarea aria-label="Native draft" />} jobsContent={null} activityContent={null}
         shortcutsBlocked={blocked} conversation={{ registered: { sessions, selected: selection, onSelect: open }, selectionVersion: String(version),
           actions: <AgentConversationActions client={client} onContext={onContext} onWorktree={onWorktree} />,
           content: <AgentConversation embeddedHeader client={client} memory={memory} bridge={{ request, onEvent: () => () => {} }} onContext={onContext} /> }} /></>;

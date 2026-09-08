@@ -8,14 +8,14 @@ import { emptyAgentWorkbench, fixtureReducer, FIXTURE_TIME } from "../app/render
 import type { SwarmBridge } from "../app/electron/preload";
 import { AgentSnapshotSchema, PreparedAgentContextSchema, type AgentResult, type Run } from "../protocol/agents";
 import { CoreResponseSchema, PROTOCOL_VERSION, type CoreRequest, type CoreResponse } from "../protocol/schema";
-import { initialSnapshot, paymentsFileFocus } from "../fixtures/world";
+import { initialSnapshot, writerFileFocus } from "../fixtures/world";
 
 const drain = async () => { for (let i = 0; i < 8; i++) await Promise.resolve(); };
 const deferred = <T,>() => { let resolve!: (value: T) => void; const promise = new Promise<T>((done) => { resolve = done; }); return { promise, resolve }; };
 const capabilities = { availability: "available", reason: null, provider: "deterministic-test-only", version: "test-1",
   policy: "verified-read-only", controls: { launch: true, steer: true, cancel: true } } as const;
 function fixture() {
-  const launched = fixtureReducer(emptyAgentWorkbench(), { type: "launch", context: fixtureLaunchContext(paymentsFileFocus, "Explain interfaces", "", "") });
+  const launched = fixtureReducer(emptyAgentWorkbench(), { type: "launch", context: fixtureLaunchContext(writerFileFocus, "Explain interfaces", "", "") });
   return fixtureReducer(launched, { type: "advance" });
 }
 const run = fixture().run!;
@@ -33,7 +33,7 @@ function harness() {
   const latest = (type: CoreRequest["type"]) => calls.filter((call) => call.input.type === type).at(-1)!;
   const reply = (call: Pending, agent: AgentResult, sequence = 1) => call.resolve(CoreResponseSchema.parse({
     protocolVersion: PROTOCOL_VERSION, requestId: call.input.requestId, ok: true,
-    snapshot: initialSnapshot(paymentsFileFocus), sequence, agent,
+    snapshot: initialSnapshot(writerFileFocus), sequence, agent,
   }));
   const read = (call: Pending, value: Run = run, sequence = 1) => reply(call, { kind: "read", run: value,
     page: { records: [], nextCursor: 0, truncated: false } }, sequence);
@@ -62,7 +62,7 @@ describe("document-loss guard local client intent", () => {
   it("clears only observed draft/text and leaves a replacement draft and changed text protected", () => {
     const client = new AgentBridgeClient({ ...emptyLiveAgentState(), selectedRunId: run.runId,
       instructions: { [run.runId]: "old", hidden: "unchanged" } });
-    client.openDraft(paymentsFileFocus); const observed = client.getSnapshot();
+    client.openDraft(writerFileFocus); const observed = client.getSnapshot();
     client.editDraft({ task: "replacement" }); client.instruction("newer");
     client.clearLocalIntent(observed, true);
     expect(client.getSnapshot().draft?.task).toBe("replacement");
@@ -95,7 +95,7 @@ describe("document-loss guard local client intent", () => {
     client.clearLocalIntent(client.getSnapshot(), true);
     expect(client.getSnapshot().operations).toEqual(before.map((op) => ({ ...op, text: null, documentLossAcknowledged: true })));
     expect(protectsAgentIntent(client.getSnapshot())).toBe(false);
-    client.openDraft(paymentsFileFocus);
+    client.openDraft(writerFileFocus);
     expect(protectsAgentIntent(client.getSnapshot())).toBe(true);
   });
 
@@ -110,13 +110,13 @@ describe("document-loss guard local client intent", () => {
   });
 
   it("invalidates an in-flight preparation when cleared and keeps replacement draft untouched", async () => {
-    const { h, client } = await connected(); client.openDraft(paymentsFileFocus);
+    const { h, client } = await connected(); client.openDraft(writerFileFocus);
     const preparing = client.prepare(); const call = h.latest("agent.prepare");
     if (call.input.type !== "agent.prepare") throw new Error("Expected preparation");
     const context = fixtureLaunchContext(call.input.focus, call.input.taskText, "", "");
     const draft = fixtureV2Draft({ runId: run.runId, contextHash: context.contextHash,
       preparedAt: new Date().toISOString(), expiresAt: new Date(Date.now() + 60_000).toISOString(), capabilities, launchContext: context });
-    client.clearLocalIntent(client.getSnapshot(), true); client.openDraft(paymentsFileFocus); client.editDraft({ task: "new private draft" });
+    client.clearLocalIntent(client.getSnapshot(), true); client.openDraft(writerFileFocus); client.editDraft({ task: "new private draft" });
     h.reply(call, { kind: "prepare", draft }); await preparing;
     expect(client.getSnapshot().draft).toMatchObject({ task: "new private draft", prepared: null, preparing: false });
   });
@@ -135,7 +135,7 @@ describe("document-loss guard local client intent", () => {
   });
 
   it.each(["accepted", "rejected"] as const)("keeps pending launch identity across discard and late %s cannot clear replacement intent", async (outcome) => {
-    const { h, client } = await connected(); client.openDraft(paymentsFileFocus);
+    const { h, client } = await connected(); client.openDraft(writerFileFocus);
     const preparing = client.prepare(); const preparation = h.latest("agent.prepare");
     if (preparation.input.type !== "agent.prepare") throw new Error("Expected preparation");
     const context = fixtureLaunchContext(preparation.input.focus, preparation.input.taskText, "", "");
@@ -144,7 +144,7 @@ describe("document-loss guard local client intent", () => {
     h.reply(preparation, { kind: "prepare", draft }); await preparing; client.confirmDraft(true);
     const launching = client.launch(); const pending = h.latest("agent.launch");
     expect(client.getSnapshot().operations[0]?.status).toBe("pending");
-    client.clearLocalIntent(client.getSnapshot(), true); client.openDraft(paymentsFileFocus); client.editDraft({ task: "replacement task" });
+    client.clearLocalIntent(client.getSnapshot(), true); client.openDraft(writerFileFocus); client.editDraft({ task: "replacement task" });
     await client.launch();
     if (outcome === "accepted") h.reply(pending, { kind: "launch", receipt: { runId: draft.runId, contextHash: draft.contextHash, admittedAt: FIXTURE_TIME, status: "admitted" } });
     else pending.resolve(CoreResponseSchema.parse({ protocolVersion: PROTOCOL_VERSION, requestId: pending.input.requestId,
@@ -247,7 +247,7 @@ describe("document-loss guard local client intent", () => {
     const memory: AgentClientMemory = { state: { ...emptyLiveAgentState(), operations: [operation()] } };
     const old = createAgentClient(memory); old.connect(undefined); old.clearLocalIntent(old.getSnapshot(), true);
     createAgentClient(memory); // StrictMode's discarded render must not claim ownership.
-    old.openDraft(paymentsFileFocus); expect(memory.state?.draft).not.toBeNull();
+    old.openDraft(writerFileFocus); expect(memory.state?.draft).not.toBeNull();
     const current = createAgentClient(memory); current.connect(undefined); current.editDraft({ task: "replacement owner" });
     old.clearLocalIntent(old.getSnapshot(), true);
     expect(memory.state?.draft?.task).toBe("replacement owner");

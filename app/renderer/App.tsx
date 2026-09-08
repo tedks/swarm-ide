@@ -84,8 +84,6 @@ import type { WorkspaceDescriptor } from "../../protocol/workspace";
 import { createNavigationHistory, recordNavigation, beginHistoryNavigation, commitHistoryNavigation, type NavigationTarget } from "./navigation-history";
 
 const lensTabs = ["Workspace"] as const;
-const FRAUDCHECK_IMPLEMENTATION = "examples/checkout-world/services/fraudcheck/fraudcheck.ts";
-const FRAUDCHECK_CONTRACT = "examples/checkout-world/services/fraudcheck/fraudcheck.proto";
 
 type FileStatus = "loading" | "saved" | "dirty" | "saving" | "conflict" | "unknown" | "error";
 
@@ -1369,7 +1367,6 @@ export function App() {
   useEffect(() => {
     const focus = snapshot ? ` — ${focusLabel(snapshot.focus)}` : "";
     const revision = snapshot ? ` — ${snapshot.revisions.working.id.slice(0, 12)}` : "";
-    const fraudVisible = snapshot?.graphs.some((graph) => graph.nodes.some((node) => node.label === "FraudCheck")) ? " — FraudCheck visible" : "";
     const surface = activeSurface === "graphs" ? " — Graphs" : ` — Source ${activeSurface.split("/").at(-1)}:${activeFile?.status ?? "loading"}`;
     const files = ` — ${fileTabs.length} file tab${fileTabs.length === 1 ? "" : "s"}`;
     const palette = paletteOpen ? ` — Palette open${palettePathMode ? " · exact path" : ""}` : "";
@@ -1377,7 +1374,7 @@ export function App() {
     const fixtureTitle = agentFixtureEnabled ? agents.draftOpen ? " — Agent fixture draft" : agents.run ? ` — Agent fixture ${agents.run.state} step ${agents.step}` : " — Agent fixture enabled" : "";
     const agentTitle = import.meta.env.DEV ? liveAgents.draft ? " — Agent live draft" : liveAgents.paneOpen ? ` — Agent live ${liveAgents.run?.state ?? "unobserved"}` : "" : "";
     const topologyTitle = snapshot ? ` — Topology ${snapshot.reconciliation.epoch}:${snapshot.reconciliation.status}` : "";
-    document.title = `swarm-ide — ${title}${focus}${revision}${fraudVisible}${surface}${files}${palette} — ${zoomTitle}${hmrSuffix}${lifecycleTitle}${fixtureTitle}${agentTitle}${topologyTitle}`;
+    document.title = `swarm-ide — ${title}${focus}${revision}${surface}${files}${palette} — ${zoomTitle}${hmrSuffix}${lifecycleTitle}${fixtureTitle}${agentTitle}${topologyTitle}`;
   }, [activeFile?.status, activeSurface, fileTabs.length, hmr, paletteOpen, palettePathMode, snapshot, title, zoomTitle, lifecycleTitle, agentFixtureEnabled, agents.draftOpen, agents.run, agents.step, liveAgents.draft, liveAgents.paneOpen, liveAgents.run?.state]);
 
   const selectFocus = useCallback((focus: FocusRef) => {
@@ -1472,13 +1469,9 @@ export function App() {
     { label: "Refresh tasks", detail: "observe local metadata; no fetch, task mutation or dispatch", run: () => { setPaletteOpen(false); setCompactPanel("work"); void taskClient.refresh(); } },
     { label: "Show task details", detail: "retained task selection in Information", run: () => { setPaletteOpen(false); showTaskDetails(); } },
     { label: "Ask an agent about this focus", detail: "inspect disk context before explicit read-only launch", run: () => { setPaletteOpen(false); setCompactPanel("work"); if (selectedWorktreeRef.current?.sessionId) setWorkspaceNotice("New native runs use the launch workspace. Switch back to prepare a run; existing agents remain steerable."); else if (workspaceRef.current.snapshot) agentClient.openDraft(workspaceRef.current.snapshot.focus); } },
-    { label: "Build repository service topology", detail: "exact fingerprint → Bazel artifact → green", run: reconcile },
+    { label: "Refresh service declarations", detail: "Read declared project services; no build or deployment", run: reconcile },
     { label: "Show system graphs", detail: "Repository, services and build dependencies", run: () => { setPaletteOpen(false); setDesignVisible(false); setCompactPanel(null); inspectGraph(); requestAnimationFrame(() => document.querySelector<HTMLElement>(".graphs-grid")?.focus()); } },
     { label: "Show build graph", detail: "Explore Bazel targets and dependencies", run: () => { setPaletteOpen(false); setDesignVisible(false); setCompactPanel(null); setShowBuildVersion((n) => n + 1); } },
-    ...(!repositoryObservation ? [
-      { label: "Open FraudCheck implementation", detail: FRAUDCHECK_IMPLEMENTATION, run: () => { setPaletteOpen(false); void openFile(FRAUDCHECK_IMPLEMENTATION); } },
-      { label: "Open FraudCheck protobuf contract", detail: FRAUDCHECK_CONTRACT, run: () => { setPaletteOpen(false); void openFile(FRAUDCHECK_CONTRACT); } },
-    ] : []),
     ...(agentFixtureEnabled ? [{ label: "Preview agent fixture", detail: "DEMO only · no provider or file bytes · explicit launch", run: () => { setPaletteOpen(false); setCompactPanel("work"); openAgentDraft(); } }] : []),
   ].filter((command) => command.label.toLowerCase().includes(commandQuery.toLowerCase())), [agentClient, taskClient, agentFixtureEnabled, openAgentDraft, commandQuery, openFile, reconcile, showSurface, showTaskDetails, palettePathMode, openLinkedFile, repositoryObservation, enterDirectory, upDirectory, repository.refresh, inspectGraph]);
 
@@ -1527,7 +1520,7 @@ export function App() {
           <details className="topology-actions"><summary aria-label="Build and refresh actions" title="Build and refresh actions">⋯</summary><div>
             <button title="Refresh declarations; may download declared dependencies. Does not build targets." disabled={coreUnavailable || buildGraph.observation?.status === "refreshing"} onClick={() => { void buildGraph.refresh(); }}>Refresh dependencies</button>
             {buildGraph.observation?.status === "refreshing" ? <button onClick={() => { void buildGraph.cancel(); }}>Cancel refresh</button> : null}
-            <button id="reconcile-success" onClick={() => void reconcile()} disabled={reconciliationRunning || coreUnavailable}>Build service topology</button>
+            <button id="reconcile-success" onClick={() => void reconcile()} disabled={reconciliationRunning || coreUnavailable}>Refresh services</button>
           </div></details>
         </div>
         {hasOpenDocument ? <OverflowStrip className="surface-tabs-strip" label="document tabs" activeKey={workLogEntryId ?? (designVisible ? "design" : worktreeVisible ? `worktree:${worktreeSelection?.path}` : journalVisible ? "journal" : textDocumentVisible ? "task" : activeSurface)}><nav className="surface-tabs" aria-label="Document tabs">

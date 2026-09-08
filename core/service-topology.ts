@@ -1,6 +1,8 @@
 import { createHash } from "node:crypto";
 import { posix } from "node:path";
 import { z } from "zod";
+import type { ServiceDiscovery } from "./service-discovery";
+import type { ServiceDeclarations } from "../protocol/service-declarations";
 import { ServiceContextObservationSchema, type ServiceContextObservation } from "../protocol/context";
 import {
   PROTOCOL_VERSION,
@@ -64,8 +66,6 @@ export const ServiceTopologyArtifactSchema = z.object({
 });
 export type ServiceTopologyArtifact = z.infer<typeof ServiceTopologyArtifactSchema>;
 
-const MANIFEST_PATH = "examples/checkout-world/services/fraudcheck/service.swarm.json";
-
 function focus(domain: FocusRef["domain"], key: string, fingerprint: string, path?: string, symbol?: string): FocusRef {
   return {
     worldId: "world:working",
@@ -82,6 +82,46 @@ export function artifactBuildId(bytes: Buffer): string {
   return createHash("sha256").update(bytes).digest("hex");
 }
 
+/** Source declarations use repo provenance and never advance a build revision. */
+export function adaptDeclaredServices(input: ServiceDiscovery, fingerprint: string, epoch: number, observedAt: string, repositoryId: string): {
+  graph: GraphSlice; mappings: NavigationMapping[]; widgets: Widget[]; declarations: ServiceDeclarations;
+} {
+  const nodes: GraphSlice["nodes"] = [], edges: GraphSlice["edges"] = [], mappings: NavigationMapping[] = [];
+  const status = input.issues.length ? "yellow" as const : "green" as const;
+  let row = 0;
+  for (const service of input.services) {
+    const serviceFocus = focus("service", service.id, fingerprint, service.declarationPath);
+    nodes.push({ id: service.id, label: service.displayName, kind: "declared service", status,
+      position: { x: 280, y: row * 100 }, focus: serviceFocus, detail: service.owningTarget ?? service.declarationPath });
+    const candidates = [service.declarationPath, ...service.implementationPaths].filter((value, index, all) => all.indexOf(value) === index).slice(0, 32);
+    mappings.push({ from: serviceFocus, targetTopology: "repo", ambiguous: candidates.length > 1,
+      candidates: candidates.map((path) => ({ focus: focus("repo", `file:${path}`, fingerprint, path), revealPath: path,
+        confidence: 1, reason: path === service.declarationPath ? "service declaration" : "declared implementation file" })) });
+    for (const [index, entry] of service.interfaces.entries()) {
+      const interfaceFocus = focus("interface", entry.id, fingerprint, entry.path, entry.name);
+      nodes.push({ id: entry.id, label: entry.name, kind: `${entry.role} interface`, status,
+        position: { x: entry.role === "provided" ? 0 : 560, y: (row + index) * 100 }, focus: interfaceFocus,
+        detail: `${entry.requestType} → ${entry.responseType}` });
+      edges.push({ id: `${service.id}:${entry.role}:${entry.id}`, source: service.id, target: entry.id,
+        kind: entry.role === "provided" ? "provides" : "requires", label: entry.role === "provided" ? "provides" : "requires", status });
+      mappings.push({ from: interfaceFocus, targetTopology: "repo", ambiguous: false,
+        candidates: [{ focus: focus("repo", `file:${entry.path}`, fingerprint, entry.path), revealPath: entry.path, confidence: 1, reason: "authored interface declaration" }] });
+    }
+    row += Math.max(1, service.interfaces.length) + 1;
+  }
+  for (const dependency of input.dependencies) edges.push({ ...dependency, id: `${dependency.source}:starts-after:${dependency.target}`, status });
+  const provenance: Provenance = { sourceKind: "repo", uri: "repo://service-declarations", version: fingerprint, observedAt };
+  return {
+    graph: { schemaVersion: PROTOCOL_VERSION, topologyId: "service", title: "Services", scope: "project declarations", zoomBand: "service",
+      epoch, reconciliation: status, inputFingerprint: fingerprint, nodes, edges, provenance: [provenance] },
+    mappings,
+    widgets: [{ id: "service-declarations", title: "Services", kind: "status", priority: 1,
+      value: input.services.length ? `${input.services.length} declared services` : "No service declarations found", provenance }],
+    declarations: { repositoryId, worldId: "world:working", sourceFingerprint: fingerprint, observedAt,
+      status: input.issues.length ? "partial" : "current", paths: input.paths, issues: input.issues, services: input.services },
+  };
+}
+
 export function adaptServiceTopology(
   artifact: ServiceTopologyArtifact,
   artifactUri: string,
@@ -90,8 +130,9 @@ export function adaptServiceTopology(
   epoch: number,
   observedAt: string,
   repositoryId = "repository:unregistered",
+  manifestPath = "service.swarm.json",
 ): { graph: GraphSlice; mappings: NavigationMapping[]; widgets: Widget[]; serviceContext: ServiceContextObservation } {
-  const implementationPath = artifact.implementationPaths.find((path) => path.endsWith("fraudcheck.ts")) ?? artifact.implementationPaths[0]!;
+  const implementationPath = artifact.implementationPaths[0]!;
   const declarationPaths = new Map(artifact.interfaceDeclarationPaths.map((item) => [item.interfaceId, item.path]));
   const serviceFocus = focus("service", artifact.service.id, fingerprint, implementationPath);
   const nodes: GraphSlice["nodes"] = [{
@@ -140,20 +181,20 @@ export function adaptServiceTopology(
     { id: "required-interfaces", title: "Required", kind: "list", priority: 3, value: artifact.requiredInterfaces.map((item) => `${item.name}: ${item.requestType} → ${item.responseType}`), provenance },
     { id: "source-paths", title: "Implementation sources", kind: "list", priority: 4, value: artifact.implementationPaths, provenance },
     { id: "artifact", title: "Topology artifact", kind: "status", priority: 5, value: `${artifactUri} · artifact sha256:${buildId.slice(0, 12)} · inputs sha256:${artifact.inputDigest.slice(0, 12)}`, provenance },
-    { id: "deployment", title: "Deployment", kind: "status", priority: 6, value: "not configured", provenance: { sourceKind: "repo", uri: `repo://${MANIFEST_PATH}`, version: fingerprint, observedAt } },
+    { id: "deployment", title: "Deployment", kind: "status", priority: 6, value: "not configured", provenance: { sourceKind: "repo", uri: `repo://${manifestPath}`, version: fingerprint, observedAt } },
   ];
   const context = ServiceContextObservationSchema.safeParse({ repositoryId, worldId: "world:working", status: "observed", artifactUri, buildId,
     sourceFingerprint: fingerprint, inputDigest: artifact.inputDigest, observedAt,
-    service: { ...artifact.service, owningTarget: artifact.owningTarget, manifestPath: MANIFEST_PATH,
+    service: { ...artifact.service, owningTarget: artifact.owningTarget, manifestPath,
       implementationPaths: artifact.implementationPaths, interfaceDeclarationPaths: artifact.interfaceDeclarationPaths,
       providedInterfaces: artifact.providedInterfaces, requiredInterfaces: artifact.requiredInterfaces } });
   return {
-    serviceContext: context.success ? context.data : { repositoryId, worldId: "world:working", status: "unavailable", reason: "Example service context is unsupported or exceeds its bounded publication budget" },
+    serviceContext: context.success ? context.data : { repositoryId, worldId: "world:working", status: "unavailable", reason: "Service artifact context is unsupported or exceeds its publication budget" },
     graph: {
       schemaVersion: PROTOCOL_VERSION,
       topologyId: "service",
       title: "Service topology",
-      scope: "//examples/checkout-world/services/fraudcheck/...",
+      scope: artifact.owningTarget,
       zoomBand: "service",
       epoch,
       reconciliation: "green",

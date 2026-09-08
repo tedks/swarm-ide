@@ -18,7 +18,7 @@ from file co-location or shared Bazel inputs.
 | --- | --- | --- |
 | Directories and filename search | [repository.ts](../../core/repository.ts), [repository-search.ts](../../core/repository-search.ts) | [RepositoryNavigation](../../app/renderer/repository/RepositoryNavigation.tsx) and search palette |
 | Bazel rule/input dependencies | [build-graph.ts](../../core/build-graph.ts) | [BuildGraphPane](../../app/renderer/repository/BuildGraphPane.tsx), Context target membership |
-| Declared services/interfaces | [service-topology.ts](../../core/service-topology.ts), [provider.ts](../../core/provider.ts) | Service graph and declaration navigation |
+| Declared services/interfaces | [service-discovery.ts](../../core/service-discovery.ts) → [service-topology.ts](../../core/service-topology.ts), [provider.ts](../../core/provider.ts) | Source-backed service graph, declaration navigation and exact Context membership |
 | Selected facts and links | [context/compose.ts](../../app/renderer/context/compose.ts) | [ContextPane](../../app/renderer/context/ContextPane.tsx) |
 | Change observation | [working-world-observer.ts](../../core/working-world-observer.ts), [watchers.ts](../../core/watchers.ts) | Invalidates or refreshes derived observations |
 | Automatic build context | [use-build-graph.ts](../../app/renderer/repository/use-build-graph.ts) | Shares startup/source-change/return observations across graph and Context consumers |
@@ -33,9 +33,22 @@ at its mount; explicit Refresh remains available. No settled polling or binary
 build loop is added. A target with no dependency edges is still a target. Query results are
 not compiled binaries and do not mean a deployment exists.
 
-Service topology needs a registered declaration/artifact; a plain repository
-does not magically acquire services. A build failure retains the last topology
-with its status. Context shows direct/indirect target membership and compact empty
+Service discovery reads tracked and nonignored `compose.yaml`, `compose.yml`,
+`docker-compose.yml`, `docker-compose.yaml` and `service.swarm.json` files,
+including nested project directories. Dependency caches and fixture/test trees
+are excluded. Compose `depends_on` is shown as **starts after**, never as a call.
+Each Compose file has its own service identities; includes/extends are reported
+as partial rather than guessed or executed. Native manifests explicitly name
+services, provided/required interfaces and optional repository-relative source
+paths and Bazel targets. A missing interface source falls back only to its actual
+authored manifest, with a notice. No target or implementation path is inferred.
+
+The existing working-tree observer triggers discovery automatically. A malformed
+edit retains the previous useful graph; supported partial declarations continue
+updating. Removing a declaration removes its services, even before Git staging.
+`serviceDeclarations` carries source identity separately from built artifact
+`serviceContext`; discovery does not advance built or deployed revisions.
+Context shows direct/indirect target membership and compact empty
 states. Example latency is illustrative unless an actual measurement source is
 connected; build resource observations and service deployment facts have their own
 sources. See [context metrics](../context-metrics-demo.md).
@@ -106,10 +119,14 @@ triggers, quietness, input failure recovery and process lifetime. The separate
 test sources and the owned virtual-desktop driver. It exercises real disposable
 Bazel repositories; it is not the application build graph itself.
 
-The current service examples have their own declarations under
-[checkout-world](../../examples/checkout-world/services/payments/BUILD.bazel).
-Their labels describe example services, not Swarm's TypeScript component
-boundaries. See [dynamic build graph](../dynamic-build-graph.md) for query limits.
+`//tools/services:checks` consumes `//:quality_sources` for reader, provider,
+source Context and compatibility tests plus both TypeScript boundaries.
+`//tools/services:smoke` consumes its scripts, desktop bundle and owned-X11 driver
+for an actual disposable Compose edit/navigation proof. `//tools:desktop-smoke`
+delegates to that proof. The removed checkout example remains in Git history,
+not in active application code. Neutral fixtures remain explicitly test-only.
+See [service declarations](../service-declarations.md) for the manifest contract
+and [dynamic build graph](../dynamic-build-graph.md) for independent query limits.
 
 ## Target and file links
 

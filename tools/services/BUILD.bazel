@@ -1,0 +1,7 @@
+package(default_visibility = ["//visibility:public"])
+sh_test(name = "checks", srcs = ["checks.sh"], data = ["//:quality_sources"], tags = ["local"])
+filegroup(name = "sources", srcs = glob(["*.sh", "*.mjs", "*.cjs"]))
+sh_binary(name = "inspect-build", srcs = ["inspect-build.sh"])
+genrule(name = "inspect-module", srcs = ["inspect.ts", "//:quality_sources", "//:package.json"], outs = ["inspect.cjs"], cmd = "$(location :inspect-build) $@ $(location //:package.json)", tools = [":inspect-build"], local = True)
+sh_binary(name = "inspect", srcs = ["inspect.sh"], data = [":inspect-module"], tags = ["manual"])
+sh_binary(name = "smoke", srcs = ["smoke.sh"], data = [":sources", "//:desktop-bundle", "//tools:virtual-desktop-run.sh", "//tools:x11-driver-source", "//tools/task-integration:sources"], tags = ["manual"])

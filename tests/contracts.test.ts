@@ -4,7 +4,7 @@ import {
   dirtySnapshot,
   failedSnapshot,
   initialSnapshot,
-  paymentsFileFocus,
+  writerFileFocus,
   successfulSnapshot,
 } from "../fixtures/world";
 
@@ -17,13 +17,13 @@ describe("runtime contracts", () => {
 
     expect(initial.reconciliation.status).toBe("green");
     expect(dirty.reconciliation.status).toBe("yellow");
-    expect(succeeded.graphs.find((graph) => graph.topologyId === "service")?.nodes.some((node) => node.label === "FraudCheck")).toBe(true);
+    expect(succeeded.graphs.find((graph) => graph.topologyId === "service")?.nodes.some((node) => node.label === "Validator")).toBe(true);
     expect(failed.reconciliation.lastConsistentFingerprint).toBe("work:a1");
-    expect(failed.graphs.find((graph) => graph.topologyId === "service")?.nodes.some((node) => node.label === "FraudCheck")).toBe(false);
+    expect(failed.graphs.find((graph) => graph.topologyId === "service")?.nodes.some((node) => node.label === "Validator")).toBe(false);
   });
 
   it("keeps ambiguity explicit instead of choosing silently", () => {
-    const mapping = initialSnapshot().mappings.find((candidate) => candidate.from.key === paymentsFileFocus.key);
+    const mapping = initialSnapshot().mappings.find((candidate) => candidate.from.key === writerFileFocus.key);
     expect(mapping?.ambiguous).toBe(true);
     expect(mapping?.candidates).toHaveLength(2);
   });
@@ -61,7 +61,7 @@ describe("runtime contracts", () => {
   });
 
   it("rejects malformed focus ranges and unsupported requests", () => {
-    expect(() => FocusRefSchema.parse({ ...paymentsFileFocus, range: { startLine: 8, endLine: 2 } })).toThrow();
+    expect(() => FocusRefSchema.parse({ ...writerFileFocus, range: { startLine: 8, endLine: 2 } })).toThrow();
     expect(() => CoreRequestSchema.parse({ requestId: "x", protocolVersion: 1, type: "shell.exec", command: "rm" })).toThrow();
   });
 

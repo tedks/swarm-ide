@@ -1,4 +1,0 @@
-{
-  "schemaVersion": 1,
-  "target": "//examples/checkout-world/services/fraudcheck:service_topology"
-}

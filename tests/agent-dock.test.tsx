@@ -5,7 +5,7 @@ import { AgentDock, type AgentDockProps } from "../app/renderer/agents/AgentDock
 import { AgentBridgeClient } from "../app/renderer/agents/bridge-client";
 import { emptyLiveAgentState, type LiveAgentState } from "../app/renderer/agents/live-state";
 import { emptyAgentWorkbench } from "../app/renderer/agents/state";
-import { paymentsFileFocus } from "../fixtures/world";
+import { writerFileFocus } from "../fixtures/world";
 import { MOCK_AGENTS, MockConversation, MockRunRail, useUiDemo } from "../app/renderer/agents/ui-demo";
 
 const firstId = "11111111-1111-4111-8111-111111111111";
@@ -102,7 +102,7 @@ describe("simultaneous build, agent-message and activity dock", () => {
 
   it("retains the exact draft textarea and local text when switching conversations and back", () => {
     const initial = state(true), input = props(initial);
-    const draft = { focus: paymentsFileFocus, task: "Private task", model: "", prepared: null, confirmed: false, preparing: false };
+    const draft = { focus: writerFileFocus, task: "Private task", model: "", prepared: null, confirmed: false, preparing: false };
     const view = render(<AgentDock {...input} />);
     fireEvent.click(screen.getByRole("tab", { name: "Run 1 completed" }));
     view.rerender(<AgentDock {...input} state={{ ...initial, draft }} draftContent={<textarea aria-label="Protected draft" defaultValue="Private task" />} />);

@@ -10,7 +10,7 @@ import type { AgentContextProvider } from "../core/agents/context-provider";
 import { AgentBridgeClient } from "../app/renderer/agents/bridge-client";
 import type { SwarmBridge } from "../app/electron/preload";
 import { agentFixtureContext, AGENT_FIXTURE_AT } from "../fixtures/agents";
-import { initialSnapshot, paymentsFileFocus } from "../fixtures/world";
+import { initialSnapshot, writerFileFocus } from "../fixtures/world";
 import { AgentRequestSchema, type AdmissionReceipt, type AgentRequest, type AgentSnapshot, type Run } from "../protocol/agents";
 import { CoreResponseSchema, PROTOCOL_VERSION, type CoreResponse } from "../protocol/schema";
 
@@ -53,7 +53,7 @@ async function fixture() {
   const observers = new Set<Parameters<SwarmBridge["onEvent"]>[0]>();
   const emitted: AgentSnapshot[] = [];
   const service = await createAgentService({ store, context, now, capabilities: async () => prepared.capabilities,
-    adapter: { start, probe: async () => { throw new Error("No provider probe authorized"); } },
+    adapter: { start, probe: async () => { throw new Error("No provider probe writed"); } },
     emit(snapshot) {
       emitted.push(snapshot);
       const event = { protocolVersion: PROTOCOL_VERSION, type: "agent.changed" as const, sequence: ++sequence, emittedAt: AGENT_FIXTURE_AT, snapshot };
@@ -67,7 +67,7 @@ async function fixture() {
       const parsed = AgentRequestSchema.parse(input); calls.push(parsed);
       const result = await service.request(parsed);
       const reply = CoreResponseSchema.parse({ protocolVersion: PROTOCOL_VERSION, requestId: parsed.requestId,
-        ...(result.ok ? { ok: true, snapshot: initialSnapshot(paymentsFileFocus), sequence: ++sequence, agent: result.value }
+        ...(result.ok ? { ok: true, snapshot: initialSnapshot(writerFileFocus), sequence: ++sequence, agent: result.value }
           : { ok: false, error: result.error }),
       });
       return parsed.type === "agent.launch" && controls.holdLaunch ? controls.holdLaunch(reply) : reply;

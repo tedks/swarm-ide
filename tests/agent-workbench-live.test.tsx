@@ -6,7 +6,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { fixtureV2Draft } from "../fixtures/agent-context-v2";
 import { AGENT_LIMITS, AgentSnapshotSchema, PreparedAgentContextSchema } from "../protocol/agents";
 import { PROTOCOL_VERSION, type CoreRequest, type CoreResponse, type GraphSlice } from "../protocol/schema";
-import { initialSnapshot, paymentsFileFocus } from "../fixtures/world";
+import { initialSnapshot, writerFileFocus } from "../fixtures/world";
 import { fixtureLaunchContext } from "../app/renderer/agents/client";
 import { emptyAgentWorkbench, fixtureReducer } from "../app/renderer/agents/state";
 import { emptyLiveAgentState, type LiveAgentState } from "../app/renderer/agents/live-state";
@@ -22,7 +22,7 @@ vi.mock("../app/renderer/EditorPane", () => ({ EditorPane: ({ content, onChange 
 import { App } from "../app/renderer/App";
 
 afterEach(() => { cleanup(); vi.unstubAllEnvs(); vi.restoreAllMocks(); sessionStorage.clear(); localStorage.clear(); delete window.swarm; delete window.swarmView; delete window.swarmLifecycle; });
-const fixture = () => fixtureReducer(fixtureReducer(emptyAgentWorkbench(), { type: "launch", context: fixtureLaunchContext(paymentsFileFocus, "Explain failures", "requested-model", "") }), { type: "advance" });
+const fixture = () => fixtureReducer(fixtureReducer(emptyAgentWorkbench(), { type: "launch", context: fixtureLaunchContext(writerFileFocus, "Explain failures", "requested-model", "") }), { type: "advance" });
 const available = { availability: "available" as const, provider: "fixture", version: "test", reason: null, policy: "verified-read-only" as const, controls: { launch: true, steer: true, cancel: true } };
 function runningState(): LiveAgentState {
   const f = fixture();
@@ -36,13 +36,13 @@ describe("live workbench presentation", () => {
     const memory: AgentClientMemory = {};
     const f = fixture();
     const bridge: SwarmBridge = { onEvent: () => () => undefined, request: async (input) => ({
-      protocolVersion: PROTOCOL_VERSION, requestId: input.requestId, ok: true, snapshot: initialSnapshot(paymentsFileFocus), sequence: 1,
+      protocolVersion: PROTOCOL_VERSION, requestId: input.requestId, ok: true, snapshot: initialSnapshot(writerFileFocus), sequence: 1,
       agent: input.type === "agent.read" ? { kind: "read", run: f.run!, page: { records: f.records, nextCursor: f.run!.transcript.lastRecord, truncated: false } }
         : { kind: "snapshot", snapshot: f.snapshot },
     }) };
     const view = renderHook(() => useAgentClient(bridge, undefined, memory), { wrapper: StrictMode });
     await waitFor(() => expect(view.result.current.state.snapshot).not.toBeNull());
-    act(() => { view.result.current.client.select(f.run!.runId); view.result.current.client.openDraft(paymentsFileFocus); });
+    act(() => { view.result.current.client.select(f.run!.runId); view.result.current.client.openDraft(writerFileFocus); });
     act(() => { view.result.current.client.instruction("New unsent thought"); view.result.current.client.editDraft({ task: "Preserve this draft" }); });
     expect(memory.state?.draft?.task).toBe("Preserve this draft");
     expect(memory.state?.instructions[f.run!.runId]).toBe("New unsent thought");
@@ -53,7 +53,7 @@ describe("live workbench presentation", () => {
     expect(restored.result.current.state.instructions[f.run!.runId]).toBe("New unsent thought");
   });
   it("keeps legacy policy out of the trusted cockpit, retains source/graphs and prepares disk-only text explicitly", async () => {
-    const snapshot = initialSnapshot(paymentsFileFocus);
+    const snapshot = initialSnapshot(writerFileFocus);
     const agentSnapshot = emptyAgentWorkbench().snapshot;
     agentSnapshot.capabilities.reason = { code: "ADAPTER_POLICY_UNAVAILABLE", message: "Effective hooks and MCP policy cannot be attested." };
     const request = vi.fn(async (input: CoreRequest): Promise<CoreResponse> => {
@@ -68,7 +68,7 @@ describe("live workbench presentation", () => {
     await waitFor(() => expect(request.mock.calls.some(([r]) => r.type === "agent.snapshot")).toBe(true));
     expect(screen.queryByText(/ADAPTER_POLICY_UNAVAILABLE: Effective hooks/)).toBeNull();
     expect(screen.queryByText("Preview agent fixture")).toBeNull();
-    await openContextPath(paymentsFileFocus.path!);
+    await openContextPath(writerFileFocus.path!);
     const source = await screen.findByLabelText("Source buffer");
     const graph = screen.getAllByTestId("live-graph")[0];
     fireEvent.change(source, { target: { value: "PRIVATE UNSAVED BUFFER" } });
@@ -80,7 +80,7 @@ describe("live workbench presentation", () => {
     await waitFor(() => expect(request.mock.calls.some(([r]) => r.type === "agent.prepare")).toBe(true));
     const prepare = request.mock.calls.find(([r]) => r.type === "agent.prepare")![0];
     expect(JSON.stringify(prepare)).not.toContain("PRIVATE UNSAVED BUFFER");
-    expect(prepare).toMatchObject({ effort: null, focus: expect.objectContaining({ path: paymentsFileFocus.path }) });
+    expect(prepare).toMatchObject({ effort: null, focus: expect.objectContaining({ path: writerFileFocus.path }) });
     expect(screen.getByLabelText("Source buffer")).toBe(source);
     expect(screen.getAllByTestId("live-graph")[0]).toBe(graph);
     expect(request.mock.calls.filter(([r]) => r.type === "focus.select")).toHaveLength(focuses);
@@ -92,7 +92,7 @@ describe("live workbench presentation", () => {
     const context = state.run!.launchContext;
     const prepared = fixtureV2Draft({ runId: state.run!.runId, contextHash: context.contextHash,
       preparedAt: "2026-09-06T00:00:00.000Z", expiresAt: "2026-09-06T00:05:00.000Z", launchContext: context, capabilities: available });
-    state.draft = { focus: paymentsFileFocus, task: context.taskText, model: "requested-model", prepared, preparing: false, confirmed: false };
+    state.draft = { focus: writerFileFocus, task: context.taskText, model: "requested-model", prepared, preparing: false, confirmed: false };
     state.snapshot = AgentSnapshotSchema.parse({ runs: [], activeRunId: null, tail: [], capabilities: available });
     const client = new AgentBridgeClient();
     const view = render(<PreparedLaunchDraft state={state} client={client} dirtyPaths={[]} />);
@@ -115,7 +115,7 @@ describe("live workbench presentation", () => {
     expect(screen.getByText(/The workspace has changed since launch/)).toBeTruthy();
     expect(screen.getByText(/Observed model: unobserved/)).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Reveal launch focus" }));
-    expect(props.onReveal).toHaveBeenCalledWith(paymentsFileFocus);
+    expect(props.onReveal).toHaveBeenCalledWith(writerFileFocus);
     fireEvent.click(screen.getByRole("button", { name: "Stop" }));
     expect(props.onStop).toHaveBeenCalledOnce();
   });

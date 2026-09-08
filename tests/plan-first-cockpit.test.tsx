@@ -2,7 +2,7 @@
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { EditorView } from "@codemirror/view";
 import { afterEach, beforeAll, expect, it, vi } from "vitest";
-import { initialSnapshot, paymentsFileFocus } from "../fixtures/world";
+import { initialSnapshot, writerFileFocus } from "../fixtures/world";
 import { taskObservationFixture, taskReadFixture } from "../fixtures/tasks";
 import type { Lifecycle } from "../app/lifecycle";
 import { emptyAgentWorkbench } from "../app/renderer/agents/state";
@@ -15,7 +15,7 @@ import type { ReactNode } from "react";
 // owner separately proves real plan data/graphs; geometry is a packaged check.
 vi.mock("../app/renderer/GraphPane", () => ({ GraphPane: ({ graph, reframeVersion }: { graph: GraphSlice; reframeVersion: number }) => <section data-testid="retained-layout-graph" data-reframe={reframeVersion}><input aria-label={`Camera ${graph.topologyId}`} defaultValue="pan 30,60 zoom 2" /></section> }));
 vi.mock("../app/renderer/plans/PlanWorkspace", () => ({ PlanWorkspace: ({ renderWorkspace, onOpenDesign, onOpenFile, onOpenBuild }: { renderWorkspace(parts: { components: ReactNode; document: ReactNode; tasks: ReactNode }): ReactNode; onOpenDesign(): void; onOpenFile(path: string): void; onOpenBuild(label: string): void }) => renderWorkspace({
-  components: <section aria-label="Component design" data-testid="retained-layout-graph"><input aria-label="Camera components" defaultValue="component camera" /><button onClick={onOpenDesign}>Read design</button><button onClick={() => onOpenFile(paymentsFileFocus.path!)}>Open plan implementation</button><button onClick={() => onOpenBuild("//tools/policy:activation-test")}>Open plan build target</button><button onClick={() => onOpenBuild("//absent:unknown")}>Open missing target</button></section>,
+  components: <section aria-label="Component design" data-testid="retained-layout-graph"><input aria-label="Camera components" defaultValue="component camera" /><button onClick={onOpenDesign}>Read design</button><button onClick={() => onOpenFile(writerFileFocus.path!)}>Open plan implementation</button><button onClick={() => onOpenBuild("//tools/policy:activation-test")}>Open plan build target</button><button onClick={() => onOpenBuild("//absent:unknown")}>Open missing target</button></section>,
   document: <article>Full readable design document</article>,
   tasks: <section data-testid="retained-layout-graph"><input aria-label="Camera tasks" defaultValue="task camera" /></section>,
 }) }));
@@ -30,7 +30,7 @@ beforeAll(() => {
 afterEach(() => { cleanup(); vi.restoreAllMocks(); window.sessionStorage.clear(); window.localStorage.clear(); delete window.swarm; delete window.swarmView; delete window.swarmLifecycle; });
 
 function bridge(withBuild = false) {
-  const snapshot = initialSnapshot(paymentsFileFocus);
+  const snapshot = initialSnapshot(writerFileFocus);
   const request = vi.fn(async (input: CoreRequest): Promise<CoreResponse> => ({ protocolVersion: PROTOCOL_VERSION, requestId: input.requestId, ok: true, snapshot, sequence: 1,
     ...(input.type === "agent.snapshot" ? { agent: { kind: "snapshot" as const, snapshot: emptyAgentWorkbench().snapshot } } : {}),
     ...(input.type === "tasks.snapshot" ? { task: { kind: "snapshot" as const, observation: taskObservationFixture() } } : {}),
@@ -167,7 +167,7 @@ it("returns from a task to its retained source after visiting the overview", asy
 });
 
 it("migrates every old lens without discarding saved paths/focus or hiding graphs", async () => {
-  const saved = { paths: [paymentsFileFocus.path!], activeSurface: paymentsFileFocus.path!, lens: "Refactor", focus: paymentsFileFocus };
+  const saved = { paths: [writerFileFocus.path!], activeSurface: writerFileFocus.path!, lens: "Refactor", focus: writerFileFocus };
   expect(NavigationSchema.parse(saved)).toEqual({ ...saved, lens: "Workspace" });
   for (const lens of ["Plan", "Code", "Performance", "System", "Refactor"]) expect(NavigationSchema.parse({ ...saved, lens }).lens).toBe("Workspace");
   window.sessionStorage.setItem(NAVIGATION_KEY, JSON.stringify(saved));
@@ -194,7 +194,7 @@ it("does not reframe retained graphs when returning to a task-only document", as
 });
 
 it("restores files without overriding a design-reading choice made while reconnecting", async () => {
-  const saved = { paths: [paymentsFileFocus.path!], activeSurface: paymentsFileFocus.path!, lens: "System", focus: paymentsFileFocus, snapshot: initialSnapshot(paymentsFileFocus) };
+  const saved = { paths: [writerFileFocus.path!], activeSurface: writerFileFocus.path!, lens: "System", focus: writerFileFocus, snapshot: initialSnapshot(writerFileFocus) };
   window.sessionStorage.setItem(NAVIGATION_KEY, JSON.stringify(saved));
   const request = bridge();
   let receive!: (value: Lifecycle) => void;
@@ -205,7 +205,7 @@ it("restores files without overriding a design-reading choice made while reconne
   await waitFor(() => expect(receive).toBeTypeOf("function"));
   fireEvent.click(screen.getByRole("button", { name: "Read design" }));
   await act(async () => { status = { ...status, revision: 2, core: { ...status.core, phase: "ready", message: "" } }; receive(status); });
-  await waitFor(() => expect(request.mock.calls.some(([input]) => input.type === "file.read" && input.path === paymentsFileFocus.path)).toBe(true));
+  await waitFor(() => expect(request.mock.calls.some(([input]) => input.type === "file.read" && input.path === writerFileFocus.path)).toBe(true));
   expect(screen.getByRole("region", { name: "Design reading area" })).toBeTruthy();
   fireEvent.click(document.querySelector('.surface-tab-main[title]')!);
   await waitFor(() => expect(document.querySelector(".cm-content")?.textContent).toBe("source"));

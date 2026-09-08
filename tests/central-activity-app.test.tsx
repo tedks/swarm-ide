@@ -4,7 +4,7 @@ import { EditorView } from "@codemirror/view";
 import { afterEach, beforeAll, expect, it, vi } from "vitest";
 import type { ExternalClient } from "../app/renderer/external-agents/client";
 import type { ExternalDetail } from "../protocol/external-agents";
-import { initialSnapshot, paymentsFileFocus } from "../fixtures/world";
+import { initialSnapshot, writerFileFocus } from "../fixtures/world";
 import { taskObservationFixture } from "../fixtures/tasks";
 import { emptyAgentWorkbench } from "../app/renderer/agents/state";
 import { PROTOCOL_VERSION, type CoreEvent, type CoreRequest, type CoreResponse, type GraphSlice } from "../protocol/schema";
@@ -32,7 +32,7 @@ beforeAll(() => {
 afterEach(() => { cleanup(); observer.listeners.clear(); vi.restoreAllMocks(); localStorage.clear(); sessionStorage.clear(); delete window.swarm; delete window.swarmLifecycle; });
 function publish(next: Partial<ExternalClient>) { act(() => { observer.state = { ...observer.state!, ...next }; observer.listeners.forEach((listener) => listener()); }); }
 async function setup(withLifecycle = false) {
-  let snapshot = initialSnapshot(paymentsFileFocus), sequence = 0;
+  let snapshot = initialSnapshot(writerFileFocus), sequence = 0;
   let onEvent: (event: CoreEvent) => void = () => {};
   const request = vi.fn(async (input: CoreRequest): Promise<CoreResponse> => {
     const common = { protocolVersion: PROTOCOL_VERSION, requestId: input.requestId, ok: true as const, sequence: ++sequence, snapshot };
@@ -80,7 +80,7 @@ it("explicit event opens intact, while overview reopening and close/reopen resto
 
 it("client publications update central rows without clicks and preserve dirty source, composer, graphs and focus", async () => {
   const { request } = await setup();
-  await openContextPath(paymentsFileFocus.path!);
+  await openContextPath(writerFileFocus.path!);
   await waitFor(() => expect(document.querySelector(".cm-content")?.textContent).toContain("local source"));
   const editorNode = document.querySelector<HTMLElement>(".cm-editor")!, editor = EditorView.findFromDOM(editorNode)!;
   const graphs = screen.getAllByTestId("retained-graph");

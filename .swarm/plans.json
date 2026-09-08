@@ -139,6 +139,11 @@
       "core/project-context/provider.ts",
       "app/renderer/bazel-reference.ts",
       "app/renderer/context/compose.ts",
+      "core/service-discovery.ts",
+      "core/service-topology.ts",
+      "protocol/service-declarations.ts",
+      "tools/services/BUILD.bazel",
+      "tools/services/inspect.ts",
       "app/renderer/repository/BuildGraphPane.tsx",
       "tools/context-source-links/BUILD.bazel",
       "core/project-context/node.ts",
@@ -174,6 +179,26 @@
         }
       ],
       "buildTargets": [
+        {
+          "label": "//tools/services:checks",
+          "role": "Checks declared service sources, provider refresh and Context without building or deploying",
+          "dependencies": [{ "label": "//:quality_sources", "relation": "data" }]
+        },
+        {
+          "label": "//tools/services:smoke",
+          "role": "Packaged Compose edit, source activation and retained camera proof on owned virtual desktop",
+          "dependencies": [{ "label": "//:desktop-bundle", "relation": "data" }, { "label": "//tools/services:sources", "relation": "data" }, { "label": "//tools:virtual-desktop-run.sh", "relation": "data" }]
+        },
+        {
+          "label": "//tools/services:inspect",
+          "role": "Reads actual repository declarations without starting services or changing files",
+          "dependencies": [{ "label": "//tools/services:inspect-module", "relation": "data" }]
+        },
+        {
+          "label": "//tools:service-fixture-test",
+          "role": "Checks neutral mock graphs and legacy artifact compatibility separately from real discovery",
+          "dependencies": [{ "label": "//:quality_sources", "relation": "data" }]
+        },
         {
           "label": "//tools/workspace-navigation:checks",
           "role": "Checks root-scoped editor retention, deliberate history, cameras and stale async results",
@@ -592,7 +617,6 @@
       "core/provider.ts",
       "protocol/build-jobs.ts",
       "core/build-jobs.ts",
-      ".swarm/service-topology.json",
       "tests/project-build-compatibility.test.ts",
       "core/target-build-process.ts",
       "app/renderer/build-resources/use-target-builds.ts",

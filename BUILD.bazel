@@ -25,7 +25,6 @@ filegroup(
         "//tools:dev-port-source",
         "//tools:dev-entry-sources",
         "//tools:electron-runtime-source",
-        "//tools:extract-service-topology",
         "//tools:desktop-automation-sources",
         "//tools:agent-journey-sources",
         "//tools:agent-rehearsal-sources",

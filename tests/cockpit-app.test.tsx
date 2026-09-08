@@ -2,7 +2,7 @@
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { EditorView } from "@codemirror/view";
 import { afterEach, beforeAll, expect, it, vi } from "vitest";
-import { initialSnapshot, paymentsFileFocus } from "../fixtures/world";
+import { initialSnapshot, writerFileFocus } from "../fixtures/world";
 import { taskObservationFixture } from "../fixtures/tasks";
 import { emptyAgentWorkbench } from "../app/renderer/agents/state";
 import { PROTOCOL_VERSION, type CoreRequest, type CoreResponse, type GraphSlice } from "../protocol/schema";
@@ -26,7 +26,7 @@ beforeAll(() => {
 afterEach(() => { cleanup(); vi.restoreAllMocks(); window.localStorage.clear(); window.sessionStorage.clear(); delete window.swarm; delete window.swarmView; delete window.swarmLifecycle; });
 
 it("Ctrl+W closes the agent inspection, not the underlying editor or file watch", async () => {
-  const snapshot = initialSnapshot(paymentsFileFocus);
+  const snapshot = initialSnapshot(writerFileFocus);
   let sequence = 0;
   let outcomeState: "working" | "completed" = "working";
   const request = vi.fn(async (input: CoreRequest): Promise<CoreResponse> => {
@@ -56,7 +56,7 @@ it("Ctrl+W closes the agent inspection, not the underlying editor or file watch"
   const summaryModel = within(workLog).getByRole("textbox", { name: "Model" }) as HTMLInputElement;
   fireEvent.change(summaryModel, { target: { value: "gpt-5.6-luna-draft" } });
   fireEvent.click(screen.getByRole("button", { name: "Agent runs" }));
-  await openContextPath(paymentsFileFocus.path!);
+  await openContextPath(writerFileFocus.path!);
   await waitFor(() => expect(document.querySelector(".cm-content")?.textContent).toContain("local source"));
   const editorNode = document.querySelector<HTMLElement>(".cm-editor")!, graphs = screen.getAllByTestId("retained-graph");
   const editor = EditorView.findFromDOM(editorNode)!;

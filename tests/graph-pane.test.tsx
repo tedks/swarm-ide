@@ -2,7 +2,7 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { GraphSlice } from "../protocol/schema";
-import { initialSnapshot, paymentsFileFocus } from "../fixtures/world";
+import { initialSnapshot, writerFileFocus } from "../fixtures/world";
 
 vi.mock("@xyflow/react", () => ({
   Background: () => null,
@@ -25,7 +25,7 @@ afterEach(() => vi.restoreAllMocks());
 
 describe("graph pane interaction", () => {
   it("coordinates a relationship selected from the keyboard", () => {
-    const snapshot = initialSnapshot(paymentsFileFocus);
+    const snapshot = initialSnapshot(writerFileFocus);
     const graph = snapshot.graphs.find((candidate) => candidate.topologyId === "service") as GraphSlice;
     const onConnectionFocus = vi.fn();
     render(<GraphPane graph={graph} focus={snapshot.focus} mappings={snapshot.mappings} interfaceZoom={null} onFocus={() => undefined} onConnectionFocus={onConnectionFocus} onReconcile={() => undefined} reconciliationRunning={false} />);
@@ -34,7 +34,7 @@ describe("graph pane interaction", () => {
   });
 
   it("renders yellow as an action dot and dispatches reconciliation when idle", () => {
-    const snapshot = initialSnapshot(paymentsFileFocus);
+    const snapshot = initialSnapshot(writerFileFocus);
     const graph = { ...snapshot.graphs[0]!, reconciliation: "yellow" as const };
     const onReconcile = vi.fn();
     render(<GraphPane graph={graph} focus={snapshot.focus} mappings={snapshot.mappings} interfaceZoom={null} onFocus={() => undefined} onConnectionFocus={() => undefined} onReconcile={onReconcile} reconciliationRunning={false} />);

@@ -11,7 +11,7 @@ export function parseRehearsalArguments(args) {
 
 export const rehearsalHelp = `TEST-ONLY REHEARSAL — deterministic output — no model or external agent process
 Usage: bazel run //tools:agent-rehearsal -- --interactive-desktop --workspace /absolute/repo
-The workspace must be an existing Git checkout containing the registered checkout-world example.
+The workspace must be an existing Git checkout with a committed HEAD. No example service is required.
 No arguments opens nothing. Interactive mode opens your selected desktop; automated checks use owned X11 only.
 A fresh owner-private profile is printed and retained on close (20 runs / 64MiB store).
 Normal explicit editor Save writes actual source. The deterministic responder cannot write source.

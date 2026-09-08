@@ -14,7 +14,7 @@ export interface DeclarationResolution {
 /** Only evidence changes invalidate a choice; ordinary focus publications do not. */
 export function declarationPublication(snapshot: WorkspaceSnapshot | null): string {
   const graph = snapshot?.graphs.find((item) => item.topologyId === "service");
-  return JSON.stringify([snapshot?.project.id, snapshot?.world.id, snapshot?.serviceContext,
+  return JSON.stringify([snapshot?.project.id, snapshot?.world.id, snapshot?.serviceContext, snapshot?.serviceDeclarations,
     snapshot?.revisions.built, snapshot?.revisions.working, snapshot?.reconciliation.epoch,
     graph?.reconciliation, graph?.inputFingerprint,
     graph?.nodes.map((node) => [node.id, node.focus.domain, node.focus.key, node.focus.worldId])]);
@@ -29,6 +29,16 @@ export function resolveDeclarations(snapshot: WorkspaceSnapshot, focus: FocusRef
   if (focus.worldId !== snapshot.world.id || !["service", "interface"].includes(focus.domain) ||
       !graph?.nodes.some((node) => node.focus.domain === focus.domain && node.focus.key === focus.key && node.focus.worldId === focus.worldId))
     return unavailable("Definition unavailable: no exact service graph identity. Inspection remains available.");
+  const declared = snapshot.serviceDeclarations;
+  if (declared?.repositoryId === snapshot.project.id && declared.worldId === snapshot.world.id && graph.inputFingerprint === declared.sourceFingerprint) {
+    const paths = new Set<string>();
+    for (const service of declared.services) {
+      if (focus.domain === "service" && focus.key === service.id) paths.add(service.declarationPath);
+      for (const entry of service.interfaces) if (focus.domain === "interface" && focus.key === entry.id) paths.add(entry.path);
+    }
+    return { publication, candidates: [...paths].map((path) => ({ path, relations: [] })),
+      notice: paths.size ? "Open the service declaration." : "No declaration for this item." };
+  }
   if (p?.status !== "observed" || p.repositoryId !== snapshot.project.id || p.worldId !== snapshot.world.id ||
       p.buildId !== snapshot.revisions.built.id || p.sourceFingerprint !== snapshot.revisions.built.sourceFingerprint)
     return unavailable("Definition unavailable: no matching built service evidence. Other service coverage is unknown.");
