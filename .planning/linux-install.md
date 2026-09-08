@@ -16,7 +16,7 @@ An operator should be able to install Swarm IDE once, then run `swarm --workspac
 - [x] (2026-09-08 14:22Z) Installed existing-registry launch showed actual ROOT/worker activity from a separate chosen repository; original owner survived IDE cleanup.
 - [x] (2026-09-08 14:25Z) Native selector/proof/mapping deltas CLEAN; exact approved runtime mappings match queried Bazel dependencies.
 - [ ] Automatic discovery of CLI processes holding native helper rollouts needs a small shared-registration correction; ownership request sent to ROOT, existing-registry path is usable.
-- [ ] Final docs/Ditz and pushed handoff.
+- [x] (2026-09-08 14:28Z) Final documentation, follow-up issues and the useful installed-package handoff are committed/pushed; ROOT decides the separately requested shared discovery correction.
 
 ## Surprises & Discoveries
 
