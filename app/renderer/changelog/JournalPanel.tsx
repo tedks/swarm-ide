@@ -110,7 +110,7 @@ export function JournalPanel({ open, state, selectedEntry, selectionVersion = 0,
               </div></details>)}
             </div></details></li>;
         })}</ol>
-        <details className="journal-provenance"><summary>Coverage & generation provenance</summary><p>{observation.bundle.coverage}</p><ul>{observation.bundle.limitations.map((limit, index) => <li key={index}>{limit}</li>)}</ul><p>Exported {observation.bundle.exportedAt} · Generated {observation.document.generatedAt} · Observed {observation.observedAt}</p><p>Input digest <code>{observation.document.inputDigest}</code></p><p>Generator {observation.document.generator.name} · run {observation.document.generator.run}</p><p>Instructions digest <code>{observation.document.generator.instructionsDigest}</code></p></details>
+        <details className="journal-provenance"><summary>Report details</summary><p>{observation.bundle.coverage}</p><ul>{observation.bundle.limitations.map((limit, index) => <li key={index}>{limit}</li>)}</ul><p>Exported {observation.bundle.exportedAt} · Generated {observation.document.generatedAt} · Observed {observation.observedAt}</p><p>Input digest <code>{observation.document.inputDigest}</code></p><p>Generator {observation.document.generator.name} · run {observation.document.generator.run}</p><p>Instructions digest <code>{observation.document.generator.instructionsDigest}</code></p></details>
       </> : null}
       </div>
     </div>
