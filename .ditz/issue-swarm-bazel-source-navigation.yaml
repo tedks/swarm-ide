@@ -49,3 +49,10 @@ log_events:
     native Alt-click followed observed local Bazel labels and file strings, preserving
     ordinary clicks and dirty source/cursor. Unsupported shorthand/macro forms remain
     a separate issue.
+- time: 2026-09-08T06:52:03-00:00
+  who: Ted Smith
+  what: commented
+  comment: PR101 upper-stack preparation complete on reviewed master a57d37da at pushed
+    832b383b. Existing Alt-click implementation is already merged via PR103; only
+    packaged proof/docs remain here. Original GUI and later language tests retain
+    their separate attribution. ROOT owns final landing.
