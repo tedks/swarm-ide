@@ -113,7 +113,7 @@ it("observes build context on the unified home without starting a service build 
   expect(request.mock.calls.some(([input]) => input.type === "reconciliation.start")).toBe(false);
   expect(screen.queryByRole("button", { name: /Build topology/ })).toBeNull();
   fireEvent.click(screen.getByText("⋯"));
-  expect(document.querySelector(".topology-actions button")?.textContent).toBe("Refresh build graph");
+  expect(document.querySelector(".topology-actions button")?.textContent).toBe("Refresh dependencies");
 });
 
 it("keeps all four graphs, dirty source, cursor and watches through home, design and file navigation", async () => {

@@ -73,7 +73,7 @@ async function main() {
   const retention = await retained(); assert(Object.values(retention).every(Boolean), JSON.stringify(retention));
   await clickText("Service"); await fs.writeFile(path.join(fixture.root, "a/BUILD"), fixture.addedDefinition);
   await clickText("Build graph"); await until(async () => await current() === "current" && await edge("//b:isolated") && await edge("//b:library"), "reactivation actual added edges");
-  await clickText("Refresh build graph"); await until(async () => await current() === "refreshing", "explicit refresh");
+  await clickText("Refresh dependencies"); await until(async () => await current() === "refreshing", "explicit refresh");
   await until(async () => await current() === "current", "explicit refreshed current");
   const after = await read(); assert.notEqual(after.graph.inputDigest, removed.graph.inputDigest);
   const finalRetention = await retained(); assert(Object.values(finalRetention).every(Boolean), JSON.stringify(finalRetention));
