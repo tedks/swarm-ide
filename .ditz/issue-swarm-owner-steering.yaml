@@ -26,6 +26,12 @@ log_events:
   who: Ted Smith
   what: blocked by swarm-operator-cockpit
   comment: ""
+- time: 2026-09-08T03:40:09-00:00
+  who: Ted Smith
+  what: blocks swarm-operator-demo
+  comment: ""
+blocks:
+- swarm-operator-demo
 blocked_by:
 - swarm-live-fleet
 - swarm-operator-cockpit
