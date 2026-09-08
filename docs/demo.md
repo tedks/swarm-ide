@@ -74,7 +74,8 @@ profile** shows example CPU/memory distributions. These are authored values, not
 production telemetry; no deployed-file mapping is invented. See
 [associations and scope](context-metrics-demo.md).
 
-Return to `core/tasks/draft-context.ts`. Choose **Ctrl-K → Ask an agent about
+If the task document is still in the center, choose its **Return to source**
+button to reveal `core/tasks/draft-context.ts`. Choose **Ctrl-K → Ask an agent about
 this focus** and enter:
 
 > Explain this module's task revision checks and identify the tests that defend
