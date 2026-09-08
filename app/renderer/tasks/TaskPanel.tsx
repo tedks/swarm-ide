@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { TaskObservation, TaskObservationStatus } from "../../../protocol/tasks";
 import { displayTaskText, taskRevisionLabel } from "./display";
 import "./tasks.css";
@@ -25,6 +25,11 @@ export function TaskPanel({ observation, refreshing, connected, notice, selected
   const [filter, setFilter] = useState<"open" | "all">("open");
   const [query, setQuery] = useState("");
   const [expandedTitle, setExpandedTitle] = useState<string | null>(null);
+  // Presentation only: the client still owns deduplication and freshness.
+  const [manualRefresh, setManualRefresh] = useState(false);
+  useEffect(() => {
+    if (!refreshing || !connected) setManualRefresh(false);
+  }, [refreshing, connected, manualRefresh]);
   const snapshot = observation?.snapshot ?? null;
   const summaries = snapshot?.summaries;
   const visible = useMemo(() => {
@@ -38,14 +43,16 @@ export function TaskPanel({ observation, refreshing, connected, notice, selected
   const status = observation?.status ?? "unobserved";
   const retainedAfterFailure = status === "observed" && notice !== null;
   const current = status === "observed" && connected && !refreshing && notice === null && !observation?.reason;
+  const compact = snapshot !== null && status === "observed" && connected && notice === null && !observation?.reason;
+  const backgroundCheck = refreshing && compact && !manualRefresh;
 
-  return <section className="rail-section task-ui task-panel" aria-label="Tasks">
-    <div className={`task-panel-statusline${current ? " is-current" : ""}`}>
-    <header className="task-heading"><h2>Tasks</h2><button type="button" onClick={onRefresh} disabled={!connected || refreshing}>Refresh tasks</button></header>
+  return <section className="rail-section task-ui task-panel" aria-label="Tasks" aria-busy={refreshing} data-task-refresh={backgroundCheck ? "background" : refreshing ? "explicit-or-unsettled" : "idle"}>
+    <div className={`task-panel-statusline${current ? " is-current" : ""}${compact ? " is-compact" : ""}`}>
+    <header className="task-heading"><h2>Tasks</h2><button type="button" onClick={() => { setManualRefresh(true); onRefresh(); }} disabled={!connected || refreshing} title={backgroundCheck ? "Background check in progress; the previously observed snapshot is retained." : undefined}>Refresh tasks</button></header>
     <div className="task-observation" role="status" data-task-status={status}>
       <strong>{retainedAfterFailure ? "Task snapshot retained" : stateLabels[status]}</strong>
       {!connected ? <span>Local core disconnected.</span> : null}
-      {refreshing ? <span>Checking tasks…</span> : null}
+      {refreshing && !backgroundCheck ? <span>Checking tasks…</span> : null}
       {observation?.reason ? <span>{observation.reason.code}: {displayTaskText(observation.reason.message)}</span> : null}
       {notice ? <span>{displayTaskText(notice)}</span> : null}
       {retainedAfterFailure ? <span className="task-warning">Latest check failed or was ignored; retained data is not confirmed current.</span> : null}
@@ -77,6 +84,7 @@ export function TaskPanel({ observation, refreshing, connected, notice, selected
         <p>Observed at <code>{taskRevisionLabel(snapshot.metadataCommit)}</code></p>
         <p>Observed {snapshot.observedAt}</p>
         <p>Local ref checked {observation?.checkedAt ?? "not checked"}</p>
+        {backgroundCheck ? <p>Background check in progress; the retained snapshot has not yet been reconfirmed.</p> : null}
         <p>Repository {displayTaskText(snapshot.repositoryId)} · provider {snapshot.provider}</p>
         {status !== "observed" || retainedAfterFailure ? <p>Retained snapshot; the latest attempt does not establish that it is current.</p> : null}
       </> : null}
