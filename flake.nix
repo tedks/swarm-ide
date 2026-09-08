@@ -22,6 +22,7 @@
               openbox
               pnpm
               procps
+              tmux
               util-linux
               wmctrl
               xauth

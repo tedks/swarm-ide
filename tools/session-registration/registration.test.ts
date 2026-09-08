@@ -110,7 +110,8 @@ describe("known worker registration", () => {
     await expect(updateRegistry({ ...f.input, contextPaths: ["../escape"] })).rejects.toThrow("Invalid registration");
     await expect(updateRegistry({ ...f.input, sessionId: randomUUID() })).rejects.toThrow("expected session");
     await expect(updateRegistry({ ...f.input, contextRoot: undefined })).rejects.toThrow("explicit context root");
-    await expect(updateRegistry({ ...f.input, registry: join(f.root, "registry.json"), contextRoot: f.root })).rejects.toThrow();
+    await chmod(f.root, 0o700);
+    await expect(updateRegistry({ ...f.input, registry: join(f.root, "registry.json"), contextRoot: f.root })).rejects.toThrow("outside the context repository");
     await expect(lstat(f.registry)).rejects.toThrow();
   });
 

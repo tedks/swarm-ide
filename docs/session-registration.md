@@ -68,7 +68,9 @@ nix develop --command bazel run --jobs=3 //tools/session-registration:register -
   --context-root /absolute/project/worker-worktree
 ```
 
-The CLI prints one JSON receipt. `authority: "checked-live"` means the exact
+The CLI prints one JSON receipt (the outer Nix shell may also print its startup
+banner; do not parse the entire `nix develop` output as one JSON document).
+`authority: "checked-live"` means the exact
 current target was checked; `"historical-only"` means no tmux authority was
 written. Both can be successful registrations. Do not equate either with a
 message delivered or work completed. A missing pane with an explicit valid
