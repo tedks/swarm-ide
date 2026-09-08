@@ -1,5 +1,5 @@
 id: agent-workbench-local-receipt-retention
-title: Bounded local receipt retention and explicit history management
+title: Limit locally saved receipts and provide history controls
 desc: ""
 type: task
 component: default
@@ -23,3 +23,11 @@ log_events:
     confirmed local receipts against durable run history so long-lived IDE sessions
     can continue without losing ambiguous intent; do not auto-replay or silently discard
     unknown commands.
+- time: 2026-09-08T04:28:27-00:00
+  who: Ted Smith
+  what: changed title
+  comment: ""
+- time: 2026-09-08T04:28:27-00:00
+  who: Ted Smith
+  what: updated description
+  comment: ""
