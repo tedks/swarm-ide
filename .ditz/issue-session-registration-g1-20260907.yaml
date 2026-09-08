@@ -18,3 +18,10 @@ log_events:
   who: Ted Smith
   what: started
   comment: ""
+- time: 2026-09-08T01:57:38-00:00
+  who: Ted Smith
+  what: commented
+  comment: PR78 pushed58559a2. Focused61/typechecks green; native task-child discovery
+    correction CLEAN after1RED/59PASS. Actual known G1 header/pane registered checked-live
+    in owned disposable registry only. Exact missing tmux Nix dependency approval
+    requested; no root registry/app adoption or product model turn.
