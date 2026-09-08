@@ -7,6 +7,7 @@ import { ExternalSessionId, ExternalRequestSchema, ExternalResultSchema, EXTERNA
   type ExternalAgentSummary, type ExternalDetail, type ExternalEntry, type ExternalSnapshot } from "../protocol/external-agents";
 import { validateHandoff, openHandoff, terminalCommands } from "./external-agents-handoff";
 import { extractEntries } from "./external-agents-activity";
+import { AgentLifecycleProjection } from "./agent-lifecycle";
 import { Registry, type Registered } from "./external-agents-registry";
 import { queueExternalMessage, resolveExternalCodex, type QueueMessage, type ExternalSendReceipt } from "./external-agents-send";
 
@@ -30,10 +31,11 @@ export class ExternalAgentService {
   private sending = new Set<string>();
   private sentRequests = new Set<string>();
   private historical = new Map<string, { registration: string; version: string; detail: ExternalDetail }>();
+  private lifecycle = new Map<string, { observationId: string; position: number; size: number; mtime: number; anchor: Buffer; projection: AgentLifecycleProjection }>();
   constructor(private readonly root: string, private readonly registryPath: string | undefined,
     private readonly sender: { queue: QueueMessage; executable(): Promise<string> } = { queue: queueExternalMessage, executable: resolveExternalCodex }) {}
   dispose(): Promise<void> {
-    this.disposed = true; this.controller.abort(); this.historical.clear();
+    this.disposed = true; this.controller.abort(); this.historical.clear(); this.lifecycle.clear();
     return this.pending ? new Promise((resolve) => this.drained.push(resolve)) : Promise.resolve();
   }
   private check() { if (this.disposed) throw new Error("Observer disposed"); }
@@ -79,13 +81,15 @@ export class ExternalAgentService {
   private summary(row: Registered): ExternalAgentSummary {
     return { id: row.id, label: safe(row.label, 120), evidence: row.evidence, status: "unavailable", parentId: null,
       ancestry: "unavailable", observationId: "", observedAt: new Date().toISOString(), message: "Registered session could not be read safely.",
-      ...(row.role ? { role: safe(row.role, 120) } : {}), ...(row.task ? { task: safe(row.task, 200) } : {}), contextPaths: row.contextPaths };
+      ...(row.role ? { role: safe(row.role, 120) } : {}), ...(row.task ? { task: safe(row.task, 200) } : {}), contextPaths: row.contextPaths, lifecycle: { state: "unknown" } };
   }
   private async read(row: Registered, tail: boolean, checkHandoff = tail): Promise<ExternalDetail> {
     const summary = this.summary(row);
     const result: ExternalDetail = { session: summary, entries: [], handoff: row.tmux ? "unavailable" : "unconfigured",
       coverage: { tailBytes: 0, partial: true, omittedRecords: 0, message: "No transcript observed." } };
     let file: FileHandle | undefined;
+    let nextLifecycle: ReturnType<typeof this.lifecycle.get>;
+    const previousLifecycle = this.lifecycle.get(row.id);
     try {
       file = await this.regular(row.rollout, 2 ** 31);
       const stat = await file.stat(), header = Buffer.alloc(HEADER);
@@ -111,16 +115,33 @@ export class ExternalAgentService {
         // A complete record keeps its identity as later appends shift this tail.
         let cursor = start > 0 ? bytes.indexOf(10) + 1 : 0;
         if (start > 0 && cursor === 0) cursor = bytesRead;
+        const previous = previousLifecycle;
+        const anchorStart = previous ? previous.position - previous.anchor.length - start : -1;
+        const uninterrupted = previous && previous.observationId === summary.observationId && previous.size <= stat.size &&
+          (previous.size < stat.size || previous.mtime === stat.mtimeMs) && start + cursor <= previous.position &&
+          anchorStart >= 0 && bytes.subarray(anchorStart, anchorStart + previous.anchor.length).equals(previous.anchor);
+        let projection = uninterrupted ? previous.projection.clone() : new AgentLifecycleProjection(meta.payload);
+        const afterOffset = uninterrupted ? previous.position : -1;
+        let completePosition = start + cursor;
         if (bytesRead && bytes[bytesRead - 1] !== 10) partial = true;
         const entries: ExternalEntry[] = [];
         let omitted = 0;
         while (cursor < bytesRead) {
           const end = bytes.indexOf(10, cursor); if (end < 0) break;
-          const offset = start + cursor, line = bytes.subarray(cursor, end).toString("utf8"); cursor = end + 1;
+          const offset = start + cursor, line = bytes.subarray(cursor, end).toString("utf8"); cursor = end + 1; completePosition = start + cursor;
           if (!line) continue;
-          if (line.length > 65536) { omitted++; partial = true; continue; }
+          if (line.length > 65536) {
+            omitted++; partial = true;
+            if (offset >= afterOffset) projection = new AgentLifecycleProjection(meta.payload);
+            continue;
+          }
           let item: unknown;
-          try { item = JSON.parse(line); } catch { omitted++; partial = true; continue; }
+          try { item = JSON.parse(line); } catch {
+            omitted++; partial = true;
+            if (offset >= afterOffset) projection = new AgentLifecycleProjection(meta.payload);
+            continue;
+          }
+          if (offset >= afterOffset) projection.consume(item);
           const identity = `${stat.dev}:${stat.ino}:${offset}:${createHash("sha256").update(line).digest("hex").slice(0, 12)}`;
           const extracted = extractEntries(item, identity);
           if (extracted.length) entries.push(...extracted); else omitted++;
@@ -130,6 +151,12 @@ export class ExternalAgentService {
         result.coverage = { tailBytes: bytesRead, partial, omittedRecords: omitted,
           message: "Recent activity; older entries may be outside this window." };
         summary.lastActivityAt = result.entries.at(-1)?.at;
+        summary.lifecycle = projection.snapshot();
+        // Publish before per-session and aggregate Activity trimming. This cache
+        // only bridges observed append-only intervals; an unobserved byte gap
+        // starts from unknown rather than retaining possibly obsolete work.
+        nextLifecycle = { observationId: summary.observationId, position: completePosition,
+          size: stat.size, mtime: stat.mtimeMs, anchor: Buffer.from(bytes.subarray(Math.max(0, completePosition - start - 128), completePosition - start)), projection };
       }
       // An inode can be truncated and rewritten to another session without
       // shrinking its final size. Verify the accepted header on this descriptor
@@ -146,6 +173,14 @@ export class ExternalAgentService {
         if (result.handoff === "available") result.terminal = terminalCommands(row.tmux);
       }
       this.check();
+      if (nextLifecycle) {
+        const currentLifecycle = this.lifecycle.get(row.id);
+        // Compare the observation owner, not offsets: validated truncation is
+        // a new interval whose cursor legitimately moves backwards. Concurrent
+        // readers cannot overwrite a cache another read already published.
+        if (currentLifecycle === previousLifecycle)
+          this.lifecycle.set(row.id, nextLifecycle);
+      }
       if (tail && !checkHandoff && !row.tmux) {
         const entries = result.entries.slice(-HISTORY_ENTRIES), dropped = result.entries.length - entries.length;
         this.historical.set(row.id, { registration: JSON.stringify(row), version: fileVersion(stat),
@@ -155,6 +190,7 @@ export class ExternalAgentService {
     } catch {
       this.check();
       this.historical.delete(row.id);
+      if (this.lifecycle.get(row.id) === previousLifecycle) this.lifecycle.delete(row.id);
       return { ...result, session: this.summary(row), entries: [], handoff: row.tmux ? "unavailable" : "unconfigured",
         coverage: { tailBytes: 0, partial: true, omittedRecords: 0, message: "Missing, changed, invalid or unsafe registered transcript; no transcript authority retained." } };
     } finally { await file?.close(); }
@@ -232,6 +268,7 @@ export class ExternalAgentService {
       if (request.type === "externalAgents.snapshot") {
         const registeredIds = new Set(rows.map((row) => row.id));
         for (const id of this.historical.keys()) if (!registeredIds.has(id)) this.historical.delete(id);
+        for (const id of this.lifecycle.keys()) if (!registeredIds.has(id)) this.lifecycle.delete(id);
         const fleet: ExternalDetail[] = [];
         // Small bounded batches: all registered tails, no selected-session
         // bottleneck and no process-control validation on passive fleet reads.
