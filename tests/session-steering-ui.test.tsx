@@ -85,7 +85,7 @@ describe("explicit observed-session steering", () => {
     const { bridge, request } = bridgeWith(async (input) => success(input, status));
     render(<SessionSteering detail={detail()} bridge={bridge} />);
     draft("Review the patch"); fireEvent.click(sendButton());
-    await screen.findByText(`Target outcome: ${status}`);
+    await screen.findByText(status === "delivery-unknown" ? "Delivery could not be confirmed. Check the conversation before sending again." : `Target outcome: ${status}`);
     expect(textbox().value).toBe("Review the patch");
     expect(request).toHaveBeenCalledTimes(1);
   });
@@ -99,7 +99,7 @@ describe("explicit observed-session steering", () => {
     });
     render(<SessionSteering detail={detail()} bridge={bridge} />);
     draft("Review the patch"); fireEvent.click(sendButton());
-    await screen.findByText("Delivery unknown — draft retained. Check the conversation before sending again.");
+    await screen.findByText("Delivery could not be confirmed. Check the conversation before sending again.");
     expect(screen.queryByText(/Rejected —/)).toBeNull();
     expect(textbox().value).toBe("Review the patch"); expect(request).toHaveBeenCalledTimes(1);
   });
@@ -131,7 +131,7 @@ describe("explicit observed-session steering", () => {
     const { bridge, request } = bridgeWith(async () => { throw new Error("Connection lost"); });
     const view = render(<SessionSteering detail={detail()} bridge={bridge} />);
     draft("Inspect once"); fireEvent.click(sendButton());
-    await waitFor(() => expect(screen.getByRole("status").textContent).toContain("Delivery unknown"));
+    await waitFor(() => expect(screen.getByRole("status").textContent).toContain("Delivery could not be confirmed"));
     view.rerender(<SessionSteering detail={{ ...detail(), session: { ...detail().session, observationId: "a".repeat(64) } }} bridge={bridge} />);
     expect(textbox().value).toBe("Inspect once");
     view.unmount(); render(<SessionSteering detail={detail()} bridge={bridge} />);

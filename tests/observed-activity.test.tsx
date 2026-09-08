@@ -22,9 +22,9 @@ describe("compact observed activity", () => {
   it("labels local transcript observation separately from generated summaries and opens only deliberately", () => {
     const state = client(), onOpen = vi.fn();
     const view = render(<ObservedActivity client={{ ...state, observing: true }} onOpen={onOpen} />);
-    expect(screen.getByText("Local JSONL observation · not a generated summary")).toBeTruthy();
+    expect(screen.getByText("Session activity · updates automatically")).toBeTruthy();
     expect(screen.getByText("Auto-refresh on")).toBeTruthy();
-    expect(screen.getByText("Assistant-reported · not verified")).toBeTruthy();
+    expect(screen.getByText("Agent update")).toBeTruthy();
     expect(view.container.querySelector("time")?.getAttribute("datetime")).toBe(at);
     expect(onOpen).not.toHaveBeenCalled();
     fireEvent.click(screen.getByRole("button", { name: "Open observed activity for Implementation agent" }));
@@ -60,14 +60,14 @@ describe("compact observed activity", () => {
     expect(within(log).queryByRole("button")).toBeNull(); expect(within(log).queryByRole("link")).toBeNull();
     expect(within(log).getByText("x".repeat(240) + "…")).toBeTruthy();
     expect(within(log).getByText("Time not recorded")).toBeTruthy();
-    expect(within(log).getByText("Recorded tool event")).toBeTruthy();
-    expect(within(log).getByText("Recorded harness event")).toBeTruthy();
+    expect(within(log).getByText("Tool activity")).toBeTruthy();
+    expect(within(log).getByText("Session activity")).toBeTruthy();
   });
 
   it("labels synthetic records and leaves paused retained observations visible", () => {
     const observed = detail(); observed.session.evidence = "synthetic";
     render(<ObservedActivity client={{ ...client({ detail: observed }), observing: false }} onOpen={() => {}} />);
-    expect(screen.getByText("Synthetic transcript · not a real agent run")).toBeTruthy();
+    expect(screen.getByText("Example session")).toBeTruthy();
     expect(screen.getByText("Auto-refresh paused")).toBeTruthy();
     expect(screen.getByText("Reported change 1")).toBeTruthy();
   });
@@ -88,6 +88,6 @@ describe("compact observed activity", () => {
     view.rerender(<ObservedActivity client={{ ...state, selected: null }} onOpen={() => {}} />);
     expect(screen.getByText("Select an external agent to follow its observed activity.")).toBeTruthy();
     view.rerender(<ObservedActivity client={{ ...state, detail: { ...detail(), entries: [] } }} onOpen={() => {}} />);
-    expect(screen.getByText("No eligible entries in the observed tail; this does not mean the agent is idle.")).toBeTruthy();
+    expect(screen.getByText("No recent messages to show.")).toBeTruthy();
   });
 });

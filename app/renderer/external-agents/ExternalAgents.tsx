@@ -95,7 +95,7 @@ export function ExternalAgentInformation({ client, bridge, visible = true, onRet
       <ol className="external-worklog" aria-label={tab === "worklog" ? "Recorded agent worklog" : "Recorded assistant conversation"}>{entries.map((entry) => <li key={entry.id}>
         <header><time>{entry.at}</time><small>{entry.attribution}</small></header><p>{entry.text}</p>
       </li>)}</ol>
-      {!entries.length ? <p>No recent messages.</p> : null}
+      {!entries.length ? <p>No recent messages to show.</p> : null}
     </> : null}
   </section>;
 }
