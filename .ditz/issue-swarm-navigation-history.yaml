@@ -14,3 +14,12 @@ log_events:
   who: Ted Smith
   what: created
   comment: ""
+- time: 2026-09-08T13:56:03-00:00
+  who: Ted Smith
+  what: commented
+  comment: User requests shared Back/Forward across deliberately visited files/components/tasks/agents/worktrees
+    using mouse side buttons and Alt-Left/Alt-Right. Preserve per-view state/unsaved
+    buffers; background refresh does not add history and navigation never sends/replays/restarts
+    agents. Current Alt-Left directory-parent binding needs explicit resolution (retain
+    Alt-Up). Bounded read-only helper maps existing seams; App integration belongs
+    current cockpit-layout owner. No implementation or compatibility claim yet.
