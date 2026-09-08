@@ -132,15 +132,18 @@ describe("external observer presentation and lifecycle", () => {
     await waitFor(() => expect((screen.getByRole("button", { name: "Open conversation in tmux" }) as HTMLButtonElement).disabled).toBe(true));
   });
 
-  it("waits for readiness, then observes once with only deliberate refresh and no periodic polling", async () => {
+  it("waits for readiness and pauses automatic observation when hidden", async () => {
     const { bridge, request } = setup();
-    const hook = renderHook(({ ready }) => useExternalAgents(bridge, ready, 1), { initialProps: { ready: false } });
+    vi.useFakeTimers();
+    const hook = renderHook(({ ready, visible }) => useExternalAgents(bridge, ready, 1, visible), { initialProps: { ready: false, visible: true } });
     expect(request).not.toHaveBeenCalled();
-    hook.rerender({ ready: true }); await waitFor(() => expect(hook.result.current.snapshot).not.toBeNull());
-    vi.useFakeTimers(); await act(async () => { await vi.advanceTimersByTimeAsync(60_000); });
-    expect(request).toHaveBeenCalledTimes(1);
-    await act(async () => { await hook.result.current.refresh(); });
+    await act(async () => { hook.rerender({ ready: true, visible: true }); });
+    expect(hook.result.current.snapshot).not.toBeNull();
+    await act(async () => { await vi.advanceTimersByTimeAsync(3_000); });
     expect(request.mock.calls.map(([r]) => r.type)).toEqual(["externalAgents.snapshot", "externalAgents.snapshot"]);
+    hook.rerender({ ready: true, visible: false });
+    await act(async () => { await vi.advanceTimersByTimeAsync(60_000); });
+    expect(request).toHaveBeenCalledTimes(2);
     expect(vi.getTimerCount()).toBe(0);
   });
 
@@ -150,9 +153,10 @@ describe("external observer presentation and lifecycle", () => {
     const hook = renderHook(() => useExternalAgents(bridge, true, 1));
     await waitFor(() => expect(hook.result.current.snapshot).not.toBeNull());
     let firstRead!: Promise<void>; act(() => { firstRead = hook.result.current.read(id(1)); });
-    await act(async () => { await hook.result.current.read(id(2)); });
-    expect(hook.result.current.detail?.session.id).toBe(id(2));
+    let secondRead!: Promise<void>; act(() => { secondRead = hook.result.current.read(id(2)); });
+    expect(hook.result.current.selected).toBe(id(2)); expect(hook.result.current.detail).toBeNull();
     await act(async () => { held.resolve(success(first, { kind: "read", detail: detail(1) })); await firstRead; });
+    await act(async () => { await secondRead; });
     expect(hook.result.current.selected).toBe(id(2)); expect(hook.result.current.detail?.session.id).toBe(id(2));
     expect(hook.result.current.notice).toBe(""); expect(hook.result.current.busy).toBe(false);
   });
@@ -176,8 +180,8 @@ describe("external observer presentation and lifecycle", () => {
     await waitFor(() => expect(recovered.result.current.snapshot).not.toBeNull());
     let staleRead!: Promise<void>; act(() => { staleRead = recovered.result.current.read(id(2)); });
     recovered.rerender({ generation: 3 });
-    await waitFor(() => expect(recovered.result.current.detail?.session.id).toBe(id(2)));
     await act(async () => { rejected.reject(new Error("Old transport lost")); await staleRead; });
+    await waitFor(() => expect(recovered.result.current.detail?.session.id).toBe(id(2)));
     expect(recovered.result.current.detail?.session.id).toBe(id(2)); expect(recovered.result.current.notice).toBe("");
     expect(recovered.result.current.busy).toBe(false);
     expect(request.mock.calls.filter(([r]) => r.type === "externalAgents.handoff")).toHaveLength(0);
@@ -190,8 +194,9 @@ describe("external observer presentation and lifecycle", () => {
     await waitFor(() => expect(hook.result.current.snapshot).not.toBeNull());
     await act(async () => { await hook.result.current.read(id(1)); });
     let handoff!: Promise<void>; act(() => { handoff = hook.result.current.handoff(); });
-    await act(async () => { await hook.result.current.read(id(2)); });
+    let nextRead!: Promise<void>; act(() => { nextRead = hook.result.current.read(id(2)); });
     await act(async () => { held.resolve(success(command, { kind: "handoff", sessionId: id(1), status: "opened", message: "Old target opened." })); await handoff; });
+    await act(async () => { await nextRead; });
     expect(hook.result.current.detail?.session.id).toBe(id(2)); expect(hook.result.current.detail?.handoff).toBe("available"); expect(hook.result.current.notice).toBe("");
     const last = deferred<CoreResponse>(); let pending!: CoreRequest, renders = 0;
     const disposed = setup((input) => { pending = input; return last.promise; });

@@ -10,8 +10,9 @@ An operator viewing a Ditz task should see the trusted conversations actually la
 
 - [x] (2026-09-08 00:39Z) Read assigned worktree, shared wave contract and current task/dock interfaces.
 - [x] (2026-09-08 00:44Z) Implement pure task-run projection and contextual view; native first pass and copy-fix convergence CLEAN. New identity/excerpt/retention tests authored.
-- [ ] Join only ROOT-cleared typed producer and W6 conversation selection seam.
-- [ ] Run relevant local gates, native convergence and owned virtual proof; push handoff.
+- [x] (2026-09-08 00:54Z) ROOT-cleared exact F1 contract a6e7c8c normally composed. Presentation aliases now use its exported runtime types; actual parsed-snapshot regression and typecheck PASS9/9, native delta CLEAN.
+- [ ] ROOT integration gate: W6 observation/selection App join. No F1 runtime/store or W6 implementation consumed.
+- [x] (2026-09-08 00:49Z) Corrected full quality1804/135 and focused8/8 passed; native source/fix/tooling review CLEAN. Owned standalone virtual proof passed1308ms, cleanup1. Push bounded handoff.
 
 ## Surprises & Discoveries
 
@@ -21,9 +22,11 @@ The current strict trusted snapshot has no admitted task reference or run list. 
 
 Use a pure presentation subset of the agreed run shapes before the producer is available; do not change wire schemas or accept unparsed IPC. W6 will expose its already-validated observation and an exact-token conversation selection callback. This avoids duplicate polling and persistence while preserving core admission authority. Match world, repository and task ID; allow historical metadata revisions but label the actual admitted revision. Selected output requires the exact admitted reference to agree with its run summary, not merely a matching task ID.
 
+ROOT subsequently cleared exact committed F1 contract a6e7c8c. Normally merge only that increment and replace interim interfaces with aliases/Pick of its exported types. Keep PR74's exact committed dependency explicit; do not consume the moving runtime branch. Validate this erased-type/narrow test delta with typechecking and9focused tests, not another full suite or unchanged UI proof.
+
 ## Outcomes & Retrospective
 
-PR74 now contains the bounded implementation. Native code and copy-fix reviews are CLEAN. Full local correction gate and owned controlled view proof are in progress; no live model turn or integrated trusted history is claimed.
+PR74 contains the bounded read-only consumer. Native code, copy-fix and proof-tooling reviews are CLEAN. Before the contract composition, corrected quality passed1,804 tests/135files plus node/renderer builds; focused8/8 and syntax checks passed. Owned :155/55235 standalone visual proof passed1308ms with zero renderer errors and cleanup confirmed. Actual CodeMirror text/cursor/DOM and draft were retained; graph was a stand-in. The subsequent exact F1 contract composition and type-alias/parsed-snapshot delta passed typecheck9/9focused in10s and native delta CLEAN; unchanged visual proof was not rerun or represented as a new joined run. No production App, actual Ditz admission or provider/model turn is claimed. W6 App/runtime integration remains ROOT-owned.
 
 ## Context and Orientation
 
@@ -39,7 +42,7 @@ Work in `/home/tedks/Projects/swarm-ide/trusted-task-linkage`. Materialize depen
 
 ## Validation and Acceptance
 
-Tests must show only exact admitted world/repository/task matches, retain original metadata revision, reject mismatched selected transcript references, and never transform ready/closed into task completion. An operator click emits only the exact conversation token; late updates or a task switch cannot show the previous task's output. A joined controlled UI proof should preserve source text/cursor, draft, task focus and graph cameras while selecting a conversation. Controlled activity is not real model delivery.
+Tests show only exact admitted world/repository/task matches, retain original metadata revision, reject mismatched selected transcript references, and never transform ready/closed into task completion. An operator click emits only the exact conversation token; late updates or a task switch cannot show the previous task's output. Run `nix develop --command bazel run //tools/task-runs:smoke --jobs=3` for the standalone controlled actual component/CodeMirror proof. It has no production bridge, model, actual admission or production graph; the graph is a stand-in. W6's later joined controlled UI proof must cover actual App/cameras and validated fleet observation. Controlled activity is not real model delivery.
 
 ## Idempotence and Recovery
 
@@ -47,7 +50,7 @@ This read-only view adds no storage or process authority. Missing producer suppo
 
 ## Artifacts and Notes
 
-Coordination and evidence live under `/tmp/swarm-ide-real-swarms.Djy75P/task-runs/`. The independently testable presentation may be pushed before the producer join; that is an explicit held boundary, not a completed live feature.
+Coordination and verification live under `/tmp/swarm-ide-real-swarms.Djy75P/task-runs/`. Local visual evidence is `artifacts/task-runs/run.Bk1NYJ/proof.json` with two PNGs. The independently testable presentation is pushed before the producer join; that is an explicit held boundary, not a completed live feature. `tools/task-runs/README.md` explains reproducible evidence boundaries.
 
 ## Interfaces and Dependencies
 
@@ -56,3 +59,7 @@ Coordination and evidence live under `/tmp/swarm-ide-real-swarms.Djy75P/task-run
 Initial plan records bounded parallel implementation and the explicit producer gate.
 
 2026-09-08: Recorded first native-clean presentation increment, exact test-data correction and separate proof/join limits.
+
+2026-09-08: Recorded completed local/owned proof and the intentionally held ROOT-only runtime join; no whole legacy suite or real model was repeated for this consumer.
+
+2026-09-08: Recorded exact ROOT-authorized F1 contract consumption, direct type aliases and proportional parsed-snapshot compatibility proof. Runtime/App join remains separate.
