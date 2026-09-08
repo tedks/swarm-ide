@@ -13,14 +13,17 @@ The opened repository is trusted to execute build actions. The renderer is not a
 ## Progress
 
 - [x] Inspected the graph query, topology executor, typed bridge and owned process lifecycle.
-- [ ] Publish a small build start/observe/cancel protocol and scoped service.
-- [ ] Mount explicit graph controls and retained build results without replacing editor state.
-- [ ] Prove actual successful/failing disposable targets, progress before exit, cancellation and retention; review the narrow delta.
+- [x] (2026-09-08 18:14Z) Published build start/observe/cancel protocol and scoped service in PR124.
+- [x] (2026-09-08 18:15Z) Mounted explicit graph controls and retained build results without replacing editor state.
+- [x] (2026-09-08 18:34Z) Proved actual successful/failing disposable targets, progress before exit, broker-save and completed-query retention; 56 focused checks/types and native convergence CLEAN. One owned packaged UI proof passed through build.
+- [ ] Complete architecture-owner mapping coordination and final push/cleanup.
 - [ ] Push the ready PR, update Ditz and clean owned resources.
 
 ## Surprises & Discoveries
 
 The existing topology build is a hardcoded example and uses a separate executor. Its jobs are replaced when source changes. The graph query already uses a private PID namespace owner; its collector has a query-specific 30-second deadline and error handling, so the new build collector must not silently reuse those semantics.
+
+Native review caught an obsolete read starving job polling after Start, and unknown cleanup being hidden until the build deadline when EOF never arrives. Both have direct regressions and clean fix reviews. The actual GUI's additional query-refresh assertion could see the old current observation: its driver is corrected, but not rerun under the one-GUI limit. That run proves selected build and editor retention only; a separate actual worker-route probe waits for the completed dependency query and proves retained jobs there.
 
 ## Decision Log
 
@@ -56,4 +59,6 @@ Concise progress and verification live in `/tmp/swarm-ide-demo-close.BrSWmt/buil
 
 ## Outcomes & Retrospective
 
-Implementation in progress. No build success claimed yet.
+The actual worker-route proof builds `//:useful`, observes Configured while it runs, then builds `//:broken` and retains its intentional failure diagnostic. It saves BUILD through file.read/file.write, completes a real dependency refresh, and confirms the same two job records plus owned shutdown. The 8.323-second owned packaged UI proof selects a real filegroup, builds it, displays Complete and preserves dirty source, cursor, graph identity and camera. No model turns or physical desktop automation occurred. CPU/memory telemetry and persistent history beyond core lifetime remain followups, not simulated claims.
+
+Updated 2026-09-08 after direct checks and native review to capture exact proof scope and the test-only refresh race.

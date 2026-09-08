@@ -5,7 +5,7 @@ const identity = z.string().min(1).max(512);
 /** A single local label, never a pattern, flag, external repository or traversal. */
 export const SelectedBuildTargetSchema = z.string().max(512).regex(/^\/\/[A-Za-z0-9_./+-]*:[A-Za-z0-9_./+-]+$/)
   .refine((label) => !label.split(/[/:]/).some((part) => part === "." || part === "..") &&
-    !label.includes("...") && !label.endsWith(":all"), "Choose one exact local Bazel target");
+    !label.includes("...") && !["all", "all-targets"].includes(label.split(":")[1]!), "Choose one exact local Bazel target");
 const context = { protocolVersion: z.literal(PROTOCOL_VERSION), requestId: identity, repositoryId: identity, worldId: identity };
 export const BuildJobRequestSchema = z.discriminatedUnion("type", [
   z.object({ ...context, type: z.literal("build.observe") }).strict(),

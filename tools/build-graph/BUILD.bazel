@@ -16,6 +16,7 @@ sh_test(name = "target-checks", srcs = ["target-checks.sh"], data = ["//:quality
 sh_binary(name = "target-probe-build", srcs = ["target-probe-build.sh"])
 genrule(name = "target-probe-module", srcs = ["//:quality_sources", "//:package.json"], outs = ["target-probe.cjs"], cmd = "$(location :target-probe-build) $@ $(location //:package.json)", tools = [":target-probe-build"], local = True)
 sh_binary(name = "target-probe", srcs = ["target-probe.sh"], data = [":sources", ":target-probe-module", "//:desktop-bundle"], tags = ["manual"])
+sh_binary(name = "target-smoke", srcs = ["target-smoke.sh"], data = [":sources", "//:desktop-bundle", "//tools:virtual-desktop-run.sh", "//tools:x11-driver-source", "//tools/task-integration:sources"], tags = ["manual"])
 sh_test(
     name = "owned-port-test",
     srcs = ["owned-port.test.sh"],

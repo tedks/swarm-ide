@@ -20,7 +20,7 @@ function harness() {
 }
 
 describe("explicit target jobs", () => {
-  it.each(["--help", "//...", "//:all", "//pkg:*", "@other//:run", "//../:run", "//pkg:../run", "//pkg:run;rm", "//pkg:run\n"])('rejects non-single target %s', (target) => {
+  it.each(["--help", "//...", "//:all", "//pkg:all-targets", "//pkg:*", "@other//:run", "//../:run", "//pkg:../run", "//pkg:run;rm", "//pkg:run\n"])('rejects non-single target %s', (target) => {
     expect(BuildJobRequestSchema.safeParse({ ...start, target }).success).toBe(false);
   });
   it("validates workspace before admission; observes without building; reserves synchronously", async () => {

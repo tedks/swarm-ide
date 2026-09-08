@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Background, Controls, Handle, MarkerType, Position, ReactFlow, type NodeProps, type Node } from "@xyflow/react";
 import { AgentSprites } from "./AgentSprites";
 import type { BuildGraphObservation } from "../../../protocol/build-graph";
+import { SelectedBuildTargetSchema } from "../../../protocol/build-jobs";
 import type { BuildLinkSnapshot } from "./layers";
 import { BUILD_PATTERN_LIMIT, BUILD_VIEW_LIMIT, buildTargets, layoutBuildTargets, matchBuildTargets, selectBuildView, selectFileBuildView } from "./build-view";
 import { useGraphReframe } from "./reframe";
@@ -62,7 +63,7 @@ export function BuildGraphPane({ capture, mockAgents, mockVersion, onOpenBuild, 
       ({ id: label, type: "buildTarget", position, selected: label === selected, draggable: false, data: { label, unresolved: capture?.targets?.find((target) => target.label === label)?.kind === "unresolved", mock: sprites, ownsFile: fileSlice?.owners.includes(label) ?? false } }));
   }, [slice, sprites, fileSlice, selected, capture]);
   const edges = useMemo(() => slice?.links.map((link) => ({ id: `${link.from}->${link.to}`, source: link.from, target: link.to, type: "smoothstep", markerEnd: { type: MarkerType.ArrowClosed, color: "#b7a078" }, style: { stroke: "#b7a078" } })) ?? [], [slice]);
-  const buildable = selected && selected.startsWith("//") && capture?.targets?.some((item) => item.label === selected && item.kind === "rule");
+  const buildable = selected && SelectedBuildTargetSchema.safeParse(selected).success && capture?.targets?.some((item) => item.label === selected && item.kind === "rule");
   const status = <div className={`build-observation status-${observation?.status === "current" ? "green" : observation?.status === "error" ? "red" : "yellow"}`} data-build-status={observation?.status ?? "unavailable"} role="status"><strong>{observation?.status ?? "unavailable"}</strong> · {observation?.message ?? "No build-graph observation requested."} {onRefresh ? <button onClick={onRefresh} disabled={observation?.status === "refreshing"}>Refresh dependencies</button> : null}</div>;
   if (!capture) return <div className="build-view-empty">{status}</div>;
   return <section className="build-graph-view" aria-label="Bazel build graph" data-file-focus={followingFile ? focusedFile : undefined}>{status}<div className="build-target-controls"><form onSubmit={(event) => { event.preventDefault(); if (canAdd) { setFollowFile(false); setRoots((before) => [...new Set([...before, pattern])].slice(0, BUILD_PATTERN_LIMIT)); } }}>

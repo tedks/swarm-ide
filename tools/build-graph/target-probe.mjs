@@ -66,8 +66,17 @@ try {
   const changed = await send({ type: "file.write", path: "BUILD", expectedRevision: source.file.revision, content: `${source.file.content}\n# changed through the real editor broker\n` });
   assert.equal(changed.ok, true); assert.ok(changed.file.workingFingerprint);
   assert.deepEqual((await read()).jobs, before.jobs);
+  const query = await send({ ...identity, type: "buildGraph.observe", refresh: true }); assert.equal(query.ok, true);
+  assert.equal(query.buildGraph.status, "refreshing");
+  for (;;) {
+    const queried = await send({ ...identity, type: "buildGraph.observe", refresh: false }); assert.equal(queried.ok, true);
+    if (queried.buildGraph.status === "current") break;
+    assert.equal(queried.buildGraph.status, "refreshing", JSON.stringify(queried.buildGraph));
+    await new Promise((resolve) => setTimeout(resolve, 100));
+  }
+  assert.deepEqual((await read()).jobs, before.jobs);
   await shutdown();
-  console.log(JSON.stringify({ passed: true, actualWorkerRouting: true, targets: before.jobs, beforeExitMilestones: milestones, retainedAfterSourceChange: true, ownedCleanup: stopped }, null, 2));
+  console.log(JSON.stringify({ passed: true, actualWorkerRouting: true, targets: before.jobs, beforeExitMilestones: milestones, retainedAfterBrokerSaveAndCompletedDependencyQuery: true, ownedCleanup: stopped }, null, 2));
 } finally {
   if (!stopped && shutdown) await shutdown();
   clearTimeout(deadline);
