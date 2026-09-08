@@ -5,9 +5,10 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { AgentDock } from "../app/renderer/agents/AgentDock";
 import { AgentBridgeClient } from "../app/renderer/agents/bridge-client";
 import { emptyLiveAgentState } from "../app/renderer/agents/live-state";
-import { AgentConversation } from "../app/renderer/external-agents/AgentConversation";
+import { AgentConversation, AgentConversationActions } from "../app/renderer/external-agents/AgentConversation";
 import { SteeringMemory } from "../app/renderer/external-agents/steering-memory";
 import type { ExternalAgentSummary, ExternalDetail } from "../protocol/external-agents";
+import { paymentsFileFocus } from "../fixtures/world";
 
 const id = (n: number) => `00000000-0000-4000-8000-${String(n).padStart(12, "0")}`;
 const at = "2026-09-08T06:00:00.000Z";
@@ -21,21 +22,22 @@ const detail = (session: ExternalAgentSummary): ExternalDetail => ({ session, ha
 
 function setup(initial: ExternalAgentSummary[] = [root, child, history], selected = root.id) {
   const state = emptyLiveAgentState(), native = new AgentBridgeClient(state), onSelect = vi.fn(), request = vi.fn();
-  const memory = new SteeringMemory();
+  const memory = new SteeringMemory(), onWorktree = vi.fn(), onContext = vi.fn();
   let open!: (id: string) => void;
   function Harness({ sessions, blocked = false }: { sessions: ExternalAgentSummary[] | null; blocked?: boolean }) {
-    const [selection, select] = useState(selected), [version, bump] = useState(0);
+    const [selection, select] = useState(selected), [version, bump] = useState(0), [draft, setDraft] = useState(false);
     open = (id) => { select(id); bump((v) => v + 1); onSelect(id); };
     const current = sessions?.find((session) => session.id === selection);
     const client = { snapshot: sessions ? { status: "observed" as const, observedAt: at, message: "Recent", sessions } : null, selected: selection,
       detail: current ? detail(current) : null, busy: false, notice: "", read: async (id: string) => open(id), refresh: vi.fn(), handoff: vi.fn() };
     return <><textarea aria-label="Source" defaultValue="source and cursor retained" />
-      <AgentDock state={state} client={native} onDraft={vi.fn()} runContent={null} draftContent={<textarea aria-label="Native draft" />} jobsContent={null} activityContent={null}
+      <AgentDock state={{ ...state, draft: draft ? { focus: paymentsFileFocus, task: "Retained", model: "", prepared: null, confirmed: false, preparing: false } : null }} client={native} onDraft={() => setDraft(true)} runContent={null} draftContent={<textarea aria-label="Native draft" />} jobsContent={null} activityContent={null}
         shortcutsBlocked={blocked} conversation={{ registered: { sessions, selected: selection, onSelect: open }, selectionVersion: String(version),
-          content: <AgentConversation client={client} memory={memory} bridge={{ request, onEvent: () => () => {} }} onContext={vi.fn()} /> }} /></>;
+          actions: <AgentConversationActions client={client} onContext={onContext} onWorktree={onWorktree} />,
+          content: <AgentConversation embeddedHeader client={client} memory={memory} bridge={{ request, onEvent: () => () => {} }} onContext={onContext} /> }} /></>;
   }
   const view = render(<Harness sessions={initial} />);
-  return { memory, request, onSelect, open: (id: string) => act(() => open(id)), rerender: (sessions: ExternalAgentSummary[] | null, blocked = false) => view.rerender(<Harness sessions={sessions} blocked={blocked} />) };
+  return { memory, request, onSelect, onWorktree, onContext, open: (id: string) => act(() => open(id)), rerender: (sessions: ExternalAgentSummary[] | null, blocked = false) => view.rerender(<Harness sessions={sessions} blocked={blocked} />) };
 }
 afterEach(() => { cleanup(); localStorage.clear(); vi.restoreAllMocks(); });
 const tab = (name: string) => screen.getByRole("tab", { name: new RegExp(`^${name} `) });
@@ -100,18 +102,19 @@ describe("registered conversation tabs", () => {
     expect(view.onSelect).not.toHaveBeenCalled();
     view.open(child.id); expect(tab("Child").getAttribute("aria-selected")).toBe("true");
     fireEvent.click(screen.getByRole("button", { name: "Close conversation Child" }));
-    expect(screen.getByRole("tab", { name: "Native agents / New" }).getAttribute("aria-selected")).toBe("true");
+    expect(tab("ROOT").getAttribute("aria-selected")).toBe("true");
     view.open(history.id); expect(tab("Earlier").getAttribute("aria-selected")).toBe("true");
     expect(tab("Earlier").querySelector('[data-run-state="completed"]')).toBeTruthy();
     expect(view.request).not.toHaveBeenCalled();
   });
   it("leaves an explicitly chosen native draft active when more registrations arrive", () => {
     const view = setup([root]);
-    fireEvent.click(screen.getByRole("tab", { name: "Native agents / New" }));
+    fireEvent.click(screen.getByRole("button", { name: "Agent tools" }));
+    fireEvent.click(screen.getByRole("button", { name: "Prepare an agent draft" }));
     const input = screen.getByRole("textbox", { name: "Native draft" }); input.focus();
     view.rerender([root, child]);
     expect(document.activeElement).toBe(input);
-    expect(screen.getByRole("tab", { name: "Native agents / New" }).getAttribute("aria-selected")).toBe("true");
+    expect(screen.getByRole("tab", { name: "Draft" }).getAttribute("aria-selected")).toBe("true");
     view.open(child.id); expect(tab("Child").getAttribute("aria-selected")).toBe("true");
   });
   it("uses manual arrow navigation and a shared conversation panel with distinct close buttons", () => {
@@ -122,7 +125,7 @@ describe("registered conversation tabs", () => {
     const panel = screen.getByRole("tabpanel", { name: "Child In progress" });
     expect(within(panel).getByRole("textbox", { name: "Message to Child" })).toBeTruthy();
     expect(tab("Child").querySelector("button")).toBeNull();
-    expect(screen.getByText(/Ctrl\+Tab/)).toBeTruthy();
+    expect(screen.getByTitle(/Ctrl\+Tab/)).toBeTruthy();
   });
   it("does not auto-open unavailable, unknown or example registrations, and removes revoked tabs", () => {
     const unknown = { ...child, lifecycle: undefined }, example = { ...history, evidence: "synthetic" as const, lifecycle: { state: "working" as const } };
@@ -145,13 +148,54 @@ describe("registered conversation tabs", () => {
     expect(screen.queryByRole("tab", { name: /Child/ })).toBeNull();
     expect(view.onSelect).toHaveBeenCalledTimes(1); expect(view.request).not.toHaveBeenCalled();
   });
-  it("keeps an enabled roving tab stop and can cycle out of a reconnecting conversation", () => {
+  it("keeps explicit tools access and disabled session actions during reconnect without selecting anyone", () => {
     const view = setup(); view.rerender(null);
     expect((tab("ROOT") as HTMLButtonElement).disabled).toBe(true);
-    const native = screen.getByRole("tab", { name: "Native agents / New" });
-    expect(native.tabIndex).toBe(0);
+    const tools = screen.getByRole("button", { name: "Agent tools" });
+    expect(tools.tabIndex).toBe(0);
+    expect((screen.getByRole("button", { name: "Copy terminal command" }) as HTMLButtonElement).disabled).toBe(true);
     fireEvent.keyDown(screen.getByRole("region", { name: "Agent messages" }), { key: "Tab", ctrlKey: true });
-    expect(native.getAttribute("aria-selected")).toBe("true"); expect(document.activeElement).toBe(native);
+    expect(tab("ROOT").getAttribute("aria-selected")).toBe("true");
+    fireEvent.click(tools); expect(screen.getByRole("tabpanel", { name: "Agent tools" })).toBeTruthy();
     expect(view.onSelect).not.toHaveBeenCalled(); expect(view.request).not.toHaveBeenCalled();
+  });
+  it("renders exactly one header with icon actions and no permanent generic category", () => {
+    const view = setup([{ ...root, worktree: "/repo/root" }, child]);
+    const pane = screen.getByRole("region", { name: "Agent messages" });
+    expect(pane.querySelectorAll(".agent-conversation-header")).toHaveLength(1);
+    expect(pane.querySelector(".conversation-heading")).toBeNull();
+    expect(screen.queryByRole("tab", { name: /Conversation|Native agents|New/ })).toBeNull();
+    const actions = screen.getByRole("group", { name: "Selected agent actions" });
+    expect(actions.closest("header")?.contains(tab("ROOT"))).toBe(true);
+    expect(actions.textContent).toBe("");
+    fireEvent.click(within(actions).getByRole("button", { name: "Worktree" }));
+    expect(view.onWorktree).toHaveBeenCalledExactlyOnceWith(root.id);
+    fireEvent.click(within(actions).getByRole("button", { name: "Agent details" }));
+    expect(view.onContext).toHaveBeenCalledOnce();
+    fireEvent.click(tab("Child"));
+    expect((screen.getByRole("button", { name: "Worktree" }) as HTMLButtonElement).disabled).toBe(true);
+    expect(view.request).not.toHaveBeenCalled();
+  });
+  it("can close the last tab without losing draft memory or silently reselecting it", () => {
+    const view = setup([root]);
+    const input = screen.getByRole("textbox", { name: "Message to ROOT" });
+    fireEvent.change(input, { target: { value: "keep this" } });
+    fireEvent.click(screen.getByRole("button", { name: "Close conversation ROOT" }));
+    expect(screen.queryByRole("tab")).toBeNull();
+    expect(screen.getByText(/Select an agent from the fork list/)).toBeTruthy();
+    expect(document.activeElement).toBe(screen.getByRole("button", { name: "Agent tools" }));
+    view.rerender([{ ...root }]); expect(screen.queryByRole("tab")).toBeNull();
+    expect(view.onSelect).not.toHaveBeenCalled();
+    view.open(root.id);
+    expect(screen.getByRole("textbox", { name: "Message to ROOT" })).toBe(input);
+    expect((input as HTMLTextAreaElement).value).toBe("keep this");
+    expect(view.request).not.toHaveBeenCalled();
+  });
+  it("starts empty without a duplicate title and exposes native controls without creating or sending a run", () => {
+    const view = setup([]);
+    expect(screen.queryByRole("tab")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Agent tools" }));
+    expect(screen.getByRole("button", { name: "Prepare an agent draft" })).toBeTruthy();
+    expect(view.request).not.toHaveBeenCalled(); expect(view.onSelect).not.toHaveBeenCalled();
   });
 });

@@ -84,7 +84,12 @@ focus back from another agent, source file or dialog. Unavailable sessions remai
 disabled. These are presentation rules, not a new sender or delivery guarantee.
 
 Native trusted conversations, approvals, forks, new drafts and saved history
-remain mounted in the secondary **Native agents / New** tab. Legacy stored runs
+remain mounted behind the **Agent tools** icon, not a permanent generic category.
+An opened draft gets a Draft tab; explicit native-run selection keeps its controls
+reachable. Registered tabs and their selected Terminal, Worktree and Details
+icons share one header, with no repeated conversation title. Terminal only copies
+the validated command. Closing the last registered tab shows a selection prompt
+without selecting another agent or discarding any draft. Legacy stored runs
 keep their individual tabs; the competing old run-list mount is removed. Exact
 obsolete isolated-policy capability text stays suppressed when trusted controls
 exist, while operation errors remain visible. This changes presentation, not

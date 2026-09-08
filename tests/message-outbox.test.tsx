@@ -205,6 +205,7 @@ describe("saved outgoing messages", () => {
     if (reason === "synthetic") selected.detail.session.evidence = "synthetic";
     if (reason === "history") selected.detail.handoff = "unavailable";
     render(<AgentConversation client={selected} memory={new SteeringMemory(storage())} onContext={() => {}} />);
-    expect(screen.queryByRole("button", { name: "Copy terminal command" })).toBeNull();
+    const copy = screen.queryByRole("button", { name: "Copy terminal command" }) as HTMLButtonElement | null;
+    expect(copy === null || copy.disabled).toBe(true);
   });
 });
