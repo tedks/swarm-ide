@@ -40,5 +40,12 @@ log_events:
     checks -> quality_sources data dependency. JSON syntax and exact patch/dependency
     checks passed; no implementation or schema changes. PR114 rebased with identical
     upper changes to da36829d. ROOT still owns landing and cockpit adoption.'
+- time: 2026-09-08T14:35:45-00:00
+  who: Ted Smith
+  what: commented
+  comment: PR108 normally merged. Startup/change/focus build-query behavior and real
+    edge-change tests accepted; final App adoption is the existing cockpit PR107 join.
+    Separate PR114 live build milestones are ready and only need their normal upper-stack
+    update.
 blocks:
 - swarm-usability-join
