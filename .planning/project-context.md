@@ -11,7 +11,7 @@ Opening a project should show the running development servers and containers tha
 - [x] (2026-09-08 04:41Z) Confirmed isolated feature worktree and started `swarm-project-context`; two bounded native inventory helpers launched.
 - [x] (2026-09-08 04:49Z) Recorded actual project inventory; chose generic Node/socket and Compose ownership defaults.
 - [x] (2026-09-08 05:06Z) Implemented validated observation, providers and standalone panel. Native review converged after finite Docker metadata admission, pinned daemon and retained-source fixes.
-- [ ] Join the small App/browser-link mount after ownership coordination; standalone panel is not yet visible in the production App.
+- [x] (2026-09-08 05:10Z) Added only the coordinated import/panel mount and native HTTP(S) browser handoff in this worktree. ROOT still owns merge/adoption; no peer files or shared app changed.
 - [ ] Verify identity switching, cancellation, unavailable tooling and real owned desktop behavior; review, push and hand off to ROOT.
 
 ## Surprises & Discoveries
@@ -26,7 +26,7 @@ Use existing manifests and concrete process/container ownership for automatic de
 
 ## Outcomes & Retrospective
 
-Core discovery is implemented and demonstrated against real Pure Sky/Goals runtime metadata. Focused contracts/provider/panel tests and typechecks pass; native review is clean for core changes. The dedicated panel's production mount and native browser-link handoff are pending ownership coordination, so no visible managed-app or packaged-UI success is claimed yet. Python/FastAPI and cloud observations are filed follow-ups rather than silently implemented.
+Core discovery is implemented and demonstrated against real Pure Sky/Goals runtime metadata. Focused contracts/provider/panel tests and typechecks pass; native review is clean for core changes. The panel and browser-link mount are implemented in the private feature worktree, with packaged checks running. No managed-app adoption or packaged-UI success is claimed until that check completes. Python/FastAPI and cloud observations are filed follow-ups rather than silently implemented.
 
 ## Context and Orientation
 

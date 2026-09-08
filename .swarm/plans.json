@@ -126,7 +126,7 @@
         {
           "label": "//tools/project-context:checks",
           "role": "Checks automatic runtime ownership, cancellation and Context rendering",
-          "dependencies": [{ "label": "//:quality_sources", "relation": "data" }]
+          "dependencies": [{ "label": "//:quality_sources", "relation": "data" }, { "label": "//tools/project-context:sources", "relation": "data" }]
         },
         {
           "label": "//tools/project-context:probe",

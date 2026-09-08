@@ -11,7 +11,7 @@ sh_binary(
 sh_test(
     name = "checks",
     srcs = ["checks.sh"],
-    data = ["//:quality_sources"],
+    data = [":sources", "//:quality_sources"],
     tags = ["local"],
 )
 
