@@ -466,6 +466,22 @@
           "dependencies": [{ "label": "//:quality_sources", "relation": "data" }]
         },
         {
+          "label": "//tools/operator-cockpit:activity-refresh",
+          "role": "Checks central live overview, selected-reader refresh and identity/focus retention",
+          "dependencies": [
+            { "label": "//:quality_sources", "relation": "data" },
+            { "label": "//tools/operator-cockpit:sources", "relation": "data" }
+          ]
+        },
+        {
+          "label": "//tools/activity-usability:central-refresh",
+          "role": "Packaged central Activity publication and explicit refresh proof using controlled transcript appends",
+          "dependencies": [
+            { "label": "//tools/activity-usability:sources", "relation": "data" },
+            { "label": "//tools/activity-usability:smoke", "relation": "data" }
+          ]
+        },
+        {
           "label": "//tools/activity-usability:smoke",
           "role": "Packaged raw activity, keyboard settings and retained work proof",
           "dependencies": [{ "label": "//:desktop-bundle", "relation": "data" }]

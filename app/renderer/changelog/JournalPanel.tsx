@@ -55,38 +55,54 @@ export function JournalActivity({ state, onOpen }: { state: JournalState; onOpen
   </div>;
 }
 
-export function JournalPanel({ open, state, selectedEntry, selectionVersion = 0, onClose, onOpenSource, pullRequests, liveContent }: {
+export function JournalPanel({ open, state, selectedEntry, selectionVersion = 0, onClose, onOpenSource, pullRequests, liveContent, liveState, onActivityOverview }: {
   open: boolean; state: JournalState; selectedEntry: string | null; selectionVersion?: number; onClose(): void; onOpenSource(path: string): void;
   pullRequests?: GithubPrState;
   liveContent?: ReactNode;
+  liveState?: { refresh(): void | Promise<void>; busy: boolean; notice: string; observing?: boolean };
+  onActivityOverview?(): void;
 }) {
-  const { observation, notice, busy, refresh } = state;
+  const { observation, notice, busy } = state;
   const [filter, setFilter] = useState("");
   const [view, setView] = useState<"activity" | "changes" | "prs">(liveContent ? "activity" : "changes");
   const body = useRef<HTMLDivElement>(null);
   const heading = useRef<HTMLHeadingElement>(null);
   const [pendingEntry, setPendingEntry] = useState<string | null>(null);
+  const hasActivity = Boolean(liveContent);
   useEffect(() => {
     if (!open) return;
     if (selectedEntry) { setView("changes"); setFilter(""); setPendingEntry(selectedEntry); }
-    else { if (liveContent) setView("activity"); heading.current?.focus(); }
-  }, [selectedEntry, selectionVersion, open, observation?.document.inputDigest]);
+    else { setPendingEntry(null); if (hasActivity) setView("activity"); }
+    heading.current?.focus({ preventScroll: true });
+  }, [selectedEntry, selectionVersion, open, hasActivity]);
   useLayoutEffect(() => {
-    if (!open || !pendingEntry || filter) return;
+    if (!open || view !== "changes" || !pendingEntry || filter) return;
     const element = [...(body.current?.querySelectorAll<HTMLDetailsElement>("[data-change-id]") ?? [])].find((node) => node.dataset.changeId === pendingEntry);
-    if (element) { element.open = true; element.scrollIntoView?.({ block: "nearest" }); element.querySelector("summary")?.focus(); setPendingEntry(null); }
+    if (element) {
+      element.open = true;
+      // A held summary read may finish after the operator returned to typing.
+      if (document.activeElement === heading.current) {
+        element.scrollIntoView?.({ block: "nearest" }); element.querySelector("summary")?.focus();
+      }
+      setPendingEntry(null);
+    }
   }, [pendingEntry, filter, open, view, observation?.document.inputDigest]);
 
   const bundle = observation?.bundle;
   const paths = [...new Set(bundle?.evidence.flatMap((item) => item.paths) ?? [])].sort();
   const entries = observation?.document.entries.filter((entry) => !filter || entryEvidence(entry, observation.bundle).some((item) => item.paths.includes(filter))) ?? [];
+  const reader = view === "activity" ? liveState : view === "prs" ? pullRequests : state;
+  const refreshLabel = view === "activity" ? "Refresh activity" : view === "prs" ? "Refresh selected pull requests" : "Refresh logical changes";
   return <section className="journal-panel" aria-label="Activity log" hidden={!open} data-journal-digest={observation?.document.inputDigest ?? ""}>
     <header className="journal-header"><div><h2 ref={heading} tabIndex={-1}>Activity log</h2></div>
-      <div className="journal-controls"><button onClick={() => void refresh()} disabled={busy} aria-label="Refresh logical changes">{busy ? "Reading…" : "Refresh"}</button><button onClick={onClose} aria-label="Close logical changes">×</button></div></header>
-    {pullRequests || liveContent ? <nav className="journal-view-tabs" aria-label="Activity views">{liveContent ? <button aria-pressed={view === "activity"} onClick={() => setView("activity")}>Activity</button> : null}<button aria-pressed={view === "changes"} onClick={() => setView("changes")}>Saved summaries</button>{pullRequests ? <button aria-pressed={view === "prs"} onClick={() => setView("prs")}>Pull requests</button> : null}</nav> : null}
+      <div className="journal-controls"><button onClick={() => void reader?.refresh()} disabled={!reader || reader.busy || (view === "activity" && liveState?.observing === false)} aria-label={refreshLabel}>{reader?.busy ? "Reading…" : "Refresh"}</button><button onClick={onClose} aria-label="Close logical changes">×</button></div></header>
+    {pullRequests || liveContent ? <nav className="journal-view-tabs" aria-label="Activity views">{liveContent ? <button aria-pressed={view === "activity"} onClick={() => { setView("activity"); setPendingEntry(null); onActivityOverview?.(); }}>Activity</button> : null}<button aria-pressed={view === "changes"} onClick={() => setView("changes")}>Saved summaries</button>{pullRequests ? <button aria-pressed={view === "prs"} onClick={() => { setView("prs"); setPendingEntry(null); }}>Pull requests</button> : null}</nav> : null}
     <div className="journal-body" ref={body}>
       {pullRequests ? <div hidden={view !== "prs"}><GithubPullRequests state={pullRequests} onOpenSource={onOpenSource} /></div> : null}
-      {liveContent ? <div hidden={view !== "activity"}>{liveContent}</div> : null}
+      {liveContent ? <div hidden={view !== "activity"}>
+        {liveState?.notice ? <p role="status" className="journal-warning">{liveState.notice}</p> : null}
+        {liveContent}
+      </div> : null}
       <div hidden={view !== "changes"}>
       {notice ? <p role="status" className="journal-warning">{observation ? "Retained · " : "Unavailable · "}{notice}</p> : null}
       {busy && observation ? <p className="journal-warning">Retained while observing the current artifacts…</p> : null}
