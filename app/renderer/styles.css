@@ -164,6 +164,40 @@ button.truth-dot:disabled { cursor: wait; opacity: 0.72; }
 .graph-canvas { min-height: 0; }
 .react-flow__controls { overflow: hidden; border: 1px solid #263a3a !important; border-radius: 5px; box-shadow: none !important; }
 .react-flow__controls-button { width: 22px !important; height: 22px !important; border-color: #263a3a !important; background: #0e1a1b !important; fill: #78918e !important; }
+.react-flow__controls-button { color: #b8d9d0 !important; }
+.react-flow__controls-button:hover { background: #24403a !important; }
+.react-flow__controls-button svg { fill: currentColor !important; }
+.react-flow__attribution { background: #13231f !important; color: #b8d9d0 !important; border-radius: 3px; }
+.react-flow__attribution a { color: #b8d9d0 !important; }
+.react-flow__attribution a:hover { color: #ffffff !important; }
+.sidebar-work-log { padding: 8px; border-top: 1px solid #29423a; }
+.worktree-inspection { grid-row: 3; grid-column: 2; min-width: 0; min-height: 0; overflow: auto; background: #081213; color: #c5d8d0; }
+.worktree-inspection > header { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 10px; background: #11221e; }
+.worktree-inspection h2 { font-size: 13px; margin: 4px 0 0; overflow-wrap: anywhere; }
+.worktree-inspection small, .worktree-location { color: #9ab5a8; }
+.worktree-location { padding: 0 10px; overflow-wrap: anywhere; font-size: 10px; }
+.worktree-inspection nav { display: flex; gap: 6px; padding: 8px 10px; }
+.worktree-inspection button { background: #19322a; color: #cae8d7; border: 1px solid #3a6452; border-radius: 4px; padding: 5px 8px; cursor: pointer; font: 11px system-ui; }
+.worktree-inspection button[aria-pressed="true"] { background: #315943; }
+.worktree-inspection pre { margin: 0; padding: 12px; font: 12px/1.6 monospace; white-space: pre; }
+.worktree-inspection p { padding-inline: 10px; }
+.worktree-diff { overflow: auto; }
+.patch-addition { color: #a0ebaf; background: #123324; }
+.patch-deletion { color: #f2b2aa; background: #3a2020; }
+.fleet-activity-view ol { list-style: none; margin: 0; padding: 0; }
+.fleet-activity-view li { padding: 8px 0; border-bottom: 1px solid #2b414b; }
+.fleet-activity-view button { text-align: left; background: #18302b; border: 1px solid #35554b; color: #c8e3d8; border-radius: 4px; padding: 6px 8px; cursor: pointer; }
+.fleet-activity-view li > button:first-child { display: grid; grid-template-columns: auto 1fr; gap: 4px 10px; width: 100%; background: transparent; border: 0; }
+.fleet-activity-view li span { grid-column: 1 / -1; white-space: pre-wrap; overflow-wrap: anywhere; }
+.fleet-activity-view time { color: #8faea5; font-size: 11px; }
+.fleet-file-link { margin-top: 4px; font-size: 11px; overflow-wrap: anywhere; }
+.fleet-event-detail header, .fleet-event-actions { display: flex; justify-content: space-between; gap: 10px; }
+.fleet-event-detail pre { padding: 10px; background: #081714; overflow: auto; font-size: 12px; }
+.design-center { grid-column: 2; grid-row: 3; min-height: 0; min-width: 0; overflow: hidden; }
+.design-center[hidden] { display: none; }
+.work-log-center { grid-column: 2; grid-row: 3; min-height: 0; min-width: 0; overflow: auto; padding: 12px; background: #081213; }
+.work-log-center .work-log-entry-detail { max-width: 900px; margin: 0 auto; font-size: 13px; }
+.design-open-button { background: #19322a; color: #cae8d7; border: 1px solid #3a6452; border-radius: 4px; padding: 4px 8px; cursor: pointer; font: 10px system-ui; justify-self: start; }
 .topology-node { width: 148px; min-width: 0; min-height: 48px; padding: 8px 10px; display: flex; flex-direction: column; gap: 2px; overflow: hidden; border: 1px solid #31504d; border-radius: 6px; background: linear-gradient(145deg, #142222, #0c1718); color: #d0dedb; box-shadow: 0 5px 20px #0005; }
 .topology-node.is-focused { border-color: var(--green); box-shadow: 0 0 0 1px #57d3ad44, 0 0 22px #57d3ad22; }
 .topology-node.is-ambiguous { border-style: dashed; }

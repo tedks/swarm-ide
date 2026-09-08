@@ -14,6 +14,8 @@ document should not throw away a draft, dirty file or graph camera.
 | Contextual instruments | [ContextPane.tsx](../../app/renderer/context/ContextPane.tsx) | Facts and links for the current attention target |
 | Side instruments | [WorkbenchSidebar.tsx](../../app/renderer/WorkbenchSidebar.tsx) | Agent/task/activity surfaces beside the central work |
 | File authority | [core/files.ts](../../core/files.ts) | Reads and conditional writes behind the typed bridge |
+| Agent worktree inspection | [WorktreeInspection.tsx](../../app/renderer/WorktreeInspection.tsx), [core/worktree-inspection.ts](../../core/worktree-inspection.ts) | Registered session selects the actual read-only worktree source and current diff |
+| Raw fleet activity | [FleetActivityView.tsx](../../app/renderer/FleetActivityView.tsx) | Timestamped session events open in the center, distinct from Work Log outcomes |
 
 Focus is not permission to overwrite a buffer. Explicit navigation owns a source
 handoff; late asynchronous responses must not steal a newer choice. The editor
@@ -33,10 +35,21 @@ All files above are inputs to `//:quality_sources` in
 the `//tools:quality` test. `//:dev` aliases `//tools:dev` for the watched local
 loop. These are shared application targets, not a separate cockpit service.
 
-## Next joined behavior
+## Joined operator behavior
 
-The operator increment adds a central read-only view of another agent's worktree
-file or patch, leaving local source intact, and mounts the living design surface.
-This is planned C7 integration, not a claim that the baseline editor can already
-resolve arbitrary registered worktrees. Bright graph controls must remain legible
-without removing required attribution.
+The center can inspect another registered agent's worktree file or patch while
+the local CodeMirror buffer, cursor and graph cameras remain intact. The path is
+resolved from the private session registration, never an arbitrary command cwd.
+Malformed event paths produce a notice instead of navigating. Ctrl+W closes the
+inspection rather than its hidden editable source.
+
+System design opens the living component diagram/document in the center. The
+Work Log is mounted below the running-agent list with explicit Start/Stop; live
+timestamped activity is separate in the persistent dock and center log. Saved
+summaries remain a separate log tab. Graph controls and required attribution use
+explicit dark-theme colors.
+
+Selecting a Work Log outcome opens `WorkLogEntryDetail` in the center with its
+agent, task, changed areas, checks and follow-ups. This is a pure view of the
+selected outcome: the sidebar remains the single polling/control owner. Closing
+the outcome, switching documents or Ctrl+W preserves the mounted source editor.

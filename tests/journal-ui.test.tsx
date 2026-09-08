@@ -50,7 +50,7 @@ describe("Activity log logical changes", () => {
     const data = syntheticJournal().result; data.document.entries[0].headline = '<img src=x onerror="alert(1)">';
     data.bundle.evidence[0].taskIds = []; data.bundle.evidence[0].agentIds = [];
     render(<JournalPanel state={{ observation: data, busy: false, notice: "", refresh: vi.fn() }} open selectedEntry="change-a" onClose={vi.fn()} onOpenSource={vi.fn()} />);
-    expect(document.querySelector("img")).toBeNull(); expect(screen.getByText(/No agent association/)).toBeTruthy();
+    expect(document.querySelector("img")).toBeNull(); expect(screen.getByText("Agents: None linked")).toBeTruthy();
   });
   it("keeps filter/details across refocus, but a selected hidden entry is expanded after filter clearing", async () => {
     const data = syntheticJournal().result;

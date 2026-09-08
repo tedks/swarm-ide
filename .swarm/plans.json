@@ -35,6 +35,9 @@
       "app/renderer/App.tsx",
       "app/renderer/EditorPane.tsx",
       "app/renderer/GraphPane.tsx",
+      "app/renderer/WorktreeInspection.tsx",
+      "core/worktree-inspection.ts",
+      "app/renderer/FleetActivityView.tsx",
       "BUILD.bazel"
     ],
     "taskIds": [],
@@ -269,6 +272,10 @@
       "core/changelog.ts",
       "core/changelog-authoring.ts",
       "app/renderer/changelog/JournalPanel.tsx",
+      "app/renderer/FleetActivityView.tsx",
+      "app/renderer/external-agents/ObservedActivity.tsx",
+      "app/renderer/work-log/WorkLogPanel.tsx",
+      "core/work-log/service.ts",
       "BUILD.bazel"
     ],
     "taskIds": [],
