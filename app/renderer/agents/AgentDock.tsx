@@ -1,6 +1,7 @@
 import { useEffect, useId, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 import type { AgentBridgeClient } from "./bridge-client";
 import { displayAgentText, type LiveAgentState } from "./live-state";
+import { cockpitAgentNotice } from "./LiveRunRail";
 import "./agent-dock.css";
 
 type DockTab = "agents" | "fixture" | `mock:${string}` | `run:${string}`;
@@ -32,6 +33,7 @@ export interface AgentDockProps {
 export function AgentDock({ state, client, onDraft, runContent, draftContent, trustedContent, jobsContent, activityContent, onOpenActivity, fixtureContent, mockConversation, selectionVersion = 0, fixtureSelectionVersion = 0, trustedSelectionVersion }: AgentDockProps) {
   const id = useId();
   const runs = state.snapshot?.runs ?? [];
+  const notice = cockpitAgentNotice(state, Boolean(trustedContent));
   const hasSelection = state.selectedRunId !== null;
   const [active, setActive] = useState<DockTab>(() => !state.draft && state.paneOpen && hasSelection ? `run:${state.selectedRunId}` : "agents");
   const previousSelection = useRef({ runId: state.selectedRunId, open: state.paneOpen, version: selectionVersion, selected: hasSelection });
@@ -89,11 +91,11 @@ export function AgentDock({ state, client, onDraft, runContent, draftContent, tr
     <div id={panelId("agents")} role="tabpanel" aria-labelledby={tabId("agents")} hidden={current !== "agents"} className="agent-dock-panel agent-dock-home">
       {!draftOpen && !proposalId ? <div className="agent-dock-welcome"><strong>{runs.length ? "Select an agent run" : "Agent interaction"}</strong>
         <p>{runs.length ? "Open a run from the sidebar or its tab to inspect output and send instructions when available."
-          : !state.snapshot ? "Agent availability has not been observed yet."
+          : trustedContent ? "Prepare a focused draft to start Codex, or select a running agent to continue."
+            : !state.snapshot ? "Agent availability has not been observed yet."
             : state.snapshot.capabilities.availability === "available" ? "No agent runs yet. Prepare a focused draft to begin."
-              : trustedContent ? "No isolated read-only runs. Prepare a draft, then choose the separate trusted-local profile below to run Codex."
-                : "No live agent runs. Execution is unavailable; you can prepare a draft without launching a run."}</p>
-        {state.notice ? <p className="agent-dock-notice" role="status">{displayAgentText(state.notice)}</p> : null}
+              : "No live agent runs. Execution is unavailable; you can prepare a draft without launching a run."}</p>
+        {notice ? <p className="agent-dock-notice" role="status">{displayAgentText(notice)}</p> : null}
         <button className="agent-primary" onClick={onDraft}>Prepare an agent draft</button>
       </div> : null}
       {draftContent}

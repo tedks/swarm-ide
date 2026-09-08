@@ -52,7 +52,7 @@ describe("live workbench presentation", () => {
     expect(restored.result.current.state.draft?.task).toBe("Preserve this draft");
     expect(restored.result.current.state.instructions[f.run!.runId]).toBe("New unsent thought");
   });
-  it("shows actual unavailable diagnostics, keeps source/graphs mounted, and prepares disk-only text on explicit gesture", async () => {
+  it("keeps legacy policy out of the trusted cockpit, retains source/graphs and prepares disk-only text explicitly", async () => {
     const snapshot = initialSnapshot(paymentsFileFocus);
     const agentSnapshot = emptyAgentWorkbench().snapshot;
     agentSnapshot.capabilities.reason = { code: "ADAPTER_POLICY_UNAVAILABLE", message: "Effective hooks and MCP policy cannot be attested." };
@@ -65,7 +65,8 @@ describe("live workbench presentation", () => {
     window.swarm = { request, onEvent: () => () => undefined };
     window.swarmView = { setZoomPercent: async () => ({ ok: true, percent: 100 }) };
     render(<App />);
-    expect(await screen.findAllByText(/ADAPTER_POLICY_UNAVAILABLE: Effective hooks/)).toHaveLength(2); // Sidebar and agent dock remain independently useful.
+    await waitFor(() => expect(request.mock.calls.some(([r]) => r.type === "agent.snapshot")).toBe(true));
+    expect(screen.queryByText(/ADAPTER_POLICY_UNAVAILABLE: Effective hooks/)).toBeNull();
     expect(screen.queryByText("Preview agent fixture")).toBeNull();
     await openContextPath(paymentsFileFocus.path!);
     const source = await screen.findByLabelText("Source buffer");
