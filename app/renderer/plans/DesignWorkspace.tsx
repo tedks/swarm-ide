@@ -1,7 +1,8 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { parseCoreResponseForRequest, PROTOCOL_VERSION } from "../../../protocol/schema";
 import type { PlanIndex, PlanNode } from "../../../protocol/plans";
 import { ProjectionCanvas, type ProjectionEdge, type ProjectionNode } from "./ProjectionCanvas";
+import { usePlanNavigation, type PlanNavigation } from "./navigation";
 import "./design.css";
 
 export interface DesignWorkspaceProps {
@@ -9,32 +10,56 @@ export interface DesignWorkspaceProps {
   onOpenFile: (path: string) => void;
   onOpenTask?: (id: string) => void;
   onOpenBuild?: (label: string) => void;
+  navigation?: PlanNavigation;
+  taskPane?: ReactNode;
+  taskOnly?: boolean;
 }
 
 export function designProjection(index: PlanIndex, selected: PlanNode) {
   const children = index.nodes.filter((node) => node.parentId === selected.id);
-  const shown = [selected, ...children];
+  const primary = new Set([selected.id, ...children.map((node) => node.id)]);
+  const connected = new Set<string>();
+  for (const node of index.nodes) for (const link of node.design?.connections ?? []) {
+    if (primary.has(node.id) || primary.has(link.targetId)) { connected.add(node.id); connected.add(link.targetId); }
+  }
+  const shown = [selected, ...children, ...index.nodes.filter((node) => connected.has(node.id) && !primary.has(node.id))];
   const ids = new Set(shown.map((node) => node.id));
   const nodes: ProjectionNode[] = shown.map((node, i) => ({ id: node.id, title: node.title,
-    subtitle: node.design?.state === "planned" ? "Planned component" : node.id === selected.id ? "Current component" : "Open component",
-    ...(children.length ? { position: i === 0 ? { x: 260, y: 0 } : { x: ((i - 1) % 3) * 260, y: 130 + Math.floor((i - 1) / 3) * 130 } } : {}) }));
+    subtitle: node.design?.state === "planned" ? "Planned component" : node.id === selected.id ? "Current component" : primary.has(node.id) ? "Open component" : "Connected component",
+    position: i === 0 ? { x: 110, y: 0 } : { x: ((i - 1) % 2) * 240, y: 110 + Math.floor((i - 1) / 2) * 110 } }));
   const edges: ProjectionEdge[] = children.map((node) => ({ id: `contains:${node.id}`, source: selected.id, target: node.id, label: "contains" }));
   for (const node of shown) for (const [i, link] of (node.design?.connections ?? []).entries()) {
     if (ids.has(link.targetId)) edges.push({ id: `connection:${node.id}:${i}`, source: node.id, target: link.targetId, label: link.label });
   }
-  // A leaf names the real build rule and its declared inputs, not fictional per-function targets.
-  if (!children.length) for (const target of selected.design?.buildTargets ?? []) {
+  return { nodes, edges };
+}
+
+/** Build mappings are their own projection; they never stand in for component
+ * interfaces. Opening one still requires the cockpit's observed-label resolver. */
+export function implementationProjection(selected: PlanNode) {
+  const nodes: ProjectionNode[] = [], edges: ProjectionEdge[] = [];
+  for (const target of selected.design?.buildTargets ?? []) {
     const add = (label: string, subtitle: string) => {
       if (!nodes.some((node) => node.id === label)) nodes.push({ id: label, title: label, subtitle });
     };
     add(target.label, target.role);
-    edges.push({ id: `built:${target.label}`, source: selected.id, target: target.label, label: "implemented through" });
     for (const [i, dependency] of target.dependencies.entries()) {
       add(dependency.label, "Bazel input");
       edges.push({ id: `input:${target.label}:${i}`, source: target.label, target: dependency.label, label: dependency.relation });
     }
   }
   return { nodes, edges };
+}
+
+/** Collapse presentation, not source truth. Every entry remains reachable. */
+export function PlanLinkList({ label, items, limit = 6 }: { label: string; items: ReactNode[]; limit?: number }) {
+  const [expanded, setExpanded] = useState(false);
+  if (!items.length) return null;
+  return <div className="design-link-list" role="group" aria-label={label}>
+    {(expanded ? items : items.slice(0, limit))}
+    {items.length > limit ? <button className="design-expand" aria-expanded={expanded}
+      onClick={() => setExpanded((value) => !value)}>{expanded ? "Show fewer" : `Show all ${items.length}`} {label.toLowerCase()}</button> : null}
+  </div>;
 }
 
 export function designLinkPath(documentPath: string, href: string): string | null {
@@ -72,37 +97,18 @@ function DesignText({ content, onLink }: { content: string; onLink: (path: strin
  * cockpit; read-only document reads never change the editor's selection. */
 export function DesignWorkspace(props: DesignWorkspaceProps) {
   const { visible, worldId, repositoryId, generation, connected, onOpenFile, onOpenTask, onOpenBuild } = props;
-  const [index, setIndex] = useState<PlanIndex | null>(null), [selected, setSelected] = useState<string | null>(null);
-  const [notice, setNotice] = useState(""), [loading, setLoading] = useState(false);
+  const localNavigation = usePlanNavigation({ ...props, visible: visible && !props.navigation });
+  const navigation = props.navigation ?? localNavigation;
+  const { index, node, selected, select, current, loading, notice, breadcrumbs } = navigation;
   const [document, setDocument] = useState<{ path: string; content: string } | null>(null);
   const [docNotice, setDocNotice] = useState("");
-  const [refresh, setRefresh] = useState(0);
+  const [refresh, setRefresh] = useState(0), [linkNotice, setLinkNotice] = useState("");
   const lifetime = `${worldId}\0${repositoryId}\0${generation}\0${connected}`;
   const live = useRef(lifetime); live.current = lifetime;
-  const observed = useRef<string | null>(null);
-  const current = connected && observed.current === lifetime && !loading;
-  useEffect(() => {
-    if (!visible || !connected || !window.swarm) return;
-    let cancelled = false;
-    const origin = lifetime;
-    setLoading(true); setNotice("");
-    const request = { protocolVersion: PROTOCOL_VERSION, type: "plans.read" as const, requestId: `design:${crypto.randomUUID()}`, worldId, repositoryId };
-    void window.swarm.request(request).then((reply) => {
-      if (cancelled || live.current !== origin) return;
-      const result = parseCoreResponseForRequest(reply, request);
-      if (!result.ok || result.plans?.status !== "observed") throw new Error("Unavailable");
-      const next = result.plans.index;
-      observed.current = origin; setIndex(next);
-      setSelected((prior) => next.nodes.some((node) => node.id === prior) ? prior : next.nodes.find((node) => node.parentId === null)?.id ?? null);
-    }).catch(() => { if (!cancelled && live.current === origin) { observed.current = null; setIndex(null); setNotice("No system design. Add .swarm/plans.json to this repository."); } })
-      .finally(() => { if (!cancelled && live.current === origin) setLoading(false); });
-    return () => { cancelled = true; };
-  }, [visible, connected, lifetime, worldId, repositoryId, refresh]);
-  const node = index?.nodes.find((item) => item.id === selected);
   const docPath = node?.docs[0];
   useEffect(() => {
     setDocument(null); setDocNotice("");
-    if (!visible || !current || !docPath || !window.swarm) return;
+    if (!visible || props.taskOnly || !current || !docPath || !window.swarm) return;
     let cancelled = false;
     const origin = lifetime;
     const request = { protocolVersion: PROTOCOL_VERSION, type: "file.read" as const, requestId: `design-doc:${crypto.randomUUID()}`, path: docPath };
@@ -115,42 +121,52 @@ export function DesignWorkspace(props: DesignWorkspaceProps) {
       setDocument({ path: docPath, content: result.file.content }); setDocNotice("");
     }).catch(() => { if (!cancelled && live.current === origin) setDocNotice("Document unavailable. Refresh or open its source."); });
     return () => { cancelled = true; };
-  }, [visible, current, docPath, lifetime, refresh, repositoryId, worldId]);
+  }, [visible, props.taskOnly, current, docPath, lifetime, refresh, repositoryId, worldId]);
   const graph = index && node ? designProjection(index, node) : null;
-  const breadcrumbs: PlanNode[] = [];
-  for (let item = node; item && breadcrumbs.length < 128; item = index?.nodes.find((entry) => entry.id === item!.parentId)) breadcrumbs.unshift(item);
+  const implementation = node ? implementationProjection(node) : null;
   const openBuild = (label: string) => {
     if (!current) return;
     if (onOpenBuild) onOpenBuild(label);
-    else onOpenFile(`${label.slice(2, label.indexOf(":"))}${label.indexOf(":") === 2 ? "" : "/"}BUILD.bazel`);
+    else setLinkNotice("Open the Build view to inspect this target when its graph is available.");
   };
-  return <section className="design-workspace" aria-label="System design workspace" hidden={!visible}>
-    <header><strong>System design</strong><button disabled={!connected || loading} onClick={() => setRefresh((value) => value + 1)}>Refresh design</button></header>
-    <nav aria-label="Design breadcrumb">{breadcrumbs.map((item) => <button key={item.id} disabled={!current} aria-current={item.id === selected ? "page" : undefined} onClick={() => setSelected(item.id)}>{item.title}</button>)}</nav>
-    {notice ? <p role="status">{notice}</p> : null}
-    {node && graph ? <>
-      <div className="design-graph"><ProjectionCanvas key={`${repositoryId}:${node.id}`} label="Component design canvas" {...graph} selected={selected}
-        onSelect={(id) => { if (!current) return; if (id.startsWith("//")) openBuild(id); else setSelected(id); }} /></div>
-      <div className="design-details">
-        <article aria-label="Design document"><h2>{node.title}</h2>{node.design?.state === "planned" ? <span className="design-planned">Planned</span> : null}
-          <p>{node.design?.summary}</p><p role="status">{!current ? "Reconnect or refresh to navigate this design." : docNotice}</p>
+  return <section className="design-workspace" data-task-only={props.taskOnly || undefined} aria-label="System design workspace" hidden={!visible}>
+    <header><strong>System design</strong><button disabled={!connected || loading} onClick={() => { setRefresh((value) => value + 1); void navigation.read(); }}>Refresh design</button></header>
+    <nav aria-label="Design breadcrumb">{breadcrumbs.map((item) => <button key={item.id} disabled={!current} aria-current={item.id === selected ? "page" : undefined} onClick={() => select(item.id)}>{item.title}</button>)}</nav>
+    {notice ? <div className="design-empty"><p role="status">{notice}</p><button onClick={() => onOpenFile(".swarm/plans.json")}>Open plan index</button></div> : null}
+    <div className="design-quadrants">
+      {node && graph ? <>
+        <article className="design-document" aria-label="Design document"><h2>{node.title}</h2>{node.design?.state === "planned" ? <span className="design-planned">Planned</span> : null}
+          <p>{node.design?.summary}</p>
+          {node.design?.constraints?.length ? <div className="design-constraints"><h3>Design constraints</h3><PlanLinkList key={`${node.id}:constraints`} label="Constraints" limit={3} items={node.design.constraints.map((constraint, i) => <p key={i}>{constraint}</p>)} /></div> : null}
+          <p role="status">{!current ? "Reconnect or refresh to navigate this design." : docNotice}</p>
           {document ? <DesignText content={document.content} onLink={(href) => {
             if (!current) return;
             const path = designLinkPath(document.path, href); if (!path) return;
             const component = index!.nodes.find((item) => item.docs.includes(path));
-            if (component) setSelected(component.id); else onOpenFile(path);
+            if (component) select(component.id); else onOpenFile(path);
           }} /> : null}
         </article>
-        <aside aria-label="Design links">
-          <h3>Components</h3>{index!.nodes.filter((item) => item.parentId === node.id).map((item) => <button key={item.id} disabled={!current} onClick={() => setSelected(item.id)}>{item.title}</button>)}
-          {node.parentId && <button disabled={!current} onClick={() => setSelected(node.parentId)}>Up one level</button>}
-          {node.design?.connections.length ? <><h3>Connected components</h3>{node.design.connections.map((link) => <button key={`${link.targetId}:${link.label}`} disabled={!current} onClick={() => setSelected(link.targetId)}>{link.label} → {index!.nodes.find((item) => item.id === link.targetId)?.title}</button>)}</> : null}
-          <h3>Implementation</h3>{node.sourcePaths.map((path) => <button key={path} disabled={!current} onClick={() => onOpenFile(path)}>{path}</button>)}
-          {node.design?.buildTargets.map((target) => <button key={target.label} disabled={!current} title={target.role} onClick={() => openBuild(target.label)}>{target.label}</button>)}
-          {node.docs.map((path) => <button key={path} disabled={!current} onClick={() => onOpenFile(path)}>Edit {path}</button>)}
-          {onOpenTask && node.taskIds.map((id) => <button key={id} disabled={!current} onClick={() => onOpenTask(id)}>Task · {id}</button>)}
-        </aside>
+        <section className="design-components" aria-label="Component connections"><h3>Components & connections</h3>
+          <div className="design-graph"><ProjectionCanvas key={`${repositoryId}:${node.id}`} label="Component design canvas" {...graph} selected={selected} onSelect={select} /></div>
+          <div className="design-details"><aside aria-label="Design links">
+            <PlanLinkList key={`${node.id}:components`} label="Components" items={index!.nodes.filter((item) => item.parentId === node.id).map((item) => <button key={item.id} disabled={!current} onClick={() => select(item.id)}>{item.title}</button>)} />
+            {node.parentId && <button disabled={!current} onClick={() => select(node.parentId!)}>Up one level</button>}
+            <PlanLinkList key={`${node.id}:connections`} label="Connections" items={(node.design?.connections ?? []).map((link) => <button key={`${link.targetId}:${link.label}`} disabled={!current} onClick={() => select(link.targetId)}>{link.label} → {index!.nodes.find((item) => item.id === link.targetId)?.title}</button>)} />
+          </aside></div>
+        </section>
+        <section className="design-implementation" aria-label="Design implementation"><h3>Implementation</h3>
+          {implementation?.nodes.length ? <div className="design-implementation-graph"><ProjectionCanvas key={`${repositoryId}:${node.id}`} label="Component build mappings" {...implementation} selected={null} onSelect={openBuild} /></div> : <p className="design-empty">Select a component to explore its build connections.</p>}
+          {linkNotice ? <p role="status">{linkNotice}</p> : null}
+          <PlanLinkList key={`${node.id}:source`} label="Source files" items={node.sourcePaths.map((path) => <button key={path} disabled={!current} onClick={() => onOpenFile(path)}>{path}</button>)} />
+          <PlanLinkList key={`${node.id}:build`} label="Build targets" items={(node.design?.buildTargets ?? []).map((target) => <button key={target.label} disabled={!current} title={target.role} onClick={() => openBuild(target.label)}>{target.label}</button>)} />
+          <PlanLinkList key={`${node.id}:docs`} label="Documents" items={node.docs.map((path) => <button key={path} disabled={!current} onClick={() => onOpenFile(path)}>Edit {path}</button>)} />
+        </section>
+      </> : <div className="design-empty">{!notice ? <p>{loading ? "Loading system design…" : index ? "This plan has no components yet. Add a top-level design and its component links in .swarm/plans.json." : "Open the plan to browse the repository's architecture."}</p> : null}</div>}
+        <section className="design-work" aria-label="Design tasks and guidance"><h3>Tasks & guidance</h3>
+          {onOpenTask && node?.taskIds.length ? <PlanLinkList key={`${node.id}:tasks`} label="Tasks" items={node.taskIds.map((id) => <button key={id} disabled={!current} onClick={() => onOpenTask(id)}>Task · {id}</button>)} /> : <p className="design-empty">No tasks linked to this component.</p>}
+          {node ? <PlanLinkList key={`${node.id}:context`} label="Guidance" items={node.contextRefs.map((ref, i) => <button key={i} disabled={!current} title={ref.note ?? undefined} onClick={() => onOpenFile(ref.path)}>{ref.kind} · {ref.path}</button>)} /> : null}
+          {props.taskPane}
+        </section>
       </div>
-    </> : !notice ? <p>{loading ? "Loading system design…" : "Choose System design to browse the repository's architecture."}</p> : null}
   </section>;
 }

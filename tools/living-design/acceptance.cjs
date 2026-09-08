@@ -27,14 +27,40 @@ async function main() {
   await click(".planning-tabs button", "System design");
   await until(() => text(".design-prose").then((s) => s.includes("engineering organization")), "actual system doc");
   const topNodes = await run(() => document.querySelectorAll(".design-graph .react-flow__node").length); assert.equal(topNodes, 7);
+  const diagramSize = await run(() => ({ panel: document.querySelector(".design-components").clientHeight, canvas: document.querySelector(".design-graph").clientHeight }));
+  assert(diagramSize.panel >= 380 && diagramSize.canvas >= 300, "component diagram must remain readable in the narrow central pane");
   await fs.writeFile(path.join(evidence, "system.png"), (await wc.capturePage()).toPNG());
   await click(".design-details aside button", "Cockpit, focus & source");
   await until(() => text(".design-prose").then((s) => s.includes("EditorPane")), "actual cockpit doc");
-  const leaf = await text(".design-graph"); assert(leaf.includes("//:desktop-bundle") && leaf.includes("//:quality_sources"));
+  const leaf = await text(".design-implementation-graph"); assert(leaf.includes("//:desktop-bundle") && leaf.includes("//:quality_sources"));
+  assert((await text(".design-components")).includes("Files & target definitions"));
+  assert((await text(".design-constraints")).includes("dirty source"));
   await fs.writeFile(path.join(evidence, "component.png"), (await wc.capturePage()).toPNG());
   await click(".design-details aside button", "Up one level");
   await until(() => text(".design-prose").then((s) => s.includes("engineering organization")), "return to system");
   assert.deepEqual(errors, []);
-  await fs.writeFile(path.join(evidence, "proof.json"), JSON.stringify({ ok: true, actualRepo: process.cwd(), packaged: true, topNodes, componentBuildGraph: true, documentNavigation: true, rendererErrors: errors }));
+  await click(".planning-tabs button", "Plans & components");
+  await until(() => run(() => {
+    const button = document.querySelector('button[aria-label="Inspect plan design:repository"]');
+    return button && !button.disabled && button.closest(".planning-projection")?.hidden === false;
+  }), "plan outline visible and ready");
+  // The keyboard outline is deliberately available inside its own scroll area.
+  // Focus that ordinary button, verify it, then use the native Enter gesture.
+  await run(() => {
+    const button = document.querySelector('button[aria-label="Inspect plan design:repository"]');
+    button.focus();
+    if (document.activeElement !== button || button.disabled) throw new Error("Repository outline button did not receive focus");
+  });
+  wc.sendInputEvent({ type: "keyDown", keyCode: "Enter" });
+  wc.sendInputEvent({ type: "char", keyCode: "\r" });
+  wc.sendInputEvent({ type: "keyUp", keyCode: "Enter" });
+  await until(() => text(".plan-selection-title strong").then((s) => s === "Repository, build & context"), "repository selected by keyboard");
+  await click(".planning-tabs button", "System design");
+  await until(() => text(".design-prose").then((s) => s.includes("Bazel graph uses an actual per-repository query")), "shared repository component selection");
+  await click(".design-implementation button", "Show all 20 source files");
+  assert((await text(".design-implementation")).includes("core/project-context/catalog.ts"));
+  await fs.writeFile(path.join(evidence, "repository-expanded.png"), (await wc.capturePage()).toPNG());
+  assert.deepEqual(errors, []);
+  await fs.writeFile(path.join(evidence, "proof.json"), JSON.stringify({ ok: true, actualRepo: process.cwd(), packaged: true, topNodes, diagramSize, componentBuildGraph: true, documentNavigation: true, sharedOutlineSelection: true, nativeKeyboardOutline: true, expandableSources: true, componentConstraints: true, rendererErrors: errors }));
 }
 void main().catch(async (error) => { await fs.writeFile(path.join(evidence, "failure.json"), JSON.stringify({ message: error.stack, errors })); app.exit(1); });

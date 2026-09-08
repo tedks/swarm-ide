@@ -32,7 +32,7 @@ async function harness(planIndex = index) {
     onOpenFile: vi.fn(), onOpenTask: vi.fn(async () => true) };
   const view = render(<PlanHierarchy {...props} />);
   fireEvent.click(screen.getByRole("button", { name: "Load plan index" }));
-  await screen.findByText(/2 authored nodes/);
+  await screen.findByText(/2 components/);
   fireEvent.click(screen.getByRole("button", { name: "Select graph plan" }));
   return { ...view, props, request };
 }
@@ -74,7 +74,7 @@ describe("selected plan action header", () => {
   it("retains stale evidence but disables every effectful selected link", async () => {
     const h = await harness();
     h.rerender(<PlanHierarchy {...h.props} generation={2} />);
-    expect(screen.getByText(/RETAINED — load again/)).toBeTruthy();
+    expect(screen.getByText(/Refresh to navigate/)).toBeTruthy();
     for (const name of ["Read doc · docs/design.md", "Open source · src/main.ts", "Inspect task · task-fixture", "contract · docs/contract.md"]) {
       const button = screen.getByRole("button", { name }) as HTMLButtonElement;
       expect(button.disabled).toBe(true); fireEvent.click(button);
@@ -103,8 +103,11 @@ describe("selected plan action header", () => {
       taskIds: Array.from({ length: 32 }, (_, i) => `task-${i}`),
     }, index.nodes[1]] });
     await harness(dense);
-    expect(within(screen.getByRole("group", { name: "Document actions" })).getAllByRole("button")).toHaveLength(16);
-    expect(within(screen.getByRole("group", { name: "Source actions" })).getAllByRole("button")).toHaveLength(16);
+    expect(within(screen.getByRole("group", { name: "Document actions" })).getAllByRole("button")).toHaveLength(7);
+    fireEvent.click(screen.getByRole("button", { name: "Show all 16 document actions" }));
+    fireEvent.click(screen.getByRole("button", { name: "Show all 16 source actions" }));
+    expect(within(screen.getByRole("group", { name: "Document actions" })).getAllByRole("button")).toHaveLength(17);
+    expect(within(screen.getByRole("group", { name: "Source actions" })).getAllByRole("button")).toHaveLength(17);
     expect(within(screen.getByRole("group", { name: "Task actions" })).getAllByRole("button")).toHaveLength(32);
   });
 });
