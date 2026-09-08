@@ -1,6 +1,9 @@
 .activity-dock:has(.activity-instruments) { display: flex; flex-direction: column; }
 .activity-dock:has(.activity-instruments) > .dock-header { flex-shrink: 0; }
 .activity-instruments { display: grid; grid-template-columns: minmax(125px, 1fr) minmax(260px, 2fr) minmax(145px, 1fr); flex: 1; min-height: 0; min-width: 0; overflow: auto; }
+.activity-instruments.has-work-log { grid-template-columns: minmax(110px, .7fr) minmax(260px, 1.6fr) minmax(220px, 1.1fr) minmax(180px, 1fr); }
+.dock-side-panel.dock-work-log { padding-top: 10px; border-right: 1px solid #284139; }
+.dock-work-log:focus-visible { outline: 2px solid #57d3ad; outline-offset: -2px; }
 .dock-side-panel { min-width: 0; min-height: 0; overflow: auto; padding: 0 12px 10px; }
 .dock-section-heading { padding: 10px 0; font: 10px "DM Mono", monospace; color: #7c9690; }
 .dock-builds > .job { margin-bottom: 8px; }

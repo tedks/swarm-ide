@@ -170,7 +170,6 @@ button.truth-dot:disabled { cursor: wait; opacity: 0.72; }
 .react-flow__attribution { background: #13231f !important; color: #b8d9d0 !important; border-radius: 3px; }
 .react-flow__attribution a { color: #b8d9d0 !important; }
 .react-flow__attribution a:hover { color: #ffffff !important; }
-.sidebar-work-log { padding: 8px; border-top: 1px solid #29423a; }
 .worktree-inspection { grid-row: 3; grid-column: 2; min-width: 0; min-height: 0; overflow: auto; background: #081213; color: #c5d8d0; }
 .worktree-inspection > header { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 10px; background: #11221e; }
 .worktree-inspection h2 { font-size: 13px; margin: 4px 0 0; overflow-wrap: anywhere; }

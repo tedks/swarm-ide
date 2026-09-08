@@ -134,7 +134,7 @@ export function WorkLogPanel({ onOpen, onAgent, onTask, onOpenAgent, onOpenTask,
 }
 
 /** Pure selected-entry surface for the center pane. It owns no polling or
- * mutation route; the sidebar remains the one summary/control surface. */
+ * mutation route; the dock panel remains the one summary/control surface. */
 export function WorkLogEntryDetail({ entry, onAgent, onTask, onClose }: {
   entry: WorkLogEntry; onAgent?(sessionId: string): void; onTask?(taskId: string): void; onClose?(): void;
 }) {

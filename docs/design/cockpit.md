@@ -13,6 +13,7 @@ document should not throw away a draft, dirty file or graph camera.
 | Graph presentation | [GraphPane.tsx](../../app/renderer/GraphPane.tsx), [graph-adapter.ts](../../app/renderer/graph-adapter.ts) | Domain graph data becomes React Flow nodes/edges |
 | Contextual instruments | [ContextPane.tsx](../../app/renderer/context/ContextPane.tsx) | Facts and links for the current attention target |
 | Side instruments | [WorkbenchSidebar.tsx](../../app/renderer/WorkbenchSidebar.tsx) | Agent/task/activity surfaces beside the central work |
+| Persistent dock | [AgentDock.tsx](../../app/renderer/agents/AgentDock.tsx) | Build resources, agent messages, Work Log and Recent Activity in independently scrolling columns |
 | File authority | [core/files.ts](../../core/files.ts) | Reads and conditional writes behind the typed bridge |
 | Agent worktree inspection | [WorktreeInspection.tsx](../../app/renderer/WorktreeInspection.tsx), [core/worktree-inspection.ts](../../core/worktree-inspection.ts) | Registered session selects the actual read-only worktree source and current diff |
 | Raw fleet activity | [FleetActivityView.tsx](../../app/renderer/FleetActivityView.tsx) | Timestamped session events open in the center, distinct from Work Log outcomes |
@@ -48,15 +49,19 @@ registered session into this inspector. A different opened repository does not
 hide canonical worktree briefing links or redirect them into local same-path files.
 
 System design opens the living component diagram/document in the center. The
-Work Log is mounted below the running-agent list with explicit Start/Stop; live
+Work Log is mounted once in a persistent dock column immediately left of Recent
+Activity, independent of the scrolling or folded agent list, with explicit Start/Stop; live
 timestamped activity is separate in the persistent dock and center log. Saved
 summaries remain a separate log tab. Graph controls and required attribution use
 explicit dark-theme colors.
 
 Selecting a Work Log outcome opens `WorkLogEntryDetail` in the center with its
 agent, task, changed areas, checks and follow-ups. This is a pure view of the
-selected outcome: the sidebar remains the single polling/control owner. Closing
+selected outcome: the dock panel remains the single polling/control owner. Closing
 the outcome, switching documents or Ctrl+W preserves the mounted source editor.
+At narrow widths the dock scrolls horizontally while its columns retain usable
+minimum widths and independent vertical scrolling. This keeps agent messaging,
+summary settings and Recent Activity reachable without remounting their content.
 
 `OverflowStrip.tsx` wraps the existing document, lens and agent tab lists without
 changing their selection or keyboard owners. Native horizontal scrolling remains;

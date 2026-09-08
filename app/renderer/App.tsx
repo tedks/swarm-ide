@@ -1285,7 +1285,6 @@ export function App() {
 
       <WorkbenchSidebar
         onTasksVisibility={setTaskSidebarVisible}
-        workLog={<WorkLogPanel coreGeneration={coreGenerationRef.current} onOpen={showWorkLogEntry} onAgent={(id) => { void externalAgents.read(id); setExternalInformation(true); setCompactPanel("info"); }} onTask={openTaskDocument} />}
         repositoryName={snapshot.project.name}
         directory={repositoryObservation ? <RepositoryNavigation key={snapshot.project.id} rootLabel={snapshot.project.name} focusedPath={snapshot.focus.path} observation={repositoryObservation} actions={deliberateRepository} onActivate={activateRepositoryEntry} onOpenPath={openLinkedFile} /> : <p className="muted">Observing repository…</p>}
         agents={<>
@@ -1383,6 +1382,7 @@ export function App() {
           else setError("Launch focus cannot be mapped to this working world.");
         }} onClose={() => setAgents((state) => ({ ...state, selected: false }))} height={agentPaneHeight} onHeight={setAgentPaneHeight} /> : undefined}
           jobsContent={<BuildResources jobs={snapshot.jobs} />}
+          workLogContent={<WorkLogPanel coreGeneration={coreGenerationRef.current} onOpen={showWorkLogEntry} onAgent={(id) => { void externalAgents.read(id); setExternalInformation(true); setCompactPanel("info"); }} onTask={openTaskDocument} />}
           activityContent={<><ObservedActivity client={externalAgents} onOpen={() => { ++navigationIntent.current; inspect(null); setExternalInformation(true); setCompactPanel("info"); }} onEntry={(session, entry) => { setSelectedActivity({ session, entry }); showJournal(); }} /><div className="activity-list">{snapshot.activity.slice(0, 4).map((activity) => <div key={activity.id}><i className={`status-${activity.status}`} /><span>{activity.summary}</span><small>{activity.kind}</small><ActivityTime at={activity.at} /></div>)}</div></>}
         />
       </section>

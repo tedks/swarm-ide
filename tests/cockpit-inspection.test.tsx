@@ -94,11 +94,12 @@ describe("operator cockpit inspection", () => {
     expect(screen.getByRole("button", { name: "Recorded patch" }).getAttribute("aria-pressed")).toBe("true");
     expect(document.querySelector("img")).toBeNull();
   });
-  it("places Work Log after agent runs without changing task visibility or mounting", () => {
+  it("keeps agent runs and task visibility independent of the dock Work Log", () => {
     const visible = vi.fn();
-    render(<WorkbenchSidebar repositoryName="repo" directory="files" agents="running workers" workLog="completed outcomes" tasks="task list" onTasksVisibility={visible} />);
+    render(<WorkbenchSidebar repositoryName="repo" directory="files" agents="running workers" tasks="task list" onTasksVisibility={visible} />);
     const agents = screen.getByRole("region", { name: "Agent runs sidebar section" });
-    expect(agents.textContent?.indexOf("running workers")).toBeLessThan(agents.textContent!.indexOf("completed outcomes"));
+    expect(agents.textContent).toContain("running workers");
+    expect(screen.queryByRole("region", { name: "Work Log" })).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Tasks" }));
     expect(visible).toHaveBeenLastCalledWith(false);
     expect(screen.getByText("task list")).toBeTruthy();

@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { EditorView } from "@codemirror/view";
 import { afterEach, beforeAll, expect, it, vi } from "vitest";
 import { initialSnapshot, paymentsFileFocus } from "../fixtures/world";
@@ -42,6 +42,16 @@ it("Ctrl+W closes the agent inspection, not the underlying editor or file watch"
   window.swarm = { request, onEvent: () => () => {} };
   render(<App />);
   await screen.findByRole("button", { name: "Select task task-fixture" });
+  const workLog = await screen.findByRole("region", { name: "Work Log" });
+  expect(screen.getAllByRole("region", { name: "Work Log" })).toHaveLength(1);
+  expect(workLog.closest(".dock-work-log")?.nextElementSibling).toBe(document.querySelector(".dock-activity"));
+  expect(document.querySelector("#work-panel")?.contains(workLog)).toBe(false);
+  fireEvent.click(screen.getByRole("button", { name: "Agent runs" }));
+  expect(screen.getByRole("region", { name: "Work Log" })).toBe(workLog);
+  fireEvent.click(within(workLog).getByText("Summary settings"));
+  const summaryModel = within(workLog).getByRole("textbox", { name: "Model" }) as HTMLInputElement;
+  fireEvent.change(summaryModel, { target: { value: "gpt-5.6-luna-draft" } });
+  fireEvent.click(screen.getByRole("button", { name: "Agent runs" }));
   await openContextPath(paymentsFileFocus.path!);
   await waitFor(() => expect(document.querySelector(".cm-content")?.textContent).toContain("local source"));
   const editorNode = document.querySelector<HTMLElement>(".cm-editor")!, graphs = screen.getAllByTestId("retained-graph");
@@ -62,6 +72,9 @@ it("Ctrl+W closes the agent inspection, not the underlying editor or file watch"
   expect(editor.state.doc.toString()).toBe("dirty local source\n");
   expect(editor.state.selection.main.anchor).toBe(4);
   expect(screen.getAllByTestId("retained-graph")).toEqual(graphs);
+  expect(screen.getByRole("region", { name: "Work Log" })).toBe(workLog);
+  expect(within(workLog).getByRole("textbox", { name: "Model" })).toBe(summaryModel);
+  expect(summaryModel.value).toBe("gpt-5.6-luna-draft");
   expect(request.mock.calls.slice(before).some(([input]) => input.type === "file.unwatch")).toBe(false);
   fireEvent.click(await screen.findByRole("button", { name: "Connected the real operator cockpit." }));
   expect(screen.getByRole("region", { name: "Work Log outcome" }).textContent).toContain("Mounted editor retained");
