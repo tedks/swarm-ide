@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { ProjectContextRequestSchema, ProjectContextObservationSchema } from "./project-context";
-import { WorktreeInspectionRequestSchema, WorktreeInspectionResultSchema } from "./worktree-inspection";
+import { WorktreeInspectionRequestSchema, WorktreeInspectionResultSchema, WorktreeBrowseRequestSchema, WorktreeBrowseResultSchema } from "./worktree-inspection";
 import { WorkLogRequestSchema, WorkLogSnapshotSchema } from "./work-log";
 import { TrustedRequestSchema, TrustedResultSchema } from "./trusted-local";
 import { PlanReadRequestSchema, PlanReadResultSchema } from "./plans";
@@ -296,7 +296,7 @@ const WorkspaceRequestSchema = z.discriminatedUnion("type", [
     path: z.string().min(1).max(4_096),
   }),
 ]);
-export const CoreRequestSchema = z.union([WorkspaceRequestSchema, AgentRequestSchema, TaskRequestSchema, RepositoryRequestSchema, RepositorySearchRequestSchema, ChangelogRequestSchema, PlanReadRequestSchema, ExternalRequestSchema, BuildGraphRequestSchema, TaskActivityRequestSchema, TrustedRequestSchema, GithubPrRequestSchema, WorktreeInspectionRequestSchema, WorkLogRequestSchema, ProjectContextRequestSchema]);
+export const CoreRequestSchema = z.union([WorkspaceRequestSchema, AgentRequestSchema, TaskRequestSchema, RepositoryRequestSchema, RepositorySearchRequestSchema, ChangelogRequestSchema, PlanReadRequestSchema, ExternalRequestSchema, BuildGraphRequestSchema, TaskActivityRequestSchema, TrustedRequestSchema, GithubPrRequestSchema, WorktreeInspectionRequestSchema, WorktreeBrowseRequestSchema, WorkLogRequestSchema, ProjectContextRequestSchema]);
 export type CoreRequest = z.infer<typeof CoreRequestSchema>;
 
 export const FileResultSchema = z.discriminatedUnion("kind", [
@@ -341,6 +341,7 @@ export const CoreResponseSchema = z.discriminatedUnion("ok", [
     githubPrs: GithubPrObservationSchema.optional(),
     trusted: TrustedResultSchema.optional(),
     worktreeInspection: WorktreeInspectionResultSchema.optional(),
+    worktreeBrowse: WorktreeBrowseResultSchema.optional(),
     workLog: WorkLogSnapshotSchema.optional(),
     projectContext: ProjectContextObservationSchema.optional(),
   }).strict(),
@@ -402,6 +403,14 @@ const agentResultKind = {
 export function parseCoreResponseForRequest(input: unknown, request: CoreRequest): CoreResponse {
   const response = parseCoreResponse(input);
   if (response.requestId !== request.requestId) throw new Error("Response request ID mismatch");
+  if (request.type === "worktree.browse") {
+    if (response.ok && (!response.worktreeBrowse || response.worktreeBrowse.sessionId !== request.sessionId ||
+      response.worktreeBrowse.directory.directory !== request.directory || response.worktreeBrowse.directory.page !== request.page ||
+      response.file || response.agent || response.task || response.taskActivity || response.trusted || response.repo || response.search ||
+      response.changelog || response.plans || response.external || response.buildGraph || response.githubPrs || response.workLog || response.projectContext || response.worktreeInspection))
+      throw new Error("Worktree browser response identity mismatch");
+    return response;
+  } else if (response.ok && response.worktreeBrowse) throw new Error("Worktree browser supplied for a different command");
   if (request.type === "projectContext.observe") {
     if (response.ok && (!response.projectContext || response.snapshot.project.id !== request.repositoryId || response.snapshot.world.id !== request.worldId ||
       response.projectContext.repositoryId !== request.repositoryId || response.projectContext.worldId !== request.worldId ||
@@ -412,7 +421,7 @@ export function parseCoreResponseForRequest(input: unknown, request: CoreRequest
   } else if (response.ok && response.projectContext) throw new Error("Project context supplied for another command");
   if (request.type === "worktree.inspect") {
     if (response.ok && (!response.worktreeInspection || response.worktreeInspection.sessionId !== request.sessionId ||
-      response.worktreeInspection.path !== request.path || response.file || response.agent || response.task || response.taskActivity ||
+      response.worktreeInspection.path !== request.path || response.worktreeInspection.comparison !== request.comparison || response.file || response.agent || response.task || response.taskActivity ||
       response.trusted || response.repo || response.search || response.changelog || response.plans || response.external || response.buildGraph || response.githubPrs || response.workLog))
       throw new Error("Worktree inspection response identity mismatch");
     return response;
