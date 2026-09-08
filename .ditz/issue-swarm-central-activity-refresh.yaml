@@ -18,3 +18,11 @@ log_events:
   who: Ted Smith
   what: started
   comment: ""
+- time: 2026-09-08T15:50:46-00:00
+  who: Ted Smith
+  what: commented
+  comment: Reproduced wrong selected-reader Refresh, retained event overview, background
+    summary focus, and stale registration actions. PR119 pushed implementation e05214d;
+    20 focused mounted tests plus both TypeScript boundaries pass. Native review identified
+    one rootless Inspect affordance to correct; owned packaged controlled-JSONL proof
+    underway. No new timer, transport or model run.
