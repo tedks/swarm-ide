@@ -54,5 +54,13 @@ log_events:
     graph loading and safe recovery/cleanup. Focused/native/controlled packaged checks
     complete; actual generated artifacts retained with interrupted-turn and camera-test
     follow-ups explicitly open. ROOT owns merge/adoption.'
+- time: 2026-09-08T20:23:29-00:00
+  who: Ted Smith
+  what: commented
+  comment: 'Test-count correction after reading the actual joined log: PR133 generation
+    target123 cases and joined start-unit32 UI cases passed, not206. The producer203
+    count covered several independent targets on PR132 and is not this joined run.
+    PR133 body, plan and verification now use exact123+32 counts; no test rerun or
+    behavior change.'
 blocks:
 - swarm-close-working-loop
