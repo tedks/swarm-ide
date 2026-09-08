@@ -120,6 +120,10 @@ kbd { border: 1px solid #314344; border-radius: 4px; padding: 2px 5px; backgroun
 .surface-tabs .tab-state.status-dirty { color: var(--yellow); }
 .surface-tabs .tab-state.status-saving { color: #62b7d6; }
 .surface-tabs .tab-state.status-conflict, .surface-tabs .tab-state.status-error { color: var(--red); }
+[draggable="true"][data-tab-dragging="true"] { opacity: .48; cursor: grabbing; }
+[draggable="true"][data-tab-drop="before"] { box-shadow: inset 2px 0 #9dedc9; }
+[draggable="true"][data-tab-drop="after"] { box-shadow: inset -2px 0 #9dedc9; }
+[draggable="true"] { cursor: grab; }
 .graphs-grid { grid-row: 3; min-height: 0; padding: 9px; display: grid; grid-template-rows: repeat(2, minmax(0, 1fr)); gap: 9px; background: #071011; }
 .graphs-grid.is-hidden { display: none; }
 .graphs-grid.is-sidebar { grid-column: 1; padding: 6px; gap: 6px; border-right: 1px solid #1d3031; }
