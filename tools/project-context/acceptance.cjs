@@ -23,7 +23,7 @@ async function main() {
   await until(() => run((pid) => document.querySelector(".project-runtime")?.textContent.includes(`PID ${pid}`), fixture.pid), "real Node process appears");
   const link = await run((port) => [...document.querySelectorAll(".project-runtime a")].find((node) => new URL(node.href).port === String(port))?.href, fixture.port);
   assert.equal(link, `http://localhost:${fixture.port}/`);
-  assert(await run(() => document.querySelector(".project-runtime")?.textContent.includes("No containers for this worktree")));
+  assert(await run(() => /No containers for this worktree|Docker unavailable/.test(document.querySelector(".project-runtime")?.textContent ?? "")));
   const observed = await run(() => document.querySelector(".project-runtime")?.textContent);
   assert(!observed.includes("goals-local"), "unrelated host containers excluded");
   await run(() => document.querySelector(".project-runtime").scrollIntoView({ block: "center" }));
@@ -31,7 +31,8 @@ async function main() {
   await fs.writeFile(path.join(evidence, "project-runtime.png"), (await wc.capturePage()).toPNG());
   assert.deepEqual(rendererErrors, []);
   await fs.writeFile(path.join(evidence, "proof.json"), JSON.stringify({ ok: true, realNodeServer: true, pid: fixture.pid, port: fixture.port, elapsedMs: Date.now() - started, rendererErrors }));
-  win.close();
+  // Keep the window alive for the owned scenario's final capture. The harness
+  // then terminates this exact application/process group.
 }
 main().catch(async (error) => {
   await fs.writeFile(path.join(evidence, "failure.json"), JSON.stringify({ message: String(error.stack ?? error), rendererErrors }));

@@ -3,8 +3,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { mkdir, mkdtemp, rm, symlink } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { discoverDockerContainers, type DockerCommand } from "../core/project-context/docker";
+import { execFile, type ExecFileOptions } from "node:child_process";
+import { EventEmitter } from "node:events";
+import { discoverDockerContainers, readDockerFilesystem, type DockerCommand } from "../core/project-context/docker";
 import { ProjectContainerSchema } from "../protocol/project-context";
+
+vi.mock("node:child_process", () => ({ execFile: vi.fn() }));
 
 let scratch: string, root: string;
 const id = (value = 1) => value.toString(16).padStart(64, "0");
@@ -12,11 +16,12 @@ const row = (directory: string, changes: Record<string, unknown> = {}) => ({ id:
   state: "running", status: "Up 2 hours (healthy)", ports: "0.0.0.0:3001->3000/tcp, [::]:3001->3000/tcp", directory, service: "api", ...changes });
 const sample = (changes: Record<string, unknown> = {}) => ({ id: id(), cpu: "6.03%", memory: "45.12MiB / 125.1GiB", ...changes });
 const lines = (values: unknown[]) => values.map((value) => JSON.stringify(value)).join("\n");
+const operation = (args: string[]) => args[0] === "--host" ? args[2] : args[0];
 function docker(list: unknown[], samples: unknown[] = [sample()]) {
   return vi.fn<DockerCommand>(async (args) => {
-    if (args[0] === "context") return "unix:///var/run/docker.sock\n";
-    if (args[0] === "ps") return lines(list);
-    if (args[0] === "stats") return lines(samples);
+    if (operation(args) === "context") return "unix:///var/run/docker.sock\n";
+    if (operation(args) === "ps") return lines(list);
+    if (operation(args) === "stats") return lines(samples);
     throw new Error("Unexpected Docker operation");
   });
 }
@@ -24,7 +29,7 @@ beforeEach(async () => {
   scratch = await mkdtemp(join(tmpdir(), "swarm-docker-context-")); root = join(scratch, "project");
   await mkdir(root); vi.stubEnv("DOCKER_HOST", ""); vi.stubEnv("DOCKER_CONTEXT", "");
 });
-afterEach(async () => { vi.unstubAllEnvs(); await rm(scratch, { recursive: true, force: true }); });
+afterEach(async () => { vi.unstubAllEnvs(); vi.clearAllMocks(); await rm(scratch, { recursive: true, force: true }); });
 
 describe("read-only project Docker observation", () => {
   it("attributes exact and descendant canonical Compose paths, never prefixes or names", async () => {
@@ -44,7 +49,8 @@ describe("read-only project Docker observation", () => {
     expect(execute.mock.calls[2][0].slice(-2)).toEqual(["--", id()]);
     expect(execute.mock.calls[1][0]).toContain("label=com.docker.compose.project.working_dir");
     expect(execute.mock.calls[1][0].join(" ")).not.toMatch(/\.Env|\.Command|\.Labels|config_files/);
-    expect(execute.mock.calls.every(([args]) => ["context", "ps", "stats"].includes(args[0]))).toBe(true);
+    expect(execute.mock.calls.every(([args]) => ["context", "ps", "stats"].includes(operation(args)))).toBe(true);
+    expect(execute.mock.calls.slice(1).every(([args]) => args[0] === "--host" && args[1] === "unix:///var/run/docker.sock")).toBe(true);
   });
 
   it("resolves root aliases, accepts real descendant aliases, and rejects symlink escapes", async () => {
@@ -95,7 +101,7 @@ describe("read-only project Docker observation", () => {
       Array.from({ length: 32 }, (_, index) => sample({ id: id(index + 1) })));
     const result = await discoverDockerContainers(root, new AbortController().signal, execute);
     expect(result.scan.status).toBe("partial"); expect(result.containers).toHaveLength(32);
-    expect(execute.mock.calls[2][0].slice(6)).toHaveLength(32);
+    expect(execute.mock.calls[2][0].slice(8)).toHaveLength(32);
   });
 
   it("reports unavailable tooling/access compactly and keeps identity when only stats fail", async () => {
@@ -107,7 +113,7 @@ describe("read-only project Docker observation", () => {
     const execute = docker([row(root)]);
     execute.mockImplementation(async (args) => {
       if (args[0] === "context") return "unix:///var/run/docker.sock";
-      if (args[0] === "ps") return lines([row(root)]);
+      if (operation(args) === "ps") return lines([row(root)]);
       throw new Error("Stats timeout");
     });
     const result = await discoverDockerContainers(root, new AbortController().signal, execute);
@@ -124,6 +130,33 @@ describe("read-only project Docker observation", () => {
     expect((await discoverDockerContainers(root, new AbortController().signal, execute)).scan.status).toBe("observed");
   });
 
+  it("pins ps and stats to the verified socket despite later context and host changes", async () => {
+    const bin = join(scratch, "bin"); await mkdir(bin); await symlink(process.execPath, join(bin, "docker"));
+    vi.stubEnv("PATH", bin); vi.stubEnv("DOCKER_CONTEXT", "local");
+    const calls: { args: string[]; env: NodeJS.ProcessEnv }[] = [];
+    vi.mocked(execFile).mockImplementation(((
+      _file: string, args: string[], options: ExecFileOptions, callback: (error: Error | null, output: string) => void,
+    ) => {
+      const child = new EventEmitter(); calls.push({ args, env: options.env! });
+      queueMicrotask(() => {
+        if (operation(args) === "context") {
+          // Model another actor switching the context immediately after inspection.
+          vi.stubEnv("DOCKER_CONTEXT", "remote"); vi.stubEnv("DOCKER_HOST", "tcp://remote:2376");
+          callback(null, "unix:///run/user/1000/docker.sock\n");
+        } else callback(null, lines(operation(args) === "ps" ? [row(root)] : [sample()]));
+        child.emit("close", 0);
+      });
+      return child;
+    }) as unknown as typeof execFile);
+    const result = await discoverDockerContainers(root, new AbortController().signal);
+    expect(result.scan.status).toBe("observed"); expect(result.containers).toHaveLength(1);
+    expect(calls.map(({ args }) => operation(args))).toEqual(["context", "ps", "stats"]);
+    for (const { args, env } of calls.slice(1)) {
+      expect(args.slice(0, 2)).toEqual(["--host", "unix:///run/user/1000/docker.sock"]);
+      expect(env.DOCKER_CONTEXT).toBeUndefined(); expect(env.DOCKER_HOST).toBeUndefined();
+    }
+  });
+
   it("honors cancellation before launch and while stats are in flight", async () => {
     const cancelled = new AbortController(); cancelled.abort(); const execute = docker([row(root)]);
     expect(await discoverDockerContainers(root, cancelled.signal, execute)).toMatchObject({ scan: { status: "unavailable", message: "Container scan cancelled" }, containers: [] });
@@ -131,10 +164,21 @@ describe("read-only project Docker observation", () => {
     const controller = new AbortController();
     execute.mockImplementation(async (args) => {
       if (args[0] === "context") return "unix:///var/run/docker.sock";
-      if (args[0] === "ps") return lines([row(root)]);
+      if (operation(args) === "ps") return lines([row(root)]);
       controller.abort(); return lines([sample()]);
     });
     expect(await discoverDockerContainers(root, controller.signal, execute)).toMatchObject({ scan: { status: "unavailable", message: "Container scan cancelled" }, containers: [] });
+  });
+
+  it("releases never-resolving filesystem reads on abort and does not start reads after cancellation", async () => {
+    const controller = new AbortController();
+    const read = vi.fn(() => new Promise<string>(() => {}));
+    const waiting = readDockerFilesystem(read, controller.signal);
+    const rejected = expect(waiting).rejects.toThrow("Cancelled");
+    controller.abort(); await rejected;
+    expect(read).toHaveBeenCalledTimes(1);
+    await expect(readDockerFilesystem(read, controller.signal)).rejects.toThrow("Cancelled");
+    expect(read).toHaveBeenCalledTimes(1);
   });
 
   it("does not interpret no verified ownership as stopped services", async () => {

@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { ProjectContextProvider } from "../core/project-context/provider";
 import { ProjectContextObservationSchema, ProjectEndpointSchema } from "../protocol/project-context";
 import { PROTOCOL_VERSION, parseCoreResponseForRequest } from "../protocol/schema";
@@ -35,6 +35,22 @@ describe("automatic project observation", () => {
     const provider = new ProjectContextProvider("/project", "repo", "world", async () => { throw new Error("permission"); }, docker);
     expect(await provider.observe()).toMatchObject({ servers: [], node: { status: "unavailable" }, containers: [] });
     await provider.dispose();
+  });
+  it("retains only the failing provider with its original observation time", async () => {
+    let failed = false;
+    const original = Date.now();
+    const clock = vi.spyOn(Date, "now").mockReturnValue(original);
+    const provider = new ProjectContextProvider("/project", "repo", "world", async () => ({ scan: { status: failed ? "unavailable" as const : "observed" as const }, servers: failed ? [] : [
+      { pid: 123, name: "Node.js", directory: "/project", association: "worktree" as const, endpoints: [] },
+    ] }), docker);
+    try {
+      const first = await provider.observe();
+      failed = true; clock.mockReturnValue(original + 10_000);
+      const second = await provider.observe();
+      expect(second.servers).toEqual(first.servers);
+      expect(second.node).toMatchObject({ retained: true, status: "unavailable", observedAt: first.node.observedAt });
+      expect(second.docker.retained).toBeUndefined();
+    } finally { await provider.dispose(); clock.mockRestore(); }
   });
   it("validates identity, finite values, normal text and safe links", () => {
     const result = { repositoryId: "repo", worldId: "world", observedAt: new Date().toISOString(), servers: [], containers: [], node: { status: "observed" }, docker: { status: "unavailable" } };

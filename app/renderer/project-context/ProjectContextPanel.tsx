@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { PROTOCOL_VERSION, parseCoreResponseForRequest } from "../../../protocol/schema";
-import type { ProjectContextObservation, ProjectEndpoint } from "../../../protocol/project-context";
+import type { ProjectContextObservation, ProjectEndpoint, ProjectScan } from "../../../protocol/project-context";
 import "./project-context.css";
 
 type Identity = { repositoryId: string; worldId: string; generation: number; ready: boolean };
@@ -14,6 +14,9 @@ function Endpoints({ endpoints }: { endpoints: ProjectEndpoint[] }) {
     : <span key={endpointLabel(endpoint)}>{endpointLabel(endpoint)}</span>)}</div>;
 }
 const memory = (bytes: number) => bytes >= 1024 ** 3 ? `${(bytes / 1024 ** 3).toFixed(1)} GiB` : `${(bytes / 1024 ** 2).toFixed(0)} MiB`;
+function Retained({ scan }: { scan?: ProjectScan }) {
+  return scan?.retained && scan.observedAt ? <small title={new Date(scan.observedAt).toLocaleString()}>Last seen {new Date(scan.observedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</small> : null;
+}
 
 /** Runtime observations never change the user's source, graph or Context subject. */
 export function ProjectContextPanel({ repositoryId, worldId, generation, ready }: Identity) {
@@ -46,14 +49,14 @@ export function ProjectContextPanel({ repositoryId, worldId, generation, ready }
   return <section className="project-runtime" aria-label="Project runtime">
     <header><span className="eyebrow">Project runtime</span><button type="button" aria-label="Refresh project runtime" disabled={!ready} onClick={() => setRefresh((value) => value + 1)}>↻</button></header>
     {observation ? <small className="project-runtime-time" title={new Date(observation.observedAt).toLocaleString()}>{stale ? "Last seen" : "Updated"} {new Date(observation.observedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</small> : null}
-    <h3>Dev servers</h3>
+    <h3>Dev servers <Retained scan={observation?.node} /></h3>
     {!observation?.servers.length ? <p className="project-runtime-empty">{observation?.node.status === "unavailable" ? "Server discovery unavailable" : observation ? "No dev servers found" : ready ? "Looking for dev servers…" : "Waiting for connection"}</p> : observation.servers.map((server) => <article key={server.pid}>
       <div className="project-runtime-name"><strong>{server.name}</strong><small>PID {server.pid}</small></div>
       <Endpoints endpoints={server.endpoints} />
       <small title={server.directory}>{server.association === "bazel-output" ? "Bazel output" : "This worktree"}</small>
     </article>)}
     {observation?.node.status === "partial" ? <p className="project-runtime-empty">Some processes could not be inspected</p> : null}
-    <h3>Containers</h3>
+    <h3>Containers <Retained scan={observation?.docker} /></h3>
     {!observation?.containers.length ? <p className="project-runtime-empty">{observation?.docker.status === "unavailable" ? "Docker unavailable" : observation ? "No containers for this worktree" : "Looking for containers…"}</p> : observation.containers.map((container) => <article key={container.id}>
       <div className="project-runtime-name"><strong>{container.service ?? container.name}</strong><small>{container.health ?? container.state}</small></div>
       <small title={container.image}>{container.name}</small>

@@ -23,8 +23,17 @@ export class ProjectContextProvider {
         this.discoverDocker(this.root, read.signal).catch(() => ({ scan: { status: "unavailable" as const, message: "Docker unavailable" }, containers: [] })),
       ]);
       if (this.lifetime.signal.aborted) throw new Error("Project context closed");
+      const observedAt = new Date().toISOString();
+      const previous = this.cached;
+      const keepNode = node.scan.status === "unavailable" && previous?.node.observedAt;
+      const keepDocker = docker.scan.status === "unavailable" && previous?.docker.observedAt;
       this.cached = ProjectContextObservationSchema.parse({ repositoryId: this.repositoryId, worldId: this.worldId,
-        observedAt: new Date().toISOString(), servers: node.servers, containers: docker.containers, node: node.scan, docker: docker.scan });
+        observedAt,
+        servers: keepNode ? previous.servers : node.servers,
+        containers: keepDocker ? previous.containers : docker.containers,
+        node: { ...node.scan, ...(keepNode ? { retained: true, observedAt: previous.node.observedAt } : node.scan.status !== "unavailable" ? { observedAt } : {}) },
+        docker: { ...docker.scan, ...(keepDocker ? { retained: true, observedAt: previous.docker.observedAt } : docker.scan.status !== "unavailable" ? { observedAt } : {}) },
+      });
       return this.cached;
     })().finally(() => {
       clearTimeout(timeout); this.lifetime.signal.removeEventListener("abort", cancel); this.pending = null;

@@ -25,15 +25,29 @@ function contains(root: string, path: string): boolean {
 }
 function cancelled(signal: AbortSignal): void { if (signal.aborted) throw new Error("Cancelled"); }
 
+/** Filesystem metadata can block on NFS/FUSE. Stop awaiting it on cancellation;
+ * unlike a spawned CLI, the underlying read grants no process lifetime to own. */
+export function readDockerFilesystem<T>(read: () => Promise<T>, signal: AbortSignal): Promise<T> {
+  return new Promise((resolve, reject) => {
+    if (signal.aborted) { reject(new Error("Cancelled")); return; }
+    const clean = () => signal.removeEventListener("abort", abort);
+    const abort = () => { clean(); reject(new Error("Cancelled")); };
+    signal.addEventListener("abort", abort, { once: true });
+    try { read().then((value) => { clean(); resolve(value); }, (error) => { clean(); reject(error); }); }
+    catch (error) { clean(); reject(error); }
+  });
+}
+
 /** Resolve an installed CLI, never a relative PATH entry or this repository's executable. */
-async function installedDocker(root: string): Promise<string> {
+async function installedDocker(root: string, signal: AbortSignal): Promise<string> {
   for (const directory of (process.env.PATH ?? "").split(delimiter).filter(isAbsolute)) {
+    cancelled(signal);
     try {
-      const candidate = await realpath(join(directory, "docker"));
-      if (contains(root, candidate) || !(await stat(candidate)).isFile()) continue;
-      await access(candidate, constants.X_OK);
+      const candidate = await readDockerFilesystem(() => realpath(join(directory, "docker")), signal);
+      if (contains(root, candidate) || !(await readDockerFilesystem(() => stat(candidate), signal)).isFile()) continue;
+      await readDockerFilesystem(() => access(candidate, constants.X_OK), signal);
       return candidate;
-    } catch { /* Try the next installed-tool directory. */ }
+    } catch { cancelled(signal); /* Try the next installed-tool directory. */ }
   }
   throw new Error("Docker unavailable");
 }
@@ -45,6 +59,12 @@ function command(executable: string): DockerCommand {
     const env: NodeJS.ProcessEnv = { LANG: "C", LC_ALL: "C" };
     for (const key of ["HOME", "PATH", "XDG_RUNTIME_DIR", "DOCKER_HOST", "DOCKER_CONTEXT", "DOCKER_CONFIG", "DOCKER_API_VERSION", "DOCKER_TLS_VERIFY", "DOCKER_CERT_PATH"]) {
       if (process.env[key] !== undefined) env[key] = process.env[key];
+    }
+    if (args[0] === "--host") {
+      // The verified endpoint is explicit. Neither environment overrides nor a
+      // concurrent `docker context use` may change the daemon for these reads.
+      delete env.DOCKER_CONTEXT;
+      delete env.DOCKER_HOST;
     }
     let result: { error: Error | null; output: string } | undefined;
     const child = execFile(executable, args, { cwd: "/", env, encoding: "utf8", signal,
@@ -105,8 +125,8 @@ export async function discoverDockerContainers(root: string, signal: AbortSignal
   const unavailable = (message: string) => ({ scan: { status: "unavailable" as const, message }, containers: [] });
   try {
     cancelled(signal);
-    const canonicalRoot = await realpath(root);
-    const execute = run ?? command(await installedDocker(canonicalRoot));
+    const canonicalRoot = await readDockerFilesystem(() => realpath(root), signal);
+    const execute = run ?? command(await installedDocker(canonicalRoot, signal));
     cancelled(signal);
     // DOCKER_CONTEXT overrides DOCKER_HOST. Context inspection only reads endpoint
     // metadata; never connect to a remote engine and treat its paths as local ones.
@@ -114,7 +134,7 @@ export async function discoverDockerContainers(root: string, signal: AbortSignal
       (await execute(["context", "inspect", "--format", '{{with index .Endpoints "docker"}}{{.Host}}{{end}}'], signal)).trim();
     if (!/^unix:\/\/\//.test(endpoint)) return unavailable("Only a local Docker socket can establish worktree ownership");
     cancelled(signal);
-    const listed = rows(await execute(["ps", "--all", "--no-trunc", "--filter", "label=com.docker.compose.project.working_dir", "--format", LIST_FORMAT], signal));
+    const listed = rows(await execute(["--host", endpoint, "ps", "--all", "--no-trunc", "--filter", "label=com.docker.compose.project.working_dir", "--format", LIST_FORMAT], signal));
     const containers: ProjectContainer[] = [];
     let partial = listed.limited;
     const seen = new Set<string>();
@@ -124,7 +144,7 @@ export async function discoverDockerContainers(root: string, signal: AbortSignal
       if (!row) { partial = true; continue; }
       if (!isAbsolute(row.directory)) continue;
       let directory: string;
-      try { directory = await realpath(row.directory); } catch { continue; }
+      try { directory = await readDockerFilesystem(() => realpath(row.directory), signal); } catch { cancelled(signal); continue; }
       if (!contains(canonicalRoot, directory)) continue;
       if (seen.has(row.id)) { partial = true; continue; }
       if (containers.length === LIMIT) { partial = true; break; }
@@ -139,7 +159,7 @@ export async function discoverDockerContainers(root: string, signal: AbortSignal
     const running = containers.filter((container) => container.state === "running");
     if (running.length) {
       try {
-        const samples = rows(await execute(["stats", "--no-stream", "--no-trunc", "--format", STATS_FORMAT, "--", ...running.map((container) => container.id)], signal));
+        const samples = rows(await execute(["--host", endpoint, "stats", "--no-stream", "--no-trunc", "--format", STATS_FORMAT, "--", ...running.map((container) => container.id)], signal));
         partial ||= samples.limited;
         const sampled = new Set<string>();
         for (const line of samples.lines) {
@@ -156,7 +176,7 @@ export async function discoverDockerContainers(root: string, signal: AbortSignal
       } catch { partial = true; }
     }
     cancelled(signal);
-    if (await realpath(root) !== canonicalRoot) return unavailable("Worktree moved during the container scan");
+    if (await readDockerFilesystem(() => realpath(root), signal) !== canonicalRoot) return unavailable("Worktree moved during the container scan");
     cancelled(signal);
     return { scan: { status: partial ? "partial" : "observed",
       ...(partial ? { message: "Some container details were unavailable or exceeded the scan limit" } :

@@ -25,6 +25,7 @@ export const ProjectContainerSchema = z.object({
 }).strict();
 export const ProjectScanSchema = z.object({
   status: z.enum(["observed", "partial", "unavailable"]), message: text.optional(),
+  observedAt: z.string().datetime().optional(), retained: z.boolean().optional(),
 }).strict();
 export const ProjectContextObservationSchema = z.object({
   repositoryId: text, worldId: text, observedAt: z.string().datetime(),

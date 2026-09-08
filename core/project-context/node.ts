@@ -18,7 +18,7 @@ export interface NodeDiscoveryOptions {
   procRoot?: string;
   hostname?: string;
   timeoutMs?: number;
-  probe?: (address: string, port: number, signal: AbortSignal) => Promise<boolean>;
+  probe?: (address: string, port: number, signal: AbortSignal, authority: string) => Promise<boolean>;
 }
 
 function cancelled(): Error { return Object.assign(new Error("Node discovery cancelled"), { name: "AbortError" }); }
@@ -105,8 +105,8 @@ function webUrl(endpoint: ProjectEndpoint, machine: string): string | undefined 
   catch { return undefined; }
 }
 
-/** HEAD only, no credentials, redirects, body collection, proxy, or DNS lookup. */
-async function probeHttp(address: string, port: number, signal: AbortSignal): Promise<boolean> {
+/** HEAD with the displayed URL's Host, but a numeric socket destination: no DNS, credentials, redirects, or body collection. */
+async function probeHttp(address: string, port: number, signal: AbortSignal, authority: string): Promise<boolean> {
   check(signal);
   return new Promise((resolve) => {
     let settled = false;
@@ -118,8 +118,10 @@ async function probeHttp(address: string, port: number, signal: AbortSignal): Pr
       resolve(value);
     };
     const outgoing = request({ hostname: address, port, method: "HEAD", path: "/", agent: false,
-      signal, maxHeaderSize: 8192, headers: { Connection: "close" } }, (response) => {
-      finish(response.statusCode !== undefined && response.statusCode >= 100 && response.statusCode <= 599);
+      signal, maxHeaderSize: 8192, headers: { Connection: "close", Host: authority } }, (response) => {
+      // A rejected Host or error response proves HTTP exists, not that this is a usable link.
+      // Redirect destinations are not followed or presented as verified URLs either.
+      finish(response.statusCode !== undefined && response.statusCode >= 200 && response.statusCode < 300);
       response.destroy();
     });
     const timer = setTimeout(() => finish(false), 150);
@@ -253,13 +255,13 @@ export function createNodeServerDiscovery(options: NodeDiscoveryOptions = {}) {
             for (const { fd, listener } of owned) {
               check(active);
               const { inode, ...endpoint } = listener;
-              if (probes < 32) {
+              const url = webUrl(endpoint, machine);
+              if (url && probes < 32) {
                 probes++;
-                if (await probe(connectAddress(endpoint.address), endpoint.port, active).catch(() => false)) {
-                  const url = webUrl(endpoint, machine);
-                  if (url) endpoint.url = url;
+                if (await probe(connectAddress(endpoint.address), endpoint.port, active, new URL(url).host).catch(() => false)) {
+                  endpoint.url = url;
                 }
-              } else partial = true;
+              } else if (url) partial = true;
               check(active);
               if (await io.link(join(proc, pid, "fd", fd)) === `socket:[${inode}]`) endpoints.push(endpoint);
               else partial = true;

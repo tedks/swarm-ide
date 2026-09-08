@@ -99,7 +99,7 @@ describe("bounded Node discovery", () => {
     data.texts.set(`${proc}/net/tcp`, `${header}\n${row("123", "00000000")}\n`);
     data.probe.mockResolvedValue(true);
     const result = await data.discover()(root, signal());
-    expect(data.probe).toHaveBeenCalledWith("127.0.0.1", 5173, expect.any(AbortSignal));
+    expect(data.probe).toHaveBeenCalledWith("127.0.0.1", 5173, expect.any(AbortSignal), "tower0:5173");
     expect(result.servers[0]?.endpoints[0]?.url).toBe("http://tower0:5173/");
     data.texts.set(`${proc}/net/tcp`, `${header}\n${row()}\n`);
     expect((await data.discover()(root, signal())).servers[0]?.endpoints[0]?.url).toBe("http://localhost:5173/");
@@ -191,5 +191,30 @@ describe("bounded Node discovery", () => {
     } finally {
       await Promise.all([new Promise<void>((resolve) => http.close(() => resolve())), new Promise<void>((resolve) => tcp.close(() => resolve()))]);
     }
+  });
+
+  it("uses the exact displayed Host without DNS and suppresses denied, failed, or redirected URLs", async () => {
+    const observedHosts: Array<string | undefined> = [];
+    let status = 204;
+    const http = createHttpServer((request, response) => {
+      observedHosts.push(request.headers.host);
+      response.writeHead(status);
+      response.end();
+    });
+    await new Promise<void>((resolve) => http.listen(0, "127.0.0.1", resolve));
+    try {
+      const port = (http.address() as { port: number }).port;
+      const data = fixture();
+      data.process(42);
+      data.texts.set(`${proc}/net/tcp`, `${header}\n${row("123", "00000000", port.toString(16).padStart(4, "0"))}\n`);
+      const discover = createNodeServerDiscovery({ io: data.io, procRoot: proc, hostname: "host-check.invalid" });
+      expect((await discover(root, signal())).servers[0]?.endpoints[0]?.url).toBe(`http://host-check.invalid:${port}/`);
+      for (status of [403, 500, 302]) {
+        const endpoint = (await discover(root, signal())).servers[0]?.endpoints[0];
+        expect(endpoint).toMatchObject({ address: "0.0.0.0", port, protocol: "tcp" });
+        expect(endpoint?.url).toBeUndefined();
+      }
+      expect(observedHosts).toEqual(Array(4).fill(`host-check.invalid:${port}`));
+    } finally { await new Promise<void>((resolve) => http.close(() => resolve())); }
   });
 });
