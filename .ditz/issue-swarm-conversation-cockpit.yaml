@@ -31,3 +31,15 @@ log_events:
     assumption; corrected to unique registered top-level ancestry with exact tests.
     Reviewed navigation producer and App mount joined, both focused targets pass.
     Owned conversation proof and worktree mount finishing.'
+- time: 2026-09-08T06:42:09-00:00
+  who: Ted Smith
+  what: commented
+  comment: 'Implemented PR103: ROOT conversation is the default; child selection keeps
+    separate drafts and delivery receipts; native runs/history/errors remain secondary.
+    Joined reviewed target/source navigation and assigned-worktree browser mounts.
+    Final three scoped Bazel targets pass together in 18.309s; native review CLEAN.
+    Actual registered ROOT/child owned-desktop journey passed in 2.073s, readable
+    transcript and composer, retained source/cameras, zero renderer errors and complete
+    cleanup. One intercepted Send only: no messages or model turns to working agents.
+    Ready for ROOT normal merge/adoption; status remains in progress until landing.
+    Full verification is in the conversation step directory.'
