@@ -4,6 +4,7 @@ import { parseCoreResponseForRequest, PROTOCOL_VERSION } from "../../../protocol
 import { EXTERNAL_MESSAGE_MAX_BYTES, parseExternalResult, type ExternalDetail, type ExternalRequest } from "../../../protocol/external-agents";
 import "./session-steering.css";
 import { SteeringMemory, type TargetState } from "./steering-memory";
+import { outgoingPresentation } from "./message-outbox";
 import { useChatSubmit } from "../use-chat-submit";
 
 type Receipt = { status: "queued" | "rejected" | "delivery-unknown"; message: string; receiptId?: string };
@@ -29,8 +30,8 @@ export function SessionSteering({ detail, bridge, memory }: { detail: ExternalDe
   const send = async () => {
     if (!available || !bridge || invalid || owner.getSnapshot().pending) return;
     const id = session.id, text = target.draft;
-    owner.pending({ id, label: session.label });
-    update(id, (prior) => ({ ...prior, receipt: undefined }));
+    const outgoingId = owner.beginSend(id, text, session.label);
+    if (!outgoingId) return;
     let receipt: Receipt;
     try {
       const request: ExternalRequest = { protocolVersion: PROTOCOL_VERSION, requestId: `external-send:${crypto.randomUUID()}`,
@@ -43,8 +44,7 @@ export function SessionSteering({ detail, bridge, memory }: { detail: ExternalDe
     } catch {
       receipt = { status: "delivery-unknown", message: "Delivery could not be confirmed. Check the target conversation before sending again." };
     }
-    owner.pending(null);
-    update(id, (prior) => ({ draft: receipt.status === "queued" && prior.draft === text ? "" : prior.draft, receipt }));
+    owner.finishSend(id, outgoingId, receipt);
   };
   return <section className="session-steering" aria-label="Session steering">
     <h3>Message <strong>{session.label}</strong></h3>
@@ -53,18 +53,15 @@ export function SessionSteering({ detail, bridge, memory }: { detail: ExternalDe
       <label htmlFor={fieldId}>Message to {session.label}</label>
       <textarea {...chatKeys} id={fieldId} value={target.draft} rows={3} disabled={!available || pending?.id === session.id}
         title="Enter to send · Shift-Enter for a new line"
-        aria-describedby={`${fieldId}-limit`} aria-invalid={target.draft.length > 0 && !!invalid}
+        aria-describedby={target.draft && invalid ? `${fieldId}-limit` : undefined} aria-invalid={target.draft.length > 0 && !!invalid}
         onChange={(event) => { const draft = event.target.value; update(session.id, (prior) => ({ ...prior, draft })); }} />
-      <p id={`${fieldId}-limit`}>{bytes} / {EXTERNAL_MESSAGE_MAX_BYTES} UTF-8 bytes{target.draft && invalid ? ` · ${invalid}` : ""}</p>
+      {target.draft && invalid ? <p id={`${fieldId}-limit`}>{invalid}</p> : null}
       <button type="submit" disabled={!available || !!invalid || !!pending}>Send message</button>
     </form>
     {pending ? <p role="status">Sending to {pending.label} ({pending.id})…</p> : null}
-    {target.receipt ? <div role="status" data-delivery-status={target.receipt.status}>
-      <p>{target.receipt.status === "queued" ? "Message queued."
-        : target.receipt.status === "rejected" ? "Rejected — message not queued. Draft retained."
-          : "Delivery could not be confirmed. Check the conversation before sending again."}</p>
-      {target.receipt.status !== "delivery-unknown" ? <p>{target.receipt.message}</p> : null}
-      {target.receipt.receiptId ? <details><summary>Delivery details</summary><code>{target.receipt.receiptId}</code></details> : null}
-    </div> : null}
+    {target.receipt ? <span role="status" data-delivery-status={target.receipt.status}
+      aria-label={outgoingPresentation[target.receipt.status].label} title={outgoingPresentation[target.receipt.status].explanation}>
+      {outgoingPresentation[target.receipt.status].symbol}
+    </span> : null}
   </section>;
 }
