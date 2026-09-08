@@ -26,7 +26,7 @@ export function useTrustedFleet({ bridge, connected, generation, selection, onSn
   const [prepared, setPrepared] = useState<{ value: NonNullable<TrustedSnapshot["preparation"]>; inputKey: string } | null>(null);
   const [confirmed, setConfirmed] = useState(false);
   const epoch = useRef(0), selectionVersion = useRef(0), pendingRef = useRef(new Map<string, string>());
-  const refreshRef = useRef<(() => void) | null>(null), callback = useRef(onSnapshot), callbackSequence = useRef(-1);
+  const refreshRef = useRef<((catalog?: boolean) => void) | null>(null), callback = useRef(onSnapshot), callbackSequence = useRef(-1);
   callback.current = onSnapshot;
   const notice = useCallback((key: string, value: string) => setNotices((old) => ({ ...old, [key]: value })), []);
   const accept = useCallback((next: FleetSnapshot, sequence: number) => {
@@ -44,22 +44,27 @@ export function useTrustedFleet({ bridge, connected, generation, selection, onSn
   useEffect(() => {
     if (!bridge || !connected) { notice(OBSERVATION, "Local core unavailable. No command will be replayed."); return; }
     const current = epoch.current;
-    let alive = true, reading = false, requested = false, first = true;
+    let alive = true, reading = false, requested = false, catalogNeeded = true;
     let timer: ReturnType<typeof setTimeout> | undefined;
     const read = async () => {
       if (!alive) return;
       if (reading) { requested = true; return; }
       clearTimeout(timer); reading = true; requested = false;
-      const token = first ? null : fleetRef.current.selected;
+      const token = catalogNeeded ? null : fleetRef.current.selected;
       const selectionAtRead = selectionVersion.current;
-      first = false;
+      catalogNeeded = false;
       try {
         const command = request({ type: "trusted.snapshot", ...(token ? { token } : {}) });
         const response = parseCoreResponseForRequest(await bridge.request(command), command);
         if (!alive || current !== epoch.current) return;
-        if (!response.ok) { notice(token ?? OBSERVATION, response.error.message); callback.current?.(null); return; }
+        if (!response.ok) {
+          notice(token ? `@read:${token}` : OBSERVATION, response.error.message); callback.current?.(null);
+          if (token) catalogNeeded = true; // Missing retained selection must not trap catalogue discovery.
+          return;
+        }
         if (response.trusted) {
           accept(response.trusted.snapshot, response.sequence); notice(OBSERVATION, "");
+          if (response.trusted.snapshot.runToken) notice(`@read:${response.trusted.snapshot.runToken}`, "");
           if (!fleetRef.current.selected && response.trusted.snapshot.runToken && selectionAtRead === selectionVersion.current)
             update((state) => selectFleetRun(state, response.trusted!.snapshot.runToken!));
         }
@@ -69,7 +74,7 @@ export function useTrustedFleet({ bridge, connected, generation, selection, onSn
         if (alive && current === epoch.current) timer = setTimeout(read, requested ? 0 : 800);
       }
     };
-    refreshRef.current = () => { requested = true; void read(); };
+    refreshRef.current = (catalog = false) => { catalogNeeded ||= catalog; requested = true; void read(); };
     void read();
     return () => { alive = false; clearTimeout(timer); refreshRef.current = null; };
   }, [bridge, connected, generation, accept, notice, update]);
@@ -104,7 +109,7 @@ export function useTrustedFleet({ bridge, connected, generation, selection, onSn
       if (current === epoch.current) notice(key, "Outcome unconfirmed. Observe this conversation; the command will not be repeated automatically.");
     } finally {
       if (current === epoch.current && pendingRef.current.get(key) === command.requestId) {
-        pendingRef.current.delete(key); setPending((old) => ({ ...old, [key]: false })); refreshRef.current?.();
+        pendingRef.current.delete(key); setPending((old) => ({ ...old, [key]: false })); refreshRef.current?.(command.type === "trusted.launch");
       }
     }
   };
@@ -143,9 +148,9 @@ export function useTrustedFleet({ bridge, connected, generation, selection, onSn
       void dispatch(request({ type: "trusted.decide", token, approvalId, choice }));
   };
   return { fleet, selected, workspace, pending, newConversation, prepared, confirmed, setConfirmed,
-    select, begin, prepare, launch, control, refresh: () => refreshRef.current?.(),
+    select, begin, prepare, launch, control, refresh: () => refreshRef.current?.(true),
     preparationPending: pending[PREPARE] ?? false,
     preparationNotice: notices[PREPARE] ?? "", observationNotice: notices[OBSERVATION] ?? "",
-    selectedNotice: fleet.selected ? notices[fleet.selected] ?? "" : "",
+    selectedNotice: fleet.selected ? notices[fleet.selected] || notices[`@read:${fleet.selected}`] || "" : "",
     edit: (token: string, text: string) => update((state) => editFleetComposer(state, token, text)) };
 }

@@ -31,6 +31,8 @@ import { LiveRunRail } from "./agents/LiveRunRail";
 import { LiveRunPane } from "./agents/LiveRunPane";
 import { PreparedLaunchDraft } from "./agents/PreparedLaunchDraft";
 import { TrustedLocalPane } from "./agents/TrustedLocalPane";
+import type { TrustedSnapshot } from "../../protocol/trusted-local";
+import type { TrustedSelection } from "./agents/use-trusted-fleet";
 import { AgentReloadGuard } from "./agents/AgentReloadGuard";
 import { AgentDock } from "./agents/AgentDock";
 import { BuildResources } from "./build-resources/BuildResources";
@@ -133,6 +135,9 @@ export function App() {
   const [agents, setAgents] = useState(emptyAgentWorkbench);
   const [agentPaneHeight, setAgentPaneHeight] = useState(290);
   const [agentDockSelection, setAgentDockSelection] = useState(0);
+  const [trustedObservation, setTrustedObservation] = useState<TrustedSnapshot | null>(null);
+  const [trustedSelection, setTrustedSelection] = useState<TrustedSelection>();
+  const openTrustedRun = useCallback((runToken: string) => setTrustedSelection({ id: crypto.randomUUID(), runToken }), []);
   const [fixtureDockSelection, setFixtureDockSelection] = useState(0);
   const agentFixtureEnabled = fixturePreviewEnabled(import.meta.env.DEV, import.meta.env.VITE_SWARM_AGENT_DEMO);
   const openAgentDraft = useCallback(() => {
@@ -1313,7 +1318,7 @@ export function App() {
         <GlobalContext snapshot={snapshot} ready={observedCoreGeneration === coreGenerationRef.current && (!window.swarmLifecycle || lifecycle?.core.phase === "ready")} />
         {externalInformation ? <ExternalAgentInformation client={externalAgents} onReturn={() => { setExternalInformation(false); returnToSourceInformation(); }} onOpen={(path) => { setExternalInformation(false); openLinkedFile(path); }} /> : <>
         {revealNotice ? <p ref={revealNoticeElement} className="tasks-reveal-notice" role="status" tabIndex={0}>{revealNotice}</p> : null}
-        {contextSubject?.kind === "task" ? <div className="artifact-context" data-context-kind="task" data-context-subject={contextSubject.id}><TaskContext returnButtonRef={taskReturnButton} selectedTaskId={contextSubject.id} snapshot={tasks.observation?.snapshot ?? null} detail={tasks.detail?.id === contextSubject.id ? tasks.detail : null} detailRevision={tasks.detailRevision} detailStale={tasks.detailStale || tasks.refreshing || tasks.observation?.status !== "observed" || Boolean(tasks.notice)} reading={tasks.reading} notice={tasks.detailNotice} attachment={taskAttachment(contextSubject.id)} onSelect={openTaskDocument} onReveal={(ref) => { void revealTaskReference(ref); }} onReturnToSource={returnToSourceInformation} onShowDocument={showPinnedTaskDocument} onRefresh={() => { void taskClient.refresh(); }} connected={tasks.connected} generation={coreGenerationRef.current} journal={journal.observation} journalRetained={Boolean(journal.notice) || journal.busy} run={liveAgents.run} runRecords={liveAgents.records} runRetained={liveAgents.detailStale || !liveAgents.connected} onJournal={showJournal} /></div> : <>
+        {contextSubject?.kind === "task" ? <div className="artifact-context" data-context-kind="task" data-context-subject={contextSubject.id}><TaskContext returnButtonRef={taskReturnButton} selectedTaskId={contextSubject.id} snapshot={tasks.observation?.snapshot ?? null} detail={tasks.detail?.id === contextSubject.id ? tasks.detail : null} detailRevision={tasks.detailRevision} detailStale={tasks.detailStale || tasks.refreshing || tasks.observation?.status !== "observed" || Boolean(tasks.notice)} reading={tasks.reading} notice={tasks.detailNotice} attachment={taskAttachment(contextSubject.id)} onSelect={openTaskDocument} onReveal={(ref) => { void revealTaskReference(ref); }} onReturnToSource={returnToSourceInformation} onShowDocument={showPinnedTaskDocument} onRefresh={() => { void taskClient.refresh(); }} connected={tasks.connected} generation={coreGenerationRef.current} journal={journal.observation} journalRetained={Boolean(journal.notice) || journal.busy} run={liveAgents.run} runRecords={liveAgents.records} runRetained={liveAgents.detailStale || !liveAgents.connected} onJournal={showJournal} trustedObservation={{ snapshot: trustedObservation, retained: !liveAgents.connected }} onOpenTrustedRun={openTrustedRun} /></div> : <>
         {tasks.selectedTaskId ? <button className="tasks-show-details" onClick={showTaskDetails}>Show task details</button> : null}
         <ContextPane subject={contextSubject} sections={contextSections} onOpen={openLinkedFile} onTask={(target) => { void inspectBacklink(target); }} onRefreshTasks={() => { void taskClient.refresh(); }} headingRef={sourceInformationHeading} />
         </>}
@@ -1323,11 +1328,11 @@ export function App() {
 
       <section className="activity-dock panel">
         <div className="dock-header"><div><span className="eyebrow">activity / jobs</span><strong>Changes entering the world</strong></div><span className="ignored-events">{workspace.ignoredEvents} stale events rejected</span></div>
-        <AgentDock state={liveAgents} client={agentClient} selectionVersion={agentDockSelection} fixtureSelectionVersion={fixtureDockSelection} onOpenActivity={() => showJournal()}
+        <AgentDock state={liveAgents} client={agentClient} selectionVersion={agentDockSelection} fixtureSelectionVersion={fixtureDockSelection} trustedSelectionVersion={trustedSelection?.id} onOpenActivity={() => showJournal()}
           mockConversation={demo.conversation ? { tabs: MOCK_AGENTS, selected: demo.selected, onSelect: demo.select, selectionVersion: demo.selectionVersion, content: <MockConversation selected={demo.selected} /> } : undefined}
           onDraft={() => agentClient.openDraft(snapshot.focus)}
           draftContent={<PreparedLaunchDraft state={liveAgents} client={agentClient} previewCurrent={taskAttachment(tasks.selectedTaskId).alreadyAttached} dirtyPaths={fileTabs.filter((tab) => protectsBuffer(tab)).map((tab) => tab.path)} />}
-          trustedContent={<TrustedLocalPane draft={liveAgents.draft} bridge={window.swarm} connected={liveAgents.connected} generation={lifecycle?.core.generation ?? 0} />}
+          trustedContent={<TrustedLocalPane draft={liveAgents.draft} bridge={window.swarm} connected={liveAgents.connected} generation={lifecycle?.core.generation ?? 0} selection={trustedSelection} onSnapshot={setTrustedObservation} />}
           runContent={<LiveRunPane state={liveAgents} onInstruction={(text) => agentClient.instruction(text)} onSteer={() => { void agentClient.steer(); }}
           onStop={() => { void agentClient.stop(); }} onRead={(fromStart) => { void agentClient.read(fromStart); }} onFollow={() => agentClient.follow()} onClose={() => agentClient.closePane()}
           onHeight={(height) => agentClient.resize(height)} currentWorldId={snapshot.world.id} currentFingerprint={snapshot.revisions.working.fingerprint}

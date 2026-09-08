@@ -44,8 +44,8 @@ export function TrustedLocalPane({ draft, bridge, generation = 0, connected, sel
         <label><input type="checkbox" checked={confirmed} onChange={(event) => cockpit.setConfirmed(event.target.checked)} />Launch in this workspace with normal Codex permissions</label>
         <button type="button" className="agent-primary" disabled={!confirmed || cockpit.preparationPending || !connected} onClick={cockpit.launch}>Launch trusted-local Codex</button>
       </div> : null}
-      {cockpit.preparationNotice ? <p role="status">{cockpit.preparationNotice}</p> : null}
     </div> : null}
+    {cockpit.preparationNotice ? <p role="status">{cockpit.preparationNotice}</p> : null}
     {fleet.selected && !state ? <p role="status">Observing selected conversation… Controls wait for a fresh observation.</p> : null}
     {state?.runToken ? <div className="trusted-selected-run" data-run-token={state.runToken}>
       {state.archived ? <p className="trusted-archive">Archived conversation · {state.status}. No automatic resume or replay.</p> : null}
