@@ -116,8 +116,11 @@ provides native Linux/arm64 containers on Apple Silicon. No native macOS app is
 built here. Do not use `--platform linux/amd64` as a claimed Apple Silicon fix:
 emulation can be slower and Electron's sandbox under emulation is not validated.
 
-**Current implementation verification is recorded in the PR.** The local machine
-is Linux/amd64. An amd64 container test is not a macOS, Apple Silicon, Safari or
+**Verified locally on Linux/amd64:** Docker built the actual image; the noVNC
+browser authenticated, sent keyboard input through VNC and opened the included
+README in the real IDE. The live app renderer had a nested PID namespace,
+seccomp enabled and no-new-privileges. The owned container was removed cleanly.
+The 10 direct checks also passed. An amd64 container test is not a macOS, Apple Silicon, Safari or
 Docker Desktop test. Those remain evaluator-platform follow-ups until actually
 run. If a platform denies user namespaces, report its exact error and use the
 [Linux source path](evaluator-install.md); do not disable host security controls.
@@ -140,7 +143,8 @@ The smoke target uses the built `swarm-ide-demo:local` image, a unique container
 owned virtual desktop and port 55418. Override `SWARM_CONTAINER_PORT` if needed.
 It loads the actual noVNC browser client, connects to the running Electron
 desktop, and saves a screenshot and process evidence under a printed temporary
-directory. It removes only its own container, never shared Docker volumes/caches
+directory. This proves browser input and source reading, not a host-mounted
+write, persistent-volume restart or model turn. It removes only its own container, never shared Docker volumes/caches
 or a user's desktop. There is no model request in this proof.
 
 ## Why this design

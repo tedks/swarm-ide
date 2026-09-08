@@ -10,9 +10,10 @@ An evaluator with Docker can build this checkout and open the actual Electron ID
 
 - [x] 2026-09-08: Inspected the existing desktop bundle, Docker availability and official Electron, Docker, Nix and noVNC guidance.
 - [x] 2026-09-08 14:01Z: Implemented nonroot runtime definition and included Git/design demo; actual Docker app bundle now builds in 8 seconds after one frozen install.
-- [ ] Complete runtime image and actual browser proof.
-- [ ] Exercise the actual container, browser transport and sandbox; run focused checks and native review.
-- [ ] Document architecture limits, push a ready PR and hand off to ROOT.
+- [x] 2026-09-08 14:17Z: Complete runtime image and actual browser input/source-reading proof on Linux/amd64.
+- [x] Exercise the actual container, browser transport and sandbox; 10 focused checks and native fix-delta review passed.
+- [x] Document architecture and owned-process limits; push PR112 with independently usable local image.
+- [ ] Finish final handoff and ROOT-owned landing.
 
 ## Assumptions and failure modes
 
@@ -24,9 +25,11 @@ The app requires `window.swarm` from Electron preload; serving Vite in a browser
 
 The initial recursive bazel-* ignore excluded a real source module; correcting it to root outputs fixed that bundle failure. Bazel's daemon shutdown cannot reap its daemon correctly in the Docker build stage, so use `--batch`. Most build time was pnpm spawning install before every exec; after the explicit frozen install, disabling only that automatic repetition changed actual Bazel duration from434.639s to8.032s.
 
+The copied D-Bus package needs its explicit session.conf path. The sandbox then failed receiving the zygote handshake: an independent A/B showed Docker's capability-conditional chroot rule disappeared with cap_drop ALL. Allowing only chroot permits Chromium to restrict its own filesystem inside its user namespace; no outer capability or mount authority was added. The changed full browser proof passed with renderer NSpid104/4/1, Seccomp2 and NoNewPrivs1. Separate docker-exec proof processes must load the packaged font environment and Xauthority explicitly. Chromium rewrites its process title, so the proof recognizes both space-separated and NUL-separated renderer argv.
+
 ## Decision Log
 
-Use Xvfb, x11vnc and noVNC/websockify instead of creating a privileged HTTP API. Build runtime dependencies from the existing flake lock in `tools/container/runtime.nix`; retain the existing Bazel desktop bundle contract independently of the parallel Linux installer. Publish only localhost port 6080 and no raw VNC port, and require a fresh generated desktop password. Default to a disposable included Git repository with named-volume persistence, not a host source mount. Do not add mount authority merely to make owned process controls work; document the boundary and track it in `swarm-container-owned-processes`.
+Use Xvfb, x11vnc and noVNC/websockify instead of creating a privileged HTTP API. Build runtime dependencies from the existing flake lock in `tools/container/runtime.nix`; retain the existing Bazel desktop bundle contract independently of the parallel Linux installer. Publish only localhost port 6080 and no raw VNC port, and require a fresh generated desktop password. Default to a disposable included Git repository with named-volume persistence, not a host source mount. Keep the four scoped syscall allowances clone/setns/unshare/chroot; do not add mount authority merely to make owned process controls work. Document that boundary and track it in `swarm-container-owned-processes`.
 
 ## Context and Orientation
 
@@ -54,7 +57,7 @@ The production interface is the existing desktop tar and `SWARM_WORKSPACE_ROOT`;
 
 ## Outcomes & Retrospective
 
-Implementation and actual Docker proof are pending; no Mac validation or public image is claimed.
+The implemented Docker-only path builds and displays the actual Electron app without a browser backend rewrite. The actual browser opened a real committed source file, and independent process evidence confirmed the renderer sandbox. Final evidence is `/tmp/nix-shell.vbYSiX/swarm-container-proof.EOuDLc`; earlier failed attempts remain under the step's smoke/build logs with their corrections attributed. No Mac validation, persistent-volume restart proof, host-mounted write or public image is claimed. Follow-ups track actual Mac/ARM validation and the owned-process mount boundary. ROOT adopts/lands separately; no UI peer waits on this packaging branch.
 
 ## Artifacts and Notes
 
