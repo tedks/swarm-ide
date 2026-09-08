@@ -31,5 +31,12 @@ log_events:
   who: Ted Smith
   what: started
   comment: ""
+- time: 2026-09-08T19:36:38-00:00
+  who: Ted Smith
+  what: commented
+  comment: 'Latest direct user override: remove the fixed4MiB query output cutoff
+    entirely for now. Do not hold on streaming/scoping redesign. Keep monitoring/cancel/time/concurrency/cleanup;
+    note a future measured resource guard if problems arise. Goals has449 tracked
+    files, so no unsupported large-repo claim.'
 blocks:
 - swarm-close-working-loop
