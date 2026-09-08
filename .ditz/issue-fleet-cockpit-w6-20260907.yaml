@@ -28,3 +28,12 @@ log_events:
     agent draft and graph DOM/cameras. Actual deterministic protocol peer one-run
     proof also passed. Full local quality underway; ROOT owns landing and real F1
     runtime join.
+- time: 2026-09-08T01:00:34-00:00
+  who: Ted Smith
+  what: commented
+  comment: 'Final ready PR73 head533042c (docs-only after codee1c600a): quality1820/139
+    + typecheck/build PASS46.1s, focused18PASS; native convergence CLEAN. Final strengthened
+    controlled fleet IPC UI proof2.127s, cleanup1, zeroerrors/provider/model. Exact
+    user text/cursor/draft/camera and target-retention assertions passed. ROOT owns
+    ordered merge and real F1 producer join; issue remains in_progress until landing.
+    Own Bazel/virtual cleanup complete; no shared adoption.'
