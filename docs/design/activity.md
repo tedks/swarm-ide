@@ -17,7 +17,7 @@ retain these outcome notes in-repo, not just disappear from the live roster.
 
 | Part | Actual source | Current behavior |
 | --- | --- | --- |
-| Observed agent activity | [ObservedActivity.tsx](../../app/renderer/external-agents/ObservedActivity.tsx), [external-agents.ts](../../core/external-agents.ts), [FleetActivityView.tsx](../../app/renderer/FleetActivityView.tsx) | Bounded whole-fleet activity, with separate selected-session conversation |
+| Observed agent activity | [ObservedActivity.tsx](../../app/renderer/external-agents/ObservedActivity.tsx), [activity-entries.ts](../../app/renderer/external-agents/activity-entries.ts), [external-agents.ts](../../core/external-agents.ts), [FleetActivityView.tsx](../../app/renderer/FleetActivityView.tsx) | Shared newest-first raw operation projection for dock and center; assistant prose stays in conversation/Work Log |
 | Online Work Log | [WorkLogPanel.tsx](../../app/renderer/work-log/WorkLogPanel.tsx), [service.ts](../../core/work-log/service.ts) | Explicit Start/Stop, configurable summary worker and durable outcomes |
 | Recorded logical journal | [JournalPanel.tsx](../../app/renderer/changelog/JournalPanel.tsx), [changelog.ts](../../core/changelog.ts) | Reads validated `.swarm/changelog.json` |
 | Journal authoring | [changelog-authoring.ts](../../core/changelog-authoring.ts) | Exports evidence and validates supervised summary output |
@@ -45,6 +45,20 @@ and independent of the agent sidebar's scrolling/folding, and opens its selected
 through the pure `WorkLogEntryDetail` in the central document area. Opening an
 outcome does not start a model, record a task or create another polling consumer.
 
+The compact Activity body has no second Activity/Live heading. Its timestamped
+rows use the same horizontal separators as Work Log, retain their original
+session/worktree callbacks, and stay mounted during ordinary background reads.
+Only paused or disconnected observation needs a status note; example sessions
+remain labelled. Tool results are operations too, while assistant recaps are not.
+Summary settings lives behind a keyboard-accessible gear next to explicit
+Start/Stop. A running empty Work Log says it is watching for completed turns.
+
+The neighboring `BuildResources.tsx` instrument counts actual provided build
+jobs, puts running/queued work before failed/completed rows, and preserves full
+failure messages. A running job with zero placeholder progress is indeterminate,
+not a measured zero percent. Resource placeholders do not become CPU/memory
+charts; the separate optional example profile stays explicitly illustrative.
+
 ## Build connections
 
 The listed modules feed `//:quality_sources` and `//:desktop-bundle`.
@@ -56,6 +70,9 @@ verification without covering the normal UI in diagnostic prose.
 
 The Work Log modules use the same root source/bundle targets. Its dedicated
 `//tools/work-log:check` target runs the focused service/panel checks.
+`//tools/live-observers:unit` checks raw operation ordering, originating-session
+activation and refresh retention; `//tools/build-resources:regressions` checks
+truthful counts, progress, examples and preserved source state.
 
 See [logical changelog](../logical-changelog.md) for saved-report behavior and
 [the operator plan](../swarm-operator-hour.md) for the new online Work Log.

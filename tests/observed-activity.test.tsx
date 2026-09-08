@@ -19,6 +19,17 @@ function client(overrides: Partial<ExternalClient> = {}): ExternalClient {
 }
 
 describe("compact observed activity", () => {
+  it("retains the newest source records when timestamps tie or are missing, not opaque ID order", () => {
+    const observed = detail();
+    observed.entries = [900, 1000, 1100, 1200, 1300].map((offset) => ({ ...entry(offset), id: `dev:ino:${offset}:hash` }));
+    const view = render(<ObservedActivity client={client({ detail: observed })} onOpen={() => {}} />);
+    expect(screen.queryByText("Ran command 900")).toBeNull();
+    expect(screen.getAllByRole("listitem").map((row) => row.textContent)).toEqual(expect.arrayContaining([expect.stringContaining("Ran command 1000")]));
+    expect(screen.getAllByRole("listitem")[0]?.textContent).toContain("Ran command 1300");
+    view.rerender(<ObservedActivity client={client({ detail: { ...observed, entries: observed.entries.map((event) => ({ ...event, at: "" })) } })} onOpen={() => {}} />);
+    expect(screen.queryByText("Ran command 900")).toBeNull();
+    expect(screen.getAllByRole("listitem")[0]?.textContent).toContain("Ran command 1300");
+  });
   it("renders raw operations without redundant live labels and opens only deliberately", () => {
     const state = client(), onOpen = vi.fn();
     const view = render(<ObservedActivity client={{ ...state, observing: true }} onOpen={onOpen} />);
