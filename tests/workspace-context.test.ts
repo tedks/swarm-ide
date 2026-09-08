@@ -116,6 +116,29 @@ describe("workspace routing", () => {
 });
 
 describe("registered same-repository selection", () => {
+  it("the actual root runtimes return target-build observations for their own workspaces without starting a build", async () => {
+    const { primary, registry } = await repositories();
+    const a = await resolveWorkspaceSelection(primary, registry, null), b = await resolveWorkspaceSelection(primary, registry, SESSION);
+    const output: unknown[] = [];
+    const first = createWorkspaceRuntime(a.root, a.id, false, {}, (message) => output.push(message));
+    const second = createWorkspaceRuntime(b.root, b.id, false, {}, (message) => output.push(message));
+    try {
+      const snapshots = await Promise.all([first.ready, second.ready]);
+      const requests = snapshots.map((current) => parseCoreRequest(command("build.observe", {
+        repositoryId: current.project.id, worldId: current.world.id,
+      })));
+      await Promise.all([first.request(requests[0]), second.request(requests[1])]);
+      for (const [index, selected] of [a, b].entries()) {
+        const request = requests[index]!;
+        const response = output.find((value) => (value as { requestId?: string }).requestId === request.requestId);
+        const parsed = parseCoreResponseForRequest(response, { ...request, workspaceId: selected.id });
+        expect(parsed).toMatchObject({ ok: true, workspaceId: selected.id,
+          snapshot: { project: { id: selected.id } },
+          buildJobs: { repositoryId: selected.id, worldId: snapshots[index]!.world.id, jobs: [], blocked: false } });
+        expect(() => parseCoreResponseForRequest(response, { ...request, workspaceId: [b, a][index]!.id })).toThrow("Workspace");
+      }
+    } finally { await Promise.all([first.shutdown(), second.shutdown()]); }
+  });
   it("the actual root runtimes read and write their own same-path file, publish scoped events, and never announce secondary readiness", async () => {
     const { primary, registry } = await repositories();
     const a = await resolveWorkspaceSelection(primary, registry, null), b = await resolveWorkspaceSelection(primary, registry, SESSION);

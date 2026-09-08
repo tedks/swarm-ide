@@ -32,6 +32,7 @@ const options = { visible: true, connected: true, worldId: "world:working", repo
 afterEach(() => { cleanup(); delete window.swarm; flow.mounts = 0; flow.unmounts = 0; flow.props.clear(); flow.setViewport.mockClear(); flow.fitView.mockClear(); });
 function bridge() {
   const request = vi.fn(async (req: CoreRequest): Promise<CoreResponse> => ({ protocolVersion: PROTOCOL_VERSION, requestId: req.requestId, ok: true, sequence: 1, snapshot: initialSnapshot(),
+    ...(req.workspaceId ? { workspaceId: req.workspaceId, snapshot: { ...initialSnapshot(), project: { ...initialSnapshot().project, id: req.workspaceId } } } : {}),
     ...(req.type === "plans.read" ? { plans: { status: "observed", index: structuredClone(index), revision: "a".repeat(64), observedAt: "2026-09-08T00:00:00.000Z" } } :
       req.type === "file.read" ? { file: { kind: "read", path: req.path, content: `# Document\n\n${req.path}`, revision: "a".repeat(64), size: 64 } } : {}) }));
   window.swarm = { request, onEvent: () => () => {} }; return request;
