@@ -283,7 +283,7 @@
         },
         {
           "label": "//tools/demo-agents:unit",
-          "role": "Registered fleet creation ordering, deep lineage and observer checks",
+          "role": "Registered fleet creation ordering, deep lineage disclosures and observer checks",
           "dependencies": [
             { "label": "//:quality_sources", "relation": "data" },
             { "label": "//tools/demo-agents:sources", "relation": "data" }

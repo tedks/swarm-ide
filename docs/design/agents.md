@@ -52,6 +52,18 @@ pending until its reviewed implementation is integrated.
 
 ## Build connections
 
+The observed fork rail has local subtree disclosures and an **Older sessions**
+toggle. Its default recency view keeps the seven newest dated registrations,
+sessions with recorded activity within 30 minutes, undated sessions and the
+ancestors of those rows. The selected session and its ancestry always remain
+visible. This is a display heuristic, not completion or process-liveness metadata.
+All older rows can be restored in their original newest-first hierarchy with one
+toggle. Per-session fold choices and the history toggle survive observer refresh;
+selected ancestry temporarily opens a folded path without erasing that choice.
+No backend requests, raw Activity filtering or Send authority change. These
+controls live in `ExternalAgents.tsx`/`external-agents.css` and are covered by
+`//tools/demo-agents:unit`, including deep-tree and refresh/selection checks.
+
 The observed fork rail orders siblings newest first using the registered rollout's
 `session_meta.payload.timestamp` as optional `createdAt`. It never uses refresh,
 file-modification or activity times for ordering. Known creation times precede
