@@ -15,8 +15,8 @@ The whole index remains limited to 64 KiB and structurally validated.
 - [x] (2026-09-08) Confirm designated clean branch and exact schema cap.
 - [x] (2026-09-08 21:06Z) Baseline: actual-index and 100-target regressions fail; 58 other tests and both type boundaries pass.
 - [x] (2026-09-08 21:07Z) Remove only that cap; 83 reader/generation tests and both type boundaries pass.
-- [x] (2026-09-08 21:10Z) Native review CLEAN with no findings; executable commit627f29d pushed in PR137.
-- [ ] Push final evidence notes, mark PR ready, sync Ditz and hand off to ROOT.
+- [x] (2026-09-08 21:08Z) Native review CLEAN with no findings; executable commit627f29d pushed in ready PR137.
+- [x] (2026-09-08 21:08Z) Evidence notes pushed, PR marked ready, Ditz closed/synced and own Bazel server stopped. ROOT handoff recorded separately.
 
 ## Surprises & Discoveries
 
@@ -102,4 +102,4 @@ plan; no extra build graph mapping is required unless validation disproves that.
 Plan created before implementation; updated after the recorded two-failure
 baseline and successful 83-test correction to distinguish exact gate attribution.
 Final review confirmed the one-line production scope, unchanged plan content and
-existing build mappings; remaining steps are delivery only.
+existing build mappings. Delivery is ready; ROOT still owns merge and app adoption.
