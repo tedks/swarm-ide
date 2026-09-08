@@ -66,5 +66,12 @@ log_events:
     convergence pass. Existing private-registry mode independently shows ROOT activity.
     Two skipped panes and untested ARM Linux are separate follow-ups. PR111 ready/pushed;
     no shared preview or user profile changed.
+- time: 2026-09-08T14:51:03-00:00
+  who: Ted Smith
+  what: commented
+  comment: Added the approved CLI BUILD source link to the runtime design. Package/launcher
+    sources and both actual CLI target mappings were already present; all 13 nodes
+    and prior links remain unchanged. One-line mapping only, checked directly; earlier
+    installation and agent-association evidence is unchanged. ROOT owns normal landing.
 blocks:
 - swarm-usability-pass
