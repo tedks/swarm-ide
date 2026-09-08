@@ -14,3 +14,14 @@ log_events:
   who: Ted Smith
   what: created
   comment: ""
+- time: 2026-09-08T19:18:18-00:00
+  who: Ted Smith
+  what: commented
+  comment: 'ROOT PR129 intake found a nonblocking shared-helper mismatch: core/github-prs.ts
+    still matches the old collectBuildQuery generic failure message, while core/build-graph.ts
+    now emits Bazel query failed (<code>): <diagnostic>. A nonzero gh exit is therefore
+    classified as GITHUB_PR_COMMAND rather than GITHUB_PR_COMMAND_EXIT. No raw stderr
+    disclosure or successful-query regression found. Update classification to use
+    a stable typed error/exit property (or a narrowly tested compatible boundary),
+    preserving diagnostic redaction. Filed rather than delaying the Pure Sky usability
+    fix under the user critical-only landing policy.'
