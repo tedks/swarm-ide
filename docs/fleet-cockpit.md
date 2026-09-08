@@ -10,12 +10,16 @@ Task context lists conversations linked to the task at actual preparation/admiss
 
 ## Evidence and limits
 
-The renderer consumes the strict shared trusted-local schemas. F1 owns concurrent execution and durable archived history; this renderer change does not itself establish a real multi-provider or multi-run service proof. Older one-run snapshots remain displayable.
+The renderer consumes the strict shared trusted-local schemas. The reviewed F1 runtime supplies concurrent execution and durable archived history. Older one-run snapshots remain displayable. Runtime implementation, deterministic UI evidence and real model execution are separate claims.
 
 The focused target `nix develop --command bazel test //tools/fleet-cockpit:unit --jobs=3` checks delayed responses, per-run drafts/pending commands, old generations, missing-selection recovery, explicit task opening and archive controls.
 
 `nix develop --command bazel run //tools/fleet-cockpit:smoke --jobs=3` uses an owned disposable virtual X11 desktop. It exercises the actual packaged renderer/preload and real core file operations, but deliberately substitutes **synthetic trusted IPC**. It launches no provider or model. Its assertions cover delayed A acknowledgement while B is selected, exact B Stop leaving A active, archived read-only activity, and retained editor text/logical cursor/agent draft/graph DOM/cameras. The disposable repository does not contain build or task metadata; this is not evidence of populated service/build graphs.
 
-The separate existing `//tools/trusted-local:smoke` uses the actual packaged trusted core with a deterministic protocol executable for one conversation. That is transport/lifecycle evidence, not a real model turn. Real fleet execution must be checked after integration with the reviewed F1 runtime.
+The separate existing `//tools/trusted-local:smoke` uses the actual packaged trusted core with a deterministic protocol executable for one conversation. That is transport/lifecycle evidence, not a real model turn.
+
+`nix develop --command bazel run //tools/fleet-cockpit:joined-smoke --jobs=3` exercises the actual packaged cockpit, preload, core service, transport and disposable history store without replacing trusted IPC. Two deterministic app-server processes receive three bounded protocol turns: stop A while B remains available, then send the next turn only to B. It checks independent composers, activity, both confirmed Stops, two persisted read-only archives, and retained source text/logical cursor/agent draft/graph DOM/cameras. Archive observation does not restart providers. This proves the joined service path with controlled providers, not real model execution, crash/restart recovery or task-attached delivery. The owned virtual desktop defaults to :152/55232 and can use another free owned pair.
 
 Per-run unsent messages currently live in renderer memory, not durable storage. Long-session renderer retention and orphaned drafts are tracked as `fleet-renderer-retention-bounds-20260907`; do not advertise unlimited or refresh-persistent local drafts.
+
+Failed provider sessions can retain conversation capacity until the app/core restarts (`trusted-failed-capacity-20260907`). Restart also stops other live conversations; archived history does not resume them. Releasing those slots must eventually distinguish failed execution from confirmed process cleanup, not discard an uncertain owner.

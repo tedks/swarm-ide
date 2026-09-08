@@ -14,13 +14,18 @@ The operator can select independent real Codex conversations, retain an unsent m
 - [x] Initial packaged one-run protocol peer proof passed3.5s; initial controlled fleet IPC proof passed1.979s, both owned:152/55232 cleanup1 and no model turn.
 - [x] Finish review-discovered missing-selection recovery red/green: focused18 tests GREEN; stronger existing-draft virtual proof passed2.127s; native correction/App/proof convergence CLEAN.
 - [x] Final code e1c600a: local quality1820 tests/139files plus typecheck/node/renderer builds PASS46.1s; focused18 PASS (cached in final aggregate, fresh earlier).
-- [x] Push ready PR73, synchronize Ditz and record exact ROOT join request. ROOT-owned normal landing and F1 runtime join remain pending.
+- [x] Push ready PR73, synchronize Ditz and record initial bounded handoff; ROOT subsequently authorized the final runtime join.
+- [x] ROOT continuation cleared exact final F1 producer 07f64ef; normally composed as d584182 over reviewed E3/T5/A2 base b1cb03e, no conflicts.
+- [x] (2026-09-08 01:29Z) Actual packaged cockpit/service join passed 4.864s using two deterministic provider processes and three protocol turns, no model. Source, logical cursor, agent draft and graph identity/cameras retained; both stopped and histories persisted; zero renderer exceptions and owned cleanup confirmed.
+- [ ] ROOT normal landing/adoption remains separate from completed child implementation and evidence.
 
 ## Surprises & Discoveries
 
 The original pane has one snapshot, one composer, and one global response sequence. Changing selected runs requires separating the latest run-list observation from each conversation's own response freshness. Current protocol rejects extra request fields, so renderer requests cannot use the new token/expectedTurnId fields until the reviewed producer contract is available.
 
 Native review found a missing-selection recovery edge: after restart a retained A token absent in the new core caused every subsequent read to target A, so an uncertain B launch could not be discovered. The exact mounted regression failed alone (17 passed) before correction. Manual observation and uncertain launch now request an untargeted catalog; targeted read errors also schedule catalog recovery. Old tests that assumed every manual observation targets A require only their controlled transport choreography to reflect that deliberate behavior.
+
+The first actual-service join attempt stopped after A output because the test driver serialized a browser callback without passing its host `count` variable. Its recorded ReferenceError is a test-driver failure, not a product failure. Passing the explicit argument corrected that exact mechanism; one corrected-harness execution passed. Both original failure and corrected run evidence remain retained. Native review found no Critical/Important service/cockpit or proof-tooling issue. A static producer limitation—failed sessions can retain live capacity even after confirmed cleanup—is separately tracked in `trusted-failed-capacity-20260907`, not silently changed in this renderer lane.
 
 ## Decision Log
 
@@ -32,9 +37,11 @@ Keep the existing trusted-local profile and preparation confirmation. Do not cre
 
 The bounded renderer implementation and verification are complete, ready in PR73. This lane does not prove a live model turn; controlled provider/UI evidence is labelled, and F1 owns the bounded real multi-conversation proof.
 
-The visible list/select/output/approval/Stop implementation and minimal task-linked opening are present. Multi-run core/store implementation is not consumed or proved by this lane. The owned fleet proof uses synthetic trusted IPC through the actual packaged renderer/preload and real core file operations; its disposable repository has no build/task metadata, so populated service/build behavior is not claimed.
+The visible list/select/output/approval/Stop implementation and minimal task-linked opening are present. The initial owned fleet proof used synthetic trusted IPC through the actual packaged renderer/preload and real core file operations. The authorized continuation then normally composed the reviewed F1 runtime and added separate `joined-*` proof tooling, with actual service/store/transport and deterministic provider processes rather than IPC substitution. Its disposable repository has no build/task metadata, so populated service/build behavior and task-attached live delivery are not claimed.
 
 Final strengthened proof run.fk599z preserved full source and logical cursor, existing agent-draft DOM/value, per-run messages and graph DOM/cameras with zero renderer exceptions and confirmed cleanup. Long-session cache/orphaned-draft handling is a proportional follow-up in `fleet-renderer-retention-bounds-20260907`; no unlimited or refresh-persistent composer claim is made. Hosted checks were not used, and foreign review seats were intentionally unfilled under the Codex-only directive.
+
+Runtime join d584182 passed fresh focused 18 tests/typechecks and packaged desktop build. Corrected actual-service proof run.Hxkxsu passed 4.864s (5.833s owned harness), retaining two closed histories and showing no provider replay during same-core archive observation. It does not test restart/crash recovery. Earlier full quality 1820/139 remains attributed to e1c600a; no repeated full legacy suite or product model turn was requested or performed.
 
 ## Context and Orientation
 
@@ -71,3 +78,5 @@ Initial plan records scope, assumptions and evidence requirements before code ch
 Updated after contract/consumer clearance, mounted/owned evidence and native-review recovery finding to preserve precise implementation-versus-proof attribution.
 
 Updated after final local quality, actual strengthened virtual evidence and native convergence; remaining work is ROOT integration rather than an unfinished local proof.
+
+ROOT authorized the concrete final runtime dependency continuation. Added one focused packaged actual-service scenario rather than repeating producer model proof or the full legacy suite.
