@@ -38,3 +38,11 @@ log_events:
     and no writes. Native convergence clean. Normal selected-agent App mount and landing
     remain conversation/ROOT integration; no additional backend work needed. Whole
     graph rebinding tracked separately.'
+- time: 2026-09-08T06:32:17-00:00
+  who: Ted Smith
+  what: commented
+  comment: PR100 merged normally. Registered-agent directory browsing and origin/master
+    comparison are implemented, including committed and dirty changes. Verified with
+    34 focused tests/types, clean native review and a real two-linked-worktree packaged
+    UI proof. The conversation worker is adding the normal selected-agent Worktree
+    entry; this issue remains open until that joined UI is available.
