@@ -15,8 +15,8 @@ mounting that control requires ROOT to release W6's renderer ownership.
 
 - [x] (2026-09-08 01:40Z) Read current runtime, storage and wire contracts; inspect
   installed Codex 0.153.4 generated thread/fork schemas.
-- [ ] Add compatible typed fork request, completed-boundary capability and lineage.
-- [ ] Prove lifecycle, correlation, duplicate and legacy boundaries locally.
+- [x] (2026-09-08 01:50Z) Add compatible typed fork request, completed-boundary capability and lineage; isolated UI form, W6 renderer untouched.
+- [x] (2026-09-08 01:55Z) Prove lifecycle, correlation, duplicate and legacy boundaries locally. Initial4RED/81PASS, expanded123PASS; native findings reproduced2RED/123PASS then corrected127PASS.
 - [ ] Run one explicitly bounded real parent/child proof and native review.
 - [ ] Push reviewed result, report exact visible join and leave ROOT to land.
 
@@ -26,6 +26,11 @@ Installed ThreadForkParams has inclusive lastTurnId, excludeTurns and
 deferGoalContinuation. Thread reports forkedFromId; parentThreadId instead names
 native subagent ancestry and must not be confused with a fork parent. There is
 no persistExtendedHistory parameter in this installed schema.
+Native review identified that deferred goals resume after the next explicit turn,
+so a child must clear and read back its inherited goal before dispatch. Review
+also identified that an evicted ordinary parent's token could be reused as a
+child identity; retain all admitted tokens for the owner's lifetime, including
+restored ancestry references, independently of twenty-record history eviction.
 
 ## Decision Log
 
@@ -34,7 +39,10 @@ history-only session. The provider pins lastTurnId, so later parent activity nee
 not mutate the selected boundary. The child receives a new explicit instruction
 once after the returned distinct thread ID and forkedFromId are validated.
 Deferring inherited goal continuation prevents an automatic turn before that
-instruction. No runtime permissions, tool or approval overrides are introduced.
+instruction. Clear and confirm the child goal is null before sending it, without
+touching the parent's goal. No runtime permissions, tool or approval overrides
+are introduced. Only fork connections opt into experimental API capability for
+the installed deferGoalContinuation field and goal operations.
 
 The renderer supplies a one-use childToken for correlation and recovery after a
 lost acknowledgement. Persist requested lineage before creating a provider;
@@ -44,7 +52,8 @@ child's taskReference stays null. Existing preparations remain untouched.
 
 ## Outcomes & Retrospective
 
-Implementation and proof pending. ROOT owns merge, final Ditz closure and app
+Backend and isolated form implemented; actual provider proof pending. Desktop
+package at5ac6ee3 passed6.3s. ROOT owns merge, final Ditz closure and app
 adoption. No claim of isolated worktrees, external ROOT transcript cloning or
 automatic ticket completion belongs to this slice.
 

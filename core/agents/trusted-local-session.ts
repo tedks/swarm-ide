@@ -265,6 +265,17 @@ export class TrustedLocalSession {
       if (fork && (threadId === fork.threadId || thread.forkedFromId !== fork.threadId || thread.cwd !== this.options.root))
         throw new Error("Codex did not confirm the requested child identity and shared directory.");
       this.state.threadId = threadId;
+      if (fork) {
+        // Inherited history is context, not ownership of the parent's goal.
+        // deferGoalContinuation prevents an initial implicit turn; clearing on
+        // the confirmed CHILD prevents continuation after our explicit turn.
+        const cleared = object(await this.request("thread/goal/clear", { threadId }));
+        if (!this.active()) return;
+        if (typeof cleared.cleared !== "boolean") throw new Error("Invalid child goal acknowledgement");
+        const goal = object(await this.request("thread/goal/get", { threadId }));
+        if (!this.active()) return;
+        if (goal.goal !== null) throw new Error("Child still owns an inherited goal");
+      }
       await this.begin(prompt, 128 * 1024);
     } catch (error) {
       if (this.active()) this.fail(error instanceof Error && error.message === "Codex returned a different working directory."

@@ -31,16 +31,28 @@ function fixture() {
     return { started };
   };
   const forkReply = (thread = { id: "child", forkedFromId: "parent", cwd: "/repo" }) => reply("thread/fork", { cwd: "/repo", thread });
+  const clearGoal = async () => { await reply("thread/goal/clear", { cleared: false }); await reply("thread/goal/get", { goal: null }); };
   const complete = (threadId: string, turnId: string, status = "completed") => receive({ method: "turn/completed", params: { threadId, turn: { id: turnId, status } } });
-  return { session, sent, close, receive, reply, beginFork, forkReply, complete };
+  return { session, sent, close, receive, reply, beginFork, forkReply, clearGoal, complete };
 }
 
 describe("native trusted fork transport", () => {
+  it("clears only the child's inherited goal before any child turn", async () => {
+    const f = fixture(), { started } = await f.beginFork();
+    await f.forkReply();
+    expect(f.sent.at(-1)).toMatchObject({ method: "thread/goal/clear", params: { threadId: "child" } });
+    expect(f.sent.some((message) => message.method === "turn/start")).toBe(false);
+    await f.reply("thread/goal/clear", { cleared: true });
+    await f.reply("thread/goal/get", { goal: null });
+    await f.reply("turn/start", { turn: { id: "child-turn" } }); await started;
+    f.complete("child", "child-turn");
+  });
   it("pins completed history and confirms native ancestry before one child instruction", async () => {
     const f = fixture(), { started } = await f.beginFork();
     expect(f.sent.at(-1)).toMatchObject({ method: "thread/fork", params: { threadId: "parent", lastTurnId: "completed-parent", cwd: "/repo", excludeTurns: true, deferGoalContinuation: true } });
     expect(f.sent.some((message) => message.method === "thread/start" || message.method === "turn/start")).toBe(false);
     await f.forkReply();
+    await f.clearGoal();
     expect(f.sent.at(-1)).toMatchObject({ method: "turn/start", params: { threadId: "child", input: [{ type: "text", text: "Child instructions" }] } });
     await f.reply("turn/start", { turn: { id: "child-turn" } }); await started;
     expect(f.session.snapshot().threadId).toBe("child");
@@ -79,6 +91,7 @@ describe("native trusted fork transport", () => {
     const request = f.sent.at(-1)!;
     await f.forkReply();
     f.receive({ id: request.id, result: { cwd: "/repo", thread: { id: "different", forkedFromId: "parent", cwd: "/repo" } } });
+    await f.clearGoal();
     await f.reply("turn/start", { turn: { id: "child-turn" } }); await started;
     expect(f.session.snapshot().threadId).toBe("child");
     expect(f.sent.filter((message) => message.method === "turn/start")).toHaveLength(1);
@@ -99,6 +112,21 @@ describe("native trusted fork transport", () => {
     expect(f.session.snapshot()).toMatchObject({ status: "failed", message: expect.stringContaining("unknown") });
     expect(f.sent.filter((message) => message.method === "thread/fork")).toHaveLength(1);
     expect(f.sent.some((message) => message.method === "turn/start")).toBe(false);
+    expect(f.close).toHaveBeenCalledOnce();
+  });
+  it("does not dispatch when child goal removal is uncertain or the inherited goal remains", async () => {
+    const f = fixture(), { started } = await f.beginFork();
+    await f.forkReply(); await f.reply("thread/goal/clear", { cleared: true });
+    await f.reply("thread/goal/get", { goal: { objective: "Parent goal" } });
+    await expect(started).rejects.toThrow();
+    expect(f.sent.some((message) => message.method === "turn/start")).toBe(false);
+    expect(f.sent.filter((message) => message.method.startsWith("thread/goal/")).every((message) => message.params.threadId === "child")).toBe(true);
+  });
+  it("Stop during child goal clearing cannot be undone by a late clear acknowledgement", async () => {
+    const f = fixture(), { started } = await f.beginFork(); await f.forkReply();
+    await f.session.stop(); await expect(started).rejects.toThrow();
+    await f.reply("thread/goal/clear", { cleared: true });
+    expect(f.sent.some((message) => message.method === "turn/start" || message.method === "thread/goal/get")).toBe(false);
     expect(f.close).toHaveBeenCalledOnce();
   });
 });

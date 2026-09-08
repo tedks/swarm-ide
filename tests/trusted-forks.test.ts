@@ -132,6 +132,16 @@ describe("owned child admission and retained lineage", () => {
     await expect(recovered.request({ ...request, requestId: randomUUID() })).rejects.toThrow("owner changed");
     expect(createSession).not.toHaveBeenCalled();
   });
+  it("never reuses an evicted ordinary parent's identity for a descendant", async () => {
+    const f = await fixture(), child = await f.service.request(f.fork());
+    await f.service.request(command("trusted.stop", { token: f.parent }));
+    for (let n = 0; n < 21; n++) {
+      const sibling = await f.service.request(f.fork(child.runToken!));
+      await f.service.request(command("trusted.stop", { token: sibling.runToken }));
+    }
+    expect(f.service.snapshot().runs!.some((r) => r.runToken === f.parent)).toBe(false);
+    await expect(f.service.request(f.fork(child.runToken!, { childToken: f.parent }))).rejects.toThrow("already used");
+  });
   it("does not start a child if durable admission fails", async () => {
     const f = await fixture(); vi.spyOn(f.store, "save").mockRejectedValue(new Error("full"));
     await expect(f.service.request(f.fork())).rejects.toThrow("could not be saved");

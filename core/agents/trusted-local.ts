@@ -74,7 +74,7 @@ export class TrustedLocalService {
   private closed = false;
   private pending = new Set<Promise<unknown>>();
   private commands = new Set<string>();
-  private forkTokens = new Set<string>();
+  private admittedTokens = new Set<string>();
   private message = "Trusted local · normal Codex settings and approvals. No agent starts until Launch.";
   private readonly store: TrustedLocalStore;
   private readonly initialization: Promise<void>;
@@ -91,6 +91,8 @@ export class TrustedLocalService {
   private async restore() {
     try {
       for (const saved of await this.store.load()) {
+        this.admittedTokens.add(saved.summary.runToken);
+        if (saved.summary.fork) this.admittedTokens.add(saved.summary.fork.parentRunToken);
         const interrupted = !saved.summary.archived || !["closed", "failed"].includes(saved.summary.status);
         saved.summary = { ...saved.summary, archived: true, approvalCount: 0,
           ...(interrupted ? { status: "failed" as const, updatedAt: this.timestamp(),
@@ -215,7 +217,7 @@ export class TrustedLocalService {
     const point = parent && !parent.stopped && !parent.launching && !parent.saved.summary.archived ? parent.session?.forkPoint?.() : null;
     if (!point || point.threadId !== request.expectedThreadId || point.turnId !== request.expectedTurnId)
       throw new Error("Fork requires the current successfully completed parent turn. Refresh this ready conversation; nothing was started.");
-    if (this.forkTokens.has(request.childToken) || this.runs.has(request.childToken) || this.preparation?.token === request.childToken)
+    if (this.admittedTokens.has(request.childToken) || this.runs.has(request.childToken) || this.preparation?.token === request.childToken)
       throw new Error("Child token was already used; no automatic replay.");
     this.reserveCapacity();
     const at = this.timestamp(), run: Run = { session: null, stopped: false, launching: true, saved: {
@@ -227,7 +229,7 @@ export class TrustedLocalService {
       threadId: null, turnId: null, output: "", activities: [],
     } };
     // Reserve the child before any await. Its preparation slot is independent.
-    this.forkTokens.add(request.childToken); this.runs.set(request.childToken, run); this.selected = request.childToken;
+    this.admittedTokens.add(request.childToken); this.runs.set(request.childToken, run); this.selected = request.childToken;
     try {
       await this.persist();
       if (this.closed || run.stopped) throw new Error("Fork cancelled before provider start.");
@@ -271,7 +273,7 @@ export class TrustedLocalService {
     } };
     // Consume authority before any await. A timeout, repeated click or new request
     // cannot relaunch this token even when no acknowledgement reached the UI.
-    this.preparation = null; this.selected = p.token; this.runs.set(p.token, run);
+    this.preparation = null; this.selected = p.token; this.admittedTokens.add(p.token); this.runs.set(p.token, run);
     try {
     await this.persist();
     const fresh = await this.options.context.prepare(p.input);
