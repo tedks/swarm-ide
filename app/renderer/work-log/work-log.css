@@ -1,6 +1,7 @@
 .work-log-panel { color: var(--text, #deded7); min-width: 0; font-size: 12px; }
 .work-log-heading { display: flex; align-items: center; gap: 8px; }
 .work-log-heading h3 { margin: 0; flex: 1; font-size: 13px; }
+.work-log-panel .work-log-settings-toggle { width: 27px; padding: 0; flex-shrink: 0; font-size: 17px; }
 .work-log-heading > span, .work-log-entry-heading time { color: var(--muted, #a3a69f); font-size: 10px; }
 .work-log-panel button, .work-log-panel input, .work-log-panel select { color: var(--text, #deded7); background: #202723; border: 1px solid #4c5952; border-radius: 4px; font: inherit; min-height: 25px; padding: 3px 7px; }
 .work-log-panel button { cursor: pointer; }

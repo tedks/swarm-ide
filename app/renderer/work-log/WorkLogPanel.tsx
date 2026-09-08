@@ -99,6 +99,7 @@ export function WorkLogPanel({ onOpen, onAgent, onTask, onOpenAgent, onOpenTask,
   const [settings, setSettings] = useState<WorkLogSettings>(defaults);
   const editedSettings = useRef(false);
   const settingsId = useId();
+  const [settingsOpen, setSettingsOpen] = useState(false);
   useEffect(() => {
     if (snapshot && !editedSettings.current) setSettings(snapshot.settings);
   }, [snapshot]);
@@ -115,8 +116,10 @@ export function WorkLogPanel({ onOpen, onAgent, onTask, onOpenAgent, onOpenTask,
         onClick={() => send(snapshot?.running ? { type: "workLog.stop" } : { type: "workLog.start", settings })}>
         {snapshot?.running ? "Stop" : "Start"}
       </button>
+      <button type="button" className="work-log-settings-toggle" aria-label="Summary settings" title="Summary settings"
+        aria-expanded={settingsOpen} aria-controls={`${settingsId}-settings`} onClick={() => setSettingsOpen((open) => !open)}><span aria-hidden="true">⚙</span></button>
     </header>
-    <details className="work-log-settings"><summary>Summary settings</summary>
+    <div className="work-log-settings" id={`${settingsId}-settings`} hidden={!settingsOpen}>
       <div><label htmlFor={`${settingsId}-harness`}>Harness</label><select id={`${settingsId}-harness`} value={settings.harness} disabled={settingsDisabled} onChange={() => {}}><option value="codex">Codex</option></select></div>
       <div><label htmlFor={`${settingsId}-model`}>Model</label><input id={`${settingsId}-model`} value={settings.model} disabled={settingsDisabled}
         maxLength={80} onChange={(event) => updateSettings({ model: event.target.value })} /></div>
@@ -124,10 +127,10 @@ export function WorkLogPanel({ onOpen, onAgent, onTask, onOpenAgent, onOpenTask,
         value={Number.isNaN(settings.debounceSeconds) ? "" : settings.debounceSeconds} disabled={settingsDisabled}
         onChange={(event) => updateSettings({ debounceSeconds: event.target.value === "" ? Number.NaN : Number(event.target.value) })} /></div>
       <p>Summarize new agent turns. Stop to change settings.</p>
-    </details>
+    </div>
     {notice ? <p className="work-log-notice" role="status">{notice}</p> : null}
     {snapshot?.notice && !notice ? <p className="work-log-notice" role="status">{snapshot.notice}</p> : null}
-    {!entries.length ? <p className="work-log-empty">{snapshot ? "Start to collect what your agents have accomplished." : "Reading Work Log…"}</p> : null}
+    {!entries.length ? <p className="work-log-empty">{snapshot?.running ? "Watching for completed agent turns…" : snapshot ? "Start to collect what your agents have accomplished." : "Reading Work Log…"}</p> : null}
     <ol className="work-log-entries">{entries.map((entry) => <Outcome key={entry.id} entry={entry} pending={pending}
       onOpen={onOpen} onOpenAgent={onAgent ?? onOpenAgent} onOpenTask={onTask ?? onOpenTask} onRecord={(taskId) => send({ type: "workLog.record", entryId: entry.id, taskId })} />)}</ol>
   </section>;
