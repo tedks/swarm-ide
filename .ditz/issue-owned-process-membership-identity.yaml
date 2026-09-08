@@ -34,3 +34,10 @@ log_events:
     tests and actual packaged cleanup passed. Future bounded identity instrumentation
     should pin namespace and capture PID/start time/role without weakening immediate
     cleanup assertion. No diagnostic edit authorized in J2 delivery.
+- time: 2026-09-08T00:03:52-00:00
+  who: Ted Smith
+  what: commented
+  comment: Cross-reference owned-namespace-member-witness-20260907. ROOT accepted
+    only historical8608a47/PID690372 uncertainty as OPEN/nonblocking, not established
+    reuse cause or test defect. New joined2db8672 quality passed; not a historical
+    fix or new-failure waiver. No shared instrumentation or unchanged retry.
