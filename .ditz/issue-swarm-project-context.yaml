@@ -25,3 +25,13 @@ log_events:
     read-only. Found real Goals feature-worktree containers and Bazel-launched Pure
     Sky frontend; chose generic process/socket and Compose-ownership discovery, with
     no project whitelist. PR94 is open; implementation underway.
+- time: 2026-09-08T05:13:36-00:00
+  who: Ted Smith
+  what: commented
+  comment: Implemented automatic Node server and Compose container context in PR94.
+    Actual Pure Sky Bazel frontend and Goals feature-worktree containers were observed;
+    Goals master correctly excluded them. Production panel and native HTTP(S) link
+    handoff passed owned virtual proof with a real Node listener, zero renderer errors
+    and complete cleanup. 38 focused tests/types pass; native review converged clean.
+    PR is ready; issue remains in progress until ROOT normal merge/adoption. Python
+    and cloud follow-ups filed separately.
