@@ -37,6 +37,16 @@ log_events:
     callbacks and maintenance invariant. Initial owned packaged real-repo journey
     passed with zero renderer errors; focused types/tests and native review clean.
     Final readability/proof delta finishing; ROOT owns merge and closure.
+- time: 2026-09-08T04:01:53-00:00
+  who: Ted Smith
+  what: commented
+  comment: "Completed P7: system plus six component docs and maintained authored graph
+    map; real System design \u2192 component \u2192 actual Bazel input navigation;
+    safe readable docs/links, source/task/build callbacks, legacy index compatibility
+    and scoped maintenance rule. PR86 final6787462; 71 focused tests/types PASS, native
+    and delta CLEAN, real packaged navigation812ms/zeroerrors/ownedcleanup1. Remaining:
+    ROOT normal merge and C7 main-pane composition; fleet/online Work Log prospective
+    until integrated."
 blocks:
 - swarm-operator-demo
 blocked_by:
