@@ -9,14 +9,17 @@ Selecting a registered external coding session should show newly recorded work w
 ## Progress
 
 - [x] (2026-09-08 00:38Z) Read the existing observer, contracts, instructions and ROOT assignment.
-- [ ] Add serialized retained refresh, stale-result fences and hidden/disposed lifecycle tests.
-- [ ] Add compact observed workstream in Activity, separate from recorded logical summaries.
-- [ ] Run focused local tests, quality/build and one owned virtual packaged proof; native review to convergence.
-- [ ] Push ready PR and synchronize Ditz for ROOT landing.
+- [x] (2026-09-08 00:42Z) Added serialized retained refresh, lifecycle fences and compact observed Activity; initial focused 47 tests passed.
+- [x] (2026-09-08 00:46Z) Native review exposed protocol-level unavailable-result clearing: exact 1 RED/47 PASS reproduced, corrected with explicit stale retention and recovery tests.
+- [x] (2026-09-08 00:48Z) Native production convergence CLEAN at 53e6631. Full quality at f866184 passed 1809 tests/136 files; narrow final recovery delta passed typecheck and 50 focused tests.
+- [x] (2026-09-08 00:49Z) Final production package built and owned virtual proof passed automatic append, registry discovery, actual missing/restored transcript, bounded replacement and retained work; :153/55233, scenario8.364s, cleanup1, zero renderer exceptions.
+- [x] (2026-09-08 00:51Z) Final evidence/docs completed; PR72 handed to ROOT for normal landing, Ditz records reviewed work and the remaining consumer-visibility optimization. No peer or managed-preview adoption.
 
 ## Surprises & Discoveries
 
 The existing hook clears detail on every Refresh and permits parallel manual reads. Transcript entry identifiers contain tail offsets, so appending or deduplicating successive tails by those identifiers is not correct. The renderer bridge has no request cancellation primitive; stopping observation means no new requests and discarding in-flight completion, not falsely claiming cancellation of the core's bounded read.
+
+Native review found that unavailable transcript/registry results use successful protocol envelopes, not just rejected promises. The exact new test reproduced 1 failure with 47 passing before correction. Both forms now retain old evidence explicitly marked stale, revoke handoff and recover through normal reads. The initial packaged driver correctly hit the pre-existing dirty-draft close guard; its correction deliberately closes its own test draft only after proving retention. No production guard was changed.
 
 ## Decision Log
 
@@ -25,7 +28,9 @@ The existing hook clears detail on every Refresh and permits parallel manual rea
 
 ## Outcomes & Retrospective
 
-Implementation and verification pending. ROOT, not this worker, owns normal merge and managed-preview adoption.
+The bounded E3 vertical is implemented and verified on its independent reviewed base53d2acb. It does not consume peers, launch agents, send prompts, read account-wide sessions or alter the managed preview. The real packaged app/bridge automatically observes owned synthetic transcripts; no real provider completion is claimed. The final actual missing-file proof covers the native review finding through the unchanged core. ROOT owns normal merge and managed-preview adoption.
+
+The nonblocking consumer-visibility optimization is filed as `observer-consumer-visibility-20260907`: hidden documents pause, but collapsing an individual instrument in a still-visible app does not yet stop its selected-session reads. Requests remain bounded and serialized.
 
 ## Context and Orientation
 
@@ -49,10 +54,10 @@ No production registry or transcripts are mutated. Test fixtures and virtual pro
 
 ## Artifacts and Notes
 
-The concise milestone and final recap live in `/tmp/swarm-ide-real-swarms.Djy75P/live-observers/`. New tests and owned virtual evidence must distinguish controlled transcript generation from observation of actual implementation agents.
+The concise milestone and final recap live in `/tmp/swarm-ide-real-swarms.Djy75P/live-observers/`. `unavailable-red.log` preserves the exact failing review regression; `final-local.log` records full quality plus focused tests at f866184; `recovery-delta.log` records 50 passing focused tests at53e6631. `packaged-unavailable-proof/run.BL2QqE` contains the final production package's visible proof, screenshots, timing/ownership and clean-close evidence. Earlier driver guard evidence remains in ignored `artifacts/live-observers/run.GINK13`.
 
 ## Interfaces and Dependencies
 
 Preserve `useExternalAgents(bridge, ready, generation)` compatibility and add optional visible control. Preserve returned `snapshot`, `detail`, `selected`, `busy`, `notice`, `read`, `refresh`, `handoff`; optional `observing`/`refreshing` distinguish retained background refresh from explicit busy operations. No protocol/core edits or new packages are needed.
 
-Revision note: initial bounded implementation plan, written before source changes.
+Revision note: initial plan was written before source changes; updated with actual review finding, correction, proportional local results, owned evidence and explicit remaining scope.

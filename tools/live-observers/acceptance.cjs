@@ -65,6 +65,17 @@ async function main() {
   await until(() => contains(activity, appended), "automatic observed activity append");
   const appendLatencyMs = Date.now() - appendedAt;
   await fs.writeFile(path.join(evidence, "01-automatic-append.png"), (await wc.capturePage()).toPNG());
+  // Exercise the real core's ok:true/unavailable detail envelope, not just a
+  // rejected mock promise: a temporarily missing owned transcript stays visible
+  // as stale evidence, then recovers without a deliberate Refresh gesture.
+  const withheld = fixture.sessions[1].rollout + ".withheld";
+  await fs.rename(fixture.sessions[1].rollout, withheld);
+  await until(() => contains(label("Observed agent activity"), "Retained observation · refresh unavailable"), "explicitly stale missing-transcript observation");
+  assert(await contains(worklog, appended), "unavailable detail retains recorded tail");
+  assert(await contains(activity, appended), "unavailable compact activity retains recorded tail");
+  await fs.writeFile(path.join(evidence, "03-unavailable-retained.png"), (await wc.capturePage()).toPNG());
+  await fs.rename(withheld, fixture.sessions[1].rollout);
+  await until(async () => !await contains(label("Observed agent activity"), "Retained observation · refresh unavailable"), "automatic restored transcript recovery");
   const third = { ...fixture.sessions[0], id: "20000000-0000-4000-8000-000000000003", label: "Controlled worker 3", rollout: path.join(path.dirname(fixture.registry), "session-3.jsonl") };
   await fs.writeFile(third.rollout, JSON.stringify({ type: "session_meta", payload: { id: third.id, forked_from_id: fixture.sessions[0].id } }) + "\n" + record("Controlled worker 3: newly registered."), { mode: 0o600 });
   await fs.writeFile(fixture.registry, JSON.stringify({ version: 1, sessions: [...fixture.sessions, third] }));
@@ -106,7 +117,7 @@ async function main() {
   await until(() => run(() => !document.querySelector(".agent-draft textarea")), "explicit owned draft close");
   assert.deepEqual(rendererErrors, []);
   await fs.writeFile(path.join(evidence, "proof.json"), JSON.stringify({ ok: true, controlled: true, packaged: true, modelTurns: 0,
-    automaticAppend: true, automaticRegistryDiscovery: true, appendLatencyMs, tailReplacedWithoutDuplicates: true, rows: tail.rows.length, retained, rendererErrors, elapsedMs: Date.now() - started }));
+    automaticAppend: true, automaticRegistryDiscovery: true, unavailableTailRetainedAndRecovered: true, appendLatencyMs, tailReplacedWithoutDuplicates: true, rows: tail.rows.length, retained, rendererErrors, elapsedMs: Date.now() - started }));
   await until(() => fs.access(path.join(evidence, "close-request")).then(() => true, () => false), "owner close request");
   app.quit();
 }

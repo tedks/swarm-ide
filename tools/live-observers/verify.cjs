@@ -2,6 +2,7 @@ const assert = require("node:assert/strict"), fs = require("node:fs"), root = pr
 const proof = JSON.parse(fs.readFileSync(root + "/proof.json")), close = JSON.parse(fs.readFileSync(root + "/postclose.json"));
 assert(proof.ok && proof.controlled && proof.packaged && proof.modelTurns === 0);
 assert(proof.automaticAppend && proof.automaticRegistryDiscovery && proof.tailReplacedWithoutDuplicates);
+assert.equal(proof.unavailableTailRetainedAndRecovered, true);
 assert(Object.values(proof.retained).every((value) => value === true));
 assert.deepEqual(proof.rendererErrors, []);
 assert.deepEqual(JSON.parse(fs.readFileSync(root + "/renderer-close.json")).rendererErrors, []);
