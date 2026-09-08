@@ -35,3 +35,14 @@ log_events:
     driver not rerun under one-GUI bound, tracked swarm-live-sprite-pointer-proof.
     Native generic activity has no typed path, tracked swarm-native-graph-locations.
     Ready code pending ROOT merge/disposition, no shared adoption.
+- time: 2026-09-08T21:11:11-00:00
+  who: Ted Smith
+  what: commented
+  comment: ROOT accepted the sprite implementation and original GUI limitations as
+    noncritical follow-ups. Normal composition with reviewed master b20c69f0 preserves
+    generation and graph-agent imports, App/tab controls, and actual design mappings;
+    native join review CLEAN. One focused execution passed both types/syntax and 37
+    tests. Living-design hit the separately assigned pre-existing 17-target/max16
+    canonical plan limit, so later startup case did not run; no schema repair, mapping
+    removal, retry or new GUI/model trial. PR136 remains ROOT-owned for normal landing/adoption
+    after its separate plan-fix clearance as needed.
