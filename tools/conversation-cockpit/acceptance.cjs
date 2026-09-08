@@ -149,19 +149,19 @@ async function main() {
     globalThis.__conversationEditor = document.querySelector(".source-surface .cm-content").cmView.rootView.view;
   });
   stage = "caret during background observation";
-  const readsBeforeCaret = detailResponses;
-  const caret = await run(async () => {
-    const editor = globalThis.__conversationEditor, states = [], before = editor.state;
-    for (let index = 0; index < 12; index++) {
+  const readsBeforeCaret = detailResponses, caretStarted = Date.now(), caret = [];
+  await run(() => { globalThis.__conversationEditorState = globalThis.__conversationEditor.state; });
+  await until(async () => {
+    caret.push(await run(() => {
+      const editor = globalThis.__conversationEditor, before = globalThis.__conversationEditorState;
       const current = document.querySelector(".source-surface .cm-content").cmView.rootView.view;
       const layer = editor.dom.querySelector(".cm-cursorLayer"), cursor = editor.dom.querySelector(".cm-cursor");
-      states.push({ sameEditor: current === editor, sameState: current.state === before, focused: editor.hasFocus,
+      return { sameEditor: current === editor, sameState: current.state === before, focused: editor.hasFocus,
         nativeCaret: getComputedStyle(editor.contentDOM).caretColor, duration: getComputedStyle(layer).animationDuration,
-        opacity: getComputedStyle(layer).opacity, cursorHeight: cursor.getBoundingClientRect().height });
-      await new Promise((resolve) => setTimeout(resolve, 150));
-    }
-    return states;
-  });
+        opacity: getComputedStyle(layer).opacity, cursorHeight: cursor.getBoundingClientRect().height };
+    }));
+    return Date.now() - caretStarted >= 1_600 && detailResponses > readsBeforeCaret;
+  }, "caret sampled across a real background conversation observation", 5_000);
   assert(caret.every((sample) => sample.sameEditor && sample.sameState && sample.focused && sample.cursorHeight > 0), "background observation preserves editor, state and focus");
   assert(caret.every((sample) => sample.nativeCaret === "rgba(0, 0, 0, 0)" && sample.duration === "1.2s"), "only CodeMirror's normal 1.2-second caret is drawn");
   assert(new Set(caret.map((sample) => sample.opacity)).size > 1, "normal caret blinking observed, not an editor reload");
