@@ -16,7 +16,7 @@ opened at a pinned revision must not change underneath the operator.
 - [x] (2026-09-08 13:51Z) Added a rollback recovery regression: 1 failed, 67 passed before the narrow eligibility correction.
 - [x] (2026-09-08) Implemented client-only change and scoped living documentation; initial native review CLEAN.
 - [x] (2026-09-08 13:52Z) Final focused gate: 124 tests in five files and both TypeScript boundaries passed; rollback-delta native review CLEAN.
-- [ ] Push the reviewed PR, record Ditz outcomes, and hand off to ROOT without adopting the shared app.
+- [x] (2026-09-08) Pushed PR113 ready for ROOT, recorded Ditz outcomes and the separate initial-read follow-up; shared app unchanged.
 
 ## Context and Orientation
 
