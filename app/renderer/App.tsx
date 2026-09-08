@@ -68,7 +68,7 @@ import { JournalPanel, useJournal } from "./changelog/JournalPanel";
 import { useGithubPullRequests } from "./changelog/GithubPullRequests";
 import { useExternalAgents } from "./external-agents/client";
 import { ExternalAgentRail, ExternalAgentInformation } from "./external-agents/ExternalAgents";
-import { AgentConversation } from "./external-agents/AgentConversation";
+import { AgentConversation, AgentConversationActions } from "./external-agents/AgentConversation";
 import { useConversationSelection } from "./external-agents/conversation-selection";
 import { SteeringMemory } from "./external-agents/steering-memory";
 import { AgentWorktreeBrowser } from "./AgentWorktreeBrowser";
@@ -1421,7 +1421,8 @@ export function App() {
           shortcutsBlocked={paletteOpen}
           conversation={{ selectionVersion: conversationSelection ? String(conversationSelection) : undefined,
             registered: { sessions: externalAgents.snapshot?.status === "observed" ? externalAgents.snapshot.sessions : null, selected: externalAgents.selected, onSelect: showConversation },
-            content: <AgentConversation client={externalAgents} bridge={window.swarm} memory={steeringMemory} onWorktree={browseAgentWorktree} onContext={() => { setExternalInformation(true); setCompactPanel("info"); }} /> }}
+            actions: <AgentConversationActions client={externalAgents} onWorktree={browseAgentWorktree} onContext={() => { setExternalInformation(true); setCompactPanel("info"); }} />,
+            content: <AgentConversation embeddedHeader client={externalAgents} bridge={window.swarm} memory={steeringMemory} onContext={() => { setExternalInformation(true); setCompactPanel("info"); }} /> }}
           mockConversation={demo.conversation ? { tabs: MOCK_AGENTS, selected: demo.selected, onSelect: demo.select, selectionVersion: demo.selectionVersion, content: <MockConversation selected={demo.selected} /> } : undefined}
           onDraft={() => agentClient.openDraft(snapshot.focus)}
           draftContent={<PreparedLaunchDraft state={liveAgents} client={agentClient} previewCurrent={taskAttachment(tasks.selectedTaskId).alreadyAttached} dirtyPaths={fileTabs.filter((tab) => protectsBuffer(tab)).map((tab) => tab.path)} />}

@@ -73,10 +73,10 @@ describe("one mounted target-specific message owner", () => {
     const state = emptyLiveAgentState(), native = new AgentBridgeClient(state);
     const props = { state, client: native, onDraft: vi.fn(), runContent: null, draftContent: <textarea aria-label="Native input" defaultValue="keep focus" />, jobsContent: null, activityContent: null };
     const view = render(<AgentDock {...props} conversation={{ content: <AgentConversation client={client(null, null)} onContext={vi.fn()} /> }} />);
-    fireEvent.click(screen.getByRole("tab", { name: "Native agents / New" }));
+    fireEvent.click(screen.getByRole("button", { name: "Agent tools" }));
     const input = screen.getByRole("textbox", { name: "Native input" }); input.focus();
     view.rerender(<AgentDock {...props} conversation={{ content: <AgentConversation client={client()} onContext={vi.fn()} /> }} />);
-    expect(screen.getByRole("tab", { name: "Native agents / New" }).getAttribute("aria-selected")).toBe("true");
+    expect(screen.getByRole("button", { name: "Agent tools" }).getAttribute("aria-pressed")).toBe("true");
     expect(document.activeElement).toBe(input);
     view.rerender(<AgentDock {...props} conversation={{ selectionVersion: "explicit-child-click", content: <AgentConversation client={client(child.id, detail(child))} onContext={vi.fn()} /> }} />);
     expect(screen.getByRole("tab", { name: "Conversation" }).getAttribute("aria-selected")).toBe("true");
@@ -95,9 +95,9 @@ describe("one mounted target-specific message owner", () => {
     const field = screen.getByRole("textbox", { name: "Message to ROOT" });
     fireEvent.change(field, { target: { value: "root draft" } }); field.focus();
     view.rerender(panel(client(), "root")); expect(document.activeElement).toBe(field);
-    fireEvent.click(screen.getByRole("tab", { name: "Native agents / New" }));
+    fireEvent.click(screen.getByRole("button", { name: "Agent tools" }));
     expect((screen.getByRole("textbox", { name: "Native draft" }) as HTMLTextAreaElement).value).toBe("native unsent");
-    view.rerender(panel(client(), "root")); expect(screen.getByRole("tab", { name: "Native agents / New" }).getAttribute("aria-selected")).toBe("true");
+    view.rerender(panel(client(), "root")); expect(screen.getByRole("button", { name: "Agent tools" }).getAttribute("aria-pressed")).toBe("true");
     fireEvent.click(screen.getByRole("tab", { name: "Conversation" })); expect(screen.getByRole("textbox", { name: "Message to ROOT" })).toBe(field);
     view.rerender(panel(client(child.id, null), "child"));
     expect(screen.queryByRole("textbox", { name: "Message to ROOT" })).toBeNull();
