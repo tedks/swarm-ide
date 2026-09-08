@@ -34,6 +34,15 @@ log_events:
   who: Ted Smith
   what: started
   comment: ""
+- time: 2026-09-08T04:02:41-00:00
+  who: Ted Smith
+  what: commented
+  comment: Preserved the supported codex queue route to the existing tmux-owned session;
+    simplified Send state and added copyable outside/inside-tmux commands from validated
+    targets. Stale observations revoke both Send and terminal commands. No additional
+    execution owner, terminal process or unsolicited message was launched. Focused
+    owner/transport/UI tests passed; real messaging was not repeated. PR84 awaits
+    ROOT landing.
 blocks:
 - swarm-operator-demo
 blocked_by:
