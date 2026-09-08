@@ -68,8 +68,11 @@ the documented `SWARM_CODEX_BIN` executable path). Open a source-file agent draf
 optionally attach a task, and use **Prepare trusted-local context → review exact
 prompt → permission confirmation → Launch trusted-local Codex**. It inherits
 normal configuration, tools and approvals; no account is copied or additional
-autonomy enabled. One conversation per core, without IDE restoration across core
-restart. See [execution and limitations](trusted-local-execution.md).
+autonomy enabled. The run list and **New conversation** support up to eight live
+conversations, each with its own message composer and controls. Up to twenty
+records retain bounded output, activity and admitted task links. Core restart
+archives prior conversations without automatic resume or replay; it does not
+mark their tasks complete. See [execution and limitations](trusted-local-execution.md).
 
 To inspect PRs, make ordinary `gh` available in the same launch environment and
 authenticate normally with `gh auth login`. In **Recent Activity → Activity log →
@@ -159,7 +162,7 @@ Do not kill all Electron/Bazel processes or delete global caches to stop one dem
 | No display / sandbox or namespace denial | Run on the supported logged-in Linux/X11 host; report the exact host error instead of disabling safety controls. Headless verification below needs no physical desktop. |
 | Empty or unavailable Tasks | Check the local metadata branch in the selected repo, then Refresh tasks. Do not infer that there is no work. |
 | Build/service evidence unavailable or retained | Check its scope and diagnostic; use deliberate refresh/build only for trusted repos. Swarm's service example is not a universal detector. |
-| No external agents | Register known sessions deliberately; [external observations](demo-agents.md) are read-only, not managed launches. |
+| No external agents | [Register known sessions](session-registration.md) deliberately. Observation is read-only until an explicit checked Send; it is not a managed launch. See [external sessions](demo-agents.md). |
 | Trusted-local launch unavailable | Check installed Codex in the launch PATH, its normal account/configuration and the reported ownership-tool error. Prepare from a source-file draft, review and explicitly confirm. See [execution](trusted-local-execution.md); do not bypass host controls. |
 | Launch read-only run disabled | This is the separate isolated profile's unverified policy gate, not trusted-local availability. |
 | GitHub PRs unavailable | Check the opened checkout's github.com origin and normal `gh` login/configuration, then explicitly Refresh PRs. See [PR limits](logical-changelog.md#github-pull-requests). |
