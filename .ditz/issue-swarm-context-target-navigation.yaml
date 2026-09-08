@@ -5,8 +5,8 @@ type: feature
 component: default
 release:
 reporter: Ted Smith <tedks@riseup.net>
-status: in_progress
-disposition:
+status: closed
+disposition: fixed
 creation_time: 2026-09-08T04:38:24-00:00
 references: []
 log_events:
@@ -35,3 +35,10 @@ log_events:
     included in reviewed PR103 App mount 62a8f14; PR101 is stacked above PR103 for
     final proof/docs. Fresh joined local targets and native review pass. Implementation
     ready; ROOT normal landing/adoption remains. Compact overlay follow-up: swarm-compact-target-reveal.'
+- time: 2026-09-08T06:45:59-00:00
+  who: Ted Smith
+  what: 'closed: fixed'
+  comment: Reviewed navigation implementation and App mounts landed through PR103.
+    Direct/transitive Context targets reveal exact observed graph nodes and declaration
+    files; actual packaged navigation and joined checks passed. Remaining PR101 work
+    is proof/docs integration.
