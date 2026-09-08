@@ -33,5 +33,18 @@ log_events:
   who: Ted Smith
   what: started
   comment: ""
+- time: 2026-09-08T20:21:17-00:00
+  who: Ted Smith
+  what: commented
+  comment: "Implemented PR133: Generate component plan for verified absent index;
+    saved editable Codex gpt-5.6-sol/xhigh prompt/settings; same normal selected-worktree
+    agent owner and visible conversation/Stop; validated generated files load graph.
+    Existing/malformed plans preserved; durable same-token recovery and confirmed-cleanup
+    exclusion prevent duplicate writers. 123 generation and 206 joined New-agent focused
+    cases/types pass; native convergence clean; controlled packaged UI3.203s/zeroerrors/cleanup1.
+    One actual requested-model run wrote3 useful docs/nodes with exact source/srcs
+    and confirmed cleanup but stopped at300s during validation, not a completed turn.
+    Lighter prompt and camera-test boundary tracked in two follow-ups. ROOT owns stacked
+    PR132\u2192133 merge/adoption."
 blocks:
 - swarm-close-working-loop
