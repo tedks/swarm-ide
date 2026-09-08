@@ -1,0 +1,16 @@
+id: trusted-run-fleet-20260907
+title: Bounded concurrent trusted-local runs and restart-safe history
+desc: ""
+type: feature
+component: core
+release:
+reporter: Ted Smith <tedks@riseup.net>
+status: unstarted
+disposition:
+creation_time: 2026-09-08T00:36:13-00:00
+references: []
+log_events:
+- time: 2026-09-08T00:36:13-00:00
+  who: Ted Smith
+  what: created
+  comment: ""
