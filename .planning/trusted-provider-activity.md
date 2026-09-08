@@ -9,9 +9,10 @@ The local Codex conversation currently exposes only chat text and approvals. Add
 ## Progress
 
 - [x] (2026-09-08 00:35Z) Read the assigned ownership, session event routing and official app-server item lifecycle documentation.
-- [ ] Add focused failing tests, then the bounded activity projection.
-- [ ] Verify native review, relevant local gates and one optional authorized live turn.
-- [ ] Push ready PR, synchronize Ditz and hand off to ROOT without adoption.
+- [x] (2026-09-08 00:39Z) Four new cases failed against old implementation (4 RED/16 PASS); implemented projection passed 20 session tests.
+- [x] (2026-09-08 00:44Z) Final session21 and quality1801/134 files PASS, including typecheck and node/renderer builds; native code/fix/test convergence CLEAN.
+- [x] (2026-09-08 00:43Z) Exactly one actual authorized Codex turn emitted command/file/turn completion and created the correct disposable file; owned cleanup confirmed.
+- [ ] Final documentation push, ready PR and Ditz synchronization; ROOT owns merge/adoption.
 
 ## Context and Orientation
 
@@ -27,11 +28,13 @@ First add tests using existing controlled session transport to show readable exa
 
 ## Concrete Steps and Validation
 
-Run from /home/tedks/Projects/swarm-ide/trusted-provider-activity. Materialize with nix develop --command pnpm install --frozen-lockfile. Use nix develop --command bazel test //tools:quality --jobs=3 for types, tests and build, plus a focused manual Bazel target for these session cases. Before implementation new tests should fail; after implementation they should pass without changing existing snapshot assertions. A separately authorized manual live proof may submit exactly one benign turn in an owned empty Git repository, observe actual command/file/turn events, and stop the owned session. Controlled tests are not live evidence. UI verification is unnecessary for this core-only increment; no user display is touched.
+Run from /home/tedks/Projects/swarm-ide/trusted-provider-activity. Materialize with nix develop --command pnpm install --frozen-lockfile. Run nix develop --command bazel test //tools/trusted-local:session-unit //tools:quality --jobs=3 --test_output=errors. On executable/test head 8ffe786, both targets passed in 60.635 seconds: session21, quality1801 tests/134 files with types and node/renderer builds. Existing snapshot assertions remain unchanged. Controlled tests are not live evidence. UI verification is unnecessary for this core-only increment; no user display was touched.
+
+The manual-only //tools/trusted-local:activity-live target requires SWARM_ACTIVITY_LIVE=1 and SWARM_ACTIVITY_EVIDENCE naming a private owned directory. It is intentionally pinned to the approved local Codex 0.153.4 executable; it is not a portable installer check. A consumed marker prevents accidental reuse of that evidence destination. Do not execute it again without a new explicit product-turn authorization. The one authorized run is complete, with inherited configuration, explicit gpt-6-astra, no approval answers, one provider start and one turn/start. Command/file/turn completion came from the actual provider; the exact hello file was independently read before owned workspace removal. MCP/dynamic/collaboration/web activity and adversarial ordering are controlled-test evidence only.
 
 ## Surprises & Discoveries
 
-Existing correlation and early-event buffering already supply the activity admission boundary; no second event transport or security layer is needed. Installed schema inspection is being done independently to avoid guessing tool statuses.
+Existing correlation and early-event buffering already supply the activity admission boundary; no second event transport or security layer is needed. Installed 0.153.4 schema confirms webSearch has no status field and uses notification lifecycle; collaboration call completion does not mean child completion. Initial implementation passed all new cases. Main inspection then found inherited action-label keys and growth when unfinished rows gain terminal explanations; fixed with own-property lookup and re-bounding, and added a dedicated regression. These latter checks were added with their fixes, not independently historical RED. Native review found no further important issue and confirmed fixes plus final test delta CLEAN.
 
 ## Idempotence and Recovery
 
@@ -39,10 +42,12 @@ No storage migration or global changes. Tests use owned transports/workspaces, a
 
 ## Outcomes & Retrospective
 
-Pending implementation. The smallest join is F1 publishing session.activity() through its approved optional activities field; no provider completion or visible UI is claimed yet.
+PR71 supplies the session accessor with no service/protocol/UI changes. The smallest join is F1 publishing session.activity() through its approved optional activities field. The feed holds at most 128 rows and 64KiB encoded; rows are first-observed order, stable opaque local IDs, original observation timestamps and copied objects. Known terminal item evidence is sticky even after trimming. Unsupported items are ignored. Structural labels intentionally omit arbitrary command text, tool names, outputs, paths and diffs; approval and chat surfaces are unchanged, not newly redacted. Failed activity can mean observed failure/decline/interruption or explicitly unconfirmed outcome on lost completion; its summary distinguishes these. A tool completing never changes task state. UI and fleet adoption remain ROOT/peer work, not evidence claimed by A2.
 
 ## Artifacts and Interfaces
 
-Coordination is /tmp/swarm-ide-real-swarms.Djy75P/provider-activity/seam.md. The local activity interface deliberately matches the shared wave shape without importing unreviewed peer protocol code. Final evidence and limitations will be recorded here and in the PR.
+Coordination is /tmp/swarm-ide-real-swarms.Djy75P/provider-activity/seam.md. The local activity interface deliberately matches the shared wave shape without importing unreviewed peer protocol code. Baseline, initial and final local logs are in that private role directory. Actual one-turn outcome is /tmp/swarm-activity-a2-proof.AzfSIq/activity-live.json. Native seat CLEAN; foreign seats unfilled per Codex-only user directive. Hosted CI ignored by explicit user authority. Ditz trusted-provider-activity-20260907 tracks normal landing. Main read official OpenAI app-server documentation and installed schema, rather than guessing provider fields: https://learn.chatgpt.com/docs/app-server.
 
 Initial plan: bounded core event projection only, to preserve independent parallel implementation.
+
+Completion update: actual provider proof and exact local/native evidence recorded; no broader UI or security-platform work added.
