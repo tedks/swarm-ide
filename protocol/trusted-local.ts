@@ -5,11 +5,19 @@ import { AgentTaskReferenceSchema } from "./agent-task";
 
 const text = (max: number) => z.string().max(max).refine((s) => utf8Bytes(s) <= max);
 const id = z.string().uuid();
+export const TrustedForkPointSchema = z.object({ threadId: text(256).min(1), turnId: text(256).min(1) }).strict();
+export const TrustedForkLineageSchema = z.object({
+  parentRunToken: id, parentThreadId: text(256).min(1), parentTurnId: text(256).min(1),
+  sharedWorkspace: z.literal(true), inheritedTaskReference: AgentTaskReferenceSchema.nullable(), confirmed: z.boolean(),
+}).strict();
 const base = z.object({ protocolVersion: z.literal(PROTOCOL_VERSION), requestId: z.string().min(1).max(160) });
 export const TrustedRequestSchema = z.discriminatedUnion("type", [
   base.extend({ type: z.literal("trusted.snapshot"), token: id.optional() }).strict(),
   base.extend({ type: z.literal("trusted.prepare"), input: AgentPrepareInputSchema }).strict(),
   base.extend({ type: z.literal("trusted.launch"), token: id }).strict(),
+  base.extend({ type: z.literal("trusted.fork"), token: id, childToken: id, expectedInstanceId: id,
+    expectedThreadId: text(256).min(1), expectedTurnId: text(256).min(1),
+    text: text(16384).refine((s) => Boolean(s.trim()) && !s.includes("\0")), model: text(256).min(1).nullable() }).strict(),
   base.extend({ type: z.literal("trusted.send"), token: id, text: text(16384).min(1), expectedTurnId: text(256).nullable().optional() }).strict(),
   base.extend({ type: z.literal("trusted.decide"), token: id, approvalId: text(256), choice: text(128) }).strict(),
   base.extend({ type: z.literal("trusted.stop"), token: id }).strict(),
@@ -26,6 +34,7 @@ export const TrustedRunSummarySchema = z.object({
   runToken: id, title: text(256), createdAt: z.string().datetime(), updatedAt: z.string().datetime(),
   status: TrustedStatusSchema, archived: z.boolean(), approvalCount: z.number().int().min(0).max(16),
   taskReference: AgentTaskReferenceSchema.nullable(), message: text(4096),
+  fork: TrustedForkLineageSchema.optional(),
 }).strict();
 export type TrustedRunSummary = z.infer<typeof TrustedRunSummarySchema>;
 export const TrustedSnapshotSchema = z.object({
@@ -40,6 +49,7 @@ export const TrustedSnapshotSchema = z.object({
   taskReference: AgentTaskReferenceSchema.nullable().optional(),
   activities: z.array(TrustedActivitySchema).max(100).optional(),
   archived: z.boolean().optional(),
+  forkPoint: TrustedForkPointSchema.nullable().optional(),
 }).strict();
 export type TrustedSnapshot = z.infer<typeof TrustedSnapshotSchema>;
 export const TrustedResultSchema = z.object({ kind: z.literal("trusted"), snapshot: TrustedSnapshotSchema }).strict();

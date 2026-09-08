@@ -10,6 +10,7 @@ export interface TrustedLocalSessionSnapshot {
   approvals: Array<{ id: string; method: string; summary: string; choices: string[] }>;
   message: string;
 }
+export interface TrustedForkPoint { threadId: string; turnId: string }
 /** Observation only: a completed tool call does not complete its turn or task.
  * Structurally matches the fleet's optional wire activity; snapshot stays stable. */
 export interface TrustedLocalActivity {
@@ -112,6 +113,7 @@ export class TrustedLocalSession {
   private exitTimer?: ReturnType<typeof setTimeout>;
   private stdoutEnded = false;
   private model: string | null = null;
+  private successfulTurn: string | null = null;
 
   constructor(private options: TrustedLocalSessionOptions, private onChange: () => void) {
     for (const path of [options.root, options.executable]) {
@@ -122,6 +124,10 @@ export class TrustedLocalSession {
     return { ...this.state, approvals: this.state.approvals.map((approval) => ({ ...approval, choices: [...approval.choices] })) };
   }
   activity(): TrustedLocalActivity[] { return this.activities.map((entry) => ({ ...entry })); }
+  forkPoint(): TrustedForkPoint | null {
+    return !this.busy && this.state.status === "ready" && this.dispatch?.done && this.successfulTurn === this.state.turnId && this.state.threadId && this.state.turnId
+      ? { threadId: this.state.threadId, turnId: this.state.turnId } : null;
+  }
   private recordActivity(id: string | undefined, value: Omit<TrustedLocalActivity, "id" | "at">): string {
     const existing = id ? this.activities.find((entry) => entry.id === id) : undefined;
     // Never revive a trimmed row or regress a terminal observation.
@@ -206,12 +212,13 @@ export class TrustedLocalSession {
     });
   }
 
-  async start(prompt: string, model: string | null): Promise<void> {
+  async start(prompt: string, model: string | null, fork?: TrustedForkPoint): Promise<void> {
     if (this.started || !this.active()) throw new Error("This session cannot be started again.");
     this.started = true; this.busy = true; this.model = model;
     try {
       input(prompt, 128 * 1024);
       if (model !== null) identity(model);
+      if (fork) { identity(fork.threadId); identity(fork.turnId); }
       this.transport = this.options.openTransport({
         stdout: (chunk) => {
           if (["closed", "failed"].includes(this.state.status)) return;
@@ -240,15 +247,24 @@ export class TrustedLocalSession {
         error: () => this.fail("Codex transport failed; delivery or outcome is unknown."),
       });
       if (!this.active()) throw new Error(this.state.message);
-      const hello = object(await this.request("initialize", { clientInfo: { name: "swarm_ide", version: "0.1.0" } }));
+      const hello = object(await this.request("initialize", { clientInfo: { name: "swarm_ide", version: "0.1.0" },
+        // Only the fork's deferGoalContinuation field is experimental in the
+        // installed 0.153.4 schema. This opts into protocol, not permissions.
+        ...(fork ? { capabilities: { experimentalApi: true } } : {}) }));
       string(hello.userAgent, 512);
       if (!this.active()) return;
       this.write({ method: "initialized", params: {} });
       if (!this.active()) return;
-      const response = object(await this.request("thread/start", { cwd: this.options.root }));
+      const response = object(await this.request(fork ? "thread/fork" : "thread/start", fork
+        ? { threadId: fork.threadId, lastTurnId: fork.turnId, cwd: this.options.root,
+          excludeTurns: true, deferGoalContinuation: true, ephemeral: false }
+        : { cwd: this.options.root }));
       if (!this.active()) return;
       if (response.cwd !== this.options.root) throw new Error("Codex returned a different working directory.");
-      this.state.threadId = identity(object(response.thread).id);
+      const thread = object(response.thread), threadId = identity(thread.id);
+      if (fork && (threadId === fork.threadId || thread.forkedFromId !== fork.threadId || thread.cwd !== this.options.root))
+        throw new Error("Codex did not confirm the requested child identity and shared directory.");
+      this.state.threadId = threadId;
       await this.begin(prompt, 128 * 1024);
     } catch (error) {
       if (this.active()) this.fail(error instanceof Error && error.message === "Codex returned a different working directory."
@@ -260,7 +276,7 @@ export class TrustedLocalSession {
     const content = input(text, limit);
     if (!this.active()) throw new Error("Session is not active.");
     this.dispatch = { id: null, done: false, early: [], earlyBytes: 0 };
-    this.items.clear(); this.clearApprovals(); this.state.turnId = null;
+    this.items.clear(); this.clearApprovals(); this.state.turnId = null; this.successfulTurn = null;
     this.state.status = "running"; this.state.message = "Sending message to local Codex.";
     this.append(`\nYou: ${text}\n\n`);
     if (!this.active()) throw new Error("Session stopped before dispatch.");
@@ -401,6 +417,7 @@ export class TrustedLocalSession {
       this.confirm(id);
       if (method === "turn/completed") {
         dispatch.done = true; this.clearApprovals();
+        this.successfulTurn = turn.status === "completed" ? id : null;
         this.completedTurns.add(id);
         this.recordActivity(dispatch.activityId, { turnId: id, kind: "turn", status: turn.status === "completed" ? "completed" : "failed",
           summary: `Codex turn — ${turn.status}` });
