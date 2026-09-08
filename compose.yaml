@@ -1,0 +1,17 @@
+services:
+  demo:
+    build: .
+    image: swarm-ide-demo:local
+    init: true
+    ports:
+      - "127.0.0.1:${SWARM_DEMO_PORT:-6080}:6080"
+    shm_size: 512mb
+    cap_drop: [ALL]
+    security_opt:
+      - no-new-privileges:true
+      - seccomp=./tools/container/seccomp.json
+    volumes:
+      - demo-data:/data
+    stop_grace_period: 15s
+volumes:
+  demo-data:

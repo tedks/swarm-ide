@@ -1,5 +1,9 @@
 # Install and run the Swarm IDE demo
 
+For a browser-based Linux desktop on a machine with Docker, see the
+[container demo](container-demo.md). Its host/architecture and agent-run limits
+are explicit; it is not a native Mac build.
+
 This is the supported **Linux/Nix source-checkout path**, not a standalone
 downloadable application. Start with Swarm's own repository to see its checked-in
 plans, tasks, service example and recorded logical-change story. Then follow the

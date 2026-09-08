@@ -1,0 +1,1 @@
+module(name = "market_pulse_demo", version = "0.1.0")

@@ -50,3 +50,14 @@ loop, not a claim of a fully hermetic JavaScript build toolchain.
 See [BUILD.bazel](../../BUILD.bazel), [tools/BUILD.bazel](../../tools/BUILD.bazel),
 [development loop](../development-loop.md) and [architecture](../architecture.md).
 GUI verification uses an owned virtual X11 desktop, never the operator's display.
+
+## Container browser entry
+
+The [container guide](../container-demo.md) describes the optional local noVNC
+entry. Its Dockerfile invokes the existing `//:desktop-bundle` and packages that
+tar with Electron and an owned Linux display; it does not add a browser core API.
+`//tools/container:checks` and `//tools/container:smoke` each declare a `data`
+dependency on `//tools/container:sources`. The smoke command uses an already-built
+Docker image: it has no direct Bazel dependency on `//:desktop-bundle`.
+See [the container component](container.md) for the transport, sandbox and mount
+boundaries. Linux/amd64 browser proof does not imply macOS/ARM validation.
