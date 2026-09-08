@@ -7,7 +7,7 @@ import { AgentBridgeClient } from "../app/renderer/agents/bridge-client";
 import { emptyLiveAgentState } from "../app/renderer/agents/live-state";
 import { emptyAgentWorkbench } from "../app/renderer/agents/state";
 
-afterEach(cleanup);
+afterEach(() => { cleanup(); localStorage.clear(); });
 it("hides only the exact isolated capability notice with trusted controls and retains errors and draft gestures", () => {
   const snapshot = emptyAgentWorkbench().snapshot;
   snapshot.capabilities.reason = { code: "ADAPTER_POLICY_UNAVAILABLE", message: "Legacy isolated policy cannot be attested." };
@@ -29,6 +29,8 @@ it("hides only the exact isolated capability notice with trusted controls and re
   expect(screen.queryByText(/One active run/)).toBeNull();
   expect(screen.getByRole("button", { name: "Normal Codex controls" })).toBeTruthy();
   fireEvent.click(screen.getByRole("button", { name: "Ask an agent about this focus" }));
+  expect(screen.queryByRole("button", { name: "Prepare an agent draft" })).toBeNull();
+  view.rerender(surface(false));
   fireEvent.click(screen.getByRole("button", { name: "Prepare an agent draft" }));
   expect(onDraft).toHaveBeenCalledTimes(2);
   for (const notice of ["CORE_DISCONNECTED: Reconnect the local core", "AGENT_DELIVERY_UNKNOWN: Send was not confirmed", `${policy} Run failed.`]) {

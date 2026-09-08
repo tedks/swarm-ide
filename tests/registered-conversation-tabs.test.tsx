@@ -109,7 +109,7 @@ describe("registered conversation tabs", () => {
   });
   it("leaves an explicitly chosen native draft active when more registrations arrive", () => {
     const view = setup([root]);
-    fireEvent.click(screen.getByRole("button", { name: "Agent tools" }));
+    fireEvent.click(screen.getByRole("button", { name: "New agent" }));
     fireEvent.click(screen.getByRole("button", { name: "Prepare an agent draft" }));
     const input = screen.getByRole("textbox", { name: "Native draft" }); input.focus();
     view.rerender([root, child]);
@@ -151,12 +151,12 @@ describe("registered conversation tabs", () => {
   it("keeps explicit tools access and disabled session actions during reconnect without selecting anyone", () => {
     const view = setup(); view.rerender(null);
     expect((tab("ROOT") as HTMLButtonElement).disabled).toBe(true);
-    const tools = screen.getByRole("button", { name: "Agent tools" });
+    const tools = screen.getByRole("button", { name: "New agent" });
     expect(tools.tabIndex).toBe(0);
     expect((screen.getByRole("button", { name: "Copy terminal command" }) as HTMLButtonElement).disabled).toBe(true);
     fireEvent.keyDown(screen.getByRole("region", { name: "Agent messages" }), { key: "Tab", ctrlKey: true });
     expect(tab("ROOT").getAttribute("aria-selected")).toBe("true");
-    fireEvent.click(tools); expect(screen.getByRole("tabpanel", { name: "Agent tools" })).toBeTruthy();
+    fireEvent.click(tools); expect(screen.getByRole("tabpanel", { name: "New agent" })).toBeTruthy();
     expect(view.onSelect).not.toHaveBeenCalled(); expect(view.request).not.toHaveBeenCalled();
   });
   it("renders exactly one header with icon actions and no permanent generic category", () => {
@@ -182,8 +182,8 @@ describe("registered conversation tabs", () => {
     fireEvent.change(input, { target: { value: "keep this" } });
     fireEvent.click(screen.getByRole("button", { name: "Close conversation ROOT" }));
     expect(screen.queryByRole("tab")).toBeNull();
-    expect(screen.getByText(/Select an agent from the fork list/)).toBeTruthy();
-    expect(document.activeElement).toBe(screen.getByRole("button", { name: "Agent tools" }));
+    expect(screen.getByText("Select an agent or click New agent to start one.")).toBeTruthy();
+    expect(document.activeElement).toBe(screen.getByRole("button", { name: "New agent" }));
     view.rerender([{ ...root }]); expect(screen.queryByRole("tab")).toBeNull();
     expect(view.onSelect).not.toHaveBeenCalled();
     view.open(root.id);
@@ -194,18 +194,18 @@ describe("registered conversation tabs", () => {
   it("starts empty without a duplicate title and exposes native controls without creating or sending a run", () => {
     const view = setup([]);
     expect(screen.queryByRole("tab")).toBeNull();
-    fireEvent.click(screen.getByRole("button", { name: "Agent tools" }));
+    fireEvent.click(screen.getByRole("button", { name: "New agent" }));
     expect(screen.getByRole("button", { name: "Prepare an agent draft" })).toBeTruthy();
     expect(view.request).not.toHaveBeenCalled(); expect(view.onSelect).not.toHaveBeenCalled();
   });
   it("keeps focus in the dock when a background tab closes while the untabbed tools view is open", () => {
     const view = setup([root]);
-    const tools = screen.getByRole("button", { name: "Agent tools" });
+    const tools = screen.getByRole("button", { name: "New agent" });
     fireEvent.click(tools);
     const close = screen.getByRole("button", { name: "Close conversation ROOT" }); close.focus();
     fireEvent.click(close);
     expect(document.activeElement).toBe(tools);
-    expect(screen.getByRole("tabpanel", { name: "Agent tools" })).toBeTruthy();
+    expect(screen.getByRole("tabpanel", { name: "New agent" })).toBeTruthy();
     expect(view.onSelect).not.toHaveBeenCalled(); expect(view.request).not.toHaveBeenCalled();
   });
 });
