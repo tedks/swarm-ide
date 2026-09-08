@@ -9,8 +9,8 @@ type: feature
 component: default
 release:
 reporter: Ted Smith <tedks@riseup.net>
-status: in_progress
-disposition:
+status: closed
+disposition: fixed
 creation_time: 2026-09-08T18:01:06-00:00
 references: []
 log_events:
@@ -35,5 +35,11 @@ log_events:
     TypeScript boundaries passed; native review CLEAN. The inspected queue receipt
     and transcript client ID have no established supported join; automatic received
     status remains OPEN in swarm-message-receipt-correlation. ROOT owns merge/adoption.
+- time: 2026-09-08T18:15:59-00:00
+  who: Ted Smith
+  what: 'closed: fixed'
+  comment: Completed the user-authorized truthful presentation fallback in PR126;
+    automatic consumption correlation is explicitly retained as swarm-message-receipt-correlation,
+    not claimed implemented.
 blocks:
 - swarm-close-working-loop
