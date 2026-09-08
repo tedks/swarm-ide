@@ -5,7 +5,7 @@ type: feature
 component: default
 release:
 reporter: Ted Smith <tedks@riseup.net>
-status: unstarted
+status: in_progress
 disposition:
 creation_time: 2026-09-08T15:51:45-00:00
 references: []
@@ -17,6 +17,10 @@ log_events:
 - time: 2026-09-08T15:51:47-00:00
   who: Ted Smith
   what: blocked by swarm-component-graph-stability
+  comment: ""
+- time: 2026-09-08T16:18:11-00:00
+  who: Ted Smith
+  what: started
   comment: ""
 blocked_by:
 - swarm-component-graph-stability
