@@ -57,7 +57,9 @@ Use absolute executable paths when not intentionally relying on the Nix PATH.
 
 Each step directory is owned by that launch and contains:
 
-- `task-prompt`: exact assignment, ignoring final newline characters only.
+- `task-prompt`: exact UTF-8 assignment as queued, including final newlines and
+  all other whitespace. A differently spaced or newline-terminated message is
+  not the same assignment.
 - `rollout-path`: the child JSONL path (absolute, or relative to step directory).
 - `startup-cursor`: byte offset after the last complete record **before** the
   child's requested compaction, captured by the launcher in the child rollout.
@@ -133,10 +135,17 @@ and unconditional owned-child cleanup address them. Live services are not adopte
 or restarted by this change. Registering sessions remains the separate existing
 session-registration tool.
 
-Focused local verification passes 17 standard-library tests via
+Initial local verification passed 17 standard-library tests via
 `//tools/supervisor:unit`, including actual CLI execution with a fake queue,
 split JSONL appends, inherited/wrong-model startup rejection, catch-up after
 steering, watcher failure followed by recap, ambiguous delivery without replay,
 status routing and TERM-resistant owned-helper cleanup. The catch-up regression
 was first reproduced as one failing test alongside 16 passes; latching the
 verified assignment turn made all 17 pass. Native fix-delta review is clean.
+
+Task-text regressions additionally cover final LF, repeated LF, CRLF and
+surrounding whitespace, plus rejection when the observed text differs. Reading
+`task-prompt` without trimming fixes false startup failures for queued messages
+that retain their final newline; it does not normalize mismatched assignments
+or change the parent, model and fresh-compaction gates. The fixture queue remains
+local and fake; these checks do not launch or message actual sessions.

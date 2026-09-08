@@ -19,6 +19,7 @@ const startup = (parent = 'parent', model = 'gpt-6-astra', task = 'do task') =>
   line('turn_context', { model, turn_id: 'task-turn' }) +
   line('event_msg', { type: 'user_message', message: task });
 async function fixture(t, options = {}) {
+  const task = options.task ?? 'do task';
   const directory = await mkdtemp(path.join(os.tmpdir(), 'supervisor-test-'));
   t.after(() => rm(directory, { recursive: true, force: true }));
   const step = path.join(directory, 'step with spaces;$(literal)');
@@ -27,11 +28,11 @@ async function fixture(t, options = {}) {
   const calls = path.join(directory, 'calls.jsonl');
   const fake = path.join(directory, 'fake-cli.mjs');
   await writeFile(fake, `import {appendFileSync} from 'node:fs';\nappendFileSync(process.argv[2],JSON.stringify(process.argv.slice(3))+'\\n');\nprocess.exit(${options.exit ?? 0});\n`);
-  await writeFile(rollout, options.rollout ?? startup());
+  await writeFile(rollout, options.rollout ?? startup('parent', 'gpt-6-astra', task));
   await writeFile(path.join(step, 'rollout-path'), `${rollout}\n`);
   await writeFile(path.join(step, 'recap-cursor'), '0\n');
   await writeFile(path.join(step, 'startup-cursor'), '0\n');
-  await writeFile(path.join(step, 'task-prompt'), 'do task\n');
+  await writeFile(path.join(step, 'task-prompt'), task);
   const config = configure({
     parentSession: 'parent', codexCommand: [process.execPath, fake, calls], stateDirectory: path.join(directory, 'state'),
     startupSeconds: 0.2, recapSeconds: 2, pollSeconds: 0.01, commandSeconds: 1,
@@ -95,13 +96,37 @@ test('real CLI over fake executable: complete recap exactly once, safe argv, res
   assert.equal((await f.messages()).length, 2);
 });
 
-for (const [name, records] of [
+for (const [name, task] of [
+  ['one final newline', 'do task\n'],
+  ['multiple final newlines', 'do task\n\n'],
+  ['CRLF ending', 'do task\r\n'],
+  ['surrounding whitespace', ' \tdo task \t\n'],
+]) {
+  test(`exact task with ${name} creates ready and completion`, async (t) => {
+    const f = await fixture(t, { task });
+    await complete(f);
+    assert.equal(await supervise(f.config), 0);
+    const proof = JSON.parse(await readFile(path.join(f.step, 'ready'), 'utf8'));
+    assert.equal(proof.exactTask, true);
+    assert.equal(proof.turn, 'task-turn');
+    const calls = await f.messages();
+    assert.equal(calls.length, 2);
+    assert.match(calls[0][4], /STARTUP VERIFIED/);
+    assert.match(calls[1][4], /worker completed/);
+  });
+}
+
+for (const [name, records, task = 'do task'] of [
   ['wrong ancestry', startup('other')], ['wrong model', startup('parent', 'wrong')],
   ['wrong task', startup('parent', 'gpt-6-astra', 'do other task')],
+  ['missing final newline', startup(), 'do task\n'],
+  ['extra final newline', startup('parent', 'gpt-6-astra', 'do task\n\n'), 'do task\n'],
+  ['different line ending', startup('parent', 'gpt-6-astra', 'do task\n'), 'do task\r\n'],
+  ['missing surrounding whitespace', startup(), ' \tdo task \t'],
   ['missing compaction', startup().split('\n').filter((row) => !row.includes('context_compacted')).join('\n')],
 ]) {
   test(`${name} never creates ready or completion; sends actual failure wake`, async (t) => {
-    const f = await fixture(t, { rollout: records + JSON.stringify(message(marker)) + '\n' });
+    const f = await fixture(t, { task, rollout: records + JSON.stringify(message(marker)) + '\n' });
     assert.equal(await supervise(f.config), 1);
     await assert.rejects(access(path.join(f.step, 'ready')));
     const calls = await f.messages(); assert.equal(calls.length, 1);
