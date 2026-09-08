@@ -1,0 +1,22 @@
+id: swarm-first-agent-discoverability
+title: Make starting an agent obvious and explain invalid draft focus
+desc: 'Pure Sky first-use report: native launch is hidden under Agent tools plus button,
+  requires source-file pinned draft, and old graph/directory draft does not update
+  when a file is opened. Separate isolated unavailable controls obscure trusted-local
+  launch. Make New agent discoverable, prioritize trusted-local controls and provide
+  deliberate source-selection/reopen action without changing submitted drafts or requiring
+  a task tracker. Same-workspace native history writer lock remains real; separate
+  user-data-dir is UI-only.'
+type: bugfix
+component: default
+release:
+reporter: Ted Smith <tedks@riseup.net>
+status: unstarted
+disposition:
+creation_time: 2026-09-08T18:30:04-00:00
+references: []
+log_events:
+- time: 2026-09-08T18:30:04-00:00
+  who: Ted Smith
+  what: created
+  comment: ""
