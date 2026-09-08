@@ -32,3 +32,14 @@ log_events:
     all-unknown report remains unlocalized, tracked separately; extra design check
     has one unchanged stale-count failure tracked separately. Ready for ROOT normal
     landing/adoption; no managed app changes.'
+- time: 2026-09-08T16:19:12-00:00
+  who: Ted Smith
+  what: commented
+  comment: 'PR121 composition ready at 212d2c6: normal merge of accepted b060363 with
+    exact ROOT-cleared 1216f59. App and Activity-doc conflicts preserve both intentions:
+    current Activity selection/refresh/pinned events and unified header/composer alongside
+    one Work Log reader and selected outcome ID. Automatic CSS/plan/agent-doc joins
+    remain additive. Both TypeScript boundaries and105 tests across11 mounted files
+    pass in one19.001s Bazel execution; native integration review CLEAN. No GUI/model/full-suite
+    replay or historical status-fix claim. Original all-unknown report remains open/unlocalized.
+    ROOT owns PR merge/adoption; same worktree preserved.'
