@@ -22,3 +22,12 @@ log_events:
   who: Ted Smith
   what: started
   comment: ""
+- time: 2026-09-08T05:47:01-00:00
+  who: Ted Smith
+  what: commented
+  comment: Implemented automatic source-manifest components, local package relationships,
+    configured Hugo site links and hidden empty instruments in PR96 fadd042. Initial
+    66 focused checks passed before final parser/admission regressions; final focused
+    checks/native review/owned packaged proof underway. Scanned actual website, Pairmarket,
+    PredictionBook, Speech, discord-agents, slowed and Pure Sky without modifying
+    them. No live cloud or chain measurements claimed.
