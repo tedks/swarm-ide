@@ -28,7 +28,7 @@ describe("explicit trusted child forks", () => {
     render(<TrustedForkControl parent={parent()} onFork={fork} />);
     expect(screen.getByText("Shared working directory: /fixed/repository")).toBeTruthy();
     expect(screen.getByText("Shares this directory; not an isolated worktree.")).toBeTruthy();
-    expect(screen.getByText(/normal configured model/)).toBeTruthy();
+    expect(screen.getByText(/inherited Codex settings/)).toBeTruthy();
     expect(submit().disabled).toBe(true);
     expect(fork).not.toHaveBeenCalled();
     fireEvent.change(instructions(), { target: { value: "  Check the parser independently.\n" } });

@@ -17,7 +17,9 @@ mounting that control requires ROOT to release W6's renderer ownership.
   installed Codex 0.153.4 generated thread/fork schemas.
 - [x] (2026-09-08 01:50Z) Add compatible typed fork request, completed-boundary capability and lineage; isolated UI form, W6 renderer untouched.
 - [x] (2026-09-08 01:55Z) Prove lifecycle, correlation, duplicate and legacy boundaries locally. Initial4RED/81PASS, expanded123PASS; native findings reproduced2RED/123PASS then corrected127PASS.
-- [ ] Run one explicitly bounded real parent/child proof and native review.
+- [x] (2026-09-08 02:03Z) One live proof at8af0d5a passed23.5s, two providers/three turns, both cleanup confirmed; backend and proof native review CLEAN.
+- [x] (2026-09-08 02:10Z) ROOT released W6; normal composition41f2d24 includes exact reviewed1f54845. Small visible Fork/View-parent join implemented; targeted mounted gates pass before final copy adjustment.
+- [ ] Finish joined owned-virtual proof and final local/review attribution.
 - [ ] Push reviewed result, report exact visible join and leave ROOT to land.
 
 ## Surprises & Discoveries
@@ -52,10 +54,20 @@ child's taskReference stays null. Existing preparations remain untouched.
 
 ## Outcomes & Retrospective
 
-Backend and isolated form implemented; actual provider proof pending. Desktop
-package at5ac6ee3 passed6.3s. ROOT owns merge, final Ditz closure and app
-adoption. No claim of isolated worktrees, external ROOT transcript cloning or
-automatic ticket completion belongs to this slice.
+Native runtime and visible form implemented. Real8af0d5a proof created exactly
+two Codex conversations and observed exactly three turns. The child's instruction
+did not contain the random sentinel, yet its answer recalled it; native ancestry
+and completed boundary matched. Explicit child Stop preserved parent output and
+readiness, then a parent follow-up succeeded. Both explicit Stops confirmed owned
+cleanup; private history retained both outputs and lineage with zero replay.
+The child had no active goal in this proof (clear returned false, get returned
+null); active-goal removal is controlled evidence only. No additional model turns.
+
+Initial quality at pre-W6 backend passed1959 tests with one existing opt-in
+external-self-message skip. Joined renderer focused tests and package are passing;
+owned packaged deterministic-peer GUI evidence remains pending. ROOT owns merge,
+final Ditz closure and app adoption. No claim of isolated worktrees, external ROOT
+transcript cloning or automatic ticket completion belongs to this slice.
 
 ## Context and Orientation
 
@@ -109,6 +121,8 @@ owned directory for diagnosis. No user worktree or external agent is touched.
 ## Artifacts and Notes
 
 Step evidence lives in `/tmp/swarm-ide-self-hosting.wkSErV/child-forks`.
+Real proof record: `/tmp/swarm-ide-f2-live.gU1IJL/live-proof.json`; its consumed
+marker is retained and must never be deleted to allow another run.
 Installed schemas were generated read-only into
 `/tmp/swarm-ide-codex-fork-schema.V8xa9U/typescript/v2`.
 
