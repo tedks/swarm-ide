@@ -5,8 +5,8 @@ type: feature
 component: default
 release:
 reporter: Ted Smith <tedks@riseup.net>
-status: in_progress
-disposition:
+status: closed
+disposition: fixed
 creation_time: 2026-09-08T13:52:40-00:00
 references: []
 log_events:
@@ -43,3 +43,11 @@ log_events:
     executable implementation unchanged. Direct JSON/diff checks passed, old tip preserved,
     branch pushed using exact lease. Prior 27 tests/native/real build evidence remains
     attributable; ROOT owns normal merge and app adoption.
+- time: 2026-09-08T14:38:58-00:00
+  who: Ted Smith
+  what: 'closed: fixed'
+  comment: 'PR114 normally merged: the existing IDE service-build job now receives
+    actual Bazel milestones before process exit. Progress remains indeterminate and
+    success still follows final build checks. Local27 focused tests/types, native
+    review and real pre-exit event proof passed. No extra builds, agent-built job
+    capture or lossless full log is claimed.'
