@@ -46,3 +46,13 @@ log_events:
     and proposal state; no gestures/assertions/timeouts altered. ONE instrumented
     tour pending native light trace review, no product/model/app changes. New D62F
     continuation marker; prior BC61 held recap superseded only for this bounded follow-up.
+- time: 2026-09-08T02:33:04-00:00
+  who: Ted Smith
+  what: commented
+  comment: 'D62F bounded continuation stops coherently at 1fb523a. ONE passive trace:
+    both native Attach/Append clicks hit correct enabled targets; proposal created
+    then explicitly rejected as Draft or task changed; review again. Task-slot timeout,
+    errors0/cleanup1, cause predicate unlocalized. Native code and independent trace
+    interpretation CLEAN; no driver correction/another run authorized. Accepted installation/docs
+    unchanged, remaining issue OPEN. ROOT owns PR80 landing/disposition and final
+    closure.'
