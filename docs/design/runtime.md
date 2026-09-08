@@ -14,6 +14,7 @@ label or clicked document cannot become an arbitrary process command.
 | Core dispatch | [worker.ts](../../core/worker.ts), [worker-runtime.ts](../../core/worker-runtime.ts) | Validates, routes and publishes provider results |
 | Contracts | [protocol/schema.ts](../../protocol/schema.ts) and domain modules | Shared request/result types and runtime schemas |
 | Providers | [provider.ts](../../core/provider.ts), files, tasks, build graph, agents | Filesystem, Git, Bazel and owned harness operations |
+| Installed Linux command | [launcher.mjs](../../tools/cli/launcher.mjs), [package.nix](../../nix/package.nix) | Resolves the invocation's project, launches the immutable production bundle and keeps host configuration available |
 | Live build messages | [build-progress.ts](../../core/build-progress.ts) → [provider.ts](../../core/provider.ts) | Private Bazel event file → bounded current-job message |
 
 The Electron renderer has context isolation and no Node integration. The local
@@ -51,6 +52,36 @@ loop, not a claim of a fully hermetic JavaScript build toolchain.
 See [BUILD.bazel](../../BUILD.bazel), [tools/BUILD.bazel](../../tools/BUILD.bazel),
 [development loop](../development-loop.md) and [architecture](../architecture.md).
 GUI verification uses an owned virtual X11 desktop, never the operator's display.
+
+## Installed application path
+
+The Nix `packages.swarm-ide` output builds the same `//:desktop-bundle`, then
+installs its `app/`, `core/` and `renderer/` trees plus the `swarm` command.
+`apps.default` invokes that command. `swarm --workspace PATH` resolves the project
+from the caller's directory and launches packaged Electron; it does not start
+Vite or rebuild the project. An installed `package.json` gives Electron the stable
+`swarm-ide` user-data identity. The fixed installed CLI bootstrap applies any
+explicit profile with Electron's userData API before starting the unchanged main.
+Writable history stays in the user profile, not
+the Nix store. The host's agent tools and configuration remain the source of truth.
+
+The direct launcher boundary is tested by `//tools/cli:checks`; the installed
+command and real workspace/source path are exercised by the owned virtual
+`//tools/cli:smoke`. See [Linux installation](../linux-install.md). The container
+path can consume the existing production tar independently; it is not a reason
+to route installed desktop execution through a development server.
+
+An explicit `--tmux-server`/`--tmux-socket` and `--tmux-session` association uses
+`//tools/cli:registration-bundle`, which packages the existing exact-pane discovery
+and registry writer from `tools/session-registration`. Only that chosen session's
+panes are inspected. A unique rollout, or one explicit CLI header alongside only
+its same-process direct native children, selects a candidate; unknown/mixed
+identities remain ambiguous. Header linkage never substitutes for the existing
+pane/PID/start/open-file validation. Each verified process supplies its own canonical Git worktree;
+the opened project never substitutes for an unavailable agent context. A fresh
+private bounded registry generation feeds the unchanged observer. Older private
+generations remain available explicitly, not merged automatically into new scope.
+No agent or tmux lifecycle is transferred to the installed app.
 
 ## Container browser entry
 

@@ -16,7 +16,7 @@ import { updateRegistry, type RegisterInput } from "./registry";
 const dirs: string[] = [], sockets: string[] = [], holders: ChildProcess[] = [];
 const cli = process.env.SWARM_REGISTRATION_CLI;
 const parentId = "10000000-0000-4000-8000-000000000001";
-const header = (id: string, parent: string | null = parentId) => JSON.stringify({ type: "session_meta", payload: { id, forked_from_id: parent } }) + "\n";
+const header = (id: string, parent: string | null = parentId, source?: unknown) => JSON.stringify({ type: "session_meta", payload: { id, forked_from_id: parent, source } }) + "\n";
 const environment = { PATH: process.env.PATH, LANG: "C.UTF-8" };
 const tmux = (socket: string, ...args: string[]) => execFileSync("tmux", ["-S", socket, ...args], { encoding: "utf8", timeout: 2500, env: environment });
 async function stopHolder(child: ChildProcess) {
@@ -40,9 +40,11 @@ async function until(check: () => Promise<boolean>) {
   const deadline = Date.now() + 3000;
   while (!await check()) { if (Date.now() > deadline) throw new Error("Owned fixture startup expired"); await new Promise((done) => setTimeout(done, 10)); }
 }
-async function paneFixture(ambiguous = false, threaded: boolean | "mixed" = false) {
+async function paneFixture(ambiguous: boolean | "native" = false, threaded: boolean | "mixed" = false) {
   const f = await fixture(), socket = join(f.dir, "owned.sock"), ready = join(f.dir, "ready.json"), script = join(f.dir, "holder.cjs");
   const other = join(f.dir, "other.jsonl"); await writeFile(other, header(randomUUID()), { mode: 0o600 });
+  const extra = join(f.dir, "extra.jsonl");
+  if (ambiguous === "native") await writeFile(extra, header(randomUUID()), { mode: 0o600 });
   // A wrapper plus one child mirrors a tmux shell/agent relationship, without
   // running Codex or sending any model request. Only this server is ever killed.
   await writeFile(script, `
@@ -54,6 +56,7 @@ if (process.argv[2] !== 'child') {
 } else {
   fs.openSync(${JSON.stringify(threaded === "mixed" ? other : f.rollout)}, 'r');
   ${ambiguous ? `fs.openSync(${JSON.stringify(other)}, 'r');` : ""}
+  ${ambiguous === "native" ? `fs.openSync(${JSON.stringify(extra)}, 'r');` : ""}
   fs.writeFileSync(${JSON.stringify(ready)}, JSON.stringify({ pid: process.pid }));
 }
 setInterval(() => {}, 1000);
@@ -64,7 +67,7 @@ setInterval(() => {}, 1000);
   await until(async () => { try { await readFile(ready); return true; } catch { return false; } });
   const pid = (JSON.parse(await readFile(ready, "utf8")) as { pid: number }).pid;
   const stat = await readFile(`/proc/${pid}/stat`, "utf8"), start = stat.slice(stat.lastIndexOf(")") + 2).trim().split(/\s+/)[19];
-  return { ...f, pane: { socket, pane: tuple[1], processPid: pid, processStart: start }, pid, other };
+  return { ...f, pane: { socket, pane: tuple[1], processPid: pid, processStart: start }, pid, other, extra };
 }
 async function command(args: string[]) {
   if (!cli) throw new Error("Bazel registration CLI bundle required");
@@ -213,6 +216,39 @@ describe("known worker registration", () => {
     expect(await updateRegistry({ ...f.input, pane: f.pane })).toMatchObject({ authority: "checked-live" });
     expect(await updateRegistry({ ...f.input, pane: f.pane, evidence: "synthetic" })).toMatchObject({ authority: "historical-only" });
     expect(JSON.parse(await readFile(f.registry, "utf8")).sessions[0].tmux).toBeUndefined();
+  });
+
+  it("discovers one CLI alongside its same-process native children without accepting ambiguous headers", async () => {
+    const f = await paneFixture("native");
+    const native = (parent: string) => ({ subagent: { thread_spawn: { parent_thread_id: parent } } });
+    const first = randomUUID(), second = randomUUID();
+    await writeFile(f.rollout, header(f.id, parentId, "cli"));
+    await writeFile(f.other, header(first, null, native(f.id)));
+    await writeFile(f.extra, header(second, null, native(f.id)));
+    expect((await discover({ socket: f.pane.socket, pane: f.pane.pane }))?.rollout).toBe(f.rollout);
+    expect(await updateRegistry({ ...f.input, rollout: undefined, pane: f.pane })).toMatchObject({ authority: "checked-live", sessionId: f.id });
+    // Exact-rollout behavior is unchanged even while other headers are ambiguous.
+    for (const invalid of [
+      header(second, null, "cli"),
+      header(second, null, "unknown"),
+      header(second, f.id), // forked_from_id is not native ownership evidence.
+      header(second, null, native(randomUUID())),
+      header(second, null, native(second)),
+      header(f.id, null, native(f.id)),
+      header(first, null, native(f.id)),
+      "{not-json}\n",
+    ]) {
+      await writeFile(f.extra, invalid);
+      expect(await discover({ socket: f.pane.socket, pane: f.pane.pane })).toBeUndefined();
+      expect((await discover(f.pane, f.rollout))?.rollout).toBe(f.rollout);
+    }
+  });
+
+  it("does not collapse a different-process holder using native-parent metadata", async () => {
+    const f = await paneFixture(false, "mixed");
+    await writeFile(f.rollout, header(f.id, parentId, "cli"));
+    await writeFile(f.other, header(randomUUID(), null, { subagent: { thread_spawn: { parent_thread_id: f.id } } }));
+    expect(await discover({ socket: f.pane.socket, pane: f.pane.pane })).toBeUndefined();
   });
 });
 
