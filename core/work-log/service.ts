@@ -4,13 +4,14 @@ import { join, resolve } from "node:path";
 import { randomUUID } from "node:crypto";
 import { z } from "zod";
 import { WorkLogEntrySchema, WorkLogSettingsSchema, WorkLogSnapshotSchema, type WorkLogRequest, type WorkLogSnapshot } from "../../protocol/work-log";
-import { readWorkInputs, type WorkInput } from "./transcripts";
+import { readWorkCompletions, readWorkInputs, type WorkCompletion, type WorkInput } from "./transcripts";
 import { recordWorkOutcome, runWorkCommand, summarizeWork, withWorkLock, type WorkSummary } from "./commands";
 
 const DocumentSchema = z.object({ version: z.literal(1), entries: z.array(WorkLogEntrySchema).max(200) }).strict();
 const StateSchema = z.object({ version: z.literal(1), settings: WorkLogSettingsSchema, seen: z.record(z.string(), z.string()).default({}) }).strict();
 type State = z.infer<typeof StateSchema>;
 export type WorkLogDependencies = { inputs(root: string, registry?: string, seen?: Record<string, string>): Promise<WorkInput[]>;
+  completions?(root: string, registry?: string): Promise<WorkCompletion[]>;
   summarize(input: WorkInput[], settings: WorkLogSnapshot["settings"], signal: AbortSignal): Promise<WorkSummary[]> };
 
 async function atomic(path: string, bytes: string, mode = 0o600) {
@@ -32,7 +33,8 @@ export class WorkLogService {
   private disposed = false;
   private lifetime = new AbortController();
   private mutations: Promise<unknown> = Promise.resolve();
-  constructor(private root: string, private registry?: string, private deps: WorkLogDependencies = { inputs: readWorkInputs, summarize: summarizeWork }) {}
+  private repairPending = true;
+  constructor(private root: string, private registry?: string, private deps: WorkLogDependencies = { inputs: readWorkInputs, completions: readWorkCompletions, summarize: summarizeWork }) {}
   private async init() {
     this.root = await realpath(this.root);
     this.privateDir = resolve(this.root, (await runWorkCommand("git", ["rev-parse", "--git-path", "swarm-work-log"], this.root, this.controller.signal, "", 10000)).trim());
@@ -42,6 +44,43 @@ export class WorkLogService {
     catch (error) { if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw new Error("Work Log state needs attention; it was not replaced"); }
     this.snapshot.settings = this.state.settings;
     await this.loadDocument();
+    await this.repairLegacyEntries();
+  }
+  private async repairLegacyEntries() {
+    if (!this.repairPending) return;
+    if (!this.snapshot.entries.some((entry) => entry.state === "working")) { this.repairPending = false; return; }
+    try {
+      await withWorkLock(join(this.privateDir, "producer.lock"), async () => {
+        // Reload inside the same lane as publication and recording, so another
+        // window's new entries or recording flags cannot be overwritten.
+        let savedSeen: Record<string, string> = {};
+        try { savedSeen = StateSchema.parse(JSON.parse(await readFile(join(this.privateDir, "state.json"), "utf8"))).seen; }
+        catch (error) { if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error; }
+        await this.loadDocument();
+        const legacy = this.snapshot.entries.filter((entry) => entry.state === "working");
+        let observed: WorkCompletion[] = [];
+        if (legacy.length) {
+          try { observed = await (this.deps.completions ? this.deps.completions(this.root, this.registry) : this.deps.inputs(this.root, this.registry, {})); }
+          catch { /* Missing evidence leaves unmatched outcomes unchanged. */ }
+        }
+        let changed = false;
+        for (const entry of legacy) {
+          const completion = observed.find((item) => entry.id === `${item.sessionId}:${item.boundary}` && entry.sessionId === item.sessionId && entry.at === item.at);
+          const seen = savedSeen[entry.sessionId];
+          if (completion || (seen && entry.id === `${entry.sessionId}:${seen}` && seen.endsWith(`:${entry.at}`))) {
+            // Attempt provenance alone does not distinguish success from a
+            // task_complete carrying an error. Keep that uncertainty visible.
+            entry.state = completion ? completion.state ?? "completed" : "unknown"; changed = true;
+          }
+        }
+        if (changed) await this.saveDocument();
+        this.repairPending = false;
+      });
+    } catch (error) {
+      // A stopped reader must remain usable while another window summarizes.
+      // Its next read retries the bounded migration after the producer exits.
+      if (!(error instanceof Error && error.message === "Work Log is busy in another window")) throw error;
+    }
   }
   private async loadDocument() {
     try {
@@ -66,9 +105,10 @@ export class WorkLogService {
     if (this.disposed) throw new Error("Work Log is stopped");
     await (this.initialized ??= this.init());
     if (this.disposed) throw new Error("Work Log is stopped");
-    if (request.type === "workLog.read") return WorkLogSnapshotSchema.parse(this.snapshot);
+    if (request.type === "workLog.read" && !this.repairPending) return WorkLogSnapshotSchema.parse(this.snapshot);
     const operation = this.mutations.then(async () => {
       if (this.disposed) throw new Error("Work Log is stopped");
+      if (request.type === "workLog.read") await this.repairLegacyEntries();
       if (request.type === "workLog.stop" || request.type === "workLog.start") await this.stop();
       if (request.type === "workLog.start") {
         this.snapshot.settings = WorkLogSettingsSchema.parse(request.settings);
@@ -86,7 +126,7 @@ export class WorkLogService {
           const entry = this.snapshot.entries.find((item) => item.id === request.entryId);
           if (!entry) throw new Error("Choose an existing Work Log outcome");
           await recordWorkOutcome(this.root, this.commonDir, entry, request.taskId, this.lifetime.signal);
-          entry.recorded = true; entry.taskId = request.taskId; entry.state = "completed";
+          entry.recorded = true; entry.taskId = request.taskId;
           await this.saveDocument();
         });
       }
@@ -121,7 +161,7 @@ export class WorkLogService {
         const summaries = await this.deps.summarize(eligible, this.snapshot.settings, this.controller.signal);
         if (!this.snapshot.running || this.disposed || this.controller.signal.aborted) return;
         const entries = eligible.map((input, index) => WorkLogEntrySchema.parse({ id: `${input.sessionId}:${input.boundary}`,
-          sessionId: input.sessionId, agent: input.agent, taskId: input.taskId, at: input.at, state: "working", ...summaries[index], recorded: false }));
+          sessionId: input.sessionId, agent: input.agent, taskId: input.taskId, at: input.at, ...summaries[index], state: input.state ?? "completed", recorded: false }));
         this.snapshot.entries = [...entries, ...this.snapshot.entries].slice(0, 200);
         await this.saveDocument(); this.snapshot.notice = "";
       });

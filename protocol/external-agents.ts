@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { PROTOCOL_VERSION } from "./common";
+import { AgentLifecycleSchema } from "./agent-lifecycle";
 
 export const ExternalSessionId = z.string().uuid();
 export const EXTERNAL_MESSAGE_MAX_BYTES = 4000;
@@ -24,6 +25,7 @@ export const ExternalAgentSummarySchema = z.object({
   worktree: z.string().min(1).max(4096).optional(),
   control: z.enum(["tmux", "read-only"]).optional(),
   lastActivityAt: z.string().max(64).optional(),
+  lifecycle: AgentLifecycleSchema.optional(),
 }).strict();
 export type ExternalAgentSummary = z.infer<typeof ExternalAgentSummarySchema>;
 export const ExternalEntrySchema = z.object({
