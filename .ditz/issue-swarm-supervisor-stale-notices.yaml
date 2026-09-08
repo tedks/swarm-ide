@@ -1,0 +1,22 @@
+id: swarm-supervisor-stale-notices
+title: Keep supervisor handoffs current without flooding the message queue
+desc: Old milestone and handoff messages reach ROOT after the associated PR has landed;
+  repeated ten-minute status requests may also queue behind long work. Measure produced/queued/consumed
+  timing for a bounded sample and distinguish duplicate generation, sequential queue
+  delay and stale checkpoint requests. Repair the smallest owned supervisor behavior
+  to coalesce or avoid obsolete automated notices without deleting human messages,
+  losing true completions, resending ambiguous messages, or changing live Codex queue
+  storage. No new messaging platform.
+type: bugfix
+component: default
+release:
+reporter: Ted Smith <tedks@riseup.net>
+status: unstarted
+disposition:
+creation_time: 2026-09-08T15:07:11-00:00
+references: []
+log_events:
+- time: 2026-09-08T15:07:11-00:00
+  who: Ted Smith
+  what: created
+  comment: ""
