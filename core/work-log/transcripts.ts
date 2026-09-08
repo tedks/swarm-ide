@@ -4,7 +4,7 @@ import { isAbsolute, relative } from "node:path";
 import { Registry } from "../external-agents-registry";
 
 export type WorkInput = { sessionId: string; agent: string; taskId: string | null; boundary: string; at: string; text: string };
-const TAIL = 128 * 1024;
+const TAIL = 512 * 1024;
 async function regular(path: string) {
   if (!isAbsolute(path) || await realpath(path) !== path) throw new Error("Work Log input must be a canonical registered file");
   const file = await open(path, constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK);
@@ -19,7 +19,7 @@ export function cleanWorkText(text: string, max = 1600): string {
 
 /** Only explicit operator registry, at most a bounded recent tail per session.
  * A boundary is an actual finished Codex turn, not a timer or arbitrary tool. */
-export async function readWorkInputs(root: string, registryPath?: string): Promise<WorkInput[]> {
+export async function readWorkInputs(root: string, registryPath?: string, seen: Record<string, string> = {}): Promise<WorkInput[]> {
   if (!registryPath) throw new Error("Register agents to start the Work Log");
   const rel = relative(await realpath(root), registryPath);
   if (!rel.startsWith("../") && !isAbsolute(rel)) throw new Error("Use the private agent registry outside this repository");
@@ -64,11 +64,13 @@ export async function readWorkInputs(root: string, registryPath?: string): Promi
           at = new Date(event.timestamp).toISOString();
           boundary = `${payload.turn_id ?? "turn"}:${at}`;
           boundaryIndex = evidence.length;
+          if (seen[row.id] === boundary) { evidence.length = 0; boundary = ""; boundaryIndex = -1; }
         }
       }
-      if (boundary) result.push({ sessionId: row.id, agent: cleanWorkText(row.label, 120),
+      const completedText = evidence.slice(0, boundaryIndex).slice(-16).join("\n").slice(-10000);
+      if (boundary && completedText.trim()) result.push({ sessionId: row.id, agent: cleanWorkText(row.label, 120),
         taskId: row.task && /^[a-zA-Z0-9][a-zA-Z0-9_-]{0,199}$/.test(row.task) ? row.task : null,
-        boundary, at, text: evidence.slice(0, boundaryIndex).slice(-16).join("\n").slice(-10000) });
+        boundary, at, text: completedText });
     } catch { /* One unavailable session does not hide other registered work. */ }
     finally { await file?.close(); }
   }
