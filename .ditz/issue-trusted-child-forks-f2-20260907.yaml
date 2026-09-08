@@ -18,3 +18,10 @@ log_events:
   who: Ted Smith
   what: started
   comment: ""
+- time: 2026-09-08T01:59:05-00:00
+  who: Ted Smith
+  what: commented
+  comment: PR79 native fork backend and isolated form pushed; initial4RED/81PASS,
+    code123PASS; two native findings reproduced and corrected127PASS, native convergence
+    CLEAN. One actual bounded provider proof next, W6 renderer ownership still held.
+    No merge/adoption.
