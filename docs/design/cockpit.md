@@ -4,6 +4,26 @@ The cockpit is an instrument panel the operator can reach into. Navigation,
 source, context and agent controls remain visible together; changing the central
 document should not throw away a draft, dirty file or graph camera.
 
+Deliberate navigation can reveal the selected existing node without fitting the
+entire graph. Each pane accepts one scoped camera request through
+`app/renderer/repository/reveal.ts`: it waits for ReactFlow's measured nodes,
+then applies a zero-duration viewport immediately. A manual pan cancels an older
+request, and changing worktree/core or graph publication retires it. Status,
+source-read completion, interface zoom and background refresh do not manufacture
+new camera requests. Fit remains an explicit whole-view control.
+
+Source navigation follows exact declared service/interface paths and observed
+Bazel file membership; shared source may reveal multiple actual nodes. It does
+not infer unique ownership from directory names or invent task/service edges.
+Completing a service's asynchronous declaration open retains the original service
+camera gesture rather than issuing a second file-follow jump. The shared
+ProjectionCanvas offers optional selected-task following; TaskGraph adoption of
+that prop is a separately coordinated follow-up to the complete-task-graph repair.
+
+`//tools/graph-recenter:checks` consumes `//:quality_sources` and exercises click,
+measurement, hidden-panel, manual-move and publication fences plus the ordinary
+retention checks and both TypeScript boundaries.
+
 ## Lower-level map
 
 | Part | Actual implementation | Relationship |

@@ -39,6 +39,8 @@
       "app/renderer/App.tsx",
       "app/renderer/EditorPane.tsx",
       "app/renderer/GraphPane.tsx",
+      "app/renderer/repository/reveal.ts",
+      "app/renderer/repository/focus-reveal.ts",
       "app/renderer/WorktreeInspection.tsx",
       "core/worktree-inspection.ts",
       "app/renderer/FleetActivityView.tsx",
@@ -80,6 +82,11 @@
         }
       ],
       "buildTargets": [
+        {
+          "label": "//tools/graph-recenter:checks",
+          "role": "Checks deliberate node reveal, camera retention and stale/manual-move cancellation",
+          "dependencies": [{ "label": "//:quality_sources", "relation": "data" }]
+        },
         {
           "label": "//:desktop-bundle",
           "role": "Packages renderer and local core",

@@ -8,6 +8,9 @@ import { useFramePresentation } from "./repository/presentation";
 import { directoryZoomDestination } from "./repository/map";
 import { parentDirectory } from "./repository/navigation";
 import { useGraphReframe } from "./repository/reframe";
+import { useGraphReveal } from "./repository/reveal";
+import { focusRevealNodes, type GraphFocusNavigation } from "./repository/focus-reveal";
+import type { ServiceDeclarations } from "../../protocol/service-declarations";
 import { AgentSprites } from "./repository/AgentSprites";
 import { directoryBuildLinks, withMockDirectoryAgents, type BuildLinkSnapshot } from "./repository/layers";
 import "./service-graph-status.css";
@@ -70,6 +73,9 @@ interface GraphPaneProps {
   mockAgents?: boolean;
   mockGraphVersion?: number;
   reframeVersion?: number;
+  navigation?: GraphFocusNavigation | null;
+  cameraScope?: string;
+  serviceDeclarations?: ServiceDeclarations;
 }
 
 export function GraphPane(props: GraphPaneProps) {
@@ -81,7 +87,7 @@ function RepositoryGraphPane(props: GraphPaneProps) {
   return <GraphPaneContent {...presented} />;
 }
 
-const GraphPaneContent = memo(function GraphPaneContent({ workspaceId, graph, focus, mappings, onFocus, onActivate, onConnectionFocus, onReconcile, reconciliationRunning, repositoryNavigation, repositoryCameraIntent, onNavigateDirectory, onInspectFocus, buildLinkSnapshot, onBuildLinksVisibility, buildGraphStatus, mockAgents = false, mockGraphVersion = 0, reframeVersion = 0 }: GraphPaneProps) {
+const GraphPaneContent = memo(function GraphPaneContent({ workspaceId, graph, focus, mappings, onFocus, onActivate, onConnectionFocus, onReconcile, reconciliationRunning, repositoryNavigation, repositoryCameraIntent, onNavigateDirectory, onInspectFocus, buildLinkSnapshot, onBuildLinksVisibility, buildGraphStatus, mockAgents = false, mockGraphVersion = 0, reframeVersion = 0, navigation, cameraScope, serviceDeclarations }: GraphPaneProps) {
   const adapted = useMemo(() => adaptGraph(graph, focus, mappings), [graph, focus, mappings]);
   const [buildLinksVisible, setBuildLinksVisible] = useState(false);
   useEffect(() => { onBuildLinksVisibility?.(buildLinksVisible); return () => onBuildLinksVisibility?.(false); }, [buildLinksVisible, onBuildLinksVisibility]);
@@ -97,6 +103,11 @@ const GraphPaneContent = memo(function GraphPaneContent({ workspaceId, graph, fo
   const flow = useRef<GraphCamera | null>(null);
   const cancelReframe = useGraphReframe(flow, reframeVersion);
   const canvas = useRef<HTMLDivElement>(null);
+  const revealScope = `${cameraScope ?? workspaceId ?? ""}:${graph.topologyId}`;
+  const reveal = useGraphReveal(revealScope, canvas, navigation && navigation.scope === cameraScope ? {
+    scope: revealScope, nonce: navigation.nonce,
+    nodeIds: focusRevealNodes(graph, navigation.focus, mappings, workspaceId, serviceDeclarations),
+  } : null, true, graph.inputFingerprint);
   const gesture = useRef<{ startZoom: number; baselineZoom: number; directory: string } | null>(null);
   const baseline = useRef<{ directory: string; zoom: number } | null>(null);
   const navigating = useRef(false);
@@ -118,7 +129,7 @@ const GraphPaneContent = memo(function GraphPaneContent({ workspaceId, graph, fo
         const node = graph.nodes.find((item) => item.id === element.dataset.id);
         if (!node || !["service", "interface"].includes(node.focus.domain)) return;
         event.preventDefault(); event.stopPropagation();
-        if (!event.repeat) { if (event.shiftKey) onFocus(node.focus); else onActivate(node.focus, element); }
+        if (!event.repeat) { reveal.reveal([node.id]); if (event.shiftKey) onFocus(node.focus); else onActivate(node.focus, element); }
       }}>
       <header className="graph-header">
         <div tabIndex={onActivate ? 0 : undefined} role={onActivate ? "note" : undefined} aria-label={onActivate ? "Click or Enter opens a recorded declaration. Alt-click or Shift+Enter inspects without opening. Declarations are not callsites." : undefined}><span className="eyebrow">{explorer ? "repository" : `${graph.topologyId} lens`}{onActivate ? " · ↵ open · ⇧↵ inspect" : ""}</span>{!explorer ? <h2>{graph.title}</h2> : null}</div>
@@ -138,9 +149,10 @@ const GraphPaneContent = memo(function GraphPaneContent({ workspaceId, graph, fo
         <ReactFlow
           nodes={displayNodes}
           edges={buildEdges.length ? buildEdges : adapted.edges}
-          onInit={(instance) => { flow.current = instance; camera.onInit(instance); }}
+          onInit={(instance) => { flow.current = instance; camera.onInit(instance); reveal.onInit(instance); }}
+          onNodesChange={reveal.onNodesChange}
           onMoveStart={(event) => {
-            if (event) cancelReframe();
+            if (event) { cancelReframe(); reveal.cancel(); }
             camera.onMoveStart(event);
             if (!event || !graph.directory || !flow.current || !onNavigateDirectory) return;
             const zoom = flow.current.getViewport().zoom;
@@ -166,7 +178,7 @@ const GraphPaneContent = memo(function GraphPaneContent({ workspaceId, graph, fo
           nodesConnectable={false}
           elementsSelectable
           autoPanOnNodeFocus={onActivate ? false : undefined}
-          onNodeClick={(event, node) => { const data = node.data as TopologyNodeData; if (onActivate && !event.altKey && ["service", "interface"].includes(data.focus.domain)) onActivate(data.focus, event.currentTarget as HTMLElement); else if (graph.directory && data.kind === "directory" && onInspectFocus) onInspectFocus(data.focus); else onFocus(data.focus); }}
+          onNodeClick={(event, node) => { const data = node.data as TopologyNodeData; if (!graph.directory) reveal.reveal([node.id]); if (onActivate && !event.altKey && ["service", "interface"].includes(data.focus.domain)) onActivate(data.focus, event.currentTarget as HTMLElement); else if (graph.directory && data.kind === "directory" && onInspectFocus) onInspectFocus(data.focus); else onFocus(data.focus); }}
           onNodeDoubleClick={(_event, node) => { const data = node.data as TopologyNodeData; if (graph.directory && data.kind === "directory" && !data.directoryContainer && !data.unavailable && data.focus.path) navigate(data.focus.path); }}
           onSelectionChange={({ edges }) => {
             if (edges.length !== 1) return;
