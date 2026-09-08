@@ -2,7 +2,6 @@ import { spawn } from "node:child_process";
 import { isAbsolute, normalize } from "node:path";
 import { randomUUID } from "node:crypto";
 import { ExternalMessageSchema, ExternalSessionId, type ExternalResult } from "../protocol/external-agents";
-import { findTrustedExecutable } from "./agents/trusted-local";
 
 export type ExternalSendReceipt = Extract<ExternalResult, { kind: "send" }>;
 export type QueueMessage = typeof queueExternalMessage;
@@ -11,6 +10,9 @@ export type QueueMessage = typeof queueExternalMessage;
 export async function resolveExternalCodex(): Promise<string> {
   const selected = process.env.SWARM_CODEX_BIN ?? "codex";
   if (selected !== "codex" && !isAbsolute(selected)) throw new Error("Expected an absolute configured Codex executable");
+  // The trusted service imports task context/Git lookup code. Keep that module
+  // out of observer/worker startup and unrelated read-only task requests.
+  const { findTrustedExecutable } = await import("./agents/trusted-local");
   return findTrustedExecutable(selected);
 }
 
