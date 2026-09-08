@@ -62,5 +62,13 @@ log_events:
     count covered several independent targets on PR132 and is not this joined run.
     PR133 body, plan and verification now use exact123+32 counts; no test rerun or
     behavior change.'
+- time: 2026-09-08T20:28:07-00:00
+  who: Ted Smith
+  what: commented
+  comment: PR133 updated onto ROOT-cleared merged master c5563a6a and retargeted master,
+    pushed ddb55d2. Conflict-free rebase, all eight authored patches identical; final
+    New-agent composer/launchWorkspace and generation effort/purpose/registration
+    recovery preserved. No new model/GUI/test cycle or shared adoption. Prior proof
+    attribution and two open follow-ups unchanged; recovery branch retained.
 blocks:
 - swarm-close-working-loop
