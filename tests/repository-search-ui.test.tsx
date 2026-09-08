@@ -84,11 +84,11 @@ describe("keyboard file search palette", () => {
   it("keeps commands/exact-path mode and distinguishes unavailable, empty and partial", () => {
     const props = { query: "same", onQuery: vi.fn(), exact: false, commands: [], inputRef: createRef<HTMLInputElement>(), focusLabel: "source", onCancel: vi.fn(), onOpen: vi.fn() };
     const view = render(<FileSearchPalette {...props} search={{ loading: false, result: result("same", { paths: [], complete: false }), refresh: vi.fn() }} />);
-    expect(screen.getByText(/does not prove the file is absent/)).toBeTruthy();
+    expect(screen.getByText(/No match in the files searched so far/)).toBeTruthy();
     view.rerender(<FileSearchPalette {...props} search={{ loading: false, error: "Git unavailable", refresh: vi.fn() }} />);
-    expect(screen.getByText(/Search unavailable: Git unavailable/)).toBeTruthy(); expect(screen.queryByText(/No matching eligible/)).toBeNull();
+    expect(screen.getByText(/Search unavailable: Git unavailable/)).toBeTruthy(); expect(screen.queryByText(/No matching file in the last scan/)).toBeNull();
     view.rerender(<FileSearchPalette {...props} search={{ loading: false, result: result("same", { paths: [] }), refresh: vi.fn() }} />);
-    expect(screen.getByText(/No matching eligible file in this captured inventory/)).toBeTruthy();
+    expect(screen.getByText(/No matching file in the last scan/)).toBeTruthy();
     const run = vi.fn();
     view.rerender(<FileSearchPalette {...props} exact commands={[{ label: "Open path", detail: "exact", run }]} search={{ loading: false, refresh: vi.fn() }} />);
     fireEvent.keyDown(screen.getByRole("textbox", { name: "Exact repository path" }), { key: "Enter" }); expect(run).toHaveBeenCalledTimes(1);
@@ -99,7 +99,7 @@ describe("keyboard file search palette", () => {
       focusLabel="source" onCancel={() => {}} onOpen={() => {}} search={{ loading: false, result: result(), refresh }} />; }
     render(<Harness />);
     await act(async () => { await vi.advanceTimersByTimeAsync(5001); });
-    expect(screen.getByText(/Stale · complete/)).toBeTruthy(); expect(refresh).not.toHaveBeenCalled();
+    expect(screen.getByText(/Needs refresh · complete/)).toBeTruthy(); expect(refresh).not.toHaveBeenCalled();
   });
   it("returns focus to the input on explicit Refresh so arrows and Enter still work", () => {
     const inputRef = createRef<HTMLInputElement>(), open = vi.fn();

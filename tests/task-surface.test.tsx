@@ -186,8 +186,8 @@ describe("explicit task detail", () => {
     render(<TaskDetail {...props} />);
     expect(screen.getByText("docs/architecture.md:2")).toBeTruthy();
     expect(screen.getByText("../outside")).toBeTruthy();
-    expect(screen.getByText(/Unsupported source reference/)).toBeTruthy();
-    expect(screen.getByText(/Opens current working file; link recorded at metadata/)).toBeTruthy();
+    expect(screen.getByText(/Cannot open this link/)).toBeTruthy();
+    expect(screen.getByText(/Links open current working files, which may have moved or been deleted/)).toBeTruthy();
     expect(screen.getAllByRole("button", { name: /^Reveal working file/ })).toHaveLength(1);
     fireEvent.click(screen.getByRole("button", { name: "Reveal working file docs/architecture.md at line 2" }));
     expect(props.onReveal).toHaveBeenCalledExactlyOnceWith(props.detail!.fileRefs[0]);
@@ -200,8 +200,8 @@ describe("explicit task detail", () => {
     const snapshot = { ...observedTasks().snapshot!, metadataCommit: { ...TASK_FIXTURE_COMMIT, hex: "c".repeat(40) } };
     const props = detailProps({ snapshot });
     render(<TaskDetail {...props} />);
-    expect(screen.getByText("Task not present in this revision. Selection is retained.")).toBeTruthy();
-    expect(screen.getByText("Retained details from the labelled metadata revision; not confirmed current.")).toBeTruthy();
+    expect(screen.getByText("This task is missing from the current revision.")).toBeTruthy();
+    expect(screen.getByText("Showing saved task details. Refresh to check for updates.")).toBeTruthy();
     expect(screen.getAllByText(`sha1:${"a".repeat(40)}`)).toHaveLength(2);
     expect(screen.queryByText(`sha1:${"c".repeat(40)}`)).toBeNull();
     expect(props.onSelect).not.toHaveBeenCalled();
@@ -221,7 +221,7 @@ describe("explicit task detail", () => {
 
   it("can retain current-revision details but explicitly mark them unconfirmed after a core change", () => {
     render(<TaskDetail {...detailProps({ detailStale: true, notice: "CORE_UNAVAILABLE: Connection ended." })} />);
-    expect(screen.getByText("Retained details from the labelled metadata revision; not confirmed current.")).toBeTruthy();
+    expect(screen.getByText("Showing saved task details. Refresh to check for updates.")).toBeTruthy();
     expect(screen.getByText(/CORE_UNAVAILABLE/)).toBeTruthy();
   });
 

@@ -33,16 +33,16 @@ export function GithubPullRequests({ state, onOpenSource }: { state: GithubPrSta
   return <section className="github-prs" aria-label="GitHub pull requests">
     <header><div><h3>Pull requests</h3><p>{observation ? observation.githubRepository : "Opened repository · GitHub origin"}</p></div>
       <button onClick={() => void refresh()} disabled={busy} aria-label="Refresh pull requests">{busy ? "Fetching…" : "Refresh PRs"}</button></header>
-    {notice ? <p role="status" className="github-pr-notice">{observation ? "Retained · " : ""}{notice}</p> : null}
-    {!observation && !notice ? <p className="github-pr-empty">{busy ? "Reading GitHub…" : "Refresh to read pull requests. Nothing is fetched automatically."}</p> : null}
-    {observation ? <><p className="github-pr-coverage">{stale ? "Retained observation" : "Fetched from GitHub"} · {new Date(observation.observedAt).toLocaleString()} · up to 20 recent PRs, all states</p>
+    {notice ? <p role="status" className="github-pr-notice">{observation ? "Showing previous results. " : ""}{notice}</p> : null}
+    {!observation && !notice ? <p className="github-pr-empty">{busy ? "Reading GitHub…" : "Choose Refresh PRs to load pull requests."}</p> : null}
+    {observation ? <><p className="github-pr-coverage">{stale ? "Previous results" : "Fetched from GitHub"} · {new Date(observation.observedAt).toLocaleString()} · up to 20 recent PRs, all states</p>
       {!observation.pullRequests.length ? <p className="github-pr-empty">No pull requests</p> : <ol>{observation.pullRequests.map((pr) => <li key={pr.number}><details>
         <summary><span className={`github-pr-state github-pr-${pr.state.toLowerCase()}`}>{pr.isDraft && pr.state === "OPEN" ? "Draft" : pr.state.toLowerCase()}</span><strong>{pr.title}</strong><span>#{pr.number}</span></summary>
         <div className="github-pr-detail"><p>{pr.author} · updated {new Date(pr.updatedAt).toLocaleString()}</p><p className="github-pr-url">{pr.url}</p>
           <p>{pr.changedFiles} changed files{pr.paths.length < pr.changedFiles ? ` · showing ${pr.paths.length}` : ""}</p>
-          <div className="journal-paths">{pr.paths.map((path) => <button key={path} onClick={() => onOpenSource(path)} title="Open working file; PR bytes may differ or the file may be absent">Open working file · {path}</button>)}</div>
+          <div className="journal-paths">{pr.paths.map((path) => <button key={path} onClick={() => onOpenSource(path)} title="Open the current working file, not the PR version. The file may have moved or been deleted.">Open working file · {path}</button>)}</div>
         </div></details></li>)}</ol>}
-      <details className="journal-provenance"><summary>PR coverage</summary><p>Read-only GitHub observation, not a build or review verdict. File paths come from each PR; buttons open current working files, not PR revisions. Deleted or branch-only files may be unavailable. No task or agent relationship is inferred.</p></details>
+      <details className="journal-provenance"><summary>PR coverage</summary><p>These PR details come from GitHub. File links open your current working copy, not the PR version; deleted or branch-only files may be unavailable.</p></details>
     </> : null}
   </section>;
 }

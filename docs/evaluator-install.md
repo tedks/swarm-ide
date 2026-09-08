@@ -4,7 +4,7 @@ This is the supported **Linux/Nix source-checkout path**, not a standalone
 downloadable application. Start with Swarm's own repository to see its checked-in
 plans, tasks, service example and recorded logical-change story. Then follow the
 [connected walkthrough](demo.md). No model account is needed for its browsing,
-preparation and recorded-Activity path. Optional **Codex · trusted local** launch
+preparation and saved Activity summaries. Optional **Codex · trusted local** launch
 uses an existing installed account; the isolated read-only profile remains
 unavailable.
 
@@ -29,7 +29,7 @@ namespace facilities used by owned subprocesses. Do not use `sudo`,
 The repository is private during prototyping: your GitHub account needs an
 explicit grant of access and working Git authentication. The commands below use
 SSH; an already-authenticated HTTPS clone is also suitable. A repository-not-found
-or permission error is an access problem, not an instruction to make it public.
+or permission error means you should check access with the sender.
 Initial Nix and pnpm dependency downloads require network access, disk space and
 time. This rehearsal reused download caches; no cold-install duration is promised.
 
@@ -54,11 +54,11 @@ every test or building every proof is **not required to open the demo**.
 
 Leave that terminal running. You should get a native Swarm IDE window with
 **Directory**, graph tabs and a source area. Open **Ctrl-K → Open repository
-path**, enter `README.md`, and press Enter to open actual checkout bytes.
+path**, enter `README.md`, and press Enter to open the file.
 Expand **Tasks** and choose **Refresh tasks** to read the local metadata branch.
 Follow the [tour](demo.md) for plans, graph relationships, task context and
-Activity. External agent observations are optional and require deliberate private
-registration; an empty observer is not a broken installation.
+Activity. To follow existing agent sessions, register them using the optional
+[session helper](session-registration.md). The list is empty until you do.
 
 ### Optional accounts: execution and GitHub PRs
 
@@ -67,18 +67,17 @@ normally configured/authenticated Codex available in the IDE launch PATH (or set
 the documented `SWARM_CODEX_BIN` executable path). Open a source-file agent draft,
 optionally attach a task, and use **Prepare trusted-local context → review exact
 prompt → permission confirmation → Launch trusted-local Codex**. It inherits
-normal configuration, tools and approvals; no account is copied or additional
-autonomy enabled. The run list and **New conversation** support up to eight live
+normal configuration, tools and approvals. The run list and **New conversation** support up to eight live
 conversations, each with its own message composer and controls. Up to twenty
-records retain bounded output, activity and admitted task links. Core restart
-archives prior conversations without automatic resume or replay; it does not
+saved conversations keep recent output, activity and attached task links. Core restart
+archives prior conversations without automatically resuming them; it does not
 mark their tasks complete. See [execution and limitations](trusted-local-execution.md).
 
 To inspect PRs, make ordinary `gh` available in the same launch environment and
 authenticate normally with `gh auth login`. In **Recent Activity → Activity log →
 Pull requests**, choose **Refresh PRs**. The opened checkout needs a supported
-github.com origin; this is a bounded explicit read, not a background GitHub or CI
-sync. See [PR scope and custom-XDG configuration](logical-changelog.md#github-pull-requests).
+github.com origin. PRs are fetched when you choose Refresh, not in the background.
+See [PR scope and custom-XDG configuration](logical-changelog.md#github-pull-requests).
 Do not paste account files or tokens into the IDE. Recorded summaries do not
 require GitHub authentication and are not generated live when you open them.
 
@@ -112,9 +111,8 @@ Bazel declaration query with its own supported-root and runtime limits.
 Use repositories whose tooling you trust. Opening an external target does not
 automatically run its topology build. **Build** explicitly executes build tooling;
 opening **Build graph**, enabling **Build links**, or inspecting a file's Context
-build targets requests an observation that can query repository-controlled Bazel
-definitions. Those operations are not an untrusted
-code sandbox. A successful query is not evidence of successful compilation.
+build targets can load repository-controlled Bazel definitions. These operations
+run with local permissions. A query reads build declarations without compiling them.
 
 ## Tasks and metadata
 
@@ -127,8 +125,8 @@ For an existing checkout, first check `git show-ref --verify
 refs/heads/ditz-metadata`. If the branch is absent and its origin publishes this
 format, run the same fetch there. If the branch already exists, do not force-fetch
 over it; contributors reconcile through [Ditz sync](../AGENTS.md#issue-tracking-ditz).
-Refresh tasks explicitly after metadata changes. A missing, malformed or stale
-branch means unavailable/limited evidence, not zero tasks.
+Refresh tasks after metadata changes. If the branch is missing, malformed or
+stale, the IDE will show why its task list is unavailable or incomplete.
 
 The Ditz CLI is **not required to read** existing tasks. To author or reconcile
 them, the repository documents `nix run github:tedks/ditz -- <command>` and the
@@ -139,7 +137,7 @@ tool download, not part of the pinned Swarm flake or this installation proof.
 
 Save any edits with Ctrl-S before Ctrl-C in the launch terminal. Rerun the same
 launch command to reopen the same repository. To select a different repo, stop
-and relaunch with `--workspace`; there is no promise of an in-app project picker.
+and relaunch with `--workspace`; there is no in-app project picker yet.
 For an update, inspect `git status` first and preserve your work, then pull an
 appropriate reviewed revision, rerun the frozen install and desktop-bundle build,
 and relaunch. Never reset the checkout just to make an update succeed.
@@ -160,11 +158,11 @@ Do not kill all Electron/Bazel processes or delete global caches to stop one dem
 | `EADDRINUSE` / cannot listen | Pick another `SWARM_DEV_PORT`; leave the existing listener alone. |
 | Workspace rejected | Pass the committed working-tree root, with correct quoting; check `git -C "/path/to/repo" rev-parse --show-toplevel`. |
 | No display / sandbox or namespace denial | Run on the supported logged-in Linux/X11 host; report the exact host error instead of disabling safety controls. Headless verification below needs no physical desktop. |
-| Empty or unavailable Tasks | Check the local metadata branch in the selected repo, then Refresh tasks. Do not infer that there is no work. |
-| Build/service evidence unavailable or retained | Check its scope and diagnostic; use deliberate refresh/build only for trusted repos. Swarm's service example is not a universal detector. |
-| No external agents | [Register known sessions](session-registration.md) deliberately. Observation is read-only until an explicit checked Send; it is not a managed launch. See [external sessions](demo-agents.md). |
+| Empty or unavailable Tasks | Check the local metadata branch in the selected repo, then Refresh tasks. |
+| Build/service information unavailable or out of date | Read the view's explanation, then refresh or build if you trust the repo. Swarm's service extractor currently supports its own example. |
+| No external agents | [Register existing sessions](session-registration.md) to follow their output and see available message controls. See [external sessions](demo-agents.md). |
 | Trusted-local launch unavailable | Check installed Codex in the launch PATH, its normal account/configuration and the reported ownership-tool error. Prepare from a source-file draft, review and explicitly confirm. See [execution](trusted-local-execution.md); do not bypass host controls. |
-| Launch read-only run disabled | This is the separate isolated profile's unverified policy gate, not trusted-local availability. |
+| Launch read-only run disabled | The isolated profile is not available. Use Codex · trusted local with your normal account and permissions. |
 | GitHub PRs unavailable | Check the opened checkout's github.com origin and normal `gh` login/configuration, then explicitly Refresh PRs. See [PR limits](logical-changelog.md#github-pull-requests). |
 
 When reporting an installation failure, include the command, short `git rev-parse

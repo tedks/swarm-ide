@@ -34,7 +34,7 @@ function AttachmentReview({ state, client }: { state: LiveAgentState; client: Ag
     <p>Fixed source: {displayAgentText(proposal.focus.path ?? proposal.focus.key)}{proposal.focus.range ? ` · lines ${proposal.focus.range.startLine}–${proposal.focus.range.endLine}` : ""}. Disk only; unsaved edits are not included.</p>
     <TaskPin reference={proposal.reference} />
     <strong className="agent-task-preview-title">{displayAgentText(proposal.title)}</strong><pre className="agent-task-preview-description">{displayAgentText(proposal.description)}</pre>
-    <p>Read-only preview; core verifies at Prepare. Control characters below use display escaping; no text is rewritten.</p>
+    <p>Task preview. Prepare checks the saved task again. Invisible control characters are shown as escapes.</p>
     <details><summary>Exact instructions before and after</summary>
       <p>Before ({taskUtf8Bytes(proposal.instructions)} UTF-8 bytes):</p><pre>{displayAgentText(proposal.instructions)}</pre>
       <p>{keepLabel}: every instruction character above is retained; {proposal.replacing ? "the existing task slot is replaced" : "one task slot is added"}.</p>
@@ -65,28 +65,28 @@ export function PreparedLaunchDraft({ state, client, dirtyPaths, previewCurrent 
     <AttachmentReview state={state} client={client} />
     <header><strong>Launch draft</strong><button type="button" aria-label="Close launch draft" onClick={() => client.closeDraft()}>×</button></header>
     <p className="agent-context-path">{displayAgentText(draft.focus.path ?? draft.focus.key)}</p>
-    <p>Focus captured when opened; navigation does not retarget this draft.</p>
+    <p>This draft stays attached to the source you opened it from.</p>
     <label>Task<textarea autoFocus={!draft.taskReference} rows={3} value={draft.task} maxLength={AGENT_LIMITS.taskBytes} onChange={(event) => client.editDraft({ task: event.target.value })} /></label>
     {draft.taskReference ? <section className="agent-task-slot" aria-label="Attached repository task">
       <h3>Attached repository task · read-only</h3><TaskPin reference={draft.taskReference} />
-      <p>Preview from metadata {draft.taskReference.metadataCommit.hex}; core verifies at Prepare.</p>
-      {!(previewCurrent ?? draft.taskPreview?.verified) ? <p>Retained preview; not confirmed in this connection. Refresh tasks and inspect the pin. Core always verifies independently.</p> : null}
+      <p>Task revision {draft.taskReference.metadataCommit.hex}. Prepare checks this saved revision again.</p>
+      {!(previewCurrent ?? draft.taskPreview?.verified) ? <p>Showing a saved preview. Refresh tasks to check its revision; Prepare will verify it again.</p> : null}
       {draft.taskPreview ? <><strong className="agent-task-preview-title">{displayAgentText(draft.taskPreview.title)}</strong><pre className="agent-task-preview-description">{displayAgentText(draft.taskPreview.description)}</pre></> : <p>Preview unavailable; the reference is retained.</p>}
-      <p>Preview is untrusted metadata, not editable instructions or permission. Only the reference is sent to Prepare.</p>
-      {previewBytes !== null ? <p>Instructions and task preview: {Number.isFinite(previewBytes) ? previewBytes : "invalid"} / {TASK_CONTEXT_BYTES} UTF-8 bytes including the exact envelope.</p> : null}
+      <p>The attached task is read-only context. It does not replace your instructions or grant permissions.</p>
+      {previewBytes !== null ? <p>Instructions and task preview: {Number.isFinite(previewBytes) ? previewBytes : "invalid"} / {TASK_CONTEXT_BYTES} UTF-8 bytes including formatting.</p> : null}
       <button type="button" data-task-attachment="remove" onClick={() => client.removeTaskAttachment()}>Remove attached task</button>
     </section> : null}
     <label>Requested model<input placeholder="Provider default (unresolved)" value={draft.model} maxLength={256} onChange={(event) => client.editDraft({ model: event.target.value })} /></label>
     <label>Requested reasoning<select disabled aria-describedby="agent-reasoning-unavailable"><option>Provider default; not selectable</option></select></label>
-    <p id="agent-reasoning-unavailable">Reasoning controls are unavailable until model-specific support is verified. No reasoning override is sent.</p>
+    <p id="agent-reasoning-unavailable">This profile uses the provider's default reasoning setting.</p>
     <p>Disk version only; unsaved edits are not included.</p>
     {dirtyPaths.length ? <p className="agent-gap" role="note">Unsaved or unresolved buffers: {dirtyPaths.map(displayAgentText).join(", ")}. Save and prepare again to include those changes.</p> : null}
     <button className="agent-primary" disabled={!state.connected || draft.preparing || !inputValid}>{draft.preparing ? "Preparing disk context…" : "Prepare disk context"}</button>
-    {!inputValid ? <p role="alert">Use a working-world focus, instructions or one attached task, and a model within UTF-8 limits. Instructions plus the exact task envelope must fit 16 KiB. Built/deployed focus needs explicit working-world mapping.</p> : null}
+    {!inputValid ? <p role="alert">Choose a working source, add instructions or a task, and keep the combined request within 16 KiB. The model name must also fit its text limit.</p> : null}
     <p className="agent-draft-notice" role="status">{state.notice}</p>
     {prepared ? <>
       <LaunchContextView context={prepared.launchContext} />
-      <p>Prepared {prepared.preparedAt}; expires {prepared.expiresAt}. Inputs are revalidated by the core at launch.</p>
+      <p>Prepared {prepared.preparedAt}; expires {prepared.expiresAt}. Launch checks the inputs again.</p>
       <p>Policy: {prepared.capabilities.policy}. {prepared.capabilities.reason ? `${prepared.capabilities.reason.code}: ${displayAgentText(prepared.capabilities.reason.message)}` : "Verified limited policy reported by core."}</p>
       <label className="agent-confirm"><input type="checkbox" checked={draft.confirmed} onChange={(event) => client.confirmDraft(event.target.checked)} />I inspected this context and read scope</label>
       <button className="agent-primary" type="button" disabled={launchBlocked} onClick={() => { void client.launch(); }}>Launch read-only run</button>

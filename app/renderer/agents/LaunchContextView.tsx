@@ -4,7 +4,7 @@ import { displayAgentText } from "./live-state";
 function Sources({ title, sources }: { title: string; sources: LaunchContext["instructionSources"] }) {
   return <details>
     <summary>{title} ({sources.length})</summary>
-    <p>These are recorded observations, not a reconstruction of the provider's complete expanded context.</p>
+    <p>Sources recorded for this run. The provider may load additional context.</p>
     {sources.length === 0 ? <p>No sources recorded.</p> : sources.map((source, index) => <div key={`${source.path}-${index}`}>
       <p>{displayAgentText(source.path)} · {source.observation}</p>
       <p>Digest: {source.digest ?? "unobserved"}<br />Before: {source.before ?? "unobserved"}<br />After: {source.after ?? "unobserved"}</p>
@@ -15,15 +15,15 @@ function Sources({ title, sources }: { title: string; sources: LaunchContext["in
 export function LaunchContextView({ context }: { context: LaunchContext }) {
   const focus = context.focus;
   return <div className="agent-launch-context">
-    <p>Disk version; unsaved edits not included. This records the submitted context, not a frozen filesystem.</p>
-    <p>Requested access: read-only · tool network disabled · approvals never. Availability and verified policy are reported separately by the core. This is not a host confidentiality sandbox: files readable by the local account may be accessible. Selected content is sent to the configured model service. Use trusted local projects and trusted harness configuration.</p>
+    <p>Prepared disk version; unsaved edits are not included. Files may have changed since preparation.</p>
+    <p>Requested access: read-only · tool network disabled · no approvals. Check the run's policy status to see whether these restrictions were verified. The harness may still read other files accessible to your account. Selected content is sent to the configured model service; use trusted projects and harness settings.</p>
     <p className="agent-context-path">Root: {displayAgentText(context.root)}<br />Repository: {displayAgentText(context.repositoryId)}<br />World: {displayAgentText(context.worldId)}<br />HEAD: {context.head ?? "unobserved"}<br />Working fingerprint: {context.workingFingerprint}<br />Context hash: {context.contextHash}</p>
     <p className="agent-context-path">Launch focus: {focus.domain} · {displayAgentText(focus.path ?? focus.key)}<br />Key: {displayAgentText(focus.key)}<br />Revision: {focus.revisionKind} · {displayAgentText(focus.revisionId)}{focus.symbol ? <><br />Symbol: {displayAgentText(focus.symbol)}</> : null}{focus.range ? <><br />Lines: {focus.range.startLine}–{focus.range.endLine}</> : null}</p>
-    <p>Requested model: {context.requested.model === null ? "provider default (unresolved)" : displayAgentText(context.requested.model)}<br />Requested reasoning: {context.requested.effort === null ? "provider default (unresolved)" : displayAgentText(context.requested.effort)}. Requested settings are not provider observations.</p>
-    <details><summary>Task and links</summary><pre>{displayAgentText(context.taskText)}</pre><p>Parent run: {context.links.parentRunId ?? "none"}<br />Task link: {context.links.task === null ? "none" : displayAgentText(context.links.task)}<br />Spec link: {context.links.spec === null ? "none" : displayAgentText(context.links.spec)}. Links do not add access or attach their contents.</p></details>
-    {!("contextVersion" in context) ? <p>Legacy context; no structured task provenance recorded.</p> : context.repositoryTask ? <details>
+    <p>Requested model: {context.requested.model === null ? "provider default (not reported)" : displayAgentText(context.requested.model)}<br />Requested reasoning: {context.requested.effort === null ? "provider default (not reported)" : displayAgentText(context.requested.effort)}. The provider's actual settings are shown separately when available.</p>
+    <details><summary>Task and links</summary><pre>{displayAgentText(context.taskText)}</pre><p>Parent run: {context.links.parentRunId ?? "none"}<br />Task link: {context.links.task === null ? "none" : displayAgentText(context.links.task)}<br />Spec link: {context.links.spec === null ? "none" : displayAgentText(context.links.spec)}. Linked content is not automatically attached.</p></details>
+    {!("contextVersion" in context) ? <p>No repository-task details were saved for this older run.</p> : context.repositoryTask ? <details>
       <summary>Recorded repository task · immutable</summary>
-      <p>Original core materialization, not current Ditz state. Metadata {context.repositoryTask.reference.metadataCommit.algorithm}:{context.repositoryTask.reference.metadataCommit.hex}<br />
+      <p>Task content submitted for this run; Ditz may have changed since then. Metadata {context.repositoryTask.reference.metadataCommit.algorithm}:{context.repositoryTask.reference.metadataCommit.hex}<br />
         Issue blob {context.repositoryTask.reference.issueBlob.algorithm}:{context.repositoryTask.reference.issueBlob.hex}<br />
         UTF-8 bytes: {context.repositoryTask.bytes} · SHA-256: {context.repositoryTask.digest}</p>
       <pre>{displayAgentText(context.repositoryTask.content)}</pre>
