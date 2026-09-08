@@ -11,8 +11,8 @@ An operator selects an agent and explores its registered checkout without replac
 - [x] 2026-09-08: inspect current file broker and agree bounded ownership.
 - [x] 2026-09-08: Add typed read-only directory/change listing and master comparison.
 - [x] 2026-09-08: Add standalone browser and publish the small App seam.
-- [ ] Prove two owned worktrees, retained editor, focused checks and native review.
-- [ ] Push ready PR, document outcomes and sync Ditz.
+- [x] 2026-09-08: Prove two owned worktrees, retained editor, focused checks and native review.
+- [x] 2026-09-08: Push ready PR, document outcomes and sync Ditz; ROOT owns landing and the conversation owner owns the normal App mount.
 
 ## Assumptions and boundaries
 
@@ -50,7 +50,7 @@ Keep the old route backward compatible and add browser-specific data rather than
 
 ## Outcomes & Retrospective
 
-The standalone explorer and typed routes are implemented. Initial 32 checks and both TypeScript boundaries passed; rename/focus corrections passed 33 checks. Native fix-delta review is CLEAN. The ordinary App entry remains the conversation owner's independent mount, while this slice proves the actual browser and core through a labelled controlled renderer wrapper. Whole graph rebinding and editable agent checkouts remain deferred.
+The standalone explorer and typed routes are implemented. Final 34 checks and both TypeScript boundaries passed in 16.4 seconds, including a held-Git cancellation at 4.025 seconds. Native fix-delta review is CLEAN. The corrected owned X11 proof passed in 1.422 seconds of browser interaction (2.613 seconds whole harness) with two actual linked worktrees, committed+dirty master diffs, original CodeMirror text/cursor/DOM and graph cameras retained, zero renderer errors or write requests, and unchanged source/index bytes. Its first wrapper-control obstruction remains in separate failure evidence. The ordinary App entry remains the conversation owner's independent mount. Whole graph rebinding and editable agent checkouts remain deferred.
 
 ## Artifacts and Notes
 

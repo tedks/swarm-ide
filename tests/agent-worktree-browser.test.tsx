@@ -62,6 +62,8 @@ describe("agent worktree browser", () => {
     fireEvent.click(screen.getByRole("button", { name: "modified src/main.ts" }));
     await screen.findByText("Changes against origin/master, including committed and local edits.");
     expect(screen.getByRole("button", { name: "Worktree diff" }).getAttribute("aria-pressed")).toBe("true");
+    fireEvent.click(screen.getByRole("button", { name: "Close file" }));
+    expect(screen.getByText("Explore this agent’s worktree")).toBeTruthy();
   });
   it("fences late worktree replies and resets navigation on agent change", async () => {
     let release!: (result: CoreResponse) => void, held!: CoreRequest;

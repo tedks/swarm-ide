@@ -6,9 +6,9 @@ import { WorktreeInspectionRequestSchema, type WorktreeInspectionResult } from "
 export interface WorktreeSelection { sessionId: string; path: string; patch?: string; previousPath?: string }
 
 /** Inspection never enters the editable buffer store or sends a write request. */
-export function WorktreeInspection({ selection, bridge, generation, onReturn, comparison, initialView }: {
+export function WorktreeInspection({ selection, bridge, generation, onReturn, comparison, initialView, returnLabel = "Return to source" }: {
   selection: WorktreeSelection; bridge: SwarmBridge | undefined; generation: number; onReturn(): void;
-  comparison?: "master"; initialView?: "source" | "diff";
+  comparison?: "master"; initialView?: "source" | "diff"; returnLabel?: string;
 }) {
   const [result, setResult] = useState<WorktreeInspectionResult | null>(null);
   const [notice, setNotice] = useState("");
@@ -37,7 +37,7 @@ export function WorktreeInspection({ selection, bridge, generation, onReturn, co
   const diff = view === "patch" ? selection.patch ?? "" : shown?.diff ?? "";
   return <section className="worktree-inspection" aria-label="Agent worktree file">
     <header><div><small>{shown?.label ?? "Agent worktree"} · read-only</small><h2 ref={heading} tabIndex={-1}>{selection.path}</h2></div>
-      <button onClick={onReturn}>Return to source</button></header>
+      <button onClick={onReturn}>{returnLabel}</button></header>
     {shown ? <p className="worktree-location" title={shown.worktree}>{shown.worktree}</p> : null}
     <nav aria-label="Worktree file views"><button aria-pressed={view === "source"} onClick={() => setView("source")}>Source</button>
       {selection.patch ? <button aria-pressed={view === "patch"} onClick={() => setView("patch")}>Recorded patch</button> : null}

@@ -71,7 +71,7 @@ function Browser({ sessionId, bridge, generation, onReturn, initialPath }: {
       </> : null}
     </aside><main>
       {selected ? <WorktreeInspection key={`${sessionId}:${selected.path}:${selected.previousPath ?? ""}:${selected.diff}:${refresh}`} selection={{ sessionId, path: selected.path, previousPath: selected.previousPath }}
-        bridge={bridge} generation={generation} comparison="master" initialView={selected.diff ? "diff" : "source"} onReturn={() => setSelected(null)} />
+        bridge={bridge} generation={generation} comparison="master" initialView={selected.diff ? "diff" : "source"} returnLabel="Close file" onReturn={() => setSelected(null)} />
         : <div className="worktree-empty"><h2>Explore this agent’s worktree</h2><p>Open a directory, file, or change. Your original workspace stays where you left it.</p></div>}
     </main></div>
   </section>;
