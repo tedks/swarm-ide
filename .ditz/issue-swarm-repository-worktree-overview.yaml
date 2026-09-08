@@ -6,8 +6,8 @@ type: feature
 component: default
 release:
 reporter: Ted Smith <tedks@riseup.net>
-status: in_progress
-disposition:
+status: closed
+disposition: fixed
 creation_time: 2026-09-08T13:39:20-00:00
 references: []
 log_events:
@@ -51,5 +51,12 @@ log_events:
     and packaged Back/Forward are proved. Reviewed target builds are joined per root.
     Follow-ups separately track master landing timeline/comparison refresh, cross-repository
     expansion, selected-root native preparation and idle contexts.
+- time: 2026-09-08T19:02:12-00:00
+  who: Ted Smith
+  what: 'closed: fixed'
+  comment: Implemented and locally reviewed ordinary registered worktree exploration,
+    owner/branch/master comparison and matched observed PR links in ready PR128; broader
+    landing timeline and automatic comparison refresh split to swarm-worktree-landed-timeline.
+    ROOT owns merge/adoption.
 blocks:
 - swarm-close-working-loop
