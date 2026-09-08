@@ -26,5 +26,14 @@ log_events:
   who: Ted Smith
   what: started
   comment: ""
+- time: 2026-09-08T18:15:41-00:00
+  who: Ted Smith
+  what: commented
+  comment: Implemented selected-conversation-first tie scheduling and start-based
+    1s/3s read intervals in PR125. Slow reads no longer add a full extra wait; one
+    transport lane, bounded fleet fairness and existing selection/recovery/visibility
+    guards remain. Actual owned transcript append is observed automatically. 148 focused
+    tests and both types pass; native review clean. No sender, model or managed app
+    change. Ready for ROOT normal landing; issue remains in progress until merged.
 blocks:
 - swarm-close-working-loop
