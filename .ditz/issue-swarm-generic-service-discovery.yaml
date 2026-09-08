@@ -22,5 +22,15 @@ log_events:
   who: Ted Smith
   what: started
   comment: ""
+- time: 2026-09-08T20:00:22-00:00
+  who: Ted Smith
+  what: commented
+  comment: Implemented automatic read-only Compose/native service declarations with
+    source Context/navigation; removed shipped fixed example/extractor. Actual packaged
+    edit/declaration opening preserved dirty source/cursor/camera in 1047ms on owned
+    X11, zero renderer errors and cleanup. Read-only real probes found Swarm1 and
+    PureSky3 services/two startup edges with unchanged Git status. Focused124 tests/types
+    and neutral43 checks pass. Native review convergence and final docs/harness cleanup
+    underway; ROOT owns landing.
 blocks:
 - swarm-close-working-loop
