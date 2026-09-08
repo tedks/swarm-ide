@@ -5,6 +5,7 @@ import { TaskTrustedRuns } from "../app/renderer/tasks/TaskTrustedRuns";
 import { TaskContext, type TaskContextProps } from "../app/renderer/tasks/TaskContext";
 import { selectedTaskRunDetail, taskRunStatus, taskTrustedRuns, type TaskRunScope, type TaskTrustedRun, type TaskTrustedSnapshot } from "../app/renderer/tasks/trusted-runs";
 import { taskDetailFixture, taskObservationFixture, TASK_FIXTURE_COMMIT } from "../fixtures/tasks";
+import { TrustedSnapshotSchema } from "../protocol/trusted-local";
 
 afterEach(cleanup);
 const taskSnapshot = taskObservationFixture().snapshot!;
@@ -19,6 +20,16 @@ function snapshot(runs: TaskTrustedRun[], selected = runs[0]): TaskTrustedSnapsh
     taskReference: selected?.taskReference ?? null, output: "Explicitly admitted task output", archived: selected?.archived ?? false,
     activities: [{ id: "event-1", at: "2026-09-07T19:01:00Z", turnId: "turn-1", kind: "command", status: "completed", summary: "Checked the task implementation" }] };
 }
+
+it("consumes the cleared runtime-validated snapshot without a second wire schema", () => {
+  const linked = run();
+  const parsed = TrustedSnapshotSchema.parse({ ...snapshot([linked]), profile: "trusted-local", workspace: "/controlled/repo",
+    preparation: null, status: "ready", threadId: "thread-1", turnId: null, message: "Ready", approvals: [] });
+  render(<TaskTrustedRuns scope={scope} observation={{ snapshot: parsed, retained: false }} connected onOpen={vi.fn()} />);
+  expect(screen.getByText("Explicitly admitted task output")).toBeTruthy();
+  expect(screen.getByRole("button", { name: "Open trusted conversation Review this task" })).toBeTruthy();
+  expect(TrustedSnapshotSchema.safeParse({ ...parsed, runs: [{ ...linked, taskReference: { ...linked.taskReference, taskId: null } }] }).success).toBe(false);
+});
 
 it("requires admitted world/repository/task identity; titles and drafts grant no association", () => {
   const linked = run(), ref = linked.taskReference!;

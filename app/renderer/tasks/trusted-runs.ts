@@ -1,36 +1,12 @@
 import { sameAgentTaskReference, type AgentTaskReference } from "../../../protocol/agent-task";
-import type { TrustedSnapshot } from "../../../protocol/trusted-local";
+import type { TrustedActivity, TrustedRunSummary, TrustedSnapshot } from "../../../protocol/trusted-local";
 
-/** Presentation-only subsets of the fleet contract. Callers must use the
- * runtime-validated core observation; these types never parse or accept IPC. */
-export interface TaskTrustedRun {
-  runToken: string;
-  title: string;
-  createdAt: string;
-  updatedAt: string;
-  status: TrustedSnapshot["status"];
-  archived: boolean;
-  approvalCount: number;
-  taskReference: AgentTaskReference | null;
-  message: string;
-}
-export interface TaskTrustedActivity {
-  id: string;
-  at: string;
-  turnId: string | null;
-  kind: "command" | "fileChange" | "tool" | "turn";
-  status: "running" | "completed" | "failed";
-  summary: string;
-}
-export interface TaskTrustedSnapshot {
-  instanceId: string;
-  runToken: string | null;
-  output: string;
-  runs?: readonly TaskTrustedRun[];
-  taskReference?: AgentTaskReference | null;
-  activities?: readonly TaskTrustedActivity[];
-  archived?: boolean;
-}
+/** Presentation-only subset of the ROOT-cleared runtime contract. Callers
+ * pass the validated core observation; this view never accepts raw IPC. */
+export type TaskTrustedRun = TrustedRunSummary;
+export type TaskTrustedActivity = TrustedActivity;
+export type TaskTrustedSnapshot = Pick<TrustedSnapshot,
+  "instanceId" | "runToken" | "output" | "runs" | "taskReference" | "activities" | "archived">;
 export interface TaskTrustedObservation {
   snapshot: TaskTrustedSnapshot | null;
   retained: boolean;
