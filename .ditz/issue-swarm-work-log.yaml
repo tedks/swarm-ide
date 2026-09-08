@@ -1,10 +1,11 @@
 id: swarm-work-log
-title: Summarize accomplishments and persist completed Ditz notes
-desc: 'K7: Configurable online summary worker default Codex gpt-5.6-luna, registered
-  roster and incremental meaningful-event batches. Understandable completed outcomes,
-  active/completed sessions, persistent repo Work Log and idempotent Ditz completion
-  comments. Explicit start/stop, no model per tool, do not equate process exit with
-  completed task. One real bounded summary proof. docs/swarm-operator-hour.md.'
+title: Summarize accomplishments and save Ditz notes for completed work
+desc: 'K7: Build a configurable online summary worker, defaulting to Codex gpt-5.6-luna,
+  that uses a registered roster and processes new meaningful events in batches. Show
+  understandable completed outcomes and active/completed sessions. Keep a persistent
+  repo Work Log and add idempotent Ditz completion comments. Provide explicit start/stop
+  controls. Do not make a model call for every tool event, and do not equate process
+  exit with task completion. Verify one real summary within a limited scope. See docs/swarm-operator-hour.md.'
 type: task
 component: default
 release:
@@ -62,6 +63,14 @@ log_events:
     Work Log outcomes with agent/task links and idempotent completed-task Ditz notes.
     One actual model call and disposable Ditz readback verified. Cockpit mounting
     remains in swarm-operator-cockpit.'
+- time: 2026-09-08T04:31:59-00:00
+  who: Ted Smith
+  what: changed title
+  comment: ""
+- time: 2026-09-08T04:31:59-00:00
+  who: Ted Smith
+  what: updated description
+  comment: ""
 blocks:
 - swarm-operator-demo
 blocked_by:
