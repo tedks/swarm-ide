@@ -1,0 +1,20 @@
+id: swarm-task-reader-count
+title: Load task lists beyond the old 256-issue prototype cap
+desc: The real Swarm repository now has 263 Ditz issues totaling about 494 KB. TASK_LIMITS.issues=256
+  rejects the entire task observation despite small data. Remove this arbitrary count
+  rejection consistently through the reader/parser/schema while retaining byte, timeout
+  and metadata integrity controls. Prove >256 issues, actual repo read, retained task
+  selections and automatic ref refresh; no pagination platform or unrelated UI redesign.
+type: bugfix
+component: default
+release:
+reporter: Ted Smith <tedks@riseup.net>
+status: unstarted
+disposition:
+creation_time: 2026-09-08T14:56:28-00:00
+references: []
+log_events:
+- time: 2026-09-08T14:56:28-00:00
+  who: Ted Smith
+  what: created
+  comment: ""
