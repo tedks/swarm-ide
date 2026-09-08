@@ -25,3 +25,13 @@ log_events:
     repository/revision-pinned graph selection and recorded BUILD declaration paths.
     PR101 2ce9dbb; 60 focused tests and both typechecks pass, native review CLEAN.
     Conversation owner will mount the callbacks before actual packaged proof.
+- time: 2026-09-08T06:34:48-00:00
+  who: Ted Smith
+  what: commented
+  comment: 'Accomplished: direct and transitive Context targets now reveal exact observed
+    graph nodes and open the recorded BUILD or BUILD.bazel declaration. Actual packaged
+    Git/Bazel native-click proof passed 9.910s, zero renderer errors, cleanup complete,
+    dirty source/cursor and independent graphs retained. PR101 producer 2ce9dbb is
+    included in reviewed PR103 App mount 62a8f14; PR101 is stacked above PR103 for
+    final proof/docs. Fresh joined local targets and native review pass. Implementation
+    ready; ROOT normal landing/adoption remains. Compact overlay follow-up: swarm-compact-target-reveal.'
