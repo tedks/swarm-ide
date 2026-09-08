@@ -5,7 +5,7 @@ type: feature
 component: default
 release:
 reporter: Ted Smith <tedks@riseup.net>
-status: unstarted
+status: in_progress
 disposition:
 creation_time: 2026-09-08T13:28:44-00:00
 references: []
@@ -25,5 +25,9 @@ log_events:
     an existing tmux server/session. Preserve same running agents and worktree context;
     provide terminal fallback without a duplicate resume or ending agents when IDE
     exits. Reuse checked registration and navigation. Scoped details: /tmp/swarm-ide-usability.BirZCk/project-tmux-feedback.md.'
+- time: 2026-09-08T13:32:48-00:00
+  who: Ted Smith
+  what: started
+  comment: ""
 blocks:
 - swarm-usability-pass
