@@ -57,10 +57,12 @@
 /* Tasks get the first screenful; provenance remains keyboard-accessible below. */
 .task-panel .task-heading { margin-bottom: 3px; }
 .task-panel .task-heading button { padding: 2px 6px; }
-.task-panel .task-panel-statusline.is-current { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0 4px; }
-.task-panel .task-panel-statusline.is-current .task-heading { order: 1; }
-.task-panel .task-panel-statusline.is-current .task-heading, .task-panel .task-panel-statusline.is-current .task-observation { margin: 0; }
-.task-panel .task-panel-statusline.is-current .task-heading button { font-size: 9px; }
+.task-panel .task-panel-statusline.is-compact { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0 4px; }
+.task-panel .task-panel-statusline.is-compact .task-heading { order: 1; }
+.task-panel .task-panel-statusline.is-compact .task-heading, .task-panel .task-panel-statusline.is-compact .task-observation { margin: 0; }
+.task-panel .task-panel-statusline.is-compact .task-heading button { font-size: 9px; }
+.task-panel[data-task-refresh="background"] .task-heading button:disabled { opacity: 1; }
+.task-panel[data-task-refresh="background"] .task-heading button:disabled:hover { background: #18382c; }
 .task-panel .task-observation { margin: 3px 0; gap: 2px; font-size: 9px; }
 .task-panel .task-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; margin: 4px 0; }
 .task-panel .task-search { flex: 1 1 90px; min-width: 0; margin: 0; }
