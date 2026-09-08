@@ -6,3 +6,23 @@ sh_test(
     data = ["//:quality_sources"],
     tags = ["local"],
 )
+
+filegroup(
+    name = "live-sources",
+    srcs = ["live.ts", "build-live.sh", "live-smoke.sh"],
+)
+
+genrule(
+    name = "live-bundle",
+    srcs = ["build-live.sh", ":live-sources", "//:quality_sources", "//:package.json"],
+    outs = ["live-proof.cjs"],
+    cmd = "bash $(location build-live.sh) $@ $(location //:package.json)",
+    tags = ["manual", "local"],
+)
+
+sh_binary(
+    name = "live-smoke",
+    srcs = ["live-smoke.sh"],
+    data = [":live-bundle", "//:quality_sources"],
+    tags = ["manual"],
+)

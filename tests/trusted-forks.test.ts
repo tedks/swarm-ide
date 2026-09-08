@@ -5,7 +5,8 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { PROTOCOL_VERSION, uncertainMutationCode } from "../protocol/schema";
+import { PROTOCOL_VERSION, uncertainMutationCode, parseCoreResponseForRequest } from "../protocol/schema";
+import { initialSnapshot } from "../fixtures/world";
 import { TrustedRequestSchema, TrustedRunSummarySchema, type TrustedRequest } from "../protocol/trusted-local";
 import { TrustedLocalService, type TrustedLocalOptions } from "../core/agents/trusted-local";
 import { MemoryTrustedLocalStore } from "../core/agents/trusted-local-store";
@@ -61,6 +62,23 @@ describe("typed native fork boundary", () => {
       status: "starting", archived: false, approvalCount: 0, taskReference: null, message: "Forking",
       fork: { parentRunToken: parent, parentThreadId: "parent", parentTurnId: "completed", sharedWorkspace: true, inheritedTaskReference: null, confirmed: false } });
     expect(parsed).toHaveProperty("fork.parentRunToken", parent);
+  });
+  it("correlates the response to both child and exact pinned parent, not the parent selection", async () => {
+    const f = await fixture(), request = f.fork(); if (request.type !== "trusted.fork") throw new Error("fixture");
+    const snapshot = await f.service.request(request);
+    const response = { protocolVersion: PROTOCOL_VERSION, requestId: request.requestId, sequence: 1, ok: true, snapshot: initialSnapshot(), trusted: { kind: "trusted", snapshot } };
+    expect(parseCoreResponseForRequest(response, request).ok).toBe(true);
+    const changed = (update: Record<string, unknown>) => ({ ...response, trusted: { kind: "trusted", snapshot: { ...snapshot, ...update } } });
+    expect(() => parseCoreResponseForRequest(changed({ runToken: f.parent }), request)).toThrow("identity mismatch");
+    expect(() => parseCoreResponseForRequest(changed({ instanceId: randomUUID() }), request)).toThrow("parent mismatch");
+    expect(() => parseCoreResponseForRequest(changed({ runs: snapshot.runs!.map((run) => run.fork ? { ...run, fork: { ...run.fork, parentTurnId: "other" } } : run) }), request)).toThrow("parent mismatch");
+  });
+  it("rejects malformed persisted self-parent or falsely confirmed thread identity", async () => {
+    const f = await fixture(); await f.service.request(f.fork());
+    const rows = await f.store.load(), child = rows[1]!;
+    const malformed = new MemoryTrustedLocalStore();
+    await expect(malformed.save([{ ...child, summary: { ...child.summary, fork: { ...child.summary.fork!, parentRunToken: child.summary.runToken } } }])).rejects.toThrow("correlation");
+    await expect(malformed.save([{ ...child, threadId: child.summary.fork!.parentThreadId }])).rejects.toThrow("correlation");
   });
 });
 
