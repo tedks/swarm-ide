@@ -9,8 +9,8 @@ type: feature
 component: default
 release:
 reporter: Ted Smith <tedks@riseup.net>
-status: in_progress
-disposition:
+status: closed
+disposition: fixed
 creation_time: 2026-09-08T05:30:17-00:00
 references: []
 log_events:
@@ -33,3 +33,10 @@ log_events:
     Activity/Send/backend change. Focused116 tests and both typechecks PASS after4
     behavior RED; native CLEAN including living docs/build mapping. Ready for ROOT
     normal landing, no app adoption.'
+- time: 2026-09-08T05:48:37-00:00
+  who: Ted Smith
+  what: 'closed: fixed'
+  comment: Merged PR97 as95fc2c2 and adopted in managed :0/55176 through renderer
+    HMR. Older sessions and subtree disclosure preserve newest-first lineage, selected
+    ancestry and manual refresh-stable choices.116 focused tests plus both typechecks
+    passed; native review CLEAN. No Activity/Send/backend changes; no GUI/model rerun.
