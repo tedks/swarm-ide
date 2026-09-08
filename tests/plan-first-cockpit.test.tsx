@@ -46,6 +46,23 @@ it("starts on one Plan home, retains Code access and removes empty/jargon chrome
   expect(screen.queryByRole("region", { name: "Recent activity" })).toBeNull();
 });
 
+it("observes build context on the ready Plan home without starting a service build or requiring a graph click", async () => {
+  vi.spyOn(document, "hasFocus").mockReturnValue(true);
+  vi.spyOn(document, "visibilityState", "get").mockReturnValue("visible");
+  const request = bridge(); render(<App />);
+  await waitFor(() => expect(request.mock.calls.some(([input]) => input.type === "buildGraph.observe" && !input.refresh)).toBe(true));
+  expect(screen.getByRole("region", { name: "Planning workspace" })).toBeTruthy();
+  const before = request.mock.calls.filter(([input]) => input.type === "buildGraph.observe").length;
+  const lenses = screen.getByRole("navigation", { name: "Workspace lenses" });
+  fireEvent.click(within(lenses).getByRole("button", { name: "Code" }));
+  fireEvent.click(within(lenses).getByRole("button", { name: "Plan" }));
+  expect(request.mock.calls.filter(([input]) => input.type === "buildGraph.observe")).toHaveLength(before);
+  expect(request.mock.calls.some(([input]) => input.type === "reconciliation.start")).toBe(false);
+  expect(screen.queryByRole("button", { name: /Build topology/ })).toBeNull();
+  fireEvent.click(screen.getByText("⋯"));
+  expect(document.querySelector(".topology-actions button")?.textContent).toBe("Refresh build graph");
+});
+
 it("keeps dirty source, cursor, graph instances and watches through Plan/Code and a same-file plan link", async () => {
   const request = bridge(); render(<App />);
   fireEvent.click(await screen.findByRole("button", { name: "Open plan implementation" }));

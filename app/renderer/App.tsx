@@ -5,7 +5,6 @@ import {
   type CoreRequest,
   type FileEvent,
   type FocusRef,
-  type ReconciliationStatus,
 } from "../../protocol/schema";
 import { applyCoreEvent, emptyWorkspaceState, loadSnapshot, type WorkspaceState } from "./state";
 import { EditorPane, type EditorMemory, type SourceLineNavigation } from "./EditorPane";
@@ -53,7 +52,6 @@ import { RepositoryNavigation } from "./repository/RepositoryNavigation";
 import { FileSearchPalette } from "./repository/FileSearchPalette";
 import { useFileSearch } from "./repository/file-search";
 import type { RepositorySearchRequest } from "../../protocol/repository-search";
-import { useStartupTopology } from "./startup-topology";
 import { WorkbenchSidebar } from "./WorkbenchSidebar";
 import { TopologyViews, type BuildTargetSelection } from "./repository/BuildGraphPane";
 import { resolveBazelReference } from "./bazel-reference";
@@ -108,10 +106,6 @@ interface HotWorkbench {
 }
 // Fast Refresh can remount a component (for example after a hook is added)
 // without beforeunload. Its module data survives that replacement, unlike hooks.
-
-function statusLabel(status: ReconciliationStatus): string {
-  return { gray: "Not built yet", yellow: "Updating", green: "Up to date", red: "Build failed" }[status];
-}
 
 function focusLabel(focus: FocusRef): string {
   return focus.symbol ?? focus.path?.split("/").at(-1) ?? focus.key.split(":").at(-1) ?? focus.key;
@@ -1103,10 +1097,11 @@ export function App() {
   const serviceIdentity = JSON.stringify([snapshot?.project.id, snapshot?.world.id, coreGenerationRef.current, publication?.status,
     publication?.status === "observed" ? [publication.buildId, publication.sourceFingerprint, publication.inputDigest, publication.artifactUri, publication.observedAt] : publication?.reason]);
   const serviceIndex = useMemo(() => indexService(publication), [serviceIdentity]);
-  const [buildGraphVisible, setBuildGraphVisible] = useState(false), [directoryBuildVisible, setDirectoryBuildVisible] = useState(false);
+  const [, setBuildGraphVisible] = useState(false), [, setDirectoryBuildVisible] = useState(false);
   const contextSubject = attention.realm === contextRealm() ? attention.subject : null;
   const buildGraph = useBuildGraph(snapshot?.project.id, snapshot?.world.id, contextRealm(),
-    (activeLens !== "Plan" && (buildGraphVisible || directoryBuildVisible) || !agentContextVisible && contextSubject?.kind === "file") && (!window.swarmLifecycle || lifecycle?.core.phase === "ready"));
+    Boolean(snapshot) && observedCoreGeneration === coreGenerationRef.current && (!window.swarmLifecycle || lifecycle?.core.phase === "ready"),
+    { changeToken: snapshot?.revisions.working.fingerprint });
   const buildLinks = useMemo(() => buildGraphLinks(buildGraph.observation), [buildGraph.observation]);
   const openContextBuildTarget = (target: { topologyId: string; id: string }) => {
     const current = workspaceRef.current.snapshot;
@@ -1116,6 +1111,17 @@ export function App() {
     setBuildTargetSelection({ id: target.id, repositoryId: buildLinks.repositoryId, revision: buildLinks.revision, nonce: ++navigationIntent.current });
     chooseLens("Code");
     setCompactPanel(null);
+  };
+  const openPlanBuildTarget = (label: string) => {
+    const current = workspaceRef.current.snapshot;
+    chooseLens("Code"); setCompactPanel(null); setShowBuildVersion((version) => version + 1);
+    if (!current || buildGraph.observation?.status !== "current" || buildLinks?.repositoryId !== current.project.id || buildGraph.observation.worldId !== current.world.id) {
+      setError("The build graph is not ready yet. Refresh it to locate this target."); return;
+    }
+    if (!buildLinks.targets?.some((target) => target.label === label && target.kind === "rule")) {
+      setError(`This repository's current build graph does not contain ${label}.`); return;
+    }
+    setBuildTargetSelection({ id: label, repositoryId: buildLinks.repositoryId, revision: buildLinks.revision, nonce: ++navigationIntent.current });
   };
   const openEditorReference = (path: string, reference: string): boolean => {
     const current = workspaceRef.current.snapshot;
@@ -1177,7 +1183,9 @@ export function App() {
   const hasOpenDocument = Boolean(activeFile || taskDocumentOpen || journalOpen || worktreeSelection || worktreeBrowserSession || workLogEntry);
   useEffect(() => { if (hasOpenDocument && !textWasOpen.current) setGraphReframe((n) => n + 1); textWasOpen.current = hasOpenDocument; }, [hasOpenDocument]);
   const reconciliationRunning = snapshot?.jobs.some((job) => job.kind === "build" && job.status === "running") ?? false;
-  const title = snapshot ? statusLabel(snapshot.reconciliation.status) : "Loading";
+  const buildContextStatus = buildGraph.observation?.status;
+  const title = buildContextStatus ? { current: "Build graph current", refreshing: "Updating build graph", stale: "Updating build graph", error: "Build graph failed", unavailable: "No build graph" }[buildContextStatus] : "Build context";
+  const buildContextColor = buildContextStatus === "current" ? "green" : buildContextStatus === "error" ? "red" : buildContextStatus === "refreshing" || buildContextStatus === "stale" ? "yellow" : "gray";
   const coreUnavailable = Boolean(window.swarmLifecycle && lifecycle?.core.phase !== "ready");
   const lifecycleNotice = lifecycle?.reload === "pending" ? "Preload refresh pending — resolve protected file buffers and local agent intent to apply it." : lifecycle?.core.phase !== "ready" ? lifecycle?.core.message : lifecycle?.notice;
   const lifecycleTitle = import.meta.env.DEV && lifecycle ? ` — Core ${lifecycle.core.generation}:${lifecycle.core.phase} — Doc ${Math.round(performance.timeOrigin)} — Reload ${lifecycle.reload}${lifecycle.notice.includes("Build failed") ? " — Build failed" : ""}${lifecycle.notice.includes("restart required") ? " — Restart required" : ""}` : "";
@@ -1276,11 +1284,6 @@ export function App() {
     return invoke({ type: "reconciliation.start", requestId: requestId(), protocolVersion: PROTOCOL_VERSION, mode: "success" });
   }, [invoke]);
 
-  const startupReconcile = useCallback(() => { void invoke({ type: "reconciliation.start", requestId: requestId(), protocolVersion: PROTOCOL_VERSION, mode: "success" }); }, [invoke]);
-  useStartupTopology({ snapshot, coreGeneration: coreGenerationRef.current, observedCoreGeneration,
-    ready: Boolean(window.swarm) && !coreUnavailable, restoredDocument: Boolean(restoredNavigation),
-    automatic: import.meta.env.SWARM_AUTOMATIC_TOPOLOGY !== false }, startupReconcile);
-
   const commands = useMemo(() => palettePathMode ? [
     { label: "Open path", detail: "Exact repository-relative file path · not filename search", run: () => { setPaletteOpen(false); openLinkedFile(commandQuery); } },
   ] : [
@@ -1322,7 +1325,7 @@ export function App() {
           <button className="zoom-value" aria-label={zoomPercent === null ? "Reset zoom to 100%. Current zoom unknown" : `Reset zoom to 100%. Current zoom ${zoomPercent}%`} title="Reset zoom (Ctrl+0)" onClick={() => void resetZoom()}>{zoomPercent === null ? "—" : `${zoomPercent}%`}</button>
           <button aria-label="Zoom in" title="Zoom in (Ctrl+=)" aria-disabled={zoomPercent === INTERFACE_ZOOM_LEVELS.at(-1)} onClick={() => { if (zoomPercent !== INTERFACE_ZOOM_LEVELS.at(-1)) void zoomIn(); }}>+</button>
         </div>
-        <div className={`global-truth status-${snapshot.reconciliation.status}`}><i />{title}</div>
+        <div className={`global-truth status-${buildContextColor}`}><i />{title}</div>
         <div className="compact-panel-controls" aria-label="Compact cockpit panels">
           <button aria-label="Toggle work panel" aria-controls="work-panel" aria-expanded={compactPanel === "work"} onClick={() => setCompactPanel((panel) => panel === "work" ? null : "work")}>Work{agentIntentProtected ? " · local intent" : ""}</button>
           <button aria-label="Toggle information panel" aria-controls="information-panel" aria-expanded={compactPanel === "info"} onClick={() => setCompactPanel((panel) => panel === "info" ? null : "info")}>Information</button>
@@ -1347,7 +1350,10 @@ export function App() {
         <div className="field-toolbar">
           <div><span className="eyebrow">central navigation</span><strong>{workLogEntry ? `Work Log · ${workLogEntry.agent}` : designVisible ? "System design" : worktreeVisible ? worktreeSelection?.path : journalVisible ? "Activity log" : textDocumentVisible ? tasks.detail?.title ?? "Task document" : activeFile?.path ?? focusLabel(snapshot.focus)}</strong><small tabIndex={0}>{workLogEntry ? "What was accomplished" : designVisible ? "Architecture in the repository" : worktreeVisible ? "Agent worktree · read-only" : activeFile ? `${activeFile.status} · ${activeFile.message}` : snapshot.focus.domain}</small></div>
           {!designVisible ? <button className="design-open-button" onClick={showDesign}>System plan</button> : null}
-          <button id="reconcile-success" className="build-button" onClick={() => void reconcile()} disabled={reconciliationRunning || coreUnavailable}>▶ Build topology</button>
+          <details className="topology-actions"><summary aria-label="Build and refresh actions" title="Build and refresh actions">⋯</summary><div>
+            <button disabled={coreUnavailable} onClick={() => { void buildGraph.refresh(); }}>Refresh build graph</button>
+            <button id="reconcile-success" onClick={() => void reconcile()} disabled={reconciliationRunning || coreUnavailable}>Build service topology</button>
+          </div></details>
         </div>
         {textOpen ? <OverflowStrip className="surface-tabs-strip" label="document tabs" activeKey={workLogEntry?.id ?? (designVisible ? "design" : worktreeVisible ? `worktree:${worktreeSelection?.path}` : journalVisible ? "journal" : textDocumentVisible ? "task" : activeSurface)}><nav className="surface-tabs" aria-label="Document tabs">
           {workLogEntry ? <div className="surface-tab active"><span className="surface-tab-main">Work Log · {workLogEntry.agent}</span><button className="surface-tab-close" aria-label="Close work log outcome" onClick={() => setWorkLogEntry(null)}>×</button></div> : null}
