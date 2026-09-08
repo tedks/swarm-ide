@@ -30,6 +30,17 @@ Codex `gpt-5.6-luna`. It should write deduplicated Ditz accomplishment notes thr
 the CLI. That online producer is prospective until integrated. F7 supplies the
 separate granular whole-fleet Activity stream.
 
+K7's proposed pipeline is concrete: known registered transcript tails → meaningful
+turn boundaries → one summary → human outcome entries in `.swarm/work-log.json`.
+Its planned modules are `protocol/work-log.ts`, `core/work-log/*` and
+`app/renderer/work-log/WorkLogPanel`. The panel offers explicit Start/Stop and
+configuration; reading its state alone must not launch a model. An explicit
+Record outcome action appends an idempotent Ditz comment to a known completed
+issue; it does not close worker issues. Private transcript bytes remain local.
+This is a small producer over the registered roster, not another fleet platform.
+These module names describe K7's integration seam, not files present in this
+baseline; promote them to source links when that implementation lands.
+
 ## Build connections
 
 The listed modules feed `//:quality_sources` and `//:desktop-bundle`.
@@ -38,6 +49,10 @@ The listed modules feed `//:quality_sources` and `//:desktop-bundle`.
 `//tools/demo-journal:smoke` for its packaged evidence journey.
 Real summaries and controlled transcript fixtures must remain distinguishable in
 verification without covering the normal UI in diagnostic prose.
+
+The proposed Work Log modules use the same root source/bundle targets. Its
+dedicated `//tools/work-log:check` target is forthcoming and is not yet a current
+build-graph node in this design index.
 
 See [logical changelog](../logical-changelog.md) for saved-report behavior and
 [the operator plan](../swarm-operator-hour.md) for the new online Work Log.
