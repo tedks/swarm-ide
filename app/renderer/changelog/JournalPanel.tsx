@@ -4,6 +4,7 @@ import { ChangelogRequestSchema, entryEvidence, type ChangelogResult } from "../
 import "./journal.css";
 import { GithubPullRequests, type GithubPrState } from "./GithubPullRequests";
 import { ActivityTime } from "../ActivityTime";
+import { useTabOrder } from "../use-tab-order";
 
 const kinds = { "git-observation": "Git", "agent-report": "Agent report", "recorded-check": "Check result",
   "recorded-artifact": "Recorded artifact", synthetic: "Synthetic evidence" };
@@ -65,6 +66,8 @@ export function JournalPanel({ open, state, selectedEntry, selectionVersion = 0,
   const { observation, notice, busy } = state;
   const [filter, setFilter] = useState("");
   const [view, setView] = useState<"activity" | "changes" | "prs">(liveContent ? "activity" : "changes");
+  const viewKeys: Array<"activity" | "changes" | "prs"> = [...(liveContent ? ["activity" as const] : []), "changes", ...(pullRequests ? ["prs" as const] : [])];
+  const viewOrder = useTabOrder(viewKeys);
   const body = useRef<HTMLDivElement>(null);
   const heading = useRef<HTMLHeadingElement>(null);
   const [pendingEntry, setPendingEntry] = useState<string | null>(null);
@@ -96,7 +99,7 @@ export function JournalPanel({ open, state, selectedEntry, selectionVersion = 0,
   return <section className="journal-panel" aria-label="Activity log" hidden={!open} data-journal-digest={observation?.document.inputDigest ?? ""}>
     <header className="journal-header"><div><h2 ref={heading} tabIndex={-1}>Activity log</h2></div>
       <div className="journal-controls"><button onClick={() => void reader?.refresh()} disabled={!reader || reader.busy || (view === "activity" && liveState?.observing === false)} aria-label={refreshLabel}>{reader?.busy ? "Reading…" : "Refresh"}</button><button onClick={onClose} aria-label="Close logical changes">×</button></div></header>
-    {pullRequests || liveContent ? <nav className="journal-view-tabs" aria-label="Activity views">{liveContent ? <button aria-pressed={view === "activity"} onClick={() => { setView("activity"); setPendingEntry(null); onActivityOverview?.(); }}>Activity</button> : null}<button aria-pressed={view === "changes"} onClick={() => setView("changes")}>Saved summaries</button>{pullRequests ? <button aria-pressed={view === "prs"} onClick={() => { setView("prs"); setPendingEntry(null); }}>Pull requests</button> : null}</nav> : null}
+    {pullRequests || liveContent ? <nav className="journal-view-tabs" aria-label="Activity views">{viewOrder.ordered.map((key) => <button key={key} {...viewOrder.props(key)} aria-pressed={view === key} onClick={() => { setView(key); if (key !== "changes") setPendingEntry(null); if (key === "activity") onActivityOverview?.(); }}>{key === "activity" ? "Activity" : key === "changes" ? "Saved summaries" : "Pull requests"}</button>)}</nav> : null}
     <div className="journal-body" ref={body}>
       {pullRequests ? <div hidden={view !== "prs"}><GithubPullRequests state={pullRequests} onOpenSource={onOpenSource} /></div> : null}
       {liveContent ? <div hidden={view !== "activity"}>

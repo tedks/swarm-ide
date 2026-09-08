@@ -7,6 +7,7 @@ import "./plans.css";
 import "./workspace.css";
 import { DesignWorkspace, type DesignWorkspaceParts } from "./DesignWorkspace";
 import { usePlanNavigation } from "./navigation";
+import { useTabOrder } from "../use-tab-order";
 
 export function PlanWorkspace({ visible, worldId, repositoryId, generation, connected, tasks, client, onOpenFile, onOpenTask, onOpenBuild, initialView = "design", renderWorkspace, documentVisible, onOpenDesign, restoreSelection, onSelectComponent }: {
   visible: boolean; worldId: string; repositoryId: string; generation: number; connected: boolean; tasks: TaskClientState;
@@ -20,6 +21,7 @@ export function PlanWorkspace({ visible, worldId, repositoryId, generation, conn
   onSelectComponent?: (id: string) => void;
 }) {
   const [view, setView] = useState(initialView);
+  const viewOrder = useTabOrder(["design", "plans", "tasks"] as const);
   const baseNavigation = usePlanNavigation({ visible: visible && view !== "tasks", worldId, repositoryId, generation, connected });
   const restored = useRef<number | undefined>(undefined);
   useEffect(() => {
@@ -34,9 +36,7 @@ export function PlanWorkspace({ visible, worldId, repositoryId, generation, conn
     onOpenTask={(id) => { const snapshot = tasks.observation?.snapshot; if (snapshot) void onOpenTask(snapshot, id); }} />;
   return <section className="planning-field" aria-label="Planning workspace" hidden={!visible}>
     <nav className="planning-tabs" aria-label="Planning projections">
-      <button aria-pressed={view === "design"} onClick={() => setView("design")}>System design</button>
-      <button aria-pressed={view === "plans"} onClick={() => setView("plans")}>Plans & components</button>
-      <button aria-pressed={view === "tasks"} onClick={() => setView("tasks")}>Task blockage</button>
+      {viewOrder.ordered.map((key) => <button key={key} {...viewOrder.props(key)} aria-pressed={view === key} onClick={() => setView(key)}>{key === "design" ? "System design" : key === "plans" ? "Plans & components" : "Task blockage"}</button>)}
     </nav>
     <PlanHierarchy worldId={worldId} repositoryId={repositoryId} generation={generation} connected={connected} tasks={tasks}
       visible={visible && view === "plans"} onOpenFile={onOpenFile} onOpenTask={onOpenTask} navigation={navigation} />

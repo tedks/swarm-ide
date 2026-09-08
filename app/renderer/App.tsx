@@ -78,6 +78,7 @@ import { WorktreeInspection, type WorktreeSelection } from "./WorktreeInspection
 import { FleetActivityView, type SelectedActivity } from "./FleetActivityView";
 import { WorkLogPanel, WorkLogEntryDetail, useWorkLog, type WorkLogEntry } from "./work-log/WorkLogPanel";
 import { OverflowStrip } from "./OverflowStrip";
+import { useTabOrder } from "./use-tab-order";
 import { ActivityTime } from "./ActivityTime";
 import { workspaceBridge } from "./workspace-bridge";
 import type { WorkspaceDescriptor } from "../../protocol/workspace";
@@ -1351,6 +1352,15 @@ export function App() {
   const textDocumentVisible = !workLogOpen && !journalVisible && !worktreeVisible && !designVisible && taskDocumentVisible;
   const textOpen = Boolean(!overviewVisible && activeFile || designVisible || textDocumentVisible || journalVisible || worktreeVisible || workLogOpen);
   const hasOpenDocument = Boolean(fileTabs.length || designVisible || taskDocumentOpen || journalOpen || worktreeSelection || worktreeBrowserSession || workLogOpen);
+  const surfaceKeys = [
+    ...(designVisible ? ["design"] : []),
+    ...(workLogOpen ? [`worklog:${workLogEntryId ?? "open"}`] : []),
+    ...(worktreeSelection || worktreeBrowserSession ? [`worktree:${worktreeSelection?.path ?? "browse"}`] : []),
+    ...(journalOpen ? ["journal"] : []),
+    ...fileTabs.map((tab) => `file:${tab.path}`),
+    ...(taskDocumentOpen ? ["task"] : []),
+  ];
+  const surfaceOrder = useTabOrder(surfaceKeys);
   const reconciliationRunning = snapshot?.jobs.some((job) => job.kind === "build" && job.status === "running") ?? false;
   const buildContextStatus = buildGraph.observation?.status;
   const title = buildContextStatus ? { current: "Build graph current", refreshing: "Updating build graph", stale: "Build graph needs refresh", error: "Build graph failed", unavailable: "No build graph" }[buildContextStatus] : "Build context";
@@ -1531,12 +1541,15 @@ export function App() {
           </div></details>
         </div>
         {hasOpenDocument ? <OverflowStrip className="surface-tabs-strip" label="document tabs" activeKey={workLogEntryId ?? (designVisible ? "design" : worktreeVisible ? `worktree:${worktreeSelection?.path}` : journalVisible ? "journal" : textDocumentVisible ? "task" : activeSurface)}><nav className="surface-tabs" aria-label="Document tabs">
-          {designVisible ? <div className="surface-tab active"><span className="surface-tab-main">Design</span><button className="surface-tab-close" aria-label="Close design document" onClick={() => setDesignVisible(false)}>×</button></div> : null}
-          {workLogOpen ? <div className="surface-tab active"><span className="surface-tab-main">Work Log · {workLogEntry?.agent ?? "Outcome"}</span><button className="surface-tab-close" aria-label="Close work log outcome" onClick={() => setWorkLogEntry(null)}>×</button></div> : null}
-          {worktreeSelection || worktreeBrowserSession ? <div className={`surface-tab ${worktreeVisible ? "active" : ""}`}><button className="surface-tab-main" onClick={() => { setWorkLogEntry(null); setDesignVisible(false); setWorktreeVisible(true); setJournalVisible(false); setTaskDocumentVisible(false); }}>Worktree · {worktreeSelection?.path.split("/").at(-1) ?? "Browse"}</button><button className="surface-tab-close" aria-label="Close worktree inspection" onClick={() => { setWorktreeVisible(false); setWorktreeSelection(null); setWorktreeBrowserSession(null); }}>×</button></div> : null}
-          {journalOpen ? <div className={`surface-tab ${journalVisible ? "active" : ""}`}><button className="surface-tab-main" onClick={() => showJournal()}>Activity log</button><button className="surface-tab-close" aria-label="Close activity document" onClick={() => { setJournalOpen(false); setJournalVisible(false); }}>×</button></div> : null}
-          {fileTabs.map((tab) => <div key={tab.path} className={`surface-tab ${activeFile?.path === tab.path && !textDocumentVisible && !journalVisible && !worktreeVisible && !designVisible && !workLogOpen ? "active" : ""}`}><button className="surface-tab-main" onClick={() => activateFile(tab.path)} title={tab.path}><span className={`tab-state status-${tab.status}`}>{tab.status === "dirty" ? "●" : tab.status === "saving" ? "◌" : tab.status === "conflict" || tab.status === "error" ? "!" : "◇"}</span>{tab.path.split("/").at(-1)}</button><button className="surface-tab-close" aria-label={`Close ${tab.path}`} onClick={() => closeFile(tab.path)}>×</button></div>)}
-          {taskDocumentOpen ? <div className={`surface-tab ${textDocumentVisible ? "active" : ""}`}><button className="surface-tab-main" onClick={() => { setTaskDocumentVisible(true); inspectTask(tasks.selectedTaskId); }} title={tasks.selectedTaskId ?? "Task"}>▤ {tasks.detail?.title ?? "Task document"}</button><button className="surface-tab-close" aria-label="Close task document" onClick={closeTaskDocument}>×</button></div> : null}
+          {surfaceOrder.ordered.map((key) => {
+            if (key === "design") return <div key={key} className="surface-tab active"><span {...surfaceOrder.props(key)} className="surface-tab-main">Design</span><button className="surface-tab-close" aria-label="Close design document" onClick={() => setDesignVisible(false)}>×</button></div>;
+            if (key.startsWith("worklog:")) return <div key={key} className="surface-tab active"><span {...surfaceOrder.props(key)} className="surface-tab-main">Work Log · {workLogEntry?.agent ?? "Outcome"}</span><button className="surface-tab-close" aria-label="Close work log outcome" onClick={() => setWorkLogEntry(null)}>×</button></div>;
+            if (key.startsWith("worktree:")) return <div key={key} className={`surface-tab ${worktreeVisible ? "active" : ""}`}><button {...surfaceOrder.props(key)} className="surface-tab-main" onClick={() => { setWorkLogEntry(null); setDesignVisible(false); setWorktreeVisible(true); setJournalVisible(false); setTaskDocumentVisible(false); }}>Worktree · {worktreeSelection?.path.split("/").at(-1) ?? "Browse"}</button><button className="surface-tab-close" aria-label="Close worktree inspection" onClick={() => { setWorktreeVisible(false); setWorktreeSelection(null); setWorktreeBrowserSession(null); }}>×</button></div>;
+            if (key === "journal") return <div key={key} className={`surface-tab ${journalVisible ? "active" : ""}`}><button {...surfaceOrder.props(key)} className="surface-tab-main" onClick={() => showJournal()}>Activity log</button><button className="surface-tab-close" aria-label="Close activity document" onClick={() => { setJournalOpen(false); setJournalVisible(false); }}>×</button></div>;
+            if (key === "task") return <div key={key} className={`surface-tab ${textDocumentVisible ? "active" : ""}`}><button {...surfaceOrder.props(key)} className="surface-tab-main" onClick={() => { setTaskDocumentVisible(true); inspectTask(tasks.selectedTaskId); }} title={tasks.selectedTaskId ?? "Task"}>▤ {tasks.detail?.title ?? "Task document"}</button><button className="surface-tab-close" aria-label="Close task document" onClick={closeTaskDocument}>×</button></div>;
+            const tab = fileTabs.find((candidate) => `file:${candidate.path}` === key);
+            return tab ? <div key={key} className={`surface-tab ${activeFile?.path === tab.path && !textDocumentVisible && !journalVisible && !worktreeVisible && !designVisible && !workLogOpen ? "active" : ""}`}><button {...surfaceOrder.props(key)} className="surface-tab-main" onClick={() => activateFile(tab.path)} title={tab.path}><span className={`tab-state status-${tab.status}`}>{tab.status === "dirty" ? "●" : tab.status === "saving" ? "◌" : tab.status === "conflict" || tab.status === "error" ? "!" : "◇"}</span>{tab.path.split("/").at(-1)}</button><button className="surface-tab-close" aria-label={`Close ${tab.path}`} onClick={() => closeFile(tab.path)}>×</button></div> : null;
+          })}
         </nav></OverflowStrip> : null}
         <PlanWorkspace visible worldId={snapshot.world.id} repositoryId={snapshot.project.id}
           generation={coreGenerationRef.current} connected={!coreUnavailable && Boolean(window.swarm)} tasks={tasks} client={taskClient}
