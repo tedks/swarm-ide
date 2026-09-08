@@ -1,176 +1,145 @@
 # Swarm IDE
 
-A Linux-first development cockpit: navigate a repository, inspect the context
-around a file or service, and prepare and steer a focused agent conversation.
-Source, design, tasks, and instructions stay with the repository; separate views
-help you move between them without losing your place.
+A Linux-first cockpit for understanding a codebase and steering the agents working
+on it. Design, source, tasks and instructions stay in the repository. Coordinated
+graphs, conversations and contextual tools let you move between them without
+losing your place.
 
-This prototype browses and edits real repositories, reads Ditz tasks and their
-dependencies, navigates authored plans, queries Bazel build graphs, and prepares
-source context for agents. **Codex · trusted local** runs conversations using your
-installed Codex account, configuration, tools and approvals. You can also
-register existing terminal sessions to follow their output and send messages
-through their running harness.
-
-The Activity log includes saved summaries of how Swarm was built. Example metrics
-and rehearsal runs are labelled separately. The isolated read-only execution
-profile is not available; use trusted local execution to run Codex. Start with
-[installation and troubleshooting](docs/evaluator-install.md), then the
-[connected walkthrough](docs/demo.md).
-
-## Current controls
-
-- Click a task to open its central document and Context metadata, recorded update
-  log and blocking relationships. See [task workspace](docs/task-workspace.md).
-- From a source-file draft, optionally attach a task, then **Prepare trusted-local
-  context**, review the exact prompt and confirm **Launch trusted-local Codex**.
-  Use **New conversation** and
-  the run list to manage up to eight live conversations with independent message
-  composers. Up to twenty saved conversations keep recent history and attached
-  task links; restart archives history without automatically resuming
-  conversations. See [execution and limits](docs/trusted-local-execution.md).
-- Optionally [register a known external worker](docs/session-registration.md)
-  to inspect its parent/child relationships, activity and available controls.
-  Registration adds an existing session; it does not launch or discover agents.
-  Messages may be queued before the agent reads them. These sessions keep running
-  independently when the IDE closes.
-- **Recent Activity → Activity log → Pull requests → Refresh PRs** reads the
-  opened repository's GitHub PRs using normal `gh` authentication. See
-  [Activity and PRs](docs/logical-changelog.md#github-pull-requests).
-- File Context shows observed direct/indirect build targets and separately labelled
-  **Illustrative** latency. **Builds & resources → Example profile** shows authored
-  CPU/memory distributions, not measured telemetry. Missing services/targets stay
-  compact and scoped; [Context details](docs/context-metrics-demo.md) explain the limits.
+Swarm edits real repositories, reads Ditz tasks, displays authored designs and
+queries Bazel dependencies. It can follow existing Codex sessions in tmux or run
+conversations through your installed Codex. The Work Log summarizes what agents
+accomplished; Activity shows their individual operations.
 
 ## Linux quick start
 
-You need Git, Nix with `nix-command` and `flakes` enabled, and a working X11
-desktop connection (`DISPLAY` and, where needed, `XAUTHORITY`). Run as your normal
-user, not root. The Electron sandbox must be supported by your host; do not
-disable it to make the demo start. Linux x86_64 is the tested platform. The flake
-also declares aarch64-linux, but that architecture has not been verified.
-
-Clone using an account that has access to the repository:
+Use Linux x86_64, Git, Nix with `nix-command` and `flakes` enabled, and a working
+X11 desktop. The repository is private during prototyping; clone with an account
+that has access:
 
 ```bash
 git clone git@github.com:tedks/swarm-ide.git
 cd swarm-ide
-git fetch origin refs/heads/ditz-metadata:refs/heads/ditz-metadata
-nix develop --command pnpm install --frozen-lockfile
-nix develop --command bazel build --jobs=3 //:desktop-bundle
-SWARM_DEV_PORT=55173 nix develop --command bazel run --jobs=3 //:dev
+nix run . -- --workspace "$PWD"
 ```
 
-The pinned flake supplies Electron, Node, pnpm, Bazel, and the desktop tools. The
-first run needs network access to materialize Nix and package dependencies and
-can take longer than subsequent launches. It does not install an agent account
-or ask for model-service credentials.
-
-The command opens Swarm's own checkout by default. To browse a different local
-repository, keep running the command **from the Swarm IDE checkout** and select
-the target explicitly:
+This builds and opens the installed application, **not a development server**.
+The first build downloads pinned dependencies; later launches reuse the build.
+No model account is needed to browse. To keep a command on your PATH:
 
 ```bash
-SWARM_DEV_PORT=55173 nix develop --command bazel run --jobs=3 //:dev -- --workspace /path/to/your/repository
+nix profile install .#swarm-ide
+swarm --workspace /absolute/path/to/your/project
 ```
 
-The target must be an existing Git working-tree root with a committed `HEAD`.
-Relative paths are resolved from the directory where you invoke the command.
-The IDE's dependencies and development output stay in the IDE checkout, not the
-target. A non-Bazel repository can still be browsed, with unavailable build or
-service information shown as such. Use trusted local repositories:
-Build can execute their build rules and Bazel wrapper. Opening **Build graph**
-or enabling **Build links**, including file Context's build-target observation,
-also loads repository-controlled Bazel definitions for a query; that is not a
-security sandbox. Simply opening an external target
-does not automatically start its topology build.
+Choose a Git **working-tree root with a committed HEAD**—for a bare-repo layout,
+use `~/Projects/project/master`, not its parent. An ordinary standalone clone or
+a linked worktree on the Linux host is suitable.
 
-Leave the terminal running. Renderer changes use hot reload; most local-core
-changes recover without replacing the native window. Main-process changes need
-a deliberate restart. Stop with Ctrl-C and rerun the same command. Save work
-before stopping; reload guards are not crash-proof backups.
+### Try another project and its agents
+
+Give each project its own window/history profile when opening several at once:
+
+```bash
+swarm --workspace "$HOME/Projects/puresky/master" \
+  --user-data-dir "$HOME/.config/swarm-ide-puresky"
+```
+
+To include already-running Codex sessions, add the exact tmux association:
+
+```bash
+swarm --workspace "$HOME/Projects/puresky/master" \
+  --user-data-dir "$HOME/.config/swarm-ide-puresky" \
+  --tmux-server personal --tmux-session puresky
+```
+
+Use your own existing project/session names. This scans that session once; it
+does not start, clone or resume agents. Closing Swarm leaves these terminal
+agents running. Discovery currently recognizes Codex, not every harness or pane.
+To reuse a maintained registry instead, pass
+`--agent-registry /absolute/private/agents.json` without the tmux flags.
+
+Start with the [five-minute tour](docs/demo.md).
+[Linux installation](docs/linux-install.md) covers all flags and fleet
+installation; the [evaluator guide](docs/evaluator-install.md) covers setup and
+troubleshooting.
 
 ### Make repository tasks available
 
-Tasks are read locally from `refs/heads/ditz-metadata`, not from an online issue
-tracker or an automatically fetched remote. An ordinary clone usually has only
-the remote-tracking branch. For a **fresh Swarm clone**, create the local
-metadata branch without switching your source checkout:
+Swarm reads the selected repo's local `ditz-metadata` branch. For a fresh Swarm
+clone, fetch it without switching the source checkout:
 
 ```bash
 git fetch origin refs/heads/ditz-metadata:refs/heads/ditz-metadata
-git show-ref --verify refs/heads/ditz-metadata
 ```
 
-The quick-start sequence above already does this fetch. Choose **Refresh tasks**
-in the IDE. For another repository, run the fetch
-there only if it actually uses this Ditz metadata format. A missing branch means
-task information is unavailable, not that the project has no work. Do not force
-an existing divergent metadata branch over local changes; contributors use the
-[Ditz workflow](AGENTS.md#issue-tracking-ditz). The Ditz CLI is not required just
-to read existing tasks in the IDE.
+Tasks update when that local ref changes. Swarm does not fetch the remote for you.
+In another project, do this only if it uses Ditz. Do not force-fetch over an
+existing divergent branch; use the [Ditz workflow](AGENTS.md#issue-tracking-ditz).
+Missing plans/tasks do not prevent file browsing.
 
-### If startup fails
+## Mac or browser evaluation
 
-- Port occupied: choose another `SWARM_DEV_PORT`. The default is `5173`; explicit
-  values must be decimal integers in `1..65535`. The launcher fails rather than
-  silently choosing a different port. Leave unrelated services alone.
-- Workspace rejected: pass the working-tree root, not a subdirectory, a bare
-  repository, or an empty Git repository with no commit.
-- Missing dependencies or Electron version mismatch: use the pinned Nix shell
-  and rerun the frozen install; do not substitute a global Electron or update
-  package versions independently.
-- No display or sandbox support: use a supported logged-in Linux/X11 session.
-  Automated verification below uses its own virtual desktop. Keep the Electron
-  sandbox enabled.
-- Build/service information unavailable: check which sources the view supports.
-  The current service extractor supports Swarm's checked-in example, not every
-  arbitrary repository.
-
-## Verification and packaging
+The [Docker/noVNC demo](docs/container-demo.md) opens a small included project
+in the real Linux app through your browser:
 
 ```bash
-nix develop --command bazel test --jobs=3 //...
-SWARM_VIRTUAL_DESKTOP_PORT=55174 nix develop --command bazel run --jobs=3 //tools:desktop-smoke
+docker compose up --build
 ```
 
-To exercise the installation path itself after fetching the local Ditz branch:
+Open [the local desktop](http://127.0.0.1:6080/vnc.html?autoconnect=1&resize=scale)
+and use the password printed in the terminal. This is a **design/source browsing
+demo**, not the full agent/build workflow: the current container cannot run
+owned agent or Bazel-query subprocesses or observe your Mac's agents.
+
+Linux/amd64 Docker was tested; Mac, Apple Silicon and Safari were not. There is
+no native Mac package or published image yet, and the first local image build
+downloads several gigabytes. Use native Linux to evaluate live swarm operation.
+
+## What to explore
+
+- **Workspace:** component designs, task dependencies, files and build/service
+  views. Open a document and the graphs remain beside it.
+- **Source and Context:** edit real files; inspect direct/indirect Bazel target
+  membership and available project instruments. Example latency/resource profiles
+  are marked illustrative, not production telemetry.
+- **Agents:** select a registered conversation, inspect its worktree/diff, or copy
+  its terminal command. Enter sends; Shift-Enter adds a line. Submitted messages
+  remain copyable while queued.
+- **Activity and Work Log:** timestamped operations beside human-readable outcomes.
+  Work Log **Start** invokes its configured summarizer; merely reading does not.
+  Saved summaries and GitHub PRs are separate views in the Activity document.
+
+Agent harnesses, accounts and optional `gh`/Docker tools remain your normal host
+setup. Trusted-local agent runs use those permissions. Bazel observation loads
+repository-controlled definitions, so open projects whose tooling you trust.
+A query is not a binary build. See [current workflow limits](docs/demo.md#current-limits)
+before presenting pending features.
+
+## Develop Swarm itself
+
+The installed path above is for using Swarm. For source development:
 
 ```bash
-SWARM_VIRTUAL_DISPLAY=:134 SWARM_VIRTUAL_DESKTOP_PORT=55214 \
-  nix develop --command bazel run --jobs=3 //tools/demo-install:smoke
+nix develop --command pnpm install --frozen-lockfile
+SWARM_DEV_PORT=55173 nix develop --command bazel run --jobs=3 //:dev
 ```
 
-This creates a fresh local Git clone, materializes its dependencies, and opens
-real files in that checkout and two disposable target repositories on owned
-virtual X11. It checks startup rejection and explicit-build authority, records
-screenshots under `artifacts/demo-install/`, and retains its temporary checkouts
-for inspection. Shared Nix/package download caches are allowed; this is not a
-cold-download benchmark. Choose a free display/port pair; the harness refuses
-occupied endpoints and never takes another application's window. This target
-runs its own cases sequentially; independent checkouts can use separate pairs.
+Choose a free development port; the installed app needs no Vite port. See
+[development and visual verification](docs/development-loop.md) for hot reload,
+builds and owned virtual-X11 checks. Save before closing.
 
-Automated GUI checks create and clean up their own Xvfb/Openbox desktop; they
-never drive your existing application window. See
-[development and visual verification](docs/development-loop.md) for additional
-scenarios, evidence locations, and reload behavior.
-
-`bazel build //:desktop-bundle` produces `bazel-bin/swarm-ide-foundation.tar.gz`: compiled
-Electron main/preload code, local core (including its YAML dependency), and
-renderer assets. **It is not a standalone installer.** It does not include the
-Electron executable, Nix/system runtime, or your repository. The supported
-interactive entry for this prototype is the Nix/Bazel command above.
+`nix develop --command bazel build --jobs=3 //:desktop-bundle` produces
+`bazel-bin/swarm-ide-foundation.tar.gz`. That tarball contains compiled app code,
+not a standalone installer; the Nix package supplies the runtime.
 
 ## Project map
 
 - `app/`: Electron shell and sandboxed React workbench
 - `core/`: privileged local providers
 - `protocol/`: runtime-validated contracts
-- `fixtures/` and `tests/`: explicitly synthetic worlds and verification
-- `tools/`: supported launch and desktop-verification entry points
-- `docs/`: [product foundation](docs/product-foundation.md),
-  [architecture](docs/architecture.md), implementation decisions, and
-  [plain-language writing guide](docs/plain-language.md)
+- `fixtures/` and `tests/`: synthetic worlds and verification
+- `tools/`: launch and desktop-verification tools
+- `docs/design/`: living system design and component responsibilities
 
-Licensed under [GNU AGPLv3](LICENSE) (`AGPL-3.0-only`). See
-[AGENTS.md](AGENTS.md) for contributor instructions.
+Licensed under [GNU AGPLv3](LICENSE) (`AGPL-3.0-only`).
+See [AGENTS.md](AGENTS.md) for contributor instructions.
