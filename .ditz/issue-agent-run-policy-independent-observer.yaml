@@ -1,5 +1,6 @@
 id: agent-run-policy-independent-observer
-title: Prove independent auxiliary-attempt observation without incomplete ptrace capture
+title: Independently observe auxiliary activation attempts without relying on incomplete
+  ptrace capture
 desc: ""
 type: task
 component: default
@@ -27,5 +28,13 @@ log_events:
     or incomplete-trace acceptance. P3 narrowed to actual provider-reported static
     MCP startup/required failures plus fixed canary handshakes, not independent OS
     attempt counting. Broader effective-policy gate stays open.
+- time: 2026-09-08T04:27:46-00:00
+  who: Ted Smith
+  what: changed title
+  comment: ""
+- time: 2026-09-08T04:27:46-00:00
+  who: Ted Smith
+  what: updated description
+  comment: ""
 blocks:
 - agent-run-offline-activation-proof
