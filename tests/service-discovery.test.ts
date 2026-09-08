@@ -48,6 +48,12 @@ describe("project service declarations", () => {
     const result = await discoverServices(root);
     expect(result.services).toEqual([]); expect(result.issues).toHaveLength(3);
     expect(JSON.stringify(result)).not.toMatch(/password=|root:x:/);
+    const provider = await RealWorkspaceProvider.create(root);
+    try {
+      await provider.startReconciliation(() => {});
+      expect(provider.snapshot().reconciliation.status).toBe("red");
+      expect(provider.snapshot().graphs.find((graph) => graph.topologyId === "service")?.nodes).toEqual([]);
+    } finally { provider.dispose(); }
   });
   it("handles anchors, undefined startup dependencies and unsupported includes explicitly", async () => {
     const root = await repo({ "compose.yaml": "x-common: &base\n  image: example/image\ninclude: [other.yaml]\nservices:\n  app:\n    <<: *base\n    depends_on: {missing: {condition: service_healthy}}\n" });

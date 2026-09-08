@@ -378,7 +378,7 @@ export class RealWorkspaceProvider {
       const after = await this.dependencies.fingerprint(this.workspaceRoot).catch((error) => { fingerprintUnavailable = true; throw error; });
       if (this.disposed || attempt !== this.currentAttempt) return;
       if (after !== before) { this.markWorkingWorldChanged(after, publish); return; }
-      if (declaration.invalid && previous.nodes.length) throw new Error(declaration.issues.join(" ").slice(0, 460));
+      if (declaration.invalid && (!declaration.services.length || previous.nodes.length)) throw new Error(declaration.issues.join(" ").slice(0, 460));
       const adapted = adaptDeclaredServices(declaration, before, epoch, this.dependencies.now(), this.snapshotValue.project.id);
       this.serviceMappings = adapted.mappings;
       this.serviceWidgets = adapted.widgets;

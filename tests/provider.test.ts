@@ -83,12 +83,12 @@ describe("declaration-backed workspace provider", () => {
     expect(subject.snapshot().jobs).toEqual([]);
   });
 
-  it.each([true, false])("reports a partial first observation with usable services present=%s", async (usable) => {
+  it.each([true, false])("reports a malformed first observation with usable services present=%s", async (usable) => {
     const subject = await provider({ discover: async () => ({ ...declaration, services: usable ? declaration.services : [], issues: ["compose.yaml: invalid declaration"], invalid: true }) });
     await subject.startReconciliation(() => {});
-    expect(subject.snapshot().reconciliation).toMatchObject({ status: "yellow", lastConsistentFingerprint: "unobserved" });
+    expect(subject.snapshot().reconciliation).toMatchObject({ status: usable ? "yellow" : "red", lastConsistentFingerprint: "unobserved" });
     expect(subject.snapshot().reconciliation.message).toContain("compose.yaml");
-    expect(subject.snapshot().serviceDeclarations?.status).toBe("partial");
+    expect(subject.snapshot().serviceDeclarations?.status).toBe(usable ? "partial" : undefined);
     expect(graph(subject).nodes.length).toBe(usable ? 2 : 0);
   });
 
