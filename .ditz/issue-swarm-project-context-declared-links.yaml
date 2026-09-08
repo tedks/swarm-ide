@@ -1,0 +1,21 @@
+id: swarm-project-context-declared-links
+title: Connect declared frontend proxy routes and deployment metadata to project context
+desc: Extend PR96 component/site catalog with supported inert frontend/API proxy declarations
+  and publication source-revision metadata from existing project configs. Avoid importing/executing
+  Vite/JavaScript config; use explicit supported syntax or existing typed build reports,
+  with evidence and partial coverage. Reuse generic detectors across Pure Sky, Slowed,
+  PredictionBook and similar repos. Add bounded focus-relevant catalog expansion for
+  large monorepos rather than claiming current limits inventory every component.
+type: feature
+component: default
+release:
+reporter: Ted Smith <tedks@riseup.net>
+status: unstarted
+disposition:
+creation_time: 2026-09-08T05:59:46-00:00
+references: []
+log_events:
+- time: 2026-09-08T05:59:46-00:00
+  who: Ted Smith
+  what: created
+  comment: ""
