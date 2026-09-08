@@ -88,6 +88,7 @@ export function AgentDock({ state, client, onDraft, runContent, draftContent, tr
     ...(mockConversation?.tabs.map((tab) => ({ key: `mock:${tab.id}` as const, label: tab.name, detail: "mock" })) ?? []),
   ];
   const current = tabs.some((tab) => tab.key === effective) ? effective : "agents";
+  const tabStop = tabs.find((tab) => tab.key === current && !tab.disabled)?.key ?? tabs.find((tab) => !tab.disabled)?.key;
   const choose = (tab: DockTab) => {
     if (tabs.find((entry) => entry.key === tab)?.disabled) return;
     if (tab.startsWith("registered:")) registered?.onSelect(tab.slice(11));
@@ -113,10 +114,11 @@ export function AgentDock({ state, client, onDraft, runContent, draftContent, tr
       || event.nativeEvent.isComposing || event.keyCode === 229 || shortcutsBlocked
       || (event.target as Element).closest('[role="dialog"], [aria-modal="true"], dialog')) return;
     const available = tabs.filter((tab) => !tab.disabled);
-    if (available.length < 2) return;
-    event.preventDefault(); event.stopPropagation();
     const index = available.findIndex((tab) => tab.key === current);
-    const next = available[(index + (event.shiftKey ? -1 : 1) + available.length) % available.length]!;
+    if (!available.length || (available.length === 1 && index === 0)) return;
+    event.preventDefault(); event.stopPropagation();
+    const next = available[index < 0 ? (event.shiftKey ? available.length - 1 : 0)
+      : (index + (event.shiftKey ? -1 : 1) + available.length) % available.length]!;
     choose(next.key); focusTab(next.key);
   };
   const keyboard = (event: KeyboardEvent<HTMLDivElement>) => {
@@ -135,7 +137,7 @@ export function AgentDock({ state, client, onDraft, runContent, draftContent, tr
     {registered ? <small className="agent-tab-shortcut">Ctrl+Tab / Ctrl+Shift+Tab · switch conversations</small> : null}
     <OverflowStrip className="agent-tabs-strip" label="agent conversations" activeKey={current}><div className="agent-dock-tabs" role="tablist" aria-label="Agent conversations" onKeyDown={keyboard}>
       {tabs.map((tab) => <div className="agent-tab-item" role="presentation" key={tab.key}><button id={tabId(tab.key)} role="tab" aria-selected={current === tab.key}
-        aria-controls={panelId(tab.key)} disabled={tab.disabled} aria-label={tab.detail ? `${tab.label} ${tab.detail}` : tab.label} tabIndex={current === tab.key ? 0 : -1} title={tab.detail ? `${tab.label} · ${tab.detail}` : tab.label}
+        aria-controls={panelId(tab.key)} disabled={tab.disabled} aria-label={tab.detail ? `${tab.label} ${tab.detail}` : tab.label} tabIndex={tabStop === tab.key ? 0 : -1} title={tab.detail ? `${tab.label} · ${tab.detail}` : tab.label}
         onClick={() => choose(tab.key)}><span>{tab.label}</span>{tab.badge ?? (tab.detail ? <small className={`agent-state agent-state-${tab.detail}`}>{tab.detail}</small> : null)}</button>
         {tab.key.startsWith("registered:") ? <button className="agent-tab-close" aria-label={`Close conversation ${tab.label}`} title="Close tab (keeps agent running)" onClick={() => close(tab.key)}>×</button> : null}</div>)}
     </div></OverflowStrip>

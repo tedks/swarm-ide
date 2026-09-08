@@ -145,4 +145,13 @@ describe("registered conversation tabs", () => {
     expect(screen.queryByRole("tab", { name: /Child/ })).toBeNull();
     expect(view.onSelect).toHaveBeenCalledTimes(1); expect(view.request).not.toHaveBeenCalled();
   });
+  it("keeps an enabled roving tab stop and can cycle out of a reconnecting conversation", () => {
+    const view = setup(); view.rerender(null);
+    expect((tab("ROOT") as HTMLButtonElement).disabled).toBe(true);
+    const native = screen.getByRole("tab", { name: "Native agents / New" });
+    expect(native.tabIndex).toBe(0);
+    fireEvent.keyDown(screen.getByRole("region", { name: "Agent messages" }), { key: "Tab", ctrlKey: true });
+    expect(native.getAttribute("aria-selected")).toBe("true"); expect(document.activeElement).toBe(native);
+    expect(view.onSelect).not.toHaveBeenCalled(); expect(view.request).not.toHaveBeenCalled();
+  });
 });
