@@ -5,8 +5,8 @@ type: feature
 component: renderer
 release:
 reporter: Ted Smith <tedks@riseup.net>
-status: in_progress
-disposition:
+status: closed
+disposition: fixed
 creation_time: 2026-09-08T20:23:09-00:00
 references: []
 log_events:
@@ -25,3 +25,8 @@ log_events:
     component graph, activity, external-information, and worktree view tabs. Selection/work
     state, close/action controls, keyboard cycling, and overflow reveal remain intact;
     PR #134 at 3dda14b5.'
+- time: 2026-09-08T20:29:09-00:00
+  who: Ted Smith
+  what: 'closed: fixed'
+  comment: 'Implemented and directly verified on PR #134; native convergence review
+    CLEAN.'
