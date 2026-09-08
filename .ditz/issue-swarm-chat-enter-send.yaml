@@ -5,8 +5,8 @@ type: feature
 component: default
 release:
 reporter: Ted Smith <tedks@riseup.net>
-status: in_progress
-disposition:
+status: closed
+disposition: fixed
 creation_time: 2026-09-08T13:28:38-00:00
 references: []
 log_events:
@@ -29,5 +29,13 @@ log_events:
     composition, key-repeat and original delivery guards. Four behavior regressions
     reproduced first; 61 focused tests and both TypeScript boundaries pass. PR109
     d811d65; native review and owned virtual keyboard check underway.
+- time: 2026-09-08T13:44:38-00:00
+  who: Ted Smith
+  what: 'closed: fixed'
+  comment: Enter now sends registered-session and native Codex chat through their
+    existing guarded forms; Shift-Enter, IME, held keys, target identity and uncertain
+    drafts are preserved. PR109 is reviewed and pushed for ROOT landing. 62 focused
+    tests/types and actual owned native-keyboard journey pass; no real test message
+    was sent.
 blocks:
 - swarm-usability-join
