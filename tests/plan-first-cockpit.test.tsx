@@ -8,25 +8,29 @@ import type { Lifecycle } from "../app/lifecycle";
 import { emptyAgentWorkbench } from "../app/renderer/agents/state";
 import { PROTOCOL_VERSION, type CoreRequest, type CoreResponse, type GraphSlice } from "../protocol/schema";
 import { NAVIGATION_KEY, NavigationSchema } from "../app/renderer/recovery";
+import { fixtureBuildObservation } from "./support/build-graph-fixture";
 
 // This suite checks composition and retained real CodeMirror state. The domain
 // owner separately proves real plan data/graphs; geometry is a packaged check.
 vi.mock("../app/renderer/GraphPane", () => ({ GraphPane: ({ graph, reframeVersion }: { graph: GraphSlice; reframeVersion: number }) => <section data-testid="retained-layout-graph" data-reframe={reframeVersion}><input aria-label={`Camera ${graph.topologyId}`} defaultValue="pan 30,60 zoom 2" /></section> }));
-vi.mock("../app/renderer/plans/PlanWorkspace", () => ({ PlanWorkspace: ({ visible, onOpenFile }: { visible: boolean; onOpenFile(path: string): void }) => <section className="planning-field" aria-label="Planning workspace" hidden={!visible}><button onClick={() => onOpenFile(paymentsFileFocus.path!)}>Open plan implementation</button></section> }));
+vi.mock("../app/renderer/plans/PlanWorkspace", () => ({ PlanWorkspace: ({ visible, onOpenFile, onOpenBuild }: { visible: boolean; onOpenFile(path: string): void; onOpenBuild(label: string): void }) => <section className="planning-field" aria-label="Planning workspace" hidden={!visible}><button onClick={() => onOpenFile(paymentsFileFocus.path!)}>Open plan implementation</button><button onClick={() => onOpenBuild("//tools/policy:activation-test")}>Open plan build target</button><button onClick={() => onOpenBuild("//absent:unknown")}>Open missing target</button></section> }));
 import { App } from "../app/renderer/App";
 
 beforeAll(() => {
+  // jsdom has no layout observer; actual geometry is proved in the owned app.
+  globalThis.ResizeObserver = class { observe() {} unobserve() {} disconnect() {} };
   Object.defineProperty(Range.prototype, "getClientRects", { configurable: true, value: () => [] });
   Object.defineProperty(Range.prototype, "getBoundingClientRect", { configurable: true, value: () => new DOMRect() });
 });
 afterEach(() => { cleanup(); vi.restoreAllMocks(); window.sessionStorage.clear(); window.localStorage.clear(); delete window.swarm; delete window.swarmView; delete window.swarmLifecycle; });
 
-function bridge() {
+function bridge(withBuild = false) {
   const snapshot = initialSnapshot(paymentsFileFocus);
   const request = vi.fn(async (input: CoreRequest): Promise<CoreResponse> => ({ protocolVersion: PROTOCOL_VERSION, requestId: input.requestId, ok: true, snapshot, sequence: 1,
     ...(input.type === "agent.snapshot" ? { agent: { kind: "snapshot" as const, snapshot: emptyAgentWorkbench().snapshot } } : {}),
     ...(input.type === "tasks.snapshot" ? { task: { kind: "snapshot" as const, observation: taskObservationFixture() } } : {}),
     ...(input.type === "tasks.read" ? { task: taskReadFixture() } : {}),
+    ...(withBuild && input.type === "buildGraph.observe" ? { buildGraph: fixtureBuildObservation(snapshot) } : {}),
     ...(input.type === "file.read" ? { file: { kind: "read" as const, path: input.path, content: "source\n", revision: "a".repeat(64), size: 7 } } : {}),
   }));
   window.swarm = { request, onEvent: () => () => {} };
@@ -44,6 +48,40 @@ it("starts on one Plan home, retains Code access and removes empty/jargon chrome
   expect(document.querySelector(".global-truth")?.textContent).not.toMatch(/epoch|Reconciling/i);
   expect(screen.getByRole("region", { name: "Activity" })).toBeTruthy();
   expect(screen.queryByRole("region", { name: "Recent activity" })).toBeNull();
+});
+
+it("pins an authored target to the current build graph and never guesses a missing BUILD file", async () => {
+  vi.spyOn(document, "hasFocus").mockReturnValue(true);
+  vi.spyOn(document, "visibilityState", "get").mockReturnValue("visible");
+  const request = bridge(true); render(<App />);
+  await screen.findByText("Build graph current");
+  fireEvent.click(screen.getByRole("button", { name: "Open plan build target" }));
+  await waitFor(() => expect((screen.getByRole("textbox", { name: "Bazel target" }) as HTMLInputElement).value).toBe("//tools/policy:activation-test"));
+  expect(within(screen.getByRole("navigation", { name: "Workspace lenses" })).getByRole("button", { name: "Code" }).getAttribute("aria-pressed")).toBe("true");
+  fireEvent.click(within(screen.getByRole("navigation", { name: "Workspace lenses" })).getByRole("button", { name: "Plan" }));
+  fireEvent.click(screen.getByRole("button", { name: "Open missing target" }));
+  await screen.findByText("This repository's current build graph does not contain //absent:unknown.");
+  expect(request.mock.calls.some(([input]) => input.type === "file.read" || input.type === "file.write" || input.type === "reconciliation.start")).toBe(false);
+});
+
+it("resizes the outer dock by keyboard without replacing source or moving its cursor", async () => {
+  bridge(); render(<App />);
+  fireEvent.click(await screen.findByRole("button", { name: "Open plan implementation" }));
+  await waitFor(() => expect(document.querySelector(".cm-content")?.textContent).toBe("source"));
+  const element = document.querySelector<HTMLElement>(".cm-editor")!, editor = EditorView.findFromDOM(element)!;
+  act(() => editor.dispatch({ changes: { from: 0, insert: "dirty " }, selection: { anchor: 4 } }));
+  const divider = screen.getByRole("separator", { name: "Resize plan and conversation" });
+  expect(divider.getAttribute("aria-orientation")).toBe("horizontal");
+  fireEvent.keyDown(divider, { key: "ArrowUp" });
+  expect(divider.getAttribute("aria-valuenow")).toBe("33");
+  expect((document.querySelector(".workbench") as HTMLElement).style.gridTemplateRows).toContain("33vh");
+  for (let i = 0; i < 40; i++) fireEvent.keyDown(divider, { key: "ArrowDown" });
+  expect(divider.getAttribute("aria-valuenow")).toBe("22");
+  fireEvent.keyDown(divider, { key: "Home" });
+  expect(divider.getAttribute("aria-valuenow")).toBe("32");
+  expect(document.querySelector(".cm-editor")).toBe(element);
+  expect(editor.state.doc.toString()).toBe("dirty source\n");
+  expect(editor.state.selection.main.anchor).toBe(4);
 });
 
 it("observes build context on the ready Plan home without starting a service build or requiring a graph click", async () => {

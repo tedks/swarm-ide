@@ -136,7 +136,8 @@ export function App() {
   const [selectedActivity, setSelectedActivity] = useState<SelectedActivity | null>(null);
   const [workLogEntry, setWorkLogEntry] = useState<WorkLogEntry | null>(null);
   const demo = useUiDemo();
-  const [contextWidth, setContextWidth] = useState(30), [graphShare, setGraphShare] = useState(43);
+  const [contextWidth, setContextWidth] = useState(24), [graphShare, setGraphShare] = useState(43);
+  const [dockShare, setDockShare] = useState<number | null>(null);
   const [graphReframe, setGraphReframe] = useState(0);
   const [showBuildVersion, setShowBuildVersion] = useState(0);
   const [buildTargetSelection, setBuildTargetSelection] = useState<BuildTargetSelection | null>(null);
@@ -1184,7 +1185,7 @@ export function App() {
   useEffect(() => { if (hasOpenDocument && !textWasOpen.current) setGraphReframe((n) => n + 1); textWasOpen.current = hasOpenDocument; }, [hasOpenDocument]);
   const reconciliationRunning = snapshot?.jobs.some((job) => job.kind === "build" && job.status === "running") ?? false;
   const buildContextStatus = buildGraph.observation?.status;
-  const title = buildContextStatus ? { current: "Build graph current", refreshing: "Updating build graph", stale: "Updating build graph", error: "Build graph failed", unavailable: "No build graph" }[buildContextStatus] : "Build context";
+  const title = buildContextStatus ? { current: "Build graph current", refreshing: "Updating build graph", stale: "Build graph needs refresh", error: "Build graph failed", unavailable: "No build graph" }[buildContextStatus] : "Build context";
   const buildContextColor = buildContextStatus === "current" ? "green" : buildContextStatus === "error" ? "red" : buildContextStatus === "refreshing" || buildContextStatus === "stale" ? "yellow" : "gray";
   const coreUnavailable = Boolean(window.swarmLifecycle && lifecycle?.core.phase !== "ready");
   const lifecycleNotice = lifecycle?.reload === "pending" ? "Preload refresh pending — resolve protected file buffers and local agent intent to apply it." : lifecycle?.core.phase !== "ready" ? lifecycle?.core.message : lifecycle?.notice;
@@ -1315,7 +1316,7 @@ export function App() {
 
   if (!snapshot) return <main className="loading-screen"><div className="loading-mark hmr-probe" />Opening the working world…{error ? <strong>{error}</strong> : null}<small>{lifecycleNotice}</small><AgentReloadGuard state={liveAgents} client={agentClient} /></main>;
   return (
-    <main className="workbench" onPointerDownCapture={interruptPendingReveal} onFocusCapture={interruptPendingReveal} onKeyDownCapture={(event) => { if (event.key === "Escape" && definitionRef.current) { event.preventDefault(); event.stopPropagation(); cancelDefinition(); } }} data-compact-panel={compactPanel ?? "none"} style={{ "--context-width": `${contextWidth}%`, ...(agents.selected || liveAgents.paneOpen ? { gridTemplateRows: `var(--topbar-height) minmax(0, 1fr) calc(160px + (clamp(180px, 40vh, 448px) - 160px) * ${Math.min(1, Math.max(0, ((liveAgents.paneOpen ? liveAgents.height : agentPaneHeight) - 230) / 190))})` } : {}) } as CSSProperties}>
+    <main className="workbench" onPointerDownCapture={interruptPendingReveal} onFocusCapture={interruptPendingReveal} onKeyDownCapture={(event) => { if (event.key === "Escape" && definitionRef.current) { event.preventDefault(); event.stopPropagation(); cancelDefinition(); } }} data-compact-panel={compactPanel ?? "none"} style={{ "--context-width": `${contextWidth}%`, ...(dockShare !== null ? { gridTemplateRows: `var(--topbar-height) minmax(0, 1fr) ${dockShare}vh` } : agents.selected || liveAgents.paneOpen ? { gridTemplateRows: `var(--topbar-height) minmax(0, 1fr) calc(160px + (clamp(180px, 40vh, 448px) - 160px) * ${Math.min(1, Math.max(0, ((liveAgents.paneOpen ? liveAgents.height : agentPaneHeight) - 230) / 190))})` } : {}) } as CSSProperties}>
       <header className="topbar">
         <div className="product-mark"><span className="hmr-probe" />swarm</div>
         <OverflowStrip className="lens-tabs-strip" label="workspace lenses" activeKey={activeLens}><nav className="lens-tabs" aria-label="Workspace lenses">{lensTabs.map((lens) => <button key={lens} aria-pressed={activeLens === lens} className={activeLens === lens ? "active" : ""} onClick={() => lens === "Plan" ? showDesign() : chooseLens(lens)}>{lens}</button>)}</nav></OverflowStrip>
@@ -1368,7 +1369,7 @@ export function App() {
         })}</div>
         <PlanWorkspace key={`${snapshot.project.id}:${snapshot.world.id}`} visible={activeLens === "Plan"} worldId={snapshot.world.id} repositoryId={snapshot.project.id}
           generation={coreGenerationRef.current} connected={!coreUnavailable && Boolean(window.swarm)} tasks={tasks} client={taskClient}
-          onOpenFile={openLinkedFile} onOpenTask={openPlanningTask} />
+          onOpenFile={openLinkedFile} onOpenTask={openPlanningTask} onOpenBuild={openPlanBuildTarget} />
         {textOpen && !designVisible ? <ResizeDivider label="Resize graphs and text" className="text-divider" container=".navigation-field" value={graphShare} minimum={25} maximum={70} initial={43} onChange={setGraphShare} /> : null}
         {activeFile ? <section hidden={textDocumentVisible || journalVisible || worktreeVisible || designVisible || Boolean(workLogEntry)} onPointerDown={sourceInformation} onFocusCapture={sourceInformation} className={`source-surface ${["conflict", "unknown", "error"].includes(activeFile.status) ? "has-banner" : ""}`}>
           <header><div><span className="eyebrow">source observatory</span><strong>{activeFile.path}</strong></div><div className={`file-state file-${activeFile.status}`}><i />{activeFile.status}<button onClick={() => void saveFile(activeFile.path)} disabled={activeFile.status !== "dirty" || coreUnavailable}>Save <kbd>Ctrl S</kbd></button></div></header>
@@ -1399,7 +1400,7 @@ export function App() {
         {taskDocumentOpen ? <div className="task-editor-surface" hidden={!textDocumentVisible} onPointerDownCapture={(event) => { if (!(event.target as Element).closest(".task-attach")) inspectTask(tasks.selectedTaskId); }} onFocusCapture={(event) => { if (!(event.target as Element).closest(".task-attach")) inspectTask(tasks.selectedTaskId); }}><TaskDetail surface="editor" selectedTaskId={tasks.selectedTaskId} snapshot={tasks.observation?.snapshot ?? null} detail={tasks.detail} detailRevision={tasks.detailRevision} detailStale={tasks.detailStale || tasks.observation?.status !== "observed" || Boolean(tasks.notice)} reading={tasks.reading} notice={tasks.detailNotice} attachment={taskAttachment(tasks.selectedTaskId)} onRefresh={() => { void taskClient.refresh(); }} onSelect={(id) => openTaskDocument(id)} onReveal={(ref) => { void revealTaskReference(ref); }} onReturnToSource={() => { setTaskDocumentVisible(false); if (!activeFile) setTaskDocumentOpen(false); returnToSourceInformation(); }} /></div> : null}
       </section>
 
-      <ResizeDivider label="Resize Context" className="context-divider" container=".workbench" value={contextWidth} minimum={23} maximum={44} initial={30} reverse onChange={setContextWidth} />
+      <ResizeDivider label="Resize Context" className="context-divider" container=".workbench" value={contextWidth} minimum={23} maximum={44} initial={24} reverse onChange={setContextWidth} />
       <aside id="information-panel" aria-label="Information panel" className="instrument-panel panel">
         <GlobalContext snapshot={snapshot} ready={observedCoreGeneration === coreGenerationRef.current && (!window.swarmLifecycle || lifecycle?.core.phase === "ready")} />
         <ProjectContextPanel repositoryId={snapshot.project.id} worldId={snapshot.world.id} generation={coreGenerationRef.current} ready={observedCoreGeneration === coreGenerationRef.current && (!window.swarmLifecycle || lifecycle?.core.phase === "ready")} />
@@ -1415,6 +1416,7 @@ export function App() {
       </aside>
 
       <section className="activity-dock panel">
+        <ResizeDivider label="Resize plan and conversation" className="dock-divider" container=".workbench" axis="y" reverse value={dockShare ?? 32} minimum={22} maximum={55} initial={32} onChange={setDockShare} />
         <AgentDock state={liveAgents} client={agentClient} selectionVersion={agentDockSelection} fixtureSelectionVersion={fixtureDockSelection} trustedSelectionVersion={trustedSelection?.id} onOpenActivity={() => showJournal()}
           conversation={{ selectionVersion: conversationSelection ? String(conversationSelection) : undefined,
             content: <AgentConversation client={externalAgents} bridge={window.swarm} memory={steeringMemory} onWorktree={browseAgentWorktree} onContext={() => { setExternalInformation(true); setCompactPanel("info"); }} /> }}

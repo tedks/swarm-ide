@@ -10,7 +10,9 @@
 .dock-activity > .activity-list { grid-template-columns: minmax(0, 1fr); }
 .agent-interaction-dock { height: 100%; min-height: 0; min-width: 0; display: flex; flex-direction: column; background: #091715; border-inline: 1px solid #284139; container-type: inline-size; }
 .workbench:has(.agent-interaction-dock) { grid-template-rows: var(--topbar-height) minmax(0, 1fr) clamp(180px, 26vh, 320px); }
-.workbench:has(.agent-conversation) { grid-template-rows: var(--topbar-height) minmax(0, 1fr) clamp(340px, 42vh, 460px); }
+.workbench:has(.agent-conversation) { grid-template-rows: var(--topbar-height) minmax(0, 1fr) clamp(220px, 32vh, 400px); }
+.activity-dock:has(.dock-divider) { position: relative; padding-top: 6px; }
+.workspace-divider.dock-divider { position: absolute; inset: 0 0 auto; width: 100%; height: 6px; cursor: row-resize; transform: none; }
 .agent-dock-home > .agent-draft { max-width: 900px; margin: 0 auto; }
 .agent-dock-tabs { display: flex; flex-shrink: 0; min-width: 0; overflow-x: auto; border-bottom: 1px solid #284139; background: #0d1b18; }
 .agent-dock-tabs > button { display: flex; align-items: center; gap: 8px; flex-shrink: 0; max-width: 240px; min-height: 34px; padding: 7px 13px; border: 0; border-right: 1px solid #203830; border-bottom: 2px solid transparent; background: transparent; color: #90aaa1; font-size: 11px; text-align: left; }

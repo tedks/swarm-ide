@@ -79,11 +79,13 @@ async function main() {
       edges: document.querySelectorAll('.design-graph .react-flow__edge').length,
       planHeight: document.querySelector('.planning-field').getBoundingClientRect().height,
       navigationHeight: document.querySelector('.navigation-field').getBoundingClientRect().height,
+      columns: getComputedStyle(document.querySelector('.design-quadrants')).gridTemplateColumns.split(' ').length,
       duplicateShell: Boolean(document.querySelector('.activity-dock > .dock-header')),
     }));
     assert.equal(planStartup.lens, 'Plan'); assert.deepEqual(planStartup.lenses, ['Plan', 'Code']);
     assert(planStartup.graphs >= 2 && planStartup.edges >= 1);
     assert(planStartup.planHeight > planStartup.navigationHeight * .6, 'Retained hidden Code graphs must not consume an extra layout row');
+    assert.equal(planStartup.columns, 2, 'Normal desktop has two columns of plan instruments');
     assert.equal(planStartup.duplicateShell, false);
     await fs.writeFile(path.join(evidence, 'plan-startup.png'), (await wc.capturePage()).toPNG());
   }
@@ -113,6 +115,17 @@ async function main() {
     await click('.lens-tabs button:nth-child(2)');
     assert.deepEqual(await source(), retained); assert.deepEqual(await cameras(), retainedCameras);
     assert(await run(() => globalThis.__cockpitGraphNodes.every((e) => e.isConnected)));
+    const dockHandle = await run(() => {
+      const e = document.querySelector('.dock-divider'), dock = document.querySelector('.activity-dock');
+      return { width: e.getBoundingClientRect().width, dockWidth: dock.getBoundingClientRect().width, cursor: getComputedStyle(e).cursor };
+    });
+    assert(dockHandle.width >= dockHandle.dockWidth - 2); assert.equal(dockHandle.cursor, 'row-resize');
+    await click('.dock-divider');
+    await key('Up');
+    assert.equal(await run(() => document.querySelector('.dock-divider').getAttribute('aria-valuenow')), '33');
+    await key('Home');
+    assert.equal(await run(() => document.querySelector('.dock-divider').getAttribute('aria-valuenow')), '32');
+    assert.deepEqual(await source(), retained);
     const measure = () => run(() => {
       const width = (selector) => document.querySelector(selector).getBoundingClientRect().width;
       return { conversation: width('.agent-interaction-dock'), workLog: width('.dock-work-log'), activity: width('.dock-activity'),
@@ -141,7 +154,7 @@ async function main() {
     assert.deepEqual(agentWrites, []); assert.deepEqual(errors, []);
     await fs.writeFile(path.join(evidence, 'proof.json'), JSON.stringify({ ok: true, planOnly: true, packagedCore: true, capturedDesign: true,
       planStartup, planCodeRetention: true, widerConversation: true, wide, compact, noDuplicateShell: true,
-      ownedSourceSaved: true, agentWrites, blockingErrors: errors, elapsedMs: Date.now() - started }, null, 2));
+      ownedSourceSaved: true, dockHandle, agentWrites, blockingErrors: errors, elapsedMs: Date.now() - started }, null, 2));
     return;
   }
   if (repository.workLogOnly) {

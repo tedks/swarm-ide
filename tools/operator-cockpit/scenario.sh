@@ -37,6 +37,6 @@ console.log(p.scope === 'briefing-only'
   ? 'Actual registered-worktree briefing source; native input; dirty local source and cameras retained.'
   : 'Actual registered-worktree source/diff inspection; native input; dirty local source and cameras retained.');
 }
-console.log('Accepted exact resize diagnostics:', p.acceptedResizeWarnings.length);
+console.log('Accepted exact resize diagnostics:', p.planOnly ? 0 : p.acceptedResizeWarnings.length);
 JS
 swarm_window_capture "$SWARM_COCKPIT_EVIDENCE/window.png"
