@@ -42,6 +42,14 @@ remounts. An uncertain result retains its draft/receipt without replay. A full
 application restart does not persist these in-memory drafts. Terminal-owned
 sessions keep their existing queue and tmux owner; viewing them launches nothing.
 
+Both registered-session and native Codex message boxes use `use-chat-submit.ts`:
+Enter submits their existing form, Shift-Enter inserts a newline, and composition
+confirmation or a held Enter never sends. The form's original target, validity
+and pending-request guards remain authoritative; this keyboard shortcut adds no
+sender, retry or delivery claim. The shortcut is also available in the textarea's
+hover hint. Focused checks in `tests/chat-input.test.tsx` mount both real forms
+and test their existing bridge paths with controlled responses.
+
 Native trusted conversations, approvals, forks, new drafts and saved history
 remain mounted in the secondary **Native agents / New** tab. Legacy stored runs
 keep their individual tabs; the competing old run-list mount is removed. Exact

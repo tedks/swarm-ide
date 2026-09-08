@@ -143,18 +143,56 @@ async function main() {
     return { text: view.state.doc.toString(), selection: view.state.selection.toJSON(), cameras: [...document.querySelectorAll(".graphs-grid .react-flow__viewport")].map((e) => e.style.transform) };
   });
   const retained = await source();
-  await run(() => { globalThis.__conversationGraphs = [...document.querySelectorAll(".graphs-grid > *")]; });
+  await run(() => {
+    globalThis.__conversationGraphs = [...document.querySelectorAll(".graphs-grid > *")];
+    globalThis.__conversationEditor = document.querySelector(".source-surface .cm-content").cmView.rootView.view;
+  });
+  stage = "caret during background observation";
+  const readsBeforeCaret = snapshotResponses;
+  const caret = await run(async () => {
+    const editor = globalThis.__conversationEditor, states = [], before = editor.state;
+    for (let index = 0; index < 12; index++) {
+      const current = document.querySelector(".source-surface .cm-content").cmView.rootView.view;
+      const layer = editor.dom.querySelector(".cm-cursorLayer"), cursor = editor.dom.querySelector(".cm-cursor");
+      states.push({ sameEditor: current === editor, sameState: current.state === before, focused: editor.hasFocus,
+        nativeCaret: getComputedStyle(editor.contentDOM).caretColor, duration: getComputedStyle(layer).animationDuration,
+        opacity: getComputedStyle(layer).opacity, cursorHeight: cursor.getBoundingClientRect().height });
+      await new Promise((resolve) => setTimeout(resolve, 150));
+    }
+    return states;
+  });
+  assert(caret.every((sample) => sample.sameEditor && sample.sameState && sample.focused && sample.cursorHeight > 0), "background observation preserves editor, state and focus");
+  assert(caret.every((sample) => sample.nativeCaret === "rgba(0, 0, 0, 0)" && sample.duration === "1.2s"), "only CodeMirror's normal 1.2-second caret is drawn");
+  assert(new Set(caret.map((sample) => sample.opacity)).size > 1, "normal caret blinking observed, not an editor reload");
+  assert(snapshotResponses > readsBeforeCaret, "real background fleet observation ran while caret was sampled");
+  await fs.writeFile(path.join(evidence, "caret-observation.json"), JSON.stringify(caret, null, 2));
   stage = "per-agent drafts";
-  const rootDraft = "Controlled ROOT draft, never delivered", childDraft = "Controlled child draft, never delivered";
-  await select(root); await click(textarea); await wc.insertText(rootDraft);
+  const rootDraft = "Controlled ROOT draft, never delivered\nSecond line", childDraft = "Controlled child draft, never delivered";
+  await select(root); await click(textarea); await wc.insertText("Controlled ROOT draft, never delivered");
+  wc.sendInputEvent({ type: "keyDown", keyCode: "Enter", modifiers: ["shift"] });
+  wc.sendInputEvent({ type: "char", keyCode: "\r", modifiers: ["shift"] });
+  wc.sendInputEvent({ type: "keyUp", keyCode: "Enter", modifiers: ["shift"] });
+  await wc.insertText("Second line");
+  await until(async () => await draft() === rootDraft, "native Shift-Enter inserts a newline");
+  assert.equal(sends.length, 0, "Shift-Enter does not send");
   await select(child); await click(textarea); await wc.insertText(childDraft);
   await refresh();
   await until(async () => await current() === child.id && await draft() === childDraft, "refresh preserves explicit child and draft");
   await select(root); assert.equal(await draft(), rootDraft);
   stage = "controlled uncertain Send";
   sentTarget = root.id;
-  await click("[aria-label='Agent conversation'] [aria-label='Session steering'] button[type='submit']");
+  await click(textarea);
+  await run((selector) => {
+    globalThis.__chatEnterTrusted = false;
+    document.querySelector(selector).addEventListener("keydown", (event) => {
+      if (event.key === "Enter" && !event.shiftKey) globalThis.__chatEnterTrusted = event.isTrusted;
+    }, { once: true });
+  }, textarea);
+  wc.sendInputEvent({ type: "keyDown", keyCode: "Enter" });
+  wc.sendInputEvent({ type: "char", keyCode: "\r" });
+  wc.sendInputEvent({ type: "keyUp", keyCode: "Enter" });
   await until(() => run(() => !!document.querySelector("[aria-label='Agent conversation'] [data-delivery-status='delivery-unknown']")), "uncertain receipt");
+  assert.equal(await run(() => globalThis.__chatEnterTrusted), true, "native Enter reached the textarea");
   assert.equal(await draft(), rootDraft); assert.equal(sends.length, 1);
   assert.equal(sends[0].text, rootDraft); assert.equal(sends[0].sessionId, root.id);
   await select(child); assert.equal(await draft(), childDraft);
@@ -182,6 +220,7 @@ async function main() {
   await until(() => run(() => document.querySelector(".file-state")?.classList.contains("file-saved")), "save before owned app close");
   await fs.writeFile(path.join(evidence, "proof.json"), JSON.stringify({ ok: true, elapsedMs: Date.now() - started,
     actualRegisteredRead: true, root: root.id, child: child.id, controlledSend: true, actualMessagesSent: 0, modelTurns: 0,
+    nativeEnterSend: true, nativeShiftEnterNewline: true, stableCaretDuringBackgroundObservation: true,
     autoRoot: true, perAgentDrafts: true, explicitChoiceSurvivesRefresh: true, uncertainReceiptRetained: true,
     interceptedSendRequests: sends.length, registeredWorktreeOpenAndReturn: true, sourceSelectionAndCamerasRetained: true,
     readableTranscriptAndVisibleComposer: true, visibleTranscriptPixels: { before: layoutBefore.messages.visible.height, after: layoutAfter.messages.visible.height }, rendererErrors: errors }));

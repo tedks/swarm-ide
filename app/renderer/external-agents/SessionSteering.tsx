@@ -4,6 +4,7 @@ import { parseCoreResponseForRequest, PROTOCOL_VERSION } from "../../../protocol
 import { EXTERNAL_MESSAGE_MAX_BYTES, parseExternalResult, type ExternalDetail, type ExternalRequest } from "../../../protocol/external-agents";
 import "./session-steering.css";
 import { SteeringMemory, type TargetState } from "./steering-memory";
+import { useChatSubmit } from "../use-chat-submit";
 
 type Receipt = { status: "queued" | "rejected" | "delivery-unknown"; message: string; receiptId?: string };
 const emptyTarget: TargetState = { draft: "" };
@@ -14,6 +15,7 @@ export function SessionSteering({ detail, bridge, memory }: { detail: ExternalDe
   const owner = memory ?? local;
   const { targets, pending } = useSyncExternalStore(owner.subscribe, owner.getSnapshot);
   const fieldId = useId();
+  const chatKeys = useChatSubmit();
   // Keep this component mounted while observations load: pending sends and
   // per-session drafts must outlive temporary absence of selection detail.
   if (!detail) return pending ? <p className="session-steering" role="status">Sending to {pending.label} ({pending.id})…</p> : null;
@@ -49,7 +51,8 @@ export function SessionSteering({ detail, bridge, memory }: { detail: ExternalDe
     {!available ? <p>Read-only. Refresh or open the session in your terminal.</p> : null}
     <form onSubmit={(event) => { event.preventDefault(); void send(); }}>
       <label htmlFor={fieldId}>Message to {session.label}</label>
-      <textarea id={fieldId} value={target.draft} rows={3} disabled={!available || pending?.id === session.id}
+      <textarea {...chatKeys} id={fieldId} value={target.draft} rows={3} disabled={!available || pending?.id === session.id}
+        title="Enter to send · Shift-Enter for a new line"
         aria-describedby={`${fieldId}-limit`} aria-invalid={target.draft.length > 0 && !!invalid}
         onChange={(event) => { const draft = event.target.value; update(session.id, (prior) => ({ ...prior, draft })); }} />
       <p id={`${fieldId}-limit`}>{bytes} / {EXTERNAL_MESSAGE_MAX_BYTES} UTF-8 bytes{target.draft && invalid ? ` · ${invalid}` : ""}</p>
