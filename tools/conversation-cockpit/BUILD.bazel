@@ -3,6 +3,13 @@ package(default_visibility = ["//visibility:public"])
 filegroup(name = "sources", srcs = glob(["*.sh", "*.mjs", "*.cjs"]))
 
 sh_test(
+    name = "response-test",
+    srcs = ["response-test.sh"],
+    data = [":sources", "//:quality_sources"],
+    tags = ["local"],
+)
+
+sh_test(
     name = "unit",
     srcs = ["unit.sh"],
     data = [":sources", "//:quality_sources"],

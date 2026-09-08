@@ -39,7 +39,7 @@ import type { BuildGraphObservation } from "../protocol/build-graph";
 import { GithubPrProvider, GithubPrReadError } from "./github-prs";
 import type { TrustedLocalService } from "./agents/trusted-local";
 import { TrustedRequestSchema } from "../protocol/trusted-local";
-import { inspectRegisteredWorktree } from "./worktree-inspection";
+import { inspectRegisteredWorktree, browseRegisteredWorktree } from "./worktree-inspection";
 import { WorkLogService } from "./work-log/service";
 import { WorkLogRequestSchema } from "../protocol/work-log";
 import { ProjectContextProvider } from "./project-context/provider";
@@ -66,7 +66,7 @@ const projectContextPromise = providerPromise.then((provider) => new ProjectCont
 let workingWorldObserver: WorkingWorldObserver | null = null;
 let shuttingDown = false;
 const journalLifetime = new AbortController();
-const worktreeInspections = new Set<ReturnType<typeof inspectRegisteredWorktree>>();
+const worktreeInspections = new Set<Promise<unknown>>();
 let journalPending: ReturnType<typeof readChangelog> | null = null;
 const taskProviderPromise: Promise<TaskProvider> = providerPromise.then(async (provider) => {
   const snapshot = provider.snapshot();
@@ -205,14 +205,16 @@ process.parentPort?.on("message", async (event) => {
       return;
     }
     const provider = await providerPromise;
-    if (request.type === "worktree.inspect") {
-      const pending = inspectRegisteredWorktree(workspaceRoot, process.env.SWARM_EXTERNAL_AGENTS_REGISTRY, request, journalLifetime.signal);
+    if (request.type === "worktree.inspect" || request.type === "worktree.browse") {
+      const pending = request.type === "worktree.inspect"
+        ? inspectRegisteredWorktree(workspaceRoot, process.env.SWARM_EXTERNAL_AGENTS_REGISTRY, request, journalLifetime.signal)
+        : browseRegisteredWorktree(workspaceRoot, process.env.SWARM_EXTERNAL_AGENTS_REGISTRY, request, journalLifetime.signal);
       worktreeInspections.add(pending);
       try {
-        const worktreeInspection = await pending;
+        const result = await pending;
         if (shuttingDown) throw new Error("Worktree inspection stopped.");
         const response = ok(requestId, provider.snapshot());
-        post(parseCoreResponseForRequest({ ...response, worktreeInspection }, request));
+        post(parseCoreResponseForRequest({ ...response, ...(request.type === "worktree.inspect" ? { worktreeInspection: result } : { worktreeBrowse: result }) }, request));
       } catch (error) {
         post(fail(requestId, "WORKTREE_INSPECTION_UNAVAILABLE", error instanceof Error ? error.message.slice(0, 512) : "This worktree file could not be opened."));
       } finally { worktreeInspections.delete(pending); }

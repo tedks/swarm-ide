@@ -2,6 +2,7 @@
 // before the core and receive a controlled uncertain receipt. No agent is sent
 // a message, resumed, or stopped by this driver.
 const { app, BrowserWindow, ipcMain } = require("electron");
+const { controlledSendEnvelope } = require("./response.cjs");
 const fs = require("node:fs/promises"), path = require("node:path"), assert = require("node:assert/strict");
 const evidence = process.env.SWARM_ARTIFACT_DIR, errors = [], sends = [], observedMessages = new Map();
 const receipt = "30000000-0000-4000-8000-000000000001";
@@ -19,9 +20,7 @@ ipcMain.handle = (channel, listener) => handle(channel, async (event, input) => 
     assert.equal(sends.length, 1, "An uncertain send must never automatically retry");
     const base = await listener(event, { protocolVersion: input.protocolVersion, requestId: input.requestId, type: "externalAgents.snapshot" });
     assert(base.response.ok, "Actual core is available for read-only observation");
-    return { generation: base.generation, response: { protocolVersion: input.protocolVersion, requestId: input.requestId,
-      ok: true, external: { kind: "send", sessionId: input.sessionId, status: "delivery-unknown", receiptId: receipt,
-        message: "Controlled test response; no queue invocation or agent message." } } };
+    return controlledSendEnvelope(base, input, receipt);
   }
   if (input.type === "externalAgents.handoff" || /^(?:trusted|agent)\./.test(input.type) && !/\.(?:snapshot|read)$/.test(input.type)) throw new Error("Agent control is prohibited in this proof");
   const response = await listener(event, input);
@@ -47,6 +46,19 @@ async function main() {
   assert(wc.getURL().startsWith("file:"));
   const run = (fn, ...args) => wc.executeJavaScript(`(${fn.toString()})(...${JSON.stringify(args)})`, true);
   const paint = () => run(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+  const layout = () => run(() => {
+    const measure = (selector) => {
+      const element = document.querySelector(selector);
+      if (!element) return null;
+      const r = element.getBoundingClientRect();
+      return { x: r.x, y: r.y, width: r.width, height: r.height, bottom: r.bottom, scrollHeight: element.scrollHeight,
+        clientHeight: element.clientHeight, overflowY: getComputedStyle(element).overflowY };
+    };
+    return { viewport: { width: innerWidth, height: innerHeight }, dock: measure(".agent-dock"),
+      conversation: measure("[aria-label='Agent conversation']"), messages: measure(".conversation-messages"),
+      form: measure("[aria-label='Agent conversation'] form"), textarea: measure("[aria-label='Agent conversation'] textarea"),
+      send: measure("[aria-label='Agent conversation'] button[type='submit']") };
+  });
   const click = async (selector) => {
     await run((s) => { const e = document.querySelector(s); if (!e || e.disabled) throw new Error(`Missing/disabled ${s}`); e.scrollIntoView({ block: "nearest", inline: "nearest" }); }, selector);
     await paint();
@@ -92,6 +104,7 @@ async function main() {
   assert(displayedMessages.length > 0 && displayedMessages.every((message) => observedMessages.get(root.id)?.includes(message)), "ROOT messages match actual core transcript reads");
   await until(() => run((s) => !!document.querySelector(s) && !document.querySelector(s).disabled, textarea), "ROOT composer available");
   assert.equal(sends.length, 0);
+  await fs.writeFile(path.join(evidence, "layout-before.json"), JSON.stringify(await layout(), null, 2));
   await fs.writeFile(path.join(evidence, "root-default.png"), (await wc.capturePage()).toPNG());
   stage = "retained real source";
   await click("[aria-label='Open file README.md']");
@@ -131,6 +144,7 @@ async function main() {
   assert.equal(await run(() => globalThis.__conversationGraphs.every((e) => e.isConnected)), true);
   assert.equal(await fs.readFile(path.join(fixture.root, "README.md"), "utf8"), fixture.source);
   assert.deepEqual(errors, []);
+  await fs.writeFile(path.join(evidence, "layout-after.json"), JSON.stringify(await layout(), null, 2));
   await fs.writeFile(path.join(evidence, "retained-drafts.png"), (await wc.capturePage()).toPNG());
   // Save only the disposable source, after proving no background source writes.
   await click(".file-state button");
