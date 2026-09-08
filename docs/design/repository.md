@@ -100,6 +100,9 @@ literal resolver, editor gesture, both Context categories and explicit graph
 selection. App's callback mount checks the current repository/world and preserves
 the existing source-opening authority, then deliberately opens the exact target
 in the Build graph lens without replacing the service graph.
+`//tools/context-source-links:smoke` consumes the desktop bundle,
+real disposable Bazel inputs and the owned virtual-desktop driver to exercise
+the joined mouse-driven path.
 
 `//tools/worktree-browser:checks` consumes `//:quality_sources` and checks the
 actual two-worktree Git broker plus mounted browser and original-buffer retention.

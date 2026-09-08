@@ -147,6 +147,11 @@
           "dependencies": [{ "label": "//:quality_sources", "relation": "data" }]
         },
         {
+          "label": "//tools/context-source-links:smoke",
+          "role": "Mouse-driven target and source navigation in a real disposable Bazel repository",
+          "dependencies": [{ "label": "//:desktop-bundle", "relation": "data" }, { "label": "//tools/context-source-links:sources", "relation": "data" }, { "label": "//tools:virtual-desktop-run.sh", "relation": "data" }]
+        },
+        {
           "label": "//tools/project-context:probe",
           "role": "Explicit read-only project runtime diagnostic",
           "dependencies": [{ "label": "//:quality_sources", "relation": "data" }, { "label": "//tools/project-context:sources", "relation": "data" }]
