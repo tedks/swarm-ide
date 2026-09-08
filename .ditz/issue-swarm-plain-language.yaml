@@ -22,3 +22,13 @@ log_events:
   who: Ted Smith
   what: started
   comment: ""
+- time: 2026-09-08T04:11:38-00:00
+  who: Ted Smith
+  what: commented
+  comment: PR87 at 47910376 rewrote operator-facing copy in eight renderer components
+    plus README/tour/install docs, and added docs/plain-language.md. Kept warnings
+    and all behavior; shortened saved/stale/queued/reload and attachment explanations.
+    Focused Bazel typechecks and 191 tests pass; native meaning review CLEAN after
+    fixing misleading update wording. Active C7/F7/P7/K7 modules untouched and relevant
+    wording suggestions sent directly. ROOT may close after normal merge; remaining
+    backend/legacy copy and post-wave doc refresh tracked separately.
