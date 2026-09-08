@@ -15,6 +15,7 @@ import { GithubPrRequestSchema, GithubPrObservationSchema } from "./github-prs";
 import { RepositoryObservationSchema, RepositoryPathSchema, RepositoryRequestSchema, RepositoryResultSchema, parseRepositoryResultForRequest } from "./repository";
 import { RepositorySearchRequestSchema, RepositorySearchResultSchema, parseRepositorySearchResult } from "./repository-search";
 import { BuildGraphRequestSchema, BuildGraphObservationSchema } from "./build-graph";
+import { BuildJobRequestSchema, BuildJobsObservationSchema } from "./build-jobs";
 import { ServiceContextObservationSchema } from "./context";
 import { ExternalRequestSchema, ExternalResultSchema, parseExternalResult, type ExternalRequest } from "./external-agents";
 export { PROTOCOL_VERSION, FocusRefSchema, RevisionKindSchema, type FocusRef, type RevisionKind } from "./common";
@@ -296,7 +297,7 @@ const WorkspaceRequestSchema = z.discriminatedUnion("type", [
     path: z.string().min(1).max(4_096),
   }),
 ]);
-export const CoreRequestSchema = z.union([WorkspaceRequestSchema, AgentRequestSchema, TaskRequestSchema, RepositoryRequestSchema, RepositorySearchRequestSchema, ChangelogRequestSchema, PlanReadRequestSchema, ExternalRequestSchema, BuildGraphRequestSchema, TaskActivityRequestSchema, TrustedRequestSchema, GithubPrRequestSchema, WorktreeInspectionRequestSchema, WorktreeBrowseRequestSchema, WorkLogRequestSchema, ProjectContextRequestSchema]);
+export const CoreRequestSchema = z.union([WorkspaceRequestSchema, AgentRequestSchema, TaskRequestSchema, RepositoryRequestSchema, RepositorySearchRequestSchema, ChangelogRequestSchema, PlanReadRequestSchema, ExternalRequestSchema, BuildGraphRequestSchema, BuildJobRequestSchema, TaskActivityRequestSchema, TrustedRequestSchema, GithubPrRequestSchema, WorktreeInspectionRequestSchema, WorktreeBrowseRequestSchema, WorkLogRequestSchema, ProjectContextRequestSchema]);
 export type CoreRequest = z.infer<typeof CoreRequestSchema>;
 
 export const FileResultSchema = z.discriminatedUnion("kind", [
@@ -338,6 +339,7 @@ export const CoreResponseSchema = z.discriminatedUnion("ok", [
     plans: PlanReadResultSchema.optional(),
     external: ExternalResultSchema.optional(),
     buildGraph: BuildGraphObservationSchema.optional(),
+    buildJobs: BuildJobsObservationSchema.optional(),
     githubPrs: GithubPrObservationSchema.optional(),
     trusted: TrustedResultSchema.optional(),
     worktreeInspection: WorktreeInspectionResultSchema.optional(),
@@ -403,6 +405,13 @@ const agentResultKind = {
 export function parseCoreResponseForRequest(input: unknown, request: CoreRequest): CoreResponse {
   const response = parseCoreResponse(input);
   if (response.requestId !== request.requestId) throw new Error("Response request ID mismatch");
+  if (request.type === "build.start" || request.type === "build.observe" || request.type === "build.cancel") {
+    if (response.ok && (!response.buildJobs || response.snapshot.project.id !== request.repositoryId || response.snapshot.world.id !== request.worldId ||
+        response.buildJobs.repositoryId !== request.repositoryId || response.buildJobs.worldId !== request.worldId ||
+        Object.keys(response).some((key) => !["protocolVersion", "requestId", "ok", "sequence", "snapshot", "buildJobs"].includes(key))))
+      throw new Error("Build jobs response workspace mismatch");
+    return response;
+  } else if (response.ok && response.buildJobs) throw new Error("Build jobs supplied for a different command");
   if (request.type === "worktree.browse") {
     if (response.ok && (!response.worktreeBrowse || response.worktreeBrowse.sessionId !== request.sessionId ||
       response.worktreeBrowse.directory.directory !== request.directory || response.worktreeBrowse.directory.page !== request.page ||

@@ -122,3 +122,46 @@ and late-event guards plus both TypeScript boundaries.
 `//tools/build-graph:progress-probe` consumes the desktop bundle and runs a small
 real Bazel build in a disposable owned process namespace, proving that a target
 milestone arrives before exit and that process cleanup finishes.
+
+## Selected target builds
+
+The dependency graph has two different actions: **Refresh dependencies** queries
+declarations; **Build selected target** compiles the explicitly selected local
+rule. It does not run the fixed example service-topology build or automatically
+build the whole repository. Selection must come from a current observed rule;
+the privileged bridge accepts one exact local label, not a pattern, executable,
+working directory or arbitrary flags.
+
+[`protocol/build-jobs.ts`](../../protocol/build-jobs.ts) defines
+`build.start`, `build.observe` and `build.cancel`. The worker routes these to a
+[`TargetBuildService`](../../core/build-jobs.ts) created for the registered
+repository root and world. Each root owns its own service; switching worktrees
+must select that service, never relabel jobs from another root. The service
+admits one build at a time and retains its 20 most recent jobs through source
+changes for the core lifetime. Historical success does not certify later edits.
+
+[`target-build-process.ts`](../../core/target-build-process.ts) runs pinned Bazel
+7 in a private owned PID namespace and private output cache, using batch mode
+and at most three build workers. Repository `.bazelrc` settings are respected;
+system/home rc files are not loaded. This is trusted repository execution, not
+read-only analysis. The build has a 15-minute deadline and an 8 MiB process-output
+limit, retaining the last 4 KiB of readable output. Cache/artifacts last until
+core shutdown; this is not the user's shared Bazel server or persistent cache.
+
+The same complete-line BEP reader supplies real in-flight milestones. Jobs show
+target, status, start time, elapsed time, latest message and retained output.
+They do not report synthetic CPU/memory values or guessed percentages. Stop
+requests owned shutdown and remains Stopping until cleanup finishes. Unknown
+cleanup fails the job, prevents another launch and withholds successful core
+shutdown attestation. Build observations and source refresh never replay Start.
+
+The renderer's [`useTargetBuilds`](../../app/renderer/build-resources/use-target-builds.ts)
+polls only running jobs (or recovers a failed observation), with repository/world
+and core-lifetime fencing. The existing
+[`BuildResources`](../../app/renderer/build-resources/BuildResources.tsx) retains
+the resulting cards independently of example topology jobs.
+`//tools/build-graph:target-checks` consumes `//:quality_sources` for service,
+collector, bridge-correlation, hook and mounted-control regressions plus both
+TypeScript boundaries. `//tools/build-graph:target-probe` consumes its probe
+module, sources and desktop bundle; it exercises actual worker request routing
+and owned successful/failing Bazel targets in a disposable repository.

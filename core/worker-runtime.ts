@@ -35,6 +35,7 @@ import { readPlanIndex } from "./plans";
 import { ExternalAgentService } from "./external-agents";
 import type { ExternalResult } from "../protocol/external-agents";
 import { BuildGraphProvider } from "./build-graph";
+import { TargetBuildService } from "./build-jobs";
 import type { BuildGraphObservation } from "../protocol/build-graph";
 import { GithubPrProvider, GithubPrReadError } from "./github-prs";
 import type { TrustedLocalService } from "./agents/trusted-local";
@@ -61,6 +62,7 @@ const fileReadGenerations = new Map<string, number>();
 const providerPromise = RealWorkspaceProvider.create(workspaceRoot);
 let trustedPromise: Promise<TrustedLocalService | null> | undefined;
 const buildGraphPromise = providerPromise.then((provider) => new BuildGraphProvider(workspaceRoot, provider.snapshot().project.id, provider.snapshot().world.id));
+const targetBuildsPromise = providerPromise.then((provider) => new TargetBuildService(workspaceRoot, provider.snapshot().project.id, provider.snapshot().world.id));
 const githubPrsPromise = providerPromise.then((provider) => new GithubPrProvider(workspaceRoot, provider.snapshot().project.id, provider.snapshot().world.id));
 const projectContextPromise = providerPromise.then((provider) => new ProjectContextProvider(workspaceRoot, provider.snapshot().project.id, provider.snapshot().world.id));
 let workingWorldObserver: WorkingWorldObserver | null = null;
@@ -187,6 +189,7 @@ process.parentPort?.on("message", async (event) => {
           journalPending?.catch(() => {}),
           ...[...worktreeInspections].map((pending) => pending.catch(() => {})),
           buildGraphPromise.then((graph) => graph.dispose()),
+          targetBuildsPromise.then((builds) => builds.dispose()),
           githubPrsPromise.then((prs) => prs.dispose()),
           projectContextPromise.then((context) => context.dispose()),
         ]);
@@ -300,6 +303,14 @@ process.parentPort?.on("message", async (event) => {
       return;
     }
     switch (request.type) {
+      case "build.start":
+      case "build.observe":
+      case "build.cancel": {
+        const builds = await targetBuildsPromise;
+        if (shuttingDown) { post(fail(requestId, "CORE_UNAVAILABLE", "Core is shutting down.")); return; }
+        post(parseCoreResponseForRequest({ ...ok(requestId, provider.snapshot()), buildJobs: builds.request(request) }, request));
+        return;
+      }
       case "projectContext.observe": {
         const snapshot = provider.snapshot();
         if (request.repositoryId !== snapshot.project.id || request.worldId !== snapshot.world.id) {
@@ -457,6 +468,7 @@ void providerPromise.then(async (provider) => {
 
 process.on("exit", () => {
   void buildGraphPromise.then((graph) => graph.dispose());
+  void targetBuildsPromise.then((builds) => builds.dispose());
   void githubPrsPromise.then((prs) => prs.dispose());
   void projectContextPromise.then((context) => context.dispose());
   void providerPromise.then((provider) => provider.dispose());

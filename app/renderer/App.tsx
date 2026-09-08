@@ -35,6 +35,7 @@ import type { TrustedSelection } from "./agents/use-trusted-fleet";
 import { AgentReloadGuard } from "./agents/AgentReloadGuard";
 import { AgentDock } from "./agents/AgentDock";
 import { BuildResources } from "./build-resources/BuildResources";
+import { useTargetBuilds } from "./build-resources/use-target-builds";
 import { buildGraphLinks, useBuildGraph } from "./repository/use-build-graph";
 import { useUiDemo, MockRunRail, MockConversation, MockContext, MOCK_AGENTS, type DemoCommand } from "./agents/ui-demo";
 import { protectsAgentIntent } from "./agents/live-state";
@@ -1121,6 +1122,8 @@ export function App() {
     Boolean(snapshot) && observedCoreGeneration === coreGenerationRef.current && (!window.swarmLifecycle || lifecycle?.core.phase === "ready"),
     { changeToken: snapshot?.revisions.working.fingerprint });
   const buildLinks = useMemo(() => buildGraphLinks(buildGraph.observation), [buildGraph.observation]);
+  const targetBuilds = useTargetBuilds(snapshot?.project.id, snapshot?.world.id, contextRealm(),
+    Boolean(snapshot) && observedCoreGeneration === coreGenerationRef.current && (!window.swarmLifecycle || lifecycle?.core.phase === "ready"));
   const openContextBuildTarget = (target: { topologyId: string; id: string }) => {
     const current = workspaceRef.current.snapshot;
     if (target.topologyId !== "build" || !current || !buildLinks || contextSubject !== attentionRef.current.subject ||
@@ -1368,7 +1371,7 @@ export function App() {
           <div><span className="eyebrow">central navigation</span><strong>{workLogOpen ? `Work Log · ${workLogEntry?.agent ?? "Outcome"}` : designVisible ? "System design" : worktreeVisible ? worktreeSelection?.path : journalVisible ? "Activity log" : textDocumentVisible ? tasks.detail?.title ?? "Task document" : activeFile?.path ?? focusLabel(snapshot.focus)}</strong><small tabIndex={0}>{workLogOpen ? "What was accomplished" : designVisible ? "Architecture in the repository" : worktreeVisible ? "Agent worktree · read-only" : activeFile ? `${activeFile.status} · ${activeFile.message}` : snapshot.focus.domain}</small></div>
           {!designVisible ? <button className="design-open-button" onClick={showDesign}>System plan</button> : null}
           <details className="topology-actions"><summary aria-label="Build and refresh actions" title="Build and refresh actions">⋯</summary><div>
-            <button disabled={coreUnavailable} onClick={() => { void buildGraph.refresh(); }}>Refresh build graph</button>
+            <button disabled={coreUnavailable} onClick={() => { void buildGraph.refresh(); }}>Refresh dependencies</button>
             <button id="reconcile-success" onClick={() => void reconcile()} disabled={reconciliationRunning || coreUnavailable}>Build service topology</button>
           </div></details>
         </div>
@@ -1388,7 +1391,7 @@ export function App() {
         <div tabIndex={-1} aria-label="Coordinated graphs" className={`graphs-grid ${textOpen ? "is-sidebar" : "is-active"}`}><div className="graph-panels">
           {components}<div className="task-graph-card">{taskGraph}</div>{snapshot.graphs.map((graph) => {
           const pane = <GraphPane key={graph.topologyId} graph={graph} mockAgents={demo.graphs} mockGraphVersion={demo.graphVersion} buildLinkSnapshot={graph.directory ? buildLinks : undefined} onBuildLinksVisibility={graph.directory ? setDirectoryBuildVisible : undefined} buildGraphStatus={buildGraph.observation?.status} focus={snapshot.focus} mappings={snapshot.mappings} reframeVersion={graphReframe} interfaceZoom={zoomPercent} onFocus={selectFocus} onActivate={graph.topologyId === "service" ? activateDefinition : undefined} onInspectFocus={(focus) => { ++navigationIntent.current; inspectGraph(focus); setSelectedConnection(null); void invoke({ type: "focus.select", requestId: requestId(), protocolVersion: PROTOCOL_VERSION, focus }); }} onNavigateDirectory={graph.directory ? enterDirectory : undefined} onConnectionFocus={(connection) => selectConnection(connection, graph.topologyId)} onReconcile={() => { void reconcile(); }} reconciliationRunning={reconciliationRunning} repositoryCameraIntent={graph.directory ? repository.cameraIntent : undefined} />;
-          return graph.topologyId === "service" ? <TopologyViews key={graph.topologyId} service={pane} targetSelection={buildTargetSelection} focusedFile={snapshot.focus.domain === "repo" && snapshot.focus.path && snapshot.focus.key === `file:${snapshot.focus.path}` ? snapshot.focus.path : activeFile?.path ?? null} showBuildVersion={showBuildVersion} capture={buildLinks} observation={buildGraph.observation} onRefresh={() => { void buildGraph.refresh(); }} onVisibility={setBuildGraphVisible} mockAgents={demo.graphs} mockVersion={demo.graphVersion} onOpenBuild={openLinkedFile} reframeVersion={graphReframe} /> : pane;
+          return graph.topologyId === "service" ? <TopologyViews key={graph.topologyId} service={pane} targetSelection={buildTargetSelection} focusedFile={snapshot.focus.domain === "repo" && snapshot.focus.path && snapshot.focus.key === `file:${snapshot.focus.path}` ? snapshot.focus.path : activeFile?.path ?? null} showBuildVersion={showBuildVersion} capture={buildLinks} observation={buildGraph.observation} onRefresh={() => { void buildGraph.refresh(); }} onBuild={(target) => { void targetBuilds.start(target); }} buildBusy={targetBuilds.busy} onVisibility={setBuildGraphVisible} mockAgents={demo.graphs} mockVersion={demo.graphVersion} onOpenBuild={openLinkedFile} reframeVersion={graphReframe} /> : pane;
         })}</div></div>
         <section className="design-document-surface" aria-label="Design reading area" hidden={!designVisible}>{designDocument}</section>
 
@@ -1463,7 +1466,7 @@ export function App() {
           if (focus.worldId === snapshot.world.id && focus.revisionKind === "working") selectFocus({ ...focus, revisionId: snapshot.revisions.working.id });
           else setError("Launch focus cannot be mapped to this working world.");
         }} onClose={() => setAgents((state) => ({ ...state, selected: false }))} height={agentPaneHeight} onHeight={setAgentPaneHeight} /> : undefined}
-          jobsContent={<BuildResources jobs={snapshot.jobs} />}
+          jobsContent={<BuildResources jobs={snapshot.jobs} targetBuilds={targetBuilds.observation} buildError={targetBuilds.error} onCancel={(id) => { void targetBuilds.cancel(id); }} />}
           workLogContent={<WorkLogPanel controller={workLog} onOpen={showWorkLogEntry} onAgent={showConversation} onTask={openTaskDocument} />}
           activityContent={<><ObservedActivity client={externalAgents} onOpen={showConversation} onEntry={showActivityEvent} /><div className="activity-list">{snapshot.activity.slice(0, 4).map((activity) => <div key={activity.id}><i className={`status-${activity.status}`} /><span>{activity.summary}</span><small>{activity.kind}</small><ActivityTime at={activity.at} /></div>)}</div></>}
         />
