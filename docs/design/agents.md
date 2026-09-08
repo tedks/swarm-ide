@@ -38,9 +38,29 @@ input. The tool Activity stream excludes user messages.
 
 `SessionSteering.tsx` uses one `SteeringMemory` owner in App. Per-target drafts,
 pending sends and receipts survive selection, loading, tab changes and development
-remounts. An uncertain result retains its draft/receipt without replay. A full
-application restart does not persist these in-memory drafts. Terminal-owned
-sessions keep their existing queue and tmux owner; viewing them launches nothing.
+remounts. Before a send, `message-outbox.ts` saves its exact text, target and local
+message ID in the operator profile's browser storage. `AgentConversation.tsx`
+shows that outgoing row immediately, interleaved by time with transcript messages,
+with a compact queue state and exact-text Copy action. Submitted messages survive
+renderer reload and application restart in that same profile/origin; unsent
+composer drafts still live only in memory. Outgoing text is never inserted into
+the agent's message body as marker or bookkeeping data.
+
+Queue acceptance remains **Queued**, not delivered: the queue receipt identifies
+a queue item, not the separate client ID in a consumed user-message event. A
+matching text, a later reply, or a missing queue item does not establish receipt.
+Consequently a consumed message may appear in the transcript alongside its saved
+queued copy until a future supported correlation path is added. Interrupted sends
+reload as **Unconfirmed**, never retry. The outbox holds at most 100 messages and
+512 KiB; capacity, invalid storage or write failure before dispatch stops sending
+and preserves the draft, rather than silently evicting unresolved messages. An
+explicit archive/export workflow is tracked as `swarm-outbox-archive`.
+
+Terminal-owned sessions keep their existing queue and tmux owner; viewing them
+launches nothing. Official app-server `turn/steer` requires the running owner and
+its active turn ID. The inspected installation has no running default app-server
+control socket; creating another server/resume is not a supported shortcut for
+steering that existing TUI. The checked tmux command is the immediate manual route.
 
 Native trusted conversations, approvals, forks, new drafts and saved history
 remain mounted in the secondary **Native agents / New** tab. Legacy stored runs
@@ -75,6 +95,14 @@ checks initial selection, per-target drafts, remount/unknown-delivery behavior,
 native controls and the existing observation/messaging cases. Its `:smoke` target
 reads actual registered sessions on an owned virtual desktop, but intercepts Send
 with a controlled receipt before core; it is not a real message to those agents.
+
+`//tools/message-outbox:checks` exercises saved exact text, queue/error/unknown
+states, storage refusal, target identity, restart recovery, chronological rows,
+clipboard fallback and the existing bounded queue transport. Its `:smoke` target
+uses the actual packaged Electron renderer and profile storage on an owned virtual
+desktop: a controlled held send is saved, acknowledged, reloaded, and copied to
+that desktop's clipboard. It never sends an instruction to the observed agent.
+The new renderer modules are real `//:quality_sources` inputs to `//:desktop-bundle`.
 
 The observed fork rail has local subtree disclosures and an **Older sessions**
 toggle. Its default recency view keeps the seven newest dated registrations,
