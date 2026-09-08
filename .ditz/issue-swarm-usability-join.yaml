@@ -34,9 +34,14 @@ log_events:
   who: Ted Smith
   what: blocked by swarm-plan-index-startup
   comment: ""
+- time: 2026-09-08T13:28:43-00:00
+  who: Ted Smith
+  what: blocked by swarm-plan-first-cockpit
+  comment: ""
 blocked_by:
 - swarm-chat-enter-send
 - swarm-cursor-stability
 - swarm-agent-lifecycle-state
 - swarm-work-log-activity-usability
 - swarm-plan-index-startup
+- swarm-plan-first-cockpit
