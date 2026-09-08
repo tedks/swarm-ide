@@ -34,7 +34,9 @@ export function OverflowStrip({ children, label, className = "", activeKey }: {
     move.current = (direction) => scroll(direction * Math.max(72, strip.clientWidth * .7));
     const resize = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(() => reveal.current());
     resize?.observe(strip);
-    const changes = new MutationObserver(measure);
+    // Reordering keeps activeKey stable but can move the selected tab outside
+    // the viewport, so child mutations must reveal as well as remeasure.
+    const changes = new MutationObserver(() => reveal.current());
     changes.observe(strip, { childList: true, subtree: true, characterData: true });
     strip.addEventListener("scroll", measure, { passive: true });
     reveal.current();
