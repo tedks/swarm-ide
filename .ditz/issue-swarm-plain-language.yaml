@@ -1,10 +1,11 @@
 id: swarm-plain-language
 title: Replace modelese with clear developer language
-desc: 'H7: turn modelese into clear human-useful language across user-facing UI and
-  current product docs. Preserve operational meaning, actionable errors, provenance
-  details and historical evidence. Coordinate shared cockpit/external/design files
-  with C7/F7/P7; no behavior changes or blind global replacements. Bounded parallel
-  prototype polish, exact copy checks and small native review.'
+desc: 'H7: Replace modelese with clear, useful language in the user-facing UI and
+  current product docs. Preserve operational meaning, actionable errors, details about
+  where information came from, and historical evidence. Coordinate shared cockpit,
+  external-session and design files with C7/F7/P7. Do not change behavior or make
+  blind global replacements. Keep this to a limited prototype-polish task that can
+  run alongside the other work, with exact copy checks and a small native review.'
 type: task
 component: default
 release:
@@ -38,3 +39,7 @@ log_events:
   comment: 'PR87 merged: simplified eight UI surfaces and current installation/tour
     documentation, with behavior and essential warnings preserved; 191 focused tests
     and native meaning review passed. Remaining copy work tracked in swarm-language-followup.'
+- time: 2026-09-08T04:31:53-00:00
+  who: Ted Smith
+  what: updated description
+  comment: ""
