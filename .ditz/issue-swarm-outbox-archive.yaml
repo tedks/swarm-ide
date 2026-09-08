@@ -14,3 +14,10 @@ log_events:
   who: Ted Smith
   what: created
   comment: ""
+- time: 2026-09-08T13:46:28-00:00
+  who: Ted Smith
+  what: commented
+  comment: First outbox increment retains up to100 unresolved messages and512KiB in
+    operator profile; it refuses further sends without evicting text. Add deliberate
+    export/archive controls and supported consumed-message correlation before routine
+    long-term use. Do not infer consumption from text matches or queue disappearance.
