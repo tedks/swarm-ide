@@ -5,8 +5,8 @@ type: task
 component: docs
 release:
 reporter: Ted Smith <tedks@riseup.net>
-status: in_progress
-disposition:
+status: closed
+disposition: fixed
 creation_time: 2026-09-08T00:09:24-00:00
 references: []
 log_events:
@@ -25,3 +25,10 @@ log_events:
     docs; one light native factual/link/control review CLEAN and diff-check passed.
     No tests/build/GUI/model work. Kept open for ROOT normal merge; private sharing
     choice unchanged.
+- time: 2026-09-08T00:16:39-00:00
+  who: Ted Smith
+  what: 'closed: fixed'
+  comment: Docs-only PR70 normally merged53d2acb; light native/source/control/link
+    review passed. README/tour/install now distinguish actual trusted-local execution,
+    task history and PR reads from isolated unavailability/recorded summaries/illustrative
+    metrics. No new runtime proof claimed.
