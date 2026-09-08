@@ -1,6 +1,13 @@
 package(default_visibility = ["//visibility:public"])
 
 sh_test(
+    name = "conversation-tabs",
+    srcs = ["conversation-tabs.sh"],
+    data = ["//:quality_sources", ":sources"],
+    tags = ["local"],
+)
+
+sh_test(
     name = "plan-first",
     srcs = ["plan-first.sh"],
     data = ["//:quality_sources", ":sources"],

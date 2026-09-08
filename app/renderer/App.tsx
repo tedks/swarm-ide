@@ -1418,7 +1418,9 @@ export function App() {
       <section className="activity-dock panel">
         <ResizeDivider label="Resize plan and conversation" className="dock-divider" container=".workbench" axis="y" reverse value={dockShare ?? 32} minimum={22} maximum={55} initial={32} onChange={setDockShare} />
         <AgentDock state={liveAgents} client={agentClient} selectionVersion={agentDockSelection} fixtureSelectionVersion={fixtureDockSelection} trustedSelectionVersion={trustedSelection?.id} onOpenActivity={() => showJournal()}
+          shortcutsBlocked={paletteOpen}
           conversation={{ selectionVersion: conversationSelection ? String(conversationSelection) : undefined,
+            registered: { sessions: externalAgents.snapshot?.status === "observed" ? externalAgents.snapshot.sessions : null, selected: externalAgents.selected, onSelect: showConversation },
             content: <AgentConversation client={externalAgents} bridge={window.swarm} memory={steeringMemory} onWorktree={browseAgentWorktree} onContext={() => { setExternalInformation(true); setCompactPanel("info"); }} /> }}
           mockConversation={demo.conversation ? { tabs: MOCK_AGENTS, selected: demo.selected, onSelect: demo.select, selectionVersion: demo.selectionVersion, content: <MockConversation selected={demo.selected} /> } : undefined}
           onDraft={() => agentClient.openDraft(snapshot.focus)}
