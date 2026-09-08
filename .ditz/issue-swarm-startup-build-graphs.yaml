@@ -5,8 +5,8 @@ type: bugfix
 component: default
 release:
 reporter: Ted Smith <tedks@riseup.net>
-status: in_progress
-disposition:
+status: closed
+disposition: fixed
 creation_time: 2026-09-08T19:28:44-00:00
 references: []
 log_events:
@@ -56,5 +56,12 @@ log_events:
     before lens click, automatic BUILD edit and camera retention without refresh,
     zero renderer errors/cleanup1. ROOT owns normal merge/app adoption. Large-target
     coverage and buffering monitoring remain separate open issues.'
+- time: 2026-09-08T19:54:30-00:00
+  who: Ted Smith
+  what: 'closed: fixed'
+  comment: 'PR131 landed: build graphs load automatically on startup and changed inputs;
+    Goals raw-output cutoff removed, actual Goals and Pure Sky queries/cache/cleanup
+    and packaged automatic-refresh proof passed. Large graph projection and buffering
+    follow-ups remain open.'
 blocks:
 - swarm-close-working-loop
