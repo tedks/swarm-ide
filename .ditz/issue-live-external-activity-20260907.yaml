@@ -18,3 +18,12 @@ log_events:
   who: Ted Smith
   what: started
   comment: ""
+- time: 2026-09-08T00:51:46-00:00
+  who: Ted Smith
+  what: commented
+  comment: Implemented/pushed PR72; native CLEAN, quality1809/136 at f866184 and focused50/typecheck
+    at final production53e6631. Actual owned virtual packaged auto append/registry/missing-restored
+    transcript/tail/retention proof passed8.364s on153/55233 cleanup1 zero errors,
+    controlled synthetic only and modelTurns0. Ready for ROOT normal merge and issue
+    closure; no peers/app adoption. Per-consumer visibility optimization separately
+    filed.
