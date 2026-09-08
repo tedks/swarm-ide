@@ -59,5 +59,13 @@ log_events:
   what: 'closed: fixed'
   comment: "Direct New agent \u2192 prompt \u2192 Enter implemented and locally verified
     in pushed PR132; ready for ROOT landing."
+- time: 2026-09-08T20:10:59-00:00
+  who: Ted Smith
+  what: commented
+  comment: ROOT independently verified and normally merged PR132 as c5563a6a. Separate
+    one-turn real Codex proof and deterministic packaged GUI attribution retained.
+    Main managed visualization adopting New agent directly; no repeated model proof.
+    Cached-registration retry issue fails closed and is already corrected in pending
+    PR133, not duplicated.
 blocks:
 - swarm-close-working-loop
