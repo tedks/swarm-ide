@@ -11,8 +11,8 @@ type: bugfix
 component: default
 release:
 reporter: Ted Smith <tedks@riseup.net>
-status: in_progress
-disposition:
+status: closed
+disposition: fixed
 creation_time: 2026-09-08T15:07:11-00:00
 references: []
 log_events:
@@ -33,3 +33,11 @@ log_events:
     convergence CLEAN. Two direct milestone queues were observed delayed about49 minutes,
     not duplicate supervisor recaps. Upstream limit tracked separately; live services/queues
     untouched. ROOT owns merge/adoption.'
+- time: 2026-09-08T15:40:17-00:00
+  who: Ted Smith
+  what: 'closed: fixed'
+  comment: Automated status requests now allow one unanswered request per child and
+    one unacknowledged routine ROOT checkpoint, with current-state pointers and explicit
+    receipts. Genuine completion/error wakes preserved. PR118 merged after 33 focused
+    tests and native convergence. Existing queued messages and the separate upstream
+    delivery latency remain unchanged.
