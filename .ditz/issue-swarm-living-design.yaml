@@ -1,9 +1,10 @@
 id: swarm-living-design
 title: Browse system and component designs down to Bazel
-desc: 'P7: Whole-system doc+component graph; recursive component docs+graphs terminating
-  at real Bazel targets and dependencies. Reuse .swarm/plans.json and plan renderer,
-  main-pane surface. Maintain design/code invariant in implementer and reviewer instructions,
-  actual links/labels and clean overview. docs/swarm-operator-hour.md.'
+desc: 'P7: Show a whole-system document and component graph in the main pane. Let
+  readers descend through component documents and graphs to real Bazel targets and
+  dependencies. Reuse .swarm/plans.json and the plan renderer. Keep design and code
+  consistent, and include that requirement in implementer and reviewer instructions.
+  Use actual links and labels, with a clear overview. See docs/swarm-operator-hour.md.'
 type: task
 component: default
 release:
@@ -65,6 +66,10 @@ log_events:
   comment: 'Merged PR86: system design and six component docs now browse through graphs
     into actual Bazel relationships; focused checks and real packaged navigation passed.
     Main cockpit placement joins in C7.'
+- time: 2026-09-08T04:31:45-00:00
+  who: Ted Smith
+  what: updated description
+  comment: ""
 blocks:
 - swarm-operator-demo
 blocked_by:
