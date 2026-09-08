@@ -9,8 +9,9 @@ From a source file, clicking either a direct or transitive Context target should
 ## Progress
 
 - [x] (2026-09-08) Confirmed isolated branch, current graph contracts and ownership; claimed both Ditz issues.
-- [ ] Implement exact graph selection, Context links and bounded reference gestures.
-- [ ] Run focused tests, native review and one owned virtual proof; publish reviewable PR.
+- [x] (2026-09-08 06:14Z) Implemented exact graph selection, Context links and bounded reference gestures; pushed PR101.
+- [x] (2026-09-08 06:17Z) 60 focused tests, both typechecks, existing Context regressions and desktop package pass; native production and harness review CLEAN.
+- [ ] Consume the conversation owner's small reviewed App mount and run the prepared owned virtual proof, then publish final handoff.
 
 ## Assumptions and Boundaries
 
@@ -46,7 +47,9 @@ Use renderer-local explicit selection intents and existing callbacks, not new co
 
 ## Outcomes & Retrospective
 
-Implementation and proof pending.
+Producer callbacks and resolver are reviewed and pushed. The actual application
+mount is an explicit dependency owned by the conversation workstream; component
+tests alone are not described as completed user-facing integration.
 
 ## Artifacts and Notes
 
