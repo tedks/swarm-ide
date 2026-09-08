@@ -38,6 +38,16 @@ log_events:
     typechecks and producer/UI tests pass; native review concurrency findings repaired
     with two-window and batch-overflow regressions. One authorized real summary and
     idempotent Ditz proof now running; no product issue closure or app adoption.
+- time: 2026-09-08T04:05:45-00:00
+  who: Ted Smith
+  what: commented
+  comment: 'Completed K7 implementation in PR83 b4ed1f6: running Codex/gpt-5.6-luna
+    summaries of registered completed turns, explicit Start/Stop/model controls, separate
+    persistent Work Log panel, exact completed-issue Ditz notes and idempotent dedup.
+    One actual model call produced a concrete ROOT progress account; disposable closed
+    proof issue work-log-proof-1788840120864 retained one note after two writes. Focused19
+    tests/typechecks and scoped native convergence pass; C7 mount/ROOT landing remain.
+    No automatic task closure, model replay, worker messaging or app adoption.'
 blocks:
 - swarm-operator-demo
 blocked_by:
