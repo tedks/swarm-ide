@@ -45,5 +45,14 @@ log_events:
   who: Ted Smith
   what: started
   comment: ""
+- time: 2026-09-08T20:02:54-00:00
+  who: Ted Smith
+  what: commented
+  comment: 'Implemented in ready PR132: visible New agent button and source-free Enter
+    startup using normal Codex config; saved outgoing text, inline arrow and focus
+    retention. Each run captures the selected checked worktree; Send/Stop/fork retain
+    that owner. 203 focused tests/types, 77 separate tab tests/types, actual packaged
+    selected-worktree proof and one actual Codex turn passed; native review CLEAN.
+    ROOT owns normal merge/adoption.'
 blocks:
 - swarm-close-working-loop
