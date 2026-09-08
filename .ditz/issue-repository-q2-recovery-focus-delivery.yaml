@@ -1,14 +1,17 @@
 id: repository-q2-recovery-focus-delivery
-title: 'Q2 packaged recovery: establish service-node focus before inspect input'
-desc: 'B1 frozen eb46f55 full-local14/15 passes; Swarm navigation Q2 retained-service
-  core replacement times out at service inspect. Saved app.log active element Refresh
-  directory, click trace extra Refresh event consistent with Enter at old focus, Context
-  NONE but retained service nodes/source/draft and zero renderer exceptions. No event-target
-  record at focus/key dispatch, so no historical cause or production fix claimed.
-  Evidence /tmp/swarm-ide-build-graph-b1.MFmmXC/frozen1-navigation and recovery-boundary.md.
-  Small next step: exact focus/native-focus/key-target instrumentation, one finite
-  navigation run; no retry-to-green, timeout increase or verifier weakening. B1 production
-  query not requested in failed case.'
+title: Establish service-node focus before inspect input in the packaged recovery
+  test (Q2)
+desc: 'The B1 frozen eb46f55 full local run passed 14/15 cases. The Swarm navigation
+  Q2 retained-service core-replacement case timed out at service inspect. Saved app.log
+  shows Refresh directory as the active element. The click trace has an extra Refresh
+  event, consistent with Enter reaching the old focus. Context was NONE, but service
+  nodes/source/draft were retained, with zero renderer exceptions. No event-target
+  record was captured at focus/key dispatch, so neither the historical cause nor a
+  production fix is established. Evidence: /tmp/swarm-ide-build-graph-b1.MFmmXC/frozen1-navigation
+  and recovery-boundary.md. Next step: add exact focus/native-focus/key-target instrumentation
+  and run navigation once with a finite limit. Do not retry until green, increase
+  the timeout, or weaken the verifier. The failed case did not request the B1 production
+  query.'
 type: bugfix
 component: default
 release:
@@ -31,3 +34,11 @@ log_events:
     checks pass. Original failure remains unexplained; instrumentation timing can
     perturb scheduling, pass is NOT fix/waiver. ROOT exact noncritical-risk disposition
     requested before one corrected full-local gate; no more forensic stage assumed.'
+- time: 2026-09-08T04:31:15-00:00
+  who: Ted Smith
+  what: changed title
+  comment: ""
+- time: 2026-09-08T04:31:15-00:00
+  who: Ted Smith
+  what: updated description
+  comment: ""
