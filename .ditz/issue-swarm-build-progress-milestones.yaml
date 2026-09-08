@@ -35,3 +35,11 @@ log_events:
     verified data dependencies. Structural comparison confirms every other node/link
     is unchanged. No executable change or additional test cycle. ROOT preserves additive
     CLI/container mappings during peer composition and owns landing.'
+- time: 2026-09-08T14:37:11-00:00
+  who: Ted Smith
+  what: commented
+  comment: Finished authorized PR114 upper-stack rebase after PR108 merged. Ready
+    master-targeted head d8119de4 preserves both container and build-progress docs/maps;
+    executable implementation unchanged. Direct JSON/diff checks passed, old tip preserved,
+    branch pushed using exact lease. Prior 27 tests/native/real build evidence remains
+    attributable; ROOT owns normal merge and app adoption.
