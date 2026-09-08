@@ -10,6 +10,16 @@ export interface TrustedLocalSessionSnapshot {
   approvals: Array<{ id: string; method: string; summary: string; choices: string[] }>;
   message: string;
 }
+/** Observation only: a completed tool call does not complete its turn or task.
+ * Structurally matches the fleet's optional wire activity; snapshot stays stable. */
+export interface TrustedLocalActivity {
+  id: string;
+  at: string;
+  turnId: string | null;
+  kind: "command" | "fileChange" | "tool" | "turn";
+  status: "running" | "completed" | "failed";
+  summary: string;
+}
 export interface TrustedLocalSessionOptions {
   root: string;
   executable: string;
@@ -52,6 +62,32 @@ const input = (text: string, limit = 16 * 1024) => {
   return [{ type: "text", text, text_elements: [] }];
 };
 
+// Deliberately summarize structure, not arbitrary command strings, tool names,
+// arguments, output, paths, diffs, errors or configuration. Those may be secrets.
+function activityLabel(item: ObjectValue): { kind: TrustedLocalActivity["kind"]; label: string } | null {
+  switch (item.type) {
+    case "commandExecution": {
+      const actions = Array.isArray(item.commandActions) ? item.commandActions : [];
+      const types = actions.slice(0, 64).map((action: unknown) => action && typeof action === "object" ? (action as ObjectValue).type : null);
+      const labels: Record<string, string> = { read: "Reading files", listFiles: "Listing files", search: "Searching files" };
+      const label = types.length === 1 && Object.hasOwn(labels, String(types[0])) ? labels[String(types[0])] : undefined;
+      return { kind: "command", label: label ? `${label} (shell command)` : "Shell command" };
+    }
+    case "fileChange": return { kind: "fileChange", label: Array.isArray(item.changes)
+      ? `File changes (${item.changes.length} ${item.changes.length === 1 ? "file" : "files"})` : "File changes" };
+    case "mcpToolCall": return { kind: "tool", label: "MCP tool" };
+    case "dynamicToolCall": return { kind: "tool", label: "Dynamic tool" };
+    case "collabAgentToolCall": {
+      const labels: Record<string, string> = { spawnAgent: "Spawn agent request", sendInput: "Send agent input request",
+        resumeAgent: "Resume agent request", wait: "Wait for agents request", closeAgent: "Close agent request",
+        sendMessage: "Message agent request", followupTask: "Follow-up task request", interruptAgent: "Interrupt agent request", listAgents: "List agents request" };
+      return { kind: "tool", label: Object.hasOwn(labels, String(item.tool)) ? labels[String(item.tool)]! : "Agent coordination request" };
+    }
+    case "webSearch": return { kind: "tool", label: "Web search" };
+    default: return null;
+  }
+}
+
 /** One owned conversation, with inherited Codex settings. No configuration,
  * credential, sandbox or approval-policy overrides are manufactured here. */
 export class TrustedLocalSession {
@@ -65,9 +101,11 @@ export class TrustedLocalSession {
   private framer = new ProviderJsonl();
   private pending = new Map<number, { resolve(value: unknown): void; reject(error: Error): void; timer: ReturnType<typeof setTimeout> }>();
   private approvals = new Map<string, { wireId: string | number; turnId: string; itemId: string }>();
-  private items = new Map<string, { text: string; completed: boolean; summary?: string }>();
+  private items = new Map<string, { text: string; completed: boolean; summary?: string; activityId?: string; type?: string }>();
+  private activities: TrustedLocalActivity[] = [];
+  private nextActivityId = 0;
   private completedTurns = new Set<string>();
-  private dispatch?: { id: string | null; done: boolean; early: Array<{ method: string; params: unknown }>; earlyBytes: number };
+  private dispatch?: { id: string | null; done: boolean; early: Array<{ method: string; params: unknown }>; earlyBytes: number; activityId?: string };
   private closePromise?: Promise<void>;
   private stopPromise?: Promise<void>;
   private interrupted?: () => void;
@@ -82,6 +120,29 @@ export class TrustedLocalSession {
   }
   snapshot(): TrustedLocalSessionSnapshot {
     return { ...this.state, approvals: this.state.approvals.map((approval) => ({ ...approval, choices: [...approval.choices] })) };
+  }
+  activity(): TrustedLocalActivity[] { return this.activities.map((entry) => ({ ...entry })); }
+  private recordActivity(id: string | undefined, value: Omit<TrustedLocalActivity, "id" | "at">): string {
+    const existing = id ? this.activities.find((entry) => entry.id === id) : undefined;
+    // Never revive a trimmed row or regress a terminal observation.
+    if (id && (!existing || existing.status !== "running")) return id;
+    if (existing) Object.assign(existing, value);
+    else {
+      id = `activity:${++this.nextActivityId}`;
+      this.activities.push({ id, at: new Date().toISOString(), ...value });
+    }
+    this.trimActivities();
+    return id!;
+  }
+  private trimActivities(): void {
+    while (this.activities.length > 128 || Buffer.byteLength(JSON.stringify(this.activities)) > 64 * 1024) this.activities.shift();
+  }
+  private unfinishedActivities(reason: string): void {
+    for (const entry of this.activities) if (entry.status === "running") {
+      entry.status = "failed";
+      entry.summary += ` — outcome unconfirmed (${reason})`;
+    }
+    this.trimActivities();
   }
   private change(): void {
     try { this.onChange(); } catch { this.fail("Session observer failed; local execution is stopping.", false); }
@@ -123,6 +184,7 @@ export class TrustedLocalSession {
   private fail(message: string, publish = true): void {
     if (["closed", "failed"].includes(this.state.status)) return;
     this.state.status = "failed"; this.state.message = message; this.clearApprovals();
+    this.unfinishedActivities("connection ended");
     this.rejectPending(); this.interrupted?.();
     if (publish) this.change();
     void this.close();
@@ -140,7 +202,7 @@ export class TrustedLocalSession {
         }
       } catch {
         this.state.status = "failed"; this.state.message = "Owned process cleanup could not be confirmed.";
-      } finally { clearTimeout(timer); this.change(); }
+      } finally { clearTimeout(timer); this.unfinishedActivities("session closed"); this.change(); }
     });
   }
 
@@ -210,6 +272,7 @@ export class TrustedLocalSession {
     const dispatch = this.dispatch;
     if (!dispatch || (dispatch.id !== null && dispatch.id !== id)) throw new Error("Mismatched turn acknowledgement");
     dispatch.id = id; this.state.turnId = id;
+    if (!dispatch.activityId) dispatch.activityId = this.recordActivity(undefined, { turnId: id, kind: "turn", status: "running", summary: "Codex turn" });
     if (!dispatch.done && this.state.status === "running") this.state.message = "Local Codex is working.";
     const early = dispatch.early; dispatch.early = []; dispatch.earlyBytes = 0;
     for (const message of early) this.notification(message.method, message.params);
@@ -339,6 +402,9 @@ export class TrustedLocalSession {
       if (method === "turn/completed") {
         dispatch.done = true; this.clearApprovals();
         this.completedTurns.add(id);
+        this.recordActivity(dispatch.activityId, { turnId: id, kind: "turn", status: turn.status === "completed" ? "completed" : "failed",
+          summary: `Codex turn — ${turn.status}` });
+        this.unfinishedActivities("turn ended without item completion");
         if (this.state.status === "running") { this.state.status = "ready"; this.state.message = `Codex turn ${turn.status}. You can send another message.`; }
         this.interrupted?.(); this.change();
       }
@@ -356,6 +422,10 @@ export class TrustedLocalSession {
     let tracked = this.items.get(id);
     if (!tracked) { tracked = { text: "", completed: false }; this.items.set(id, tracked); }
     if (tracked.completed) return;
+    if (item) {
+      if (tracked.type !== undefined && tracked.type !== item.type) throw new Error("Provider item type changed");
+      tracked.type = string(item.type, 128);
+    }
     if (!item || item.type === "agentMessage") {
       const next = item ? string(item.text) : tracked.text + string(params.delta);
       if (Buffer.byteLength(next) > 1024 * 1024 || !next.startsWith(tracked.text)) throw new Error("Invalid message accumulation");
@@ -365,12 +435,25 @@ export class TrustedLocalSession {
       tracked.summary = item.changes.map((value) => { const change = object(value); return `${string(change.path, 4096)}\n${string(change.diff, 32 * 1024)}`; }).join("\n");
       if (Buffer.byteLength(tracked.summary) > 64 * 1024) throw new Error("File change preview limit");
     }
+    const activity = item ? activityLabel(item) : null;
+    if (activity && item) {
+      const completed = method === "item/completed";
+      const nonzeroExit = item.type === "commandExecution" && Number.isSafeInteger(item.exitCode) && item.exitCode !== 0;
+      const failed = ["failed", "declined", "interrupted"].includes(String(item.status)) || nonzeroExit ||
+        (item.type === "dynamicToolCall" && item.success === false);
+      const knownTerminal = ["completed", "failed", "declined", "interrupted"].includes(String(item.status)) || item.type === "webSearch";
+      const status = !completed ? "running" : failed || !knownTerminal ? "failed" : "completed";
+      const outcome = !knownTerminal ? "outcome unconfirmed" : ["declined", "interrupted"].includes(String(item.status)) ? String(item.status) : failed ? "failed" : "completed";
+      const exit = completed && item.type === "commandExecution" && Number.isSafeInteger(item.exitCode) ? ` (exit ${item.exitCode})` : "";
+      tracked.activityId = this.recordActivity(tracked.activityId, { turnId: dispatch.id, kind: activity.kind, status,
+        summary: activity.label + (completed ? ` — ${outcome}${exit}` : "") });
+    }
     if (method === "item/completed") {
       tracked.completed = true;
       for (const [approvalId, approval] of this.approvals) if (approval.itemId === id) {
         this.approvals.delete(approvalId); this.state.approvals = this.state.approvals.filter((entry) => entry.id !== approvalId);
       }
       this.change();
-    }
+    } else if (activity) this.change();
   }
 }
