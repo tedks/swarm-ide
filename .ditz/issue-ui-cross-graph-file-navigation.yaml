@@ -1,10 +1,11 @@
 id: ui-cross-graph-file-navigation
-title: Audit explicit source-tab navigation across directory and service projections
-desc: File tabs coordinate source focus and Build graph now follows exact captured
-  file references. User also requested corresponding repo/component graph recentering
-  when switching files. Audit cross-directory tab selection and available service
-  mappings; implement deliberate explicit navigation without background camera jumps
-  or invented mappings, retaining dirty source and cursor.
+title: Check source-tab navigation across directory and service graphs
+desc: File tabs coordinate source focus, and the Build graph now follows exact captured
+  file references. The user also requested that switching files recenter the corresponding
+  repository/component graph. Check tab selection across directories and the service
+  mappings that are available. Add navigation triggered by explicit user actions,
+  without background camera jumps or invented mappings. Retain unsaved source edits
+  and cursor position.
 type: task
 component: default
 release:
@@ -17,4 +18,12 @@ log_events:
 - time: 2026-09-07T00:20:20-00:00
   who: Ted Smith
   what: created
+  comment: ""
+- time: 2026-09-08T04:32:27-00:00
+  who: Ted Smith
+  what: changed title
+  comment: ""
+- time: 2026-09-08T04:32:27-00:00
+  who: Ted Smith
+  what: updated description
   comment: ""
