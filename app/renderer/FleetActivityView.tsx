@@ -22,6 +22,7 @@ export function FleetActivityView({ fleet, sessions, selected, onSelect, onAgent
     const current = registered.get(recorded.id);
     return current?.status === "observed" && current.worktree === recorded.worktree && current.evidence === recorded.evidence;
   };
+  const canInspect = (recorded: ExternalAgentSummary) => Boolean(recorded.worktree) && canOpen(recorded);
   const available = selected ? canOpen(selected.session) : false;
   return <section className="fleet-activity-view" aria-label="Live swarm activity">
     {selected ? <article className="fleet-event-detail">
@@ -30,12 +31,13 @@ export function FleetActivityView({ fleet, sessions, selected, onSelect, onAgent
       {selected.entry.command ? <pre>{selected.entry.command}</pre> : null}
       {selected.session.worktree ? <p className="worktree-location">{selected.session.worktree}</p> : null}
       {!available ? <p role="status">This agent or worktree is no longer available. Return to All activity.</p> : null}
+      {available && !selected.session.worktree && selected.entry.path ? <p>No registered worktree for this event.</p> : null}
       <div className="fleet-event-actions"><button disabled={!available} onClick={() => onAgent(selected.session.id)}>Open agent</button>
-        {selected.entry.path ? <button disabled={!available} onClick={() => onInspect(selected.session.id, eventRepositoryPath(selected.session, selected.entry.path!), selected.entry.patch)}>Inspect {selected.entry.path}</button> : null}</div>
+        {selected.entry.path ? <button disabled={!canInspect(selected.session)} onClick={() => onInspect(selected.session.id, eventRepositoryPath(selected.session, selected.entry.path!), selected.entry.patch)}>Inspect {selected.entry.path}</button> : null}</div>
       {selected.entry.patch ? <pre className="fleet-recorded-patch">{selected.entry.patch}</pre> : null}
     </article> : entries.length ? <ol>{entries.map(({ session, entry }) => <li key={`${session.id}:${entry.id}`}>
       <button aria-label={`${session.label}: ${entry.text}`} onClick={() => onSelect({ session, entry })}><ActivityTime at={entry.at} /><strong>{session.label}</strong><span>{entry.text}</span></button>
-      {entry.path ? <button className="fleet-file-link" data-session={session.id} data-activity-file={entry.path} disabled={!canOpen(session)} onClick={() => onInspect(session.id, eventRepositoryPath(session, entry.path!), entry.patch)}>{entry.path}</button> : null}
+      {entry.path ? <button className="fleet-file-link" data-session={session.id} data-activity-file={entry.path} disabled={!canInspect(session)} onClick={() => onInspect(session.id, eventRepositoryPath(session, entry.path!), entry.patch)}>{entry.path}</button> : null}
     </li>)}</ol> : <p>No activity yet. Registered agents appear here as their transcripts update.</p>}
   </section>;
 }

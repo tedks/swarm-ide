@@ -38,6 +38,8 @@ patch open as newer operations arrive. Returning to Activity shows those newer
 rows. Event navigation requires the current registered session/worktree, and a
 repository, world or core change clears the inspected selection. Bounded tail
 eviction alone does not revoke a still-registered worktree.
+An agent without a registered worktree can still be opened as a conversation,
+but its recorded file event cannot offer a working-file inspection.
 
 The central header Refresh reads the selected tab's source: the existing external
 observer for Activity, `changelog.read` for Saved summaries, and the explicit
@@ -116,6 +118,9 @@ and workspace identity, and retained editor/composer/graph state.
 explicitly labelled private JSONL proof fixtures on an owned virtual desktop.
 It checks raw event timestamps, keyboard settings and retained source/draft/cameras;
 those recorded operations are not executed commands or model responses.
+The optional `//tools/activity-usability:central-refresh` journey extends that
+same harness with controlled transcript appends, automatic central publication
+and actual Refresh/overview navigation. It does not execute those operations.
 
 See [logical changelog](../logical-changelog.md) for saved-report behavior and
 [the operator plan](../swarm-operator-hour.md) for the new online Work Log.

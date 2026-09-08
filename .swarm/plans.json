@@ -474,6 +474,14 @@
           ]
         },
         {
+          "label": "//tools/activity-usability:central-refresh",
+          "role": "Packaged central Activity publication and explicit refresh proof using controlled transcript appends",
+          "dependencies": [
+            { "label": "//tools/activity-usability:sources", "relation": "data" },
+            { "label": "//tools/activity-usability:smoke", "relation": "data" }
+          ]
+        },
+        {
           "label": "//tools/activity-usability:smoke",
           "role": "Packaged raw activity, keyboard settings and retained work proof",
           "dependencies": [{ "label": "//:desktop-bundle", "relation": "data" }]

@@ -139,7 +139,7 @@ async function main() {
   assert.equal(await run((s) => document.querySelector(s).getAttribute("aria-expanded"), toggle), "false");
   await retained();
   const centralRefresh = process.env.SWARM_ACTIVITY_CENTRAL_REFRESH === "1"
-    ? await require("./central-refresh.cjs")({ repository, run, click, until, retained, shot, requests, stage: (next) => { stage = next; } }) : null;
+    ? await require("./central-refresh.cjs")({ repository, run, click, tabTo, until, retained, shot, requests, stage: (next) => { stage = next; } }) : null;
   assert.equal(await fs.readFile(path.join(repository.root, repository.sourcePath), "utf8"), repository.sourceText, "source was never saved or replaced");
   assert.equal(await fs.readFile(repository.registry, "utf8"), repository.registryText, "registrations unchanged");
   const productMutations = requests.filter(({ type }) => /^(agent\.(prepare|launch|steer|cancel)|externalAgents\.(send|handoff)|trusted\.(prepare|launch|fork|send|decide|stop)|workLog\.(start|stop|record)|reconciliation\.start|fixture\.reset|file\.write)$/.test(type));

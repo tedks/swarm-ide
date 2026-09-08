@@ -1,7 +1,7 @@
 // Controlled JSONL append -> unchanged packaged observer -> real central UI.
 // The records below describe operations; the harness does not execute them.
 const fs = require("node:fs/promises"), assert = require("node:assert/strict");
-module.exports = async ({ repository, run, click, until, retained, shot, requests, stage }) => {
+module.exports = async ({ repository, run, click, tabTo, until, retained, shot, requests, stage }) => {
   const registration = JSON.parse(repository.registryText).sessions[0];
   const append = async (id, command, at) => fs.appendFile(registration.rollout, JSON.stringify({ timestamp: at, type: "response_item",
     payload: { type: "function_call", name: "exec_command", call_id: id, arguments: JSON.stringify({ cmd: command, workdir: repository.root }) } }) + "\n");
@@ -10,7 +10,9 @@ module.exports = async ({ repository, run, click, until, retained, shot, request
   stage("central-overview");
   await click(".dock-activity .activity-open-heading");
   await until(() => hasText("Ran git status --short"), "central current fleet");
-  await click(".agent-draft textarea");
+  // The earlier keyboard settings journey can scroll the draft above the dock.
+  // Native Tab both reveals and focuses it; do not click a clipped coordinate.
+  await tabTo(".agent-draft textarea");
   const autoCommand = "echo controlled automatic Activity milestone";
   await append("central-auto", autoCommand, "2026-09-08T12:35:00.000Z");
   const autoStarted = Date.now();

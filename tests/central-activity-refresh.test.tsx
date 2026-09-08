@@ -108,3 +108,16 @@ it("a delayed saved-entry reveal cannot steal focus after the operator resumes t
   expect(document.querySelector<HTMLDetailsElement>('[data-change-id="change-a"]')?.open).toBe(true);
   expect(document.activeElement).toBe(input);
 });
+
+it("rootless agents remain openable but cannot offer a file inspection in list or detail", () => {
+  const rootless = { ...session, worktree: undefined }, onInspect = vi.fn(), onAgent = vi.fn();
+  const props = { fleet: [{ ...detail, session: rootless }], onSelect: vi.fn(), onInspect, onAgent };
+  const view = render(<FleetActivityView {...props} selected={null} />);
+  fireEvent.click(screen.getByRole("button", { name: "/repos/worker/file.ts" }));
+  expect(onInspect).not.toHaveBeenCalled();
+  view.rerender(<FleetActivityView {...props} selected={{ session: rootless, entry }} />);
+  fireEvent.click(screen.getByRole("button", { name: "Inspect /repos/worker/file.ts" }));
+  expect(onInspect).not.toHaveBeenCalled();
+  fireEvent.click(screen.getByRole("button", { name: "Open agent" }));
+  expect(onAgent).toHaveBeenCalledExactlyOnceWith(session.id);
+});
