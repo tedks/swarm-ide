@@ -85,4 +85,14 @@ describe("agent worktree browser", () => {
     fireEvent.click(screen.getByRole("button", { name: "Return to workspace" }));
     expect(back).toHaveBeenCalledOnce();
   });
+  it("does not steal source-reading focus on an unrelated parent rerender", async () => {
+    const wire = bridge(), back = vi.fn();
+    const props = { sessionId: A, bridge: wire, generation: 1, onReturn: back, initialPath: "src/main.ts" };
+    const view = render(<AgentWorktreeBrowser {...props} />);
+    await screen.findByText(`Source in ${A}: src/main.ts`);
+    const source = document.querySelector<HTMLElement>(".worktree-source")!;
+    source.focus(); expect(document.activeElement).toBe(source);
+    view.rerender(<AgentWorktreeBrowser {...props} onReturn={() => back()} />);
+    expect(document.activeElement).toBe(source);
+  });
 });

@@ -49,6 +49,8 @@ there is no fetch, checkout, staging, or index update. Both committed agent work
 and current local changes appear. Untracked files are separate, renames retain
 their old path, and missing bases or partial results are not called clean.
 At most 400 changed paths are displayed; directory browsing remains available.
+The browse operation has one four-second cancellation budget, below the normal
+five-second bridge deadline. Rename inspection carries both literal paths.
 
 The existing `worktree.inspect` request retains HEAD comparison by default;
 the browser explicitly requests master comparison. Files are read through the
@@ -72,3 +74,7 @@ boundaries. See [dynamic build graph](../dynamic-build-graph.md) for query limit
 
 `//tools/worktree-browser:checks` consumes `//:quality_sources` and checks the
 actual two-worktree Git broker plus mounted browser and original-buffer retention.
+`//tools/worktree-browser:smoke` packages the production core and places the real
+App and browser in a labelled controlled renderer wrapper on owned virtual X11.
+That wrapper proves retention before the independent conversation-owner App mount;
+it is not a live-agent or normal-entry-point claim.

@@ -1,4 +1,5 @@
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import * as gitBoundary from "../core/repository-boundary";
 import { execFileSync } from "node:child_process";
 import { chmod, mkdir, mkdtemp, readFile, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -100,6 +101,11 @@ describe("agent worktree browsing and master comparison", () => {
       { path: "delete.txt", status: "deleted" },
       { path: "scratch.txt", status: "untracked" },
     ]));
+    const renamed = await inspectRegisteredWorktree(master, registry, { ...inspect(A, "renamed.txt"), previousPath: "rename.txt" });
+    expect(renamed.previousPath).toBe("rename.txt");
+    expect(renamed.diff).toContain("rename from rename.txt");
+    expect(renamed.diff).toContain("rename to renamed.txt");
+    expect(renamed.diff).not.toContain("new file mode");
     const deleted = await inspectRegisteredWorktree(master, registry, inspect(A, "delete.txt"));
     expect(deleted.content).toBeNull();
     expect(deleted.diff).toContain("deleted file mode");
@@ -198,5 +204,23 @@ describe("agent worktree browsing and master comparison", () => {
     const inspected = { ...response, requestId: inspectionCommand.requestId, worktreeBrowse: undefined, worktreeInspection };
     expect(parseCoreResponseForRequest(inspected, inspectionCommand).ok).toBe(true);
     expect(() => parseCoreResponseForRequest({ ...inspected, worktreeInspection: { ...worktreeInspection, comparison: undefined } }, inspectionCommand)).toThrow();
+    expect(() => parseCoreResponseForRequest({ ...inspected, worktreeInspection: { ...worktreeInspection, previousPath: "wrong.txt" } }, inspectionCommand)).toThrow();
   });
+  it("cancels a held Git operation within the existing five-second bridge deadline", async () => {
+    const { master, registry } = await setup();
+    const original = gitBoundary.queryRepositoryGit;
+    let aborted = false;
+    const spy = vi.spyOn(gitBoundary, "queryRepositoryGit").mockImplementation((root, args, options) => {
+      if (args[0] !== "for-each-ref") return original(root, args, options);
+      return new Promise((_resolve, reject) => options?.signal?.addEventListener("abort", () => {
+        aborted = true; reject(new Error("Held Git operation cancelled"));
+      }, { once: true }));
+    });
+    try {
+      const started = Date.now();
+      await expect(browseRegisteredWorktree(master, registry, browse())).rejects.toThrow("stopped");
+      expect(aborted).toBe(true);
+      expect(Date.now() - started).toBeLessThan(5_000);
+    } finally { spy.mockRestore(); }
+  }, 7_000);
 });

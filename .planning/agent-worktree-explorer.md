@@ -9,8 +9,8 @@ An operator selects an agent and explores its registered checkout without replac
 ## Progress
 
 - [x] 2026-09-08: inspect current file broker and agree bounded ownership.
-- [ ] Add typed read-only directory/change listing and master comparison.
-- [ ] Add standalone browser and publish the small App seam.
+- [x] 2026-09-08: Add typed read-only directory/change listing and master comparison.
+- [x] 2026-09-08: Add standalone browser and publish the small App seam.
 - [ ] Prove two owned worktrees, retained editor, focused checks and native review.
 - [ ] Push ready PR, document outcomes and sync Ditz.
 
@@ -42,13 +42,15 @@ All product operations are reads with bounded output/lifetime and response ident
 
 Current inspection compares only HEAD to the checkout, so committed agent work is absent from its diff. The existing component never enters the editable buffer store, providing a small safe composition point.
 
+Native review found destination-only rename comparison, per-operation budgets exceeding the bridge deadline, and focus following freshly allocated selection objects. Corrections preserve both rename paths, apply a total four-second browse budget and focus only on session/path changes. Focused tests cover these mechanisms. The first virtual wrapper put its test controls over the ordinary command button; the corrected wrapper moves only those test controls and preserves the failure evidence.
+
 ## Decision Log
 
 Keep the old route backward compatible and add browser-specific data rather than replacing the global repository provider. Whole graph rebinding is deferred to avoid turning this slice into a multi-repo platform.
 
 ## Outcomes & Retrospective
 
-Implementation and evidence pending.
+The standalone explorer and typed routes are implemented. Initial 32 checks and both TypeScript boundaries passed; rename/focus corrections passed 33 checks. Native fix-delta review is CLEAN. The ordinary App entry remains the conversation owner's independent mount, while this slice proves the actual browser and core through a labelled controlled renderer wrapper. Whole graph rebinding and editable agent checkouts remain deferred.
 
 ## Artifacts and Notes
 

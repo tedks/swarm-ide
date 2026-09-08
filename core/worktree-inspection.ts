@@ -57,13 +57,14 @@ async function registeredWorktree(
 /** Resolve only local refs. A remote-tracking master is preferred because the
  * user's master checkout may deliberately lag the integration branch. */
 async function comparisonBase(root: string, signal?: AbortSignal) {
-  for (const ref of ["refs/remotes/origin/master", "refs/heads/master", "refs/remotes/origin/main", "refs/heads/main"]) {
-    if (signal?.aborted) throw new Error("Worktree inspection stopped.");
-    try {
-      const oid = (await queryRepositoryGit(root, ["rev-parse", "--verify", `${ref}^{commit}`], { signal, maximumBytes: 1024 })).toString("utf8").trim();
-      if (/^[a-f0-9]{40,64}$/.test(oid)) return { oid, label: ref.replace(/^refs\/(heads|remotes)\//, "") };
-    } catch { if (signal?.aborted) throw new Error("Worktree inspection stopped."); }
-  }
+  const refs = ["refs/remotes/origin/master", "refs/heads/master", "refs/remotes/origin/main", "refs/heads/main"];
+  try {
+    const rows = (await queryRepositoryGit(root, ["for-each-ref", "--format=%(refname)%00%(objectname)", ...refs], { signal, maximumBytes: 2048 })).toString("utf8").trim().split("\n");
+    for (const ref of refs) {
+      const oid = rows.find((row) => row.startsWith(`${ref}\0`))?.split("\0")[1];
+      if (oid && /^[a-f0-9]{40,64}$/.test(oid)) return { oid, label: ref.replace(/^refs\/(heads|remotes)\//, "") };
+    }
+  } catch { if (signal?.aborted) throw new Error("Worktree inspection stopped."); }
   return null;
 }
 
@@ -85,7 +86,7 @@ export async function inspectRegisteredWorktree(
   try {
     if (request.comparison && !base) throw new Error("No base");
     const bytes = await queryRepositoryGit(root, ["--no-pager", "--literal-pathspecs", "diff", "--no-ext-diff", "--no-textconv",
-      "--no-color", base?.oid ?? "HEAD", "--", request.path], { signal, maximumBytes: 256 * 1024, timeoutMs: 2_000 });
+      "--no-color", "--find-renames", base?.oid ?? "HEAD", "--", ...(request.previousPath ? [request.previousPath] : []), request.path], { signal, maximumBytes: 256 * 1024, timeoutMs: 2_000 });
     diff = bytes.toString("utf8");
   } catch {
     check();
@@ -95,6 +96,7 @@ export async function inspectRegisteredWorktree(
   if (content === null && !diff && !contentNotice) throw new Error("This file is missing and no worktree diff is available.");
   return WorktreeInspectionResultSchema.parse({ sessionId: request.sessionId, path: request.path,
     label: row.label, worktree: root, content, diff, ...(diffNotice ? { diffNotice } : {}),
+    ...(request.previousPath ? { previousPath: request.previousPath } : {}),
     ...(contentNotice ? { contentNotice } : {}), ...(request.comparison ? { comparison: request.comparison, base: base?.label ?? null } : {}) });
 }
 
@@ -117,6 +119,20 @@ export function parseWorktreeChanges(bytes: Buffer): { changes: WorktreeChange[]
 
 export async function browseRegisteredWorktree(
   workspaceRoot: string, registryPath: string | undefined, input: WorktreeBrowseRequest, signal?: AbortSignal,
+): Promise<WorktreeBrowseResult> {
+  // One total four-second read budget, below the bridge's ordinary five seconds.
+  // Cancellation disposes directory handles and kills any pending Git query.
+  const deadline = new AbortController();
+  const timer = setTimeout(() => deadline.abort(), 4_000);
+  const cancel = () => deadline.abort();
+  signal?.addEventListener("abort", cancel, { once: true });
+  if (signal?.aborted) deadline.abort();
+  try { return await browseWithinDeadline(workspaceRoot, registryPath, input, deadline.signal); }
+  finally { clearTimeout(timer); signal?.removeEventListener("abort", cancel); }
+}
+
+async function browseWithinDeadline(
+  workspaceRoot: string, registryPath: string | undefined, input: WorktreeBrowseRequest, signal: AbortSignal,
 ): Promise<WorktreeBrowseResult> {
   const request = WorktreeBrowseRequestSchema.parse(input);
   const { root, row, check } = await registeredWorktree(workspaceRoot, registryPath, request.sessionId, signal);
@@ -142,7 +158,7 @@ export async function browseRegisteredWorktree(
     } catch { check(); complete = false; notices.push("Tracked changes unavailable or exceed the read limit."); }
     try {
       const bytes = await queryRepositoryGit(root, ["ls-files", "--others", "--exclude-standard", "-z"], { signal, maximumBytes: 256 * 1024 });
-      for (const path of new TextDecoder("utf8", { fatal: true }).decode(bytes).split("\0").filter(Boolean)) {
+      for (const path of new TextDecoder("utf8", { fatal: true, ignoreBOM: true }).decode(bytes).split("\0").filter(Boolean)) {
         if (isRepositoryPath(path)) changes.push({ path, status: "untracked" });
         else complete = false;
       }

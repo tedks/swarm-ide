@@ -3,7 +3,7 @@ import type { SwarmBridge } from "../electron/preload";
 import { PROTOCOL_VERSION, parseCoreResponseForRequest } from "../../protocol/schema";
 import { WorktreeInspectionRequestSchema, type WorktreeInspectionResult } from "../../protocol/worktree-inspection";
 
-export interface WorktreeSelection { sessionId: string; path: string; patch?: string }
+export interface WorktreeSelection { sessionId: string; path: string; patch?: string; previousPath?: string }
 
 /** Inspection never enters the editable buffer store or sends a write request. */
 export function WorktreeInspection({ selection, bridge, generation, onReturn, comparison, initialView }: {
@@ -15,14 +15,14 @@ export function WorktreeInspection({ selection, bridge, generation, onReturn, co
   const [refresh, setRefresh] = useState(0);
   const [view, setView] = useState<"source" | "diff" | "patch">(selection.patch ? "patch" : initialView ?? "source");
   const heading = useRef<HTMLHeadingElement>(null);
-  useEffect(() => { heading.current?.focus(); }, [selection]);
+  useEffect(() => { heading.current?.focus(); }, [selection.sessionId, selection.path]);
   useEffect(() => {
     let current = true;
     setResult(null); setNotice("");
     if (!bridge) { setNotice("Local core unavailable. Try again when connected."); return; }
     const parsed = WorktreeInspectionRequestSchema.safeParse({ protocolVersion: PROTOCOL_VERSION,
       requestId: `worktree:${crypto.randomUUID()}`, type: "worktree.inspect", sessionId: selection.sessionId, path: selection.path,
-      ...(comparison ? { comparison } : {}) });
+      ...(comparison ? { comparison } : {}), ...(selection.previousPath ? { previousPath: selection.previousPath } : {}) });
     if (!parsed.success) { setNotice("This event does not name a repository-relative file. Open the agent to inspect its command."); return; }
     const request = parsed.data;
     void bridge.request(request).then((raw) => {
@@ -32,8 +32,8 @@ export function WorktreeInspection({ selection, bridge, generation, onReturn, co
       if (current) setResult(response.worktreeInspection);
     }).catch((error: unknown) => { if (current) setNotice(error instanceof Error ? error.message : "Worktree file unavailable"); });
     return () => { current = false; };
-  }, [bridge, generation, selection.sessionId, selection.path, comparison, refresh]);
-  const shown = result?.sessionId === selection.sessionId && result.path === selection.path && result.comparison === comparison ? result : null;
+  }, [bridge, generation, selection.sessionId, selection.path, selection.previousPath, comparison, refresh]);
+  const shown = result?.sessionId === selection.sessionId && result.path === selection.path && result.comparison === comparison && result.previousPath === selection.previousPath ? result : null;
   const diff = view === "patch" ? selection.patch ?? "" : shown?.diff ?? "";
   return <section className="worktree-inspection" aria-label="Agent worktree file">
     <header><div><small>{shown?.label ?? "Agent worktree"} · read-only</small><h2 ref={heading} tabIndex={-1}>{selection.path}</h2></div>

@@ -6,3 +6,19 @@ sh_test(
     data = ["//:quality_sources"],
     tags = ["local"],
 )
+
+genrule(
+    name = "test-renderer",
+    srcs = ["renderer.tsx", "//:quality_sources"],
+    outs = ["browser.js", "browser.css"],
+    cmd = "$(location build-renderer.sh) $(location browser.js)",
+    tools = ["build-renderer.sh"],
+    local = True,
+)
+
+sh_binary(
+    name = "smoke",
+    srcs = ["smoke.sh"],
+    data = [":test-renderer", "launch.sh", "launch.mjs", "scenario.sh", "acceptance.cjs", "//:desktop-bundle", "//tools:virtual-desktop-run.sh", "//tools:x11-driver-source", "//tools:electron-runtime-source"],
+    tags = ["manual"],
+)

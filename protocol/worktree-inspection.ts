@@ -10,6 +10,7 @@ export const WorktreeInspectionRequestSchema = z.object({
   sessionId: ExternalSessionId,
   path: RepositoryPathSchema,
   comparison: z.literal("master").optional(),
+  previousPath: RepositoryPathSchema.optional(),
 }).strict();
 export type WorktreeInspectionRequest = z.infer<typeof WorktreeInspectionRequestSchema>;
 
@@ -24,6 +25,7 @@ export const WorktreeInspectionResultSchema = z.object({
   comparison: z.literal("master").optional(),
   base: z.string().max(160).nullable().optional(),
   contentNotice: z.string().max(512).optional(),
+  previousPath: RepositoryPathSchema.optional(),
 }).strict();
 export type WorktreeInspectionResult = z.infer<typeof WorktreeInspectionResultSchema>;
 

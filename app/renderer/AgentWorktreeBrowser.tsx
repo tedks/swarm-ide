@@ -18,7 +18,7 @@ function Browser({ sessionId, bridge, generation, onReturn, initialPath }: {
 }) {
   const [directory, setDirectory] = useState(initialPath?.split("/").slice(0, -1).join("/") ?? "");
   const [page, setPage] = useState(0);
-  const [selected, setSelected] = useState<{ path: string; diff: boolean } | null>(initialPath ? { path: initialPath, diff: false } : null);
+  const [selected, setSelected] = useState<{ path: string; diff: boolean; previousPath?: string } | null>(initialPath ? { path: initialPath, diff: false } : null);
   const [result, setResult] = useState<WorktreeBrowseResult | null>(null);
   const [notice, setNotice] = useState("");
   const [refresh, setRefresh] = useState(0);
@@ -65,12 +65,12 @@ function Browser({ sessionId, bridge, generation, onReturn, initialPath }: {
         {shown.changes.length === 0 && shown.changesComplete ? <p className="worktree-muted">No changes</p> : null}
         <ul className="worktree-change-list">{shown.changes.map((change) => <li key={`${change.status}:${change.path}`}>
           <button title={change.previousPath ? `${change.previousPath} → ${change.path}` : change.path}
-            onClick={() => setSelected({ path: change.path, diff: change.status !== "untracked" })}>
+            onClick={() => setSelected({ path: change.path, diff: change.status !== "untracked", previousPath: change.previousPath })}>
             <small>{change.status}</small> {change.path}{change.previousPath ? <span> ← {change.previousPath}</span> : null}
           </button></li>)}</ul>
       </> : null}
     </aside><main>
-      {selected ? <WorktreeInspection key={`${sessionId}:${selected.path}:${selected.diff}:${refresh}`} selection={{ sessionId, path: selected.path }}
+      {selected ? <WorktreeInspection key={`${sessionId}:${selected.path}:${selected.previousPath ?? ""}:${selected.diff}:${refresh}`} selection={{ sessionId, path: selected.path, previousPath: selected.previousPath }}
         bridge={bridge} generation={generation} comparison="master" initialView={selected.diff ? "diff" : "source"} onReturn={() => setSelected(null)} />
         : <div className="worktree-empty"><h2>Explore this agent’s worktree</h2><p>Open a directory, file, or change. Your original workspace stays where you left it.</p></div>}
     </main></div>

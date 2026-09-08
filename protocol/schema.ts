@@ -421,7 +421,8 @@ export function parseCoreResponseForRequest(input: unknown, request: CoreRequest
   } else if (response.ok && response.projectContext) throw new Error("Project context supplied for another command");
   if (request.type === "worktree.inspect") {
     if (response.ok && (!response.worktreeInspection || response.worktreeInspection.sessionId !== request.sessionId ||
-      response.worktreeInspection.path !== request.path || response.worktreeInspection.comparison !== request.comparison || response.file || response.agent || response.task || response.taskActivity ||
+      response.worktreeInspection.path !== request.path || response.worktreeInspection.comparison !== request.comparison ||
+      response.worktreeInspection.previousPath !== request.previousPath || response.file || response.agent || response.task || response.taskActivity ||
       response.trusted || response.repo || response.search || response.changelog || response.plans || response.external || response.buildGraph || response.githubPrs || response.workLog))
       throw new Error("Worktree inspection response identity mismatch");
     return response;
