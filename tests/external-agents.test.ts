@@ -29,6 +29,27 @@ async function setup(content = meta() + message()) {
   return { dir, root, rollout, registry, service };
 }
 describe("operator-registered external observation", () => {
+  it("publishes immutable session creation metadata, not event or observation timestamps", async () => {
+    const createdAt = "2026-09-05T06:03:47.422Z";
+    const metadata = JSON.stringify({ type: "session_meta", timestamp: "2026-09-08T04:00:00Z", payload: { id: A, timestamp: createdAt, forked_from_id: B } }) + "\n";
+    const { service, rollout } = await setup(metadata + message());
+    const read = await service.request(request("externalAgents.read", { sessionId: A }));
+    expect(read).toMatchObject({ detail: { session: { status: "observed", parentId: B, createdAt } } });
+    await appendFile(rollout, message("Later activity"));
+    const snapshot = await service.request(request("externalAgents.snapshot"));
+    expect(snapshot).toMatchObject({ snapshot: { sessions: [{ createdAt }], fleet: [{ session: { createdAt } }] } });
+  });
+
+  it.each([undefined, "invalid", 42])("keeps older metadata readable without a usable creation date: %s", async (timestamp) => {
+    const metadata = JSON.stringify({ type: "session_meta", timestamp: "2026-09-08T04:00:00Z", payload: { id: A, timestamp } }) + "\n";
+    const { service } = await setup(metadata + message());
+    const read = await service.request(request("externalAgents.read", { sessionId: A }));
+    expect(read).toMatchObject({ detail: { session: { status: "observed" } } });
+    if (read.kind !== "read") throw new Error("Expected read");
+    expect(read.detail.session).not.toHaveProperty("createdAt", "2026-09-08T04:00:00Z");
+    expect("createdAt" in read.detail.session && read.detail.session.createdAt).toBeFalsy();
+  });
+
   it("proof port matches the owned configurable endpoint and rejects absent, malformed or mismatched values", () => {
     const { resolveOwnedPort } = createRequire(import.meta.url)("../tools/demo-agents/port.cjs");
     expect(resolveOwnedPort({ SWARM_DEV_PORT: "55174" })).toBe(55174);
