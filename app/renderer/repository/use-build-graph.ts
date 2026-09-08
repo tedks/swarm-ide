@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { PROTOCOL_VERSION, parseCoreResponseForRequest } from "../../../protocol/schema";
-import type { BuildGraphObservation } from "../../../protocol/build-graph";
+import { BUILD_GRAPH_LIMITS, type BuildGraphObservation } from "../../../protocol/build-graph";
 import type { BuildLinkSnapshot } from "./layers";
 
 export interface AutomaticBuildContextOptions {
@@ -16,13 +16,14 @@ export function useBuildGraph(repositoryId: string | undefined, worldId: string 
   const [observation, setObservation] = useState<BuildGraphObservation>();
   const current = useRef({ repositoryId, worldId, realm, enabled });
   current.current = { repositoryId, worldId, realm, enabled };
-  const controls = useRef<{ refresh(force: boolean): Promise<void>; changed(): void } | undefined>(undefined);
+  const controls = useRef<{ refresh(force: boolean): Promise<void>; cancel(): Promise<void>; changed(): void } | undefined>(undefined);
   const refresh = useCallback(async (force = true) => { await controls.current?.refresh(force); }, []);
+  const cancel = useCallback(async () => { await controls.current?.cancel(); }, []);
   useEffect(() => {
     setObservation((old) => old && old.repositoryId === repositoryId && old.worldId === worldId ? { ...old, status: "stale", message: "Core/view lifetime changed; observation requires revalidation." } : undefined);
     if (!enabled || !repositoryId || !worldId || !window.swarm) return;
     let disposed = false, foreground = document.hasFocus(), pending = false, queued = false, forceQueued = false;
-    let timer: ReturnType<typeof setTimeout> | undefined, deadline = 0;
+    let timer: ReturnType<typeof setTimeout> | undefined, deadline = 0, setupGeneration: number | undefined;
     const valid = () => !disposed && current.current.enabled && current.current.repositoryId === repositoryId &&
       current.current.worldId === worldId && current.current.realm === realm;
     const active = () => valid() && foreground && document.visibilityState !== "hidden";
@@ -37,7 +38,7 @@ export function useBuildGraph(repositoryId: string | undefined, worldId: string 
     };
     const begin = (milliseconds: number) => {
       if (!active()) return;
-      deadline = Date.now() + BUILD_CONTEXT_TIMING.cycleMs;
+      deadline = Math.max(deadline, Date.now() + BUILD_CONTEXT_TIMING.cycleMs);
       if (pending) { queued = true; return; }
       schedule(milliseconds);
     };
@@ -52,6 +53,7 @@ export function useBuildGraph(repositoryId: string | undefined, worldId: string 
         if (!valid()) return;
         if (response.ok && response.buildGraph) {
           const next = response.buildGraph;
+          if (next.loadingDependencies && setupGeneration !== next.generation) { setupGeneration = next.generation; deadline = Math.max(deadline, Date.now() + BUILD_GRAPH_LIMITS.setupMs + 5000); }
           follow = next.status === "refreshing" || next.status === "stale";
           setObservation((old) => old?.repositoryId === next.repositoryId && old.worldId === next.worldId &&
             old.generation === next.generation && old.status === next.status && old.message === next.message &&
@@ -72,7 +74,16 @@ export function useBuildGraph(repositoryId: string | undefined, worldId: string 
         }
       }
     }
-    const controller = { async refresh(force: boolean) { deadline = Date.now() + BUILD_CONTEXT_TIMING.cycleMs; await run(force); },
+    const controller = { async refresh(force: boolean) { deadline = Date.now() + (force ? BUILD_GRAPH_LIMITS.setupMs + 5000 : BUILD_CONTEXT_TIMING.cycleMs); await run(force); },
+      async cancel() {
+        if (!valid()) return;
+        forceQueued = false; queued = false;
+        const request = { protocolVersion: PROTOCOL_VERSION, requestId: `build-graph:${crypto.randomUUID()}`, type: "buildGraph.observe" as const, repositoryId, worldId, refresh: false, cancel: true };
+        try {
+          const response = parseCoreResponseForRequest(await window.swarm!.request(request), request);
+          if (valid() && response.ok && response.buildGraph) { setObservation(response.buildGraph); begin(0); }
+        } catch { retain("error", "Could not confirm cancellation. Check again before starting more work."); }
+      },
       changed() { begin(BUILD_CONTEXT_TIMING.changeMs); } };
     controls.current = controller;
     const blur = () => { foreground = false; clear(); queued = false; forceQueued = false; };
@@ -98,7 +109,7 @@ export function useBuildGraph(repositoryId: string | undefined, worldId: string 
     previousToken.current = changeToken;
     controls.current?.changed();
   }, [changeToken]);
-  return { observation: observation && observation.repositoryId === repositoryId && observation.worldId === worldId ? observation : undefined, refresh };
+  return { observation: observation && observation.repositoryId === repositoryId && observation.worldId === worldId ? observation : undefined, refresh, cancel };
 }
 
 export function buildGraphLinks(observation: BuildGraphObservation | undefined): BuildLinkSnapshot | undefined {

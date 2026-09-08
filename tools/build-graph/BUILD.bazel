@@ -1,4 +1,6 @@
 package(default_visibility = ["//visibility:public"])
+sh_test(name = "compat-checks", srcs = ["compat-checks.sh"], data = ["//:quality_sources"], tags = ["local"])
+sh_binary(name = "compat-probe", srcs = ["compat-probe.sh"], data = [":sources", ":probe-module", "//:desktop-bundle"], tags = ["manual"])
 filegroup(name = "sources", srcs = glob(["*.mjs", "*.cjs", "*.sh"]))
 sh_test(
     name = "checks",

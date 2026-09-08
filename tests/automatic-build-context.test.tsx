@@ -7,7 +7,7 @@ import { fixtureBuildObservation } from "./support/build-graph-fixture";
 import { PROTOCOL_VERSION, type CoreRequest, type CoreResponse } from "../protocol/schema";
 
 const snapshot = initialSnapshot();
-function response(request: CoreRequest, status: "current" | "refreshing" = "current"): CoreResponse {
+function response(request: CoreRequest, status: "current" | "refreshing" | "error" = "current"): CoreResponse {
   return { protocolVersion: PROTOCOL_VERSION, requestId: request.requestId, sequence: 1, ok: true,
     snapshot, buildGraph: { ...fixtureBuildObservation(snapshot), status } };
 }
@@ -72,6 +72,33 @@ it("stops an endless pending observation and retains data instead of polling for
   const count = vi.mocked(window.swarm!.request).mock.calls.length;
   expect(count).toBeLessThanOrEqual(82);
   await tick(60_000); expect(window.swarm!.request).toHaveBeenCalledTimes(count);
+});
+
+it("allows a longer deliberate setup window but still stops a stuck observation", async () => {
+  window.swarm!.request = vi.fn(async (request) => {
+    const value = response(request, "refreshing");
+    return value.ok ? { ...value, buildGraph: { ...value.buildGraph!, loadingDependencies: true } } : value;
+  });
+  const h = mount(); await tick(70_000);
+  expect(h.result.current.observation?.status).toBe("refreshing");
+  await tick(70_000);
+  expect(h.result.current.observation?.status).toBe("stale");
+  const count = vi.mocked(window.swarm!.request).mock.calls.length;
+  await tick(50_000); expect(window.swarm!.request).toHaveBeenCalledTimes(count);
+});
+
+it("sends only a scoped cancel and observes cleanup without replaying refresh", async () => {
+  let cancelled = false;
+  window.swarm!.request = vi.fn(async (request) => {
+    if (request.type === "buildGraph.observe" && request.cancel) cancelled = true;
+    return response(request, cancelled ? "error" : "refreshing");
+  });
+  const h = mount(); await tick(1);
+  await act(async () => { await h.result.current.cancel(); }); await tick(1000);
+  expect(h.result.current.observation?.status).toBe("error");
+  const requests = vi.mocked(window.swarm!.request).mock.calls.map(([request]) => request);
+  expect(requests.filter((request) => request.type === "buildGraph.observe" && request.cancel)).toHaveLength(1);
+  expect(requests.every((request) => request.type === "buildGraph.observe" && !request.refresh)).toBe(true);
 });
 
 it("does not accept a held response or rejection after the core lifetime is replaced", async () => {

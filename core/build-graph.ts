@@ -13,7 +13,15 @@ export class BuildQueryCleanupError extends Error {}
 
 export const BUILD_QUERY = "//...:*";
 export const BUILD_QUERY_ARGS = ["query", "--noimplicit_deps", "--notool_deps", "--output=streamed_jsonproto", "--proto:output_rule_attrs=", "--relative_locations", "--loading_phase_threads=3", "--repository_disable_download", "--lockfile_mode=off", BUILD_QUERY];
-const COVERAGE = "Unconfigured local //...:* declarations, no implicit/tool deps; external targets unexpanded. Tracked + nonignored membership and BUILD/.bzl/module inputs observed; ignored/external/environment changes require Refresh. No compilation; standard repository loading, downloads disabled.";
+const COVERAGE = "Unconfigured local //...:* declarations, no implicit/tool deps; external targets unexpanded. Tracked + nonignored membership and BUILD/.bzl/module inputs observed; ignored/external/environment changes require Refresh. No compilation. Automatic checks are offline; deliberate refresh may load declared dependencies.";
+
+export interface BuildQueryOptions { allowDownloads?: boolean; cacheRoot?: string; onProgress?: (message: string) => void }
+export function buildQueryArgs(allowDownloads = false): string[] {
+  return BUILD_QUERY_ARGS.filter((arg) => !allowDownloads || arg !== "--repository_disable_download");
+}
+function diagnostic(text: string): string {
+  return text.replace(/\x1b\[[0-9;]*[A-Za-z]/g, "").replace(/[\x00-\x08\x0b-\x1f\x7f]/g, "").trim().slice(-460);
+}
 
 function localPath(label: string, file: boolean): string | null {
   if (!label.startsWith("//")) return null;
@@ -112,8 +120,8 @@ async function executable(name: string): Promise<string> {
 }
 
 /** Reuse the independently tested private PID-namespace owner; never a shared Bazel server. */
-export async function queryBuildGraph(root: string, signal: AbortSignal, trace?: (event: string, value: string) => void): Promise<Uint8Array> {
-  const scratch = await mkdtemp(join(tmpdir(), "swarm-build-query-"));
+export async function queryBuildGraph(root: string, signal: AbortSignal, trace?: (event: string, value: string) => void, options: BuildQueryOptions = {}): Promise<Uint8Array> {
+  const scratch = options.cacheRoot ?? await mkdtemp(join(tmpdir(), "swarm-build-query-"));
   let retainScratch = false;
   try {
     const [node, unshare, setpriv] = await Promise.all(["node", "unshare", "setpriv"].map(executable));
@@ -125,33 +133,35 @@ export async function queryBuildGraph(root: string, signal: AbortSignal, trace?:
     const ownerScript = join(__dirname, "agents/owner-process.js");
     await access(ownerScript);
     return await collectBuildQuery((sink) => createOwnedCodexTransport({ root, executable: bazel, nodeExecutable: node!, unshareExecutable: unshare!, setprivExecutable: setpriv!, ownerScript,
-      args: ["--batch", "--ignore_all_rc_files", "--host_jvm_args=-Xmx512m", "--host_jvm_args=-XX:ActiveProcessorCount=3", `--server_javabase=${javaHome}`, `--output_user_root=${scratch}`, ...BUILD_QUERY_ARGS] }, sink), signal, trace);
+      args: ["--batch", "--ignore_all_rc_files", "--host_jvm_args=-Xmx512m", "--host_jvm_args=-XX:ActiveProcessorCount=3", `--server_javabase=${javaHome}`, `--output_user_root=${scratch}`, ...buildQueryArgs(options.allowDownloads), `--repository_cache=${join(scratch, "repository-cache")}`] }, sink), signal, trace, options);
   } catch (error) {
     retainScratch = error instanceof BuildQueryCleanupError; throw error;
-  } finally { if (!retainScratch) await rm(scratch, { recursive: true, force: true }); }
+  } finally { if (!retainScratch && !options.cacheRoot) await rm(scratch, { recursive: true, force: true }); }
 }
 
 /** The owner requires explicit close after child exit. Drain stdout before publishing bytes. */
-export function collectBuildQuery(connect: (sink: CodexTransportSink) => CodexTransport, signal: AbortSignal, trace?: (event: string, value: string) => void): Promise<Uint8Array> {
+export function collectBuildQuery(connect: (sink: CodexTransportSink) => CodexTransport, signal: AbortSignal, trace?: (event: string, value: string) => void, options: BuildQueryOptions = {}): Promise<Uint8Array> {
   return new Promise((resolve, reject) => {
     if (signal.aborted) { reject(new Error("Build query cancelled")); return; }
     let transport: CodexTransport;
     let cleanup: ReturnType<CodexTransport["close"]> | undefined;
     const close = () => cleanup ??= transport.close();
     const chunks: Buffer[] = []; let bytes = 0, failure: Error | undefined, finishing = false, ended = false;
-    let exitCode: number | null | undefined;
+    let exitCode: number | null | undefined, stderr = "";
     const finish = (code?: number | null) => {
       if (finishing) return; finishing = true; clearTimeout(timer); signal.removeEventListener("abort", abort);
       void close().then((evidence) => {
         if (evidence.status !== "confirmed") reject(new BuildQueryCleanupError("Build query owned cleanup is unconfirmed; scratch retained and further queries blocked."));
-        else if (failure || code !== 0) reject(failure ?? new Error("Bazel query failed; dependencies or unsupported repository definitions may require setup."));
+        else if (failure || code !== 0) reject(failure ?? new Error(`Bazel query failed (${code ?? "no exit code"}): ${diagnostic(stderr) || "No diagnostic output."}`));
         else resolve(Buffer.concat(chunks));
       }, () => reject(new BuildQueryCleanupError("Build query cleanup failed; further queries blocked.")));
     };
     const abort = () => { failure = new Error("Build query cancelled"); finish(); };
-    const timer = setTimeout(() => { failure = new Error("Bazel query exceeded 30-second deadline"); finish(); }, LIMITS.queryMs);
+    const deadline = options.allowDownloads ? LIMITS.setupMs : LIMITS.queryMs;
+    const timer = setTimeout(() => { failure = new Error(`Bazel query exceeded ${deadline / 1000}-second deadline${diagnostic(stderr) ? `: ${diagnostic(stderr)}` : ""}`); finish(); }, deadline);
     const consume = (chunk: Uint8Array, retain: boolean) => {
       trace?.(retain ? "stdout" : "stderr", Buffer.from(chunk).toString("utf8").slice(0, 4096));
+      if (!retain && !finishing) { stderr = (stderr + Buffer.from(chunk).toString("utf8")).slice(-4096); const message = diagnostic(stderr); if (message) options.onProgress?.(message); }
       bytes += chunk.byteLength;
       if (bytes > LIMITS.bytes) { failure = new Error("Bazel query exceeded output byte bound"); finish(); }
       else if (retain && !finishing) chunks.push(Buffer.from(chunk));
@@ -164,7 +174,7 @@ export function collectBuildQuery(connect: (sink: CodexTransportSink) => CodexTr
           trace?.("exit", String(code)); exitCode = code;
           // Releasing the control pipe is required before the guardian can emit
           // stdout EOF. Keep consuming late pipe bytes until that EOF arrives.
-          void close().catch(() => { failure = new BuildQueryCleanupError("Build query cleanup failed"); finish(); });
+          void close().then((evidence) => { if (evidence.status !== "confirmed") { failure = new BuildQueryCleanupError("Build query cleanup failed"); finish(); } }, () => { failure = new BuildQueryCleanupError("Build query cleanup failed"); finish(); });
           if (ended) finish(code);
         },
         error() { failure = new Error("Owned Bazel query could not start"); finish(); },
@@ -184,6 +194,8 @@ export class BuildGraphProvider {
   private failedQuery?: { digest: string; message: string };
   private refreshQueued = false;
   private cleanupBlocked = false;
+  private cancelled = false;
+  private scratch?: Promise<string>;
   constructor(private readonly root: string, repositoryId: string, worldId: string,
     private readonly dependencies = { digest: buildInputDigest, query: queryBuildGraph, now: Date.now }) {
     this.state = { repositoryId, worldId, generation: 0, status: "unavailable", message: "Build graph has not been requested." };
@@ -191,17 +203,28 @@ export class BuildGraphProvider {
   observe(refresh = false): BuildGraphObservation {
     if (this.closed) throw new Error("Build graph provider disposed");
     if (this.cleanupBlocked) return BuildGraphObservationSchema.parse(this.state);
+    if (this.cancelled && !refresh) return BuildGraphObservationSchema.parse(this.state);
     if (refresh && this.pending) this.refreshQueued = true;
     if (!this.pending && (refresh || this.dependencies.now() - this.checkedAt >= 1500 || !this.checkedAt)) {
+      this.cancelled = false;
+      this.controller = new AbortController();
       this.checkedAt = this.dependencies.now();
       // Report the in-flight input sample too, so an event-driven consumer knows
       // to collect its result rather than stopping at the old cached status.
-      this.state = { ...this.state, status: "refreshing", message: "Checking repository build inputs." };
+      this.state = { ...this.state, status: "refreshing", loadingDependencies: refresh, message: refresh ? "Refreshing dependencies; declared downloads allowed. No targets are being built." : "Checking repository build inputs (offline)." };
       this.pending = this.reconcile(refresh).finally(() => {
         this.pending = undefined;
         this.checkedAt = this.dependencies.now();
         if (this.refreshQueued && !this.closed) { this.refreshQueued = false; this.observe(true); }
       });
+    }
+    return BuildGraphObservationSchema.parse(this.state);
+  }
+  cancel(): BuildGraphObservation {
+    if (this.closed) throw new Error("Build graph provider disposed");
+    if (this.pending) {
+      this.cancelled = true; this.refreshQueued = false; this.controller.abort();
+      this.state = { ...this.state, message: "Cancelling dependency refresh; waiting for process cleanup." };
     }
     return BuildGraphObservationSchema.parse(this.state);
   }
@@ -211,6 +234,7 @@ export class BuildGraphProvider {
     try {
       const before = await this.dependencies.digest(this.root, this.controller.signal);
       if (this.closed) return;
+      if (this.controller.signal.aborted) throw new Error("Build query cancelled");
       if (before === null) { this.state = { ...this.state, status: "unavailable", message: "No registered local WORKSPACE or MODULE.bazel; Bazel graph provider unavailable." }; return; }
       if (!refresh && this.failedQuery?.digest === before) {
         this.state = { ...this.state, status: "error", message: this.failedQuery.message }; return;
@@ -221,26 +245,36 @@ export class BuildGraphProvider {
       }
       this.failedQuery = undefined;
       queryingDigest = before;
-      this.state = { ...this.state, generation, status: "refreshing", message: "Build inputs changed or Refresh requested; retained graph is not current." };
-      const output = await this.dependencies.query(this.root, this.controller.signal);
+      this.state = { ...this.state, generation, status: "refreshing", message: refresh ? "Loading declared dependencies and querying targets; no compilation." : "Querying build declarations (offline)." };
+      const cacheRoot = this.dependencies.query === queryBuildGraph ? await (this.scratch ??= mkdtemp(join(tmpdir(), "swarm-build-query-"))) : undefined;
+      const output = await this.dependencies.query(this.root, this.controller.signal, undefined, {
+        allowDownloads: refresh, cacheRoot,
+        onProgress: (message) => { if (!this.closed && !this.controller.signal.aborted) this.state = { ...this.state, message: message.slice(-512) }; },
+      });
+      if (this.controller.signal.aborted) throw new Error("Build query cancelled");
       const parsed = parseBuildQuery(output);
       // A failed post-query input read is not a failed query of these inputs.
       // Leave passive recovery possible; never publish unvalidated query bytes.
       queryingDigest = undefined;
       const after = await this.dependencies.digest(this.root, this.controller.signal);
       if (this.closed) return;
+      if (this.controller.signal.aborted) throw new Error("Build query cancelled");
       if (before !== after) { this.state = { ...this.state, status: "stale", message: "Build inputs changed during the query; checking again." }; return; }
       queryingDigest = before; // Final query-schema failures also require deliberate retry.
       const graph = BuildGraphDataSchema.parse({ ...parsed, repositoryId: this.state.repositoryId, worldId: this.state.worldId, inputDigest: before, observedAt: new Date(this.dependencies.now()).toISOString(), command: "bazel query --noimplicit_deps --notool_deps //...:*" });
-      this.state = { ...this.state, status: "current", graph, message: "Current local declaration observation; not compilation or deployment evidence." };
+      this.state = { ...this.state, status: "current", loadingDependencies: false, graph, message: "Current local declaration observation; not compilation or deployment evidence." };
     } catch (error) {
       if (error instanceof BuildQueryCleanupError) this.cleanupBlocked = true;
       if (!this.closed) {
         const message = (error instanceof Error ? error.message : "Build graph observation failed").slice(0, 512);
         if (queryingDigest) this.failedQuery = { digest: queryingDigest, message };
-        this.state = { ...this.state, status: "error", message };
+        this.state = { ...this.state, status: "error", loadingDependencies: false, message };
       }
     }
   }
-  async dispose(): Promise<void> { this.closed = true; this.controller.abort(); await this.pending; if (this.cleanupBlocked) throw new BuildQueryCleanupError("Build query cleanup remains unconfirmed"); }
+  async dispose(): Promise<void> {
+    this.closed = true; this.controller.abort(); await this.pending;
+    if (this.cleanupBlocked) throw new BuildQueryCleanupError("Build query cleanup remains unconfirmed");
+    if (this.scratch) await rm(await this.scratch, { recursive: true, force: true });
+  }
 }

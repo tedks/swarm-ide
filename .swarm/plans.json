@@ -576,6 +576,8 @@
       "core/provider.ts",
       "protocol/build-jobs.ts",
       "core/build-jobs.ts",
+      ".swarm/service-topology.json",
+      "tests/project-build-compatibility.test.ts",
       "core/target-build-process.ts",
       "app/renderer/build-resources/use-target-builds.ts",
       "app/renderer/build-resources/BuildResources.tsx"
@@ -673,6 +675,20 @@
           "label": "//tools/build-graph:target-checks",
           "role": "Checks selected-target admission, process cleanup and retained job controls",
           "dependencies": [{ "label": "//:quality_sources", "relation": "data" }]
+        },
+        {
+          "label": "//tools/build-graph:compat-checks",
+          "role": "Checks explicit dependency loading, cancellation and declared demo applicability",
+          "dependencies": [{ "label": "//:quality_sources", "relation": "data" }]
+        },
+        {
+          "label": "//tools/build-graph:compat-probe",
+          "role": "Queries a real trusted project without builds or source edits",
+          "dependencies": [
+            { "label": "//tools/build-graph:sources", "relation": "data" },
+            { "label": "//tools/build-graph:probe-module", "relation": "data" },
+            { "label": "//:desktop-bundle", "relation": "data" }
+          ]
         },
         {
           "label": "//tools/build-graph:target-probe",

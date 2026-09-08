@@ -388,7 +388,7 @@ async function requestMessage(input: unknown): Promise<void> {
         }
         const graph = await buildGraphPromise;
         if (shuttingDown) { post(fail(requestId, "CORE_UNAVAILABLE", "Core is shutting down.")); return; }
-        post(parseCoreResponseForRequest(ok(requestId, provider.snapshot(), undefined, undefined, undefined, undefined, undefined, undefined, graph.observe(request.refresh)), request));
+        post(parseCoreResponseForRequest(ok(requestId, provider.snapshot(), undefined, undefined, undefined, undefined, undefined, undefined, request.cancel ? graph.cancel() : graph.observe(request.refresh)), request));
         return;
       }
       case "repo.search": {

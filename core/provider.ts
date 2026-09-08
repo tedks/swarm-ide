@@ -50,6 +50,7 @@ export interface BazelBuildResult {
 }
 
 export interface ProviderDependencies {
+  topologyApplicable?(workspaceRoot: string): Promise<boolean>;
   register?: typeof registerRepository;
   repository?: (root: string, repositoryId: string) => Pick<RepositoryReader, "list" | "markStale" | "dispose">;
   fingerprint(workspaceRoot: string): Promise<string>;
@@ -207,7 +208,18 @@ export async function readBuiltTopologyArtifact(workspaceRoot: string, build: Ba
   return { bytes, artifact };
 }
 
+/** The example adapter is opt-in, never inferred from an arbitrary Bazel repo. */
+export async function hasDeclaredServiceTopology(workspaceRoot: string): Promise<boolean> {
+  try {
+    const mapping = JSON.parse((await readCanonicalWorkspaceBytes(workspaceRoot, ".swarm/service-topology.json", 4096)).toString("utf8"));
+    if (mapping.schemaVersion !== 1 || mapping.target !== SERVICE_TOPOLOGY_TARGET) return false;
+    const manifest = JSON.parse((await readCanonicalWorkspaceBytes(workspaceRoot, MANIFEST_PATH, MAX_MANIFEST_BYTES)).toString("utf8"));
+    return manifest.schemaVersion === 1 && manifest.service?.id === "service:fraud-check";
+  } catch { return false; }
+}
+
 const defaultDependencies: ProviderDependencies = {
+  topologyApplicable: hasDeclaredServiceTopology,
   fingerprint: computeWorkingWorldFingerprint,
   build: runBazel,
   readArtifact: readBuiltTopologyArtifact,
@@ -522,6 +534,15 @@ export class RealWorkspaceProvider {
 
   async startReconciliation(publish: ProviderPublish): Promise<void> {
     if (this.disposed) return;
+    const observedAttempt = this.currentAttempt;
+    if (this.dependencies.topologyApplicable && !await this.dependencies.topologyApplicable(this.workspaceRoot)) {
+      if (this.disposed || observedAttempt !== this.currentAttempt) return;
+      this.snapshotValue = WorkspaceSnapshotSchema.parse({ ...this.snapshotValue,
+        reconciliation: { ...this.snapshotValue.reconciliation, message: "No service topology adapter declared for this project. Refresh dependencies, then build a selected target." } });
+      publish("reconciliation.changed", this.snapshotValue);
+      return;
+    }
+    if (this.disposed || observedAttempt !== this.currentAttempt) return;
     const attempt = ++this.currentAttempt;
     const epoch = this.snapshotValue.reconciliation.epoch + 1;
     let started = false;

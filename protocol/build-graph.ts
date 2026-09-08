@@ -2,7 +2,7 @@ import { z } from "zod";
 import { PROTOCOL_VERSION } from "./common";
 import { isRepositoryPath } from "./repository";
 
-export const BUILD_GRAPH_LIMITS = { targets: 2000, edges: 8000, bytes: 4 * 1024 * 1024, queryMs: 30_000, files: 20_000, inputBytes: 8 * 1024 * 1024 } as const;
+export const BUILD_GRAPH_LIMITS = { targets: 2000, edges: 8000, bytes: 4 * 1024 * 1024, queryMs: 30_000, setupMs: 120_000, files: 20_000, inputBytes: 8 * 1024 * 1024 } as const;
 const text = z.string().min(1).max(512);
 const digest = z.string().regex(/^[a-f0-9]{64}$/);
 const label = text.regex(/^(?:@@?[^/\s]+)?\/\/[^\s:]*:[^\s:]+$/);
@@ -29,7 +29,7 @@ export const BuildGraphDataSchema = z.object({
 export const BuildGraphObservationSchema = z.object({
   repositoryId: text, worldId: text, generation: z.number().int().nonnegative(),
   status: z.enum(["unavailable", "refreshing", "current", "stale", "error"]),
-  message: text, graph: BuildGraphDataSchema.optional(),
+  message: text, loadingDependencies: z.boolean().optional(), graph: BuildGraphDataSchema.optional(),
 }).strict().superRefine((value, ctx) => {
   if (value.status === "current" && !value.graph || value.graph &&
       (value.graph.repositoryId !== value.repositoryId || value.graph.worldId !== value.worldId))
@@ -37,8 +37,8 @@ export const BuildGraphObservationSchema = z.object({
 });
 export const BuildGraphRequestSchema = z.object({
   protocolVersion: z.literal(PROTOCOL_VERSION), requestId: text, type: z.literal("buildGraph.observe"),
-  repositoryId: text, worldId: text, refresh: z.boolean(),
-}).strict();
+  repositoryId: text, worldId: text, refresh: z.boolean(), cancel: z.boolean().optional(),
+}).strict().refine((value) => !(value.refresh && value.cancel), "Cannot refresh and cancel together");
 export type BuildTarget = z.infer<typeof BuildTargetSchema>;
 export type BuildGraphData = z.infer<typeof BuildGraphDataSchema>;
 export type BuildGraphObservation = z.infer<typeof BuildGraphObservationSchema>;
