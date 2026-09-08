@@ -15,8 +15,9 @@ export function designProjection(index: PlanIndex, selected: PlanNode) {
   const children = index.nodes.filter((node) => node.parentId === selected.id);
   const shown = [selected, ...children];
   const ids = new Set(shown.map((node) => node.id));
-  const nodes: ProjectionNode[] = shown.map((node) => ({ id: node.id, title: node.title,
-    subtitle: node.design?.state === "planned" ? "Planned component" : node.id === selected.id ? "Current component" : "Open component" }));
+  const nodes: ProjectionNode[] = shown.map((node, i) => ({ id: node.id, title: node.title,
+    subtitle: node.design?.state === "planned" ? "Planned component" : node.id === selected.id ? "Current component" : "Open component",
+    ...(children.length ? { position: i === 0 ? { x: 260, y: 0 } : { x: ((i - 1) % 3) * 260, y: 130 + Math.floor((i - 1) / 3) * 130 } } : {}) }));
   const edges: ProjectionEdge[] = children.map((node) => ({ id: `contains:${node.id}`, source: selected.id, target: node.id, label: "contains" }));
   for (const node of shown) for (const [i, link] of (node.design?.connections ?? []).entries()) {
     if (ids.has(link.targetId)) edges.push({ id: `connection:${node.id}:${i}`, source: node.id, target: link.targetId, label: link.label });
@@ -36,12 +37,34 @@ export function designProjection(index: PlanIndex, selected: PlanNode) {
   return { nodes, edges };
 }
 
-/** Repo text only: React escapes content; Markdown HTML is never executed. */
-function DesignText({ content }: { content: string }) {
+export function designLinkPath(documentPath: string, href: string): string | null {
+  if (!href || /^[a-z]+:/i.test(href) || href.startsWith("/") || /[\\\u0000-\u001f]/.test(href)) return null;
+  const pieces = documentPath.split("/").slice(0, -1);
+  for (const part of href.split("#")[0]!.split("/")) {
+    if (part === "..") { if (!pieces.length) return null; pieces.pop(); }
+    else if (part !== "." && part !== "") pieces.push(part);
+  }
+  return pieces.join("/") || null;
+}
+
+/** Small safe Markdown subset for repo prose, lists and mapping tables. */
+function DesignText({ content, onLink }: { content: string; onLink: (path: string) => void }) {
+  const inline = (text: string) => text.split(/(\[[^\]]+\]\([^)]+\)|`[^`]+`)/g).map((part, i) => {
+    const link = /^\[([^\]]+)\]\(([^)]+)\)$/.exec(part);
+    if (link) return <button className="design-text-link" key={i} onClick={() => onLink(link[2]!)}>{link[1]}</button>;
+    return part.startsWith("`") && part.endsWith("`") ? <code key={i}>{part.slice(1, -1)}</code> : part;
+  });
   return <div className="design-prose">{content.split(/\n\s*\n/).map((block, i) => {
     const heading = /^(#{1,4})\s+([^\n]+)$/.exec(block.trim());
     if (heading) return <h3 key={i}>{heading[2]}</h3>;
-    return <p key={i}>{block}</p>;
+    const lines = block.trim().split("\n");
+    if (lines.length > 1 && lines.every((line) => line.startsWith("|"))) {
+      const cells = (line: string) => line.replace(/^\||\|$/g, "").split("|").map((cell) => cell.trim());
+      return <table key={i}><thead><tr>{cells(lines[0]!).map((cell, j) => <th key={j}>{inline(cell)}</th>)}</tr></thead>
+        <tbody>{lines.slice(1).filter((line) => !/^\|[\s|:-]+\|$/.test(line)).map((line, row) => <tr key={row}>{cells(line).map((cell, j) => <td key={j}>{inline(cell)}</td>)}</tr>)}</tbody></table>;
+    }
+    if (lines.every((line) => /^[-*] /.test(line))) return <ul key={i}>{lines.map((line, j) => <li key={j}>{inline(line.slice(2))}</li>)}</ul>;
+    return <p key={i}>{inline(block)}</p>;
   })}</div>;
 }
 
@@ -111,7 +134,12 @@ export function DesignWorkspace(props: DesignWorkspaceProps) {
       <div className="design-details">
         <article aria-label="Design document"><h2>{node.title}</h2>{node.design?.state === "planned" ? <span className="design-planned">Planned</span> : null}
           <p>{node.design?.summary}</p><p role="status">{!current ? "Reconnect or refresh to navigate this design." : docNotice}</p>
-          {document ? <DesignText content={document.content} /> : null}
+          {document ? <DesignText content={document.content} onLink={(href) => {
+            if (!current) return;
+            const path = designLinkPath(document.path, href); if (!path) return;
+            const component = index!.nodes.find((item) => item.docs.includes(path));
+            if (component) setSelected(component.id); else onOpenFile(path);
+          }} /> : null}
         </article>
         <aside aria-label="Design links">
           <h3>Components</h3>{index!.nodes.filter((item) => item.parentId === node.id).map((item) => <button key={item.id} disabled={!current} onClick={() => setSelected(item.id)}>{item.title}</button>)}

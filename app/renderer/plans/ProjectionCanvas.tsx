@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Background, Controls, MarkerType, Position, ReactFlow, type Edge, type Node, type ReactFlowInstance } from "@xyflow/react";
 import { compactTaskPositions, dependencyPositions } from "../tasks/graph";
 
-export interface ProjectionNode { id: string; title: string; subtitle: string; warning?: boolean }
+export interface ProjectionNode { id: string; title: string; subtitle: string; warning?: boolean; position?: { x: number; y: number } }
 export interface ProjectionEdge { id: string; source: string; target: string; label: string }
 
 /** Each mounted projection owns its own camera. Changing metadata or selection
@@ -19,7 +19,7 @@ export function ProjectionCanvas({ label, nodes: input, edges: links, selected, 
   const [positions, setPositions] = useState(new Map<string, { x: number; y: number }>());
   const graph = useMemo(() => {
     const layout = (taskScopeVersion === undefined ? dependencyPositions : compactTaskPositions)(input.map((node) => node.id), links);
-    const nodes: Node[] = input.map((node) => ({ id: node.id, position: positions.get(node.id) ?? layout.get(node.id)!,
+    const nodes: Node[] = input.map((node) => ({ id: node.id, position: positions.get(node.id) ?? node.position ?? layout.get(node.id)!,
       sourcePosition: taskScopeVersion === undefined ? Position.Right : Position.Bottom,
       targetPosition: taskScopeVersion === undefined ? Position.Left : Position.Top, selected: selected === node.id,
       data: { label: <><strong>{node.title}</strong><small>{node.subtitle}</small></> },

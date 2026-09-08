@@ -4,7 +4,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { readFileSync, existsSync } from "node:fs";
 import { resolve } from "node:path";
 import { PlanIndexSchema } from "../protocol/plans";
-import { DesignWorkspace, designProjection } from "../app/renderer/plans/DesignWorkspace";
+import { DesignWorkspace, designProjection, designLinkPath } from "../app/renderer/plans/DesignWorkspace";
 import { initialSnapshot } from "../fixtures/world";
 import { PROTOCOL_VERSION, type CoreRequest, type CoreResponse } from "../protocol/schema";
 
@@ -20,6 +20,12 @@ function reply(request: CoreRequest): CoreResponse {
       : request.type === "file.read" ? { file: { kind: "read" as const, path: request.path, content: `# Actual document\n\n${request.path}`, revision: "a".repeat(64), size: 64 } } : {}) };
 }
 describe("living system design", () => {
+  it("resolves repo document links without external URLs or repository escape", () => {
+    expect(designLinkPath("docs/design/system.md", "cockpit.md")).toBe("docs/design/cockpit.md");
+    expect(designLinkPath("docs/design/system.md", "../../core/plans.ts")).toBe("core/plans.ts");
+    expect(designLinkPath("docs/design/system.md", "../../../private")).toBeNull();
+    expect(designLinkPath("docs/design/system.md", "javascript:alert(1)")).toBeNull();
+  });
   it("keeps existing authored forests compatible and rejects dangling design links/invalid labels", () => {
     expect(index.nodes.filter((node) => node.design)).toHaveLength(7);
     const invalid = structuredClone(index); invalid.nodes[0]!.design!.connections.push({ targetId: "missing", label: "uses" });

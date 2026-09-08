@@ -14,6 +14,9 @@
 .design-details aside { min-width: 0; }
 .design-details aside button { display: block; width: 100%; margin-bottom: 5px; }
 .design-prose p { white-space: pre-wrap; overflow-wrap: anywhere; }
+.design-prose table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.design-prose th, .design-prose td { text-align: left; vertical-align: top; padding: 7px; border: 1px solid #34554e; overflow-wrap: anywhere; }
+.design-prose .design-text-link { padding: 0; border: 0; background: transparent; color: #a5f4cf; font: inherit; text-decoration: underline; display: inline; }
 .design-planned { display: inline-block; color: #e4c889; font-size: 11px; }
 .design-workspace .react-flow__controls-button { color: #d2eee2; background: #17332c; border-color: #527f70; }
 .design-workspace .react-flow__controls-button svg { fill: currentColor; }
