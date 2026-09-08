@@ -1,7 +1,8 @@
 id: foundation-spine
-title: Build the swarm-ide foundation spine
-desc: Establish the Linux-first Electron/Vite prototype spine, typed local-core contracts,
-  coordinated graph workbench, Bazel/Nix workflow, and real desktop visual verification.
+title: Build the swarm-ide foundation
+desc: Establish a Linux-first Electron/Vite prototype, typed local-core interfaces,
+  a workbench with coordinated graphs, the Bazel/Nix workflow, and visual checks of
+  the running app in a desktop session.
 type: feature
 component: default
 release:
@@ -32,3 +33,11 @@ log_events:
   comment: 'Foundation spine merged through PR #1 as 86c3bb5; local and master CI,
     typed contracts, real Electron window, X11 interaction, and measured HMR gates
     passed.'
+- time: 2026-09-08T04:29:49-00:00
+  who: Ted Smith
+  what: changed title
+  comment: ""
+- time: 2026-09-08T04:29:49-00:00
+  who: Ted Smith
+  what: updated description
+  comment: ""
