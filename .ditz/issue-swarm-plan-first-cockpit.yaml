@@ -37,5 +37,16 @@ log_events:
     navigation retains dirty buffers and cameras. Conversation is wider and Activity
     has one outer heading. Focused retention and migration tests pass; plan hierarchy
     and automatic build joins are next.
+- time: 2026-09-08T14:16:26-00:00
+  who: Ted Smith
+  what: commented
+  comment: Implemented and reviewed the Plan/Code home, saved-navigation migration,
+    shared living-design overview, automatic ready-project build context and clearer
+    Activity chrome. Conversation is wider; the outer divider supports pointer and
+    keyboard resizing without moving source focus. 61 focused tests and both TypeScript
+    boundaries passed. Actual packaged Plan-to-Code workflow passed in 3.843 seconds
+    on an owned virtual desktop, with dirty text/cursor/cameras retained, zero renderer
+    errors and complete cleanup. PR107 is pushed for ROOT landing; no managed app
+    change. Additional registered-conversation tabs are tracked separately as swarm-registered-conversation-tabs.
 blocks:
 - swarm-usability-join
