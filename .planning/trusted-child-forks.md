@@ -21,7 +21,7 @@ mounting that control requires ROOT to release W6's renderer ownership.
 - [x] (2026-09-08 02:10Z) ROOT released W6; normal composition41f2d24 includes exact reviewed1f54845. Small visible Fork/View-parent join implemented; targeted mounted gates pass before final copy adjustment.
 - [x] (2026-09-08 02:21Z) Joined owned virtual proof passed5.2s, two deterministic peers/no model, zero renderer errors/cleanup1. Explicit Stops and retained lineage/source/draft/cameras proved; two test-only cleanup corrections preserved normal close guards.
 - [ ] Final joined quality1977PASS/1FAIL/1existingoptinSKIP: old task assertion counts reviewed W6 background trusted.snapshot. ROOT exact test ownership requested; no unowned edit or green claim.
-- [ ] Push reviewed result, report exact visible join and leave ROOT to land.
+- [x] (2026-09-08 02:29Z) Pushed cfba31b and marked PR79 ready for review. ROOT retains one exact legacy read-traffic assertion disposition and normal landing; no false full-green/adoption claim.
 
 ## Surprises & Discoveries
 
