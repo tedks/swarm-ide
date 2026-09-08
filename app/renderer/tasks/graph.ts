@@ -113,8 +113,10 @@ export function dependencyPositions(ids: string[], edges: { source: string; targ
  * column of isolated tasks. Edges inside each component retain their layers. */
 export function compactTaskPositions(ids: string[], edges: { source: string; target: string }[]) {
   const neighbors = new Map(ids.map((id) => [id, new Set<string>()]));
+  const outgoing = new Map(ids.map((id) => [id, [] as typeof edges]));
   for (const edge of edges) if (neighbors.has(edge.source) && neighbors.has(edge.target)) {
     neighbors.get(edge.source)!.add(edge.target); neighbors.get(edge.target)!.add(edge.source);
+    outgoing.get(edge.source)!.push(edge);
   }
   const visited = new Set<string>(), positions = new Map<string, { x: number; y: number }>();
   let x = 0, y = 0, shelf = 0;
@@ -125,7 +127,8 @@ export function compactTaskPositions(ids: string[], edges: { source: string; tar
       const id = pending.pop()!; if (visited.has(id)) continue;
       visited.add(id); component.push(id); pending.push(...neighbors.get(id)!);
     }
-    const layout = new Map([...dependencyPositions(component, edges)].map(([id, point]) =>
+    const componentEdges = component.flatMap((id) => outgoing.get(id)!);
+    const layout = new Map([...dependencyPositions(component, componentEdges)].map(([id, point]) =>
       [id, { x: point.y / 104 * 260, y: point.x / 260 * 88 }]));
     const width = Math.max(...[...layout.values()].map((point) => point.x)) + 260;
     const height = Math.max(...[...layout.values()].map((point) => point.y)) + 104;

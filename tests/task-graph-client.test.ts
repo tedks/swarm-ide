@@ -90,4 +90,20 @@ describe("graph reads share task authority without hijacking selection", () => {
     await Promise.all(first);
     expect(h.pending.filter((call) => call.request.type === "tasks.read")).toHaveLength(4);
   });
+  it.each(["revision", "repository", "dispose"])("revokes waiting reads after %s changes", async (reason) => {
+    const h = await harness(), controller = new AbortController();
+    const first = Array.from({ length: 4 }, () => h.client.readGraphDetail(h.snapshot, "task-fixture", controller.signal));
+    const pending = h.pending.slice(-4);
+    const waiting = h.client.readGraphDetail(h.snapshot, "task-fixture", new AbortController().signal);
+    if (reason === "revision") {
+      void h.client.refresh(); const observation = taskObservationFixture(); observation.sequence = 2;
+      observation.localRef = { algorithm: "sha1", hex: "c".repeat(40) }; observation.snapshot!.metadataCommit = observation.localRef;
+      h.answer({ kind: "snapshot", observation }); await drain();
+    } else if (reason === "repository") h.client.setContext("world:working", "project:other");
+    else h.client.dispose();
+    for (const call of pending) h.answer(taskReadFixture(), h.pending.indexOf(call));
+    expect(await waiting).toBeNull();
+    expect(await Promise.all(first)).toEqual([null, null, null, null]);
+    expect(h.pending.filter((call) => call.request.type === "tasks.read")).toHaveLength(4);
+  });
 });

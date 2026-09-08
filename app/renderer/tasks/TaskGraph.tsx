@@ -46,6 +46,7 @@ export function TaskGraph({ client, state, visible, onOpen }: {
   }, [client, visible, state.connected, snapshot, loaded?.snapshot, loaded?.owner, fresh]);
   useEffect(() => () => { current.current?.abort(); current.current = null; }, []);
   const projection = useMemo(() => loaded ? projectTaskGraph(loaded.snapshot, loaded.details, loaded.attempted) : null, [loaded]);
+  const availableTaskIds = useMemo(() => new Set(loaded?.snapshot.summaries.map((row) => row.id)), [loaded?.snapshot]);
   const scoped = useMemo(() => projection ? scopeTaskGraph(projection, scope.anchor, scope.whole) : null, [projection, scope]);
   const nodes = useMemo(() => scoped?.nodes.map((row) => ({ id: row.id, title: displayTaskText(row.title),
     subtitle: `${row.status} · ${row.missing ? "missing" : row.detailLoaded ? "relations read" : "relations unread"}`, warning: row.missing })) ?? [], [scoped]);
@@ -87,9 +88,9 @@ export function TaskGraph({ client, state, visible, onOpen }: {
           <button disabled={!fresh || node.missing} aria-label={`Open graph task ${node.id}`} onClick={() => { void open(node.id); }}>Open task</button>
         </li>)}</ul></details>
         <details><summary>Recorded edges · {projection.edges.length}</summary><ul>{projection.edges.map((edge) => <li key={edge.id}>
-          <button disabled={!fresh || !loaded!.snapshot.summaries.some((row) => row.id === edge.source)} onClick={() => { void open(edge.source); }}>{edge.source}</button>
+          <button disabled={!fresh || !availableTaskIds.has(edge.source)} onClick={() => { void open(edge.source); }}>{edge.source}</button>
           <span>blocks → {edge.diagnostics.join(", ")}</span>
-          <button disabled={!fresh || !loaded!.snapshot.summaries.some((row) => row.id === edge.target)} onClick={() => { void open(edge.target); }}>{edge.target}</button>
+          <button disabled={!fresh || !availableTaskIds.has(edge.target)} onClick={() => { void open(edge.target); }}>{edge.target}</button>
         </li>)}</ul></details>
       </div>
     </> : <div className="planning-empty">A task graph appears here after explicit loading. Isolated tasks remain visible.</div>}
