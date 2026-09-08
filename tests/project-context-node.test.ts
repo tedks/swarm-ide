@@ -290,11 +290,11 @@ describe("bounded local runtime discovery", () => {
     await expect(data.discover()(root, controller.signal)).rejects.toMatchObject({ name: "AbortError" });
   });
 
-  it("returns bounded partial status when a scan exceeds its deadline", async () => {
+  it("keeps an unfinished empty scan unavailable so the provider can retain prior servers", async () => {
     const data = fixture();
     data.io.real = () => new Promise(() => {});
     const result = await createNodeServerDiscovery({ io: data.io, timeoutMs: 10 })(root, signal());
-    expect(result).toEqual({ scan: { status: "partial", message: "Local server discovery reached its time limit" }, servers: [] });
+    expect(result).toEqual({ scan: { status: "unavailable", message: "Local server discovery reached its time limit" }, servers: [] });
   });
 
   it.each(["real", "list"] as const)("keeps admission until a timed-out native %s call settles", async (operation) => {
@@ -320,7 +320,7 @@ describe("bounded local runtime discovery", () => {
     const discover = createNodeServerDiscovery({ io: data.io, procRoot: proc, timeoutMs: 20 });
     const pending = discover(root, signal());
     await started;
-    expect((await pending).scan.status).toBe("partial");
+    expect((await pending).scan.status).toBe("unavailable");
     const calls = () => Object.values(data.io).reduce((sum, method) => sum + vi.mocked(method).mock.calls.length, 0);
     const before = calls();
     expect((await discover(root, signal())).scan).toEqual({ status: "unavailable", message: "A previous local server scan is still settling" });

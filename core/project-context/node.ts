@@ -167,7 +167,7 @@ export function createNodeServerDiscovery(options: NodeDiscoveryOptions = {}) {
     const deadline = new Promise<Result>((resolve) => {
       timer = setTimeout(() => {
         controller.abort();
-        resolve({ scan: { status: "partial", message: "Local server discovery reached its time limit" }, servers: [...servers] });
+        resolve({ scan: { status: servers.length ? "partial" : "unavailable", message: "Local server discovery reached its time limit" }, servers: [...servers] });
       }, Math.max(1, Math.min(options.timeoutMs ?? 2200, 10_000)));
     });
     let abortListener: (() => void) | undefined;
