@@ -32,5 +32,13 @@ log_events:
     core probe observed a dependency removal with two queries (~3.9s/~3.8s), no repository
     wrapper execution and confirmed cleanup. PR108 is ready for cockpit App mount
     and ROOT adoption; that assigned join remains pending, so issue stays in progress.'
+- time: 2026-09-08T14:13:04-00:00
+  who: Ted Smith
+  what: commented
+  comment: 'Applied the plan owner approved seven-line manifest mapping in PR108 e462c17:
+    shared automatic-observation hook and build package source links, plus the actual
+    checks -> quality_sources data dependency. JSON syntax and exact patch/dependency
+    checks passed; no implementation or schema changes. PR114 rebased with identical
+    upper changes to da36829d. ROOT still owns landing and cockpit adoption.'
 blocks:
 - swarm-usability-join
