@@ -23,3 +23,11 @@ log_events:
     full-read retry. Source evidence, not runtime reproduction. See /tmp/swarm-ide-usability.BirZCk/task-freshness-diagnosis.md.
     Bound any change to current list auto-adoption/retry, preserving revision-pinned
     attachments. No fix or new owner yet.'
+- time: 2026-09-08T13:40:51-00:00
+  who: Ted Smith
+  what: commented
+  comment: 'Explicit user instruction now confirmed: automatically refresh task list
+    when metadata ref changes; never require Refresh for normal adoption. New narrow
+    task-refresh owner is being launched, client/tests only with scoped docs; retain
+    last-good during replacement, no duplicate requests or hidden work, preserve revision-pinned
+    attached drafts. Other nine owners unchanged.'
