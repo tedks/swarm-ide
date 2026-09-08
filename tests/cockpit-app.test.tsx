@@ -51,7 +51,7 @@ it("Ctrl+W closes the agent inspection, not the underlying editor or file watch"
   expect(document.querySelector("#work-panel")?.contains(workLog)).toBe(false);
   fireEvent.click(screen.getByRole("button", { name: "Agent runs" }));
   expect(screen.getByRole("region", { name: "Work Log" })).toBe(workLog);
-  fireEvent.click(within(workLog).getByText("Summary settings"));
+  fireEvent.click(within(workLog).getByRole("button", { name: "Summary settings" }));
   const summaryModel = within(workLog).getByRole("textbox", { name: "Model" }) as HTMLInputElement;
   fireEvent.change(summaryModel, { target: { value: "gpt-5.6-luna-draft" } });
   fireEvent.click(screen.getByRole("button", { name: "Agent runs" }));
