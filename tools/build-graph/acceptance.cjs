@@ -1,13 +1,25 @@
 // TEST ONLY: unchanged packaged main/preload/core, actual on-disk Bazel inputs.
-const { app, BrowserWindow } = require("electron");
+const { app, BrowserWindow, ipcMain } = require("electron");
 const fs = require("node:fs/promises"), path = require("node:path"), assert = require("node:assert/strict");
 const evidence = process.env.SWARM_BUILD_GRAPH_EVIDENCE, packaged = process.env.SWARM_BUILD_GRAPH_PACKAGE;
 const rendererErrors = [];
+// Observe the unchanged production bridge, never supply responses or initiate
+// a graph request from the driver. This proves startup before opening the lens.
+const automaticObservations = [];
+const originalHandle = ipcMain.handle.bind(ipcMain);
+if (process.env.SWARM_STARTUP_BUILD_PROOF === "1") ipcMain.handle = (channel, handler) => originalHandle(channel, async (...args) => {
+  const result = await handler(...args), request = args[1];
+  if (channel === "swarm:request" && request?.type === "buildGraph.observe") automaticObservations.push({
+    refresh: request.refresh, cancel: request.cancel, graph: result.response?.buildGraph,
+  });
+  return result;
+});
 app.on("web-contents-created", (_event, contents) => {
   contents.on("console-message", (event) => { if (event.level === "error") rendererErrors.push(event.message); });
   contents.on("render-process-gone", (_event, details) => rendererErrors.push(details.reason));
 });
 require(path.join(packaged, "app/electron/main.js"));
+ipcMain.handle = originalHandle;
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 async function until(check, label, ms = 40000) { const deadline = Date.now() + ms; while (Date.now() < deadline) { if (await check()) return; await sleep(50); } throw new Error(`Timed out: ${label}`); }
 async function main() {
@@ -31,12 +43,32 @@ async function main() {
     await run(() => new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done))));
     await fs.writeFile(path.join(evidence, name), (await wc.capturePage()).toPNG());
   };
+  if (process.env.SWARM_STARTUP_BUILD_PROOF === "1") {
+    await until(() => automaticObservations.some((item) => item.graph?.status === "current"), "automatic graph before opening its lens", 130000);
+    assert(automaticObservations.every((item) => item.refresh === false && !item.cancel), "no explicit refresh or driver graph request");
+  }
   await clickText("Build graph"); await until(async () => await current() === "current", "actual Bazel graph current");
   assert(await node(fixture.target)); assert(await node("//b:isolated")); assert(await edge("//b:library"));
   if (fixture.kind === "second") assert(!await node("//a:consumer"), "second repository never borrows first graph");
   const before = await read(); assert.equal(before.repositoryId, project.id); assert.equal(before.graph.repositoryId, project.id);
   assert(await run(() => document.querySelector(".build-canvas").getBoundingClientRect().height >= 160), "compact build controls must not crush the graph canvas");
   await screenshot("01-live-build-graph.png");
+  if (process.env.SWARM_STARTUP_BUILD_PROOF === "1") {
+    const observed = automaticObservations.find((item) => item.graph?.status === "current").graph;
+    assert.equal(observed.repositoryId, project.id);
+    const originalGraph = await run(() => { globalThis.__startupGraph = document.querySelector(".build-canvas .react-flow"); return document.querySelector(".build-canvas .react-flow__viewport").style.transform; });
+    await fs.writeFile(path.join(fixture.root, "a/BUILD"), fixture.removedDefinition);
+    await until(() => automaticObservations.some((item) => item.graph?.status === "current" && item.graph.graph.inputDigest !== observed.graph.inputDigest), "automatic changed-definition graph", 130000);
+    await until(async () => !await edge("//b:library"), "changed edge displayed");
+    assert(await run((camera) => globalThis.__startupGraph === document.querySelector(".build-canvas .react-flow") && camera === document.querySelector(".build-canvas .react-flow__viewport").style.transform, originalGraph));
+    assert(automaticObservations.every((item) => item.refresh === false && !item.cancel));
+    assert.deepEqual(rendererErrors, []);
+    await screenshot("02-automatic-change.png");
+    await fs.writeFile(path.join(evidence, "build-graph-proof.json"), JSON.stringify({ ok: true, case: fixture.kind, elapsedMs: Date.now() - started,
+      realBazel: true, packagedCore: true, modelTurns: 0, repositoryId: project.id, startupBeforeLens: true, refreshClicks: 0,
+      changedDefinitionObserved: true, cameraAndGraphRetained: true, rendererErrors }));
+    return;
+  }
   // Ordinary repository/source activation and an unsent, fixed-source draft.
   await click("[aria-label='Enter directory a']"); await until(() => run(() => !!document.querySelector("[aria-label='Open file a/input.txt']")), "source listing");
   await click("[aria-label='Open file a/input.txt']"); await until(() => run(() => !!document.querySelector(".cm-content")), "source editor");

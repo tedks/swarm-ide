@@ -192,15 +192,22 @@ and owned successful/failing Bazel targets in a disposable repository.
 
 ## Dependency setup and demo applicability
 
-Passive build-graph observation is offline. **Refresh dependencies** deliberately
+Automatic build-graph observation now loads declared dependencies on project open
+and changed inputs. An immutable worktree owns one reusable query/cache; unchanged
+results and failures do not restart downloads. **Refresh dependencies** deliberately
 permits normal declared dependency downloads and repository loading, without
 compiling targets. The graph shows bounded Bazel progress/errors and **Cancel
 refresh**. Requests still carry the selected repository/world identity through
 the existing core route. A temporary query/output repository cache is reused
 within that core provider's lifetime and removed after confirmed shutdown; no
 host cache/configuration is changed. Passive failed-input checks do not retry
-cold downloads. The existing 30-second offline deadline becomes 120 seconds for
-deliberate loading; both retain the 4 MiB output limit and owned process cleanup.
+cold downloads. Queries allow up to 120 seconds for loading, retain three loading
+workers and a 512 MiB Bazel Java heap, and report received MiB. The old 4 MiB raw
+query cutoff is removed by user choice; the separate compact graph wire/target/edge
+bounds remain with partial coverage reported. Raw stdout is still buffered; track
+actual memory/output measurements and revisit streaming or a cap only if needed.
+The explicit low-level offline mode still has a 30-second deadline. Both modes
+retain owned process cleanup.
 Cancellation retains the old graph, prevents late publication and waits for
 cleanup before another query. Cancellation does not silently restart on return.
 
@@ -213,5 +220,8 @@ does not restrict generic explicitly selected target builds.
 `//tools/build-graph:compat-checks` consumes `//:quality_sources` for these
 boundaries, renderer cancellation and both TypeScript configurations.
 `//tools/build-graph:compat-probe` consumes the query module, source scripts and
-desktop bundle to perform one deliberate query of a supplied real repository,
-verify passive result reuse and unchanged Git status, and confirm cleanup.
+desktop bundle to perform one automatic query of a supplied real repository,
+measure raw output, verify passive result reuse and unchanged Git status, and
+confirm cleanup. `//tools/build-graph:startup-smoke` uses the real packaged bridge
+and an owned virtual desktop to prove graph readiness before opening its lens,
+automatic definition-change updates and retained graph/camera, without refresh.

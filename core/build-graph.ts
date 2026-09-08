@@ -13,9 +13,13 @@ export class BuildQueryCleanupError extends Error {}
 
 export const BUILD_QUERY = "//...:*";
 export const BUILD_QUERY_ARGS = ["query", "--noimplicit_deps", "--notool_deps", "--output=streamed_jsonproto", "--proto:output_rule_attrs=", "--relative_locations", "--loading_phase_threads=3", "--repository_disable_download", "--lockfile_mode=off", BUILD_QUERY];
-const COVERAGE = "Unconfigured local //...:* declarations, no implicit/tool deps; external targets unexpanded. Tracked + nonignored membership and BUILD/.bzl/module inputs observed; ignored/external/environment changes require Refresh. No compilation. Automatic checks are offline; deliberate refresh may load declared dependencies.";
+const COVERAGE = "Unconfigured local //...:* declarations, no implicit/tool deps; external targets unexpanded. Tracked + nonignored membership and BUILD/.bzl/module inputs observed; ignored/external/environment changes require Refresh. Queries may load declared dependencies. No compilation.";
 
-export interface BuildQueryOptions { allowDownloads?: boolean; cacheRoot?: string; onProgress?: (message: string) => void }
+export interface BuildQueryOptions {
+  allowDownloads?: boolean; cacheRoot?: string; onProgress?: (message: string) => void;
+  /** null removes only the raw process-output cutoff. Other collector users retain their default bound. */
+  maximumBytes?: number | null;
+}
 export function buildQueryArgs(allowDownloads = false): string[] {
   return BUILD_QUERY_ARGS.filter((arg) => !allowDownloads || arg !== "--repository_disable_download");
 }
@@ -34,12 +38,16 @@ function localPath(label: string, file: boolean): string | null {
 
 /** Bazel Target protobuf JSON records carry authoritative kinds, including isolated rules. */
 export function parseBuildQuery(output: Uint8Array): Pick<BuildGraphData, "targets" | "edges" | "complete" | "coverage"> {
-  if (output.byteLength > LIMITS.bytes) throw new Error("Bazel query output exceeded byte bound");
   const decoded = new TextDecoder("utf8", { fatal: true }).decode(output);
   if (decoded && !decoded.endsWith("\n")) throw new Error("Truncated Bazel query record");
   const all = new Map<string, BuildTarget>(), inputs: Array<{ from: string; to: string }> = [];
   let complete = true;
-  for (const line of decoded.split("\n").filter(Boolean)) {
+  // Avoid a second full-output array of lines. Raw query bytes can exceed the
+  // compact graph's wire bound (Bazel includes metadata we do not retain).
+  for (let offset = 0; offset < decoded.length;) {
+    const end = decoded.indexOf("\n", offset), line = decoded.slice(offset, end);
+    offset = end + 1;
+    if (!line) continue;
     const value = JSON.parse(line);
     const fields = { RULE: ["rule", "rule"], SOURCE_FILE: ["sourceFile", "source"], GENERATED_FILE: ["generatedFile", "generated"], PACKAGE_GROUP: ["packageGroup", "package-group"], ENVIRONMENT_GROUP: ["environmentGroup", "environment-group"] } as const;
     const spec = fields[value.type as keyof typeof fields];
@@ -133,7 +141,7 @@ export async function queryBuildGraph(root: string, signal: AbortSignal, trace?:
     const ownerScript = join(__dirname, "agents/owner-process.js");
     await access(ownerScript);
     return await collectBuildQuery((sink) => createOwnedCodexTransport({ root, executable: bazel, nodeExecutable: node!, unshareExecutable: unshare!, setprivExecutable: setpriv!, ownerScript,
-      args: ["--batch", "--ignore_all_rc_files", "--host_jvm_args=-Xmx512m", "--host_jvm_args=-XX:ActiveProcessorCount=3", `--server_javabase=${javaHome}`, `--output_user_root=${scratch}`, ...buildQueryArgs(options.allowDownloads), `--repository_cache=${join(scratch, "repository-cache")}`] }, sink), signal, trace, options);
+      args: ["--batch", "--ignore_all_rc_files", "--host_jvm_args=-Xmx512m", "--host_jvm_args=-XX:ActiveProcessorCount=3", `--server_javabase=${javaHome}`, `--output_user_root=${scratch}`, ...buildQueryArgs(options.allowDownloads), `--repository_cache=${join(scratch, "repository-cache")}`] }, sink), signal, trace, { ...options, maximumBytes: null });
   } catch (error) {
     retainScratch = error instanceof BuildQueryCleanupError; throw error;
   } finally { if (!retainScratch && !options.cacheRoot) await rm(scratch, { recursive: true, force: true }); }
@@ -146,25 +154,34 @@ export function collectBuildQuery(connect: (sink: CodexTransportSink) => CodexTr
     let transport: CodexTransport;
     let cleanup: ReturnType<CodexTransport["close"]> | undefined;
     const close = () => cleanup ??= transport.close();
-    const chunks: Buffer[] = []; let bytes = 0, failure: Error | undefined, finishing = false, ended = false;
+    const chunks: Buffer[] = []; let bytes = 0, stdoutBytes = 0, reportedMiB = 0, failure: Error | undefined, finishing = false, ended = false;
+    const maximumBytes = options.maximumBytes === undefined ? LIMITS.bytes : options.maximumBytes;
     let exitCode: number | null | undefined, stderr = "";
     const finish = (code?: number | null) => {
       if (finishing) return; finishing = true; clearTimeout(timer); signal.removeEventListener("abort", abort);
       void close().then((evidence) => {
         if (evidence.status !== "confirmed") reject(new BuildQueryCleanupError("Build query owned cleanup is unconfirmed; scratch retained and further queries blocked."));
         else if (failure || code !== 0) reject(failure ?? new Error(`Bazel query failed (${code ?? "no exit code"}): ${diagnostic(stderr) || "No diagnostic output."}`));
-        else resolve(Buffer.concat(chunks));
+        else {
+          trace?.("outputBytes", String(stdoutBytes));
+          try { resolve(Buffer.concat(chunks)); } catch (error) { reject(error); }
+        }
       }, () => reject(new BuildQueryCleanupError("Build query cleanup failed; further queries blocked.")));
     };
     const abort = () => { failure = new Error("Build query cancelled"); finish(); };
     const deadline = options.allowDownloads ? LIMITS.setupMs : LIMITS.queryMs;
     const timer = setTimeout(() => { failure = new Error(`Bazel query exceeded ${deadline / 1000}-second deadline${diagnostic(stderr) ? `: ${diagnostic(stderr)}` : ""}`); finish(); }, deadline);
     const consume = (chunk: Uint8Array, retain: boolean) => {
+      if (finishing) return;
       trace?.(retain ? "stdout" : "stderr", Buffer.from(chunk).toString("utf8").slice(0, 4096));
       if (!retain && !finishing) { stderr = (stderr + Buffer.from(chunk).toString("utf8")).slice(-4096); const message = diagnostic(stderr); if (message) options.onProgress?.(message); }
       bytes += chunk.byteLength;
-      if (bytes > LIMITS.bytes) { failure = new Error("Bazel query exceeded output byte bound"); finish(); }
-      else if (retain && !finishing) chunks.push(Buffer.from(chunk));
+      if (maximumBytes !== null && bytes > maximumBytes) { failure = new Error("Bazel query exceeded output byte bound"); finish(); }
+      else if (retain) {
+        stdoutBytes += chunk.byteLength; chunks.push(Buffer.from(chunk));
+        const mib = Math.floor(stdoutBytes / (1024 * 1024));
+        if (mib > reportedMiB) { reportedMiB = mib; options.onProgress?.(`Reading build declarations (${mib} MiB received).`); }
+      }
     };
     try {
       transport = connect({
@@ -211,7 +228,7 @@ export class BuildGraphProvider {
       this.checkedAt = this.dependencies.now();
       // Report the in-flight input sample too, so an event-driven consumer knows
       // to collect its result rather than stopping at the old cached status.
-      this.state = { ...this.state, status: "refreshing", loadingDependencies: refresh, message: refresh ? "Refreshing dependencies; declared downloads allowed. No targets are being built." : "Checking repository build inputs (offline)." };
+      this.state = { ...this.state, status: "refreshing", loadingDependencies: false, message: "Checking build definitions." };
       this.pending = this.reconcile(refresh).finally(() => {
         this.pending = undefined;
         this.checkedAt = this.dependencies.now();
@@ -245,10 +262,10 @@ export class BuildGraphProvider {
       }
       this.failedQuery = undefined;
       queryingDigest = before;
-      this.state = { ...this.state, generation, status: "refreshing", message: refresh ? "Loading declared dependencies and querying targets; no compilation." : "Querying build declarations (offline)." };
+      this.state = { ...this.state, generation, status: "refreshing", loadingDependencies: true, message: "Loading build declarations and their dependencies." };
       const cacheRoot = this.dependencies.query === queryBuildGraph ? await (this.scratch ??= mkdtemp(join(tmpdir(), "swarm-build-query-"))) : undefined;
       const output = await this.dependencies.query(this.root, this.controller.signal, undefined, {
-        allowDownloads: refresh, cacheRoot,
+        allowDownloads: true, cacheRoot,
         onProgress: (message) => { if (!this.closed && !this.controller.signal.aborted) this.state = { ...this.state, message: message.slice(-512) }; },
       });
       if (this.controller.signal.aborted) throw new Error("Build query cancelled");
