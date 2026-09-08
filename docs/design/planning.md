@@ -45,6 +45,17 @@ retry launch uses the same permanently admitted identity, so recovering a
 rejected request cannot duplicate a run whose acknowledgement was lost. Failed
 writers keep their generation slot until owned process cleanup is confirmed.
 
+`//tools/component-plan:checks` checks settings, absence, admission, lifecycle
+and the normal selected-worktree bridge. `//tools/component-plan:smoke` consumes
+the desktop bundle and owned virtual-X11 harness, using a labelled controlled
+provider to exercise the button, visible conversation, generated-file observation,
+dirty source retention and closing the completed conversation. It makes no model
+request. The separate opt-in `//tools/component-plan:live` runs one real generation
+in a disposable source repository, checks the resulting normal plan reader,
+contained docs/source links, actual fixture build inputs and unchanged originals,
+and retains cleanup evidence. Its `live-bundle` target compiles that proof with
+the ordinary owner through the shared quality sources; it is not another harness.
+
 The unified workspace starts with a component responsibility hierarchy, task
 dependencies, repository navigation and the existing build/services chooser.
 One `usePlanNavigation` observation and selection serve the component graph,

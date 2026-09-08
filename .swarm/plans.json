@@ -324,6 +324,32 @@
           ]
         },
         {
+          "label": "//tools/component-plan:smoke",
+          "role": "Owned packaged Generate-to-graph proof with a controlled provider",
+          "dependencies": [
+            { "label": "//:desktop-bundle", "relation": "data" },
+            { "label": "//tools/component-plan:sources", "relation": "data" },
+            { "label": "//tools:virtual-desktop-run.sh", "relation": "data" }
+          ]
+        },
+        {
+          "label": "//tools/component-plan:live",
+          "role": "Explicitly authorized single real generation in an owned repository",
+          "dependencies": [
+            { "label": "//tools/component-plan:live-bundle", "relation": "data" },
+            { "label": "//:quality_sources", "relation": "data" }
+          ]
+        },
+        {
+          "label": "//tools/component-plan:live-bundle",
+          "role": "Bundle the normal owner and contained real-output checks",
+          "dependencies": [
+            { "label": "//tools/component-plan:sources", "relation": "srcs" },
+            { "label": "//:quality_sources", "relation": "srcs" },
+            { "label": "//:package.json", "relation": "srcs" }
+          ]
+        },
+        {
           "label": "//tools/living-design:checks",
           "role": "Component checks or authoring entry",
           "dependencies": [

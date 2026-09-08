@@ -3,7 +3,6 @@ import { execFileSync } from "node:child_process";
 import { randomUUID } from "node:crypto";
 import { mkdir, mkdtemp, open, readFile, realpath, writeFile } from "node:fs/promises";
 import { join, isAbsolute } from "node:path";
-import { tmpdir } from "node:os";
 import { TrustedLocalService, findTrustedExecutable } from "../../core/agents/trusted-local";
 import { TrustedLocalSession } from "../../core/agents/trusted-local-session";
 import { createOwnedCodexTransport } from "../../core/agents/owner";
@@ -21,7 +20,7 @@ async function main() {
   const consumed = await open(join(evidence, "one-generation.json"), "wx", 0o600);
   const settings = PlanGenerationSettingsSchema.parse({});
   await consumed.writeFile(JSON.stringify({ at: new Date().toISOString(), model: settings.model, effort: settings.effort, maximumTurns: 1 })); await consumed.close();
-  const root = await mkdtemp(join(tmpdir(), "swarm-generated-design-"));
+  const root = await mkdtemp(join(evidence, "repository-"));
   await writeFile(join(root, "main.js"), 'import { greet } from "./greet.js";\nconsole.log(greet("operator"));\n');
   await writeFile(join(root, "greet.js"), 'export function greet(name) { return `Hello ${name}`; }\n');
   await writeFile(join(root, "README.md"), "# Greeting app\nmain.js passes a name into greet.js, which returns a greeting. No server, database or remote calls.\n");
