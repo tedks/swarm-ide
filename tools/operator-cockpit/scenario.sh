@@ -13,11 +13,19 @@ done
 node - "$SWARM_COCKPIT_EVIDENCE/proof.json" <<'JS'
 const assert = require('node:assert/strict');
 const p = JSON.parse(require('node:fs').readFileSync(process.argv[2], 'utf8'));
+if (p.tabsOnly) {
+assert(p.ok && p.packagedCore && p.documentControls && p.selectedTabVisible && p.sourceRetained && p.darkScrollbars && p.ownedSourceSaved);
+assert.equal(p.disposableSourceFiles, 10);
+assert.deepEqual(p.agentWrites, []); assert.deepEqual(p.blockingErrors, []);
+console.log('Actual packaged document-tab overflow, native direction controls and dirty-source retention; dark scrollbar evidence.');
+console.log('Compact lens controls exercised:', p.compactLensControls, 'Agent overflow exercised:', p.agentOverflowTested);
+} else {
 assert(p.ok && p.packagedCore && p.realRegisteredSession && p.crossWorktreeBytes && p.readOnly);
 assert(p.sourceRetained && p.camerasRetained && p.graphNodesRetained && p.ownedSourceSaved);
 assert.deepEqual(p.agentWrites, []);
 assert.deepEqual(p.blockingErrors, []);
 console.log('Actual registered-worktree source/diff inspection; native input; dirty local source and cameras retained.');
+}
 console.log('Accepted exact resize diagnostics:', p.acceptedResizeWarnings.length);
 JS
 swarm_window_capture "$SWARM_COCKPIT_EVIDENCE/window.png"

@@ -15,18 +15,23 @@ const port = await resolveOwnedVirtualPort();
 const evidence = await realpath(process.env.SWARM_COCKPIT_EVIDENCE);
 const electron = process.env.SWARM_ELECTRON_BIN;
 if (!electron || !isAbsolute(electron)) throw new Error('Pinned Nix Electron required');
+const tabsOnly = process.env.SWARM_COCKPIT_TABS_ONLY === '1';
+let registered, targetRoot;
+const targetPath = 'app/renderer/App.tsx';
+if (!tabsOnly) {
 const registryPath = process.env.SWARM_COCKPIT_REGISTRY;
 if (!registryPath || !isAbsolute(registryPath) || await realpath(registryPath) !== registryPath) throw new Error('Canonical private registry required');
 const registryStat = await lstat(registryPath);
 if (!registryStat.isFile() || registryStat.uid !== process.getuid() || registryStat.mode & 0o077 || registryStat.size > 65536)
   throw new Error('Invalid private registry');
 const originalRegistry = JSON.parse(await readFile(registryPath, 'utf8'));
-const registered = originalRegistry.sessions.find((session) => session.id === process.env.SWARM_COCKPIT_SESSION);
+registered = originalRegistry.sessions.find((session) => session.id === process.env.SWARM_COCKPIT_SESSION);
 if (!registered || registered.evidence !== 'local' || !isAbsolute(registered.contextRoot ?? '') || !isAbsolute(registered.rollout ?? ''))
   throw new Error('A real registered local session/worktree is required');
-const targetRoot = await realpath(registered.contextRoot), targetPath = 'app/renderer/App.tsx';
+targetRoot = await realpath(registered.contextRoot);
 if (targetRoot !== registered.contextRoot) throw new Error('Registered worktree must be canonical');
 await access(join(targetRoot, targetPath)); await access(registered.rollout);
+}
 const runfiles = process.env.TEST_SRCDIR || process.env.RUNFILES_DIR;
 const archive = runfiles ? join(runfiles, '_main/swarm-ide-foundation.tar.gz') : join(process.cwd(), 'bazel-bin/swarm-ide-foundation.tar.gz');
 await access(archive);
@@ -40,6 +45,15 @@ try {
   await mkdir(join(root, 'app/renderer'), { recursive: true });
   const files = { 'README.md': '# Owned local editor\nKeep this buffer intact while inspecting another worktree.\n',
     [targetPath]: '// Decoy in opened repository. This is not the agent worktree.\n' };
+  let workLog;
+  const tabFiles = [];
+  if (tabsOnly) {
+    files['README.md'] += Array.from({ length: 80 }, (_, index) => `Line ${index + 1}: retained local source ${'wide source content '.repeat(15)}\n`).join('');
+    for (let index = 1; index <= 10; index++) {
+      const name = `operator-overflow-source-${String(index).padStart(2, '0')}.ts`;
+      tabFiles.push(name); files[name] = `// Disposable overflow source ${index}\nexport const index = ${index};\n`;
+    }
+  } else {
   // Captured real design documents and K7's previously generated summary are
   // ordinary on-disk inputs, not new inference or injected renderer rows.
   const designBytes = await readFile(join(process.cwd(), '.swarm/plans.json'), 'utf8');
@@ -52,9 +66,10 @@ try {
   }
   const archivePath = process.env.SWARM_COCKPIT_WORK_LOG_ARCHIVE;
   if (!archivePath || !isAbsolute(archivePath)) throw new Error('Supply the archived generated Work Log');
-  const workLogBytes = await readFile(archivePath, 'utf8'), workLog = JSON.parse(workLogBytes);
+  const workLogBytes = await readFile(archivePath, 'utf8'); workLog = JSON.parse(workLogBytes);
   if (workLog.version !== 1 || !workLog.entries?.[0]?.outcome) throw new Error('Invalid archived Work Log');
   files['.swarm/work-log.json'] = workLogBytes;
+  }
   for (const name of Object.keys(files)) await mkdir(dirname(join(root, name)), { recursive: true });
   for (const [name, content] of Object.entries(files)) await writeFile(join(root, name), content);
   const git = (...args) => execFileSync('git', ['-c', 'core.hooksPath=/dev/null', '-c', 'commit.gpgsign=false', ...args], {
@@ -66,9 +81,10 @@ try {
   git('init', '-b', 'cockpit-proof'); git('add', '--', ...Object.keys(files)); git('commit', '-m', 'Owned local editor proof');
   const privateRegistry = join(scratch, 'registry.json');
   // Only operator briefing metadata is added. Real rollout and worktree remain unchanged.
-  await writeFile(privateRegistry, JSON.stringify({ version: 1, sessions: [{ ...registered, contextPaths: [targetPath] }] }), { mode: 0o600 });
-  await writeFile(join(evidence, 'repository.json'), JSON.stringify({ root, files, capturedWorkLog: { id: workLog.entries[0].id, outcome: workLog.entries[0].outcome }, capturedDesign: true,
-    target: { id: registered.id, label: registered.label, root: targetRoot, path: targetPath } }, null, 2));
+  await writeFile(privateRegistry, JSON.stringify({ version: 1, sessions: tabsOnly ? [] : [{ ...registered, contextPaths: [targetPath] }] }), { mode: 0o600 });
+  await writeFile(join(evidence, 'repository.json'), JSON.stringify({ root, files,
+    ...(tabsOnly ? { tabsOnly: true, tabFiles } : { capturedWorkLog: { id: workLog.entries[0].id, outcome: workLog.entries[0].outcome }, capturedDesign: true,
+      target: { id: registered.id, label: registered.label, root: targetRoot, path: targetPath } }) }, null, 2));
   execFileSync('tar', ['-xzf', archive, '-C', packaged], { timeout: 30000 });
   server = createServer((_req, res) => { res.writeHead(200); res.end('owned cockpit proof'); });
   await new Promise((resolve, reject) => { server.once('error', reject); server.listen(port, '127.0.0.1', resolve); });
