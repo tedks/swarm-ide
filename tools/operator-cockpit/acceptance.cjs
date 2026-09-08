@@ -92,6 +92,28 @@ async function main() {
   await click(sessionSelector);
   await until(() => run((id) => document.querySelector('[aria-label="External agent information"]')?.dataset.externalSession === id,
     repository.target.id), 'selected real session');
+  stage = 'cross-worktree briefing link';
+  // Locate the actual operator-associated context disclosure by its rendered
+  // summary. This only labels the existing control for native input.
+  await until(() => run(() => {
+    const section = document.querySelector('[aria-label="External agent information"]');
+    const summary = [...(section?.querySelectorAll('summary') ?? [])].find((e) => e.textContent === 'Why this context?');
+    if (summary) summary.setAttribute('data-cockpit-briefing', 'true');
+    return Boolean(summary);
+  }), 'registered cross-worktree context link');
+  await click('[data-cockpit-briefing]');
+  await run((name) => {
+    const button = [...document.querySelector('[data-cockpit-briefing]').parentElement.querySelectorAll('button')].find((e) => e.textContent === name);
+    if (!button) throw new Error('Missing registered briefing file');
+    button.setAttribute('data-cockpit-briefing-file', 'true');
+  }, repository.target.path);
+  await click('[data-cockpit-briefing-file]');
+  await until(() => run(() => Boolean(document.querySelector('.worktree-source'))), 'briefing opens registered worktree source');
+  assert.equal(await run(() => document.querySelector('.worktree-location').textContent), repository.target.root);
+  assert.equal(await run(() => document.querySelector('.worktree-source').textContent), await fs.readFile(path.join(repository.target.root, repository.target.path), 'utf8'));
+  await fs.writeFile(path.join(evidence, 'agent-briefing-source.png'), (await wc.capturePage()).toPNG());
+  await click('.worktree-inspection header > button');
+  assert.deepEqual(await source(), retained);
   // Follow an actual recorded file event through the persistent Activity log.
   // No renderer injection or direct bridge call supplies the navigation.
   await click('.dock-activity .activity-open-heading');
@@ -160,7 +182,7 @@ async function main() {
   assert.deepEqual(blockingErrors, []);
   await fs.writeFile(path.join(evidence, 'proof.json'), JSON.stringify({ ok: true, packagedCore: true,
     realRegisteredSession: repository.target.id, privateRegistrationCopy: true, originalTranscriptUnchanged: true,
-    crossWorktreeBytes: true, readOnly: true, sourceRetained: true, camerasRetained: true, graphNodesRetained,
+    crossWorktreeBriefingOpened: true, crossWorktreeBytes: true, readOnly: true, sourceRetained: true, camerasRetained: true, graphNodesRetained,
     archivedGeneratedWorkLogOpened: true, capturedSystemDesignOpened: true, newSummaryCalls: 0,
     ownedSourceSaved: true, agentWrites, requests, blockingErrors, acceptedResizeWarnings, elapsedMs: Date.now() - started }, null, 2));
 }
