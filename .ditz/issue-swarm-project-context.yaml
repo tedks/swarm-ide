@@ -5,8 +5,8 @@ type: feature
 component: default
 release:
 reporter: Ted Smith <tedks@riseup.net>
-status: in_progress
-disposition:
+status: closed
+disposition: fixed
 creation_time: 2026-09-08T04:38:24-00:00
 references: []
 log_events:
@@ -44,3 +44,10 @@ log_events:
     additional project exploration directly in this agent, so keep the session open
     and account for the continuation separately; no cloud or extra runtime completion
     claimed.
+- time: 2026-09-08T06:07:27-00:00
+  who: Ted Smith
+  what: 'closed: fixed'
+  comment: Initial automatic Node/Docker slice merged PR94 and user-expanded runtime/catalog
+    continuation merged PR96. Generic automatic context now delivered; concrete future
+    cloud/Sui/workload/declared-link adapters remain separately tracked. Actual outcomes
+    recorded on child issues and in Work Log.
