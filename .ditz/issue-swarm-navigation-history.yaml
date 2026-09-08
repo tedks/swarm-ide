@@ -1,0 +1,16 @@
+id: swarm-navigation-history
+title: Navigate back and forward across the IDE with mouse buttons and shortcuts
+desc: ""
+type: feature
+component: default
+release:
+reporter: Ted Smith <tedks@riseup.net>
+status: unstarted
+disposition:
+creation_time: 2026-09-08T13:56:01-00:00
+references: []
+log_events:
+- time: 2026-09-08T13:56:01-00:00
+  who: Ted Smith
+  what: created
+  comment: ""
