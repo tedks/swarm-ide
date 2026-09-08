@@ -99,12 +99,18 @@
       "core/repository.ts",
       "core/build-graph.ts",
       "app/renderer/context/ContextPane.tsx",
+      "core/project-context/provider.ts",
+      "core/project-context/node.ts",
+      "core/project-context/docker.ts",
+      "protocol/project-context.ts",
+      "app/renderer/project-context/ProjectContextPanel.tsx",
+      "tools/project-context/BUILD.bazel",
       "BUILD.bazel"
     ],
     "taskIds": [],
     "contextRefs": [],
     "design": {
-      "summary": "Observe the working repository and Bazel inputs; connect exact file membership to contextual instruments.",
+      "summary": "Observe the working repository and Bazel inputs; connect exact file membership and project-owned running servers/containers to contextual instruments.",
       "state": "implemented",
       "connections": [
         {
@@ -117,6 +123,21 @@
         }
       ],
       "buildTargets": [
+        {
+          "label": "//tools/project-context:checks",
+          "role": "Checks automatic runtime ownership, cancellation and Context rendering",
+          "dependencies": [{ "label": "//:quality_sources", "relation": "data" }, { "label": "//tools/project-context:sources", "relation": "data" }]
+        },
+        {
+          "label": "//tools/project-context:probe",
+          "role": "Explicit read-only project runtime diagnostic",
+          "dependencies": [{ "label": "//:quality_sources", "relation": "data" }, { "label": "//tools/project-context:sources", "relation": "data" }]
+        },
+        {
+          "label": "//tools/project-context:packaged-test",
+          "role": "Actual local Node server through the packaged Context pane",
+          "dependencies": [{ "label": "//:desktop-bundle", "relation": "data" }, { "label": "//tools/project-context:sources", "relation": "data" }, { "label": "//tools:virtual-desktop-run.sh", "relation": "data" }]
+        },
         {
           "label": "//:desktop-bundle",
           "role": "Packages renderer and local core",

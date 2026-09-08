@@ -1,0 +1,16 @@
+.project-runtime { border-bottom: 1px solid var(--line, #254143); padding: 10px 14px; }
+.project-runtime > header, .project-runtime-name { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.project-runtime > header button { background: transparent; color: var(--muted, #96aaaa); border: 0; cursor: pointer; font-size: 17px; }
+.project-runtime h3 { margin: 10px 0 5px; font-size: 12px; color: var(--text, #dbebea); }
+.project-runtime article { padding: 6px 0; font-size: 12px; }
+.project-runtime small, .project-runtime-empty { color: var(--muted, #96aaaa); font-size: 11px; }
+.project-runtime-empty { margin: 4px 0 8px; }
+.project-runtime-name strong { overflow-wrap: anywhere; }
+.project-runtime-time { display: block; }
+.project-endpoints { display: flex; flex-direction: column; gap: 3px; margin: 4px 0; overflow-wrap: anywhere; }
+.project-endpoints a { color: #8ddccc; text-decoration: none; }
+.project-endpoints a:hover { text-decoration: underline; }
+.project-runtime-resources { display: flex; gap: 15px; margin: 4px 0; font-variant-numeric: tabular-nums; }
+.project-runtime-resources div { display: flex; gap: 5px; }
+.project-runtime-resources dt { color: var(--muted, #96aaaa); }
+.project-runtime-resources dd { margin: 0; }

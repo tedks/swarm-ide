@@ -1,4 +1,5 @@
-import { app, BrowserWindow, ipcMain, Menu, type IpcMainInvokeEvent } from "electron";
+import { app, BrowserWindow, ipcMain, Menu, shell, type IpcMainInvokeEvent } from "electron";
+import { projectWebUrl } from "./project-web-links";
 import { readFile } from "node:fs/promises";
 import { watchFile, unwatchFile } from "node:fs";
 import { join } from "node:path";
@@ -47,7 +48,13 @@ function createWindow() {
     backgroundColor: "#071011", autoHideMenuBar: true,
     webPreferences: { preload: join(__dirname, "preload.js"), contextIsolation: true, nodeIntegration: false, sandbox: true },
   });
-  mainWindow.webContents.setWindowOpenHandler(() => ({ action: "deny" }));
+  mainWindow.webContents.setWindowOpenHandler((details) => {
+    const url = projectWebUrl(details.url);
+    if (url && !details.postBody && isAllowedRendererUrl(mainWindow?.webContents.getURL() ?? "")) {
+      void shell.openExternal(url).catch(() => console.warn("The system browser could not open this web link."));
+    }
+    return { action: "deny" };
+  });
   mainWindow.webContents.on("will-navigate", (event, url) => { if (!isAllowedRendererUrl(url)) event.preventDefault(); });
   // Electron cancels unload by default. Never override a dirty-buffer veto.
   mainWindow.webContents.on("will-prevent-unload", () => {

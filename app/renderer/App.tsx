@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore, type CSSProperties } from "react";
+import { ProjectContextPanel } from "./project-context/ProjectContextPanel";
 import {
   PROTOCOL_VERSION,
   type CoreRequest,
@@ -1350,6 +1351,7 @@ export function App() {
       <ResizeDivider label="Resize Context" className="context-divider" container=".workbench" value={contextWidth} minimum={23} maximum={44} initial={30} reverse onChange={setContextWidth} />
       <aside id="information-panel" aria-label="Information panel" className="instrument-panel panel">
         <GlobalContext snapshot={snapshot} ready={observedCoreGeneration === coreGenerationRef.current && (!window.swarmLifecycle || lifecycle?.core.phase === "ready")} />
+        <ProjectContextPanel repositoryId={snapshot.project.id} worldId={snapshot.world.id} generation={coreGenerationRef.current} ready={observedCoreGeneration === coreGenerationRef.current && (!window.swarmLifecycle || lifecycle?.core.phase === "ready")} />
         <ExternalAgentInformation client={externalAgents} bridge={window.swarm} visible={externalInformation} onReturn={() => { setExternalInformation(false); returnToSourceInformation(); }} onOpen={(path) => { if (externalAgents.selected) inspectWorktree(externalAgents.selected, path); }} />
         {!externalInformation ? <>
         {revealNotice ? <p ref={revealNoticeElement} className="tasks-reveal-notice" role="status" tabIndex={0}>{revealNotice}</p> : null}

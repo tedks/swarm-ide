@@ -14,6 +14,7 @@ collapsing these distinct questions into one graph.
 | Declared services/interfaces | [service-topology.ts](../../core/service-topology.ts), [provider.ts](../../core/provider.ts) | Service graph and declaration navigation |
 | Selected facts and links | [context/compose.ts](../../app/renderer/context/compose.ts) | [ContextPane](../../app/renderer/context/ContextPane.tsx) |
 | Change observation | [working-world-observer.ts](../../core/working-world-observer.ts), [watchers.ts](../../core/watchers.ts) | Invalidates or refreshes derived observations |
+| Local servers and containers | [project-context/provider.ts](../../core/project-context/provider.ts) | [ProjectContextPanel](../../app/renderer/project-context/ProjectContextPanel.tsx), automatic worktree-scoped runtime instruments |
 
 The Bazel graph uses an actual per-repository query rather than a hardcoded demo
 directory. Explicit observation/refresh and working-world changes govern its
@@ -26,6 +27,11 @@ with its status. Context shows direct/indirect target membership and compact emp
 states. Example latency is illustrative unless an actual measurement source is
 connected; build resource observations and service deployment facts have their own
 sources. See [context metrics](../context-metrics-demo.md).
+
+[Automatic runtime context](../project-context.md) separately discovers actual
+Node listeners and Compose-owned containers. Process/socket identity and exact
+canonical worktree metadata establish ownership; neither filenames nor familiar
+container names do. Cloud deployment and telemetry adapters remain planned.
 
 ## Build connections
 

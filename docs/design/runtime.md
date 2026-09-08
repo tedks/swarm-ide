@@ -20,6 +20,11 @@ core resolves workspace identity and canonical paths, manages process lifetimes
 and publishes bounded results. Registration/configuration selects actual providers;
 renderer text does not grant new filesystem or execution authority.
 
+The `projectContext.observe` route validates the opened repository/world and
+coalesces bounded read-only Node/Docker discovery. Its provider cancels pending
+reads when the core closes. The renderer never supplies a process command, root
+path or container control operation; see [runtime context](../project-context.md).
+
 Snapshots and events carry ordering and source identity so late results cannot
 overwrite newer state. Failure retains useful prior observations while controls
 re-establish authority. Derived graphs separate working, built and deployed
