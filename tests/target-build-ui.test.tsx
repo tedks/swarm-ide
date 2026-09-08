@@ -21,6 +21,15 @@ const response = (request: CoreRequest, jobs: TargetBuildJob[] = []): CoreRespon
 afterEach(() => { cleanup(); vi.useRealTimers(); delete window.swarm; });
 const tick = async (ms = 0) => { await act(async () => { await vi.advanceTimersByTimeAsync(ms); }); };
 
+it("labels dependency loading and exposes cancellation even before any graph exists", () => {
+  const cancel = vi.fn(), refresh = vi.fn();
+  const pending = { ...fixtureBuildObservation(snapshot), graph: undefined, status: "refreshing" as const, loadingDependencies: true, message: "Loading declared dependencies" };
+  render(<BuildGraphPane observation={pending} onCancel={cancel} onRefresh={refresh} onOpenBuild={() => {}} mockAgents={false} mockVersion={0} />);
+  expect(screen.getByText(/Declared dependency downloads allowed/)).toBeTruthy();
+  expect((screen.getByRole("button", { name: "Refresh dependencies" }) as HTMLButtonElement).disabled).toBe(true);
+  fireEvent.click(screen.getByRole("button", { name: "Cancel refresh" })); expect(cancel).toHaveBeenCalledOnce(); expect(refresh).not.toHaveBeenCalled();
+});
+
 it("keeps target jobs when topology jobs clear, showing actual time/milestones and no fake resources", () => {
   const cancel = vi.fn(); const view = render(<BuildResources jobs={[]} targetBuilds={observation([job])} onCancel={cancel} />);
   expect(screen.getByText("Configured //demo:build")).toBeTruthy(); expect(screen.getByText("1.2 s")).toBeTruthy();

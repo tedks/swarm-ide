@@ -3,6 +3,11 @@ import { describe, expect, it, vi } from "vitest";
 import { execFile } from "node:child_process";
 import { writeFile } from "node:fs/promises";
 import { RealWorkspaceProvider, SERVICE_TOPOLOGY_TARGET } from "../core/provider";
+import { readCanonicalWorkspaceBytes } from "../core/files";
+
+vi.mock("../core/files", async (original) => ({ ...await original<typeof import("../core/files")>(),
+  readCanonicalWorkspaceBytes: vi.fn(async (_root: string, path: string) => Buffer.from(JSON.stringify(path === ".swarm/service-topology.json" ?
+    { schemaVersion: 1, target: "//examples/checkout-world/services/fraudcheck:service_topology" } : { schemaVersion: 1, service: { id: "service:fraud-check" } }))) }));
 
 vi.mock("node:child_process", () => ({ execFile: vi.fn() }));
 vi.mock("../core/fingerprint", () => ({
@@ -13,6 +18,14 @@ vi.mock("../core/repository-registration", () => ({
 }));
 
 describe("fixed topology build invocation", () => {
+  it("never launches the default builder without an applicable declaration", async () => {
+    vi.mocked(execFile).mockClear();
+    vi.mocked(readCanonicalWorkspaceBytes).mockRejectedValueOnce(new Error("missing declaration"));
+    const provider = await RealWorkspaceProvider.create("/other/project");
+    await provider.startReconciliation(() => {});
+    expect(execFile).not.toHaveBeenCalled(); expect(provider.snapshot().jobs).toEqual([]);
+    provider.dispose();
+  });
   it("streams a complete BEP milestone before the existing build process completes", async () => {
     let finish!: Function;
     vi.mocked(execFile).mockImplementation(((_file: string, args: string[], _options: unknown, callback: Function) => {

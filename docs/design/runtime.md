@@ -165,3 +165,29 @@ collector, bridge-correlation, hook and mounted-control regressions plus both
 TypeScript boundaries. `//tools/build-graph:target-probe` consumes its probe
 module, sources and desktop bundle; it exercises actual worker request routing
 and owned successful/failing Bazel targets in a disposable repository.
+
+## Dependency setup and demo applicability
+
+Passive build-graph observation is offline. **Refresh dependencies** deliberately
+permits normal declared dependency downloads and repository loading, without
+compiling targets. The graph shows bounded Bazel progress/errors and **Cancel
+refresh**. Requests still carry the selected repository/world identity through
+the existing core route. A temporary query/output repository cache is reused
+within that core provider's lifetime and removed after confirmed shutdown; no
+host cache/configuration is changed. Passive failed-input checks do not retry
+cold downloads. The existing 30-second offline deadline becomes 120 seconds for
+deliberate loading; both retain the 4 MiB output limit and owned process cleanup.
+Cancellation retains the old graph, prevents late publication and waits for
+cleanup before another query. Cancellation does not silently restart on return.
+
+The fixed FraudCheck adapter now requires an explicit
+`.swarm/service-topology.json` mapping with schemaVersion 1 and the exact demo
+target, plus its matching service manifest. Other projects receive no example
+build job from startup or the service-topology action. This special declaration
+does not restrict generic explicitly selected target builds.
+
+`//tools/build-graph:compat-checks` consumes `//:quality_sources` for these
+boundaries, renderer cancellation and both TypeScript configurations.
+`//tools/build-graph:compat-probe` consumes the query module, source scripts and
+desktop bundle to perform one deliberate query of a supplied real repository,
+verify passive result reuse and unchanged Git status, and confirm cleanup.

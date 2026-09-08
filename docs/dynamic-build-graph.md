@@ -66,9 +66,14 @@ not omniscient change detection or a snapshot filesystem.
 
 ## Bounds and ownership
 
-Each query uses a private temporary output root and an owned PID-namespace process
-tree, not a shared Bazel server. It runs batch mode with three loading/JVM workers,
-a 512 MiB Java heap, a 30-second query deadline, and 4 MiB combined output. The
+Each provider reuses one private temporary output/dependency cache with an owned
+PID-namespace process tree, not a shared Bazel server. Automatic queries disable
+downloads; deliberate **Refresh dependencies** permits declared dependency loading,
+with visible progress and **Cancel refresh**. No compilation occurs. The cache is
+removed after confirmed provider shutdown. It runs batch mode with three loading/JVM
+workers, a 512 MiB Java heap, a 30-second offline query deadline (120 seconds for
+deliberate loading), and 4 MiB combined output. A bounded readable stderr tail
+survives failure instead of hiding dependency setup errors. The
 projection permits 2,000 targets and 8,000 edges. Input sampling permits 20,000
 paths and 8 MiB of definition bytes. Ordinary filesystem metadata calls retain
 the existing OS-stall limitation; these are finite byte/count bounds, not a claim
