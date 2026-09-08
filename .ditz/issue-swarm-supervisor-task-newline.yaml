@@ -24,3 +24,12 @@ log_events:
   who: Ted Smith
   what: started
   comment: ""
+- time: 2026-09-08T05:59:46-00:00
+  who: Ted Smith
+  what: commented
+  comment: 'Claimed isolated fix/supervisor-task-newline at base 6cff8c09. Commit
+    5ad8988 preserves task-prompt text exactly, corrects the masking fixture and adds
+    eight LF/CRLF/whitespace success/rejection cases without changing ancestry, model
+    or fresh-compaction gates. PR #99 is pushed and ready; focused local Bazel supervisor
+    verification and native Codex-only review underway. No live session launches/messages
+    or supervisor restarts.'
