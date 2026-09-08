@@ -1,8 +1,9 @@
 id: agent-run-context-evidence
-title: Prepare bounded run context and verify authority and virtual evidence
-desc: 'E1/E2/E3: immutable explicit launch context/provenance, stale-input checks,
-  actual limited-profile capability preflight, adversarial contract fixtures, owned
-  virtualX11 smoke and separately authenticated read-only demo. Never use physical
+title: Prepare launch context and test input freshness, permissions and the UI
+desc: 'E1/E2/E3: save the chosen launch context and its sources without changing them
+  later, reject stale inputs, and check which controls the limited profile actually
+  supports. Add adversarial contract fixtures, a smoke test on a disposable virtual
+  X11 desktop, and a separately authenticated read-only demo. Do not use the physical
   desktop or CI credentials.'
 type: task
 component: default
@@ -58,6 +59,14 @@ log_events:
     remains open. Production unavailable, no live model/policy proof/adoption. Runtime
     owns combined integration verification; automatic PR merge also includes earlier
     independently landed P1 upstream.
+- time: 2026-09-08T04:27:12-00:00
+  who: Ted Smith
+  what: changed title
+  comment: ""
+- time: 2026-09-08T04:27:12-00:00
+  who: Ted Smith
+  what: updated description
+  comment: ""
 blocks:
 - agent-run-vertical-proof
 blocked_by:
