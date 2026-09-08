@@ -27,6 +27,8 @@ async function main() {
   await click(".planning-tabs button", "System design");
   await until(() => text(".design-prose").then((s) => s.includes("engineering organization")), "actual system doc");
   const topNodes = await run(() => document.querySelectorAll(".design-graph .react-flow__node").length); assert.equal(topNodes, 7);
+  const diagramSize = await run(() => ({ panel: document.querySelector(".design-components").clientHeight, canvas: document.querySelector(".design-graph").clientHeight }));
+  assert(diagramSize.panel >= 380 && diagramSize.canvas >= 300, "component diagram must remain readable in the narrow central pane");
   await fs.writeFile(path.join(evidence, "system.png"), (await wc.capturePage()).toPNG());
   await click(".design-details aside button", "Cockpit, focus & source");
   await until(() => text(".design-prose").then((s) => s.includes("EditorPane")), "actual cockpit doc");
@@ -45,6 +47,6 @@ async function main() {
   assert((await text(".design-implementation")).includes("core/project-context/catalog.ts"));
   await fs.writeFile(path.join(evidence, "repository-expanded.png"), (await wc.capturePage()).toPNG());
   assert.deepEqual(errors, []);
-  await fs.writeFile(path.join(evidence, "proof.json"), JSON.stringify({ ok: true, actualRepo: process.cwd(), packaged: true, topNodes, componentBuildGraph: true, documentNavigation: true, sharedOutlineSelection: true, expandableSources: true, componentConstraints: true, rendererErrors: errors }));
+  await fs.writeFile(path.join(evidence, "proof.json"), JSON.stringify({ ok: true, actualRepo: process.cwd(), packaged: true, topNodes, diagramSize, componentBuildGraph: true, documentNavigation: true, sharedOutlineSelection: true, expandableSources: true, componentConstraints: true, rendererErrors: errors }));
 }
 void main().catch(async (error) => { await fs.writeFile(path.join(evidence, "failure.json"), JSON.stringify({ message: error.stack, errors })); app.exit(1); });

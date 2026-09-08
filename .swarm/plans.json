@@ -262,6 +262,10 @@
             {
               "label": "//:quality_sources",
               "relation": "data"
+            },
+            {
+              "label": "//docs/design:sources",
+              "relation": "data"
             }
           ]
         }
