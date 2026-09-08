@@ -1,0 +1,16 @@
+id: swarm-central-activity-refresh
+title: Keep the central Activity feed live and refresh the selected view
+desc: ""
+type: bugfix
+component: default
+release:
+reporter: Ted Smith <tedks@riseup.net>
+status: unstarted
+disposition:
+creation_time: 2026-09-08T15:34:57-00:00
+references: []
+log_events:
+- time: 2026-09-08T15:34:57-00:00
+  who: Ted Smith
+  what: created
+  comment: ""
