@@ -15,3 +15,11 @@ log_events:
   who: Ted Smith
   what: created
   comment: ""
+- time: 2026-09-08T13:39:23-00:00
+  who: Ted Smith
+  what: commented
+  comment: 'User wants the repo as home: master landed changes; worktrees with branch,
+    agents, PR state and uncommitted changes; switch linked agent/worktree context
+    and inspect branch-versus-master or working edits while preserving each view.
+    Existing worktree inspection is not yet a coherent repository-wide overview. Awaiting
+    a bounded owner; not claimed delivered.'
