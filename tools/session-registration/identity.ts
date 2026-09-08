@@ -67,7 +67,11 @@ export async function discover(input: PaneInput, knownRollout?: string): Promise
     const rows = output.trimEnd().split("\n").map((row) => row.split("\t")).filter((row) => row[1] === input.pane);
     if (rows.length !== 1 || rows[0].length !== 3 || !/^\d+$/.test(rows[0][2])) return;
     const [windowId, paneId, panePidText] = rows[0], panePid = Number(panePidText);
-    const queue = [panePid], seen = new Set<number>(), candidates: { target: TmuxTarget; rollout: string }[] = [];
+    // An explicit PID needs no discovery: validateHandoff independently proves
+    // its complete ancestry back to this pane. Otherwise enumerate all tasks,
+    // since Linux children lists belong to threads, not the thread group.
+    const queue = [input.processPid ?? panePid], seen = new Set<number>(), candidates: { target: TmuxTarget; rollout: string }[] = [];
+    let tasks = 0;
     while (queue.length) {
       check();
       const pid = queue.shift()!;
@@ -84,9 +88,15 @@ export async function discover(input: PaneInput, knownRollout?: string): Promise
           } finally { await file.close(); }
         };
         const stat = await proc("stat"), fields = stat.slice(stat.lastIndexOf(")") + 2).trim().split(/\s+/);
-        const children = (await proc(`task/${pid}/children`)).trim();
-        if (children && !/^\d+( \d+)*$/.test(children)) return;
-        queue.push(...(children ? children.split(" ").map(Number) : []));
+        if (input.processPid === undefined) {
+          for await (const task of await opendir(`/proc/${pid}/task`)) {
+            check(); if (++tasks > 256 || !/^\d+$/.test(task.name)) return;
+            const children = (await proc(`task/${task.name}/children`)).trim();
+            if (children && !/^\d+( \d+)*$/.test(children)) return;
+            queue.push(...(children ? children.split(" ").map(Number) : []));
+            if (queue.length > 32) return;
+          }
+        }
         if (input.processPid !== undefined && input.processPid !== pid) continue;
         if (input.processStart !== undefined && input.processStart !== fields[19]) continue;
         const parsed = TmuxTargetSchema.safeParse({ socket: input.socket, windowId, paneId, panePid, processPid: pid, processStart: fields[19] });
@@ -102,9 +112,7 @@ export async function discover(input: PaneInput, knownRollout?: string): Promise
           } catch (error) { if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error; }
         }
         for (const rollout of paths) candidates.push({ target: parsed.data, rollout });
-      } catch (error) {
-        if (!["ENOENT", "ESRCH"].includes((error as NodeJS.ErrnoException).code ?? "")) throw error;
-      }
+      } catch { return undefined; } // A disappearing task makes discovery incomplete.
     }
     if (candidates.length !== 1) return;
     check();

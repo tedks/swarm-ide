@@ -40,7 +40,7 @@ async function until(check: () => Promise<boolean>) {
   const deadline = Date.now() + 3000;
   while (!await check()) { if (Date.now() > deadline) throw new Error("Owned fixture startup expired"); await new Promise((done) => setTimeout(done, 10)); }
 }
-async function paneFixture(ambiguous = false, threaded = false) {
+async function paneFixture(ambiguous = false, threaded: boolean | "mixed" = false) {
   const f = await fixture(), socket = join(f.dir, "owned.sock"), ready = join(f.dir, "ready.json"), script = join(f.dir, "holder.cjs");
   const other = join(f.dir, "other.jsonl"); await writeFile(other, header(randomUUID()), { mode: 0o600 });
   // A wrapper plus one child mirrors a tmux shell/agent relationship, without
@@ -48,10 +48,11 @@ async function paneFixture(ambiguous = false, threaded = false) {
   await writeFile(script, `
 const fs = require('node:fs');
 if (process.argv[2] !== 'child') {
+  ${threaded === "mixed" ? `fs.openSync(${JSON.stringify(f.rollout)}, 'r');` : ""}
   ${threaded ? `new (require('node:worker_threads').Worker)(\`require('node:child_process').spawn(process.execPath, [\${JSON.stringify(__filename)}, 'child'], { stdio: 'inherit' }); setInterval(() => {}, 1000);\`, { eval: true });`
     : `require('node:child_process').spawn(process.execPath, [__filename, 'child'], { stdio: 'inherit' });`}
 } else {
-  fs.openSync(${JSON.stringify(f.rollout)}, 'r');
+  fs.openSync(${JSON.stringify(threaded === "mixed" ? other : f.rollout)}, 'r');
   ${ambiguous ? `fs.openSync(${JSON.stringify(other)}, 'r');` : ""}
   fs.writeFileSync(${JSON.stringify(ready)}, JSON.stringify({ pid: process.pid }));
 }
@@ -183,7 +184,14 @@ describe("known worker registration", () => {
 
   it("finds a holder spawned by a non-leader thread in the exact pane", async () => {
     const f = await paneFixture(false, true);
+    expect((await discover({ socket: f.pane.socket, pane: f.pane.pane }, f.rollout))?.target.processPid).toBe(f.pid);
     expect((await discover(f.pane, f.rollout))?.target.processPid).toBe(f.pid);
+  });
+
+  it("does not mistake a main-thread holder plus an off-thread holder for a unique rollout", async () => {
+    const f = await paneFixture(false, "mixed");
+    expect(await discover({ socket: f.pane.socket, pane: f.pane.pane })).toBeUndefined();
+    expect((await discover({ socket: f.pane.socket, pane: f.pane.pane }, f.rollout))?.rollout).toBe(f.rollout);
   });
 
   it("removes old authority on wrong process/start/pane and closed target, without inventing identity", async () => {
