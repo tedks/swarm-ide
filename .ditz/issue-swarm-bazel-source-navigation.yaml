@@ -34,3 +34,11 @@ log_events:
     file. No source writes, lost dirty buffer/cursor, renderer errors or model turns.
     Native review and focused tests pass. Ready PR101 above PR103; ROOT landing remains.
     Unsupported shorthand/relative Starlark load forms are tracked in swarm-bazel-reference-forms.'
+- time: 2026-09-08T06:41:27-00:00
+  who: Ted Smith
+  what: commented
+  comment: 'Relevant language integration complete: normally composed reviewed merged
+    base 0045e6e2 as cbfc01c, installed frozen parser dependencies, and passed all
+    60 focused navigation tests plus both typechecks in 14.355s. EditorPane gesture
+    code unchanged. No extra GUI, broad suite or review cycle; original packaged proof
+    remains attributed to ee8808b.'
