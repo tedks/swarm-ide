@@ -147,3 +147,17 @@ it("a manual move after synchronous reveal has no queued fit left to overwrite i
   fireEvent.click(screen.getByRole("button", { name: "Manual pan" })); moves.mockClear(); settle();
   expect(moves).not.toHaveBeenCalled(); expect(fits).not.toHaveBeenCalled();
 });
+
+it.each([false, true])("waits for the requested file layout even if its owner exists in the old slice (pan during wait: %s)", (pan) => {
+  const sourceCapture = { ...capture, links: [...capture.links,
+    { from: "//a:app", to: "//:common.ts", fromPath: "a", toPath: "common.ts" },
+    { from: "//b:lib", to: "//:common.ts", fromPath: "b", toPath: "common.ts" },
+    { from: "//b:lib", to: "//b:lib.ts", fromPath: "b", toPath: "b/lib.ts" }] };
+  const props = { ...buildProps, capture: sourceCapture, cameraScope: "workspace" };
+  const navigation = { scope: "workspace", nonce: 42, focus: { ...snapshot.focus, domain: "repo" as const, key: "file:b/lib.ts", path: "b/lib.ts" } };
+  const view = render(<BuildGraphPane {...props} focusedFile="common.ts" />); settle();
+  view.rerender(<BuildGraphPane {...props} focusedFile="common.ts" navigation={navigation} />); settle(); expect(targets).not.toHaveBeenCalled();
+  if (pan) fireEvent.click(screen.getByRole("button", { name: "Manual pan" }));
+  view.rerender(<BuildGraphPane {...props} focusedFile="b/lib.ts" navigation={navigation} />); settle();
+  if (pan) expect(targets).not.toHaveBeenCalled(); else expect(targets).toHaveBeenCalledExactlyOnceWith(["//b:lib"]);
+});

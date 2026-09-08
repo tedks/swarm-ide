@@ -98,7 +98,8 @@ export function ProjectionCanvas({ label, nodes: input, edges: links, selected, 
       interactionWidth: 24, focusable: true }));
     return { nodes, edges };
   }, [input, links, selected, positions, taskScopeVersion]);
-  return <div ref={canvas} className="planning-canvas" aria-label={label} onKeyDownCapture={(event) => {
+  return <div ref={canvas} className="planning-canvas" aria-label={label} onPointerDownCapture={reveal.onControlGesture} onKeyDownCapture={(event) => {
+    reveal.onControlGesture(event);
     if (event.key !== "Enter" && event.key !== " ") return;
     const edgeTarget = event.target instanceof Element ? event.target.closest(".react-flow__edge[data-id]") : null;
     const edgeId = edgeTarget?.getAttribute("data-id");

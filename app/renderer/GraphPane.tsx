@@ -145,7 +145,7 @@ const GraphPaneContent = memo(function GraphPaneContent({ workspaceId, graph, fo
         <span>{!buildLinkSnapshot ? `Build graph ${buildGraphStatus ?? "not requested"}` : buildLinksVisible ? `${buildLinkSnapshot.observation ? `Observation ${buildGraphStatus}` : "CAPTURE"} · ${buildEdges.length} visible links · not binary build truth` : "Build links off · click to show dependencies"}</span>
       </div> : null}
       {repositoryNavigation ? <div className="repository-browser-surface" hidden={explorer && repositoryView !== "tree"}>{repositoryNavigation}</div> : null}
-      <div className="graph-canvas" ref={canvas}>
+      <div className="graph-canvas" ref={canvas} onPointerDownCapture={reveal.onControlGesture} onKeyDownCapture={reveal.onControlGesture}>
         <ReactFlow
           nodes={displayNodes}
           edges={buildEdges.length ? buildEdges : adapted.edges}

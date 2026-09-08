@@ -9,8 +9,8 @@ Clicking a task, service, interface or build target should bring the relevant ex
 ## Progress
 
 - [x] (2026-09-08 21:18Z) Read current selection, camera and task ownership paths.
-- [ ] Record focused failing tests and agree the additive task-selection seam.
-- [ ] Implement one-shot camera requests and wire deliberate navigation.
+- [x] (2026-09-08 21:16Z) Three click-camera tests RED, nineteen retained tests PASS; task owner agreed a post-PR138 additive seam.
+- [x] (2026-09-08 21:35Z) One-shot measured-node viewport requests implemented; 33 focused tests and both typechecks pass.
 - [ ] Run focused tests, native review, and an inexpensive owned desktop check if practical.
 - [ ] Push a ready PR, document exact evidence, sync Ditz and hand off to ROOT.
 
@@ -18,13 +18,17 @@ Clicking a task, service, interface or build target should bring the relevant ex
 
 Selection is intentionally separate from camera movement today. `GraphPane` has a full-graph reframe counter, but App always passes zero. `BuildGraphPane` frames scope changes, not node clicks. `TaskGraph` has a private selection unrelated to the selected task in its client. Those are distinct missing gesture paths, not a layout algorithm failure.
 
+Native review found that raw controlled ReactFlow nodes do not receive measured dimensions, and that `fitView` queues another library frame even at duration zero. The implementation now reads public internal-node measurement and uses bounds plus immediate `setViewport`. It also keeps a file request pending until the requested file's layout is active, without creating a second gesture on asynchronous read completion.
+
+The first owned GUI run failed before source opening: its click helper did not scroll the requested file into the visible tree. The screenshot shows no opened editor. The corrected helper scrolls and checks the actual pointer hit target first; the original failure remains recorded, not attributed to a product camera defect.
+
 ## Decision Log
 
 Use explicit request identities rather than watching all snapshot changes. Resolve only actual loaded nodes and explicit declared service/file membership; never infer task-to-service connections. Preserve existing Fit controls and library-owned camera state. The concurrent complete-task-graph worker owns `TaskGraph.tsx`, so coordinate a small prop seam rather than editing that file concurrently. These decisions were made on 2026-09-08 to keep passive updates harmless.
 
 ## Outcomes & Retrospective
 
-Implementation and proof are pending. The plan index target-count failure and task graph truncation are independently owned and are not part of this repair.
+Focused implementation checks pass. Final native convergence and one bounded corrected desktop execution are underway. The plan index target-count failure and task graph truncation are independently owned and are not part of this repair; TaskGraph's sidebar-selection seam will join after its owner's reviewed count repair lands.
 
 ## Context and Orientation
 
