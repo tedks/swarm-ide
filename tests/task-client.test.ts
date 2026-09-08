@@ -77,6 +77,134 @@ function linkedObservation(sequence = 1, hash?: string) {
   return observation;
 }
 
+function refChanged(sequence: number, retained = taskObservationFixture(), hash = "c") {
+  return TaskObservationSchema.parse({ ...retained, sequence, status: "stale",
+    localRef: { algorithm: "sha1", hex: hash.repeat(40) },
+    reason: { code: "TASK_REF_CHANGED", message: "Local metadata changed." } });
+}
+
+describe("automatic task-list adoption", () => {
+  it("adopts a changed ref without Refresh, retains rows while held and coalesces focus/timer triggers", async () => {
+    const h = await observed(), retained = h.client.getSnapshot().observation!.snapshot;
+    await vi.advanceTimersByTimeAsync(5000); h.snapshot(refChanged(2)); await drain();
+    expect(h.calls.map((call) => (call.request as { refresh: boolean }).refresh)).toEqual([true, false, true]);
+    expect(h.client.getSnapshot()).toMatchObject({ refreshing: true, observation: { snapshot: retained } });
+    window.dispatchEvent(new Event("focus")); await vi.advanceTimersByTimeAsync(15000);
+    expect(h.calls).toHaveLength(3);
+    const next = advanceObservation(3); next.snapshot!.summaries[0]!.title = "Updated task title";
+    h.snapshot(next); await drain();
+    expect(h.client.getSnapshot()).toMatchObject({ refreshing: false, observation: next, notice: null });
+    await vi.advanceTimersByTimeAsync(5000); h.snapshot({ ...next, sequence: 4 }); await drain();
+    expect(h.calls).toHaveLength(4);
+    expect(h.latest("tasks.snapshot").request).toMatchObject({ refresh: false });
+  });
+
+  it.each(["malformed", "unavailable", "error"] as const)("retains last-good rows after %s, scans that ref once and recovers at a different ref", async (status) => {
+    const h = await observed(), retained = h.client.getSnapshot().observation!.snapshot;
+    await vi.advanceTimersByTimeAsync(5000); h.snapshot(refChanged(2)); await drain();
+    expect(h.latest("tasks.snapshot").request).toMatchObject({ refresh: true });
+    const failed = { ...taskObservationFixture(status), sequence: 3, localRef: advanceObservation(3).localRef };
+    h.snapshot(failed); await drain();
+    expect(h.client.getSnapshot()).toMatchObject({ refreshing: false, observation: { status, snapshot: retained, reason: failed.reason } });
+    for (const sequence of [4, 5]) {
+      await vi.advanceTimersByTimeAsync(5000); h.snapshot({ ...failed, sequence }); await drain();
+      expect(h.latest("tasks.snapshot").request).toMatchObject({ refresh: false });
+    }
+    expect(h.calls.filter((call) => call.request.type === "tasks.snapshot" && call.request.refresh)).toHaveLength(2);
+    // The provider retains the failure reason even after its cheap check sees D.
+    await vi.advanceTimersByTimeAsync(5000);
+    h.snapshot({ ...failed, sequence: 6, localRef: advanceObservation(6, "d").localRef }); await drain();
+    expect(h.latest("tasks.snapshot").request).toMatchObject({ refresh: true });
+    h.snapshot(advanceObservation(7, "d")); await drain();
+    expect(h.client.getSnapshot().observation?.status).toBe("observed");
+    expect(h.client.getSnapshot().observation?.snapshot?.metadataCommit.hex).toBe("d".repeat(40));
+  });
+
+  it("bounds catch-up during moving metadata to one full read per normal ref check", async () => {
+    const h = await observed();
+    await vi.advanceTimersByTimeAsync(5000); h.snapshot(refChanged(2)); await drain();
+    expect(h.latest("tasks.snapshot").request).toMatchObject({ refresh: true });
+    const moved = refChanged(3, advanceObservation(3), "d");
+    h.snapshot(moved); await drain();
+    expect(h.calls).toHaveLength(3); expect(h.client.getSnapshot().refreshing).toBe(false);
+    await vi.advanceTimersByTimeAsync(5000); h.snapshot({ ...moved, sequence: 4 }); await drain();
+    expect(h.calls).toHaveLength(5); expect(h.latest("tasks.snapshot").request).toMatchObject({ refresh: true });
+    h.snapshot(advanceObservation(5, "d")); await drain();
+    expect(h.client.getSnapshot().observation?.status).toBe("observed");
+  });
+
+  it("rechecks a rollback to the retained revision after a newer revision failed", async () => {
+    const h = await observed();
+    await vi.advanceTimersByTimeAsync(5000); h.snapshot(refChanged(2)); await drain();
+    const failed = { ...taskObservationFixture("malformed"), sequence: 3, localRef: advanceObservation(3).localRef };
+    h.snapshot(failed); await drain();
+    await vi.advanceTimersByTimeAsync(5000);
+    h.snapshot({ ...failed, sequence: 4, localRef: TASK_FIXTURE_COMMIT }); await drain();
+    expect(h.latest("tasks.snapshot").request).toMatchObject({ refresh: true });
+    h.snapshot({ ...taskObservationFixture(), sequence: 5 }); await drain();
+    expect(h.client.getSnapshot()).toMatchObject({ observation: { status: "observed", reason: null }, refreshing: false });
+  });
+
+  it("does not repeat a failed automatic transport request at the same ref; explicit Refresh remains recovery", async () => {
+    const h = await observed();
+    await vi.advanceTimersByTimeAsync(5000); h.snapshot(refChanged(2)); await drain();
+    expect(h.latest("tasks.snapshot").request).toMatchObject({ refresh: true });
+    h.latest("tasks.snapshot").reject(new Error("transport failed")); await drain();
+    expect(h.client.getSnapshot().notice).toContain("INVALID_CORE_MESSAGE");
+    await vi.advanceTimersByTimeAsync(5000); h.snapshot(refChanged(3)); await drain();
+    expect(h.calls).toHaveLength(4); expect(h.latest("tasks.snapshot").request).toMatchObject({ refresh: false });
+    void h.client.refresh(); expect(h.latest("tasks.snapshot").request).toMatchObject({ refresh: true });
+    h.snapshot(advanceObservation(4)); await drain();
+    expect(h.client.getSnapshot().observation?.status).toBe("observed");
+  });
+
+  it.each(["pane", "document", "dispose", "repository"])("does not escalate a pending ref check after %s cancellation", async (kind) => {
+    const h = await observed(); await vi.advanceTimersByTimeAsync(5000);
+    const pending = h.latest("tasks.snapshot");
+    if (kind === "pane") h.client.setVisible(false);
+    else if (kind === "document") { hidden = true; document.dispatchEvent(new Event("visibilitychange")); }
+    else if (kind === "dispose") h.client.dispose();
+    else h.client.setContext("world:other", "project:other");
+    const count = h.calls.length;
+    h.snapshot(refChanged(2), pending); await drain(); expect(h.calls).toHaveLength(count);
+    if (kind === "pane" || kind === "document") {
+      if (kind === "pane") h.client.setVisible(true);
+      else { hidden = false; document.dispatchEvent(new Event("visibilitychange")); }
+      h.snapshot(refChanged(3)); await drain();
+      expect(h.latest("tasks.snapshot").request).toMatchObject({ refresh: true });
+    }
+  });
+
+  it("rejects a delayed automatic read from the previous core generation", async () => {
+    const h = harness(true); h.client.setVisible(true); h.status(h.ready(1)); h.snapshot(); await drain();
+    await vi.advanceTimersByTimeAsync(5000); h.snapshot(refChanged(2)); await drain();
+    expect(h.latest("tasks.snapshot").request).toMatchObject({ refresh: true });
+    const pending = h.latest("tasks.snapshot");
+    h.status(h.ready(2)); h.snapshot(); await drain();
+    h.snapshot(advanceObservation(999), pending); await drain();
+    expect(h.client.getSnapshot().observation?.snapshot?.metadataCommit).toEqual(TASK_FIXTURE_COMMIT);
+    expect(h.client.getSnapshot().refreshing).toBe(false);
+  });
+
+  it("keeps the opened pinned detail and saved attachment reference at M while the list adopts N", async () => {
+    const h = await observed(linkedObservation()), index = h.client.getSnapshot().backlinks!;
+    const path = index.references("task-fixture")[0]!.path;
+    const pin = h.client.inspectPinned(index.lookup(path)[0]!.target, { path, index }, () => true);
+    h.read(); expect(await pin).toBe(true);
+    const old = h.client.getSnapshot(), candidate = h.client.getAttachmentCandidate("task-fixture")!;
+    expect(candidate.isCurrent()).toBe(true);
+    await vi.advanceTimersByTimeAsync(5000); h.snapshot(refChanged(2, linkedObservation())); await drain();
+    expect(h.latest("tasks.snapshot").request).toMatchObject({ refresh: true });
+    h.snapshot(linkedObservation(3, "c")); await drain();
+    expect(h.client.getSnapshot()).toMatchObject({ selectedTaskId: "task-fixture", detailRevision: TASK_FIXTURE_COMMIT, detailStale: true });
+    expect(h.client.getSnapshot().detail).toBe(old.detail);
+    expect(h.client.getSnapshot().pin).toBe(old.pin);
+    expect(candidate.reference.metadataCommit).toEqual(TASK_FIXTURE_COMMIT);
+    expect(candidate.isCurrent()).toBe(false); expect(h.client.getAttachmentCandidate("task-fixture")).toBeNull();
+    expect(h.calls.filter((call) => call.request.type === "tasks.read")).toHaveLength(1);
+  });
+});
+
 describe("explicit backlink selection", () => {
   it.each(["revision", "association", "coverage", "attention", "dispose"])("revokes delayed inspection after %s without replacing prior detail", async (change) => {
     const h = await observed(linkedObservation());

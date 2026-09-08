@@ -5,6 +5,7 @@ import type { SwarmBridge } from "../../electron/preload";
 import { emptyComposer } from "./fleet-state";
 import { useTrustedFleet, type TrustedSelection } from "./use-trusted-fleet";
 import { TrustedForkControl } from "../../components/TrustedForkControl";
+import { useChatSubmit } from "../use-chat-submit";
 import "./trusted-local.css";
 
 export function TrustedLocalPane({ draft, bridge, generation = 0, connected, selection, onSnapshot }: {
@@ -12,6 +13,7 @@ export function TrustedLocalPane({ draft, bridge, generation = 0, connected, sel
   selection?: TrustedSelection; onSnapshot?: (snapshot: TrustedSnapshot | null) => void;
 }) {
   const cockpit = useTrustedFleet({ bridge, connected, generation, selection, onSnapshot });
+  const chatKeys = useChatSubmit();
   const { fleet, selected: state, prepared, confirmed } = cockpit;
   const input = draft ? { worldId: draft.focus.worldId, focus: draft.focus, taskText: draft.task,
     model: draft.model.trim() || null, effort: null, links: { parentRunId: null, task: null, spec: null },
@@ -66,7 +68,7 @@ export function TrustedLocalPane({ draft, bridge, generation = 0, connected, sel
           onClick={() => cockpit.control(state, "decide", approval.id, choice)}>{choice === "accept" ? "Allow once" : choice === "decline" ? "Decline" : choice}</button>)}
       </article>) : null}
       {active ? <><form onSubmit={(event) => { event.preventDefault(); cockpit.control(state, "send"); }}>
-        <label>Message Codex<textarea rows={2} value={composer.text} maxLength={16384} onChange={(event) => cockpit.edit(state.runToken!, event.target.value)} /></label>
+        <label>Message Codex<textarea {...chatKeys} title="Enter to send · Shift-Enter for a new line" rows={2} value={composer.text} maxLength={16384} onChange={(event) => cockpit.edit(state.runToken!, event.target.value)} /></label>
         <button disabled={runPending || !connected || !composer.text.trim() || !["ready", "running"].includes(state.status) || (state.status === "running" && !state.turnId)}>{state.status === "running" ? "Steer current turn" : "Send next turn"}</button>
       </form><button type="button" disabled={!connected || runPending || state.status === "stopping"} onClick={() => cockpit.control(state, "stop")}>Stop conversation</button></> : composer.text ? <details><summary>Unsent draft</summary><pre>{composer.text}</pre></details> : null}
       {!state.archived ? <TrustedForkControl parent={state} disabled={!connected || runPending} onFork={cockpit.fork} /> : null}

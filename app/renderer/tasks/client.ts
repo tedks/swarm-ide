@@ -63,6 +63,9 @@ export class TaskBridgeClient {
   private pendingSnapshot: symbol | null = null;
   private refreshAgain = false;
   private needsInitial = true;
+  // Avoid repeating a failed full read at an unchanged ref. A different local
+  // revision or explicit Refresh can recover without a per-revision retry cache.
+  private lastFullRef: GitObjectId | null = null;
   private visible = false;
   private timer: ReturnType<typeof setInterval> | undefined;
   private graphReadsInFlight = 0;
@@ -170,7 +173,7 @@ export class TaskBridgeClient {
   private invalidate() {
     ++this.epoch; ++this.detailTicket;
     this.snapshotWatermark = -1; this.detailWatermark = -1;
-    this.pendingSnapshot = null; this.refreshAgain = false; this.needsInitial = true;
+    this.pendingSnapshot = null; this.refreshAgain = false; this.needsInitial = true; this.lastFullRef = null;
     this.update({ backlinks: null, backlinkNotice: null });
     this.stopTimer();
   }
@@ -219,8 +222,11 @@ export class TaskBridgeClient {
     const pending = Symbol("task-snapshot");
     this.pendingSnapshot = pending;
     const epoch = this.epoch;
-    // An initial failed scan is still an attempted scan. Reopen/focus/timers
-    // check only the ref; another full scan requires Refresh or a new lifetime.
+    let adoptChangedRef = false;
+    // Record the intended ref before sending, including if transport fails.
+    if (refresh) this.lastFullRef = this.state.observation?.localRef ?? null;
+    // Without a first usable snapshot, a failed initial scan still requires
+    // Refresh or a new lifetime. Automatic adoption updates an existing list.
     this.needsInitial = false;
     // Starting another request is not evidence that the previous failure has
     // recovered. Keep that warning visible throughout the bounded pending read.
@@ -256,6 +262,19 @@ export class TaskBridgeClient {
         this.update({ reading: false, detailStale: true });
       }
       this.snapshotWatermark = observation.sequence;
+      if (refresh) {
+        // A successful full read can finish behind a newer local ref. Remember
+        // what was actually read, so the next normal check catches up once.
+        this.lastFullRef = (observation.status === "observed" || observation.status === "stale") && suppliedSnapshot
+          ? suppliedSnapshot.metadataCommit : observation.localRef ?? this.lastFullRef;
+      } else {
+        // Even after a failed read the provider keeps checking the local ref,
+        // but preserves its error. A *different* ref is fresh reason to try,
+        // including a rollback to the retained revision after a failed update.
+        adoptChangedRef = Boolean(observation.snapshot && observation.localRef &&
+          (observation.status !== "observed" || !sameGitObject(observation.snapshot.metadataCommit, observation.localRef)) &&
+          (!this.lastFullRef || !sameGitObject(this.lastFullRef, observation.localRef)));
+      }
       // Domain outcomes already have observation.reason. notice is reserved
       // for client/transport failures, not a duplicate rendering of that reason.
       const backlinks = observation.snapshot && (suppliedSnapshot || this.state.backlinks)
@@ -265,9 +284,12 @@ export class TaskBridgeClient {
     } catch (error) { if (epoch === this.epoch) { ++this.detailTicket; this.update({ reading: false, notice: this.failure(error) }); } }
     finally {
       if (this.pendingSnapshot === pending) {
-        this.pendingSnapshot = null; this.update({ refreshing: false });
-        if (this.state.pin) this.reconcileDetail();
-        if (this.refreshAgain) { this.refreshAgain = false; if (this.isVisible()) void this.snapshot(true); }
+        const followup = (this.refreshAgain || adoptChangedRef) && this.isVisible();
+        this.pendingSnapshot = null; this.refreshAgain = false;
+        // Only cheap checks escalate automatically, never a chain of full reads.
+        // Keep the pending indicator steady across the check-to-read handoff.
+        if (followup) void this.snapshot(true);
+        else { this.update({ refreshing: false }); if (this.state.pin) this.reconcileDetail(); }
       }
     }
   }

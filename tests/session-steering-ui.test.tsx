@@ -7,7 +7,7 @@ import { initialSnapshot } from "../fixtures/world";
 import type { ExternalDetail, ExternalResult } from "../protocol/external-agents";
 import { PROTOCOL_VERSION, type CoreRequest, type CoreResponse } from "../protocol/schema";
 
-afterEach(() => { cleanup(); vi.restoreAllMocks(); });
+afterEach(() => { cleanup(); vi.restoreAllMocks(); localStorage.clear(); });
 const id = (n: number) => `00000000-0000-4000-8000-${String(n).padStart(12, "0")}`;
 function detail(n = 1): ExternalDetail {
   return { session: { id: id(n), label: `Agent ${n}`, evidence: "local", status: "observed", parentId: null, ancestry: "root",
@@ -41,12 +41,14 @@ describe("explicit observed-session steering", () => {
     draft("Please inspect the failing test.");
     expect(request).not.toHaveBeenCalled();
     fireEvent.click(sendButton());
-    await screen.findByText("Message queued.");
+    await screen.findByRole("status", { name: "Queued" });
     expect(request).toHaveBeenCalledTimes(1);
     expect(request.mock.calls[0][0]).toMatchObject({ protocolVersion: PROTOCOL_VERSION, type: "externalAgents.send", sessionId: id(1),
       observationId: "1".repeat(64), text: "Please inspect the failing test." });
     expect(textbox().value).toBe("");
-    expect(screen.getByText(id(9))).toBeTruthy();
+    expect(document.querySelector("[data-delivery-status='queued']")).toBeTruthy();
+    expect(screen.queryByText(id(9))).toBeNull();
+    expect(localStorage.getItem("swarm.message-outbox.v1")).toContain(id(9));
   });
 
   it("rejects blank, NUL and oversized UTF-8 input without silently truncating it", () => {
@@ -59,7 +61,7 @@ describe("explicit observed-session steering", () => {
     expect(textbox().value).toBe("😀".repeat(1001));
     expect(request).not.toHaveBeenCalled();
     draft("😀".repeat(1000)); expect(sendButton().disabled).toBe(false);
-    expect(screen.getByText("4000 / 4000 UTF-8 bytes")).toBeTruthy();
+    expect(screen.queryByText("4000 / 4000 UTF-8 bytes")).toBeNull();
   });
 
   it("fails closed for synthetic, unavailable, unchecked or disconnected sessions", () => {
@@ -85,7 +87,7 @@ describe("explicit observed-session steering", () => {
     const { bridge, request } = bridgeWith(async (input) => success(input, status));
     render(<SessionSteering detail={detail()} bridge={bridge} />);
     draft("Review the patch"); fireEvent.click(sendButton());
-    await screen.findByText(status === "delivery-unknown" ? "Delivery could not be confirmed. Check the conversation before sending again." : `Target outcome: ${status}`);
+    await screen.findByRole("status", { name: status === "delivery-unknown" ? "Unconfirmed" : "Not sent" });
     expect(textbox().value).toBe("Review the patch");
     expect(request).toHaveBeenCalledTimes(1);
   });
@@ -99,7 +101,7 @@ describe("explicit observed-session steering", () => {
     });
     render(<SessionSteering detail={detail()} bridge={bridge} />);
     draft("Review the patch"); fireEvent.click(sendButton());
-    await screen.findByText("Delivery could not be confirmed. Check the conversation before sending again.");
+    await screen.findByRole("status", { name: "Unconfirmed" });
     expect(screen.queryByText(/Rejected —/)).toBeNull();
     expect(textbox().value).toBe("Review the patch"); expect(request).toHaveBeenCalledTimes(1);
   });
@@ -119,11 +121,11 @@ describe("explicit observed-session steering", () => {
     expect(screen.getByRole("status").textContent).toContain(`Agent 1 (${id(1)})`);
     await act(async () => { held.resolve(success(request.mock.calls[0][0], "rejected")); });
     expect(textbox().value).toBe("Second target draft");
-    expect(screen.queryByText("Target outcome: rejected")).toBeNull();
+    expect(screen.queryByRole("status", { name: "Not sent" })).toBeNull();
     expect(sendButton().disabled).toBe(false);
     view.rerender(<SessionSteering detail={detail()} bridge={bridge} />);
     expect(textbox().value).toBe("First target draft");
-    expect(screen.getByText("Target outcome: rejected")).toBeTruthy();
+    expect(screen.getByRole("status", { name: "Not sent" })).toBeTruthy();
     expect(request).toHaveBeenCalledTimes(1);
   });
 
@@ -131,7 +133,7 @@ describe("explicit observed-session steering", () => {
     const { bridge, request } = bridgeWith(async () => { throw new Error("Connection lost"); });
     const view = render(<SessionSteering detail={detail()} bridge={bridge} />);
     draft("Inspect once"); fireEvent.click(sendButton());
-    await waitFor(() => expect(screen.getByRole("status").textContent).toContain("Delivery could not be confirmed"));
+    await waitFor(() => expect(screen.getByRole("status").getAttribute("aria-label")).toBe("Unconfirmed"));
     view.rerender(<SessionSteering detail={{ ...detail(), session: { ...detail().session, observationId: "a".repeat(64) } }} bridge={bridge} />);
     expect(textbox().value).toBe("Inspect once");
     view.unmount(); render(<SessionSteering detail={detail()} bridge={bridge} />);
