@@ -1,20 +1,19 @@
-import { useEffect, useId, useRef, useState } from "react";
+import { useId, useState, useSyncExternalStore } from "react";
 import type { SwarmBridge } from "../../electron/preload";
 import { parseCoreResponseForRequest, PROTOCOL_VERSION } from "../../../protocol/schema";
 import { EXTERNAL_MESSAGE_MAX_BYTES, parseExternalResult, type ExternalDetail, type ExternalRequest } from "../../../protocol/external-agents";
 import "./session-steering.css";
+import { SteeringMemory, type TargetState } from "./steering-memory";
 
 type Receipt = { status: "queued" | "rejected" | "delivery-unknown"; message: string; receiptId?: string };
-type TargetState = { draft: string; receipt?: Receipt };
 const emptyTarget: TargetState = { draft: "" };
 
 /** Drafts and receipts belong to their target, never to the current selection. */
-export function SessionSteering({ detail, bridge }: { detail: ExternalDetail | null; bridge: SwarmBridge | undefined }) {
-  const [targets, setTargets] = useState(new Map<string, TargetState>());
-  const [pending, setPending] = useState<{ id: string; label: string } | null>(null);
-  const sending = useRef(false), mounted = useRef(false);
+export function SessionSteering({ detail, bridge, memory }: { detail: ExternalDetail | null; bridge: SwarmBridge | undefined; memory?: SteeringMemory }) {
+  const [local] = useState(() => new SteeringMemory());
+  const owner = memory ?? local;
+  const { targets, pending } = useSyncExternalStore(owner.subscribe, owner.getSnapshot);
   const fieldId = useId();
-  useEffect(() => { mounted.current = true; return () => { mounted.current = false; }; }, []);
   // Keep this component mounted while observations load: pending sends and
   // per-session drafts must outlive temporary absence of selection detail.
   if (!detail) return pending ? <p className="session-steering" role="status">Sending to {pending.label} ({pending.id})…</p> : null;
@@ -24,13 +23,11 @@ export function SessionSteering({ detail, bridge }: { detail: ExternalDetail | n
     : bytes > EXTERNAL_MESSAGE_MAX_BYTES ? `Message exceeds ${EXTERNAL_MESSAGE_MAX_BYTES} UTF-8 bytes.`
     : !target.draft.trim() ? "Enter a non-blank message." : "";
   const available = !!bridge && session.evidence === "local" && session.status === "observed" && detail.handoff === "available";
-  const update = (id: string, change: (prior: TargetState) => TargetState) => {
-    setTargets((prior) => { const next = new Map(prior); next.set(id, change(prior.get(id) ?? emptyTarget)); return next; });
-  };
+  const update = (id: string, change: (prior: TargetState) => TargetState) => owner.update(id, change);
   const send = async () => {
-    if (!available || !bridge || invalid || sending.current) return;
+    if (!available || !bridge || invalid || owner.getSnapshot().pending) return;
     const id = session.id, text = target.draft;
-    sending.current = true; setPending({ id, label: session.label });
+    owner.pending({ id, label: session.label });
     update(id, (prior) => ({ ...prior, receipt: undefined }));
     let receipt: Receipt;
     try {
@@ -44,14 +41,11 @@ export function SessionSteering({ detail, bridge }: { detail: ExternalDetail | n
     } catch {
       receipt = { status: "delivery-unknown", message: "Delivery could not be confirmed. Check the target conversation before sending again." };
     }
-    sending.current = false;
-    if (!mounted.current) return;
-    setPending(null);
+    owner.pending(null);
     update(id, (prior) => ({ draft: receipt.status === "queued" && prior.draft === text ? "" : prior.draft, receipt }));
   };
   return <section className="session-steering" aria-label="Session steering">
-    <h3>Message existing session</h3>
-    <p>To <strong>{session.label}</strong></p>
+    <h3>Message <strong>{session.label}</strong></h3>
     {!available ? <p>Read-only. Refresh or open the session in your terminal.</p> : null}
     <form onSubmit={(event) => { event.preventDefault(); void send(); }}>
       <label htmlFor={fieldId}>Message to {session.label}</label>

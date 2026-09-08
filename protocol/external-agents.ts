@@ -28,8 +28,8 @@ export const ExternalAgentSummarySchema = z.object({
 export type ExternalAgentSummary = z.infer<typeof ExternalAgentSummarySchema>;
 export const ExternalEntrySchema = z.object({
   id: z.string().max(100), at: z.string().max(64),
-  kind: z.enum(["assistant", "tool-call", "tool-result", "turn-start", "turn-complete"]),
-  text: Text, attribution: z.enum(["assistant-reported", "recorded-tool-event", "harness-event"]),
+  kind: z.enum(["user", "assistant", "tool-call", "tool-result", "turn-start", "turn-complete"]),
+  text: Text, attribution: z.enum(["user-message", "assistant-reported", "recorded-tool-event", "harness-event"]),
   tool: z.string().max(160).optional(), command: Text.optional(),
   cwd: Text.optional(), path: Text.optional(), patch: z.string().max(16384).optional(),
   callId: z.string().max(160).optional(),

@@ -19,38 +19,60 @@ authentication. The renderer still has no raw process authority. Interactive
 approvals remain explicit; stopping an IDE-owned run cleans up its owned processes.
 Reading saved history never resumes a model or replays commands.
 
-The normal cockpit leads with draft and trusted-local controls. When those
-controls are mounted, the rail/dock omit only the exact connected legacy
-`ADAPTER_POLICY_UNAVAILABLE` capability notice and its one-active-isolated-run
-caption. Real disconnect/send/run errors remain visible; legacy-only surfaces
-retain the notice. This is presentation in `LiveRunRail.tsx` and `AgentDock.tsx`,
-not a change to capabilities, approvals, run history or task/draft ownership.
+The normal cockpit leads with the registered **Conversation** and its message
+box. On first observation it restores a still-registered previous selection, or
+chooses the unique locally observed root. Ambiguous roots and examples require
+a deliberate choice. Refresh, core recovery and disappearance of a selected
+registration never silently select another agent. The preference contains only
+the session ID; a new observation still validates availability before controls
+are enabled.
+
+Selecting a child switches its conversation in the persistent dock; source,
+task, diff and graph surfaces remain intact. Context shows agent facts, registered
+worktree/briefing links and checked terminal commands. `AgentConversation.tsx`
+renders bounded user-message events and assistant replies with readable times.
+Injected user-role context, reasoning and raw tool results are not conversational
+input. The tool Activity stream excludes user messages.
+
+`SessionSteering.tsx` uses one `SteeringMemory` owner in App. Per-target drafts,
+pending sends and receipts survive selection, loading, tab changes and development
+remounts. An uncertain result retains its draft/receipt without replay. A full
+application restart does not persist these in-memory drafts. Terminal-owned
+sessions keep their existing queue and tmux owner; viewing them launches nothing.
+
+Native trusted conversations, approvals, forks, new drafts and saved history
+remain mounted in the secondary **Native agents / New** tab. Legacy stored runs
+keep their individual tabs; the competing old run-list mount is removed. Exact
+obsolete isolated-policy capability text stays suppressed when trusted controls
+exist, while operation errors remain visible. This changes presentation, not
+capabilities, run ownership or approvals.
 
 Native fork preserves conversation ancestry; current native children share the
 selected workspace rather than automatically allocating Git worktrees. Registered
-terminal agents may already occupy different worktrees. The current observer
-refreshes the selected transcript; a fleet-wide Activity stream and correct
-cross-worktree source activation are planned F7/C7 additions.
+terminal agents may already occupy different worktrees. The observer refreshes
+the selected transcript and fleet Activity; source activation uses the selected
+registered worktree.
 
-F7's concrete pending integration batches the explicitly registered tails into
+The implemented fleet observer batches the explicitly registered tails into
 one snapshot. Each event retains its containing session and registered worktree;
 stable literal command/patch entries survive bounded-tail replacement. The
 existing registry timer drives fleet reads rather than creating another agent
-platform. Native app-server execution remains a separate owner path. C7 joins
+platform. Native app-server execution remains a separate owner path. App joins
 event activation to the correct-worktree source view; a fleet observation does
 not itself grant authority to send to or take over that session.
 
-The baseline terminal handoff selects an existing tmux pane. A complete
-open/copy-terminal route is an operator-increment task, not a claim that selecting
-a pane opens a new terminal window. Queue support is reused rather than replacing
-the normal harness with another exec/resume loop.
-
-F7 additionally proposes copyable validated attach/switch/location targets from
-the checked tmux owner. Copying or selecting that target does not resume another
-process. These details are recorded from the PR84 subsystem seam and remain
-pending until its reviewed implementation is integrated.
+The terminal handoff selects an existing tmux pane and exposes checked copyable
+attach/switch commands. Neither copying nor selecting resumes another process.
+Queue support reuses the normal harness rather than another exec/resume loop.
 
 ## Build connections
+
+The conversation/client/message-state files remain shared application inputs to
+`//:quality_sources` and `//:desktop-bundle`. `//tools/conversation-cockpit:unit`
+checks initial selection, per-target drafts, remount/unknown-delivery behavior,
+native controls and the existing observation/messaging cases. Its `:smoke` target
+reads actual registered sessions on an owned virtual desktop, but intercepts Send
+with a controlled receipt before core; it is not a real message to those agents.
 
 The observed fork rail has local subtree disclosures and an **Older sessions**
 toggle. Its default recency view keeps the seven newest dated registrations,

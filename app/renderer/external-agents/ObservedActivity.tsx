@@ -6,6 +6,7 @@ type ObservedClient = ExternalClient & { observing?: boolean; refreshing?: boole
 const previewCount = 4;
 const previewLength = 240;
 const kinds: Record<ExternalEntry["kind"], string> = {
+  user: "Message",
   assistant: "Assistant report", "tool-call": "Tool call", "tool-result": "Tool result",
   "turn-start": "Turn started", "turn-complete": "Turn ended",
 };
@@ -26,7 +27,7 @@ export function ObservedActivity({ client, onOpen, onEntry, onOpenFile }: {
   const fleet = client.fleet ?? [];
   if (fleet.length) {
     const entries = fleet.flatMap(({ session, entries }) => entries.map((entry) => ({ session, entry })))
-      .filter(({ entry }) => entry.kind !== "tool-result")
+      .filter(({ entry }) => entry.kind !== "tool-result" && entry.kind !== "user")
       .sort((a, b) => (Date.parse(b.entry.at) || 0) - (Date.parse(a.entry.at) || 0) || b.entry.id.localeCompare(a.entry.id))
       .slice(0, 16);
     return <section className="observed-activity" aria-label="Observed agent activity">
@@ -48,7 +49,7 @@ export function ObservedActivity({ client, onOpen, onEntry, onOpenFile }: {
   // Selection changes can precede the corresponding read: never attribute the old tail to a new agent.
   const detail = client.detail?.session.id === client.selected ? client.detail : null;
   const session = detail?.session;
-  const entries = detail?.entries.slice(-previewCount) ?? [];
+  const entries = detail?.entries.filter((entry) => entry.kind !== "user").slice(-previewCount) ?? [];
   const observed = session ? timeLabel(session.observedAt) : null;
   const refresh = client.observing === false ? "Auto-refresh paused" : client.stale ? "Retained observation · refresh unavailable" : client.refreshing ? "Refreshing observation" : client.observing ? "Auto-refresh on" : "Transcript observation";
   return <section className="observed-activity" aria-label="Observed agent activity">

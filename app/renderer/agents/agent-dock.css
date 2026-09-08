@@ -18,6 +18,8 @@
 .agent-interaction-dock :focus-visible { outline: 2px solid #57d3ad; outline-offset: -2px; }
 .agent-dock-panel { flex: 1; min-height: 0; min-width: 0; overflow: auto; }
 .agent-dock-panel[hidden] { display: none !important; }
+.agent-dock-conversation { overflow: hidden; }
+.agent-dock-operation-notice { margin: 0; padding: 5px 12px; font-size: 11px; color: #f3c997; overflow-wrap: anywhere; }
 .agent-dock-run { display: flex; flex-direction: column; overflow: hidden; }
 .agent-dock-run > .agent-pane { flex: 1; min-height: 0; }
 .agent-dock-welcome { max-width: 780px; padding: 17px 20px; font-size: 12px; }

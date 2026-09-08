@@ -28,7 +28,6 @@ import { LaunchDraft } from "./agents/LaunchDraft";
 import { canPrepareFixture, emptyAgentWorkbench, fixtureReducer } from "./agents/state";
 import { fixturePreviewEnabled } from "./agents/client";
 import { useAgentWorkbench } from "./agents/use-agent-workbench";
-import { LiveRunRail } from "./agents/LiveRunRail";
 import { LiveRunPane } from "./agents/LiveRunPane";
 import { PreparedLaunchDraft } from "./agents/PreparedLaunchDraft";
 import { TrustedLocalPane } from "./agents/TrustedLocalPane";
@@ -70,6 +69,9 @@ import { JournalPanel, useJournal } from "./changelog/JournalPanel";
 import { useGithubPullRequests } from "./changelog/GithubPullRequests";
 import { useExternalAgents } from "./external-agents/client";
 import { ExternalAgentRail, ExternalAgentInformation } from "./external-agents/ExternalAgents";
+import { AgentConversation } from "./external-agents/AgentConversation";
+import { useConversationSelection } from "./external-agents/conversation-selection";
+import { SteeringMemory } from "./external-agents/steering-memory";
 import { ObservedActivity } from "./external-agents/ObservedActivity";
 import { WorktreeInspection, type WorktreeSelection } from "./WorktreeInspection";
 import { FleetActivityView, type SelectedActivity } from "./FleetActivityView";
@@ -165,8 +167,18 @@ export function App() {
   const lastRecoveryRef = useRef(-1);
   const [reloadNotice, setReloadNotice] = useState("");
   const [workspace, setWorkspace] = useState<WorkspaceState>(() => hotCheckpoint?.workspace ?? (restoredNavigation?.snapshot ? loadSnapshot(restoredNavigation.snapshot, -1) : emptyWorkspaceState));
-  const [externalInformation, setExternalInformation] = useState(false);
+  const [externalInformation, setExternalInformation] = useState(true);
+  const [conversationSelection, setConversationSelection] = useState(0);
+  const [steeringMemory] = useState(() => hotMemory?.steering ?? new SteeringMemory());
+  if (hotMemory) hotMemory.steering = steeringMemory;
   const externalAgents = useExternalAgents(window.swarm, Boolean(workspace.snapshot) && (!window.swarmLifecycle || lifecycle?.core.phase === "ready"), lifecycle?.core.generation ?? 0);
+  useConversationSelection(externalAgents);
+  const agentContextVisible = externalInformation && externalAgents.selected !== null;
+  const showConversation = (id?: string) => {
+    setConversationSelection((version) => version + 1);
+    setExternalInformation(true);
+    if (id) void externalAgents.read(id);
+  };
   const githubPrs = useGithubPullRequests(workspace.snapshot?.project.id ?? null, workspace.snapshot?.world.id ?? null,
     !window.swarmLifecycle || lifecycle?.core.phase === "ready" ? lifecycle?.core.generation ?? 0 : null);
   const [error, setError] = useState<string | null>(null);
@@ -229,7 +241,7 @@ export function App() {
     return JSON.stringify([current?.project.id, current?.world.id, coreGenerationRef.current]);
   }, []);
   const contextEvent = useCallback((event: AttentionEvent) => {
-    setExternalInformation(false);
+    if (event.type === "inspect") setExternalInformation(false);
     attentionRef.current = reduceContextAttention(reduceContextAttention(attentionRef.current, { type: "realm", realm: contextRealm() }), event);
     setAttention(attentionRef.current);
   }, [contextRealm]);
@@ -1077,7 +1089,7 @@ export function App() {
   const [buildGraphVisible, setBuildGraphVisible] = useState(false), [directoryBuildVisible, setDirectoryBuildVisible] = useState(false);
   const contextSubject = attention.realm === contextRealm() ? attention.subject : null;
   const buildGraph = useBuildGraph(snapshot?.project.id, snapshot?.world.id, contextRealm(),
-    (activeLens !== "Plan" && (buildGraphVisible || directoryBuildVisible) || !externalInformation && contextSubject?.kind === "file") && (!window.swarmLifecycle || lifecycle?.core.phase === "ready"));
+    (activeLens !== "Plan" && (buildGraphVisible || directoryBuildVisible) || !agentContextVisible && contextSubject?.kind === "file") && (!window.swarmLifecycle || lifecycle?.core.phase === "ready"));
   const buildLinks = useMemo(() => buildGraphLinks(buildGraph.observation), [buildGraph.observation]);
   const captureIndex = useMemo(() => indexCapture(buildLinks, buildGraph.observation?.worldId), [buildLinks, buildGraph.observation?.worldId]);
   const contextSections = snapshot ? composeContext(contextSubject, { snapshot, files: fileTabs, service: serviceIndex, capture: captureIndex,
@@ -1288,9 +1300,8 @@ export function App() {
         repositoryName={snapshot.project.name}
         directory={repositoryObservation ? <RepositoryNavigation key={snapshot.project.id} rootLabel={snapshot.project.name} focusedPath={snapshot.focus.path} observation={repositoryObservation} actions={deliberateRepository} onActivate={activateRepositoryEntry} onOpenPath={openLinkedFile} /> : <p className="muted">Observing repository…</p>}
         agents={<>
-        <ExternalAgentRail client={externalAgents} onSelect={() => { ++navigationIntent.current; inspect(null); setExternalInformation(true); setCompactPanel("info"); }} />
+        <ExternalAgentRail client={externalAgents} onSelect={() => { ++navigationIntent.current; inspect(null); showConversation(); }} />
         {demo.runs ? <MockRunRail selected={demo.selected} onSelect={demo.select} /> : null}
-        <LiveRunRail state={liveAgents} client={agentClient} trustedLocal onSelect={(runId) => { agentClient.select(runId); setAgentDockSelection((value) => value + 1); }} onDraft={() => { setCompactPanel("work"); agentClient.openDraft(snapshot.focus); }} />
         <AgentReloadGuard state={liveAgents} client={agentClient} />
         {agentFixtureEnabled ? <RunRail state={agents} fixtureEnabled={agentFixtureEnabled} onDraft={() => { setCompactPanel("work"); openAgentDraft(); }} onSelect={() => { agentClient.closePane(); setAgents((state) => ({ ...state, selected: true })); setFixtureDockSelection((value) => value + 1); }} /> : null}
         {agents.draftOpen && agentFixtureEnabled ? <LaunchDraft focus={snapshot.focus} onClose={() => setAgents((state) => ({ ...state, draftOpen: false }))} onLaunch={(context) => { agentClient.closePane(); setAgents((state) => fixtureReducer(state, { type: "launch", context })); }} /> : null}
@@ -1340,10 +1351,10 @@ export function App() {
           </>}
         </section> : null}
         {worktreeVisible && worktreeSelection ? <WorktreeInspection key={`${worktreeSelection.sessionId}:${worktreeSelection.path}`} selection={worktreeSelection} bridge={window.swarm} generation={coreGenerationRef.current} onReturn={() => setWorktreeVisible(false)} /> : null}
-        {workLogEntry ? <div className="work-log-center"><WorkLogEntryDetail entry={workLogEntry} onAgent={(id) => { void externalAgents.read(id); setExternalInformation(true); setCompactPanel("info"); }} onTask={openTaskDocument} onClose={() => setWorkLogEntry(null)} /></div> : null}
+        {workLogEntry ? <div className="work-log-center"><WorkLogEntryDetail entry={workLogEntry} onAgent={showConversation} onTask={openTaskDocument} onClose={() => setWorkLogEntry(null)} /></div> : null}
         <div className="design-center" hidden={!designVisible}><DesignWorkspace visible={designVisible} worldId={snapshot.world.id} repositoryId={snapshot.project.id} generation={coreGenerationRef.current} connected={!coreUnavailable && Boolean(window.swarm)} onOpenFile={openLinkedFile} onOpenTask={openTaskDocument} /></div>
         <JournalPanel key={snapshot.project.id} open={journalVisible} state={journal} selectedEntry={journalEntry} selectionVersion={journalSelection} pullRequests={githubPrs}
-          liveContent={<FleetActivityView fleet={externalAgents.fleet ?? []} selected={selectedActivity} onSelect={setSelectedActivity} onAgent={(id) => { void externalAgents.read(id); setExternalInformation(true); setCompactPanel("info"); }} onInspect={inspectWorktree} />}
+          liveContent={<FleetActivityView fleet={externalAgents.fleet ?? []} selected={selectedActivity} onSelect={setSelectedActivity} onAgent={showConversation} onInspect={inspectWorktree} />}
           onClose={() => setJournalVisible(false)} onOpenSource={openLinkedFile} />
         {taskDocumentOpen ? <div className="task-editor-surface" hidden={!textDocumentVisible} onPointerDownCapture={(event) => { if (!(event.target as Element).closest(".task-attach")) inspectTask(tasks.selectedTaskId); }} onFocusCapture={(event) => { if (!(event.target as Element).closest(".task-attach")) inspectTask(tasks.selectedTaskId); }}><TaskDetail surface="editor" selectedTaskId={tasks.selectedTaskId} snapshot={tasks.observation?.snapshot ?? null} detail={tasks.detail} detailRevision={tasks.detailRevision} detailStale={tasks.detailStale || tasks.observation?.status !== "observed" || Boolean(tasks.notice)} reading={tasks.reading} notice={tasks.detailNotice} attachment={taskAttachment(tasks.selectedTaskId)} onRefresh={() => { void taskClient.refresh(); }} onSelect={(id) => openTaskDocument(id)} onReveal={(ref) => { void revealTaskReference(ref); }} onReturnToSource={() => { setTaskDocumentVisible(false); if (!activeFile) setTaskDocumentOpen(false); returnToSourceInformation(); }} /></div> : null}
       </section>
@@ -1352,8 +1363,8 @@ export function App() {
       <aside id="information-panel" aria-label="Information panel" className="instrument-panel panel">
         <GlobalContext snapshot={snapshot} ready={observedCoreGeneration === coreGenerationRef.current && (!window.swarmLifecycle || lifecycle?.core.phase === "ready")} />
         <ProjectContextPanel repositoryId={snapshot.project.id} worldId={snapshot.world.id} generation={coreGenerationRef.current} ready={observedCoreGeneration === coreGenerationRef.current && (!window.swarmLifecycle || lifecycle?.core.phase === "ready")} />
-        <ExternalAgentInformation client={externalAgents} bridge={window.swarm} visible={externalInformation} onReturn={() => { setExternalInformation(false); returnToSourceInformation(); }} onOpen={(path) => { if (externalAgents.selected) inspectWorktree(externalAgents.selected, path); }} />
-        {!externalInformation ? <>
+        <ExternalAgentInformation client={externalAgents} contextOnly visible={agentContextVisible} onReturn={() => { setExternalInformation(false); returnToSourceInformation(); }} onOpen={(path) => { if (externalAgents.selected) inspectWorktree(externalAgents.selected, path); }} />
+        {!agentContextVisible ? <>
         {revealNotice ? <p ref={revealNoticeElement} className="tasks-reveal-notice" role="status" tabIndex={0}>{revealNotice}</p> : null}
         {contextSubject?.kind === "task" ? <div className="artifact-context" data-context-kind="task" data-context-subject={contextSubject.id}><TaskContext returnButtonRef={taskReturnButton} selectedTaskId={contextSubject.id} snapshot={tasks.observation?.snapshot ?? null} detail={tasks.detail?.id === contextSubject.id ? tasks.detail : null} detailRevision={tasks.detailRevision} detailStale={tasks.detailStale || tasks.refreshing || tasks.observation?.status !== "observed" || Boolean(tasks.notice)} reading={tasks.reading} notice={tasks.detailNotice} attachment={taskAttachment(contextSubject.id)} onSelect={openTaskDocument} onReveal={(ref) => { void revealTaskReference(ref); }} onReturnToSource={returnToSourceInformation} onShowDocument={showPinnedTaskDocument} onRefresh={() => { void taskClient.refresh(); }} connected={tasks.connected} generation={coreGenerationRef.current} journal={journal.observation} journalRetained={Boolean(journal.notice) || journal.busy} run={liveAgents.run} runRecords={liveAgents.records} runRetained={liveAgents.detailStale || !liveAgents.connected} onJournal={showJournal} trustedObservation={{ snapshot: trustedObservation, retained: !liveAgents.connected }} onOpenTrustedRun={openTrustedRun} /></div> : <>
         {tasks.selectedTaskId ? <button className="tasks-show-details" onClick={showTaskDetails}>Show task details</button> : null}
@@ -1366,6 +1377,8 @@ export function App() {
       <section className="activity-dock panel">
         <div className="dock-header"><div><span className="eyebrow">activity / jobs</span><strong>Live workspace</strong></div></div>
         <AgentDock state={liveAgents} client={agentClient} selectionVersion={agentDockSelection} fixtureSelectionVersion={fixtureDockSelection} trustedSelectionVersion={trustedSelection?.id} onOpenActivity={() => showJournal()}
+          conversation={{ selectionVersion: conversationSelection ? String(conversationSelection) : undefined,
+            content: <AgentConversation client={externalAgents} bridge={window.swarm} memory={steeringMemory} onContext={() => { setExternalInformation(true); setCompactPanel("info"); }} /> }}
           mockConversation={demo.conversation ? { tabs: MOCK_AGENTS, selected: demo.selected, onSelect: demo.select, selectionVersion: demo.selectionVersion, content: <MockConversation selected={demo.selected} /> } : undefined}
           onDraft={() => agentClient.openDraft(snapshot.focus)}
           draftContent={<PreparedLaunchDraft state={liveAgents} client={agentClient} previewCurrent={taskAttachment(tasks.selectedTaskId).alreadyAttached} dirtyPaths={fileTabs.filter((tab) => protectsBuffer(tab)).map((tab) => tab.path)} />}
@@ -1382,8 +1395,8 @@ export function App() {
           else setError("Launch focus cannot be mapped to this working world.");
         }} onClose={() => setAgents((state) => ({ ...state, selected: false }))} height={agentPaneHeight} onHeight={setAgentPaneHeight} /> : undefined}
           jobsContent={<BuildResources jobs={snapshot.jobs} />}
-          workLogContent={<WorkLogPanel coreGeneration={coreGenerationRef.current} onOpen={showWorkLogEntry} onAgent={(id) => { void externalAgents.read(id); setExternalInformation(true); setCompactPanel("info"); }} onTask={openTaskDocument} />}
-          activityContent={<><ObservedActivity client={externalAgents} onOpen={() => { ++navigationIntent.current; inspect(null); setExternalInformation(true); setCompactPanel("info"); }} onEntry={(session, entry) => { setSelectedActivity({ session, entry }); showJournal(); }} /><div className="activity-list">{snapshot.activity.slice(0, 4).map((activity) => <div key={activity.id}><i className={`status-${activity.status}`} /><span>{activity.summary}</span><small>{activity.kind}</small><ActivityTime at={activity.at} /></div>)}</div></>}
+          workLogContent={<WorkLogPanel coreGeneration={coreGenerationRef.current} onOpen={showWorkLogEntry} onAgent={showConversation} onTask={openTaskDocument} />}
+          activityContent={<><ObservedActivity client={externalAgents} onOpen={showConversation} onEntry={(session, entry) => { setSelectedActivity({ session, entry }); showJournal(); }} /><div className="activity-list">{snapshot.activity.slice(0, 4).map((activity) => <div key={activity.id}><i className={`status-${activity.status}`} /><span>{activity.summary}</span><small>{activity.kind}</small><ActivityTime at={activity.at} /></div>)}</div></>}
         />
       </section>
 

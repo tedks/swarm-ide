@@ -63,6 +63,17 @@ At narrow widths the dock scrolls horizontally while its columns retain usable
 minimum widths and independent vertical scrolling. This keeps agent messaging,
 summary settings and Recent Activity reachable without remounting their content.
 
+The dock's primary **Conversation** tab follows the selected registered agent.
+The unique real root is the initial default unless a previous explicit selection
+is still registered. Child selection switches chat/control, not the central
+source, task or diff. Context keeps the agent's worktree and terminal details;
+it no longer duplicates the conversation's message owner. One retained
+`SteeringMemory` keeps target drafts/receipts through loading and development
+remounts. Native trusted execution/history and New/Fork remain in a secondary
+tab; old stored runs retain their own tabs rather than a competing sidebar list.
+`//tools/conversation-cockpit:unit` and its owned-virtual `:smoke` cover this
+composition. Actual transcript reads are separate from controlled Send evidence.
+
 `OverflowStrip.tsx` wraps the existing document, lens and agent tab lists without
 changing their selection or keyboard owners. Native horizontal scrolling remains;
 overflow arrows are available only when needed and do not activate tabs. Selection
