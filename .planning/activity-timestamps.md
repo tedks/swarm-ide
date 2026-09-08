@@ -12,6 +12,7 @@ Operators should be able to distinguish when work was recorded, when a narrative
 - [x] (2026-09-08 02:44Z) Implemented presentation-only timestamps and four focused regressions; executable 4ffcf61.
 - [x] (2026-09-08 02:47Z) Local typechecks, 15 focused tests and desktop bundle passed. Native layout finding repaired and convergence CLEAN. Owned virtual normal/150% screenshots captured with cleanup confirmed.
 - [ ] ROOT intake, normal merge and managed app adoption.
+- [x] (2026-09-08 02:56Z) Additional direct-user correction: stable background TaskPanel refresh presentation, three new regressions and 65 focused tests/typechecks PASS; native scoped review CLEAN.
 
 ## Surprises & Discoveries
 
@@ -19,15 +20,21 @@ The journal has no per-entry occurrence timestamp. Cited evidence has timestamps
 
 The pre-implementation run recorded two new timestamp failures and one existing `tests/task-workbench.test.tsx:133` exact request-array mismatch from the background read-only `trusted.snapshot`. The latter is independently owned by F2. After implementation, all four timestamp tests passed and the broader run had 1,938 passes, that same one failure, and four existing skips. This is not an all-green quality claim.
 
+Additional user-reported Refresh Tasks blinking came from three presentation changes on each background read: the `is-current` class also controlled compact layout, a Checking tasks line appeared, and the disabled button dimmed. TaskClient sets refreshing synchronously and already deduplicates requests. A separate compact-layout class and a local explicit-click marker fix the appearance without changing that client or freshness authority. The new baseline has two presentation RED and 63 PASS; repaired focused tests have 65 PASS.
+
 ## Decision Log
 
 Use explicitly labelled cited-evidence ranges for narrative entries. Always include a calendar date in the compact local format: this avoids midnight ambiguity without adding a clock or timer. Preserve exact ISO instants and timezone in hover/accessibility information. Leave the existing selected-agent observer behavior untouched.
 
 Native review found that a nowrap timestamp in the auto metadata column could crowd out the summary. Put the timestamp on its own grid row spanning the text columns; the final native delta is CLEAN and the actual 150% screenshot shows event text retained above its timestamp.
 
+For the explicitly added task refresh correction, keep the original current predicate and native disabled state. Suppress routine Checking tasks text and dimming only when there is a previously observed, connected, failure-free snapshot and no manual refresh gesture. Keep aria-busy, a background-check tooltip and detailed retained-state provenance. First-load, manual checking, stale, failure, and disconnected states retain their visible feedback. No polling, TaskClient, task attachment or task-workbench assertion edits.
+
 ## Outcomes & Retrospective
 
 PR81 supplies visible cited-evidence, generation and read times, semantic exact timestamps, and workspace-event times without changing selection or refresh behavior. This does not implement continuous summarization or all-swarm activity aggregation. The known independently owned task-test mismatch remains attributed; ROOT owns integration and adoption.
+
+The task-refresh follow-up is a presentation-only correction under ROOT's exact TaskPanel/CSS/test ownership. The timestamp output is preserved. J4 is permitted a separate optional liveContent slot in JournalPanel plus a separate App mount; J3 does not author or consume its unreviewed implementation.
 
 ## Context and Orientation
 
