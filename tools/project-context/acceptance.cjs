@@ -32,14 +32,18 @@ async function main() {
   wc.sendInputEvent({ type: "mouseUp", button: "left", clickCount: 1, ...point });
   await until(() => opened.includes(link), "native web link handoff");
   assert.equal(BrowserWindow.getAllWindows().length, 1);
-  assert(await run(() => /No containers for this worktree|Docker unavailable/.test(document.querySelector(".project-runtime")?.textContent ?? "")));
+  assert(await run(() => ![...document.querySelectorAll(".project-runtime h3")].some((node) => node.textContent.startsWith("Containers"))), "empty containers are hidden");
+  await until(() => run(() => document.querySelector(".project-catalog")?.textContent.includes("ProofConsumer")), "actual manifest catalog");
+  assert(await run(() => [...document.querySelectorAll(".project-catalog a")].some((node) => node.href === "https://docs.example.org/")), "configured Hugo destination");
+  assert(await run(() => document.querySelector(".project-catalog")?.textContent.includes("depends on")), "actual local Move dependency");
+  assert(await run(() => document.querySelector(".project-catalog")?.textContent.includes("Configured")), "site is configuration, not measured deployment");
   const observed = await run(() => document.querySelector(".project-runtime")?.textContent);
   assert(!observed.includes("goals-local"), "unrelated host containers excluded");
   await run(() => document.querySelector(".project-runtime").scrollIntoView({ block: "center" }));
   await run(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
   await fs.writeFile(path.join(evidence, "project-runtime.png"), (await wc.capturePage()).toPNG());
   assert.deepEqual(rendererErrors, []);
-  await fs.writeFile(path.join(evidence, "proof.json"), JSON.stringify({ ok: true, realNodeServer: true, browserHandoff: opened, pid: fixture.pid, port: fixture.port, elapsedMs: Date.now() - started, rendererErrors }));
+  await fs.writeFile(path.join(evidence, "proof.json"), JSON.stringify({ ok: true, realNodeServer: true, realManifestCatalog: true, configuredHugoSite: true, localMoveDependency: true, emptyContainersHidden: true, browserHandoff: opened, pid: fixture.pid, port: fixture.port, elapsedMs: Date.now() - started, rendererErrors }));
   // Keep the window alive for the owned scenario's final capture. The harness
   // then terminates this exact application/process group.
 }

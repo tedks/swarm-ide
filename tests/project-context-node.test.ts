@@ -1,6 +1,9 @@
 // @vitest-environment node
 import { createServer as createHttpServer } from "node:http";
-import { createServer as createTcpServer } from "node:net";
+import { spawn } from "node:child_process";
+import { mkdtemp, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { describe, expect, it, vi } from "vitest";
 import { createNodeServerDiscovery, discoverNodeServers, parseNodeListeners, type NodeDiscoveryIO } from "../core/project-context/node";
 import { ProjectServerSchema } from "../protocol/project-context";
@@ -18,7 +21,7 @@ function denied(): Error { return Object.assign(new Error("Denied fixture"), { c
 function fixture() {
   const links = new Map<string, string>();
   const texts = new Map<string, string>([[`${proc}/net/tcp`, `${header}\n${row()}\n`], [`${proc}/net/tcp6`, `${header}\n`]]);
-  const listings = new Map<string, string[]>([[proc, []]]);
+  const listings = new Map<string, string[]>([[proc, []], [root, []]]);
   const real = new Map<string, string>([[root, root]]);
   const io: NodeDiscoveryIO = {
     read: vi.fn(async (path, limit, signal) => {
@@ -32,7 +35,11 @@ function fixture() {
       signal.throwIfAborted();
       const names = listings.get(path);
       if (!names) throw absent();
-      return { names: names.slice(0, limit), truncated: names.length > limit };
+      const bounded = names.slice(0, limit);
+      return { names: bounded, truncated: names.length > limit,
+        directories: bounded.filter((name) => listings.has(`${path}/${name}`) && !links.has(`${path}/${name}`)),
+        files: bounded.filter((name) => texts.has(`${path}/${name}`)),
+      };
     }),
     link: vi.fn(async (path) => { const value = links.get(path); if (value === undefined) throw absent(); return value; }),
     real: vi.fn(async (path) => { const value = real.get(path); if (value === undefined) throw absent(); return value; }),
@@ -69,7 +76,7 @@ describe("Node listener parsing", () => {
   });
 });
 
-describe("bounded Node discovery", () => {
+describe("bounded local runtime discovery", () => {
   it("publishes owned TCP sockets without pretending they are HTTP", async () => {
     const data = fixture();
     data.process(42, `${root}/frontend`);
@@ -78,18 +85,34 @@ describe("bounded Node discovery", () => {
     expect(result.servers).toEqual([{ pid: 42, name: "Node.js", directory: `${root}/frontend`, association: "worktree", endpoints: [{ address: "127.0.0.1", port: 5173, protocol: "tcp" }] }]);
     expect(ProjectServerSchema.safeParse(result.servers[0]).success).toBe(true);
     const readPaths = vi.mocked(data.io.read).mock.calls.map(([path]) => path);
-    expect(readPaths.every((path) => /\/(?:stat|tcp|tcp6)$/.test(path))).toBe(true);
-    expect(readPaths.some((path) => /cmdline|environ|package\.json/.test(path))).toBe(false);
+    expect(readPaths.every((path) => /\/(?:stat|tcp|tcp6|package\.json)$/.test(path))).toBe(true);
+    expect(readPaths.some((path) => /cmdline|environ|\.env$/.test(path))).toBe(false);
   });
 
-  it("ignores other worktrees, prefix collisions, non-Node executables, and unowned listeners", async () => {
+  it("ignores other worktrees, prefix collisions, unknown executables, and unowned listeners", async () => {
     const data = fixture();
     data.process(1, "/projects/example/master");
     data.process(2, `${root}-other`);
-    data.process(3, root, "/usr/bin/python3");
+    data.process(3, root, "/usr/bin/ruby");
     data.process(4, root, "/usr/bin/node", "999");
     const result = await data.discover()(root, signal());
     expect(result.servers).toEqual([]);
+    expect(data.probe).not.toHaveBeenCalled();
+  });
+
+  it.each([["node", "Node.js"], ["nodejs", "Node.js"], ["python", "Python"], ["python3", "Python"],
+    ["python3.11", "Python"], ["python3.13", "Python"], ["hugo", "Hugo"]])("recognizes exact executable %s as %s", async (executable, name) => {
+    const data = fixture();
+    data.process(42, `${root}/service`, `/nix/store/runtime/bin/${executable}`);
+    const result = await data.discover()(root, signal());
+    expect(result.servers).toHaveLength(1);
+    expect(result.servers[0]).toMatchObject({ name, association: "worktree", endpoints: [{ port: 5173 }] });
+  });
+
+  it.each(["python-helper", "python3.11-config", "hugo-server", "uvicorn", "vite", "node (deleted)"])("does not infer a runtime from executable %s", async (executable) => {
+    const data = fixture();
+    data.process(42, root, `/usr/bin/${executable}`);
+    expect((await data.discover()(root, signal())).servers).toEqual([]);
     expect(data.probe).not.toHaveBeenCalled();
   });
 
@@ -118,6 +141,104 @@ describe("bounded Node discovery", () => {
     expect((await data.discover()(root, signal())).servers).toEqual([]);
     data.real.set(`${root}/bazel-bin`, "/unrelated/output");
     expect((await data.discover()(root, signal())).servers).toEqual([]);
+  });
+
+  function nestedBazel() {
+    const data = fixture();
+    const buildRoot = `${root}/apps/media`;
+    const execroot = "/cache/bazel/nested/execroot/_main";
+    const target = `${execroot}/bazel-out/k8-fastbuild/bin`;
+    data.listings.set(root, ["apps"]);
+    data.listings.set(`${root}/apps`, ["media"]);
+    data.listings.set(buildRoot, ["MODULE.bazel", "bazel-bin"]);
+    data.texts.set(`${buildRoot}/MODULE.bazel`, "");
+    data.real.set(`${root}/apps`, `${root}/apps`);
+    data.real.set(buildRoot, buildRoot);
+    data.links.set(`${buildRoot}/bazel-bin`, target);
+    data.real.set(`${buildRoot}/bazel-bin`, target);
+    data.real.set(`${execroot}/frontend`, `${buildRoot}/frontend`);
+    data.process(42, `${target}/frontend/dev_/dev.runfiles/_main/frontend`);
+    return { ...data, buildRoot, execroot, target };
+  }
+
+  it("finds a nested Bazel build root with an exact source backlink", async () => {
+    const data = nestedBazel();
+    expect((await data.discover()(root, signal())).servers[0]).toMatchObject({ pid: 42, name: "Node.js", association: "bazel-output" });
+    expect(data.io.read).not.toHaveBeenCalledWith(`${data.buildRoot}/MODULE.bazel`, expect.anything(), expect.anything());
+  });
+
+  it.each(["sibling-worktree", "other-build-root", "no-marker", "nested-git", "symlink-directory"])("refuses nested Bazel ownership with %s", async (problem) => {
+    const data = nestedBazel();
+    if (problem === "sibling-worktree") data.real.set(`${data.execroot}/frontend`, "/projects/example/master/apps/media/frontend");
+    if (problem === "other-build-root") data.real.set(`${data.execroot}/frontend`, `${root}/apps/other/frontend`);
+    if (problem === "no-marker") data.texts.delete(`${data.buildRoot}/MODULE.bazel`);
+    if (problem === "nested-git") data.listings.get(data.buildRoot)!.push(".git");
+    if (problem === "symlink-directory") data.links.set(`${root}/apps`, "/other/apps");
+    expect((await data.discover()(root, signal())).servers).toEqual([]);
+    expect(data.probe).not.toHaveBeenCalled();
+  });
+
+  it("rejects nested aliases that become stale during the HTTP probe", async () => {
+    const data = nestedBazel();
+    data.probe.mockImplementation(async () => { data.real.set(`${data.buildRoot}/bazel-bin`, "/other/bazel-bin"); return true; });
+    const result = await data.discover()(root, signal());
+    expect(result.servers).toEqual([]);
+    expect(result.scan.status).toBe("partial");
+  });
+
+  it("bounds nested-root discovery and excludes generated and vendor directories", async () => {
+    const data = fixture();
+    data.listings.set(root, ["node_modules", "bazel-out", ...Array.from({ length: 40 }, (_, i) => `dir${i}`)]);
+    for (const name of data.listings.get(root)!) { data.listings.set(`${root}/${name}`, []); data.real.set(`${root}/${name}`, `${root}/${name}`); }
+    expect((await data.discover()(root, signal())).scan.status).toBe("partial");
+    const projectLists = vi.mocked(data.io.list).mock.calls.filter(([path]) => path.startsWith(root));
+    expect(projectLists.length).toBeLessThanOrEqual(32);
+    expect(projectLists.some(([path]) => path.endsWith("/node_modules") || path.endsWith("/bazel-out"))).toBe(false);
+  });
+
+  it("hides an Electron package's internal Node listener without hiding its Python backend", async () => {
+    const data = fixture();
+    data.texts.set(`${root}/package.json`, JSON.stringify({ devDependencies: { electron: "1" }, main: "dist/main.js", build: { appId: "example.desktop" } }));
+    data.process(41);
+    data.process(42, root, "/usr/bin/python3");
+    const result = await data.discover()(root, signal());
+    expect(result.servers.map(({ pid, name }) => ({ pid, name }))).toEqual([{ pid: 42, name: "Python" }]);
+  });
+
+  it("detects Electron desktop entry metadata without a package main", async () => {
+    const data = fixture();
+    data.texts.set(`${root}/package.json`, JSON.stringify({ devDependencies: { electron: "1" } }));
+    data.real.set(`${root}/app/electron`, `${root}/app/electron`);
+    data.listings.set(`${root}/app/electron`, ["main.ts"]);
+    data.texts.set(`${root}/app/electron/main.ts`, "not executed or read");
+    data.process(42);
+    expect((await data.discover()(root, signal())).servers).toEqual([]);
+    expect(vi.mocked(data.io.read).mock.calls.some(([path]) => path.endsWith("main.ts"))).toBe(false);
+  });
+
+  it("does not mistake a Node library's main plus Electron test dependency for a desktop app", async () => {
+    const data = fixture();
+    data.texts.set(`${root}/package.json`, JSON.stringify({ main: "index.js", devDependencies: { electron: "1" } }));
+    data.process(42);
+    expect((await data.discover()(root, signal())).servers[0]).toMatchObject({ pid: 42, name: "Node.js" });
+  });
+
+  it("keeps independent nested Node packages and Electron-as-tooling projects visible", async () => {
+    const data = fixture();
+    data.texts.set(`${root}/package.json`, JSON.stringify({ devDependencies: { electron: "1" }, main: "dist/main.js", build: { appId: "example.desktop" } }));
+    data.texts.set(`${root}/web/package.json`, JSON.stringify({ name: "independent-web" }));
+    data.process(42, `${root}/web`);
+    expect((await data.discover()(root, signal())).servers[0]?.pid).toBe(42);
+    data.texts.set(`${root}/web/package.json`, JSON.stringify({ devDependencies: { electron: "1" }, main: "index.js" }));
+    expect((await data.discover()(root, signal())).servers[0]?.pid).toBe(42);
+  });
+
+  it("uses Bazel source ownership for Electron suppression and nearer independent web packages", async () => {
+    const data = nestedBazel();
+    data.texts.set(`${data.buildRoot}/package.json`, JSON.stringify({ dependencies: { electron: "1" }, main: "desktop.cjs", config: { forge: {} } }));
+    expect((await data.discover()(root, signal())).servers).toEqual([]);
+    data.texts.set(`${data.buildRoot}/frontend/package.json`, JSON.stringify({ name: "independent-frontend" }));
+    expect((await data.discover()(root, signal())).servers[0]?.association).toBe("bazel-output");
   });
 
   it("reports inaccessible proc metadata without claiming the project has stopped", async () => {
@@ -173,23 +294,70 @@ describe("bounded Node discovery", () => {
     const data = fixture();
     data.io.real = () => new Promise(() => {});
     const result = await createNodeServerDiscovery({ io: data.io, timeoutMs: 10 })(root, signal());
-    expect(result).toEqual({ scan: { status: "partial", message: "Node discovery reached its time limit" }, servers: [] });
+    expect(result).toEqual({ scan: { status: "partial", message: "Local server discovery reached its time limit" }, servers: [] });
+  });
+
+  it.each(["real", "list"] as const)("keeps admission until a timed-out native %s call settles", async (operation) => {
+    const data = fixture();
+    let release!: () => void;
+    let entered!: () => void;
+    const held = new Promise<void>((resolve) => { release = resolve; });
+    const started = new Promise<void>((resolve) => { entered = resolve; });
+    let first = true;
+    if (operation === "real") {
+      const original = data.io.real;
+      data.io.real = vi.fn(async (path) => {
+        if (first) { first = false; entered(); await held; }
+        return original(path);
+      });
+    } else {
+      const original = data.io.list;
+      data.io.list = vi.fn(async (path, limit, signal) => {
+        if (first) { first = false; entered(); await held; }
+        return original(path, limit, signal);
+      });
+    }
+    const discover = createNodeServerDiscovery({ io: data.io, procRoot: proc, timeoutMs: 20 });
+    const pending = discover(root, signal());
+    await started;
+    expect((await pending).scan.status).toBe("partial");
+    const calls = () => Object.values(data.io).reduce((sum, method) => sum + vi.mocked(method).mock.calls.length, 0);
+    const before = calls();
+    expect((await discover(root, signal())).scan).toEqual({ status: "unavailable", message: "A previous local server scan is still settling" });
+    expect((await discover("/another/project", signal())).scan.status).toBe("unavailable");
+    expect(calls()).toBe(before);
+    release();
+    await new Promise<void>((resolve) => setImmediate(resolve));
+    expect((await discover(root, signal())).scan.status).toBe("observed");
   });
 
   it("probes a real local HTTP listener but does not invent HTTP for a raw TCP socket", async () => {
-    const http = createHttpServer((request, response) => { expect(request.method).toBe("HEAD"); response.writeHead(204); response.end(); });
-    const tcp = createTcpServer((socket) => { socket.on("data", () => socket.end("not http")); });
-    await Promise.all([new Promise<void>((resolve) => http.listen(0, "127.0.0.1", resolve)), new Promise<void>((resolve) => tcp.listen(0, "127.0.0.1", resolve))]);
+    // Use an independent checkout-shaped directory: the test runner itself belongs to this Electron app.
+    const directory = await mkdtemp(join(tmpdir(), "swarm-runtime-test-"));
+    const child = spawn(process.execPath, ["-e", `
+      const http = require('node:http').createServer((req, res) => { res.writeHead(req.method === 'HEAD' ? 204 : 405); res.end(); });
+      const tcp = require('node:net').createServer(socket => socket.on('data', () => socket.end('not http')));
+      http.listen(0, '127.0.0.1', () => tcp.listen(0, '127.0.0.1', () => {
+        process.stdout.write(JSON.stringify({ http: http.address().port, tcp: tcp.address().port }) + '\\n');
+      }));
+    `], { cwd: directory, stdio: ["ignore", "pipe", "ignore"] });
+    const closed = new Promise<void>((resolve) => child.once("close", () => resolve()));
     try {
-      const result = await discoverNodeServers(process.cwd(), signal());
-      const server = result.servers.find((entry) => entry.pid === process.pid);
-      const httpPort = (http.address() as { port: number }).port;
-      const tcpPort = (tcp.address() as { port: number }).port;
-      expect(server?.endpoints.find((endpoint) => endpoint.port === httpPort)?.url).toBe(`http://localhost:${httpPort}/`);
-      expect(server?.endpoints.find((endpoint) => endpoint.port === tcpPort)).toMatchObject({ protocol: "tcp", address: "127.0.0.1" });
-      expect(server?.endpoints.find((endpoint) => endpoint.port === tcpPort)?.url).toBeUndefined();
+      const ports = await new Promise<{ http: number; tcp: number }>((resolve, reject) => {
+        const timeout = setTimeout(() => reject(new Error("Fixture listener startup timed out")), 2000);
+        let text = "";
+        child.stdout!.on("data", (data: Buffer) => { text += data.toString(); if (text.includes("\n")) { clearTimeout(timeout); resolve(JSON.parse(text)); } });
+        child.once("error", (error) => { clearTimeout(timeout); reject(error); });
+      });
+      const result = await discoverNodeServers(directory, signal());
+      const server = result.servers.find((entry) => entry.pid === child.pid);
+      expect(server?.endpoints.find((endpoint) => endpoint.port === ports.http)?.url).toBe(`http://localhost:${ports.http}/`);
+      expect(server?.endpoints.find((endpoint) => endpoint.port === ports.tcp)).toMatchObject({ protocol: "tcp", address: "127.0.0.1" });
+      expect(server?.endpoints.find((endpoint) => endpoint.port === ports.tcp)?.url).toBeUndefined();
     } finally {
-      await Promise.all([new Promise<void>((resolve) => http.close(() => resolve())), new Promise<void>((resolve) => tcp.close(() => resolve()))]);
+      child.kill("SIGKILL");
+      await closed;
+      await rm(directory, { recursive: true, force: true });
     }
   });
 

@@ -12,7 +12,7 @@ while [[ ! -s "$SWARM_PROJECT_CONTEXT_EVIDENCE/proof.json" ]]; do
 done
 node - "$SWARM_PROJECT_CONTEXT_EVIDENCE/proof.json" <<'JS'
 const proof = JSON.parse(require('node:fs').readFileSync(process.argv[2]));
-if (!proof.ok || !proof.realNodeServer || proof.rendererErrors.length) process.exit(1);
+if (!proof.ok || !proof.realNodeServer || !proof.realManifestCatalog || !proof.configuredHugoSite || !proof.localMoveDependency || !proof.emptyContainersHidden || proof.rendererErrors.length) process.exit(1);
 console.log(`Actual project runtime proof passed: ${proof.elapsedMs}ms`);
 JS
 swarm_window_capture "$SWARM_PROJECT_CONTEXT_EVIDENCE/context-window.png"

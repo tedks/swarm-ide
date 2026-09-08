@@ -35,7 +35,7 @@ export const ProjectComponentSchema = z.object({
   workflows: z.array(z.object({ name: text, kind: z.enum(["develop", "build", "test", "deploy", "other"]) }).strict()).max(24),
 }).strict();
 export const ProjectRelationshipSchema = z.object({
-  from: sourcePath, to: text, kind: z.enum(["depends-on", "proxy", "shares-source"]), evidence: sourcePath,
+  from: sourcePath, to: text, kind: z.enum(["depends-on", "proxy", "shares-source", "contains"]), evidence: sourcePath,
 }).strict();
 export const ProjectSiteSchema = z.object({
   name: text, url: ProjectEndpointSchema.shape.url.unwrap(), evidence: sourcePath,

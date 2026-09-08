@@ -2,11 +2,11 @@ import { constants } from "node:fs";
 import { open, opendir, readlink, realpath } from "node:fs/promises";
 import { request } from "node:http";
 import { endianness, hostname } from "node:os";
-import { basename, isAbsolute, join, relative } from "node:path";
+import { basename, dirname, isAbsolute, join, relative } from "node:path";
 import type { ProjectEndpoint, ProjectScan, ProjectServer } from "../../protocol/project-context";
 
 type Result = { scan: ProjectScan; servers: ProjectServer[] };
-type Listing = { names: string[]; truncated: boolean };
+type Listing = { names: string[]; truncated: boolean; directories?: string[]; files?: string[] };
 export interface NodeDiscoveryIO {
   read(path: string, limit: number, signal: AbortSignal): Promise<string>;
   list(path: string, limit: number, signal: AbortSignal): Promise<Listing>;
@@ -21,7 +21,7 @@ export interface NodeDiscoveryOptions {
   probe?: (address: string, port: number, signal: AbortSignal, authority: string) => Promise<boolean>;
 }
 
-function cancelled(): Error { return Object.assign(new Error("Node discovery cancelled"), { name: "AbortError" }); }
+function cancelled(): Error { return Object.assign(new Error("Local server discovery cancelled"), { name: "AbortError" }); }
 function check(signal: AbortSignal): void { if (signal.aborted) throw cancelled(); }
 function missing(error: unknown): boolean { return ["ENOENT", "ESRCH"].includes((error as NodeJS.ErrnoException)?.code ?? ""); }
 function contained(root: string, path: string): boolean {
@@ -29,6 +29,13 @@ function contained(root: string, path: string): boolean {
   return isAbsolute(path) && !isAbsolute(suffix) && suffix !== ".." && !suffix.startsWith("../");
 }
 function displayable(value: string): boolean { return value.length > 0 && value.length <= 512 && !/[\x00-\x1f\x7f]/.test(value); }
+function runtimeName(executable: string): string | undefined {
+  const name = basename(executable);
+  if (name === "node" || name === "nodejs") return "Node.js";
+  if (/^python(?:[23](?:\.\d{1,2})?)?$/.test(name)) return "Python";
+  if (name === "hugo") return "Hugo";
+  return undefined;
+}
 
 const nativeIO: NodeDiscoveryIO = {
   async read(path, limit, signal) {
@@ -50,13 +57,17 @@ const nativeIO: NodeDiscoveryIO = {
   async list(path, limit, signal) {
     const directory = await opendir(path);
     const names: string[] = [];
+    const directories: string[] = [];
+    const files: string[] = [];
     try {
       for await (const entry of directory) {
         check(signal);
-        if (names.length === limit) return { names, truncated: true };
+        if (names.length === limit) return { names, directories, files, truncated: true };
         names.push(entry.name);
+        if (entry.isDirectory()) directories.push(entry.name);
+        if (entry.isFile()) files.push(entry.name);
       }
-      return { names, truncated: false };
+      return { names, directories, files, truncated: false };
     } finally { await directory.close().catch(() => {}); }
   },
   link: readlink,
@@ -130,8 +141,9 @@ async function probeHttp(address: string, port: number, signal: AbortSignal, aut
   });
 }
 
-type Identity = { start: string; executable: string; cwd: string };
-type Alias = { name: string; target: string; execroot: string };
+type Identity = { start: string; executable: string; cwd: string; name: string };
+type Alias = { name: string; target: string; execroot: string; buildRoot: string };
+type Association = { kind: ProjectServer["association"]; sourceDirectory: string };
 
 /** Injectable OS boundary for deterministic tests; callers normally use discoverNodeServers. */
 export function createNodeServerDiscovery(options: NodeDiscoveryOptions = {}) {
@@ -139,8 +151,13 @@ export function createNodeServerDiscovery(options: NodeDiscoveryOptions = {}) {
   const proc = options.procRoot ?? "/proc";
   const machine = options.hostname ?? hostname();
   const probe = options.probe ?? probeHttp;
+  // A deadline bounds the caller, not an uninterruptible native filesystem operation.
+  // Keep admission occupied until that underlying scan actually settles.
+  let outstanding = false;
   return async (root: string, signal: AbortSignal): Promise<Result> => {
     check(signal);
+    if (outstanding) return { scan: { status: "unavailable", message: "A previous local server scan is still settling" }, servers: [] };
+    outstanding = true;
     const controller = new AbortController();
     const stop = () => controller.abort();
     signal.addEventListener("abort", stop, { once: true });
@@ -150,7 +167,7 @@ export function createNodeServerDiscovery(options: NodeDiscoveryOptions = {}) {
     const deadline = new Promise<Result>((resolve) => {
       timer = setTimeout(() => {
         controller.abort();
-        resolve({ scan: { status: "partial", message: "Node discovery reached its time limit" }, servers: [...servers] });
+        resolve({ scan: { status: "partial", message: "Local server discovery reached its time limit" }, servers: [...servers] });
       }, Math.max(1, Math.min(options.timeoutMs ?? 2200, 10_000)));
     });
     let abortListener: (() => void) | undefined;
@@ -165,29 +182,64 @@ export function createNodeServerDiscovery(options: NodeDiscoveryOptions = {}) {
       check(active);
       const base = join(proc, pid);
       const executable = await io.link(join(base, "exe"));
-      if (!["node", "nodejs"].includes(basename(executable))) return undefined;
+      const name = runtimeName(executable);
+      if (!name) return undefined;
       const stat = await io.read(join(base, "stat"), 4096, active);
       const end = stat.lastIndexOf(") ");
       const start = stat.slice(end + 2).trim().split(/\s+/)[19];
       if (!stat.startsWith(`${pid} (`) || end < 0 || !start || !/^\d+$/.test(start)) throw new Error("Malformed process identity");
       const cwd = await io.link(join(base, "cwd"));
       if (!isAbsolute(cwd) || cwd.endsWith(" (deleted)") || !displayable(cwd)) throw new Error("Unsupported process directory");
-      return { executable, start, cwd };
+      return { executable, start, cwd, name };
     }
-    async function aliases(rootPath: string): Promise<Alias[]> {
+    async function aliases(buildRoot: string): Promise<Alias[]> {
       const result: Alias[] = [];
       for (const name of ["bazel-bin", "bazel-out"]) {
+        check(active);
         try {
-          await io.link(join(rootPath, name)); // Only the two exact symlinks, never arbitrary repository links.
-          const target = await io.real(join(rootPath, name));
+          await io.link(join(buildRoot, name)); // Only the two exact symlinks, never arbitrary repository links.
+          check(active);
+          const target = await io.real(join(buildRoot, name));
           const match = /^(.*\/execroot\/[^/]+)\/bazel-out(?:\/.*)?$/.exec(target);
-          if (match) result.push({ name, target, execroot: match[1]! });
+          if (match) result.push({ name, target, execroot: match[1]!, buildRoot });
         } catch (error) { if (!missing(error) && (error as NodeJS.ErrnoException).code !== "EINVAL") partial = true; }
       }
       return result;
     }
-    async function association(cwd: string, rootPath: string, outputs: Alias[]): Promise<ProjectServer["association"] | undefined> {
-      if (contained(rootPath, cwd)) return "worktree";
+    async function buildAliases(rootPath: string): Promise<Alias[]> {
+      const result = await aliases(rootPath);
+      const queue = [{ path: rootPath, depth: 0 }];
+      let visited = 0;
+      // Small breadth-first metadata walk, never vendor/generated/hidden directories or nested Git checkouts.
+      while (queue.length && visited < 32) {
+        check(active);
+        const directory = queue.shift()!;
+        visited++;
+        try {
+          if (await io.real(directory.path) !== directory.path) continue;
+          check(active);
+          const listing = await io.list(directory.path, 256, active);
+          check(active);
+          partial ||= listing.truncated;
+          if (directory.depth && listing.names.includes(".git")) continue;
+          if (directory.depth && ["MODULE.bazel", "WORKSPACE", "WORKSPACE.bazel"].some((name) => listing.files?.includes(name))) {
+            if (result.length >= 16) { partial = true; break; }
+            result.push(...await aliases(directory.path));
+          }
+          const children = (listing.directories ?? []).filter((name) => displayable(name) && name !== "." && name !== ".."
+            && !name.includes("/") && !name.startsWith(".") && !name.startsWith("bazel-")
+            && !["node_modules", "vendor", "dist", "build", "target", "coverage", "public"].includes(name));
+          if (directory.depth === 2) { if (children.length) partial = true; continue; }
+          for (const name of children.sort()) {
+            if (queue.length + visited === 32) { partial = true; break; }
+            queue.push({ path: join(directory.path, name), depth: directory.depth + 1 });
+          }
+        } catch (error) { check(active); if (!missing(error)) partial = true; }
+      }
+      return result;
+    }
+    async function association(cwd: string, rootPath: string, outputs: Alias[]): Promise<Association | undefined> {
+      if (contained(rootPath, cwd)) return { kind: "worktree", sourceDirectory: cwd };
       for (const alias of outputs) {
         if (!contained(alias.target, cwd)) continue;
         // A backlink from the generated package to this checkout prevents a link to another worktree's output claiming it.
@@ -196,11 +248,45 @@ export function createNodeServerDiscovery(options: NodeDiscoveryOptions = {}) {
         const source = runfiles?.[1] ?? suffix;
         if (!source || source.split("/").some((part) => part === ".." || part === ".")) continue;
         try {
-          if (await io.real(join(rootPath, alias.name)) !== alias.target) continue;
-          if (contained(rootPath, await io.real(join(alias.execroot, source)))) return "bazel-output";
+          if (await io.real(alias.buildRoot) !== alias.buildRoot || await io.real(join(alias.buildRoot, alias.name)) !== alias.target) continue;
+          const sourceDirectory = await io.real(join(alias.execroot, source));
+          if (contained(alias.buildRoot, sourceDirectory)) return { kind: "bazel-output", sourceDirectory };
         } catch (error) { if (!missing(error)) partial = true; }
       }
       return undefined;
+    }
+    async function electronInternal(sourceDirectory: string, rootPath: string): Promise<boolean> {
+      let directory = sourceDirectory;
+      for (let depth = 0; depth < 16 && contained(rootPath, directory); depth++, directory = dirname(directory)) {
+        check(active);
+        try {
+          const manifest: unknown = JSON.parse(await io.read(join(directory, "package.json"), 64 * 1024, active));
+          if (!manifest || typeof manifest !== "object" || Array.isArray(manifest)) { partial = true; return false; }
+          const pkg = manifest as Record<string, unknown>;
+          const hasElectron = [pkg.dependencies, pkg.devDependencies].some((value) => value && typeof value === "object"
+            && !Array.isArray(value) && typeof (value as Record<string, unknown>).electron === "string");
+          // The nearest package owns this server. An independent nested package must not inherit a desktop parent's suppression.
+          if (!hasElectron) return false;
+          // A JS `main` is also normal for Node libraries using Electron only in tests.
+          // Require desktop-specific configuration or an actual Electron main directory.
+          const build = pkg.build as Record<string, unknown> | undefined;
+          const config = pkg.config as Record<string, unknown> | undefined;
+          if (build && typeof build === "object" && typeof build.appId === "string" || config && typeof config === "object" && config.forge) return true;
+          for (const child of ["electron", "app/electron", "src/electron"]) {
+            try {
+              const path = join(directory, child);
+              if (await io.real(path) !== path) continue;
+              const entries = await io.list(path, 64, active);
+              partial ||= entries.truncated;
+              if (["main.ts", "main.js", "main.mjs", "main.cjs"].some((name) => entries.files?.includes(name))) return true;
+            } catch (error) { check(active); if (!missing(error)) partial = true; }
+          }
+          return false;
+        } catch (error) { check(active); if (!missing(error)) { partial = true; return false; } }
+        if (directory === rootPath) return false;
+      }
+      partial = true;
+      return false;
     }
     async function listeners(): Promise<Map<string, Listener>> {
       const result = new Map<string, Listener>();
@@ -219,7 +305,8 @@ export function createNodeServerDiscovery(options: NodeDiscoveryOptions = {}) {
     async function scan(): Promise<Result> {
       try {
         const rootPath = await io.real(root);
-        const outputs = await aliases(rootPath);
+        check(active);
+        const outputs = await buildAliases(rootPath);
         const table = await listeners();
         const processes = await io.list(proc, 4096, active);
         partial ||= processes.truncated;
@@ -232,6 +319,7 @@ export function createNodeServerDiscovery(options: NodeDiscoveryOptions = {}) {
             if (!before) continue;
             const relation = await association(before.cwd, rootPath, outputs);
             if (!relation) continue;
+            if (before.name === "Node.js" && await electronInternal(relation.sourceDirectory, rootPath)) continue;
             const fds = await io.list(join(proc, pid, "fd"), 1024, active);
             partial ||= fds.truncated;
             const owned: Array<{ fd: string; listener: Listener }> = [];
@@ -268,15 +356,16 @@ export function createNodeServerDiscovery(options: NodeDiscoveryOptions = {}) {
             }
             const after = await identity(pid);
             if (!after || JSON.stringify(before) !== JSON.stringify(after)
-              || await association(after.cwd, rootPath, outputs) !== relation) { partial = true; continue; }
+              || JSON.stringify(await association(after.cwd, rootPath, outputs)) !== JSON.stringify(relation)) { partial = true; continue; }
             check(active);
-            if (endpoints.length) servers.push({ pid: Number(pid), name: "Node.js", directory: after.cwd, association: relation, endpoints });
+            if (endpoints.length) servers.push({ pid: Number(pid), name: after.name, directory: after.cwd, association: relation.kind, endpoints });
           } catch (error) { check(active); if (!missing(error)) partial = true; }
         }
         return { scan: partial ? { status: "partial", message: "Some process, listener, or HTTP metadata was inaccessible or exceeded its bound" } : { status: "observed" }, servers: [...servers] };
       } catch { check(active); return { scan: { status: "unavailable", message: "Local process or listener metadata is unavailable" }, servers: [] }; }
     }
-    try { return await Promise.race([scan(), deadline, aborted]); }
+    const running = scan().finally(() => { outstanding = false; });
+    try { return await Promise.race([running, deadline, aborted]); }
     finally {
       if (timer) clearTimeout(timer);
       signal.removeEventListener("abort", stop);
@@ -286,6 +375,9 @@ export function createNodeServerDiscovery(options: NodeDiscoveryOptions = {}) {
   };
 }
 
+// Shared across callers/providers so an expired request cannot multiply outstanding native reads.
+const defaultDiscovery = createNodeServerDiscovery();
+
 export async function discoverNodeServers(root: string, signal: AbortSignal): Promise<Result> {
-  return createNodeServerDiscovery()(root, signal);
+  return defaultDiscovery(root, signal);
 }
