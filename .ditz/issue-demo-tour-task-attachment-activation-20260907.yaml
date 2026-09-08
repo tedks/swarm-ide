@@ -20,3 +20,14 @@ log_events:
   who: Ted Smith
   what: created
   comment: ""
+- time: 2026-09-08T02:31:16-00:00
+  who: Ted Smith
+  what: commented
+  comment: 'ROOT-authorized ONE passive trace on 1fb523a: actual Attach and Append
+    native events both targeted correct enabled buttons. Proposal existed after Attach;
+    brief retained-detail notices were observed, then after Append proposal disappeared
+    with explicit Draft or task changed; review again. Existing task-slot wait timed
+    out; rendererErrors empty, cleanup1. Trace does not identify which currentness
+    predicate changed or the prior missing-proposal cause. No positive driver mismatch,
+    so no further correction/run authorized. Evidence attachment-trace/run.0Phbhh
+    under release-ready.m7IMFZ; original failures retained.'
