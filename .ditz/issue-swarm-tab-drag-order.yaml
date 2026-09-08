@@ -18,3 +18,10 @@ log_events:
   who: Ted Smith
   what: started
   comment: ""
+- time: 2026-09-08T20:29:08-00:00
+  who: Ted Smith
+  what: commented
+  comment: 'Implemented session-local drag reordering across document, agent, planning,
+    component graph, activity, external-information, and worktree view tabs. Selection/work
+    state, close/action controls, keyboard cycling, and overflow reveal remain intact;
+    PR #134 at 3dda14b5.'
