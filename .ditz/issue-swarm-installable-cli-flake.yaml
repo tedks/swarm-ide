@@ -29,5 +29,12 @@ log_events:
   who: Ted Smith
   what: started
   comment: ""
+- time: 2026-09-08T13:41:30-00:00
+  who: Ted Smith
+  what: commented
+  comment: 'Built and tested the launcher interface: invocation-relative workspace/profile
+    paths, safe literal arguments and preserved host configuration. Nix package now
+    fetches real Bazel and JavaScript dependencies separately; installed execution
+    will use only the production bundle.'
 blocks:
 - swarm-usability-pass
