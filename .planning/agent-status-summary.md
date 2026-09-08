@@ -19,7 +19,8 @@ current liveness, and the open outcome document must follow refreshed data.
 - [x] Prove selected outcome refresh, exact session matching and no duplicated request lane.
 - [x] Focused observer/Work Log/cockpit checks pass; native implementation review is CLEAN.
 - [x] Fresh packaged real-registry/saved-outcome proof passes on owned virtual X11, with no model turn or renderer error.
-- [ ] Push final implementation, record accomplishments and hand off for ROOT normal landing/adoption.
+- [x] Pushed implementation a331716 in PR121, recorded accomplishments and synced Ditz.
+- [ ] ROOT normal landing/adoption and check of the original operator-window status report (swarm-agent-status-window).
 
 ## Surprises & Discoveries
 
@@ -38,6 +39,7 @@ The optional living-design check confirmed the new mappings, but an unchanged
 repository-source-list test expects a hardcoded 20 links while the reviewed base
 already contains 22. That run is 80 PASS / 1 FAIL, not an all-green design suite.
 This change does not touch the repository node's source list or that test.
+Follow-up `swarm-design-source-count-assertion` retains that exact failure.
 
 ## Decision Log
 
