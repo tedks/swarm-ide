@@ -94,6 +94,14 @@
               "relation": "data"
             }
           ]
+        },
+        {
+          "label": "//tools/operator-cockpit:plan-first",
+          "role": "Checks Plan-first startup, unified Plan/Code navigation and retained editor context",
+          "dependencies": [
+            { "label": "//:quality_sources", "relation": "data" },
+            { "label": "//tools/operator-cockpit:sources", "relation": "data" }
+          ]
         }
       ]
     }
