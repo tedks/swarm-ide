@@ -7,12 +7,14 @@ Keep the useful FraudCheck/Payments example in this repository while leaving the
 ## Progress
 
 - [x] (2026-09-08) Verified clean source and created fix/restore-service-example from reviewed 40297932 in the existing worktree; original merged branch preserved.
-- [ ] Restore contracts/sample sources and ordinary declarations with valid source filegroups.
-- [ ] Run focused actual-example and unrelated-repository checks, obtain native review, push ready PR and hand off.
+- [x] (2026-09-08) Restored contracts/sample sources and ordinary declarations with valid source filegroups in PR135, implementation e1d6d0c.
+- [x] (2026-09-08) Three focused actual-example/negative/sample tests and both TypeScript checks passed; source filegroups built; actual inspector reported both services and all interfaces without mutation. Native review CLEAN; final ready push/handoff follows.
 
 ## Surprises & Discoveries
 
 History c48e5b6 has the two contracts, FraudCheck sample and manifest, but Payments has no native manifest or implementation. The former FraudCheck BUILD contains a removed extractor genrule. Restore the useful source data, add Payments declaration/sample, and replace compilation/extractor rules with plain filegroups.
+
+The first negative test created an uncommitted Git repository, which the real provider correctly rejected. Added the missing local test commit; no product change. Native review clarified that service activation opens its manifest directly, while Context links the sample implementation; README now matches this behavior.
 
 ## Decision Log
 
@@ -40,7 +42,7 @@ All work stays on the new feature branch. Historical merged topic and original P
 
 ## Outcomes & Retrospective
 
-Implementation pending. The intended outcome is useful demo data through existing generic behavior, not a return to fixed application assumptions.
+Completed as ordinary data, with no app/core/protocol changes. The actual inspector found FraudCheck/Payments alongside the repository's existing Compose demo, no issues, unchanged Git status and zero service processes. The focused provider test produced five example nodes and three provides/requires edges, correct source associations and no built/deployed revision. An unrelated committed repository remained empty. Checks passed in15.280s including both TypeScript boundaries; source filegroups built in1.502s without compile/extractor actions. Native review CLEAN. No new GUI/model proof was needed for unchanged rendering/runtime. ROOT owns landing/adoption.
 
 ## Artifacts and Notes
 

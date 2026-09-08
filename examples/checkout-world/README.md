@@ -14,8 +14,8 @@ appear alongside the example. No build or Docker startup is needed.
 
 FraudCheck provides **Assess** and declares a requirement for **Payments.Authorize**.
 Payments provides **Authorize** and has no declared requirements. Click an interface
-to inspect its protobuf contract; selecting a service offers its manifest and
-sample implementation as source choices. The requirement and provider share the
+to inspect its protobuf contract, or a service to open its manifest. Context also
+links the sample implementation. The requirement and provider share the
 Payments contract, but their graph nodes describe each service's own role. They
 are authored design relationships, not observed network calls. The sample
 `assess()` does not actually invoke `authorize()`.
