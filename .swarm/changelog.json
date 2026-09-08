@@ -1,99 +1,105 @@
 {
   "version": 1,
   "inputDigest": "fa7d15776b0ea1fcec89a551bd2bb9ac34b458fb0912926274fe06d8e5339ee2",
-  "generatedAt": "2026-09-07T20:01:21Z",
+  "generatedAt": "2026-09-07T22:58:50Z",
   "generator": {
     "kind": "supervised-agent",
-    "name": "gpt-6-astra",
-    "run": "journal-summarizer-20260907",
-    "instructionsDigest": "2f6c8f99060f416391629141d139e2f85ff6f6bd04159ed1ba43f39fa2b87a94"
+    "name": "native Codex summarizer",
+    "run": "root:journal_wording",
+    "instructionsDigest": "d70a40322b5266a3ab43479b88d849194c37fcf88ceea2dca0daf063b573342c"
   },
   "entries": [
     {
       "id": "task-context-design-base",
-      "headline": "Design/base separates task identity from working source",
+      "headline": "The design keeps task context separate from working files",
       "intent": {
-        "text": "Keep revision-labelled task context separate from editable instructions and independently captured source; attaching a task must not open files or command an agent.",
+        "text": "Keep the task's recorded context alongside your draft without changing your chosen source, opening a file or sending an agent command.",
         "evidenceIds": ["artifact:task-context-design"]
       },
       "outcome": {
-        "text": "The supplied design artifact specifies exact commit/blob identity and core revalidation. Git records the design and base merges, with document, protocol, core and test paths changed.",
+        "text": "The recorded design gives a task its own read-only, revision-labelled section. Git records the design and base changes as merged.",
         "evidenceIds": ["artifact:task-context-design", "git:eafe0fe2bf5a7e73dc919c8a2f29e4f615e4e239", "git:6e11ce42c004ca5fb37300d87bcbaf11807740a8"]
       },
       "decision": {
-        "text": "Recommendation: reconcile the design's unfinished D3-only status paragraph with the later UI/core merges before using it as a current delivery summary.",
+        "text": "Recommendation: check the later UI and core milestones before treating the older design status as a delivery summary.",
         "evidenceIds": ["artifact:task-context-design", "git:3b6d166ac15a745dea6c65d309c822f6ad1b8b58", "git:e8ec0f953071cec9bfeed7555e120aedc4c108dc"]
       },
       "state": "mixed",
       "reasoning": "reconstructed",
       "caveats": [
-        "The artifact is a supplied paraphrase; Git subjects and changed paths establish recorded changes, not correctness.",
+        "The design specifies exact commit/blob identity and core revalidation, separate from editable instructions and independently captured source.",
+        "Its status paragraph still describes the earlier D3-only stage, when attached Prepare was unavailable; it is not an aggregate delivery status.",
+        "The artifact is a supplied paraphrase. Git records changed document, protocol, core and test paths, not proof of correct behavior.",
         "Card order presents a progression, not proof of causal dependencies."
       ]
     },
     {
       "id": "deliberate-task-attachment",
-      "headline": "Attachment UI preserves an independently chosen source",
+      "headline": "Reported task attachment leaves the chosen source unchanged",
       "intent": {
-        "text": "Make task attachment deliberate through Append/Replace/Cancel/Remove while retaining draft source and rejecting stale proposals.",
+        "text": "Add, replace or remove a task deliberately while keeping control of the source used by the draft.",
         "evidenceIds": ["report:d5-attachment"]
       },
       "outcome": {
-        "text": "D5 reports packaged attachment checks at 100%/150%, retained dirty state and zero renderer exceptions; Git records PR49's UI merge. Attached Prepare still returned UNSUPPORTED_CONTROL at that milestone.",
+        "text": "D5 reports that attaching a task kept the draft's chosen source and unsaved work intact. Git records the attachment UI merge.",
         "evidenceIds": ["report:d5-attachment", "git:3b6d166ac15a745dea6c65d309c822f6ad1b8b58"]
       },
       "decision": {
-        "text": "Recommendation: treat this as the attachment milestone, and use the separately recorded core evidence to assess joined preparation.",
+        "text": "Recommendation: use this record to understand task attachment; consult the core milestone before assessing preparation of a task-backed draft.",
         "evidenceIds": ["report:d5-attachment", "report:d4-resolver", "git:e8ec0f953071cec9bfeed7555e120aedc4c108dc"]
       },
       "state": "completed",
       "reasoning": "reconstructed",
       "caveats": [
-        "UI behavior and checks are D5's attributed report, not independently rerun here.",
-        "Later merges do not retroactively change the reported UI milestone's unsupported preparation result."
+        "D5 reports Append/Replace/Cancel/Remove controls, rejection of stale proposals and invalidation of preparation after accepted changes.",
+        "Packaged checks at 100%/150%, retained dirty state and zero renderer exceptions are D5's attributed report, not independently rerun here.",
+        "At this milestone, attached Prepare returned UNSUPPORTED_CONTROL. Later merges do not change that historical result."
       ]
     },
     {
       "id": "core-task-materialization",
-      "headline": "Core resolver reports exact task-byte materialization",
+      "headline": "Core preparation was reported to check the exact task version",
       "intent": {
-        "text": "Verify task identity, commit and blob in core, then materialize bounded canonical text and independently revalidate metadata, source and configuration.",
+        "text": "Keep a prepared draft tied to the selected task version, with its source and configuration checked separately.",
         "evidenceIds": ["report:d4-resolver"]
       },
       "outcome": {
-        "text": "D4 reports Git/YAML resolution, cancellation/drain and task-specific preparation timing. Its initial recap was held before peer clearance; later Git records PR50 merged with resolver, core and test paths changed.",
+        "text": "D4 reports that core loaded and checked the selected task text. That initial recap preceded peer clearance; Git separately records the later core merge.",
         "evidenceIds": ["report:d4-resolver", "git:e8ec0f953071cec9bfeed7555e120aedc4c108dc"]
       },
       "decision": {
-        "text": "Recommendation: use the later Git merge as the landing observation, not the initial recap; retain the production-policy boundary when describing readiness.",
+        "text": "Recommendation: use the merge record for what landed, and keep these preparation results separate from claims about production agent launch.",
         "evidenceIds": ["report:d4-resolver", "git:e8ec0f953071cec9bfeed7555e120aedc4c108dc"]
       },
       "state": "mixed",
       "reasoning": "reconstructed",
       "caveats": [
-        "The bundle does not explain how peer clearance was resolved; the later merge does not establish that causal story.",
+        "D4 reports Git/YAML checks of task identity, commit and blob, bounded canonical text, and independent revalidation of metadata, source and configuration.",
+        "Cancellation and shutdown drain, 40-second task Prepare and unchanged five-second ordinary/launch uncertainty are reported results, not checks rerun here.",
+        "The initial recap was held before peer clearance. The bundle does not explain how that was resolved; the later merge records changed resolver, core and test paths, not the causal story or correctness.",
         "Production launch remained ADAPTER_POLICY_UNAVAILABLE in the report; deterministic admission/history is not production model execution."
       ]
     },
     {
       "id": "immutable-task-history-proof",
-      "headline": "Recorded joined proof preserves 81 history records",
+      "headline": "Recorded checks found 81 history records intact after recovery",
       "intent": {
-        "text": "Establish recovery and postclose history preservation while keeping real Git/Ditz and resolver work distinct from deterministic admitted output.",
+        "text": "Check that task-run history survives recovery and closing, while distinguishing real task data from simulated agent output.",
         "evidenceIds": ["report:d6-joined-proof", "record:root-d6-verification"]
       },
       "outcome": {
-        "text": "D6 reports immutable 81-record history and cleanup. ROOT's imported check records equal pre/post hashes, two core generations, no replayed commands and owned PIDs absent; Git independently records PR51 merged.",
+        "text": "D6 and ROOT report that all 81 history records stayed unchanged through recovery and closing, with owned processes cleaned up. Git separately records the integration merge.",
         "evidenceIds": ["report:d6-joined-proof", "record:root-d6-verification", "git:c3128715a785c2fd42011e4cf5941038b268335c"]
       },
       "decision": {
-        "text": "Recommendation: retain the accepted proof with its attribution and keep topology-timeout and resize-warning follow-ups open; a warning-free run is not evidence of a fix.",
+        "text": "Recommendation: keep these results as recorded rehearsal evidence, and keep tracking the reported timeout and resize warning; a quiet run does not prove either is fixed.",
         "evidenceIds": ["report:d6-joined-proof", "record:root-d6-verification"]
       },
       "state": "mixed",
       "reasoning": "reconstructed",
       "caveats": [
-        "ROOT's build/test and lifecycle verification is an imported recorded check, not a Journal rerun.",
+        "ROOT's imported check records equal pre/post hashes, two core generations, no replayed commands and owned PIDs absent. Its build/test and lifecycle verification was not rerun by Journal.",
+        "Git/Ditz task metadata and the resolver were real; the admitted output was deterministic, not live agents.",
         "The production proof recorded modelTurns=0; the separate rehearsal recorded fixtureOnly=true and externalAgentProcesses=0.",
         "The resize warning remained nonblocking under reported user disposition; the original topology timeout also remained open.",
         "Generator provenance identifies this supervised authoring run only. The UI did not execute a model."

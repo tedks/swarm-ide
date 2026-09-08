@@ -13,6 +13,7 @@ export interface AgentDockProps {
   trustedContent?: ReactNode;
   jobsContent: ReactNode;
   activityContent: ReactNode;
+  onOpenActivity?: () => void;
   fixtureContent?: ReactNode;
   mockConversation?: {
     tabs: ReadonlyArray<{ id: string; name: string }>;
@@ -26,7 +27,7 @@ export interface AgentDockProps {
   fixtureSelectionVersion?: number;
 }
 
-export function AgentDock({ state, client, onDraft, runContent, draftContent, trustedContent, jobsContent, activityContent, fixtureContent, mockConversation, selectionVersion = 0, fixtureSelectionVersion = 0 }: AgentDockProps) {
+export function AgentDock({ state, client, onDraft, runContent, draftContent, trustedContent, jobsContent, activityContent, onOpenActivity, fixtureContent, mockConversation, selectionVersion = 0, fixtureSelectionVersion = 0 }: AgentDockProps) {
   const id = useId();
   const runs = state.snapshot?.runs ?? [];
   const hasSelection = state.selectedRunId !== null;
@@ -102,6 +103,6 @@ export function AgentDock({ state, client, onDraft, runContent, draftContent, tr
     </div> : null}
     {mockConversation ? <div id={panelId("mock:current")} role="tabpanel" aria-labelledby={tabId(`mock:${mockConversation.selected}`)} hidden={!current.startsWith("mock:")} className="agent-dock-panel agent-dock-run">{mockConversation.content}</div> : null}
     </section>
-    <section className="dock-side-panel dock-activity" aria-label="Recent activity" tabIndex={0}><header className="dock-section-heading">Recent activity</header>{activityContent}</section>
+    <section className="dock-side-panel dock-activity" aria-label="Recent activity" tabIndex={0}><header className="dock-section-heading">{onOpenActivity ? <button className="activity-open-heading journal-activity-heading" onClick={onOpenActivity}>Recent Activity <span aria-hidden="true">↗</span></button> : "Recent activity"}</header>{activityContent}</section>
   </div>;
 }

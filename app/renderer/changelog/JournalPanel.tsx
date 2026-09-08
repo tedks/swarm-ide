@@ -2,6 +2,7 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react
 import { PROTOCOL_VERSION, parseCoreResponseForRequest } from "../../../protocol/schema";
 import { ChangelogRequestSchema, entryEvidence, type ChangelogResult } from "../../../protocol/changelog";
 import "./journal.css";
+import { GithubPullRequests, type GithubPrState } from "./GithubPullRequests";
 
 const kinds = { "git-observation": "Git observation", "agent-report": "Agent reported", "recorded-check": "Recorded check · not rerun",
   "recorded-artifact": "Recorded artifact", synthetic: "Synthetic evidence" };
@@ -39,44 +40,49 @@ export function useJournal(repositoryId: string | null, coreGeneration: number |
 export type JournalState = ReturnType<typeof useJournal>;
 
 export function JournalActivity({ state, onOpen }: { state: JournalState; onOpen(entryId?: string): void }) {
-  return <div className="journal-activity"><button className="journal-activity-heading" onClick={() => onOpen()}>Logical changes <span>Open activity log ↗</span></button>
+  return <div className="journal-activity">
     {state.notice ? <p>{state.observation ? "Retained account · refresh needed" : "No recorded summary available"}</p> : null}
-    {state.observation?.document.entries.slice(0, 5).map((entry) => <button className="journal-activity-entry" key={entry.id} onClick={() => onOpen(entry.id)}><span>{entry.headline}</span><small>{entry.state} · {entry.reasoning}</small></button>)}
+    {state.observation?.document.entries.slice(0, 5).map((entry) => <button className="journal-activity-entry" key={entry.id} onClick={() => onOpen(entry.id)}><span>{entry.headline}</span><small>Recorded · {entry.state}</small></button>)}
     {state.busy ? <p>Reading recorded changes…</p> : null}
   </div>;
 }
 
-export function JournalPanel({ open, state, selectedEntry, selectionVersion = 0, onClose, onOpenSource }: {
+export function JournalPanel({ open, state, selectedEntry, selectionVersion = 0, onClose, onOpenSource, pullRequests }: {
   open: boolean; state: JournalState; selectedEntry: string | null; selectionVersion?: number; onClose(): void; onOpenSource(path: string): void;
+  pullRequests?: GithubPrState;
 }) {
   const { observation, notice, busy, refresh } = state;
   const [filter, setFilter] = useState("");
+  const [view, setView] = useState<"changes" | "prs">("changes");
   const body = useRef<HTMLDivElement>(null);
   const heading = useRef<HTMLHeadingElement>(null);
   const [pendingEntry, setPendingEntry] = useState<string | null>(null);
   useEffect(() => {
     if (!open) return;
-    if (selectedEntry) { setFilter(""); setPendingEntry(selectedEntry); }
+    if (selectedEntry) { setView("changes"); setFilter(""); setPendingEntry(selectedEntry); }
     else heading.current?.focus();
   }, [selectedEntry, selectionVersion, open, observation?.document.inputDigest]);
   useLayoutEffect(() => {
     if (!open || !pendingEntry || filter) return;
     const element = [...(body.current?.querySelectorAll<HTMLDetailsElement>("[data-change-id]") ?? [])].find((node) => node.dataset.changeId === pendingEntry);
     if (element) { element.open = true; element.scrollIntoView?.({ block: "nearest" }); element.querySelector("summary")?.focus(); setPendingEntry(null); }
-  }, [pendingEntry, filter, open, observation?.document.inputDigest]);
+  }, [pendingEntry, filter, open, view, observation?.document.inputDigest]);
 
   const bundle = observation?.bundle;
   const paths = [...new Set(bundle?.evidence.flatMap((item) => item.paths) ?? [])].sort();
   const entries = observation?.document.entries.filter((entry) => !filter || entryEvidence(entry, observation.bundle).some((item) => item.paths.includes(filter))) ?? [];
-  return <section className="journal-panel" aria-label="Logical changes" hidden={!open} data-journal-digest={observation?.document.inputDigest ?? ""}>
-    <header className="journal-header"><div><span className="journal-eyebrow">Operator journal</span><h2 ref={heading} tabIndex={-1}>Logical changes</h2><p>The work, reconstructed. Evidence one click away.</p></div>
+  return <section className="journal-panel" aria-label="Activity log" hidden={!open} data-journal-digest={observation?.document.inputDigest ?? ""}>
+    <header className="journal-header"><div><h2 ref={heading} tabIndex={-1}>Activity log</h2></div>
       <div className="journal-controls"><button onClick={() => void refresh()} disabled={busy} aria-label="Refresh logical changes">{busy ? "Reading…" : "Refresh"}</button><button onClick={onClose} aria-label="Close logical changes">×</button></div></header>
+    {pullRequests ? <nav className="journal-view-tabs" aria-label="Activity views"><button aria-pressed={view === "changes"} onClick={() => setView("changes")}>Changes</button><button aria-pressed={view === "prs"} onClick={() => setView("prs")}>Pull requests</button></nav> : null}
     <div className="journal-body" ref={body}>
+      {pullRequests ? <div hidden={view !== "prs"}><GithubPullRequests state={pullRequests} onOpenSource={onOpenSource} /></div> : null}
+      <div hidden={Boolean(pullRequests && view !== "changes")}>
       {notice ? <p role="status" className="journal-warning">{observation ? "Retained · " : "Unavailable · "}{notice}</p> : null}
       {busy && observation ? <p className="journal-warning">Retained while observing the current artifacts…</p> : null}
-      {!observation && !busy ? <div className="journal-empty"><h3>A readable history starts with evidence.</h3><p>Export a Git span, give the bounded bundle to a supervised summarizer, validate its output, then Refresh.</p><code>docs/logical-changelog.md</code><p>No model is launched by opening this view.</p></div> : null}
+      {!observation && !busy ? <p className="journal-empty">No recorded activity summary. <code>docs/logical-changelog.md</code> describes how to add one.</p> : null}
       {observation ? <>
-        <div className="journal-coverage"><span className="journal-badge">Recorded span · {observation.state === "recorded-head" ? "ends at observed HEAD" : "older than observed HEAD"}</span><span>{observation.bundle.range.from.slice(0, 8)} → {observation.bundle.range.to.slice(0, 8)}</span><p>Working edits are outside this span. Summarized by {observation.document.generator.name}; no autonomous in-app summarizer.</p></div>
+        <div className="journal-coverage"><span className="journal-badge">Recorded activity · {observation.state === "recorded-head" ? "through observed HEAD" : "earlier repository history"}</span><p>Summarized by {observation.document.generator.name}. Working edits are not included.</p></div>
         <label className="journal-filter">Affected file <select value={filter} onChange={(event) => setFilter(event.target.value)}><option value="">All evidence</option>{paths.map((path) => <option key={path} value={path}>{path}</option>)}</select></label>
         {!entries.length ? <p>No logical changes cite this exact path in the current bundle.</p> : null}
         <ol className="journal-cards">{entries.map((entry) => {
@@ -96,6 +102,7 @@ export function JournalPanel({ open, state, selectedEntry, selectionVersion = 0,
         })}</ol>
         <details className="journal-provenance"><summary>Coverage & generation provenance</summary><p>{observation.bundle.coverage}</p><ul>{observation.bundle.limitations.map((limit, index) => <li key={index}>{limit}</li>)}</ul><p>Exported {observation.bundle.exportedAt} · Generated {observation.document.generatedAt} · Observed {observation.observedAt}</p><p>Input digest <code>{observation.document.inputDigest}</code></p><p>Generator {observation.document.generator.name} · run {observation.document.generator.run}</p><p>Instructions digest <code>{observation.document.generator.instructionsDigest}</code></p></details>
       </> : null}
+      </div>
     </div>
   </section>;
 }

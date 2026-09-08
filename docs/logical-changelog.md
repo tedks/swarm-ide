@@ -65,7 +65,7 @@ synthesis but does not establish an autonomous in-app summarizer.
 
 ## A one-minute walkthrough
 
-1. Open Swarm's own checkout. In Recent activity, select a Logical changes entry.
+1. Open Swarm's own checkout. Click Recent Activity for the Activity log, or select an entry.
    It opens expanded in the main text area, alongside retained source tabs.
 2. Read the task-context story: design and base, deliberate one-slot attachment,
    pinned context resolution, then immutable admitted-history evidence.
@@ -73,13 +73,15 @@ synthesis but does not establish an autonomous in-app summarizer.
 3. Expand Evidence to see the recorded agent/task IDs, source revisions and
    affected files. Open a working file deliberately; this is current source,
    not a claim that the old recorded bytes are still on disk.
-4. Return to Logical changes. Inspect the generation provenance or filter by
+4. Return to Activity log → Changes. Inspect the generation provenance or filter by
    an exact affected file. Refresh reads a newer validated artifact when one
    has been authored; it never launches an agent or submits a draft.
 
-The included account was actually produced by one supervised gpt-6-astra
-summarizer from bounded exported Git observations and explicitly supplied,
-sanitized reports. Its run and input provenance are in the document itself.
+The included account was initially produced by a supervised gpt-6-astra
+summarizer, then rewritten for clarity by the native Codex summarizer identified
+in the document. Both used the same bounded exported Git observations and
+explicitly supplied, sanitized reports; citation membership was preserved.
+The current author's run and input provenance are in the document itself.
 The generated account even notes an older design-status paragraph; that is a
 recorded documentation discrepancy, not something the summarizer silently fixed.
 
@@ -89,3 +91,37 @@ when they are missing. It exercises two real disposable Git revisions and
 two actual supervised summaries through the packaged app on an owned virtual
 desktop, including stale/invalid citation refusal and source/draft retention.
 Synthetic unit fixtures test contracts separately and do not prove synthesis.
+
+## GitHub pull requests
+
+The Activity log's Pull requests view is a separate, explicitly refreshed GitHub
+observation. Install the ordinary GitHub CLI (`gh`) and authenticate it normally
+with `gh auth login`. Swarm does not read or copy token files. The opened checkout
+must have one github.com `origin` using HTTPS or Git SSH syntax. GitHub Enterprise
+and arbitrary repository selection are not supported by this first slice.
+If launching Electron with a disposable `XDG_CONFIG_HOME`, explicitly preserve
+the normal GitHub configuration location in `GH_CONFIG_DIR` before overriding
+XDG. The owned proof does this; it points gh at existing configuration without
+reading or copying credentials. A normal desktop launch with its usual XDG
+environment needs no override.
+
+Click **Refresh PRs** to read up to 20 recent PRs across all states, with title,
+number, author, update time and up to 100 changed-file paths per PR. Coverage is
+shown; this is not the complete repository history or a CI/review verdict. File
+buttons open the current working file, which may differ from or be absent in the
+PR. URLs are selectable text, not unvalidated external navigation. No task/agent
+relationship is inferred from proximity or matching names.
+
+Reads use the installed `gh` behind the typed local core and the existing private
+PID owner, so closing/killing the core also ends its GitHub command descendants.
+This owns process lifetime, not a separate credential/filesystem/network sandbox.
+The feature requires the same Linux `node`, `unshare` and `setpriv` tools already
+used by the owned build-query path. Missing tools/auth, bad or moved origins,
+malformed data and a four-second read deadline leave any previous same-workspace
+result explicitly retained; core recovery requires a new deliberate Refresh.
+
+The optional actual-network proof is `nix develop --command bazel run
+//tools/activity-prs:smoke --jobs=3`, with `SWARM_VIRTUAL_DISPLAY` and
+`SWARM_VIRTUAL_DESKTOP_PORT` set to an owned free pair. It uses the authenticated
+GitHub origin of a disposable local clone, not a fake PR provider. Synthetic
+unit data are labelled separately. It does not run in hosted CI automatically.
