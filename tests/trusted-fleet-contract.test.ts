@@ -1,7 +1,8 @@
 // @vitest-environment node
 import { randomUUID } from "node:crypto";
 import { describe, expect, it } from "vitest";
-import { PROTOCOL_VERSION, parseCoreRequest } from "../protocol/schema";
+import { PROTOCOL_VERSION, parseCoreRequest, parseCoreResponseForRequest } from "../protocol/schema";
+import { initialSnapshot } from "../fixtures/world";
 import { TrustedActivitySchema, TrustedRunSummarySchema, TrustedSnapshotSchema } from "../protocol/trusted-local";
 
 describe("compatible trusted fleet seam", () => {
@@ -27,5 +28,14 @@ describe("compatible trusted fleet seam", () => {
     expect(TrustedActivitySchema.parse(activity).kind).toBe("command");
     expect(() => TrustedSnapshotSchema.parse({ ...snapshot, activities: Array(101).fill(activity) })).toThrow();
     expect(() => TrustedActivitySchema.parse({ ...activity, summary: "λ".repeat(4096) })).toThrow();
+  });
+  it("rejects a targeted snapshot response for another conversation", () => {
+    const token = randomUUID();
+    const request = parseCoreRequest({ protocolVersion: PROTOCOL_VERSION, requestId: "target", type: "trusted.snapshot", token });
+    const snapshot = { instanceId: randomUUID(), profile: "trusted-local", workspace: "/repo", preparation: null,
+      runToken: token, status: "ready", threadId: "thread", turnId: null, output: "", message: "", approvals: [] };
+    const response = { protocolVersion: PROTOCOL_VERSION, requestId: "target", sequence: 1, ok: true, snapshot: initialSnapshot(), trusted: { kind: "trusted", snapshot } };
+    expect(parseCoreResponseForRequest(response, request).ok).toBe(true);
+    expect(() => parseCoreResponseForRequest({ ...response, trusted: { kind: "trusted", snapshot: { ...snapshot, runToken: randomUUID() } } }, request)).toThrow("identity mismatch");
   });
 });

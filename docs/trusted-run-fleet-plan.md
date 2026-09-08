@@ -10,22 +10,26 @@ The operator can keep several real local conversations running, address each by 
 
 - [x] Read existing single-conversation service and frozen shared contract.
 - [x] Add compatible typed summaries, activity, targeted snapshots and optional observed-turn send control.
-- [ ] Publish reviewed shared contract for independent cockpit/task consumers.
-- [ ] Implement bounded per-token service and separate atomic trusted history store.
-- [ ] Verify routing, capacity races, cancellation, persistence failure and restart without replay.
+- [x] Publish reviewed shared contract a6e7c8c in PR75; 1798 local tests passed.
+- [x] Implement bounded per-token service and separate atomic trusted history store.
+- [x] Verify routing, capacity races, cancellation, persistence failure and restart without replay in controlled tests.
 - [ ] Run relevant local checks and native review; push PR and synchronize Ditz.
 
 ## Surprises & Discoveries
 
 The current session already bounds output and validates provider turn identities. Its service allows only one conversation and passes an empty observation callback. The old isolated run store encodes different admission rules and must not be reused for this profile.
 
+Native review found a persistence completion race: a last callback could join an already-completed write barrier. Reinstating that exact old pump produced one failing public-callback test (72 passed); clearing writer ownership inside the same continuation closes the gap. A separate finding required lifetime writer exclusion across IDE/core instances, not merely serial writes inside one object. The new store holds a private advisory `flock` descriptor until its accepted queue drains and closes.
+
 ## Decision Log
 
 Use at most eight live runs and twenty retained records, with one concurrent context preparation. Reserve a record before awaiting launch revalidation so duplicate clicks cannot allocate twice. Retain a separate store outside the repository; recovered active records become failed/archived with an explicit interrupted/unknown message, not an invented outcome. The existing status vocabulary is preserved for compatibility.
 
+Persist a UTF-8 output tail of at most 128KiB and the last fifty activities with 2KiB summaries, further reducing old tails when JSON escaping would exceed 256KiB per record. Explicit omission text labels truncated output. The complete file remains under its 8MiB bound. Use `XDG_STATE_HOME/swarm-ide/trusted-local/<workspace-identity>.json`, or the normal `~/.local/state` fallback; another active IDE owner is rejected before reading/archiving its history. `flock` comes from the existing Nix util-linux environment, not a new dependency.
+
 ## Outcomes & Retrospective
 
-Implementation and proof are in progress. No multi-run or persisted provider behavior is claimed yet.
+Controlled multi-run, task materialization, restart-without-replay and lifetime writer tests are implemented. Real provider proof is separately manual and not claimed until its one-shot evidence completes. Crash-left temporary file garbage collection is tracked by Ditz issue `trusted-history-crash-temp-cleanup-20260907`; ordinary errors clean their owned temporary file.
 
 ## Context and Orientation
 
@@ -37,7 +41,7 @@ First push the compatible protocol increment so the cockpit and task views can d
 
 ## Concrete Steps
 
-Work in `/home/tedks/Projects/swarm-ide/trusted-run-fleet`. Materialize dependencies using `nix develop --command pnpm install --frozen-lockfile`. Run checks exclusively through `nix develop --command bazel test //tools:quality --jobs=3` and build with `nix develop --command bazel build //:desktop-bundle --jobs=3`. A focused fleet target may be added to avoid rerunning unrelated GUI proofs.
+Work in `/home/tedks/Projects/swarm-ide/trusted-run-fleet`. Materialize dependencies using `nix develop --command pnpm install --frozen-lockfile`. Run checks exclusively through `nix develop --command bazel test //tools/trusted-fleet:unit //tools:quality --jobs=3` and build with `nix develop --command bazel build //:desktop-bundle --jobs=3`. The focused fleet target covers contracts, sessions, fleet and persistence without rerunning unrelated GUI proofs.
 
 ## Validation and Acceptance
 
@@ -55,4 +59,7 @@ Operational seam and proof notes live in `/tmp/swarm-ide-real-swarms.Djy75P/flee
 
 The contract adds optional `runs`, `taskReference`, `activities`, and `archived` fields without removing selected-run fields. `trusted.snapshot` accepts an optional run token; `trusted.send` optionally carries the observed turn identity, where null means start a next turn. `createSession(onChange)` permits live observations; an optional `activity()` accessor integrates the independently reviewed provider activity slice. The new store exposes asynchronous `load` and `save` of validated bounded run records.
 
+`FileTrustedLocalStore.close()` rejects new operations, drains previously accepted operations, and releases its advisory writer lock. The service calls it only after all owned sessions and pending launches settle. Corrupt/unreadable history is not overwritten by shutdown. A persistence error blocks further new commands while retaining Stop authority.
+
 Initial revision: record scope and compatibility assumptions before implementation.
+Implementation revision: record actual race discoveries, bounded storage policy and exclusive writer lifetime.
