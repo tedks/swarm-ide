@@ -1,0 +1,19 @@
+id: swarm-live-fleet
+title: Read the active multi-worktree swarm in real time
+desc: 'F7: Register/watch this real ROOT and children across worktrees. Show actual
+  lineage, timestamped commands and file edits across all relevant sessions, stable
+  event identities and bounded reads. Preserve session ownership; expose task/worktree
+  identity. Direct two-session append check and focused tests. docs/swarm-operator-hour.md.'
+type: task
+component: default
+release:
+reporter: Ted Smith <tedks@riseup.net>
+status: unstarted
+disposition:
+creation_time: 2026-09-08T03:40:02-00:00
+references: []
+log_events:
+- time: 2026-09-08T03:40:02-00:00
+  who: Ted Smith
+  what: created
+  comment: ""
