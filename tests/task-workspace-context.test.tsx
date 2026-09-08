@@ -30,7 +30,7 @@ it("shows compact metadata, literal real history and exact dependency titles; no
   expect(await screen.findByText("<b>Review complete</b>")).toBeTruthy();
   const button = screen.getByRole("button", { name: "Select dependency blocker" });
   expect(button.textContent).toBe("Approve the interface"); fireEvent.click(button); expect(input.onSelect).toHaveBeenCalledWith("blocker");
-  expect(screen.getByText("No agent activity in this scope.")).toBeTruthy();
+  expect(screen.getByText("No isolated run or recorded activity in this scope.")).toBeTruthy();
   expect(screen.queryByRole("heading", { name: "Description" })).toBeNull();
 });
 it("late previous-task history cannot overwrite the current selection", async () => {
