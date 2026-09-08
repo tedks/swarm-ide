@@ -51,3 +51,13 @@ log_events:
     fixed by scoped pass. PR92 carries direct joined proof/docs; PR89 already landed
     F7 producer.30 focused/typechecks pass; native narrow convergence CLEAN. ROOT
     owns landing/closure, no app/model/physical changes.
+- time: 2026-09-08T05:12:38-00:00
+  who: Ted Smith
+  what: commented
+  comment: 'PR92 joined proof normally merged: actual packaged briefing link opened
+    the registered agent worktree source, not a same-path local decoy; dirty editor,
+    cursor and cameras retained. Owned proof 2.79s, cleanup complete, zero renderer
+    errors; 30 focused checks/types and native convergence passed. Only docs/proof
+    files were new to current master; production correction already landed with PR89.
+    Earlier full-journey stale-activity timeout remains separately attributed, not
+    claimed fixed.'
