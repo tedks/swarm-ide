@@ -79,10 +79,12 @@ async function main() {
       edges: document.querySelectorAll('.design-graph .react-flow__edge').length,
       planHeight: document.querySelector('.planning-field').getBoundingClientRect().height,
       navigationHeight: document.querySelector('.navigation-field').getBoundingClientRect().height,
+      planWidth: document.querySelector('.design-workspace').getBoundingClientRect().width,
       twoColumns: getComputedStyle(document.querySelector('.design-quadrants')).display === 'grid' &&
         document.querySelector('.design-document').getBoundingClientRect().right <= document.querySelector('.design-components').getBoundingClientRect().left + 1,
       duplicateShell: Boolean(document.querySelector('.activity-dock > .dock-header')),
     }));
+    await fs.writeFile(path.join(evidence, 'plan-startup.json'), JSON.stringify(planStartup, null, 2));
     assert.equal(planStartup.lens, 'Plan'); assert.deepEqual(planStartup.lenses, ['Plan', 'Code']);
     assert(planStartup.graphs >= 2 && planStartup.edges >= 1);
     assert(planStartup.planHeight > planStartup.navigationHeight * .6, 'Retained hidden Code graphs must not consume an extra layout row');

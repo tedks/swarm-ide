@@ -305,6 +305,12 @@ button.truth-dot:disabled { cursor: wait; opacity: 0.72; }
 .navigation-field.plan-home:has(> .surface-tabs-strip) > .planning-field { grid-row: 3; }
 .navigation-field.plan-home > .surface-tabs-strip { grid-column: 1; grid-row: 2; }
 .navigation-field.plan-home > .graphs-grid.is-sidebar { width: var(--graph-share, 43%); grid-row: 2 / span 2; }
+/* The full-width Plan home can use two modest columns sooner than an embedded
+   standalone design view. Below this size keep the plan owner's readable stack. */
+@container (min-width: 760px) {
+  .navigation-field.plan-home .design-quadrants { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr); }
+  .navigation-field.plan-home .design-components { order: 0; min-height: 0; }
+}
 .graphs-grid { overflow: auto; grid-template-rows: repeat(2, minmax(100px, 1fr)); }
 .graph-pane { min-width: 0; grid-template-rows: 29px minmax(0, 1fr); }
 .graph-header > div:first-child { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
