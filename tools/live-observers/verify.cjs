@@ -1,0 +1,10 @@
+const assert = require("node:assert/strict"), fs = require("node:fs"), root = process.argv[2];
+const proof = JSON.parse(fs.readFileSync(root + "/proof.json")), close = JSON.parse(fs.readFileSync(root + "/postclose.json"));
+assert(proof.ok && proof.controlled && proof.packaged && proof.modelTurns === 0);
+assert(proof.automaticAppend && proof.automaticRegistryDiscovery && proof.tailReplacedWithoutDuplicates);
+assert(Object.values(proof.retained).every((value) => value === true));
+assert.deepEqual(proof.rendererErrors, []);
+assert.deepEqual(JSON.parse(fs.readFileSync(root + "/renderer-close.json")).rendererErrors, []);
+assert.equal(close.desktopCode, 0);
+assert(close.ownedScratchCleaned);
+console.log("Owned packaged live observation passed with controlled JSONL appends, bounded replacement and retained work.");
