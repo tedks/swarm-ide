@@ -29,5 +29,14 @@ log_events:
     reader disclosure in Context, retaining directory information and actual errors/staleness.
     Exact display-only hunk assigned to activity-ui; no backend/schema/provenance
     removal or general Context redesign."
+- time: 2026-09-08T13:51:15-00:00
+  who: Ted Smith
+  what: commented
+  comment: Implemented accessible current-agent glyphs, historical Work Log status
+    independent of Ditz recording, raw timestamped Activity, settings gear and truthful
+    build counts/indeterminate progress. PR105; shared lifecycle3e0b007 and loadera82034d
+    normally composed.232 focused tests pass plus native convergence and actual packaged
+    keyboard/source-draft-camera proof1.67s with zero renderer errors/owned cleanup.
+    ROOT owns merge/adoption; no model turn.
 blocks:
 - swarm-usability-join
