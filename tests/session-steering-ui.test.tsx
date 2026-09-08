@@ -107,7 +107,7 @@ describe("explicit observed-session steering", () => {
     draft("Please inspect the failing test.");
     expect(request).not.toHaveBeenCalled();
     fireEvent.click(sendButton());
-    await screen.findByRole("status", { name: "Queued" });
+    await screen.findByRole("status", { name: "Sent to queue" });
     expect(request).toHaveBeenCalledTimes(1);
     expect(request.mock.calls[0][0]).toMatchObject({ protocolVersion: PROTOCOL_VERSION, type: "externalAgents.send", sessionId: id(1),
       observationId: "1".repeat(64), text: "Please inspect the failing test." });

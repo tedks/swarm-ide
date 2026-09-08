@@ -1,108 +1,63 @@
-# Present the connected demo
+# Present the working cockpit
 
-Use [the five-minute tour](../demo.md) as the click path.
+Use [the five-minute tour](../demo.md) as the click path. Focus on one story:
+understand a component, open its source, follow the agent changing it, and inspect
+the resulting work.
 
-## Before sharing the screen
+## Before sharing
 
-Use a disposable Swarm checkout with dependencies installed and the actual
-local `ditz-metadata` branch fetched. Start through the README's Nix/Bazel command
-on an unoccupied port. No model key or registry is necessary. Refresh Tasks,
-choose All, and confirm `repo-task-context-core-d4` resolves. Load the Plan index.
-Do not include private session data in distributed archives or screenshots.
+Open a trusted checkout with the [installed Linux command](../linux-install.md).
+Fetch its local Ditz metadata if you want tasks. Connect an existing Codex tmux
+session if you want live agents; verify the expected agent appears before the
+presentation. Do not distribute private registries, transcripts or account files.
 
-The default window can require scrolling inside panels. Selected Plan actions
-are grouped by document, source and task; scroll within a group and hover a
-clipped label to read its full path or ID. **Why this context?** brings supporting
-guidance into view. Scroll the draft for Prepare. Avoid a live resize-heavy
-performance test: the exact known ResizeObserver warning remains tracked.
+The design/source part requires no model account. Reading registered agents or
+existing outcomes does not request a turn. Leave Work Log stopped unless you
+intend to run the summary worker, and do not send test messages to a busy agent.
 
 ## Five-minute narration
 
 | Time | Show | Say |
 | --- | --- | --- |
-| 0:00–0:50 | Plan, task-context component, briefing, Why this context? | “Intent, contract, implementation and lessons live alongside the code.” |
-| 0:50–1:30 | Actual D4 task; Task blockage and coverage | “Containment and dependency are different graphs; recorded work is not dispatch authority.” |
-| 1:30–2:15 | Source, Build graph, source-focused draft | “I change perspective without losing the file or retargeting the assignment.” |
-| 2:15–3:35 | Attach, keep instructions, Prepare, exact prompt | “The assignment is bounded and inspectable. Preparation is local and real; launch is gated.” |
-| 3:35–4:40 | Recent activity → Logical changes → evidence | “Read logical changes and decisions, not several walls of agent transcripts.” |
-| 4:40–5:00 | Optional known external session, or return to source | “Observation is available when configured. The core tour needs no credentials.” |
+| 0:00–1:00 | Workspace components → Read design → source link | “The design lives beside the code; I can move from a responsibility to its implementation.” |
+| 1:00–2:00 | Source, file Context, task document and blockers | “Different views explain the same work without losing my editor.” |
+| 2:00–3:00 | Registered conversation, tabs, terminal command | “This is the existing agent, not a second copy. I can keep using its terminal.” |
+| 3:00–4:00 | Activity event → source/patch; Work Log outcome | “Activity shows operations. The Work Log explains what was accomplished.” |
+| 4:00–5:00 | Agent worktree → changed file/diff → original source | “I can inspect the agent's real branch while keeping my own work intact.” |
 
-Do not read checksums aloud; they support freshness and integrity, not the story.
+Without registered agents, spend the last two minutes on authored task/design
+links and source/build dependencies. Say that live-agent observation requires
+association; do not substitute a synthetic agent without labelling it.
 
-## Recover honestly
+## Keep the claims close to the screen
 
-Empty Tasks: check local `ditz-metadata`, Refresh, select All for closed work, and
-search the full ID. Missing task descriptions or references: say so and use the
-component's explicit source link. Do not substitute invented references.
+The current worktree action opens a central read-only inspector, not the main
+directory browser. Native worktree switching and selected-target builds are
+pending. Build graph observation reads Bazel definitions; it is not a successful
+binary build. The service-topology action is specific to Swarm's example.
 
-Task graph: at most 64 detail records, not filtered by the rail search. Partial
-coverage is expected in a larger repo. Find specific work through direct
-component links or the rail instead of hunting for absent nodes.
+The live Work Log has explicit Start/Stop and model settings. Saved summaries are
+a different, historical source. Opening a report does not rerun its checks.
+A queued message may not have reached a usable receipt yet; copy its text or
+open the same terminal before retrying. See [current limits](../demo.md#current-limits).
 
-Build graph: if unavailable or retained, explain its status and continue with
-actual source/design. A declaration query is not a binary build. Swarm's example
-service topology is not a general service detector.
+If task metadata is missing, fetch/reconcile the local Ditz branch. Tasks update
+when that ref changes, but Swarm does not fetch the remote. Use the sidebar's
+search and All filter for a particular completed issue instead of hunting through
+a partial task graph. Missing plans or services do not make the project empty.
 
-Prepare: if metadata advanced, Refresh tasks, inspect and explicitly reattach,
-then Prepare again. Do not silently update a pinned draft. Keep Launch disabled;
-no account login belongs in this tour.
+Save edits before closing. Prefer a disposable checkout for an editing demo;
+do not resize-stress the app or alter a busy agent's files just to show an effect.
 
-Observer: absent private registry means skip it. Otherwise choose a known entry
-manually. D4/D5/D6 are report labels, not verified session IDs or native
-Journal-to-session links. Never distribute the operator registry.
+## Existing verification, not a new recording
 
-## Live, recorded or synthetic?
+PR111 exercised the installed Linux app against another real repository and
+registered Codex agents; the checked terminal agent survived IDE close.
+PR112 exercised Linux/amd64 Docker/noVNC input and real source opening.
+Their detailed scope is in the [evaluator guide](../evaluator-install.md#what-has-actually-been-exercised).
 
-Directory/source, local Ditz reads, authored Plan reads, Bazel declaration queries
-and prepared task/disk context are actual local operations. This briefing and
-the plan index are authored artifacts, not inferred architecture.
-
-Logical Activity is supervised-agent-generated **recorded output**, combining
-Git observations and attributed reports. The UI neither runs that summarizer nor
-reruns reported tests. See [the authoring loop](../logical-changelog.md).
-Synthetic agent rehearsals and disposable observer examples are separate
-verification demonstrations, not managed model turns. No synthetic observer is
-needed for the main tour.
-
-## Joined walkthrough gaps
-
-There is no automatic Plan → complete effective prompt expansion, task → verified
-session join, or Journal → observed-session selection. The human follows
-authored guidance and optionally looks up a registered session manually. There
-is no in-app summarizer scheduler or verified managed launch.
-
-Task descriptions/references can be sparse and the first 64 graph records may
-not include the narrated feature. Viewport density can require scrolling.
-`docs/repo-task-draft.md` still opens with historical D3-only status; the new
-briefing explicitly distinguishes that from current preparation.
-
-## Reproduce the owned walkthrough
-
-After dependency installation, from this checkout:
-
-```bash
-SWARM_VIRTUAL_DISPLAY=:135 SWARM_VIRTUAL_DESKTOP_PORT=55215 \
-  nix develop --command bazel run --jobs=3 //tools/demo-tour:smoke
-```
-
-The manual proof uses the packaged product on supervisor-owned virtual X11,
-copies committed source and the actual local metadata branch into private
-temporary storage, and leaves screenshots/results under `artifacts/demo-tour/`.
-It never automates the physical desktop, changes user files, creates fake tasks,
-or starts a model. Local metadata must exist. Evidence describes that copied
-observation, not future metadata or every repository.
-
-The smoke rejects ambient Git redirection/configuration overrides; run it from
-an ordinary shell without those overrides. Editor/pager preferences are accepted
-but removed from its noninteractive Git environment. Missing metadata or a port
-collision fails closed rather than touching another repository or process.
-
-The September 7 joined validation includes the merged UI polish and installation
-documentation. It used actual Swarm history and Ditz metadata:
-Plan/briefing/contract → D4 → source and a current file-owner build graph →
-Attach/Prepare → recorded Activity. Source text/cursor, draft and graph instances
-survived Activity inspection. The task graph reported 64/160 details, not complete
-coverage. The run had no renderer errors or model mutations; the optional
-observer was not configured and was not replaced with synthetic data. Screenshots
-are generated by the reproducible command above; the smoke is an automated
-interaction proof, not a timed usability study of a human presenter.
+The older `//tools/demo-tour:smoke` proof followed the September 7 task-context
+journey (Plan → D4 → source → Attach/Prepare → saved Activity) on an owned virtual
+desktop. That historical run does not validate this newer click path or the
+latest source tree. It is not a first-user setup requirement. Development proof
+tooling belongs in the [development loop](../development-loop.md).

@@ -37,7 +37,7 @@ export function writeOutbox(storage: OutboxStorage | null, messages: OutgoingMes
 
 export const outgoingPresentation = {
   sending: { symbol: "◌", label: "Sending", explanation: "Sending this saved message." },
-  queued: { symbol: "◷", label: "Queued", explanation: "Saved in Codex’s queue; not yet confirmed in the conversation." },
+  queued: { symbol: "↥", label: "Sent to queue", explanation: "Codex accepted this message into its queue. The IDE cannot yet confirm when the agent receives it." },
   rejected: { symbol: "⊘", label: "Not sent", explanation: "The message was not queued. Copy it to send in the terminal." },
   "delivery-unknown": { symbol: "?", label: "Unconfirmed", explanation: "Delivery could not be confirmed. Check the terminal before sending again." },
 } as const;
