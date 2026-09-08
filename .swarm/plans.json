@@ -678,8 +678,19 @@
         },
         {
           "label": "//tools/build-graph:compat-checks",
-          "role": "Checks explicit dependency loading, cancellation and declared demo applicability",
+          "role": "Checks automatic dependency loading, large raw output, cancellation and declared demo applicability",
           "dependencies": [{ "label": "//:quality_sources", "relation": "data" }]
+        },
+        {
+          "label": "//tools/build-graph:startup-smoke",
+          "role": "Proves automatic packaged graph startup and definition changes without refresh clicks",
+          "dependencies": [
+            { "label": "//tools/build-graph:sources", "relation": "data" },
+            { "label": "//:desktop-bundle", "relation": "data" },
+            { "label": "//tools:virtual-desktop-run.sh", "relation": "data" },
+            { "label": "//tools:x11-driver-source", "relation": "data" },
+            { "label": "//tools/task-integration:sources", "relation": "data" }
+          ]
         },
         {
           "label": "//tools/build-graph:compat-probe",

@@ -26,7 +26,7 @@ are not expanded. A rule opens its actual BUILD or BUILD.bazel declaration.
 
 This is **query evidence, not successful binary compilation, tests, deployment,
 runtime metrics or an exclusive file-ownership claim**. Bazel's standard repository
-loading still evaluates repository-controlled definitions. Downloads are disabled;
+loading still evaluates repository-controlled definitions. Declared dependencies may download automatically;
 this is not a newly established network/filesystem sandbox for arbitrary untrusted
 Starlark. Use repositories you intend to load with Bazel.
 
@@ -37,13 +37,13 @@ Starlark. Use repositories you intend to load with Bazel.
 seconds. Hidden or blurred documents stop scheduling, and returning to the app
 revalidates after two seconds. A settled observation has no polling timer. While
 an input sample or query is running, one request chain checks its result every
-500 ms, for at most 40 seconds per passive update cycle (a 125-second observation
-window for deliberate loading, including cleanup margin). The core samples inputs at most
+500 ms, for at most 40 seconds per input-check cycle (a 125-second observation
+window when a query loads dependencies, including cleanup margin). The core samples inputs at most
 once per 1.5 seconds and coalesces requests. Queries occur only on first demand,
 explicit **Refresh dependencies**, or changed build inputs—not every source edit.
 
 The cockpit App owner mounts this shared hook with live-core readiness independent
-of pane visibility, and passes `snapshot.revisions.working.id` as `changeToken`.
+of pane visibility, and passes `snapshot.revisions.working.fingerprint` as `changeToken`.
 The hook alone does not change the App's selected-pane policy. The fixed example
 service-artifact build is a separate explicit operation; this automatic path
 never compiles binaries or advances the built/deployed revision.
@@ -68,12 +68,21 @@ not omniscient change detection or a snapshot filesystem.
 ## Bounds and ownership
 
 Each provider reuses one private temporary output/dependency cache with an owned
-PID-namespace process tree, not a shared Bazel server. Automatic queries disable
-downloads; deliberate **Refresh dependencies** permits declared dependency loading,
-with visible progress and **Cancel refresh**. No compilation occurs. The cache is
+PID-namespace process tree, not a shared Bazel server. Opening a trusted project,
+changing its build inputs or selecting a worktree automatically permits declared
+dependency loading, with visible progress and **Cancel refresh**. The same immutable
+worktree provider/cache is reused on return. Failed unchanged inputs wait for
+**Refresh dependencies**; status ticks and source-only edits do not restart queries.
+No compilation occurs. The cache is
 removed after confirmed provider shutdown. It runs batch mode with three loading/JVM
-workers, a 512 MiB Java heap, a 30-second offline query deadline (120 seconds for
-deliberate loading), and 4 MiB combined output. A bounded readable stderr tail
+workers, a 512 MiB Java heap and a 120-second dependency-query deadline (30 seconds
+for the explicit low-level offline mode). The old 4 MiB raw query-output cutoff is
+removed at the user's request. Output progress reports MiB received; diagnostics
+retain only a 4 KiB tail. The current collector still buffers raw stdout, so very
+large query representations can use substantial core memory. Revisit streaming
+or an output cap if actual resource measurements warrant it; source repository
+size is not a reliable proxy for query-output size. The compact graph still has
+its independent 4 MiB wire bound. A bounded readable stderr tail
 survives failure instead of hiding dependency setup errors. The
 projection permits 2,000 targets and 8,000 edges. Input sampling permits 20,000
 paths and 8 MiB of definition bytes. Ordinary filesystem metadata calls retain
@@ -108,3 +117,11 @@ Run all builds/tests through Nix and Bazel with `--jobs=3`. Desktop acceptance m
 own a virtual X11 desktop and an available configured port; never automate the
 physical preview. B1 evidence and precise test attribution are recorded
 in `.planning/dynamic-build-graph.md` and its linked step directory.
+
+`//tools/build-graph:compat-checks` additionally checks automatic declared setup,
+large raw records, retained failures and cancellation. `//tools/build-graph:compat-probe`
+takes an actual repository path, starts with passive `observe(false)`, reports
+raw bytes/record counts and coverage, proves one-query cache reuse, checks unchanged
+Git status, and confirms cleanup. `//tools/build-graph:startup-smoke` observes the
+real packaged bridge passively and proves the graph is ready before opening its
+lens, without a refresh click or target compilation.

@@ -89,7 +89,7 @@ it("rejects malformed/truncated/duplicate/invalid utf8 output and labels omitted
   for (const value of [Buffer.from("{"), Buffer.from('{"type":"RULE"}\n'), Buffer.from([0xff, 10]), output(rule("//a:x"), rule("//a:x"))])
     expect(() => parseBuildQuery(value)).toThrow();
   expect(parseBuildQuery(output(rule("//a:x", ["//unknown:omitted"]))).complete).toBe(false);
-  expect(() => parseBuildQuery(Buffer.alloc(BUILD_GRAPH_LIMITS.bytes + 1))).toThrow(/bound/);
+  expect(() => parseBuildQuery(Buffer.alloc(BUILD_GRAPH_LIMITS.bytes + 1))).toThrow(/Truncated/);
 });
 it("reports target overflow as partial with no dangling edges", () => {
   const parsed = parseBuildQuery(output(...Array.from({ length: BUILD_GRAPH_LIMITS.targets + 1 }, (_, index) => rule(`//a:n${index}`, ["//a:n2000"]))));

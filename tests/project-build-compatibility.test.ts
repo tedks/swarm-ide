@@ -34,7 +34,7 @@ it("requires the exact declared demo mapping and manifest; another Bazel project
   provider.dispose();
 });
 
-it("keeps passive queries offline; only deliberate refresh authorizes declared dependency loading", async () => {
+it("loads dependencies automatically while keeping low-level offline queries available", async () => {
   expect(buildQueryArgs()).toContain("--repository_disable_download");
   expect(buildQueryArgs(true)).not.toContain("--repository_disable_download");
   expect(buildQueryArgs(true)).toContain("--lockfile_mode=off");
@@ -45,10 +45,10 @@ it("keeps passive queries offline; only deliberate refresh authorizes declared d
   });
   let now = 2000;
   const provider = new BuildGraphProvider("/other", "r", "w", { digest: async () => "a".repeat(64), query, now: () => now });
-  provider.observe(); await flush(); expect(provider.observe().message).toContain("download is disabled");
+  provider.observe(); await flush(); expect(provider.observe().status).toBe("current");
   now += 2000; provider.observe(); await flush(); expect(query).toHaveBeenCalledTimes(1);
   provider.observe(true); await flush(); expect(provider.observe().status).toBe("current");
-  expect(query.mock.calls.map((call) => call[3]?.allowDownloads)).toEqual([false, true]);
+  expect(query.mock.calls.map((call) => call[3]?.allowDownloads)).toEqual([true, true]);
   await provider.dispose();
 });
 
