@@ -1,5 +1,10 @@
 # Agent owners, observation and steering
 
+Composer polish is planned in `swarm-chat-composer-polish`: keep the textarea
+focused but read-only during a pending send, and put a compact send arrow inside
+its frame. Only an explicit submission may restore focus; late receipts must
+not take focus from another agent, source file or dialog.
+
 An agent has a conversation, a task, a parent and a source world. It also has one
 execution owner. Swarm observes normal terminal agents and owns native IDE agents;
 showing them together must not launch a second copy of a running conversation.
