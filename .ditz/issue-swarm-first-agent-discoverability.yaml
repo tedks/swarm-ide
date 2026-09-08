@@ -28,3 +28,12 @@ log_events:
     produce a persistent failure paragraph: show New agent composer or No agents connected.
     Actual refresh failure: Could not refresh agents, with useful retry/last-update
     context only.'
+- time: 2026-09-08T19:28:47-00:00
+  who: Ted Smith
+  what: commented
+  comment: 'User now explicitly authorizes implementation: visible New agent button
+    in the conversation area (not Agent tools), prompt then Enter starts normal Codex
+    in the selected worktree. No mandatory source file, Ditz task, Observe/Draft/Prepare/profile-review
+    ceremony. Retain actual harness approvals, message persistence, stop/steering
+    and root identity. Separate startup-build/service-discovery peers; direct local/native
+    proof, owned GUI only.'
