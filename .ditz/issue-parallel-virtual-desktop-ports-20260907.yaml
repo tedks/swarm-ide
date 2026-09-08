@@ -1,7 +1,7 @@
 id: parallel-virtual-desktop-ports-20260907
-title: Allow owned packaged tests on per-agent virtual ports
-desc: Remove two fixed 55174 launcher restrictions while preserving owned X11 validation
-  and prove actual concurrent packages.
+title: Allow packaged tests to use per-agent virtual ports
+desc: Remove the two launcher restrictions that fix the port at 55174. Keep validation
+  that the test owns its X11 session, and verify that packaged apps actually run concurrently.
 type: bugfix
 component: default
 release:
@@ -45,3 +45,11 @@ log_events:
   comment: PR57 normally merged after ROOT accepted the three-launcher implementation,
     local proof/review and clean integration. Reveal timeout remains separately open/nonblocking;
     task-rehearsal fixed-port follow-up remains open.
+- time: 2026-09-08T04:30:24-00:00
+  who: Ted Smith
+  what: changed title
+  comment: ""
+- time: 2026-09-08T04:30:24-00:00
+  who: Ted Smith
+  what: updated description
+  comment: ""
