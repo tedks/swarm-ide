@@ -5,7 +5,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { PlanIndexSchema } from "../protocol/plans";
-import { DesignWorkspace, designProjection } from "../app/renderer/plans/DesignWorkspace";
+import { DesignWorkspace, designProjection, designContracts } from "../app/renderer/plans/DesignWorkspace";
 import { initialSnapshot } from "../fixtures/world";
 import { PROTOCOL_VERSION, type CoreRequest, type CoreResponse } from "../protocol/schema";
 
@@ -37,13 +37,24 @@ function bridge() {
 }
 
 describe("component graph remains stable and truthful", () => {
-  it("keeps every root interface direction and distinguishes parent containment", () => {
+  it("opens a responsibility hierarchy without drawing every child's contracts", () => {
     const result = designProjection(index, index.nodes[0]!);
     expect(result.nodes).toHaveLength(7);
     expect(result.edges.filter(e => e.kind === "containment")).toHaveLength(6);
-    const authored = index.nodes.flatMap(n => (n.design?.connections ?? []).map(e => [n.id, e.targetId, e.label]));
-    expect(result.edges.filter(e => e.kind === "interface").map(e => [e.source, e.target, e.label])).toEqual(authored);
-    expect(result.edges.filter(e => e.kind === "interface" && result.edges.some(other => other.kind === "interface" && other.source === e.target && other.target === e.source))).toHaveLength(8);
+    expect(result.edges).toHaveLength(6);
+    for (const area of index.nodes.filter(n => n.parentId === "design:system")) {
+      const focused = designProjection(index, area);
+      const authored = index.nodes.flatMap(n => (n.design?.connections ?? [])
+        .filter(e => n.id === area.id || e.targetId === area.id).map(e => [n.id, e.targetId, e.label]));
+      expect(focused.edges.map(e => [e.source, e.target, e.label])).toEqual(authored);
+    }
+  });
+  it("accepts optional contract semantics without reinterpreting legacy connections", () => {
+    const typed = structuredClone(index);
+    Object.assign(typed.nodes[1]!.design!.connections[0]!, { kind: "request", detail: "Read a file through the typed broker." });
+    expect(PlanIndexSchema.safeParse(typed).success).toBe(true);
+    Object.assign(typed.nodes[1]!.design!.connections[0]!, { kind: "deployment" });
+    expect(PlanIndexSchema.safeParse(typed).success).toBe(false);
   });
   it("focuses incident interfaces, not relationships between unrelated neighbours", () => {
     const selected = index.nodes.find(n => n.id === "design:cockpit")!;
@@ -53,6 +64,52 @@ describe("component graph remains stable and truthful", () => {
     const reordered = structuredClone(index);
     reordered.nodes.find(n => n.id === selected.id)!.design!.connections.reverse();
     expect(designProjection(reordered, reordered.nodes.find(n => n.id === selected.id)!).edges.map(e => e.id).sort()).toEqual(result.edges.map(e => e.id).sort());
+  });
+  it("keeps navigation, saved-summary data, requests and replies distinct in the actual index", () => {
+    const activity = index.nodes.find(n => n.id === "design:activity")!;
+    const links = designContracts(index, activity);
+    expect(links.filter(c => c.target.id === "design:agents").map(c => c.link.kind)).toEqual(["navigation", "data"]);
+    expect(links.find(c => c.target.id === "design:planning")!.link.detail).toContain("already-closed");
+    const repository = index.nodes.find(n => n.id === "design:repository")!;
+    const pair = designContracts(index, repository).filter(c => c.source.id === "design:runtime" || c.target.id === "design:runtime");
+    expect(pair.map(c => c.link.kind)).toEqual(["request", "result"]);
+    for (const contract of links) {
+      const selected = designProjection(index, activity, contract.id);
+      expect(selected.nodes.map(n => n.id).sort()).toEqual([contract.source.id, contract.target.id].sort());
+      expect(selected.edges).toHaveLength(1);
+      expect(selected.edges[0]).toMatchObject({ id: contract.id, source: contract.source.id, target: contract.target.id, kind: contract.link.kind });
+    }
+  });
+  it("inspects one contract through the picker or edge without changing component, source or camera", async () => {
+    const request = bridge(), onOpenFile = vi.fn();
+    const view = render(<DesignWorkspace {...options} onOpenFile={onOpenFile} />);
+    await screen.findByText("docs/design/system.md");
+    fireEvent.click(screen.getByRole("button", { name: "design:activity" }));
+    await screen.findByText("docs/design/activity.md");
+    const picker = screen.getByRole("combobox", { name: "Architectural contract" });
+    const activity = index.nodes.find(n => n.id === "design:activity")!;
+    const contracts = designContracts(index, activity);
+    const data = contracts.find(c => c.link.kind === "data" && c.source.id === activity.id)!;
+    flow.viewport = { x: 34, y: 20, zoom: .7 };
+    fireEvent.change(picker, { target: { value: data.id } });
+    expect(flow.props.get("component").edges).toHaveLength(1);
+    expect(screen.getByRole("complementary", { name: "Selected architectural contract" }).textContent).toContain("Latest saved summary");
+    expect(flow.viewport).toEqual({ x: 34, y: 20, zoom: .7 });
+    const before = flow.props.get("component").edges;
+    view.rerender(<DesignWorkspace {...options} onOpenFile={onOpenFile} />);
+    expect(flow.props.get("component").edges).toBe(before);
+    fireEvent.click(screen.getByRole("button", { name: "Refresh design" }));
+    await waitFor(() => expect(request.mock.calls.filter(([r]) => r.type === "plans.read")).toHaveLength(2));
+    await screen.findByText("docs/design/activity.md");
+    expect((picker as HTMLSelectElement).value).toBe(data.id);
+    expect(onOpenFile).not.toHaveBeenCalled(); expect(flow.fitView).not.toHaveBeenCalled();
+    fireEvent.change(picker, { target: { value: "" } });
+    const edge = flow.props.get("component").edges.find((e: any) => e.data.kind === "request");
+    act(() => flow.props.get("component").onEdgeClick({}, edge));
+    expect(screen.getByRole("complementary", { name: "Selected architectural contract" }).textContent).toContain("already-closed");
+    expect(flow.mounts).toBe(1);
+    view.rerender(<DesignWorkspace {...options} generation={2} onOpenFile={onOpenFile} />);
+    expect(screen.queryByRole("complementary", { name: "Selected architectural contract" })).toBeNull();
   });
   it("keeps canvas and unchanged node/label props on idle updates and an identical refresh", async () => {
     const request = bridge(); const view = render(<DesignWorkspace {...options} onOpenFile={vi.fn()} />);

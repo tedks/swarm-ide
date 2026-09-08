@@ -3,7 +3,7 @@ import { Background, BaseEdge, Controls, getBezierPath, MarkerType, Position, Re
 import { compactTaskPositions, dependencyPositions } from "../tasks/graph";
 
 export interface ProjectionNode { id: string; title: string; subtitle: string; warning?: boolean; position?: { x: number; y: number }; port?: Position }
-export interface ProjectionEdge { id: string; source: string; target: string; label: string; kind?: "containment" | "interface" }
+export interface ProjectionEdge { id: string; source: string; target: string; label: string; kind?: "containment" | "interface" | "request" | "result" | "data" | "navigation" }
 
 /** Labels are ordinary SVG text: they never disappear while measuring a box.
  * Reciprocal directed interfaces take opposite lanes, preserving both arrows. */
@@ -27,8 +27,8 @@ const edgeTypes = { design: DesignEdge };
 
 /** Each mounted projection owns its own camera. Changing metadata or selection
  * never requests fit; Fit is an explicit control after the initial mount. */
-export function ProjectionCanvas({ label, nodes: input, edges: links, selected, onSelect, taskScopeVersion, cameraScope }: {
-  label: string; nodes: ProjectionNode[]; edges: ProjectionEdge[]; selected: string | null; onSelect: (id: string) => void; taskScopeVersion?: number; cameraScope?: string;
+export function ProjectionCanvas({ label, nodes: input, edges: links, selected, onSelect, onSelectEdge, taskScopeVersion, cameraScope }: {
+  label: string; nodes: ProjectionNode[]; edges: ProjectionEdge[]; selected: string | null; onSelect: (id: string) => void; onSelectEdge?: (id: string) => void; taskScopeVersion?: number; cameraScope?: string;
 }) {
   const flow = useRef<ReactFlowInstance | null>(null);
   const cameras = useRef(new Map<string, Viewport>());
@@ -55,17 +55,22 @@ export function ProjectionCanvas({ label, nodes: input, edges: links, selected, 
       data: { label: <><strong>{node.title}</strong><small>{node.subtitle}</small></> },
       className: `planning-node ${node.warning ? "planning-warning" : ""}`, ariaLabel: `${node.title} · ${node.subtitle}` }));
     const edges: Edge[] = links.map((edge) => ({ ...edge, ...(edge.kind ? { type: "design", data: {
-      kind: edge.kind, emphasized: edge.kind === "interface" && (edge.source === selected || edge.target === selected),
-      reciprocal: edge.kind === "interface" && links.some((other) => other.kind === "interface" && other.source === edge.target && other.target === edge.source),
+      kind: edge.kind, emphasized: edge.kind !== "containment" && (edge.source === selected || edge.target === selected),
+      reciprocal: edge.kind !== "containment" && links.some((other) => other.kind !== "containment" && other.source === edge.target && other.target === edge.source),
       description: `${edge.source} → ${edge.target}: ${edge.label}`,
     }, ariaLabel: `${edge.source} → ${edge.target}: ${edge.label}` } : {}),
       markerEnd: edge.kind === "containment" ? undefined : { type: MarkerType.ArrowClosed },
-      style: { stroke: edge.kind === "containment" ? "#426960" : "#67b6a4", ...(edge.kind === "containment" ? { strokeDasharray: "4 5", opacity: .5 } : {}) }, labelStyle: { fill: "#bcd9d1", fontSize: 10 }, labelBgStyle: { fill: "#0c1b1e" },
+      style: { stroke: edge.kind === "containment" ? "#426960" : edge.kind === "navigation" ? "#b29cdd" : edge.kind === "result" || edge.kind === "data" ? "#e0bf82" : "#67b6a4", ...(edge.kind === "containment" ? { strokeDasharray: "4 5", opacity: .5 } : {}) }, labelStyle: { fill: "#bcd9d1", fontSize: 10 }, labelBgStyle: { fill: "#0c1b1e" },
       interactionWidth: 24, focusable: true }));
     return { nodes, edges };
   }, [input, links, selected, positions, taskScopeVersion]);
   return <div className="planning-canvas" aria-label={label} onKeyDownCapture={(event) => {
     if (event.key !== "Enter" && event.key !== " ") return;
+    const edgeTarget = event.target instanceof Element ? event.target.closest(".react-flow__edge[data-id]") : null;
+    const edgeId = edgeTarget?.getAttribute("data-id");
+    if (edgeId && onSelectEdge && event.currentTarget.contains(edgeTarget) && links.some((edge) => edge.id === edgeId && edge.kind !== "containment")) {
+      event.preventDefault(); event.stopPropagation(); onSelectEdge(edgeId); return;
+    }
     const target = event.target instanceof Element ? event.target.closest(".react-flow__node[data-id]") : null;
     const id = target?.getAttribute("data-id");
     if (!id || !event.currentTarget.contains(target) || !input.some((node) => node.id === id)) return;
@@ -74,6 +79,7 @@ export function ProjectionCanvas({ label, nodes: input, edges: links, selected, 
     <ReactFlow nodes={graph.nodes} edges={graph.edges} edgeTypes={edgeTypes} onInit={(instance) => { flow.current = instance; }} fitView fitViewOptions={{ padding: cameraScope ? .07 : .2, maxZoom: 1 }}
       minZoom={.08} maxZoom={2} nodesConnectable={false} nodesDraggable={false} elementsSelectable
       onNodeClick={(_event, node) => onSelect(node.id)}
+      onEdgeClick={(_event, edge) => { if (edge.data?.kind !== "containment") onSelectEdge?.(edge.id); }}
       onNodeDragStop={(_event, node) => setPositions((prior) => new Map(prior).set(node.id, node.position))}>
       {/* Selection has one authority: explicit click/key/outline gestures. A Flow
           selection observation may still describe the previous controlled nodes. */}

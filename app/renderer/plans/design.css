@@ -38,8 +38,13 @@
 .design-workspace .react-flow__attribution a { color: #bbd9cd; }
 .design-legend { color: #95b4aa; font-size: 11px; margin: 4px 0 8px; }
 .design-edge-label { opacity: 0; pointer-events: none; font: 12px system-ui; fill: #d3ebe2; stroke: #091719; stroke-width: 6px; paint-order: stroke; }
-.design-edge.interface[data-emphasized] .design-edge-label,
+.design-edge[data-emphasized] .design-edge-label,
 .react-flow__edge:hover .design-edge-label,
 .react-flow__edge:focus .design-edge-label { opacity: 1; }
+.design-contract-picker { display: flex; align-items: center; gap: 8px; font-size: 11px; margin-bottom: 8px; }
+.design-contract-picker select { min-width: 0; flex: 1; color: #d3ebe2; background: #17332c; border: 1px solid #527f70; padding: 5px; }
+.design-contract-detail { padding: 9px 0; border-bottom: 1px solid #34554e; font-size: 12px; line-height: 1.5; }
+.design-contract-detail strong { text-transform: none; }
+.design-contract-detail p { margin: 5px 0; }
 @media (max-width: 900px) { .design-quadrants { grid-template-columns: minmax(0, 1fr); grid-template-rows: none; overflow: visible; } .design-quadrants > * { max-height: 500px; } }
 @container (max-width: 850px) { .design-quadrants { display: flex; flex-direction: column; } .design-components { order: -1; min-height: 460px; } .design-quadrants > * { flex: 0 0 auto; max-height: 500px; } }

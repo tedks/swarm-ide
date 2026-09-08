@@ -21,35 +21,36 @@ export interface DesignWorkspaceProps {
   renderWorkspace?: (parts: DesignWorkspaceParts) => ReactNode;
 }
 
-export function designProjection(index: PlanIndex, selected: PlanNode) {
-  const children = index.nodes.filter((node) => node.parentId === selected.id);
-  const primary = new Set([selected.id, ...children.map((node) => node.id)]);
-  const connected = new Set<string>();
-  for (const node of index.nodes) for (const link of node.design?.connections ?? []) {
-    if (primary.has(node.id) || primary.has(link.targetId)) { connected.add(node.id); connected.add(link.targetId); }
-  }
-  const shown = [selected, ...children, ...index.nodes.filter((node) => connected.has(node.id) && !primary.has(node.id))];
-  const ids = new Set(shown.map((node) => node.id));
-  const nodes: ProjectionNode[] = shown.map((node, i) => {
-    const angle = (i - 1) * Math.PI * 2 / Math.max(1, shown.length - 1) - Math.PI / 2;
-    // A shallow ellipse uses the wide graph card without forcing a distant
-    // circular fit. More neighbours still grow the layout, never lose links.
-    const radius = Math.max(220, shown.length * 32), vertical = Math.max(80, shown.length * 12);
-    return { id: node.id, title: node.title,
-    subtitle: node.design?.state === "planned" ? "Planned component" : node.id === selected.id ? "Current component" : primary.has(node.id) ? "Open component" : "Connected component",
-    position: i === 0 ? { x: radius, y: vertical } : { x: radius + Math.cos(angle) * radius, y: vertical + Math.sin(angle) * vertical },
-    port: i === 0 ? Position.Bottom : Math.abs(Math.cos(angle)) > .6 ? Math.cos(angle) > 0 ? Position.Left : Position.Right : Math.sin(angle) > 0 ? Position.Top : Position.Bottom,
-  }; });
-  const edges: ProjectionEdge[] = children.map((node) => ({ id: `contains:${node.id}`, source: selected.id, target: node.id, label: "contains", kind: "containment" }));
+export function designContracts(index: PlanIndex, selected: PlanNode) {
   const occurrences = new Map<string, number>();
-  for (const node of shown) for (const link of node.design?.connections ?? []) {
-    // Neighbour-to-neighbour relationships are available when that component is
-    // selected, not presented as dependencies of the currently inspected node.
-    if (!ids.has(link.targetId) || (!primary.has(node.id) && !primary.has(link.targetId))) continue;
-    const identity = JSON.stringify([node.id, link.targetId, link.label]);
-    const occurrence = occurrences.get(identity) ?? 0; occurrences.set(identity, occurrence + 1);
-    edges.push({ id: `connection:${identity}:${occurrence}`, source: node.id, target: link.targetId, label: link.label, kind: "interface" });
-  }
+  return index.nodes.flatMap((source) => (source.design?.connections ?? [])
+    .filter((link) => source.id === selected.id || link.targetId === selected.id)
+    .map((link) => {
+      const identity = JSON.stringify([source.id, link.targetId, link.label, link.kind ?? "interface"]);
+      const occurrence = occurrences.get(identity) ?? 0; occurrences.set(identity, occurrence + 1);
+      return { id: `connection:${identity}:${occurrence}`, source, link, target: index.nodes.find((node) => node.id === link.targetId)! };
+    }));
+}
+
+export function designProjection(index: PlanIndex, selected: PlanNode, contractId: string | null = null) {
+  const children = index.nodes.filter((node) => node.parentId === selected.id);
+  const contracts = designContracts(index, selected);
+  const focused = contracts.find((contract) => contract.id === contractId);
+  // Hierarchy and contracts answer different questions. A parent never paints
+  // every child's relationships as if they were its own dependency edges.
+  const shownContracts = focused ? [focused] : contracts;
+  const related = new Set(shownContracts.flatMap(({ source, target }) => [source.id, target.id]));
+  const shown = focused ? [selected, ...index.nodes.filter((node) => node.id !== selected.id && related.has(node.id))]
+    : [selected, ...children, ...index.nodes.filter((node) => related.has(node.id) && node.id !== selected.id && !children.includes(node))];
+  const nodes: ProjectionNode[] = shown.map((node, i) => {
+    return { id: node.id, title: node.title,
+    subtitle: node.design?.state === "planned" ? "Planned component" : node.id === selected.id ? children.length ? "System overview" : "Selected component" : children.includes(node) ? "Responsibility area" : "Connected component",
+    position: focused ? { x: i * 420, y: 115 }
+      : i === 0 ? { x: 250, y: 0 } : { x: ((i - 1) % 3) * 250, y: 125 + Math.floor((i - 1) / 3) * 125 },
+    port: focused ? i === 0 ? Position.Right : Position.Left : i === 0 ? Position.Bottom : Position.Top,
+  }; });
+  const edges: ProjectionEdge[] = focused ? [] : children.map((node) => ({ id: `contains:${node.id}`, source: selected.id, target: node.id, label: "contains", kind: "containment" }));
+  edges.push(...shownContracts.map(({ id, source, target, link }) => ({ id, source: source.id, target: target.id, label: link.label, kind: link.kind ?? "interface" as const })));
   return { nodes, edges };
 }
 
@@ -123,6 +124,8 @@ export function DesignWorkspace(props: DesignWorkspaceProps) {
   const [docNotice, setDocNotice] = useState("");
   const [refresh, setRefresh] = useState(0), [linkNotice, setLinkNotice] = useState("");
   const lifetime = `${worldId}\0${repositoryId}\0${generation}\0${connected}`;
+  const [contractSelection, setContractSelection] = useState<{ scope: string; id: string } | null>(null);
+  const contractScope = `${lifetime}\0${node?.id}`;
   const live = useRef(lifetime); live.current = lifetime;
   const docPath = node?.docs[0];
   useEffect(() => {
@@ -141,11 +144,11 @@ export function DesignWorkspace(props: DesignWorkspaceProps) {
     }).catch(() => { if (!cancelled && live.current === origin) setDocNotice("Document unavailable. Refresh or open its source."); });
     return () => { cancelled = true; };
   }, [visible, props.taskOnly, props.documentVisible, current, docPath, lifetime, refresh, repositoryId, worldId]);
-  const graph = useMemo(() => index && node ? designProjection(index, node) : null, [index, node]);
+  const interfaces = useMemo(() => index && node ? designContracts(index, node) : [], [index, node]);
+  const selectedContract = contractSelection?.scope === contractScope ? interfaces.find((item) => item.id === contractSelection.id) : undefined;
+  const graph = useMemo(() => index && node ? designProjection(index, node, selectedContract?.id) : null, [index, node, selectedContract?.id]);
   const implementation = useMemo(() => node ? implementationProjection(node) : null, [node]);
-  const interfaces = useMemo(() => index && node ? index.nodes.flatMap((source) => (source.design?.connections ?? [])
-    .filter((link) => source.id === node.id || link.targetId === node.id)
-    .map((link) => ({ source, link, target: index.nodes.find((item) => item.id === link.targetId)! }))) : [], [index, node]);
+  const inspectContract = (id: string) => { if (current) setContractSelection({ scope: contractScope, id }); };
   const openBuild = (label: string) => {
     if (!current) return;
     if (onOpenBuild) onOpenBuild(label);
@@ -163,14 +166,24 @@ export function DesignWorkspace(props: DesignWorkspaceProps) {
             if (component) select(component.id); else onOpenFile(path);
           }} /> : null}
         </article>) : null;
-  const componentPane = node && graph ? (<section className="design-components" aria-label="Component connections"><h3>Components & connections</h3>
-          <p className="design-legend">Dashed: contains · arrows: interfaces. Focus a component or edge to inspect its connections.</p>
-          <div className="design-graph"><ProjectionCanvas key={`${worldId}:${repositoryId}`} cameraScope={node.id} label="Component design canvas" {...graph} selected={selected} onSelect={select} /></div>
+  const componentPane = node && graph ? (<section className="design-components" aria-label="Component connections"><h3>{interfaces.length ? "Component contracts" : "Responsibility map"}</h3>
+          <p className="design-legend">{interfaces.length ? "Arrows show direction. Choose one contract to see what crosses this boundary." : "Select an area to explore its contracts. Dashed lines group responsibilities."}</p>
+          {interfaces.length ? <label className="design-contract-picker">Contract <select aria-label="Architectural contract" disabled={!current} value={selectedContract?.id ?? ""} onChange={(event) => inspectContract(event.target.value)}>
+            <option value="">All {interfaces.length} contracts</option>
+            {interfaces.map(({ id, link }) => <option key={id} value={id}>{link.kind ?? "contract"} · {link.label}</option>)}
+          </select></label> : null}
+          <div className="design-graph"><ProjectionCanvas key={`${worldId}:${repositoryId}`} cameraScope={node.id} label="Component design canvas" {...graph} selected={selected} onSelect={select} onSelectEdge={inspectContract} /></div>
+          {selectedContract ? <aside className="design-contract-detail" aria-label="Selected architectural contract">
+            <strong>{selectedContract.link.kind ?? "Contract"} · {selectedContract.link.label}</strong>
+            <p>{selectedContract.source.title} → {selectedContract.target.title}</p>
+            {selectedContract.link.detail ? <p>{selectedContract.link.detail}</p> : null}
+            <button disabled={!current} onClick={() => select(selectedContract.source.id === node.id ? selectedContract.target.id : selectedContract.source.id)}>Explore {selectedContract.source.id === node.id ? selectedContract.target.title : selectedContract.source.title}</button>
+          </aside> : null}
           <details className="design-details" open={!props.renderWorkspace}><summary>Connections & constraints</summary><aside aria-label="Design links">
             {props.renderWorkspace && node.design?.constraints?.map((constraint, i) => <p key={i}>{constraint}</p>)}
             <PlanLinkList key={`${node.id}:components`} label="Components" items={index!.nodes.filter((item) => item.parentId === node.id).map((item) => <button key={item.id} disabled={!current} onClick={() => select(item.id)}>{item.title}</button>)} />
             {node.parentId && <button disabled={!current} onClick={() => select(node.parentId!)}>Up one level</button>}
-            <PlanLinkList key={`${node.id}:connections`} label="Connections" items={interfaces.map(({ source, link, target }, i) => <button key={`${source.id}:${target.id}:${link.label}:${i}`} disabled={!current} onClick={() => select(source.id === node.id ? target.id : source.id)}>{source.title} → {target.title}: {link.label}</button>)} />
+            <PlanLinkList key={`${node.id}:connections`} label="Connections" items={interfaces.map(({ id, source, link, target }) => <button key={id} disabled={!current} onClick={() => inspectContract(id)}>{source.title} → {target.title}: {link.label}</button>)} />
           </aside></details>
         </section>) : <div className="design-empty">
     <p>{notice || (loading ? "Loading components…" : "Add .swarm/plans.json to describe this project's components.")}</p>
