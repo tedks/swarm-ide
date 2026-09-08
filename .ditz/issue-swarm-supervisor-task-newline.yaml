@@ -11,8 +11,8 @@ type: bugfix
 component: default
 release:
 reporter: Ted Smith <tedks@riseup.net>
-status: in_progress
-disposition:
+status: closed
+disposition: fixed
 creation_time: 2026-09-08T05:04:35-00:00
 references: []
 log_events:
@@ -42,3 +42,10 @@ log_events:
     diff check passed. Native Codex review CLEAN with zero findings; full record posted
     in PR. Remains in_progress only pending ROOT-owned normal merge. No foreign review,
     hosted-CI wait, broad suite, live session launch/message or live supervisor mutation.'
+- time: 2026-09-08T06:03:04-00:00
+  who: Ted Smith
+  what: 'closed: fixed'
+  comment: 'Merged reviewed PR99: preserve exact queued assignment bytes instead of
+    stripping trailing newlines.25 focused supervisor tests passed, including8 newline/whitespace
+    cases and unchanged ancestry/model/compaction gates; native CLEAN. No active watcher
+    restarted and old failed ledgers preserved.'
