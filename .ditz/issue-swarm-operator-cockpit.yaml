@@ -10,8 +10,8 @@ type: task
 component: default
 release:
 reporter: Ted Smith <tedks@riseup.net>
-status: in_progress
-disposition:
+status: closed
+disposition: fixed
 creation_time: 2026-09-08T03:40:02-00:00
 references: []
 log_events:
@@ -68,6 +68,16 @@ log_events:
   who: Ted Smith
   what: updated description
   comment: ""
+- time: 2026-09-08T04:36:05-00:00
+  who: Ted Smith
+  what: 'closed: fixed'
+  comment: PR85 normally merged. The joined cockpit now opens live agent events in
+    their registered worktree, distinguishes recorded patches from current Git diffs,
+    opens Work Log outcomes and living designs centrally, and retains local editor/cursor/graph
+    positions. Actual joined virtual journey and focused/native checks passed. PR89
+    cross-worktree briefing fix composed with the session-aware consumer; ROOT joined
+    focused gates passed. Requested policy-warning and tab/scrollbar polish are separate
+    follow-ups.
 blocks:
 - swarm-owner-steering
 - swarm-operator-demo
