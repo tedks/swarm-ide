@@ -5,8 +5,8 @@ type: feature
 component: core
 release:
 reporter: Ted Smith <tedks@riseup.net>
-status: in_progress
-disposition:
+status: closed
+disposition: fixed
 creation_time: 2026-09-08T00:36:13-00:00
 references: []
 log_events:
@@ -42,3 +42,10 @@ log_events:
     controlled proof, last100 boundary and retention tests passed81/5; packagebuild
     PASS, native delta CLEAN. No new product turn, prior real3turn proof attribution
     unchanged. Ready ROOT landing and W6/T5 joins."
+- time: 2026-09-08T01:21:21-00:00
+  who: Ted Smith
+  what: 'closed: fixed'
+  comment: PR75 normally merged b27e0ad. Eight-live/twenty-retained trusted runtime,
+    exact controls, persistence and actual two-conversation/three-turn owned core
+    proof accepted; final A2 join focused/native checks passed. Joined cockpit remains
+    W6; crash-temp cleanup separately open.
