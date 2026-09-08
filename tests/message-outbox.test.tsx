@@ -177,4 +177,34 @@ describe("saved outgoing messages", () => {
     expect((screen.getByRole("textbox") as HTMLTextAreaElement).value).toBe("Retain draft");
     expect(screen.getByText(/Could not save this message/)).toBeTruthy();
   });
+
+  it("copies only the current checked same-agent attach command without any transport action", async () => {
+    const selected = client(), command = "tmux -S '/tmp/operator socket' attach-session -t '%17'";
+    selected.detail = { session: { id: id(1), label: "Root", evidence: "local", status: "observed", parentId: null,
+      ancestry: "root", observationId: "a".repeat(64), observedAt: "2026-09-08T12:00:03.000Z", message: "", contextPaths: [] },
+      handoff: "available", terminal: { attach: command, switch: "already-checked switch", location: "@7 / %17" },
+      coverage: { tailBytes: 0, partial: false, omittedRecords: 0, message: "" }, entries: [] };
+    const request = vi.fn(), copy = vi.fn(async () => {});
+    Object.defineProperty(navigator, "clipboard", { configurable: true, value: { writeText: copy } });
+    render(<AgentConversation client={selected} bridge={{ request, onEvent: () => () => {} }} memory={new SteeringMemory(storage())} onContext={() => {}} />);
+    fireEvent.click(screen.getByRole("button", { name: "Copy terminal command" }));
+    expect(await screen.findByText("Terminal command copied")).toBeTruthy();
+    expect(copy).toHaveBeenCalledExactlyOnceWith(command);
+    expect(request).not.toHaveBeenCalled(); expect(selected.handoff).not.toHaveBeenCalled();
+  });
+
+  it.each(["other-selection", "stale", "unavailable", "synthetic", "history"])("does not offer a terminal command for %s evidence", (reason) => {
+    const selected = client();
+    selected.detail = { session: { id: id(1), label: "Root", evidence: "local", status: "observed", parentId: null,
+      ancestry: "root", observationId: "a".repeat(64), observedAt: "2026-09-08T12:00:03.000Z", message: "", contextPaths: [] },
+      handoff: "available", terminal: { attach: "checked attach", switch: "checked switch", location: "@7 / %17" },
+      coverage: { tailBytes: 0, partial: false, omittedRecords: 0, message: "" }, entries: [] };
+    if (reason === "other-selection") selected.selected = id(2);
+    if (reason === "stale") selected.stale = true;
+    if (reason === "unavailable") selected.detail.session.status = "unavailable";
+    if (reason === "synthetic") selected.detail.session.evidence = "synthetic";
+    if (reason === "history") selected.detail.handoff = "unavailable";
+    render(<AgentConversation client={selected} memory={new SteeringMemory(storage())} onContext={() => {}} />);
+    expect(screen.queryByRole("button", { name: "Copy terminal command" })).toBeNull();
+  });
 });

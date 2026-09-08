@@ -86,6 +86,13 @@ not itself grant authority to send to or take over that session.
 The terminal handoff selects an existing tmux pane and exposes checked copyable
 attach/switch commands. Neither copying nor selecting resumes another process.
 Queue support reuses the normal harness rather than another exec/resume loop.
+The conversation's compact **Terminal** action copies that same checked attach
+command for use outside tmux; **Agent details** retains both the attach and
+inside-tmux switch commands. It is offered only for the currently selected local,
+available detail, and hidden during stale observation or history-only access.
+Copying is display-only: a pasted command is not a new identity check and does not
+replay pending message text. Explicit launch-time project/tmux association reuses
+registration; it does not convert terminal-owned agents into IDE-owned runs.
 
 ## Build connections
 

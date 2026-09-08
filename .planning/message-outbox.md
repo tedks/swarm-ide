@@ -12,6 +12,7 @@ An operator can submit an instruction, switch agents or reload the renderer, and
 - [x] (2026-09-08 13:42Z) Implement bounded saved outgoing messages and mounted conversation rows;57 focused tests and both TypeScript boundaries pass.
 - [x] (2026-09-08 13:47Z) Agreed narrow SessionSteering hook ownership with chat-input; actual form/save-before-dispatch unit proof and packaged held receipt/full document reload/native clipboard proof pass.
 - [x] (2026-09-08 13:50Z) Final native delta CLEAN; PR110 ready and implementation pushed, Ditz outcome recorded; ROOT owns normal merge/adoption.
+- [x] (2026-09-08 13:54Z) Direct user clarification: exposed the existing checked attach command beside the conversation.63 focused tests/both types pass; narrow native review CLEAN. No process or messaging call on Copy.
 
 ## Assumptions and boundaries
 
@@ -58,3 +59,5 @@ The user can now recover exact submitted messages after selection changes, rende
 Revision note: initial plan records concrete retention behavior and narrow peer ownership before implementation.
 
 Revision note: completion evidence, final form ownership and bounded archive/steering limits added after actual local and packaged verification.
+
+Revision note: the targeted project/tmux clarification adds a copy-only terminal fallback in the existing conversation header. Linux-install owns launch/discovery. This change reuses the core-provided command and performs no process/message operation; it adds no renderer callback or protocol schema.

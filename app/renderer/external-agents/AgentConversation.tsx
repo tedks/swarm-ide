@@ -21,6 +21,19 @@ function OutgoingRow({ message }: { message: OutgoingMessage }) {
   </li>;
 }
 
+/** Display-only checked command supplied by the existing terminal owner. */
+function CopyTerminalCommand({ command }: { command: string }) {
+  const [notice, setNotice] = useState("");
+  return <>
+    <button type="button" aria-label="Copy terminal command" title={`Open the same agent from outside tmux: ${command}`}
+      onClick={() => { void Promise.resolve().then(() => navigator.clipboard.writeText(command))
+        .then(() => setNotice("Terminal command copied"), () => setNotice("Use Agent details to select and copy the terminal command.")); }}>
+      Terminal ↗
+    </button>
+    {notice ? <span role="status">{notice}</span> : null}
+  </>;
+}
+
 /** This stays mounted when tabs or observation detail change: one message owner. */
 export function AgentConversation({ client, bridge, onContext, onWorktree, memory }: {
   client: ExternalClient; bridge?: SwarmBridge; onContext(): void; onWorktree?(id: string): void; memory?: SteeringMemory;
@@ -45,6 +58,8 @@ export function AgentConversation({ client, bridge, onContext, onWorktree, memor
   return <section className="agent-conversation" aria-label="Agent conversation" data-external-session={client.selected}>
     <header className="conversation-heading"><strong>{summary?.label ?? "Choose an agent"}</strong>
       {summary ? <><small>{summary.evidence === "synthetic" ? "Example" : client.stale ? "Reconnecting…" : summary.control === "tmux" ? "Terminal session" : "Conversation history"}</small>
+        {detail?.terminal && detail.handoff === "available" && detail.session.status === "observed" && detail.session.evidence === "local" && !client.stale
+          ? <CopyTerminalCommand key={`${detail.session.id}:${detail.session.observationId}:${detail.terminal.attach}`} command={detail.terminal.attach} /> : null}
         {summary.worktree && onWorktree ? <button onClick={() => onWorktree(summary.id)}>Worktree</button> : null}<button onClick={onContext}>Agent details</button></> : null}
     </header>
     {client.notice ? <p role="status" className="conversation-notice">{client.notice}</p> : null}
