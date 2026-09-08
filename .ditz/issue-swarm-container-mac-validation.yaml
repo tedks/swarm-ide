@@ -1,0 +1,20 @@
+id: swarm-container-mac-validation
+title: Validate the browser desktop on Apple Silicon and Intel Macs
+desc: Run the documented Docker Desktop build/browser/source-edit path on real supported
+  Macs. Current container department has Linux/amd64 only; base manifests and declared
+  flake arm64 support are not actual macOS/arm64 proof. Record cold build, sandbox
+  behavior, Safari/Chrome input and explicit repository mount behavior without disabling
+  security controls.
+type: task
+component: default
+release:
+reporter: Ted Smith <tedks@riseup.net>
+status: unstarted
+disposition:
+creation_time: 2026-09-08T13:57:27-00:00
+references: []
+log_events:
+- time: 2026-09-08T13:57:27-00:00
+  who: Ted Smith
+  what: created
+  comment: ""
