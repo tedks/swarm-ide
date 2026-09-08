@@ -9,14 +9,19 @@ In an ordinary opened repository, click **New agent**, type an instruction and p
 ## Progress
 
 - [x] (2026-09-08) Read instructions and inspect existing service, router and composer.
-- [ ] Add direct typed start and immutable per-run worktree ownership with tests.
-- [ ] Add visible entrypoint, durable composer and selected-root integration.
-- [ ] Run focused tests, native review, owned desktop journey and one disposable real Codex turn.
-- [ ] Update living design, Ditz, pushed PR and concise handoff.
+- [x] (2026-09-08 19:47Z) Add direct typed start and immutable per-run worktree ownership with tests; c06e2d6 pushed.
+- [x] (2026-09-08 19:55Z) Add visible entrypoint, durable composer and selected-root integration; c192151 pushed.
+- [x] (2026-09-08 19:55Z) Owned desktop journey and one disposable real Codex turn passed.
+- [x] (2026-09-08 20:01Z) Final 203 focused tests/types and native fix-delta convergence CLEAN after early-observation correction; final package build passed.
+- [x] (2026-09-08 20:02Z) Living design updated, PR132 pushed; primary issue accomplished. Optional legacy source/task preparation in selected worktrees remains on its existing open follow-up. ROOT owns landing and app adoption.
 
 ## Surprises & Discoveries
 
 All trusted-agent requests currently reach one primary runtime, whose factory captures the launch directory. Removing the UI guard alone would silently use the wrong working directory. The existing service already persists each admitted conversation before constructing its provider; reuse that mechanism rather than a second execution engine.
+
+Native review found two composer timing cases: typing during admission must transfer to the admitted run, and an early catalogue read must not switch to a second independently editable composer before the start reply. The final implementation keeps the new composer active until acknowledgement and transfers its latest revision only for the unchanged explicit selection. A separate launchWorkspace field prevents historical worktrees from relabelling a new launch. Exact mounted tests cover these orderings.
+
+The first desktop driver omitted Electron's character event for Shift-Enter, producing no newline; the unchanged product handler was correct. Adding the same `char` event used by the existing keyboard acceptance tools fixed that proof. The first failure and corrected evidence are retained separately.
 
 ## Decision Log
 
@@ -26,7 +31,7 @@ Assumptions: the selected root was registered/opened by the core; normal Codex c
 
 ## Outcomes & Retrospective
 
-Implementation and proof are pending. No existing live session will be resumed or messaged by verification.
+The direct path is implemented in PR132. Packaged selected-worktree proof passed in 2417ms (2702ms harness scenario), with normal approval handling, source-free start, retained submitted text across reload, controls after navigation, unchanged source bytes/cameras and confirmed cleanup. It used a deterministic protocol peer, not a model. A separately authorized real response passed in 4406ms: exactly one provider and turn, configured model (no override), selected directory, saved initial text, and confirmed owned shutdown. No existing live session was resumed or messaged. Remaining final work is review convergence and the reviewed/pushed handoff; ROOT owns merge/adoption.
 
 ## Context and Orientation
 
@@ -40,6 +45,8 @@ First add direct start to the protocol and existing service, capturing root and 
 
 From `/home/tedks/Projects/swarm-ide/simple-agent-start`, use `nix develop --command pnpm install --frozen-lockfile` if dependencies are missing. Run focused Bazel targets matching trusted-local, workspace-context and renderer tests, using at most three jobs; add a small dedicated target if existing targets would run unrelated suites. Build `//:desktop-bundle` for the owned GUI proof. Record exact target names/results as they are selected. Commit granularly and open a draft PR, then push final reviewed code. ROOT owns normal merge and shared app adoption.
 
+The final focused command is `nix develop --command bazel --output_base=/tmp/swarm-new-agent-bazel test --jobs=3 //tools/trusted-local:start-unit //tools/trusted-forks:unit //tools/workspace-navigation:core-checks --test_output=errors`. Registered-tab compatibility separately passed `//tools/operator-cockpit:conversation-tabs`. `//tools/trusted-local:start-smoke` owns :181/55441 by default and validates the actual packaged bridge; `//tools/trusted-local:start-live` is manual only and requires explicit `SWARM_NEW_AGENT_LIVE=1` plus a fresh `SWARM_NEW_AGENT_EVIDENCE` directory. Do not repeat the real turn without renewed authority.
+
 ## Validation and Acceptance
 
 No-source New agent sends the exact instruction once with a generated token. The provider gets the selected registered worktree, not the IDE launch root. A repeated token cannot start twice; a stale/unknown worktree cannot start at all. Storage/process failure leaves exact user text copyable after renderer reload. Missing Codex produces a useful error. Enter submits, Shift-Enter inserts newline, and composer focus is retained without stealing focus back from a deliberate navigation. One owned virtual desktop journey must demonstrate the button and composer, and one small authorized real Codex response in a disposable Git repository verifies the existing transport. Other proof uses deterministic test transports and must be labelled as such.
@@ -52,8 +59,12 @@ Never resend an uncertain command automatically, never resume an observed termin
 
 Current progress and final evidence belong in `/tmp/swarm-ide-startup-simple.Wz8BqH/new-agent/`. The final marker is `SIMPLE-START-NEW-AGENT-20260908-WZ81 COMPLETE — EXECUTIVE RECAP`.
 
+Authoritative existing evidence: `owned-gui/run.024tAA/proof.json` and screenshots, `real-turn/proof.json`, `corrected-ui.log`, and `final-checks.log`. The initial failed desktop attempt is `artifacts/trusted-local-proof/run.2wbx2L`; its failure concerns only a missing input event in the proof driver.
+
 ## Interfaces and Dependencies
 
 Reuse React, the schema-validated local bridge, TrustedLocalService and TrustedLocalSession, existing owned Codex transport, local profile storage and existing chat-submit keyboard helper. No new agent engine or provider chooser. Per-run root and initial instruction are additive retained metadata, with old stored runs remaining readable.
 
 Plan created before implementation to capture the user-visible path and wrong-directory/replay failure modes.
+
+Updated after direct implementation and actual proof to record the native review corrections and precise controlled-versus-real evidence.
