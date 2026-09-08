@@ -1,0 +1,16 @@
+id: swarm-generate-component-plan
+title: Generate a repository component plan from source with a configurable agent
+desc: ""
+type: feature
+component: default
+release:
+reporter: Ted Smith <tedks@riseup.net>
+status: unstarted
+disposition:
+creation_time: 2026-09-08T19:36:33-00:00
+references: []
+log_events:
+- time: 2026-09-08T19:36:33-00:00
+  who: Ted Smith
+  what: created
+  comment: ""
