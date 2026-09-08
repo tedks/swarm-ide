@@ -5,8 +5,8 @@ type: feature
 component: default
 release:
 reporter: Ted Smith <tedks@riseup.net>
-status: in_progress
-disposition:
+status: closed
+disposition: fixed
 creation_time: 2026-09-08T19:28:45-00:00
 references: []
 log_events:
@@ -43,5 +43,13 @@ log_events:
     services. Current design and graph mappings updated; only effective Compose merging/extended
     coverage remains a separate follow-up. Ready for ROOT normal landing; shared app/master
     unchanged.
+- time: 2026-09-08T20:17:41-00:00
+  who: Ted Smith
+  what: 'closed: fixed'
+  comment: 'PR130 landed: automatic Compose/native source declarations and source
+    navigation replace the fixed FraudCheck example and build pipeline. Real Swarm/Pure
+    Sky read-only probes and owned packaged declaration/edit retention passed; 124
+    focused plus 43 fixture tests/types/package/native convergence clean. Broader
+    Compose composition remains a tracked follow-up.'
 blocks:
 - swarm-close-working-loop
