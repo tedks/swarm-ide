@@ -1,0 +1,110 @@
+import { afterEach, describe, expect, it } from "vitest";
+import { appendFile, mkdir, mkdtemp, rm, stat, writeFile } from "node:fs/promises";
+import { join } from "node:path";
+import { tmpdir } from "node:os";
+import { ExternalAgentService } from "../core/external-agents";
+import { terminalCommands, type TmuxTarget } from "../core/external-agents-handoff";
+import { PROTOCOL_VERSION } from "../protocol/common";
+
+const ids = ["10000000-0000-4000-8000-000000000001", "10000000-0000-4000-8000-000000000002", "10000000-0000-4000-8000-000000000003"];
+const dirs: string[] = [], services: ExternalAgentService[] = [];
+afterEach(async () => {
+  for (const service of services.splice(0)) await service.dispose();
+  for (const dir of dirs.splice(0)) await rm(dir, { recursive: true, force: true });
+});
+const metadata = (id: string, parent?: string) => JSON.stringify({ type: "session_meta", payload: { id, ...(parent ? { forked_from_id: parent } : {}) } }) + "\n";
+const command = (cmd: string, at = "2026-09-08T03:45:00Z") => JSON.stringify({ timestamp: at, type: "response_item", payload: {
+  type: "function_call", name: "exec_command", arguments: JSON.stringify({ cmd }),
+} }) + "\n";
+async function setup() {
+  const dir = await mkdtemp(join(tmpdir(), "swarm-fleet-test-")); dirs.push(dir);
+  const worktrees = ids.map((_, index) => join(dir, `worktree-${index}`));
+  const rollouts = ids.map((_, index) => join(dir, `rollout-${index}.jsonl`));
+  await Promise.all(worktrees.map((path) => mkdir(path)));
+  await Promise.all(rollouts.map((path, index) => writeFile(path, metadata(ids[index]!, index ? ids[0] : undefined) + command(`worker-${index}`))));
+  const registry = join(dir, "registry.json");
+  await writeFile(registry, JSON.stringify({ version: 1, sessions: ids.map((id, index) => ({ id, label: `Worker ${index}`, evidence: "synthetic", rollout: rollouts[index], contextRoot: worktrees[index] })) }), { mode: 0o600 });
+  const service = new ExternalAgentService(worktrees[0]!, registry); services.push(service);
+  const snapshot = async () => {
+    const result = await service.request({ type: "externalAgents.snapshot", protocolVersion: PROTOCOL_VERSION, requestId: "fleet-check" });
+    if (result.kind !== "snapshot") throw new Error("Wrong result kind");
+    return result.snapshot;
+  };
+  return { dir, worktrees, rollouts, snapshot };
+}
+
+describe("all-registered external fleet reads", () => {
+  it("snapshot alone exposes three live tails, exact registered worktrees and fork ancestry", async () => {
+    const { snapshot, worktrees } = await setup();
+    const result = await snapshot();
+    expect(result.status).toBe("observed");
+    expect(result.sessions.map((session) => session.id)).toEqual(ids);
+    expect(result.sessions.map((session) => session.worktree)).toEqual(worktrees);
+    expect(result.sessions.map((session) => [session.parentId, session.ancestry])).toEqual([
+      [null, "root"], [ids[0], "registered-parent"], [ids[0], "registered-parent"],
+    ]);
+    expect(result.fleet?.map((detail) => detail.entries[0]?.command)).toEqual(["worker-0", "worker-1", "worker-2"]);
+    expect(result.fleet?.map((detail) => detail.session.ancestry)).toEqual(["root", "registered-parent", "registered-parent"]);
+    expect(result.sessions.every((session) => session.control === "read-only")).toBe(true);
+  });
+
+  it("keeps overlapping event IDs as appends move a large UTF-8 tail window", async () => {
+    const { snapshot, rollouts } = await setup();
+    const large = Array.from({ length: 180 }, (_, index) => command(`build-${String(index).padStart(3, "0")} ${"λ🦊".repeat(450)}`));
+    await writeFile(rollouts[0]!, metadata(ids[0]!) + large.join(""));
+    expect((await stat(rollouts[0]!)).size).toBeGreaterThan(262144);
+    const before = (await snapshot()).fleet![0]!;
+    await appendFile(rollouts[0]!, command(`next ${"界".repeat(1200)}`));
+    const after = (await snapshot()).fleet![0]!;
+    const oldIds = new Map(before.entries.map((entry) => [entry.command, entry.id]));
+    const overlapping = after.entries.filter((entry) => oldIds.has(entry.command));
+    expect(overlapping.length).toBeGreaterThan(10);
+    for (const entry of overlapping) expect(entry.id).toBe(oldIds.get(entry.command));
+    expect(after.entries.at(-1)?.command).toMatch(/^next /);
+    expect(before.coverage.partial && after.coverage.partial).toBe(true);
+    expect(after.coverage.tailBytes).toBeLessThanOrEqual(262144);
+  });
+
+  it("withholds a complete JSON record until its terminating newline arrives", async () => {
+    const { snapshot, rollouts } = await setup();
+    await appendFile(rollouts[1]!, command("held-λ").trimEnd());
+    const held = (await snapshot()).fleet![1]!;
+    expect(held.entries.map((entry) => entry.command)).toEqual(["worker-1"]);
+    expect(held.coverage.partial).toBe(true);
+    await appendFile(rollouts[1]!, "\n");
+    const complete = (await snapshot()).fleet![1]!;
+    expect(complete.entries.map((entry) => entry.command)).toEqual(["worker-1", "held-λ"]);
+    expect(complete.coverage.partial).toBe(false);
+  });
+
+  it("changes an event ID when content changes at the same inode, header and offset", async () => {
+    const { snapshot, rollouts } = await setup();
+    const path = rollouts[2]!, header = metadata(ids[2]!, ids[0]);
+    await writeFile(path, header + command("echo alpha"));
+    const beforeStat = await stat(path), before = (await snapshot()).fleet![2]!;
+    await writeFile(path, header + command("echo bravo"));
+    const afterStat = await stat(path), after = (await snapshot()).fleet![2]!;
+    expect(afterStat.ino).toBe(beforeStat.ino);
+    expect(afterStat.size).toBe(beforeStat.size);
+    expect(after.session.observationId).toBe(before.session.observationId);
+    expect(after.entries[0]?.command).toBe("echo bravo");
+    expect(after.entries[0]?.id).not.toBe(before.entries[0]?.id);
+  });
+});
+
+describe("copyable owner terminal commands", () => {
+  const target: TmuxTarget = { socket: "/tmp/tmux-owner's/socket", windowId: "@7", paneId: "%19", panePid: 100, processPid: 101, processStart: "123" };
+  it("shell-quotes the exact socket and uses only validated pane identities", () => {
+    expect(terminalCommands(target)).toEqual({
+      attach: "tmux -S '/tmp/tmux-owner'\\''s/socket' attach-session -t '%19'",
+      switch: "tmux -S '/tmp/tmux-owner'\\''s/socket' switch-client -t '%19'",
+      location: "@7 / %19",
+    });
+  });
+  it("rejects noncanonical socket paths and shell-like pane syntax before producing commands", () => {
+    for (const socket of ["relative/socket", "/tmp/a/../socket", "/tmp/socket\n", "/tmp/socket/"])
+      expect(() => terminalCommands({ ...target, socket })).toThrow();
+    for (const paneId of ["%19; echo bad", "-a", "19", "%1234567890123"])
+      expect(() => terminalCommands({ ...target, paneId })).toThrow();
+  });
+});

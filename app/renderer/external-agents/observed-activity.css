@@ -8,3 +8,5 @@
 .observed-activity li { margin: 0 0 9px 3px; padding-left: 9px; border-left: 1px solid #567b73; }
 .observed-activity li > p { white-space: pre-wrap; line-height: 1.5; }
 .observed-activity li > header > span { color: #b9d5cb; font-size: 10px; }
+.observed-activity-event { display: block; width: 100%; text-align: left; border: 0; background: transparent; color: inherit; padding: 4px 0; font: inherit; overflow-wrap: anywhere; cursor: pointer; }
+.observed-activity li header button { color: inherit; background: transparent; border: 0; font: inherit; padding: 0; cursor: pointer; text-align: left; }

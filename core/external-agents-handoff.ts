@@ -19,6 +19,19 @@ export const TmuxTargetSchema = z.object({
 }).strict();
 export type TmuxTarget = z.infer<typeof TmuxTargetSchema>;
 
+/** Commands are display-only and originate from an already validated target.
+ * Shell-quote even operator paths: a socket may legally contain apostrophes. */
+export function terminalCommands(target: TmuxTarget) {
+  const row = TmuxTargetSchema.parse(target);
+  const quote = (value: string) => `'${value.replaceAll("'", "'\\''")}'`;
+  const prefix = `tmux -S ${quote(row.socket)}`;
+  return {
+    attach: `${prefix} attach-session -t ${quote(row.paneId)}`,
+    switch: `${prefix} switch-client -t ${quote(row.paneId)}`,
+    location: `${row.windowId} / ${row.paneId}`,
+  };
+}
+
 const PANE_FORMAT = "#{window_id}\t#{pane_id}\t#{pane_pid}";
 const MAX_ANCESTORS = 32;
 const MAX_DESCRIPTORS = 256;

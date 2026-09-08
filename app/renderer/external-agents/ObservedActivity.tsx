@@ -1,4 +1,4 @@
-import type { ExternalEntry } from "../../../protocol/external-agents";
+import type { ExternalEntry, ExternalAgentSummary } from "../../../protocol/external-agents";
 import type { ExternalClient } from "./client";
 import "./observed-activity.css";
 
@@ -18,7 +18,30 @@ function timeLabel(at: string) {
 }
 
 /** A replaceable transcript preview, not an accumulated event log or a model summary. */
-export function ObservedActivity({ client, onOpen }: { client: ObservedClient; onOpen(): void }) {
+export function ObservedActivity({ client, onOpen, onEntry }: {
+  client: ObservedClient; onOpen(): void;
+  onEntry?(session: ExternalAgentSummary, entry: ExternalEntry): void;
+}) {
+  const fleet = client.fleet ?? [];
+  if (fleet.length) {
+    const entries = fleet.flatMap(({ session, entries }) => entries.map((entry) => ({ session, entry })))
+      .filter(({ entry }) => entry.kind !== "tool-result")
+      .sort((a, b) => (Date.parse(b.entry.at) || 0) - (Date.parse(a.entry.at) || 0) || b.entry.id.localeCompare(a.entry.id))
+      .slice(0, 16);
+    return <section className="observed-activity" aria-label="Observed agent activity">
+      <header><button className="observed-activity-open" onClick={onOpen}>Activity</button><small>{client.stale ? "Reconnecting…" : client.observing === false ? "Paused" : "Live"}</small></header>
+      <ol aria-label="Latest observed transcript entries">{entries.map(({ session, entry }) => {
+        const at = timeLabel(entry.at);
+        return <li key={`${session.id}:${entry.id}`} data-session={session.id} data-event={entry.id}>
+          <header><button onClick={() => { void client.read(session.id); onOpen(); }}>{session.label}</button><time dateTime={at.dateTime} title={new Date(entry.at).toString()}>{at.label}</time></header>
+          <button className="observed-activity-event" title={session.worktree} onClick={() => {
+            if (onEntry) onEntry(session, entry); else { void client.read(session.id); onOpen(); }
+          }}>{entry.text.length > previewLength ? `${entry.text.slice(0, previewLength)}…` : entry.text}</button>
+        </li>;
+      })}</ol>
+      {!entries.length ? <p className="observed-activity-empty">Waiting for activity.</p> : null}
+    </section>;
+  }
   // Selection changes can precede the corresponding read: never attribute the old tail to a new agent.
   const detail = client.detail?.session.id === client.selected ? client.detail : null;
   const session = detail?.session;

@@ -31,7 +31,7 @@ class ExternalObserver {
   private publish(patch: Partial<State>) { this.state = { ...this.state, ...patch }; this.listeners.forEach((listener) => listener()); }
   private enabled() { return Boolean(this.bridge && this.ready && this.visible); }
   private clearTimer() { if (this.timer !== undefined) clearTimeout(this.timer); this.timer = undefined; }
-  private revoke(detail = this.state.detail) { return detail ? { ...detail, handoff: "unavailable" as const } : null; }
+  private revoke(detail = this.state.detail) { return detail ? { ...detail, handoff: "unavailable" as const, terminal: undefined } : null; }
 
   configure(bridge: SwarmBridge | undefined, ready: boolean, generation: number, visible: boolean) {
     if (bridge === this.bridge && ready === this.ready && generation === this.generation && visible === this.visible) return;
@@ -135,4 +135,5 @@ export function useExternalAgents(bridge: SwarmBridge | undefined, ready: boolea
   }, [observer, bridge, ready, generation, visible]);
   return { ...state, fleet: state.snapshot?.fleet ?? [], read: observer.read, refresh: observer.refresh, handoff: observer.handoff };
 }
-export type ExternalClient = ReturnType<typeof useExternalAgents>;
+// Older fixture providers can omit the additive fleet collection.
+export type ExternalClient = Omit<ReturnType<typeof useExternalAgents>, "fleet"> & { fleet?: ExternalDetail[] };
