@@ -32,5 +32,14 @@ log_events:
     cleanup complete. ROOT landing needs a small composition with newly merged PR121
     Work Log state; exact four App hunks documented in the handoff. No shared app
     adoption.
+- time: 2026-09-08T16:43:14-00:00
+  who: Ted Smith
+  what: commented
+  comment: ROOT cleared PR121; normally composed as 793e7bc, preserving its one Work
+    Log reader, rail summaries and ID-resolved selected outcome alongside the four
+    retained graph panes. Four App conflict resolutions passed native review and joined
+    cockpit/Work Log checks with both type boundaries. Previous integration hold resolved;
+    PR122 ready for ROOT normal landing/adoption. No additional GUI/model or broad
+    gate cycle.
 blocked_by:
 - swarm-component-graph-stability
