@@ -1,11 +1,11 @@
 id: stable-native-window-dev-reload
 title: Preserve the native IDE window across development reloads
-desc: Classify development rebuilds by ownership so renderer HMR, preload reload,
-  and local-core restart retain the existing Electron BrowserWindow and X11 window
-  identity. Keep Electron main as a minimal stable shell; treat main-process replacement
-  as an exceptional path and preserve window-manager placement there when supported.
-  Verify under the owned virtual-X11 harness that ordinary source edits cannot move,
-  refocus, or recreate the native window.
+desc: Handle development rebuilds according to the process affected. Renderer HMR,
+  preload reloads and local-core restarts must retain the existing Electron BrowserWindow
+  and X11 window identity. Keep Electron main as a minimal stable shell. Replace the
+  main process only in exceptional cases, preserving window-manager placement when
+  supported. Use a virtual-X11 session created by the test harness to verify that
+  ordinary source edits cannot move, refocus or recreate the native window.
 type: bugfix
 component: tooling
 release:
@@ -55,6 +55,10 @@ log_events:
     failed/rapid builds and virtual focus/workspace preservation verified. Evidence
     master/artifacts/stable-window-reload-final. Local master remainsb513ac0 intentionally;
     save/stop/update/start adoption remains open separately.
+- time: 2026-09-08T04:31:33-00:00
+  who: Ted Smith
+  what: updated description
+  comment: ""
 blocks:
 - first-real-agent-run-surface
 blocked_by:
