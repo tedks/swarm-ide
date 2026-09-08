@@ -31,6 +31,21 @@ Codex `gpt-5.6-luna`. It writes deduplicated Ditz accomplishment notes through
 the CLI. F7 supplies the
 separate granular whole-fleet Activity stream.
 
+The central Activity overview uses the same current fleet snapshots as the dock;
+it does not create another timer. Opening the overview clears only an inspected
+raw event. Selecting a particular event deliberately keeps its recorded text and
+patch open as newer operations arrive. Returning to Activity shows those newer
+rows. Event navigation requires the current registered session/worktree, and a
+repository, world or core change clears the inspected selection. Bounded tail
+eviction alone does not revoke a still-registered worktree.
+
+The central header Refresh reads the selected tab's source: the existing external
+observer for Activity, `changelog.read` for Saved summaries, and the explicit
+GitHub reader for Pull requests. Busy state and notices stay with that source;
+switching views neither starts a summarizer nor polls GitHub. Background data
+does not choose a tab or move keyboard focus. A delayed saved-entry reveal opens
+its details but leaves focus alone if the operator has resumed typing elsewhere.
+
 The pipeline is: known registered transcript tails → meaningful
 turn boundaries → one summary → human outcome entries in `.swarm/work-log.json`.
 Its modules are [protocol/work-log.ts](../../protocol/work-log.ts), [core/work-log/service.ts](../../core/work-log/service.ts) and
@@ -55,7 +70,7 @@ corroborates a turn boundary but not success, so its state becomes `unknown`.
 Unmatched user-authored rows stay intact; missing transcripts are not guessed.
 The repair works while summarization is stopped and never re-bills old history.
 
-`App.tsx` mounts that panel once in `AgentDock`, immediately left of Recent Activity
+`App.tsx` mounts that panel once in `AgentDock`, immediately left of Activity
 and independent of the agent sidebar's scrolling/folding, and opens its selected outcome
 through the pure `WorkLogEntryDetail` in the central document area. Opening an
 outcome does not start a model, record a task or create another polling consumer.
@@ -94,6 +109,9 @@ The Work Log modules use the same root source/bundle targets. Its dedicated
 `//tools/live-observers:unit` checks raw operation ordering, originating-session
 activation and refresh retention; `//tools/build-resources:regressions` checks
 truthful counts, progress, examples and preserved source state.
+`//tools/operator-cockpit:activity-refresh` checks central per-source refresh,
+client-published rows, explicit overview/event selection, current registration
+and workspace identity, and retained editor/composer/graph state.
 `//tools/activity-usability:smoke` exercises the packaged application with two
 explicitly labelled private JSONL proof fixtures on an owned virtual desktop.
 It checks raw event timestamps, keyboard settings and retained source/draft/cameras;

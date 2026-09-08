@@ -10,13 +10,13 @@ Opening Activity should show the current registered fleet operations as the exis
 
 - [x] (2026-09-08) Created fresh fix/central-activity-refresh from reviewed 3ee62d63 in the assigned worktree; preserved completed PR105 branch.
 - [x] Inspected current readers and mount. The observer already polls; the header unconditionally calls changelog.read, and overview activation retains selectedActivity.
-- [ ] Reproduce routing, selection, identity and background-focus cases with mounted checks.
-- [ ] Implement only JournalPanel, FleetActivityView and narrow App activity callbacks; update component design/map.
+- [x] Reproduced seven failing mounted cases with eight passing controls; one later stale-row authority case also failed before its fix.
+- [x] Implemented JournalPanel, FleetActivityView and narrow App activity callbacks; updated component design/map.
 - [ ] Run focused Bazel checks, native review to clean, push PR and record Ditz outcome.
 
 ## Surprises & Discoveries
 
-JournalPanel's selection effect depends on the saved document digest, so a background summary update can also reset the current view and focus. Fleet data itself is already passed as current props; an explicit event article obscures the updating list.
+JournalPanel's selection effect depended on the saved document digest, so a background summary update could also reset the current view and focus. Fleet data itself was already passed as current props; an explicit event article obscured the updating list. The corrected tests initially reached a previously unexecuted test gesture: with no source open, closing the only document hides its tab strip. The test now reopens from the actual dock heading; a separate source-open case checks document-tab reopening. This was a test setup correction, not a product change.
 
 ## Decision Log
 

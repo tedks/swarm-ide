@@ -10,6 +10,7 @@ import { emptyAgentWorkbench } from "../app/renderer/agents/state";
 import { PROTOCOL_VERSION, type CoreEvent, type CoreRequest, type CoreResponse, type GraphSlice } from "../protocol/schema";
 import { WorkLogSettingsSchema } from "../protocol/work-log";
 import { openContextPath } from "./context-navigation";
+import type { Lifecycle } from "../app/lifecycle";
 
 const observer = vi.hoisted(() => ({ state: null as ExternalClient | null, listeners: new Set<() => void>() }));
 vi.mock("../app/renderer/external-agents/client", async () => {
@@ -30,7 +31,7 @@ beforeAll(() => {
 });
 afterEach(() => { cleanup(); observer.listeners.clear(); vi.restoreAllMocks(); localStorage.clear(); sessionStorage.clear(); delete window.swarm; delete window.swarmLifecycle; });
 function publish(next: Partial<ExternalClient>) { act(() => { observer.state = { ...observer.state!, ...next }; observer.listeners.forEach((listener) => listener()); }); }
-async function setup() {
+async function setup(withLifecycle = false) {
   let snapshot = initialSnapshot(paymentsFileFocus), sequence = 0;
   let onEvent: (event: CoreEvent) => void = () => {};
   const request = vi.fn(async (input: CoreRequest): Promise<CoreResponse> => {
@@ -46,9 +47,13 @@ async function setup() {
   observer.state = { selected: session.id, detail, fleet: [detail], snapshot: { status: "observed", sessions: [session], observedAt: session.observedAt, message: "" },
     busy: false, observing: true, notice: "", read: vi.fn(async () => {}), refresh, handoff: vi.fn(async () => {}) };
   window.swarm = { request, onEvent: (listener) => { onEvent = listener; return () => {}; } };
+  let receiveStatus: (value: Lifecycle) => void = () => {};
+  const lifecycle: Lifecycle = { revision: 1, core: { generation: 1, phase: "ready", message: "Ready" }, reload: "idle", notice: "" };
+  if (withLifecycle) window.swarmLifecycle = { status: async () => lifecycle,
+    onStatus: (listener) => { receiveStatus = listener; return () => {}; }, reload: async () => { throw new Error("No reload requested"); } };
   const view = render(<App />);
   await screen.findByRole("button", { name: "Select task task-fixture" });
-  return { view, request, refresh, changeWorld: () => act(() => {
+  return { view, request, refresh, changeCore: () => act(() => receiveStatus({ ...lifecycle, revision: 2, core: { ...lifecycle.core, generation: 2 } })), changeWorld: () => act(() => {
     snapshot = { ...snapshot, world: { ...snapshot.world, id: "world:replacement" } };
     onEvent({ protocolVersion: PROTOCOL_VERSION, type: "workspace.changed", sequence: ++sequence, epoch: snapshot.reconciliation.epoch, emittedAt: session.observedAt, snapshot });
   }) };
@@ -69,7 +74,7 @@ it("explicit event opens intact, while overview reopening and close/reopen resto
   expect(refresh).toHaveBeenCalledTimes(1); expect(request.mock.calls.some(([input]) => input.type === "changelog.read")).toBe(false);
   inspectDockEvent();
   fireEvent.click(activityPanel().getByRole("button", { name: "Close logical changes" }));
-  fireEvent.click(screen.getByRole("button", { name: "Activity log" }));
+  openOverview(); // With no source open, closing the sole document hides its tab strip.
   expect(activityPanel().queryByRole("button", { name: "All activity" })).toBeNull();
 });
 
@@ -91,6 +96,10 @@ it("client publications update central rows without clicks and preserve dirty so
   expect(document.querySelector(".cm-editor")).toBe(editorNode); expect(editor.state.doc.toString()).toBe("dirty local source\n");
   expect(editor.state.selection.main.anchor).toBe(4); expect(screen.getAllByTestId("retained-graph")).toEqual(graphs);
   expect(request.mock.calls.some(([input]) => input.type === "file.write" || input.type === "externalAgents.send")).toBe(false);
+  inspectDockEvent();
+  fireEvent.click(activityPanel().getByRole("button", { name: "Close logical changes" }));
+  fireEvent.click(screen.getByRole("button", { name: "Activity log" }));
+  expect(activityPanel().queryByRole("button", { name: "All activity" })).toBeNull();
 });
 
 it("a changed workspace identity cannot revive an old inspected event", async () => {
@@ -98,4 +107,21 @@ it("a changed workspace identity cannot revive an old inspected event", async ()
   expect(activityPanel().getByRole("button", { name: "All activity" })).toBeTruthy();
   changeWorld();
   expect(activityPanel().queryByRole("button", { name: "All activity" })).toBeNull();
+});
+
+it("core recovery discards the old event selection before current controls can use it", async () => {
+  const { changeCore } = await setup(true); inspectDockEvent();
+  expect(activityPanel().getByRole("button", { name: "All activity" })).toBeTruthy();
+  changeCore();
+  expect(activityPanel().queryByRole("button", { name: "All activity" })).toBeNull();
+});
+
+it("the Activity subtab is an explicit overview action, without clearing a dock-selected event on opening", async () => {
+  await setup(); inspectDockEvent();
+  expect(activityPanel().getByRole("button", { name: "All activity" })).toBeTruthy();
+  fireEvent.click(activityPanel().getByRole("button", { name: "Saved summaries" }));
+  fireEvent.click(activityPanel().getByRole("button", { name: "Activity" }));
+  expect(activityPanel().queryByRole("button", { name: "All activity" })).toBeNull();
+  inspectDockEvent();
+  expect(activityPanel().getByRole("button", { name: "All activity" })).toBeTruthy();
 });

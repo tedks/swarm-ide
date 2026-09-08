@@ -82,3 +82,29 @@ it.each(["removed", "changed root", "unavailable"])("revokes selected event acti
   fireEvent.click(screen.getByRole("button", { name: "Open agent" }));
   expect(onInspect).not.toHaveBeenCalled(); expect(onAgent).not.toHaveBeenCalled();
 });
+
+it("uses current registry authority even when the fleet tail still contains revoked rows", () => {
+  const props = { fleet: [detail], selected: null, onSelect: vi.fn(), onAgent: vi.fn(), onInspect: vi.fn() };
+  const view = render(<FleetActivityView {...props} sessions={[session]} />);
+  view.rerender(<FleetActivityView {...props} sessions={[]} />);
+  fireEvent.click(screen.getByRole("button", { name: "/repos/worker/file.ts" }));
+  expect(props.onInspect).not.toHaveBeenCalled();
+});
+
+it("a bounded fleet tail dropping an event does not revoke its still-registered worktree", () => {
+  const onInspect = vi.fn();
+  render(<FleetActivityView fleet={[]} sessions={[session]} selected={{ session, entry }} onSelect={vi.fn()} onAgent={vi.fn()} onInspect={onInspect} />);
+  fireEvent.click(screen.getByRole("button", { name: "Inspect /repos/worker/file.ts" }));
+  expect(onInspect).toHaveBeenCalledExactlyOnceWith(session.id, "file.ts", "+exact patch");
+});
+
+it("a delayed saved-entry reveal cannot steal focus after the operator resumes typing", () => {
+  const props = { open: true, selectedEntry: "change-a", onClose: vi.fn(), onOpenSource: vi.fn() };
+  const panel = (observation: ReturnType<typeof syntheticJournal>["result"] | null) => <><textarea aria-label="Composer" defaultValue="keep typing" />
+    <JournalPanel {...props} state={{ observation, busy: !observation, notice: "", refresh: vi.fn() }} /></>;
+  const view = render(panel(null));
+  const input = screen.getByRole("textbox"); input.focus();
+  view.rerender(panel(syntheticJournal().result));
+  expect(document.querySelector<HTMLDetailsElement>('[data-change-id="change-a"]')?.open).toBe(true);
+  expect(document.activeElement).toBe(input);
+});
