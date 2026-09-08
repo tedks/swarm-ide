@@ -141,6 +141,16 @@ describe("repository observation lifetime", () => {
     expect(provider.observe()).toMatchObject({ status: "error", message: "retry failed" });
     expect(query).toHaveBeenCalledTimes(2); await provider.dispose();
   });
+  it("preserves a failed same-input refresh when query records fail final schema validation", async () => {
+    let now = 1000, invalid = false;
+    const query = vi.fn(async () => invalid ? output({ type: "RULE", rule: { name: "//a:invalid", ruleClass: "", ruleInput: [] } }) : sample());
+    const provider = new BuildGraphProvider("/a", "r", "w", { digest: async () => digest, query, now: () => now });
+    provider.observe(); await flush(); const retained = provider.observe().graph;
+    invalid = true; provider.observe(true); await flush(); expect(provider.observe().status).toBe("error");
+    now += 2000; provider.observe(); await flush();
+    expect(provider.observe()).toMatchObject({ status: "error", graph: retained });
+    expect(query).toHaveBeenCalledTimes(2); await provider.dispose();
+  });
   it("retries a changed input after reverting through a valid retained input", async () => {
     let now = 1000, current = digest, fail = false;
     const query = vi.fn(async () => { if (fail) throw new Error("failed B"); return sample(); });

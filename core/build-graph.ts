@@ -230,6 +230,7 @@ export class BuildGraphProvider {
       const after = await this.dependencies.digest(this.root, this.controller.signal);
       if (this.closed) return;
       if (before !== after) { this.state = { ...this.state, status: "stale", message: "Build inputs changed during the query; checking again." }; return; }
+      queryingDigest = before; // Final query-schema failures also require deliberate retry.
       const graph = BuildGraphDataSchema.parse({ ...parsed, repositoryId: this.state.repositoryId, worldId: this.state.worldId, inputDigest: before, observedAt: new Date(this.dependencies.now()).toISOString(), command: "bazel query --noimplicit_deps --notool_deps //...:*" });
       this.state = { ...this.state, status: "current", graph, message: "Current local declaration observation; not compilation or deployment evidence." };
     } catch (error) {
