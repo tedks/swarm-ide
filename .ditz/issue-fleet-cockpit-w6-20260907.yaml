@@ -37,3 +37,10 @@ log_events:
     user text/cursor/draft/camera and target-retention assertions passed. ROOT owns
     ordered merge and real F1 producer join; issue remains in_progress until landing.
     Own Bazel/virtual cleanup complete; no shared adoption.'
+- time: 2026-09-08T01:09:09-00:00
+  who: Ted Smith
+  what: commented
+  comment: 'PR73 reviewed-base compositionb1cb03e pushed clean: exact ROOT-cleared
+    E3a2a8036 plus final T5/A2 preserved, no conflicts. Fresh focused fleet+observer/typechecks
+    PASS15.372s. No new model/GUI/fullsuite/adoption. Existing App join complete;
+    awaiting ROOT normal landing.'
