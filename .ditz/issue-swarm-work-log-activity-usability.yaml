@@ -5,8 +5,8 @@ type: feature
 component: default
 release:
 reporter: Ted Smith <tedks@riseup.net>
-status: in_progress
-disposition:
+status: closed
+disposition: fixed
 creation_time: 2026-09-08T13:28:41-00:00
 references: []
 log_events:
@@ -38,5 +38,11 @@ log_events:
     normally composed.232 focused tests pass plus native convergence and actual packaged
     keyboard/source-draft-camera proof1.67s with zero renderer errors/owned cleanup.
     ROOT owns merge/adoption; no model turn.
+- time: 2026-09-08T13:51:40-00:00
+  who: Ted Smith
+  what: 'closed: fixed'
+  comment: 'Implemented and verified in PR105: raw activity, current lifecycle badges,
+    independent historical outcomes, settings gear and truthful jobs. ROOT adopts
+    after normal merge.'
 blocks:
 - swarm-usability-join
