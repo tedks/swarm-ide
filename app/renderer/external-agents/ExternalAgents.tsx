@@ -114,7 +114,7 @@ export function ExternalAgentRail({ client, onSelect }: { client: ExternalClient
   </section>;
 }
 
-export function ExternalAgentInformation({ client, bridge, visible = true, contextOnly = false, onReturn, onOpen }: { client: ExternalClient; bridge?: SwarmBridge; visible?: boolean; contextOnly?: boolean; onReturn(): void; onOpen(path: string): void }) {
+export function ExternalAgentInformation({ client, bridge, visible = true, contextOnly = false, onReturn, onOpen, onWorktree }: { client: ExternalClient; bridge?: SwarmBridge; visible?: boolean; contextOnly?: boolean; onReturn(): void; onOpen(path: string): void; onWorktree?(id: string): void }) {
   const [tab, setTab] = useState<"worklog" | "conversation">("worklog");
   const detail = client.detail, session = detail?.session;
   const entries = detail?.entries.filter((entry) => tab === "worklog" || entry.kind === "assistant") ?? [];
@@ -126,7 +126,7 @@ export function ExternalAgentInformation({ client, bridge, visible = true, conte
     {client.notice ? <p role="status">{client.notice}</p> : null}
     {session ? <>
       {session.evidence === "synthetic" ? <p className="external-caption">Example session</p> : null}
-      {contextOnly ? <dl><dt>Worktree</dt><dd>{session.worktree ?? "Not registered"}</dd>
+      {contextOnly ? <dl><dt>Worktree</dt><dd>{session.worktree ? <>{session.worktree}{onWorktree ? <button onClick={() => onWorktree(session.id)}>Explore worktree</button> : null}</> : "Not registered"}</dd>
         {session.role ? <><dt>Role</dt><dd>{session.role}</dd></> : null}
         {session.task ? <><dt>Task</dt><dd>{session.task}</dd></> : null}
         <dt>Control</dt><dd>{detail.handoff === "available" ? "Terminal · message from IDE or tmux" : "Read-only history"}</dd></dl> : null}

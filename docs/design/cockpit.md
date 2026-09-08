@@ -74,6 +74,14 @@ tab; old stored runs retain their own tabs rather than a competing sidebar list.
 `//tools/conversation-cockpit:unit` and its owned-virtual `:smoke` cover this
 composition. Actual transcript reads are separate from controlled Send evidence.
 
+The selected agent's **Worktree** action opens `AgentWorktreeBrowser` in the
+center, carrying the registered session ID into the typed broker. Its directory
+navigation and master comparison do not change the main repository or editor
+buffer. Returning hides the browser and restores the original surface; closing
+its tab or Ctrl+W closes only that inspection. File-event inspections remain a
+separate compatible route. The normal mount is tested in `cockpit-app.test.tsx`;
+the broker/browser's real two-worktree package evidence belongs to its producer.
+
 `OverflowStrip.tsx` wraps the existing document, lens and agent tab lists without
 changing their selection or keyboard owners. Native horizontal scrolling remains;
 overflow arrows are available only when needed and do not activate tabs. Selection

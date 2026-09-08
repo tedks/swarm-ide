@@ -194,6 +194,8 @@ button.truth-dot:disabled { cursor: wait; opacity: 0.72; }
 .fleet-event-detail pre { padding: 10px; background: #081714; overflow: auto; font-size: 12px; }
 .design-center { grid-column: 2; grid-row: 3; min-height: 0; min-width: 0; overflow: hidden; }
 .design-center[hidden] { display: none; }
+.worktree-browser-center { grid-column: 2; grid-row: 3; min-height: 0; min-width: 0; overflow: hidden; }
+.worktree-browser-center[hidden] { display: none; }
 .work-log-center { grid-column: 2; grid-row: 3; min-height: 0; min-width: 0; overflow: auto; padding: 12px; background: #081213; }
 .work-log-center .work-log-entry-detail { max-width: 900px; margin: 0 auto; font-size: 13px; }
 .design-open-button { background: #19322a; color: #cae8d7; border: 1px solid #3a6452; border-radius: 4px; padding: 4px 8px; cursor: pointer; font: 10px system-ui; justify-self: start; }

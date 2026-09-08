@@ -73,6 +73,7 @@ import { ExternalAgentRail, ExternalAgentInformation } from "./external-agents/E
 import { AgentConversation } from "./external-agents/AgentConversation";
 import { useConversationSelection } from "./external-agents/conversation-selection";
 import { SteeringMemory } from "./external-agents/steering-memory";
+import { AgentWorktreeBrowser } from "./AgentWorktreeBrowser";
 import { ObservedActivity } from "./external-agents/ObservedActivity";
 import { WorktreeInspection, type WorktreeSelection } from "./WorktreeInspection";
 import { FleetActivityView, type SelectedActivity } from "./FleetActivityView";
@@ -138,6 +139,7 @@ export function App() {
   const [journalSelection, setJournalSelection] = useState(0);
   const [worktreeSelection, setWorktreeSelection] = useState<WorktreeSelection | null>(null);
   const [worktreeVisible, setWorktreeVisible] = useState(false);
+  const [worktreeBrowserSession, setWorktreeBrowserSession] = useState<string | null>(null);
   const [selectedActivity, setSelectedActivity] = useState<SelectedActivity | null>(null);
   const [designVisible, setDesignVisible] = useState(false);
   const [workLogEntry, setWorkLogEntry] = useState<WorkLogEntry | null>(null);
@@ -216,8 +218,14 @@ export function App() {
   const showJournal = (entry?: string) => { setWorkLogEntry(null); setDesignVisible(false); setWorktreeVisible(false); setJournalOpen(true); setJournalVisible(true); setTaskDocumentVisible(false); setJournalEntry(entry ?? null); setJournalSelection((value) => value + 1); };
   const inspectWorktree = (sessionId: string, path: string, patch?: string) => {
     ++navigationIntent.current;
+    setWorktreeBrowserSession(null);
     setWorkLogEntry(null);
     setWorktreeSelection({ sessionId, path, ...(patch ? { patch } : {}) }); setWorktreeVisible(true);
+    setDesignVisible(false); setJournalVisible(false); setTaskDocumentVisible(false);
+  };
+  const browseAgentWorktree = (sessionId: string) => {
+    ++navigationIntent.current;
+    setWorkLogEntry(null); setWorktreeSelection(null); setWorktreeBrowserSession(sessionId); setWorktreeVisible(true);
     setDesignVisible(false); setJournalVisible(false); setTaskDocumentVisible(false);
   };
   const showDesign = () => { ++navigationIntent.current; setWorkLogEntry(null); setDesignVisible(true); setJournalVisible(false); setWorktreeVisible(false); setTaskDocumentVisible(false); };
@@ -1057,7 +1065,7 @@ export function App() {
       if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "w") {
         event.preventDefault();
         if (workLogEntry) { setWorkLogEntry(null); return; }
-        if (worktreeVisible) { setWorktreeVisible(false); setWorktreeSelection(null); return; }
+        if (worktreeVisible) { setWorktreeVisible(false); setWorktreeSelection(null); setWorktreeBrowserSession(null); return; }
         if (designVisible) { setDesignVisible(false); return; }
         if (journalVisible) { setJournalOpen(false); setJournalVisible(false); return; }
         if (taskDocumentVisible || (taskDocumentOpen && !fileTabsRef.current.some((tab) => tab.path === activeSurface))) { closeTaskDocument(); return; }
@@ -1335,7 +1343,7 @@ export function App() {
         {textOpen ? <OverflowStrip className="surface-tabs-strip" label="document tabs" activeKey={workLogEntry?.id ?? (designVisible ? "design" : worktreeVisible ? `worktree:${worktreeSelection?.path}` : journalVisible ? "journal" : textDocumentVisible ? "task" : activeSurface)}><nav className="surface-tabs" aria-label="Document tabs">
           {designVisible ? <div className="surface-tab active"><span className="surface-tab-main">System design</span><button className="surface-tab-close" aria-label="Close system design" onClick={() => setDesignVisible(false)}>×</button></div> : null}
           {workLogEntry ? <div className="surface-tab active"><span className="surface-tab-main">Work Log · {workLogEntry.agent}</span><button className="surface-tab-close" aria-label="Close work log outcome" onClick={() => setWorkLogEntry(null)}>×</button></div> : null}
-          {worktreeSelection ? <div className={`surface-tab ${worktreeVisible ? "active" : ""}`}><button className="surface-tab-main" onClick={() => { setWorkLogEntry(null); setDesignVisible(false); setWorktreeVisible(true); setJournalVisible(false); setTaskDocumentVisible(false); }}>Worktree · {worktreeSelection.path.split("/").at(-1)}</button><button className="surface-tab-close" aria-label="Close worktree inspection" onClick={() => { setWorktreeVisible(false); setWorktreeSelection(null); }}>×</button></div> : null}
+          {worktreeSelection || worktreeBrowserSession ? <div className={`surface-tab ${worktreeVisible ? "active" : ""}`}><button className="surface-tab-main" onClick={() => { setWorkLogEntry(null); setDesignVisible(false); setWorktreeVisible(true); setJournalVisible(false); setTaskDocumentVisible(false); }}>Worktree · {worktreeSelection?.path.split("/").at(-1) ?? "Browse"}</button><button className="surface-tab-close" aria-label="Close worktree inspection" onClick={() => { setWorktreeVisible(false); setWorktreeSelection(null); setWorktreeBrowserSession(null); }}>×</button></div> : null}
           {journalOpen ? <div className={`surface-tab ${journalVisible ? "active" : ""}`}><button className="surface-tab-main" onClick={() => showJournal()}>Activity log</button><button className="surface-tab-close" aria-label="Close activity document" onClick={() => { setJournalOpen(false); setJournalVisible(false); }}>×</button></div> : null}
           {fileTabs.map((tab) => <div key={tab.path} className={`surface-tab ${activeFile?.path === tab.path && !textDocumentVisible && !journalVisible && !worktreeVisible && !designVisible && !workLogEntry ? "active" : ""}`}><button className="surface-tab-main" onClick={() => activateFile(tab.path)} title={tab.path}><span className={`tab-state status-${tab.status}`}>{tab.status === "dirty" ? "●" : tab.status === "saving" ? "◌" : tab.status === "conflict" || tab.status === "error" ? "!" : "◇"}</span>{tab.path.split("/").at(-1)}</button><button className="surface-tab-close" aria-label={`Close ${tab.path}`} onClick={() => closeFile(tab.path)}>×</button></div>)}
           {taskDocumentOpen ? <div className={`surface-tab ${textDocumentVisible ? "active" : ""}`}><button className="surface-tab-main" onClick={() => { setTaskDocumentVisible(true); inspectTask(tasks.selectedTaskId); }} title={tasks.selectedTaskId ?? "Task"}>▤ {tasks.detail?.title ?? "Task document"}</button><button className="surface-tab-close" aria-label="Close task document" onClick={closeTaskDocument}>×</button></div> : null}
@@ -1369,6 +1377,7 @@ export function App() {
           </>}
         </section> : null}
         {worktreeVisible && worktreeSelection ? <WorktreeInspection key={`${worktreeSelection.sessionId}:${worktreeSelection.path}`} selection={worktreeSelection} bridge={window.swarm} generation={coreGenerationRef.current} onReturn={() => setWorktreeVisible(false)} /> : null}
+        {worktreeBrowserSession ? <div className="worktree-browser-center" hidden={!worktreeVisible}><AgentWorktreeBrowser sessionId={worktreeBrowserSession} bridge={window.swarm} generation={coreGenerationRef.current} onReturn={() => setWorktreeVisible(false)} /></div> : null}
         {workLogEntry ? <div className="work-log-center"><WorkLogEntryDetail entry={workLogEntry} onAgent={showConversation} onTask={openTaskDocument} onClose={() => setWorkLogEntry(null)} /></div> : null}
         <div className="design-center" hidden={!designVisible}><DesignWorkspace visible={designVisible} worldId={snapshot.world.id} repositoryId={snapshot.project.id} generation={coreGenerationRef.current} connected={!coreUnavailable && Boolean(window.swarm)} onOpenFile={openLinkedFile} onOpenTask={openTaskDocument} /></div>
         <JournalPanel key={snapshot.project.id} open={journalVisible} state={journal} selectedEntry={journalEntry} selectionVersion={journalSelection} pullRequests={githubPrs}
@@ -1381,7 +1390,7 @@ export function App() {
       <aside id="information-panel" aria-label="Information panel" className="instrument-panel panel">
         <GlobalContext snapshot={snapshot} ready={observedCoreGeneration === coreGenerationRef.current && (!window.swarmLifecycle || lifecycle?.core.phase === "ready")} />
         <ProjectContextPanel repositoryId={snapshot.project.id} worldId={snapshot.world.id} generation={coreGenerationRef.current} ready={observedCoreGeneration === coreGenerationRef.current && (!window.swarmLifecycle || lifecycle?.core.phase === "ready")} />
-        <ExternalAgentInformation client={externalAgents} contextOnly visible={agentContextVisible} onReturn={() => { setExternalInformation(false); returnToSourceInformation(); }} onOpen={(path) => { if (externalAgents.selected) inspectWorktree(externalAgents.selected, path); }} />
+        <ExternalAgentInformation client={externalAgents} contextOnly visible={agentContextVisible} onWorktree={browseAgentWorktree} onReturn={() => { setExternalInformation(false); returnToSourceInformation(); }} onOpen={(path) => { if (externalAgents.selected) inspectWorktree(externalAgents.selected, path); }} />
         {!agentContextVisible ? <>
         {revealNotice ? <p ref={revealNoticeElement} className="tasks-reveal-notice" role="status" tabIndex={0}>{revealNotice}</p> : null}
         {contextSubject?.kind === "task" ? <div className="artifact-context" data-context-kind="task" data-context-subject={contextSubject.id}><TaskContext returnButtonRef={taskReturnButton} selectedTaskId={contextSubject.id} snapshot={tasks.observation?.snapshot ?? null} detail={tasks.detail?.id === contextSubject.id ? tasks.detail : null} detailRevision={tasks.detailRevision} detailStale={tasks.detailStale || tasks.refreshing || tasks.observation?.status !== "observed" || Boolean(tasks.notice)} reading={tasks.reading} notice={tasks.detailNotice} attachment={taskAttachment(contextSubject.id)} onSelect={openTaskDocument} onReveal={(ref) => { void revealTaskReference(ref); }} onReturnToSource={returnToSourceInformation} onShowDocument={showPinnedTaskDocument} onRefresh={() => { void taskClient.refresh(); }} connected={tasks.connected} generation={coreGenerationRef.current} journal={journal.observation} journalRetained={Boolean(journal.notice) || journal.busy} run={liveAgents.run} runRecords={liveAgents.records} runRetained={liveAgents.detailStale || !liveAgents.connected} onJournal={showJournal} trustedObservation={{ snapshot: trustedObservation, retained: !liveAgents.connected }} onOpenTrustedRun={openTrustedRun} /></div> : <>
@@ -1396,7 +1405,7 @@ export function App() {
         <div className="dock-header"><div><span className="eyebrow">activity / jobs</span><strong>Live workspace</strong></div></div>
         <AgentDock state={liveAgents} client={agentClient} selectionVersion={agentDockSelection} fixtureSelectionVersion={fixtureDockSelection} trustedSelectionVersion={trustedSelection?.id} onOpenActivity={() => showJournal()}
           conversation={{ selectionVersion: conversationSelection ? String(conversationSelection) : undefined,
-            content: <AgentConversation client={externalAgents} bridge={window.swarm} memory={steeringMemory} onContext={() => { setExternalInformation(true); setCompactPanel("info"); }} /> }}
+            content: <AgentConversation client={externalAgents} bridge={window.swarm} memory={steeringMemory} onWorktree={browseAgentWorktree} onContext={() => { setExternalInformation(true); setCompactPanel("info"); }} /> }}
           mockConversation={demo.conversation ? { tabs: MOCK_AGENTS, selected: demo.selected, onSelect: demo.select, selectionVersion: demo.selectionVersion, content: <MockConversation selected={demo.selected} /> } : undefined}
           onDraft={() => agentClient.openDraft(snapshot.focus)}
           draftContent={<PreparedLaunchDraft state={liveAgents} client={agentClient} previewCurrent={taskAttachment(tasks.selectedTaskId).alreadyAttached} dirtyPaths={fileTabs.filter((tab) => protectsBuffer(tab)).map((tab) => tab.path)} />}

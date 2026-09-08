@@ -92,9 +92,9 @@ resolver does not read the filesystem or choose another agent's worktree.
 
 `//tools/context-source-links:unit` consumes `//:quality_sources` and checks the
 literal resolver, editor gesture, both Context categories and explicit graph
-selection. App's small callback mounts are coordinated with the conversation
-owner; until that joined mount lands, the additive component APIs alone do not
-make these gestures available in the running application.
+selection. App's callback mount checks the current repository/world and preserves
+the existing source-opening authority, then deliberately opens the exact target
+in the Build graph lens without replacing the service graph.
 
 `//tools/worktree-browser:checks` consumes `//:quality_sources` and checks the
 actual two-worktree Git broker plus mounted browser and original-buffer retention.
@@ -102,3 +102,7 @@ actual two-worktree Git broker plus mounted browser and original-buffer retentio
 App and browser in a labelled controlled renderer wrapper on owned virtual X11.
 That wrapper proves retention before the independent conversation-owner App mount;
 it is not a live-agent or normal-entry-point claim.
+The conversation cockpit now supplies the normal selected-agent Worktree action
+and a persistent hidden browser surface. Its mounted App regression separately
+checks selected session identity, master comparison and original buffer/camera
+retention; the earlier wrapper proof is not relabelled as normal-entry evidence.

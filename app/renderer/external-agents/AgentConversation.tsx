@@ -7,8 +7,8 @@ import type { SteeringMemory } from "./steering-memory";
 import "./external-agents.css";
 
 /** This stays mounted when tabs or observation detail change: one message owner. */
-export function AgentConversation({ client, bridge, onContext, memory }: {
-  client: ExternalClient; bridge?: SwarmBridge; onContext(): void; memory?: SteeringMemory;
+export function AgentConversation({ client, bridge, onContext, onWorktree, memory }: {
+  client: ExternalClient; bridge?: SwarmBridge; onContext(): void; onWorktree?(id: string): void; memory?: SteeringMemory;
 }) {
   const detail = client.detail?.session.id === client.selected ? client.detail : null;
   const summary = detail?.session ?? client.snapshot?.sessions.find((row) => row.id === client.selected);
@@ -21,7 +21,8 @@ export function AgentConversation({ client, bridge, onContext, memory }: {
   }, [client.selected, last]);
   return <section className="agent-conversation" aria-label="Agent conversation" data-external-session={client.selected}>
     <header className="conversation-heading"><strong>{summary?.label ?? "Choose an agent"}</strong>
-      {summary ? <><small>{summary.evidence === "synthetic" ? "Example" : client.stale ? "Reconnecting…" : summary.control === "tmux" ? "Terminal session" : "Conversation history"}</small><button onClick={onContext}>Agent details</button></> : null}
+      {summary ? <><small>{summary.evidence === "synthetic" ? "Example" : client.stale ? "Reconnecting…" : summary.control === "tmux" ? "Terminal session" : "Conversation history"}</small>
+        {summary.worktree && onWorktree ? <button onClick={() => onWorktree(summary.id)}>Worktree</button> : null}<button onClick={onContext}>Agent details</button></> : null}
     </header>
     {client.notice ? <p role="status" className="conversation-notice">{client.notice}</p> : null}
     {!client.selected ? <p className="conversation-empty">Select an agent in the fork list to read its conversation and send a message. Native agents are available in the next tab.</p>
