@@ -43,6 +43,10 @@ resolved from the private session registration, never an arbitrary command cwd.
 Malformed event paths produce a notice instead of navigating. Ctrl+W closes the
 inspection rather than its hidden editable source.
 
+Both live Activity file events and operator-associated briefing links carry the
+registered session into this inspector. A different opened repository does not
+hide canonical worktree briefing links or redirect them into local same-path files.
+
 System design opens the living component diagram/document in the center. The
 Work Log is mounted below the running-agent list with explicit Start/Stop; live
 timestamped activity is separate in the persistent dock and center log. Saved

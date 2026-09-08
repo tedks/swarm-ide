@@ -27,7 +27,10 @@ documents through the normal core; those are captured inputs, not new inference.
 Run it through `//tools/operator-cockpit:smoke` with an explicit private registry,
 session ID and `SWARM_COCKPIT_WORK_LOG_ARCHIVE`. No observed agent is messaged.
 
-Current limit: the external-agent briefing still hides configured context links
-when its worktree differs from the opened repository. The actual Activity event
-path is connected and reads the correct registered worktree. Unsupported tool
-wrappers remain generic activity rather than guessed file attribution.
+The approved briefing-link follow-up now retains context links for an existing,
+canonical registered worktree and routes them through the same session-specific
+read-only inspector. Missing or noncanonical roots expose no navigation link.
+`SWARM_COCKPIT_BRIEFING_ONLY=1` checks this direct path without depending on an old
+edit still being present in the live bounded Activity tail. The default harness
+retains its full Activity/outcome/design journey. Unsupported tool wrappers remain
+generic activity rather than guessed file attribution.

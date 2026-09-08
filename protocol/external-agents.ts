@@ -16,6 +16,7 @@ export const ExternalAgentSummarySchema = z.object({
   ancestry: z.enum(["root", "registered-parent", "unknown-parent", "cycle", "unavailable"]),
   observationId: z.string().max(64),
   observedAt: z.string().datetime(),
+  createdAt: z.string().datetime({ offset: true }).optional(),
   message: Text,
   role: z.string().max(120).optional(),
   task: z.string().max(200).optional(),

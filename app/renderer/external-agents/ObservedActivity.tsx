@@ -56,17 +56,17 @@ export function ObservedActivity({ client, onOpen, onEntry, onOpenFile }: {
     {session ? <>
       <button className="observed-activity-open" onClick={() => onOpen(session.id)} aria-label={`Open observed activity for ${session.label}`}>{session.label}<span aria-hidden="true">↗</span></button>
       <p className="observed-activity-evidence">{session.evidence === "synthetic"
-        ? "Synthetic transcript · not a real agent run"
-        : "Local JSONL observation · not a generated summary"}</p>
+        ? "Example session"
+        : "Session activity · updates automatically"}</p>
       <p className="observed-activity-observed">Last observed <time dateTime={observed?.dateTime} title={session.observedAt}>{observed?.label}</time></p>
       {entries.length ? <ol aria-label="Latest observed transcript entries">{entries.map((entry) => {
         const at = timeLabel(entry.at);
         return <li key={entry.id}>
           <header><span>{kinds[entry.kind]}</span><time dateTime={at.dateTime} title={entry.at}>{at.label}</time></header>
           <p>{entry.text.length > previewLength ? `${entry.text.slice(0, previewLength)}…` : entry.text}</p>
-          <small>{entry.attribution === "assistant-reported" ? "Assistant-reported · not verified" : entry.attribution === "recorded-tool-event" ? "Recorded tool event" : "Recorded harness event"}</small>
+          <small>{entry.attribution === "assistant-reported" ? "Agent update" : entry.attribution === "recorded-tool-event" ? "Tool activity" : "Session activity"}</small>
         </li>;
-      })}</ol> : <p className="observed-activity-empty">No eligible entries in the observed tail; this does not mean the agent is idle.</p>}
+      })}</ol> : <p className="observed-activity-empty">No recent messages to show.</p>}
       {detail && (detail.coverage.partial || detail.entries.length > previewCount) ? <p className="observed-activity-coverage">Showing {entries.length} latest entries from a bounded tail; earlier activity may be omitted.</p> : null}
     </> : <p className="observed-activity-empty">{client.selected ? "Waiting for this agent’s observation." : "Select an external agent to follow its observed activity."}</p>}
   </section>;

@@ -11,12 +11,21 @@ type LineageRow = {
   ancestorTrunks: boolean[]; lastSibling: boolean; hasChildren: boolean;
 };
 const lineageStep = 16;
+const newestForkFirst = (a: ExternalAgentSummary, b: ExternalAgentSummary) => {
+  const at = Date.parse(a.createdAt ?? ""), bt = Date.parse(b.createdAt ?? "");
+  if (Number.isFinite(at) && Number.isFinite(bt) && at !== bt) return bt - at;
+  if (Number.isFinite(at) !== Number.isFinite(bt)) return Number.isFinite(at) ? -1 : 1;
+  return a.id.localeCompare(b.id);
+};
 
 /** Iterative traversal: displayed role names never impose an ancestry depth. */
 export function lineageRows(sessions: ExternalAgentSummary[]): LineageRow[] {
   const unique = new Map(sessions.map((session) => [session.id, session]));
+  // Sort siblings, not the flattened rows: ancestors must remain before their
+  // descendants. Old/missing creation metadata falls back to immutable IDs.
+  const ordered = [...unique.values()].sort(newestForkFirst);
   const children = new Map<string, ExternalAgentSummary[]>(), roots: ExternalAgentSummary[] = [];
-  for (const session of unique.values()) {
+  for (const session of ordered) {
     if (session.ancestry === "registered-parent" && session.parentId && unique.has(session.parentId)) {
       const list = children.get(session.parentId) ?? []; list.push(session); children.set(session.parentId, list);
     } else roots.push(session);
@@ -37,7 +46,7 @@ export function lineageRows(sessions: ExternalAgentSummary[]): LineageRow[] {
   }
   // A malformed registered cycle has no reachable root. Display its members,
   // but never fabricate connector geometry for that unverified relationship.
-  for (const session of unique.values()) if (!seen.has(session.id)) rows.push(rootRow(session));
+  for (const session of ordered) if (!seen.has(session.id)) rows.push(rootRow(session));
   return rows;
 }
 
@@ -95,7 +104,7 @@ export function ExternalAgentInformation({ client, bridge, visible = true, onRet
       <ol className="external-worklog" aria-label={tab === "worklog" ? "Recorded agent worklog" : "Recorded assistant conversation"}>{entries.map((entry) => <li key={entry.id}>
         <header><time>{entry.at}</time><small>{entry.attribution}</small></header><p>{entry.text}</p>
       </li>)}</ol>
-      {!entries.length ? <p>No recent messages.</p> : null}
+      {!entries.length ? <p>No recent messages to show.</p> : null}
     </> : null}
   </section>;
 }

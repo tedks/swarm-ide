@@ -65,8 +65,8 @@ export function SessionSteering({ detail, bridge }: { detail: ExternalDetail | n
     {target.receipt ? <div role="status" data-delivery-status={target.receipt.status}>
       <p>{target.receipt.status === "queued" ? "Message queued."
         : target.receipt.status === "rejected" ? "Rejected — message not queued. Draft retained."
-          : "Delivery unknown — draft retained. Check the conversation before sending again."}</p>
-      <p>{target.receipt.message}</p>
+          : "Delivery could not be confirmed. Check the conversation before sending again."}</p>
+      {target.receipt.status !== "delivery-unknown" ? <p>{target.receipt.message}</p> : null}
       {target.receipt.receiptId ? <details><summary>Delivery details</summary><code>{target.receipt.receiptId}</code></details> : null}
     </div> : null}
   </section>;

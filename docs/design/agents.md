@@ -52,6 +52,17 @@ pending until its reviewed implementation is integrated.
 
 ## Build connections
 
+The observed fork rail orders siblings newest first using the registered rollout's
+`session_meta.payload.timestamp` as optional `createdAt`. It never uses refresh,
+file-modification or activity times for ordering. Known creation times precede
+missing ones; equal or missing times use ascending session ID for a stable older
+record fallback. Parent-first iterative traversal preserves arbitrary depth and
+solid ancestry connectors; sorting does not invent missing parents or grandchildren.
+The projection passes through `protocol/external-agents.ts` to
+`app/renderer/external-agents/ExternalAgents.tsx`. Focused checks at
+`//tools/demo-agents:unit` cover metadata compatibility, sibling ordering, deep
+connectors and focus stability as activity updates.
+
 Agent core/protocol/renderer modules feed `//:quality_sources` and
 `//:desktop-bundle`. `//tools/session-registration:bundle` consumes its dedicated
 sources and the shared application sources; `//tools/session-registration:register`
