@@ -58,6 +58,7 @@ import { useFileSearch } from "./repository/file-search";
 import type { RepositorySearchRequest } from "../../protocol/repository-search";
 import { WorkbenchSidebar } from "./WorkbenchSidebar";
 import { TopologyViews, type BuildTargetSelection } from "./repository/BuildGraphPane";
+import type { GraphFocusNavigation } from "./repository/focus-reveal";
 import { resolveBazelReference } from "./bazel-reference";
 import { ResizeDivider } from "./ResizeDivider";
 import type { ContextSubject } from "../../protocol/context";
@@ -150,6 +151,8 @@ export function App() {
   const graphReframe = 0; // Resizing the text area never requests a camera reset.
   const [showBuildVersion, setShowBuildVersion] = useState(0);
   const [buildTargetSelection, setBuildTargetSelection] = useState<BuildTargetSelection | null>(null);
+  const [graphNavigation, setGraphNavigation] = useState<GraphFocusNavigation | null>(null);
+  const graphNavigationSerial = useRef(0);
   const { client: agentClient, state: liveAgents } = useAgentWorkbench();
   const agentIntentProtected = protectsAgentIntent(liveAgents);
   const [agents, setAgents] = useState(emptyAgentWorkbench);
@@ -289,6 +292,12 @@ export function App() {
   const contextRealm = useCallback(() => {
     const current = workspaceRef.current.snapshot;
     return JSON.stringify([current?.project.id, current?.world.id, coreGenerationRef.current]);
+  }, []);
+  const graphCameraScope = JSON.stringify([workspace.snapshot?.project.id, workspace.snapshot?.world.id, coreGenerationRef.current, workspaceVisit.current]);
+  const revealGraphFocus = useCallback((focus: FocusRef) => {
+    const current = workspaceRef.current.snapshot;
+    if (!current || workspacePendingRef.current) return;
+    setGraphNavigation({ scope: JSON.stringify([current.project.id, current.world.id, coreGenerationRef.current, workspaceVisit.current]), nonce: ++graphNavigationSerial.current, focus });
   }, []);
   const contextEvent = useCallback((event: AttentionEvent) => {
     if (event.type === "inspect") setExternalInformation(false);
@@ -591,10 +600,11 @@ export function App() {
   const fileSearch = useFileSearch(workspace.snapshot?.project.id, commandQuery,
     paletteOpen && !palettePathMode && Boolean(window.swarm && (!window.swarmLifecycle || lifecycle?.core.phase === "ready")), coreGenerationRef.current, requestFileSearch);
 
-  const coordinateFileFocus = useCallback((path: string) => {
+  const coordinateFileFocus = useCallback((path: string, revealCamera = true) => {
     setSelectedConnection(null);
     const currentSnapshot = workspaceRef.current.snapshot;
     if (!currentSnapshot) return;
+    if (revealCamera) revealGraphFocus({ worldId: currentSnapshot.world.id, revisionKind: "working", revisionId: currentSnapshot.revisions.working.id, domain: "repo", key: `file:${path}`, path });
     void invoke({
       type: "focus.select",
       requestId: requestId(),
@@ -608,7 +618,7 @@ export function App() {
         path,
       },
     });
-  }, [invoke]);
+  }, [invoke, revealGraphFocus]);
 
   const showSurface = useCallback((surface: string) => {
     setOverviewVisible(false);
@@ -643,8 +653,8 @@ export function App() {
     setCompactPanel(null);
   }, [selectTask]);
 
-  const activateFile = useCallback((path: string) => {
-    coordinateFileFocus(path);
+  const activateFile = useCallback((path: string, revealCamera = true) => {
+    coordinateFileFocus(path, revealCamera);
     showSurface(path);
     inspectFile(path);
     if (fileTabsRef.current.some((tab) => tab.path === path && tab.revision)) recordLocation({ kind: "file", path });
@@ -964,6 +974,10 @@ export function App() {
     // repository path is not metadata or a URL; the file broker owns access.
     if (origin === "repository" ? !isRepositoryPath(ref.path) : !validTaskReference(ref)) { reportRevealFailure("Unsupported reference: only canonical relative working-file paths can be revealed."); return; }
     const intent = ++navigationIntent.current;
+    if (!declaration) {
+      const current = workspaceRef.current.snapshot;
+      if (current) revealGraphFocus({ worldId: current.world.id, revisionKind: "working", revisionId: current.revisions.working.id, domain: "repo", key: `file:${ref.path}`, path: ref.path });
+    }
     declaration?.started(intent);
     const activation = { realm: contextRealm(), generation: attentionRef.current.generation, intent, path: ref.path };
     pendingRevealIntent.current = intent;
@@ -1024,8 +1038,9 @@ export function App() {
       }
       const target = taskLineTarget(tab, ref.line);
       if (!mounted.current || !permitsContextActivation(attentionRef.current, activation, navigationIntent.current, contextRealm(), ref.path)) return;
-      // The definition gesture moves repo focus, never the service camera.
-      activateFile(ref.path);
+      // Declaration I/O completes the original service gesture. It must not
+      // mint a later file-camera request after the user has panned away.
+      activateFile(ref.path, false);
       setRevealNotice(declaration ? `${declaration.notice} ${target.notice}` : target.notice);
       // The command nonce predates activateFile's legitimate intent/attention
       // advances. Capture delivery authority only after that activation.
@@ -1052,7 +1067,7 @@ export function App() {
       // Never clear a newer Reveal's token when an older read finally settles.
       if (pendingRevealIntent.current === intent) pendingRevealIntent.current = null;
     }
-  }, [activateFile, invoke, openFile, reportRevealFailure, repository.reveal, contextRealm, sourceReceipt, retireSourceNavigation]);
+  }, [activateFile, invoke, openFile, reportRevealFailure, repository.reveal, contextRealm, sourceReceipt, retireSourceNavigation, revealGraphFocus]);
 
   const openLinkedFile = useCallback((path: string) => {
     if (!isRepositoryPath(path)) { reportRevealFailure("Use an exact canonical repository-relative file path, without .git or parent segments."); return; }
@@ -1397,6 +1412,7 @@ export function App() {
 
   const selectFocus = useCallback((focus: FocusRef) => {
     ++navigationIntent.current;
+    revealGraphFocus(focus);
     if (focus.domain !== "repo" || !focus.key.startsWith("file:")) inspectGraph(focus);
     setSelectedConnection(null);
     const repoGraph = workspaceRef.current.snapshot?.graphs.find((graph) => graph.topologyId === "repo");
@@ -1412,7 +1428,7 @@ export function App() {
     void invoke({ type: "focus.select", requestId: requestId(), protocolVersion: PROTOCOL_VERSION, focus });
     const loaded = repoGraph?.nodes.find((node) => node.focus.key === focus.key && node.focus.path === focus.path);
     if (focus.path && focus.domain === "repo" && loaded?.kind === "file") openLinkedFile(focus.path);
-  }, [invoke, openFile, inspectGraph, activateRepositoryEntry, enterDirectory, openLinkedFile]);
+  }, [invoke, openFile, inspectGraph, activateRepositoryEntry, enterDirectory, openLinkedFile, revealGraphFocus]);
   const definitionValid = useCallback((token: DefinitionIntent) => definitionRef.current === token && mounted.current &&
     token.realm === contextRealm() && token.generation === attentionRef.current.generation &&
     token.resolution.publication === declarationPublication(workspaceRef.current.snapshot) &&
@@ -1433,6 +1449,7 @@ export function App() {
   }, [definitionValid, revealTaskReference]);
   const activateDefinition = useCallback((focus: FocusRef, origin?: HTMLElement) => {
     ++navigationIntent.current;
+    revealGraphFocus(focus);
     setSelectedConnection(null);
     const current = workspaceRef.current.snapshot;
     if (!current) return;
@@ -1443,7 +1460,7 @@ export function App() {
     void invoke({ type: "focus.select", requestId: requestId(), protocolVersion: PROTOCOL_VERSION, focus });
     if (resolution.candidates.length === 1) chooseDefinition(token, resolution.candidates[0]!.path);
     else setDefinition(token);
-  }, [invoke, inspectGraph, contextRealm, chooseDefinition, reportRevealFailure]);
+  }, [invoke, inspectGraph, contextRealm, chooseDefinition, reportRevealFailure, revealGraphFocus]);
   useEffect(() => {
     const token = definitionRef.current;
     if (token && !definitionValid(token)) {
@@ -1562,8 +1579,8 @@ export function App() {
           renderWorkspace={({ components, document: designDocument, tasks: taskGraph }) => <>
         <div tabIndex={-1} aria-label="Coordinated graphs" className={`graphs-grid ${textOpen ? "is-sidebar" : "is-active"}`}><div className="graph-panels">
           {components}<div className="task-graph-card">{taskGraph}</div>{snapshot.graphs.map((graph) => {
-          const pane = <GraphPane key={graph.topologyId} workspaceId={snapshot.project.id} serviceDeclarations={snapshot.serviceDeclarations} graph={graph} mockAgents={demo.graphs} mockGraphVersion={demo.graphVersion} buildLinkSnapshot={graph.directory ? buildLinks : undefined} onBuildLinksVisibility={graph.directory ? setDirectoryBuildVisible : undefined} buildGraphStatus={buildGraph.observation?.status} focus={snapshot.focus} mappings={snapshot.mappings} reframeVersion={graphReframe} interfaceZoom={zoomPercent} onFocus={selectFocus} onActivate={graph.topologyId === "service" ? activateDefinition : undefined} onInspectFocus={(focus) => { ++navigationIntent.current; inspectGraph(focus); setSelectedConnection(null); void invoke({ type: "focus.select", requestId: requestId(), protocolVersion: PROTOCOL_VERSION, focus }); }} onNavigateDirectory={graph.directory ? enterDirectory : undefined} onConnectionFocus={(connection) => selectConnection(connection, graph.topologyId)} onReconcile={() => { void reconcile(); }} reconciliationRunning={reconciliationRunning} repositoryCameraIntent={graph.directory ? repository.cameraIntent : undefined} />;
-          return graph.topologyId === "service" ? <TopologyViews key={graph.topologyId} service={pane} targetSelection={buildTargetSelection} focusedFile={snapshot.focus.domain === "repo" && snapshot.focus.path && snapshot.focus.key === `file:${snapshot.focus.path}` ? snapshot.focus.path : activeFile?.path ?? null} showBuildVersion={showBuildVersion} capture={buildLinks} observation={buildGraph.observation} onRefresh={() => { void buildGraph.refresh(); }} onCancel={() => { void buildGraph.cancel(); }} onBuild={(target) => { void targetBuilds.start(target); }} buildBusy={targetBuilds.busy} onVisibility={setBuildGraphVisible} mockAgents={demo.graphs} mockVersion={demo.graphVersion} onOpenBuild={openLinkedFile} reframeVersion={graphReframe} /> : pane;
+          const pane = <GraphPane key={graph.topologyId} workspaceId={snapshot.project.id} graph={graph} navigation={graph.topologyId === "service" ? graphNavigation : null} cameraScope={graphCameraScope} serviceDeclarations={snapshot.serviceDeclarations} mockAgents={demo.graphs} mockGraphVersion={demo.graphVersion} buildLinkSnapshot={graph.directory ? buildLinks : undefined} onBuildLinksVisibility={graph.directory ? setDirectoryBuildVisible : undefined} buildGraphStatus={buildGraph.observation?.status} focus={snapshot.focus} mappings={snapshot.mappings} reframeVersion={graphReframe} interfaceZoom={zoomPercent} onFocus={selectFocus} onActivate={graph.topologyId === "service" ? activateDefinition : undefined} onInspectFocus={(focus) => { ++navigationIntent.current; inspectGraph(focus); setSelectedConnection(null); void invoke({ type: "focus.select", requestId: requestId(), protocolVersion: PROTOCOL_VERSION, focus }); }} onNavigateDirectory={graph.directory ? enterDirectory : undefined} onConnectionFocus={(connection) => selectConnection(connection, graph.topologyId)} onReconcile={() => { void reconcile(); }} reconciliationRunning={reconciliationRunning} repositoryCameraIntent={graph.directory ? repository.cameraIntent : undefined} />;
+          return graph.topologyId === "service" ? <TopologyViews key={graph.topologyId} service={pane} navigation={graphNavigation} cameraScope={graphCameraScope} targetSelection={buildTargetSelection} focusedFile={snapshot.focus.domain === "repo" && snapshot.focus.path && snapshot.focus.key === `file:${snapshot.focus.path}` ? snapshot.focus.path : activeFile?.path ?? null} showBuildVersion={showBuildVersion} capture={buildLinks} observation={buildGraph.observation} onRefresh={() => { void buildGraph.refresh(); }} onCancel={() => { void buildGraph.cancel(); }} onBuild={(target) => { void targetBuilds.start(target); }} buildBusy={targetBuilds.busy} onVisibility={setBuildGraphVisible} mockAgents={demo.graphs} mockVersion={demo.graphVersion} onOpenBuild={openLinkedFile} reframeVersion={graphReframe} /> : pane;
         })}</div></div>
         <section className="design-document-surface" aria-label="Design reading area" hidden={!designVisible}>{designDocument}</section>
 

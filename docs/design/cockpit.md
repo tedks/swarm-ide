@@ -4,6 +4,40 @@ The cockpit is an instrument panel the operator can reach into. Navigation,
 source, context and agent controls remain visible together; changing the central
 document should not throw away a draft, dirty file or graph camera.
 
+Deliberate navigation can reveal the selected existing node without fitting the
+entire graph. Each pane accepts one scoped camera request through
+`app/renderer/repository/reveal.ts`: it waits for ReactFlow's measured nodes,
+then applies a zero-duration viewport immediately. A manual pan cancels an older
+request, and changing worktree/core or graph publication retires it. Status,
+source-read completion, interface zoom and background refresh do not manufacture
+new camera requests. Fit remains an explicit whole-view control.
+
+Source navigation follows exact declared service/interface paths and observed
+Bazel file membership; shared source may reveal multiple actual nodes. It does
+not infer unique ownership from directory names or invent task/service edges.
+Completing a service's asynchronous declaration open retains the original service
+camera gesture rather than issuing a second file-follow jump. The shared
+ProjectionCanvas offers optional selected-task following. TaskGraph follows the
+current task sidebar selection, retaining an outline-only choice for missing
+references until another task is chosen. Hidden selections wait for measured
+nodes; replacing the task reader or snapshot retires pending camera requests
+without resetting the retained viewport. Dependency reads and scope controls
+keep their existing scheduling and selection authority.
+Canvas and outline re-clicks create new requests; same-ID task-sidebar re-clicks
+still need a client gesture token (`swarm-task-repeat-sidebar-reveal`). A delayed
+task-detail acknowledgement retains the original token, so it cannot overwrite a
+pan made while the detail was loading. The service Agents toggle lives in the
+existing header, leaving the canvas in its flexible grid row.
+
+`//tools/graph-recenter:checks` consumes `//:quality_sources` and exercises click,
+measurement, hidden-panel, manual-move and publication fences plus the ordinary
+retention checks and both TypeScript boundaries.
+`//tools/graph-recenter:smoke` uses the real packaged application in an owned
+virtual desktop and a disposable Git repository: source-to-service reveal,
+service keyboard selection, a native build-node click, and a user pan retained
+across an actual declaration edit. It launches no agent and does not build the
+fixture targets.
+
 ## Lower-level map
 
 | Part | Actual implementation | Relationship |

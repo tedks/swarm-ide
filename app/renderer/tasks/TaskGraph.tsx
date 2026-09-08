@@ -10,7 +10,9 @@ export function TaskGraph({ client, state, visible, onOpen }: {
   onOpen: (snapshot: TaskSnapshot, id: string) => Promise<boolean>;
 }) {
   const [loaded, setLoaded] = useState<{ snapshot: TaskSnapshot; owner: TaskBridgeClient; lifetime: number; details: ReadonlyMap<string, TaskDetail>; attempted: number } | null>(null);
-  const [loading, setLoading] = useState(false), [selected, setSelected] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [localSelection, setLocalSelection] = useState<{ id: string; owner: TaskBridgeClient; scope: string; external: string | null; nonce: number } | null>(null);
+  const localSerial = useRef(0);
   const [notice, setNotice] = useState("");
   const [scope, setScope] = useState<{ anchor: string | null; whole: boolean; version: number }>({ anchor: null, whole: false, version: 0 });
   const current = useRef<AbortController | null>(null);
@@ -20,6 +22,26 @@ export function TaskGraph({ client, state, visible, onOpen }: {
   if (loaded && !loading) canvasWasShown.current = true;
   const snapshot = state.observation?.snapshot ?? null;
   const fresh = loaded && loaded.owner === client && client.graphCurrent(loaded.snapshot, loaded.lifetime);
+  const cameraScope = JSON.stringify([loaded?.snapshot.worldId, loaded?.snapshot.repositoryId]);
+  const revealIdentity = JSON.stringify([loaded?.lifetime, loaded?.snapshot.metadataCommit, Boolean(fresh)]);
+  // An outline may select a missing relation with no TaskClient detail. Keep
+  // that local choice until the operator chooses another task in the sidebar.
+  // Never apply a new client's selection to a retained old graph.
+  const localMatches = localSelection?.owner === client && localSelection.scope === cameraScope &&
+    (localSelection.external === state.selectedTaskId || localSelection.id === state.selectedTaskId);
+  const selected = localMatches ? localSelection.id : fresh ? state.selectedTaskId : null;
+  // Read availability is not a gesture. Keep this token stable through a
+  // temporary stale/current cycle so recovery cannot undo a manual pan.
+  const selectionIntent = JSON.stringify(localMatches ? ["outline", localSelection.nonce] : ["sidebar", state.selectedTaskId]);
+  useEffect(() => {
+    setLocalSelection((old) => {
+      if (!old || old.owner !== client || old.scope !== cameraScope) return null;
+      // A held detail read acknowledging this local click is not a new gesture.
+      if (old.id === state.selectedTaskId && old.external !== state.selectedTaskId) return { ...old, external: state.selectedTaskId };
+      return old.external === state.selectedTaskId ? old : null;
+    });
+  }, [client, cameraScope, state.selectedTaskId]);
+  const select = (id: string) => setLocalSelection({ id, owner: client, scope: cameraScope, external: state.selectedTaskId, nonce: ++localSerial.current });
   const read = async () => {
     if (!snapshot || !client.graphCurrent(snapshot)) return;
     current.current?.abort();
@@ -78,12 +100,12 @@ export function TaskGraph({ client, state, visible, onOpen }: {
         <button aria-pressed={scope.whole} onClick={() => setScope((old) => ({ anchor: null, whole: true, version: old.version + 1 }))}>Whole projection</button>
         <span>{scoped!.nodes.length} visible · {scoped!.hidden} outside this view{scope.anchor ? ` · direct neighbors of ${scope.anchor}` : ""}</span>
       </nav>
-      {canvasWasShown.current ? <ProjectionCanvas label="Task blockage canvas" nodes={nodes} edges={edges} selected={selected} taskScopeVersion={scope.version} onSelect={(id) => { setSelected(id); void open(id); }} />
+      {canvasWasShown.current ? <ProjectionCanvas label="Task blockage canvas" nodes={nodes} edges={edges} selected={selected} taskScopeVersion={scope.version} cameraScope={cameraScope} revealIdentity={revealIdentity} revealSelection selectionIntent={selectionIntent} visible={visible} onSelect={(id) => { select(id); void open(id); }} />
         : <div className="planning-empty">Reading relationships before framing the graph…</div>}
       <div className="planning-inspector">
         {picked ? <><strong>{displayTaskText(picked.title)}</strong><code>{picked.id}</code><button disabled={!fresh || picked.missing} onClick={() => { void open(picked.id); }}>Open task details</button></> : <p>Select a task, then explicitly open its pinned detail.</p>}
         <details><summary>Keyboard task outline · {projection.nodes.length} shown</summary><ul>{projection.nodes.map((node) => <li key={node.id}>
-          <button aria-label={`Inspect graph task ${node.id}`} onClick={() => { setSelected(node.id); void open(node.id); }}>{displayTaskText(node.title)}</button>
+          <button aria-label={`Inspect graph task ${node.id}`} onClick={() => { select(node.id); void open(node.id); }}>{displayTaskText(node.title)}</button>
           <span>{node.status}{!node.detailLoaded ? " · relations unread" : ""}</span>
           <button disabled={!fresh || node.missing} aria-label={`Open graph task ${node.id}`} onClick={() => { void open(node.id); }}>Open task</button>
         </li>)}</ul></details>
