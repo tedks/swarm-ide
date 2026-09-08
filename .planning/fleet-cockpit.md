@@ -17,6 +17,7 @@ The operator can select independent real Codex conversations, retain an unsent m
 - [x] Push ready PR73, synchronize Ditz and record initial bounded handoff; ROOT subsequently authorized the final runtime join.
 - [x] ROOT continuation cleared exact final F1 producer 07f64ef; normally composed as d584182 over reviewed E3/T5/A2 base b1cb03e, no conflicts.
 - [x] (2026-09-08 01:29Z) Actual packaged cockpit/service join passed 4.864s using two deterministic provider processes and three protocol turns, no model. Source, logical cursor, agent draft and graph identity/cameras retained; both stopped and histories persisted; zero renderer exceptions and owned cleanup confirmed.
+- [x] Normally compose ROOT-cleared landed base 4a7b25a as f9fc558, preserving W6 task/dock callbacks, E3 Activity and S3 always-mounted external steering. Fresh focused fleet/external/observer targets and package build passed; native composition review CLEAN. No repeated GUI/model proof.
 - [ ] ROOT normal landing/adoption remains separate from completed child implementation and evidence.
 
 ## Surprises & Discoveries
@@ -42,6 +43,8 @@ The visible list/select/output/approval/Stop implementation and minimal task-lin
 Final strengthened proof run.fk599z preserved full source and logical cursor, existing agent-draft DOM/value, per-run messages and graph DOM/cameras with zero renderer exceptions and confirmed cleanup. Long-session cache/orphaned-draft handling is a proportional follow-up in `fleet-renderer-retention-bounds-20260907`; no unlimited or refresh-persistent composer claim is made. Hosted checks were not used, and foreign review seats were intentionally unfilled under the Codex-only directive.
 
 Runtime join d584182 passed fresh focused 18 tests/typechecks and packaged desktop build. Corrected actual-service proof run.Hxkxsu passed 4.864s (5.833s owned harness), retaining two closed histories and showing no provider replay during same-core archive observation. It does not test restart/crash recovery. Earlier full quality 1820/139 remains attributed to e1c600a; no repeated full legacy suite or product model turn was requested or performed.
+
+Final reviewed-base composition f9fc558 passed focused fleet 18, external/steering 78 and observer 71 tests (the latter targets overlap; each intentionally skips the manual real self-send test), with typechecks and package build. These are post-composition local checks, not a repeat or reattribution of the earlier GUI evidence. Native composition review was CLEAN; ROOT owns normal PR73 landing and visualization adoption.
 
 ## Context and Orientation
 
@@ -80,3 +83,5 @@ Updated after contract/consumer clearance, mounted/owned evidence and native-rev
 Updated after final local quality, actual strengthened virtual evidence and native convergence; remaining work is ROOT integration rather than an unfinished local proof.
 
 ROOT authorized the concrete final runtime dependency continuation. Added one focused packaged actual-service scenario rather than repeating producer model proof or the full legacy suite.
+
+Updated after the actual joined proof and ROOT-cleared final base composition, preserving the historical scope of each verification and the remaining ROOT-owned landing step.
