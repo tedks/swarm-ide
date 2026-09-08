@@ -54,3 +54,10 @@ log_events:
     adopt a new task list with last-good retention, bounded reads, rollback recovery
     and preserved pinned contexts;124focused checks/types/native CLEAN. Awaiting shared
     app restart with outbox, no new packaged UI claim.
+- time: 2026-09-08T14:27:39-00:00
+  who: Ted Smith
+  what: commented
+  comment: Managed local IDE now runs merged PR113 following the user-approved restart.
+    The later task limit warning was independently identified as the old 256-issue
+    reader cap, not a freshness failure. Original worker finished; no follow-up implementation
+    or duplicate run was started.
