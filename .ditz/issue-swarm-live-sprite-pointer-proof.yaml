@@ -1,0 +1,24 @@
+id: swarm-live-sprite-pointer-proof
+title: Finish visible pointer and clean-close proof for live graph sprites
+desc: The one authorized packaged execution displayed real registered source events
+  and programmatically selected the exact conversation while retaining source/cameras
+  with zero renderer errors. Owned cleanup succeeded, but ordinary quit was vetoed
+  by the intentionally dirty buffer and the scenario did not pass. Driver now undoes
+  its own unsaved edit before quit and verifies an unobscured native pointer hit;
+  those driver corrections are syntax/native-reviewed but have not had a second GUI
+  run under the one-run bound. Existing evidence remains /tmp/swarm-ide-live-sprites.UQXd9n/gui.
+  Complete one bounded corrected proof if ROOT authorizes it; no model/message/user-file
+  write.
+type: task
+component: swarm-ide
+release:
+reporter: Ted Smith <tedks@riseup.net>
+status: unstarted
+disposition:
+creation_time: 2026-09-08T20:48:39-00:00
+references: []
+log_events:
+- time: 2026-09-08T20:48:39-00:00
+  who: Ted Smith
+  what: created
+  comment: ""
