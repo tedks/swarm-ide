@@ -1,8 +1,9 @@
 id: demo-polish-install-rehearsal-20260907
 title: Verify evaluator installation and document copyable Linux setup
-desc: 'L2 bounded lane: existing fresh-checkout smoke, README and evaluator-install
-  guide, warm-cache attribution, private access and owned virtual proof. ROOT owns
-  merge; Codex-only review.'
+desc: 'L2 scope: run the existing fresh-checkout smoke test, update README and the
+  evaluator-install guide, identify results that used a warm cache, cover private
+  access, and verify the app in a virtual desktop session created and controlled for
+  this task. Only ROOT may merge. Use Codex-only review.'
 type: task
 component: docs
 release:
@@ -37,3 +38,7 @@ log_events:
     actual unchanged fresh-local-clone install/startup/file-open/negative authority
     checks. Warm download caches/local Git transport; not cold-network or whole-demo
     proof.
+- time: 2026-09-08T04:29:05-00:00
+  who: Ted Smith
+  what: updated description
+  comment: ""
