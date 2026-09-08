@@ -29,6 +29,19 @@ export async function createNavigationFixture(parent, kind, source) {
     // local worktree changes, remote access or references to the watched checkout.
     const archive = await git(origin, ["archive", "--format=tar", sourceCommit]);
     await command("tar", ["-xf", "-", "-C", root], parent, archive);
+    // Neutral service inputs belong only to this disposable navigation proof.
+    // They exercise authored source/interface links without compiling a target.
+    await mkdir(join(root, "navigation-proof"));
+    await writeFile(join(root, "navigation-proof/validator.ts"), "export const validate = (value: string) => value.length > 0;\n");
+    await writeFile(join(root, "navigation-proof/validator.proto"), 'syntax = "proto3";\npackage navigation;\nservice Validator { rpc Validate(Value) returns (Result); }\nmessage Value { string text = 1; }\nmessage Result { bool valid = 1; }\n');
+    await writeFile(join(root, "navigation-proof/writer.proto"), 'syntax = "proto3";\npackage navigation;\nservice Writer { rpc Write(Value) returns (Result); }\nmessage Value { string text = 1; }\nmessage Result { bool written = 1; }\n');
+    await writeFile(join(root, "navigation-proof/service.swarm.json"), JSON.stringify({
+      schemaVersion: 1, service: { id: "service:navigation-validator", displayName: "Navigation validator" },
+      implementationPaths: ["navigation-proof/validator.ts"],
+      providedInterfaces: [{ id: "interface:validate", name: "Validate", requestType: "navigation.Value", responseType: "navigation.Result" }],
+      requiredInterfaces: [{ id: "interface:writer.write", name: "Writer.Write", serviceId: "service:navigation-writer", requestType: "navigation.Value", responseType: "navigation.Result" }],
+      interfaceDeclarationPaths: [{ interfaceId: "interface:validate", path: "navigation-proof/validator.proto" }, { interfaceId: "interface:writer.write", path: "navigation-proof/writer.proto" }],
+    }, null, 2) + "\n");
   } else {
     await mkdir(join(root, "src")); await mkdir(join(root, "docs"));
     await writeFile(join(root, "src/main.ts"), sourceText);

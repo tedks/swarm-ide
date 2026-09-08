@@ -105,9 +105,9 @@ available to the local verification harness.
 `useBuildGraph` observes the current repository while the core is ready, regardless
 of the open central document, and receives the working-source fingerprint for
 debounced invalidation. The hook pauses on blur and keeps settled input quiet.
-The old automatic service-artifact binary build is not the repository graph:
-it stays an explicit **Build service topology** action under the toolbar's
-secondary build/refresh menu. **Refresh build graph** is a secondary retry;
+Services are observed automatically from working Compose/native declarations;
+**Refresh services** requests another read, never a binary build. The former
+fixed service-artifact build is removed. **Refresh build graph** is a secondary retry;
 normal navigation does not require pressing it. See the repository design for
 the query owner's bounded scheduling and authority.
 The message list retains at least 80px after a delivery receipt; timestamps and

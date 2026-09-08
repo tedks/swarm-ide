@@ -9,22 +9,28 @@ Opening any repository should show its declared services, not compile or display
 ## Progress
 
 - [x] (2026-09-08) Read instructions and inventoried the fixed provider/artifact pipeline.
-- [ ] Implement declaration reader, graph adapter and automatic provider observation.
-- [ ] Remove shipped example and active UI/fixture assumptions; keep historical evidence.
-- [ ] Verify two repositories, malformed/empty/update behavior and owned virtual desktop.
-- [ ] Review, update living design, push ready PR and hand off.
+- [x] (2026-09-08 19:56Z) Implement declaration reader, graph adapter and automatic provider observation.
+- [x] (2026-09-08 19:56Z) Remove shipped example/extractor and active UI/fixture assumptions; neutral compatibility tests preserve historical built-artifact contracts.
+- [x] (2026-09-08 20:00Z) Verify two real repositories read-only, direct malformed/empty/update tests and owned virtual desktop.
+- [x] (2026-09-08) Native review converged CLEAN, living design and neutral navigation harness updated; focused checks and final desktop bundle pass. PR130 ready handoff follows final push.
 
 ## Surprises & Discoveries
 
 The current `core/provider.ts` builds a fixed target, validates its exact source set and publishes built evidence. `core/service-topology.ts` chooses a particular implementation filename and manufactures a single-service view. Source declarations must not be published as that built evidence.
 
+The initial graph contract required every green snapshot to advance a built revision. This was made conditional on actual declaration-source publication, with repository/graph identity checks; no build fingerprint is manufactured. Native review caught partial warnings blocking subsequent edits, tracked-but-unstaged file deletion, partial recovery, a dead service-name graph button, and interface/service identifier collisions. Each received a narrow correction and regression.
+
 ## Decision Log
 
 Read declarations without executing project commands. Compose `depends_on` means startup ordering, not a call. Explicit native interface requirements retain their authored meaning. Declaration paths are repository-relative and must resolve within the selected worktree. Invalid files are reported, not silently replaced with fixtures. Preserve the protocol's separate built/deployed fields, adding a distinct declaration observation if needed. Keep bounded regular-file reads and finite discovery while documenting partial coverage.
 
+Use the existing WorkingWorldObserver instead of adding another watcher. Its source-change callback schedules one coalesced discovery, and disposal aborts in-flight enumeration. Unknown Compose includes/extends are supported partial warnings rather than invalid reads; partial graphs keep updating. Actual malformed files retain the old useful graph. Native declarations use root-relative paths, even when nested. Service names in Context are plain text with explicit clickable source links, not unsupported graph buttons.
+
 ## Outcomes & Retrospective
 
-Implementation is in progress; no behavior or verification claimed yet.
+Actual owned packaged Compose discovery, declaration activation, saved edit and dirty README/cursor/camera retention passed in 1047ms on :183/55443 with zero renderer exceptions and cleanup. The initial driver incorrectly used double-click and stopped at activation; correcting it to the product's actual single-click gesture changed no production behavior. The first inspection launcher had a generated-module path mistake; its corrected Bazel runfiles path then read Swarm/Pure Sky without source mutation. These initial failures remain in step evidence, not claimed as product fixes.
+
+The primary focused target passes 124 tests plus both TypeScript boundaries; neutral fixture/legacy-harness checks pass 43 tests, and the owned-desktop supervisor's fake-process regression passes. Real read-only inspection found Swarm's one Compose service and Pure Sky's three declared services/two startup edges. No model, container, deployment or target-build was started. Native review converged CLEAN; current design/mappings and old navigation service sections now use declarations. The navigation migration had syntax/fixture checks, not a new full navigation GUI run. Final package passes. Broader Compose composition is tracked as `swarm-compose-service-coverage`; ROOT retains merge/adoption authority.
 
 ## Context and Orientation
 

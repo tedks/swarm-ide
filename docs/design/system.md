@@ -51,6 +51,11 @@ become current only for the inputs actually observed. A plan describes intended
 structure; a build graph describes declared build relationships. Neither proves
 that a particular agent completed a task.
 
+The service projection reads actual Compose and `service.swarm.json` declarations
+from the selected working tree. It never compiles a built-in example or starts a
+container. Compose startup ordering, authored interface requirements, build
+dependencies and running deployments remain distinct kinds of relationship.
+
 Each Git worktree is a complete source world. A filename alone is insufficient
 to identify another agent's edits. Observing a terminal-owned agent also does not
 transfer ownership of its running process to the IDE.
