@@ -29,5 +29,13 @@ log_events:
     reciprocal connections remain explicit, selection no longer remounts the canvas,
     and unchanged plan observations retain index identity. Focused graph/design checks
     and native review passed. Unified layout and owned visual checks are next.'
+- time: 2026-09-08T16:37:24-00:00
+  who: Ted Smith
+  what: commented
+  comment: PR122 repairs selection-driven canvas remounts and measured-label flashing.
+    All authored root interfaces and reciprocal directions are retained, containment
+    is distinguished, exact links and constraints remain inspectable. Native convergence
+    CLEAN; 86 design checks and real owned component refresh/camera proof pass. Natural
+    long-running idle flashing remains unconfirmed, not claimed repaired.
 blocks:
 - swarm-unified-graph-workspace
