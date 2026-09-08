@@ -256,6 +256,11 @@
     ],
     "sourcePaths": [
       "core/plans.ts",
+      "core/plan-generation.ts",
+      "protocol/plan-generation.ts",
+      "app/renderer/plans/PlanGeneration.tsx",
+      "app/renderer/plans/generation-settings.ts",
+      "app/renderer/plans/use-plan-generation.ts",
       "core/tasks/draft-context.ts",
       "app/renderer/plans/DesignWorkspace.tsx",
       "app/renderer/plans/design.css",
@@ -269,6 +274,7 @@
     ],
     "taskIds": [
       "swarm-living-design",
+      "swarm-generate-component-plan",
       "swarm-plan-index-startup"
     ],
     "contextRefs": [],
@@ -288,9 +294,9 @@
         },
         {
           "targetId": "design:agents",
-          "label": "Fixed task/source context",
+          "label": "Task context & design generation",
           "kind": "data",
-          "detail": "A deliberate attachment carries revision-pinned task text alongside the draft's fixed source. Core preparation materializes and revalidates that context; merely selecting a task does not launch an agent."
+          "detail": "Explicit task attachment carries pinned context. Generate component plan deliberately starts a normal agent in the selected worktree using saved prompt/model/reasoning; its repository files pass the ordinary plan reader before display. Selection alone starts no agent."
         }
       ],
       "buildTargets": [
@@ -306,6 +312,14 @@
               "label": "//tools:build-app",
               "relation": "tools"
             }
+          ]
+        },
+        {
+          "label": "//tools/component-plan:checks",
+          "role": "Plan generation settings, absence and lifecycle checks",
+          "dependencies": [
+            { "label": "//:quality_sources", "relation": "data" },
+            { "label": "//tools/component-plan:sources", "relation": "data" }
           ]
         },
         {

@@ -1,0 +1,11 @@
+package(default_visibility = ["//visibility:public"])
+
+filegroup(name = "sources", srcs = glob(["*.sh", "*.ts", "*.cjs"]))
+
+sh_test(
+    name = "checks",
+    srcs = ["checks.sh"],
+    data = ["//:quality_sources", ":sources"],
+    local = True,
+    timeout = "short",
+)

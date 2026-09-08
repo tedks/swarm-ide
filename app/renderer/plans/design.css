@@ -53,3 +53,7 @@
 .component-graph-card .design-contract-detail { max-height: 72px; flex: 0 0 auto; overflow: auto; padding: 4px 7px; }
 @media (max-width: 900px) { .design-quadrants { grid-template-columns: minmax(0, 1fr); grid-template-rows: none; overflow: visible; } .design-quadrants > * { max-height: 500px; } }
 @container (max-width: 850px) { .design-quadrants { display: flex; flex-direction: column; } .design-components { order: -1; min-height: 460px; } .design-quadrants > * { flex: 0 0 auto; max-height: 500px; } }
+.plan-generation { display: grid; gap: 8px; color: var(--text, #dbe3ee); }
+.plan-generation details { text-align: left; }
+.plan-generation label { display: grid; gap: 4px; margin: 8px 0; }
+.plan-generation input, .plan-generation textarea, .plan-generation select { min-width: 0; width: 100%; box-sizing: border-box; color: inherit; background: #16202d; border: 1px solid #44566b; border-radius: 4px; padding: 6px; }

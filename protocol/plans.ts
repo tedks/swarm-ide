@@ -90,8 +90,9 @@ export const PlanReadResultSchema = z.discriminatedUnion("status", [
   z.object({
     status: z.literal("unavailable"), code: z.enum(["PLAN_INDEX_UNAVAILABLE", "PLAN_INDEX_MALFORMED", "PLAN_INDEX_LIMIT_EXCEEDED"]),
     message: z.enum([PLAN_READ_MESSAGES.PLAN_INDEX_UNAVAILABLE, PLAN_READ_MESSAGES.PLAN_INDEX_MALFORMED, PLAN_READ_MESSAGES.PLAN_INDEX_LIMIT_EXCEEDED]),
+    missing: z.literal(true).optional(),
   }).strict(),
-]).refine((result) => result.status === "observed" || result.message === PLAN_READ_MESSAGES[result.code], "Plan diagnostic must match its code");
+]).refine((result) => result.status === "observed" || (result.message === PLAN_READ_MESSAGES[result.code] && (!result.missing || result.code === "PLAN_INDEX_UNAVAILABLE")), "Plan diagnostic must match its code");
 export type PlanReadResult = z.infer<typeof PlanReadResultSchema>;
 
 export const PlanReadRequestSchema = z.object({
