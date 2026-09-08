@@ -14,3 +14,10 @@ log_events:
   who: Ted Smith
   what: created
   comment: ""
+- time: 2026-09-08T00:46:31-00:00
+  who: Ted Smith
+  what: commented
+  comment: E3 implements document visibility and optional whole-hook visible control;
+    per-instrument collapse/compact visibility union is deferred as a nonblocking
+    resource optimization. Selected1s/registry3s remain serialized; no parallel or
+    unbounded queues.
