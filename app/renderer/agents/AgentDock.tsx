@@ -7,6 +7,7 @@ import { OverflowStrip } from "../OverflowStrip";
 import { useConversationTabs, type RegisteredConversations } from "./conversation-tabs";
 import { RunStatus } from "../external-agents/RunStatus";
 import { AGENT_EXECUTION_LABELS } from "../../../protocol/agent-lifecycle";
+import { useTabOrder } from "../use-tab-order";
 
 type DockTab = "conversation" | "agents" | "fixture" | `mock:${string}` | `run:${string}` | `registered:${string}`;
 export interface AgentDockProps {
@@ -89,11 +90,13 @@ export function AgentDock({ state, client, onDraft, onNewAgent, runContent, draf
     ...(fixtureContent ? [{ key: "fixture" as const, label: "Fixture · no model turn" }] : []),
     ...(mockConversation?.tabs.map((tab) => ({ key: `mock:${tab.id}` as const, label: tab.name, detail: "mock" })) ?? []),
   ];
+  const tabOrder = useTabOrder(tabs.map((tab) => tab.key));
+  const orderedTabs = tabOrder.ordered.flatMap((key) => tabs.find((tab) => tab.key === key) ?? []);
   // A tools visit needs no generic tab. Missing/closed sessions never borrow a
   // different tab's label without an explicit selection of that agent.
   const current: DockTab = effective === "agents" || tabs.some((tab) => tab.key === effective) ? effective : "conversation";
   const showingConversation = current.startsWith("registered:") || current === "conversation" && !registered;
-  const tabStop = tabs.find((tab) => tab.key === current && !tab.disabled)?.key ?? tabs.find((tab) => !tab.disabled)?.key;
+  const tabStop = orderedTabs.find((tab) => tab.key === current && !tab.disabled)?.key ?? orderedTabs.find((tab) => !tab.disabled)?.key;
   const choose = (tab: DockTab) => {
     if (tabs.find((entry) => entry.key === tab)?.disabled) return;
     if (tab.startsWith("registered:")) registered?.onSelect(tab.slice(11));
@@ -111,8 +114,8 @@ export function AgentDock({ state, client, onDraft, onNewAgent, runContent, draf
     else toolsButton.current?.focus();
   };
   const close = (key: DockTab) => {
-    const index = tabs.findIndex((tab) => tab.key === key);
-    const next = tabs.slice(index + 1).find((tab) => !tab.disabled) ?? tabs.slice(0, index).reverse().find((tab) => !tab.disabled);
+    const index = orderedTabs.findIndex((tab) => tab.key === key);
+    const next = orderedTabs.slice(index + 1).find((tab) => !tab.disabled) ?? orderedTabs.slice(0, index).reverse().find((tab) => !tab.disabled);
     conversations.dismiss(key.slice(11));
     if (current === key) {
       if (next) { choose(next.key); focusTab(next.key); }
@@ -123,7 +126,7 @@ export function AgentDock({ state, client, onDraft, onNewAgent, runContent, draf
     if (!event.ctrlKey || event.key !== "Tab" || event.altKey || event.metaKey || event.defaultPrevented
       || event.nativeEvent.isComposing || event.keyCode === 229 || shortcutsBlocked
       || (event.target as Element).closest('[role="dialog"], [aria-modal="true"], dialog')) return;
-    const available = tabs.filter((tab) => !tab.disabled);
+    const available = orderedTabs.filter((tab) => !tab.disabled);
     const index = available.findIndex((tab) => tab.key === current);
     if (!available.length || (available.length === 1 && index === 0)) return;
     event.preventDefault(); event.stopPropagation();
@@ -146,7 +149,7 @@ export function AgentDock({ state, client, onDraft, onNewAgent, runContent, draf
     <section ref={pane} className="agent-interaction-dock" aria-label="Agent messages" onKeyDown={cycle}>
     <header className="agent-conversation-header" title={registered ? "Ctrl+Tab / Ctrl+Shift+Tab · switch conversations" : undefined}>
     <OverflowStrip className="agent-tabs-strip" label="agent conversations" activeKey={current}><div className="agent-dock-tabs" role="tablist" aria-label="Agent conversations" onKeyDown={keyboard}>
-      {tabs.map((tab) => <div className="agent-tab-item" role="presentation" key={tab.key}><button id={tabId(tab.key)} role="tab" aria-selected={current === tab.key}
+      {orderedTabs.map((tab) => <div className="agent-tab-item" role="presentation" key={tab.key}><button {...tabOrder.props(tab.key)} id={tabId(tab.key)} role="tab" aria-selected={current === tab.key}
         aria-controls={panelId(tab.key)} disabled={tab.disabled} aria-label={tab.detail ? `${tab.label} ${tab.detail}` : tab.label} tabIndex={tabStop === tab.key ? 0 : -1} title={tab.detail ? `${tab.label} · ${tab.detail}` : tab.label}
         onClick={() => choose(tab.key)}><span>{tab.label}</span>{tab.badge ?? (tab.detail ? <small className={`agent-state agent-state-${tab.detail}`}>{tab.detail}</small> : null)}</button>
         {tab.key.startsWith("registered:") ? <button className="agent-tab-close" aria-label={`Close conversation ${tab.label}`} title="Close tab (keeps agent running)" onClick={() => close(tab.key)}>×</button> : null}</div>)}

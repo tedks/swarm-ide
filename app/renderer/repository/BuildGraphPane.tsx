@@ -8,6 +8,7 @@ import { BUILD_PATTERN_LIMIT, BUILD_VIEW_LIMIT, buildTargets, layoutBuildTargets
 import { useGraphReframe } from "./reframe";
 import type { GraphCamera } from "./camera";
 import "./build-view.css";
+import { useTabOrder } from "../use-tab-order";
 
 function BuildNode({ data }: NodeProps) {
   return <div className={`build-target-node${data.ownsFile ? " build-target-file-owner" : ""}`}><Handle type="target" position={Position.Left} /><small>{data.unresolved ? "UNRESOLVED DEPENDENCY" : data.ownsFile ? "REFERENCES FILE" : "BAZEL RULE"}</small><strong>{String(data.label)}</strong><Handle type="source" position={Position.Right} />{data.mock ? <AgentSprites count={1} /> : null}</div>;
@@ -22,10 +23,11 @@ export function matchesTargetSelection(capture: BuildLinkSnapshot | undefined, s
 
 export function TopologyViews({ service, capture, mockAgents, mockVersion, onOpenBuild, reframeVersion = 0, showBuildVersion = 0, focusedFile = null, observation, onRefresh, onCancel, onVisibility, targetSelection, onBuild, buildBusy }: { onBuild?: (target: string) => void; buildBusy?: boolean; targetSelection?: BuildTargetSelection | null; observation?: BuildGraphObservation; onRefresh?: () => void; onCancel?: () => void; onVisibility?: (visible: boolean) => void; service: ReactNode; capture?: BuildLinkSnapshot; mockAgents: boolean; mockVersion: number; onOpenBuild: (path: string) => void; reframeVersion?: number; showBuildVersion?: number; focusedFile?: string | null }) {
   const [view, setView] = useState<"service" | "build">("service"), [opened, setOpened] = useState(false);
+  const viewOrder = useTabOrder(["service", "build"] as const);
   useEffect(() => { if (showBuildVersion) { setOpened(true); setView("build"); } }, [showBuildVersion]);
   useEffect(() => { if (matchesTargetSelection(capture, targetSelection)) { setOpened(true); setView("build"); } }, [targetSelection]);
   useEffect(() => { onVisibility?.(view === "build"); return () => onVisibility?.(false); }, [view, onVisibility]);
-  return <section className="topology-views"><nav aria-label="Component graph lenses"><button aria-pressed={view === "service"} onClick={() => setView("service")}>Service</button><button aria-pressed={view === "build"} onClick={() => { setOpened(true); setView("build"); }}>Build graph</button></nav>
+  return <section className="topology-views"><nav aria-label="Component graph lenses">{viewOrder.ordered.map((key) => <button key={key} {...viewOrder.props(key)} aria-pressed={view === key} onClick={() => { if (key === "build") setOpened(true); setView(key); }}>{key === "service" ? "Service" : "Build graph"}</button>)}</nav>
     <div className="topology-view" hidden={view !== "service"}>{service}</div>
     {opened ? <div className="topology-view" hidden={view !== "build"}><BuildGraphPane onBuild={onBuild} buildBusy={buildBusy} targetSelection={targetSelection} observation={observation} onRefresh={onRefresh} onCancel={onCancel} focusedFile={focusedFile} visible={view === "build"} capture={capture} mockAgents={mockAgents} mockVersion={mockVersion} onOpenBuild={onOpenBuild} reframeVersion={view === "build" ? reframeVersion : 0} /></div> : null}
   </section>;

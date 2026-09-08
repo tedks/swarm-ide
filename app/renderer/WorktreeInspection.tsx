@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import type { SwarmBridge } from "../electron/preload";
 import { PROTOCOL_VERSION, parseCoreResponseForRequest } from "../../protocol/schema";
 import { WorktreeInspectionRequestSchema, type WorktreeInspectionResult } from "../../protocol/worktree-inspection";
+import { useTabOrder } from "./use-tab-order";
 
 export interface WorktreeSelection { sessionId: string; path: string; patch?: string; previousPath?: string }
 
@@ -14,6 +15,8 @@ export function WorktreeInspection({ selection, bridge, generation, onReturn, co
   const [notice, setNotice] = useState("");
   const [refresh, setRefresh] = useState(0);
   const [view, setView] = useState<"source" | "diff" | "patch">(selection.patch ? "patch" : initialView ?? "source");
+  const viewKeys = selection.patch ? ["source", "patch", "diff"] as const : ["source", "diff"] as const;
+  const viewOrder = useTabOrder(viewKeys);
   const heading = useRef<HTMLHeadingElement>(null);
   useEffect(() => { heading.current?.focus(); }, [selection.sessionId, selection.path]);
   useEffect(() => {
@@ -39,9 +42,7 @@ export function WorktreeInspection({ selection, bridge, generation, onReturn, co
     <header><div><small>{shown?.label ?? "Agent worktree"} · read-only</small><h2 ref={heading} tabIndex={-1}>{selection.path}</h2></div>
       <button onClick={onReturn}>{returnLabel}</button></header>
     {shown ? <p className="worktree-location" title={shown.worktree}>{shown.worktree}</p> : null}
-    <nav aria-label="Worktree file views"><button aria-pressed={view === "source"} onClick={() => setView("source")}>Source</button>
-      {selection.patch ? <button aria-pressed={view === "patch"} onClick={() => setView("patch")}>Recorded patch</button> : null}
-      <button aria-pressed={view === "diff"} onClick={() => setView("diff")}>Worktree diff</button>
+    <nav aria-label="Worktree file views">{viewOrder.ordered.map((key) => <button key={key} {...viewOrder.props(key)} aria-pressed={view === key} onClick={() => setView(key)}>{key === "source" ? "Source" : key === "patch" ? "Recorded patch" : "Worktree diff"}</button>)}
       <button onClick={() => setRefresh((value) => value + 1)}>Refresh file</button></nav>
     {notice ? <p role="status">{notice}</p> : !shown ? <p role="status">Reading worktree…</p> : null}
     {view === "source" && shown ? shown.content === null ? <p>{shown.contentNotice ?? "File no longer exists. See its worktree diff."}</p> : <pre className="worktree-source" tabIndex={0}>{shown.content}</pre> : null}
