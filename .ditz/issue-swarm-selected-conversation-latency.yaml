@@ -9,8 +9,8 @@ type: feature
 component: default
 release:
 reporter: Ted Smith <tedks@riseup.net>
-status: in_progress
-disposition:
+status: closed
+disposition: fixed
 creation_time: 2026-09-08T18:01:06-00:00
 references: []
 log_events:
@@ -35,5 +35,12 @@ log_events:
     guards remain. Actual owned transcript append is observed automatically. 148 focused
     tests and both types pass; native review clean. No sender, model or managed app
     change. Ready for ROOT normal landing; issue remains in progress until merged.
+- time: 2026-09-08T18:30:04-00:00
+  who: Ted Smith
+  what: 'closed: fixed'
+  comment: 'PR125 landed: oldest-due read scheduling gives selected conversation tie
+    priority and removes post-read idle delay while preserving one lane and fleet
+    fairness;148 focused tests and both types, native clean. Upstream queue/model
+    latency unchanged.'
 blocks:
 - swarm-close-working-loop
