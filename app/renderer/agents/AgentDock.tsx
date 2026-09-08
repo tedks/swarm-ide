@@ -104,7 +104,11 @@ export function AgentDock({ state, client, onDraft, runContent, draftContent, tr
   const panelId = (key: DockTab) => `${id}-panel-${key.startsWith("registered:") ? "conversation" : key.startsWith("run:") ? "run" : key.startsWith("mock:") ? "mock" : key}`;
   const pane = useRef<HTMLElement>(null);
   const toolsButton = useRef<HTMLButtonElement>(null);
-  const focusTab = (key: DockTab) => pane.current?.querySelector<HTMLButtonElement>(`[id="${tabId(key)}"]`)?.focus();
+  const focusTab = (key: DockTab) => {
+    const tab = pane.current?.querySelector<HTMLButtonElement>(`[id="${tabId(key)}"]`);
+    if (tab && !tab.disabled) tab.focus();
+    else toolsButton.current?.focus();
+  };
   const close = (key: DockTab) => {
     const index = tabs.findIndex((tab) => tab.key === key);
     const next = tabs.slice(index + 1).find((tab) => !tab.disabled) ?? tabs.slice(0, index).reverse().find((tab) => !tab.disabled);

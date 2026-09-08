@@ -152,6 +152,12 @@ view until explicitly reopened. It never stops an agent, clears its outgoing
 messages, or sends an instruction. Temporary core recovery retains the open and
 dismissed sets; only an observed registry can remove a registration. Status badges
 use the core's shared lifecycle, not another renderer classifier.
+When no enabled conversation tab remains, Agent tools stays keyboard-accessible.
+The optional `SWARM_CONVERSATION_HEADER_ONLY=1` mode of the existing owned
+conversation smoke check reads real registrations and checks the single header,
+320px icon layout and retained drafts with no Send request. Its loading path
+retains the sender component and stable field ID; it does not promise a DOM
+textarea while selected-session detail is absent.
 
 Ctrl-Tab / Ctrl-Shift-Tab cycles the dock's visible conversations and native-run
 tabs while focus is inside the agent pane. The selection lands on the chosen tab;

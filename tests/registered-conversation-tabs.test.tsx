@@ -198,4 +198,14 @@ describe("registered conversation tabs", () => {
     expect(screen.getByRole("button", { name: "Prepare an agent draft" })).toBeTruthy();
     expect(view.request).not.toHaveBeenCalled(); expect(view.onSelect).not.toHaveBeenCalled();
   });
+  it("keeps focus in the dock when a background tab closes while the untabbed tools view is open", () => {
+    const view = setup([root]);
+    const tools = screen.getByRole("button", { name: "Agent tools" });
+    fireEvent.click(tools);
+    const close = screen.getByRole("button", { name: "Close conversation ROOT" }); close.focus();
+    fireEvent.click(close);
+    expect(document.activeElement).toBe(tools);
+    expect(screen.getByRole("tabpanel", { name: "Agent tools" })).toBeTruthy();
+    expect(view.onSelect).not.toHaveBeenCalled(); expect(view.request).not.toHaveBeenCalled();
+  });
 });
