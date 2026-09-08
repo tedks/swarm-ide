@@ -30,6 +30,14 @@ log_events:
   who: Ted Smith
   what: started
   comment: ""
+- time: 2026-09-08T03:59:12-00:00
+  who: Ted Smith
+  what: commented
+  comment: Implemented online turn-boundary producer, explicit Start/Stop/model settings,
+    persistent Work Log panel and exact completed-issue Ditz recording. Focused local
+    typechecks and producer/UI tests pass; native review concurrency findings repaired
+    with two-window and batch-overflow regressions. One authorized real summary and
+    idempotent Ditz proof now running; no product issue closure or app adoption.
 blocks:
 - swarm-operator-demo
 blocked_by:
