@@ -5,8 +5,8 @@ type: feature
 component: swarm-ide
 release:
 reporter: Ted Smith <tedks@riseup.net>
-status: in_progress
-disposition:
+status: closed
+disposition: fixed
 creation_time: 2026-09-08T13:53:52-00:00
 references: []
 log_events:
@@ -18,3 +18,10 @@ log_events:
   who: Ted Smith
   what: started
   comment: ""
+- time: 2026-09-08T13:55:25-00:00
+  who: Ted Smith
+  what: 'closed: fixed'
+  comment: Conversation now copies the existing checked same-agent tmux attach command;
+    Agent details retains inside/outside commands. No process/message action, stale
+    or mismatched target command withheld.63 focused tests/types and native CLEAN;
+    PR110 ready for ROOT landing.
