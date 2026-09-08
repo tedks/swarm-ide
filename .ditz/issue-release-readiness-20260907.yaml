@@ -1,8 +1,8 @@
 id: release-readiness-20260907
 title: Verify merged demo installation and evaluator guidance
-desc: Release-only evaluator documentation correction and one existing local install
-  plus connected-tour rehearsal. No feature work, model turns, app adoption or publication.
-  ROOT owns normal landing and final closure.
+desc: Make the release-only evaluator documentation correction, and rehearse one existing
+  local install plus the connected tour. No feature work, model turns, app adoption,
+  or publication. ROOT handles the normal merge workflow and final closure.
 type: task
 component: documentation
 release:
@@ -63,3 +63,7 @@ log_events:
     docs and three-repository install rehearsal complete; connected-tour attachment
     failure remains separately OPEN as demo-tour-task-attachment-activation-20260907.
     No complete-tour success claim.'
+- time: 2026-09-08T04:30:28-00:00
+  who: Ted Smith
+  what: updated description
+  comment: ""
