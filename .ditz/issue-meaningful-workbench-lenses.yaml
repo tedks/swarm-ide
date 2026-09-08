@@ -1,8 +1,8 @@
 id: meaningful-workbench-lenses
-title: Make workbench lenses select meaningful information
-desc: After context-sensitive instruments, System/Plan/Performance/Refactor foreground
-  different real supported information or report unavailable, rather than only selection
-  styling.
+title: Make workbench lenses show different useful information
+desc: After adding context-sensitive instruments, make System/Plan/Performance/Refactor
+  each show different real, supported information, or say it is unavailable. Changing
+  selection styling alone is not enough.
 type: feature
 component: default
 release:
@@ -28,5 +28,13 @@ log_events:
     on activeLens === Plan; Performance and Refactor still show the System graph layout
     without their own unavailable view. Partial completion recorded; full four-lens
     issue stays open.'
+- time: 2026-09-08T04:30:16-00:00
+  who: Ted Smith
+  what: changed title
+  comment: ""
+- time: 2026-09-08T04:30:16-00:00
+  who: Ted Smith
+  what: updated description
+  comment: ""
 blocked_by:
 - contextual-information
