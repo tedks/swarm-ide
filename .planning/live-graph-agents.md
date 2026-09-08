@@ -9,14 +9,16 @@ An operator looking at a repository, build target, service or component should s
 ## Progress
 
 - [x] (2026-09-08) Inspected existing observations and graph consumers; dependencies materialized.
-- [ ] Add exact-worktree observation and membership mapping, independent clickable overlay.
-- [ ] Connect repository, build, service and component consumers without new polling.
+- [x] Add exact-worktree observation and membership mapping, independent clickable overlay.
+- [x] Connect repository, build, service and component consumers without new polling.
 - [ ] Focused local tests/types, native review and one owned GUI proof.
 - [ ] Update living design, push ready PR and Ditz accomplishment handoff.
 
 ## Surprises & Discoveries
 
 Registered `ExternalDetail.entries` carry typed `path`, `cwd`, event IDs and timestamps; each session has a checked canonical `worktree`. Shared lifecycle distinguishes working, waiting, failed, completed and unknown. Native `TrustedSnapshot.activities` deliberately strips file paths and retains only generic summaries. Neither a task attachment nor natural-language output is a reliable current location, so native runs without a structured location remain in the list. This increment adds no telemetry or parser speculation.
+
+Native review found that initial `workspace.snapshot` did not return a canonical root descriptor; the ordinary first window therefore had no root until a worktree switch. The existing startup request now uses `workspace.open` with a null session, preserving generation/navigation guards and avoiding a second read. A direct mounted startup test covers descriptor arrival. Existing living-design tests still hardcoded the pre-PR130 fixture project ID; their test base now derives that identity without weakening the protocol.
 
 ## Decision Log
 

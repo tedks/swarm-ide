@@ -5,6 +5,8 @@ import type { PlanIndex, PlanNode } from "../../../protocol/plans";
 import { ProjectionCanvas, type ProjectionEdge, type ProjectionNode } from "./ProjectionCanvas";
 import { usePlanNavigation, type PlanNavigation } from "./navigation";
 import "./design.css";
+import { GraphAgentLayer, GraphAgentsToggle } from "../graph-agents/GraphAgents";
+import { componentAgentLocations } from "../graph-agents/locations";
 
 export interface DesignWorkspaceParts { components: ReactNode; document: ReactNode; tasks: ReactNode }
 
@@ -151,6 +153,7 @@ export function DesignWorkspace(props: DesignWorkspaceProps) {
   const interfaces = useMemo(() => index && node ? designContracts(index, node) : [], [index, node]);
   const selectedContract = contractSelection?.scope === contractScope ? interfaces.find((item) => item.id === contractSelection.id) : undefined;
   const graph = useMemo(() => index && node ? designProjection(index, node, selectedContract?.id) : null, [index, node, selectedContract?.id]);
+  const agentLocations = useMemo(() => current && index ? componentAgentLocations(index) : [], [index, current]);
   const implementation = useMemo(() => node ? implementationProjection(node) : null, [node]);
   const inspectContract = (id: string) => {
     if (!current) return;
@@ -181,7 +184,8 @@ export function DesignWorkspace(props: DesignWorkspaceProps) {
             <option value="">All {interfaces.length} contracts</option>
             {interfaces.map(({ id, link }) => <option key={id} value={id}>{link.kind ?? "contract"} · {link.label}</option>)}
           </select></label> : null}
-          <div className="design-graph"><ProjectionCanvas cameraScope={`${worldId}:${repositoryId}:${node.id}`} label="Component design canvas" {...graph} selected={selected} onSelect={select} onSelectEdge={inspectContract} /></div>
+          <GraphAgentsToggle />
+          <GraphAgentLayer locations={agentLocations}><div className="design-graph"><ProjectionCanvas cameraScope={`${worldId}:${repositoryId}:${node.id}`} label="Component design canvas" {...graph} selected={selected} onSelect={select} onSelectEdge={inspectContract} /></div></GraphAgentLayer>
           {selectedContract ? <aside className="design-contract-detail" aria-label="Selected architectural contract">
             <strong>{selectedContract.link.kind ?? "Contract"} · {selectedContract.link.label}</strong>
             <p>{selectedContract.source.title} → {selectedContract.target.title}</p>
