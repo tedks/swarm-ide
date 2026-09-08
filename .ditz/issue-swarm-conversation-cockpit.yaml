@@ -1,0 +1,20 @@
+id: swarm-conversation-cockpit
+title: Make the agent pane a live conversation cockpit
+desc: Default to the registered ROOT conversation, switch deliberately between agents,
+  preserve per-agent drafts and receipts, consolidate old Agent runs UI, and reuse
+  existing tmux/native ownership. See /tmp/swarm-ide-finish-loop.0vkfJQ/common.md
+  for this bounded parallel implementation; update living design and prove direct
+  operator journey.
+type: feature
+component: default
+release:
+reporter: Ted Smith <tedks@riseup.net>
+status: unstarted
+disposition:
+creation_time: 2026-09-08T06:01:14-00:00
+references: []
+log_events:
+- time: 2026-09-08T06:01:14-00:00
+  who: Ted Smith
+  what: created
+  comment: ""
