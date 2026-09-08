@@ -46,5 +46,15 @@ log_events:
     compilation, unchanged Git status, one-query cache reuse and confirmed cleanup.
     Existing 2,000-target partial view remains explicitly incomplete; graph coverage
     follow-up stays open.'
+- time: 2026-09-08T19:48:17-00:00
+  who: Ted Smith
+  what: commented
+  comment: 'Implementation ready in PR131: automatic dependency loading, query-only
+    raw cap removal and MiB progress, preserved cancellation/cache/owned cleanup.
+    Final focused targets pass (67 compatibility tests and 57 overlapping base checks,
+    both TS boundaries); native review CLEAN; actual owned GUI11.014s proves graph
+    before lens click, automatic BUILD edit and camera retention without refresh,
+    zero renderer errors/cleanup1. ROOT owns normal merge/app adoption. Large-target
+    coverage and buffering monitoring remain separate open issues.'
 blocks:
 - swarm-close-working-loop
