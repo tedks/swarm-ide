@@ -1,5 +1,5 @@
 id: demo-polish-service-states-20260907
-title: Explain empty Service graph states without inferring topology
+title: Explain empty Service graphs without guessing service connections
 desc: ""
 type: task
 component: default
@@ -32,3 +32,11 @@ log_events:
   comment: ROOT normally merged PR59. Prop-only empty Service explanation; populated/retained
     graphs preserved. Quality1644/focused19/native convergence and actual owned dev-UI
     source-opening/cleanup proof accepted, synthetic other-state tests honestly scoped.
+- time: 2026-09-08T04:29:07-00:00
+  who: Ted Smith
+  what: changed title
+  comment: ""
+- time: 2026-09-08T04:29:07-00:00
+  who: Ted Smith
+  what: updated description
+  comment: ""
