@@ -1,0 +1,20 @@
+id: swarm-chat-composer-polish
+title: Keep chat focus after sending and use an inline send arrow
+desc: After a queued send, the message composer loses focus and requires another click.
+  Keep the composer focused through normal send and receipt updates without stealing
+  focus after the user switches context. Replace the large Send message button with
+  a compact accessible arrow inside the textbox frame. Preserve Enter/Shift-Enter/IME,
+  pending-send guards, saved outgoing text and copyable receipts; no transport changes.
+type: bugfix
+component: default
+release:
+reporter: Ted Smith <tedks@riseup.net>
+status: unstarted
+disposition:
+creation_time: 2026-09-08T15:01:32-00:00
+references: []
+log_events:
+- time: 2026-09-08T15:01:32-00:00
+  who: Ted Smith
+  what: created
+  comment: ""
