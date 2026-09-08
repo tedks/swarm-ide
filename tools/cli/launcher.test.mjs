@@ -16,6 +16,11 @@ test("arguments accept explicit workspace/profile and help", () => {
 test("unknown, repeated and missing options fail before Electron", () => {
   for (const args of [["--workspce", "."], ["--workspace"], ["--workspace", ""], ["--workspace", "--help"], ["--workspace", ".", "--workspace", ".."], ["--user-data-dir", "x", "--user-data-dir", "y"], ["--no-sandbox"]]) assert.throws(() => parseArguments(args));
 });
+test("tmux scope is explicit and cannot be confused with a Codex session or registry", () => {
+  assert.deepEqual(parseArguments(["--tmux-server", "personal", "--tmux-session", "project"]), { tmuxServer: "personal", tmuxSession: "project" });
+  assert.deepEqual(parseArguments(["--tmux-socket", "./socket", "--tmux-session", "project"]), { tmuxSocket: "./socket", tmuxSession: "project" });
+  for (const args of [["--tmux-session", "project"], ["--tmux-server", "personal"], ["--tmux-server", "../bad", "--tmux-session", "project"], ["--tmux-server", "personal", "--tmux-socket", "/socket", "--tmux-session", "project"], ["--tmux-server", "personal", "--tmux-session", "project", "--agent-registry", "/registry"]]) assert.throws(() => parseArguments(args));
+});
 test("relative workspace/profile resolve from invocation, not immutable bundle", () => {
   const root = mkdtempSync(join(tmpdir(), "swarm-cli-test-"));
   try {

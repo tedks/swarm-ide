@@ -23,7 +23,7 @@ in buildBazelPackage {
   version = "0.1.0";
   inherit src;
   bazel = bazel_7;
-  bazelTargets = [ "//:desktop-bundle" ];
+  bazelTargets = [ "//:desktop-bundle" "//tools/cli:registration-bundle" ];
   removeRulesCC = false;
   # The package has no external MODULE dependencies. Use Bazel's supported
   # legacy workspace here so buildBazelPackage captures all downloads; its
@@ -59,8 +59,9 @@ in buildBazelPackage {
     runHook preInstall
     mkdir -p "$out/share/swarm-ide/cli" "$out/bin"
     tar -xzf bazel-bin/swarm-ide-foundation.tar.gz -C "$out/share/swarm-ide"
-    cp tools/cli/{launcher,main}.mjs "$out/share/swarm-ide/cli/"
+    cp tools/cli/{launcher,main,tmux}.mjs "$out/share/swarm-ide/cli/"
     cp tools/cli/electron-main.cjs "$out/share/swarm-ide/cli/"
+    cp bazel-bin/tools/cli/registration.cjs "$out/share/swarm-ide/cli/"
     substituteInPlace "$out/share/swarm-ide/cli/main.mjs" \
       --replace-fail '@electron@' '${electron}/bin/electron'
     # Give Electron a stable application name and its own userData directory.
