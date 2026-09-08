@@ -1,13 +1,13 @@
 id: ui-service-source-navigation
-title: Open service definitions and evidence-backed call sites from graph selections
-desc: 'Personally steered UI request remains after the mock-tab checkpoint: clicking
-  a service should open its definition; clicking a call edge should open the caller
-  implementation and highlight actual call locations. Existing FraudCheck topology
-  carries an implementation focus and interface declaration paths but no generic definition/call-site
-  mapping. Its declared Payments.Authorize dependency is not an actual call in fraudcheck.ts.
-  Add explicit source-link metadata and preserve missing/stale-location honesty, protected
-  source buffers, graph cameras, and the existing broker. Do not fabricate highlights
-  from declared edges.'
+title: Open service definitions and verified call sites from graph selections
+desc: 'The user''s UI request remains after the mock-tab checkpoint: clicking a service
+  should open its definition, and clicking a call edge should open the caller implementation
+  and highlight actual call locations. The existing FraudCheck topology has an implementation
+  focus and interface declaration paths, but no generic mapping to definitions or
+  call sites. Its declared Payments.Authorize dependency is not an actual call in
+  fraudcheck.ts. Add explicit source-link metadata. Clearly indicate missing or stale
+  locations, protect source buffers, and preserve graph camera positions and the existing
+  broker. Do not invent highlights from declared edges.'
 type: feature
 component: default
 release:
@@ -34,3 +34,11 @@ log_events:
     inspects. Real package and retained-service recovery passed; ambiguity/external
     service-node evidence mounted-only. This parent remains OPEN: no Payments call
     expression, external implementation or real call highlights were added.'
+- time: 2026-09-08T04:32:35-00:00
+  who: Ted Smith
+  what: changed title
+  comment: ""
+- time: 2026-09-08T04:32:35-00:00
+  who: Ted Smith
+  what: updated description
+  comment: ""
