@@ -12,7 +12,7 @@ The local Codex conversation currently exposes only chat text and approvals. Add
 - [x] (2026-09-08 00:39Z) Four new cases failed against old implementation (4 RED/16 PASS); implemented projection passed 20 session tests.
 - [x] (2026-09-08 00:44Z) Final session21 and quality1801/134 files PASS, including typecheck and node/renderer builds; native code/fix/test convergence CLEAN.
 - [x] (2026-09-08 00:43Z) Exactly one actual authorized Codex turn emitted command/file/turn completion and created the correct disposable file; owned cleanup confirmed.
-- [ ] Final documentation push, ready PR and Ditz synchronization; ROOT owns merge/adoption.
+- [x] (2026-09-08 00:46Z) PR71 ready, documentation pushed and Ditz synchronized; ROOT owns merge/adoption and issue closure.
 
 ## Context and Orientation
 
