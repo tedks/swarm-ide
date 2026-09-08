@@ -11,7 +11,9 @@ plan hierarchies, per-repository Bazel queries, and disk-context preparation are
 real. The separate **Codex · trusted local** profile supports explicit launch
 using your installed Codex's normal account, configuration, tools and approvals;
 the isolated read-only profile remains unavailable. Explicitly registered external
-sessions are read-only observations. Activity log contains supervised-generated,
+sessions can be observed without controlling them; an explicit **Send message**
+can steer a checked live target. Queue acceptance is not delivery or completion,
+and the IDE does not own those external processes. Activity log contains supervised-generated,
 recorded summaries, not live in-app summarization. Mocks and deterministic
 rehearsals are not live execution. Start with [installation and troubleshooting](docs/evaluator-install.md),
 then the [connected walkthrough](docs/demo.md).
@@ -22,8 +24,14 @@ then the [connected walkthrough](docs/demo.md).
   log and blocking relationships. See [task workspace](docs/task-workspace.md).
 - From a source-file draft, optionally attach a task, then **Prepare trusted-local
   context**, review the exact prompt and confirm **Launch trusted-local Codex**.
-  No account is copied or extra autonomy granted. One conversation per core;
-  no IDE conversation restoration after core restart. See [execution and limits](docs/trusted-local-execution.md).
+  No account is copied or extra autonomy granted. Use **New conversation** and
+  the run list to manage up to eight live conversations with independent message
+  composers. Up to twenty records retain bounded history, including admitted
+  task links; restart archives history without automatically resuming or replaying
+  conversations. See [execution and limits](docs/trusted-local-execution.md).
+- Optionally [register a known external worker](docs/session-registration.md)
+  to inspect its ancestry, activity and checked steering controls. Registration
+  neither launches an agent nor scans for unregistered sessions.
 - **Recent Activity → Activity log → Pull requests → Refresh PRs** reads the
   opened repository's GitHub PRs using normal `gh` authentication. See
   [Activity and PRs](docs/logical-changelog.md#github-pull-requests).
