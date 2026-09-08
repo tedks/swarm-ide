@@ -13,9 +13,10 @@ result. Ordinary source typing must not launch binary builds or repeated queries
 
 - [x] (2026-09-08) Inspected the existing button, provider, renderer hook and bounds.
 - [x] Started `swarm-continuous-build-context` in Ditz.
-- [ ] Publish the small renderer hook contract to the cockpit owner.
-- [ ] Prove automatic startup/change/return, idle quietness, fencing and retention.
-- [ ] Review the implementation, push a ready PR and record evidence and limits.
+- [x] (2026-09-08) Published the small renderer hook contract to the cockpit owner.
+- [x] (2026-09-08) Proved automatic startup/change/return, idle quietness, fencing and retention.
+- [x] (2026-09-08) Native review converged CLEAN; implementation pushed as c4dbd42 in PR108.
+- [ ] ROOT/cockpit join and adoption: enable across panes, pass working revision and retire automatic service build.
 
 ## Surprises & Discoveries
 
@@ -24,6 +25,13 @@ demo service artifact. The separate `core/build-graph.ts` provider already runs 
 bounded repository-wide Bazel declaration query. Its renderer hook currently
 polls every 500 ms only while a graph/file consumer is visible. These are distinct
 operations and must not be conflated.
+
+Initial behavior regression run had eight failures and 41 passes. The provider
+could remain unavailable/error after valid cached inputs returned. Native review
+also caught post-query input-read failure being mistaken for a query failure,
+background focus being incorrectly granted after core recovery, and final query
+schema failures losing failure attribution. Each is corrected; the final schema
+regression separately failed once with 54 other tests passing before its correction.
 
 ## Decision Log
 
@@ -70,6 +78,15 @@ The dedicated target runs renderer/core type checks plus automatic observation,
 build-query and startup compatibility tests. Use one owned package query proof
 if necessary; never automate physical display :0 or modify the managed preview.
 
+Executed `nix develop --command bazel test --jobs=3
+//tools/build-graph:checks --test_output=errors`: 55 tests and both TypeScript
+boundaries pass in 12.5 seconds on c4dbd42. Executed `nix develop --command bazel run
+--jobs=3 //tools/build-graph:automatic-probe`: actual packaged core performed
+two real queries (3917 ms and 3755 ms), source text caused no extra query, BUILD
+edge removal became visible, the repository wrapper did not run, and cleanup
+completed. That successful-path probe preceded the final error/focus review
+corrections; their added behavior is covered by the final focused checks.
+
 ## Validation and Acceptance
 
 Controlled React tests must show startup observation without a visible graph,
@@ -102,6 +119,13 @@ The existing `buildGraph.observe` typed bridge stays unchanged.
 
 ## Outcomes & Retrospective
 
-Implementation and checks pending. The scoped outcome is automatic declared
-build context; generic service extraction and automatic binary builds are not
-part of this increment.
+The scoped hook/provider increment is implemented and reviewed. Its remaining
+integration is the explicitly assigned cockpit App mount, not another provider
+or architecture step. The plan-data owner received the concrete hook/check-target
+mapping for the shared manifest; this branch does not compete for that file.
+No full-App GUI, shared-preview adoption or generic service extraction is claimed.
+The existing source observer still has its own polling fallback; this work removes
+the independent settled build-graph polling chain, not every timer in the IDE.
+
+Updated 2026-09-08 with actual checks, review corrections and the precise App join
+boundary so a future operator can distinguish ready provider work from adoption.
