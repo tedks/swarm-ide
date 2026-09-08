@@ -40,17 +40,22 @@ Context links are usable only when `contextRoot` exactly matches the registered
 repository's canonical root, and source opening still goes through the existing
 contained file broker. No transcript path becomes a clickable file capability.
 
-The registry is read on explicit Refresh. It admits up to 64 unique registrations,
+The registry refreshes automatically while the document is visible, with a
+three-second interval after each registry read; the selected transcript has a
+one-second interval. Explicit Refresh remains available. One read runs at a time.
+The observer admits up to 64 unique registrations,
 a 64 KiB registry and first metadata record, a 256 KiB tail, 120 visible events,
 and 4096 characters per message. Larger conversation history is intentionally not
 loaded. Partial/malformed/oversized tail records are omitted and coverage stays
-visible. Missing or unsafe metadata revokes transcript and handoff availability.
+visible. Missing or unsafe metadata revokes handoff and Send availability; any
+retained transcript is labeled as earlier recorded evidence, not a current read.
 The observer reads only current-user-owned regular files and rejects symlink
 aliases, noncanonical paths, wrong session IDs and duplicate registrations.
 
 ## Walk through the UI
 
-In **Agent runs → External sessions**, press Refresh and select a session. Its
+In **Agent runs → External sessions**, select an automatically observed session
+(or press Refresh). Its
 main information panel shows proven parent ID, authored role/task, observation
 time, and a chronological worklog. The conversation tab shows actual bounded
 assistant messages as **read-only** recorded text. User input prompts, reasoning,
@@ -61,9 +66,10 @@ invented. The observer does not claim to capture all effective context.
 
 Source buffers, draft text and graph instances remain open. Click **Return to
 source information**, select a source, or follow an explicitly associated context
-file to return to ordinary navigation. Explicit Refresh observes new records;
-there is no periodic polling. Core recovery invalidates in-flight observations
-and requires a fresh observation before handoff.
+file to return to ordinary navigation. Hiding the document pauses new automatic
+reads; an outstanding read drains without publishing into a later observation.
+Core recovery invalidates in-flight observations and requires a fresh observation
+before handoff or Send. Automatic observation never sends an instruction.
 
 ## Optional interactive handoff
 

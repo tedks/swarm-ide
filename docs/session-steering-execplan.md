@@ -14,6 +14,7 @@ An operator can select a registered external Codex session, type an instruction 
 - [x] (2026-09-08 00:53Z) Corrected local quality1830 tests and focused70 pass, each with one deliberately skipped opt-in self proof; all72 build targets pass. Final owned packaged proof passes with zero renderer errors and cleanup.
 - [x] (2026-09-08 00:49Z) One authorized actual Codex0.153.4 queue message to this implementation session returned a correlated receipt. Consumption is not attested by that receipt.
 - [x] (2026-09-08 00:54Z) Implementation pushed through89faa42 on PR76; code and fix deltas native CLEAN. Final docs/status handoff prepared for ready PR and Ditz synchronization.
+- [x] (2026-09-08) Normally composed ROOT-cleared E3 base a2a8036 as e709371, preserving the observer API/Activity mount and navigation-retained steering panel. Focused steering/observer suites passed (78 and 71 tests respectively; each skips the opt-in self test), including typechecking. Native composition review CLEAN. No repeated GUI proof or queue message.
 - [ ] ROOT normal landing and shared app adoption (outside this child increment).
 
 ## Assumptions and Failure Modes
@@ -65,6 +66,10 @@ Corrected implementation89faa42 passed all72 build targets, quality1830/137 file
 The actual single self-queue proof ran on3a18f25 before the import-timing-only correction and passed in536ms. It proves installed Codex queue acceptance, not provider work or consumption. It is deliberately not repeated. Ordinary GUI transport uses a disclosed controlled fixture with zero model turns. Native code review and both fix deltas converged CLEAN; foreign seats were not used under explicit Codex-only authority. Hosted CI was not a gate.
 
 Non-durable external receipts/drafts across application reloads remain a scoped follow-up, Ditz `external-steering-durable-receipts`. The UI and docs disclose this limitation. No automatic replay, external stop/kill, transcript publication or ROOT app adoption was added.
+
+The authorized self-queue instruction was subsequently delivered to and explicitly acknowledged by this same child session. That later conversation event attests consumption separately from the original queue receipt; neither proves completion of any requested implementation. The original single-attempt fence remains intact and no second message was sent.
+
+ROOT's subsequent E3 clearance was composed normally as e709371, importing only reviewed peer commits through a2a8036. The existing live observer API remains compatible: paused/failed reads revoke Send availability, selection changes do not misattribute pending receipts, and the separate ObservedActivity mount opens the retained S3 information panel. The two focused Bazel targets passed in 13.7 seconds and native seam review was CLEAN. Original full-build, quality and packaged results above remain attributed to their original heads, not claimed as newly executed on this composition. The evaluator guide now describes E3's bounded automatic refresh instead of the retired manual-only behavior.
 
 ## Artifacts and Notes
 
