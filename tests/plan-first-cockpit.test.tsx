@@ -148,6 +148,22 @@ it("keeps all four graphs, dirty source, cursor and watches through home, design
   expect(request.mock.calls.slice(before).some(([input]) => input.type === "file.unwatch" || input.type === "file.write")).toBe(false);
 });
 
+it("returns from a task to its retained source after visiting the overview", async () => {
+  bridge(); render(<App />);
+  fireEvent.click(await screen.findByRole("button", { name: "Open plan implementation" }));
+  await waitFor(() => expect(document.querySelector(".cm-content")?.textContent).toBe("source"));
+  const element = document.querySelector<HTMLElement>(".cm-editor")!, editor = EditorView.findFromDOM(element)!;
+  act(() => editor.dispatch({ changes: { from: 0, insert: "dirty " }, selection: { anchor: 4 } }));
+  fireEvent.click(screen.getByRole("button", { name: "Workspace" }));
+  fireEvent.click(screen.getByRole("button", { name: "Select task task-fixture" }));
+  await screen.findByRole("region", { name: "Task document" });
+  fireEvent.click(screen.getByRole("button", { name: "Return to source" }));
+  expect(document.querySelector<HTMLElement>(".source-surface")?.hidden).toBe(false);
+  expect(document.querySelector(".cm-editor")).toBe(element);
+  expect(editor.state.doc.toString()).toBe("dirty source\n");
+  expect(editor.state.selection.main.anchor).toBe(4);
+});
+
 it("migrates every old lens without discarding saved paths/focus or hiding graphs", async () => {
   const saved = { paths: [paymentsFileFocus.path!], activeSurface: paymentsFileFocus.path!, lens: "Refactor", focus: paymentsFileFocus };
   expect(NavigationSchema.parse(saved)).toEqual({ ...saved, lens: "Workspace" });

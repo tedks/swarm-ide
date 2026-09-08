@@ -15,7 +15,7 @@ async function main() {
   const paint = () => run(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
   const text = (selector) => run((s) => document.querySelector(s)?.textContent ?? "", selector);
   const camera = () => run(() => document.querySelector(".design-graph .react-flow__viewport").style.transform);
-  const shot = async (name) => fs.writeFile(path.join(evidence, `${name}.png`), (await wc.capturePage()).toPNG());
+  const shot = async (name) => { await paint(); await fs.writeFile(path.join(evidence, `${name}.png`), (await wc.capturePage()).toPNG()); };
   const click = async (selector, label = null) => {
     await run((s, text) => { const n = [...document.querySelectorAll(s)].find((node) => text === null || node.textContent.trim() === text); if (!n || n.disabled) throw new Error(`Missing ${s}: ${text}`); n.scrollIntoView({ block: "nearest" }); }, selector, label);
     await paint();
@@ -24,12 +24,20 @@ async function main() {
     wc.sendInputEvent({ type: "mouseDown", button: "left", clickCount: 1, ...xy }); wc.sendInputEvent({ type: "mouseUp", button: "left", clickCount: 1, ...xy }); await paint();
   };
   await until(() => run(() => document.querySelectorAll(".design-graph .react-flow__node").length === 7 && document.querySelectorAll(".design-graph .react-flow__edge").length === 19), "real seven-component design and nineteen edges");
+  await until(() => run(() => [...document.querySelectorAll('.task-projection button')].some(n => n.textContent === 'Load dependency graph' && !n.disabled)), 'task metadata available');
+  await click('.task-projection button', 'Load dependency graph');
+  await until(() => run(() => Boolean(document.querySelector('.task-projection .react-flow__viewport'))), 'actual Ditz dependency graph');
+  await paint();
   const overview = await run(() => {
     const panels = [...document.querySelector(".graph-panels").children];
-    window.graphProof = { panels, canvas: document.querySelector(".design-graph .react-flow"), labels: [...document.querySelectorAll(".design-graph .design-edge-label")] };
-    return { count: panels.length, heights: panels.map((n) => n.getBoundingClientRect().height), columns: getComputedStyle(document.querySelector(".graph-panels")).gridTemplateColumns };
+    window.graphProof = { panels, canvas: document.querySelector(".design-graph .react-flow"), task: document.querySelector('.task-projection .react-flow'), taskCamera: document.querySelector('.task-projection .react-flow__viewport').style.transform, labels: [...document.querySelectorAll(".design-graph .design-edge-label")] };
+    return { count: panels.length, heights: panels.map((n) => n.getBoundingClientRect().height), columns: getComputedStyle(document.querySelector(".graph-panels")).gridTemplateColumns,
+      visible: panels.map((n) => { const r = n.getBoundingClientRect(); return n.contains(document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2)); }),
+      layout: [...document.querySelector('.navigation-field').children].map((n) => ({ tag: n.className, hidden: n.hidden, rect: n.getBoundingClientRect().toJSON(), display: getComputedStyle(n).display, row: getComputedStyle(n).gridRow })),
+      rows: getComputedStyle(document.querySelector('.navigation-field')).gridTemplateRows };
   });
-  assert.equal(overview.count, 4); assert.equal(overview.columns.split(" ").length, 2); assert(overview.heights.every((h) => h >= 210)); await shot("overview");
+  await fs.writeFile(path.join(evidence, 'overview-layout.json'), JSON.stringify(overview));
+  assert.equal(overview.count, 4); assert.equal(overview.columns.split(" ").length, 2); assert(overview.heights.every((h) => h >= 210)); assert(overview.visible.every(Boolean), "four panes actually visible"); await shot("overview");
   await click(".design-graph .react-flow__controls-zoomin"); await sleep(250);
   const rootCamera = await camera();
   await click('.component-graph-card button[aria-label="Refresh design"]');
@@ -63,7 +71,8 @@ async function main() {
   await click('.surface-tab-main[title="app/renderer/App.tsx"]');
   assert.equal(await text(".cm-content"), retained);
   assert(await run(() => window.graphProof.editor === document.querySelector(".cm-editor") && window.graphProof.panels.every((n, i) => n === document.querySelector(".graph-panels").children[i])), "instances retained");
+  assert(await run(() => window.graphProof.task === document.querySelector('.task-projection .react-flow') && window.graphProof.taskCamera === document.querySelector('.task-projection .react-flow__viewport').style.transform), 'loaded task graph and camera retained');
   assert.deepEqual(errors, []);
-  await fs.writeFile(path.join(evidence, "proof.json"), JSON.stringify({ ok: true, actualRepo: process.cwd(), packaged: true, topNodes: 7, edges: 19, overview, compact, unchangedRefreshIdentity: true, scopedCameraRoundtrip: true, retainedEditor: true, rendererErrors: errors }));
+  await fs.writeFile(path.join(evidence, "proof.json"), JSON.stringify({ ok: true, actualRepo: process.cwd(), packaged: true, topNodes: 7, edges: 19, overview, compact, unchangedRefreshIdentity: true, scopedCameraRoundtrip: true, loadedTaskGraphRetained: true, retainedEditor: true, rendererErrors: errors }));
 }
 void main().catch(async (error) => { const win = BrowserWindow.getAllWindows()[0]; if (win) await fs.writeFile(path.join(evidence, "failure.png"), (await win.webContents.capturePage()).toPNG()).catch(() => {}); await fs.writeFile(path.join(evidence, "failure.json"), JSON.stringify({ message: error.stack, errors })); app.exit(1); });

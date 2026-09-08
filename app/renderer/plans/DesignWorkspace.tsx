@@ -190,7 +190,7 @@ export function DesignWorkspace(props: DesignWorkspaceProps) {
   </section>;
   if (props.renderWorkspace) return <>{props.renderWorkspace({
     components: <section className="component-graph-card design-workspace" aria-label="Component design">
-      <header><strong>Components</strong><button disabled={!node || !current} onClick={props.onOpenDesign}>Read design</button>
+      <header><strong>Components</strong>{index && index.nodes.filter(item => !item.parentId).length > 1 ? <select aria-label="Design or plan root" disabled={!current} value={breadcrumbs[0]?.id ?? ""} onChange={event => select(event.target.value)}>{index.nodes.filter(item => !item.parentId).map(item => <option key={item.id} value={item.id}>{item.title}</option>)}</select> : null}<button disabled={!node || !current} onClick={props.onOpenDesign}>Read design</button>
         <button aria-label="Refresh design" disabled={!connected || loading} onClick={() => { void navigation.read(); }}>↻</button></header>
       <nav aria-label="Design breadcrumb">{breadcrumbs.map((item) => <button key={item.id} disabled={!current} aria-current={item.id === selected ? "page" : undefined} onClick={() => select(item.id)}>{item.title}</button>)}</nav>
       {componentPane}

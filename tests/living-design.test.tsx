@@ -44,6 +44,14 @@ describe("living system design", () => {
       fireEvent.click(within(guidance).getByRole("button", { name: `${ref.kind} · ${ref.path}` }));
       expect(onOpenFile).toHaveBeenLastCalledWith(ref.path);
     }
+    // The original plan forest remains reachable alongside the newer design
+    // root; this actual plan carries guidance rather than an empty test list.
+    const planRoot = index.nodes.find(item => !item.parentId && item.contextRefs.length)!;
+    expect(planRoot).toBeTruthy();
+    fireEvent.change(screen.getByRole("combobox", { name: "Design or plan root" }), { target: { value: planRoot.id } });
+    await waitFor(() => expect(screen.getByRole("region", { name: "Design tasks and guidance" }).textContent).toContain(planRoot.contextRefs[0]!.path));
+    fireEvent.click(within(screen.getByRole("region", { name: "Design tasks and guidance" })).getByRole("button", { name: `${planRoot.contextRefs[0]!.kind} · ${planRoot.contextRefs[0]!.path}` }));
+    expect(onOpenFile).toHaveBeenLastCalledWith(planRoot.contextRefs[0]!.path);
     expect(screen.getAllByTestId("task-pane")).toHaveLength(1);
     expect(document.querySelector(".design-implementation-graph")).toBeNull();
     expect(screen.getByRole("region", { name: "Design implementation" })).toBeTruthy();
