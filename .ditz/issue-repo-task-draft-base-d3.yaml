@@ -1,5 +1,5 @@
 id: repo-task-draft-base-d3
-title: Shared task-context format and durable compatibility base
+title: Shared task-context format and saved-data compatibility
 desc: ""
 type: task
 component: default
@@ -50,3 +50,11 @@ log_events:
     history, next-write outer2, canonical/browser/integrity and disposal base only;
     every attached Prepare unavailable. ROOT accepts precise RED sequencing; parent
     and D4/D5/D6 remain open. No model or app/master/integration/human55175 adoption.
+- time: 2026-09-08T04:30:46-00:00
+  who: Ted Smith
+  what: changed title
+  comment: ""
+- time: 2026-09-08T04:30:46-00:00
+  who: Ted Smith
+  what: updated description
+  comment: ""
