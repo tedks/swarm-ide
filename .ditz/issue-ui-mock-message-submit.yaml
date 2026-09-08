@@ -1,8 +1,9 @@
 id: ui-mock-message-submit
 title: Decide keyboard submit behavior for mock agent conversations
-desc: Google UI sprint review suggested Enter-to-send and Shift-Enter for newline.
-  Current multiline textarea keeps ordinary newline semantics. Defer this UX choice
-  to direct steering rather than changing composition behavior during sprint closure.
+desc: The Google UI sprint review suggested Enter-to-send and Shift-Enter for a newline.
+  The current multiline textarea keeps ordinary newline behavior. Leave this UX choice
+  for the user to direct; do not change message composition behavior while closing
+  the sprint.
 type: task
 component: default
 release:
@@ -15,4 +16,8 @@ log_events:
 - time: 2026-09-07T00:31:51-00:00
   who: Ted Smith
   what: created
+  comment: ""
+- time: 2026-09-08T04:32:33-00:00
+  who: Ted Smith
+  what: updated description
   comment: ""
