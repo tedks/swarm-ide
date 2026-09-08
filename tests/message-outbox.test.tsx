@@ -2,7 +2,7 @@
 import { act, cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { SteeringMemory } from "../app/renderer/external-agents/steering-memory";
-import { OUTBOX_KEY, OUTBOX_MAX_MESSAGES, readOutbox, writeOutbox, type OutboxStorage } from "../app/renderer/external-agents/message-outbox";
+import { OUTBOX_KEY, OUTBOX_MAX_MESSAGES, outgoingPresentation, readOutbox, writeOutbox, type OutboxStorage } from "../app/renderer/external-agents/message-outbox";
 import { AgentConversation } from "../app/renderer/external-agents/AgentConversation";
 import type { ExternalClient } from "../app/renderer/external-agents/client";
 import { initialSnapshot } from "../fixtures/world";
@@ -19,6 +19,13 @@ function client(sessionId = id(1)): ExternalClient {
 }
 
 describe("saved outgoing messages", () => {
+  it("describes a completed queue submission, not an ongoing wait or an agent receipt", () => {
+    expect(outgoingPresentation.queued).toEqual({
+      symbol: "↥", label: "Sent to queue",
+      explanation: "Codex accepted this message into its queue. The IDE cannot yet confirm when the agent receives it.",
+    });
+  });
+
   it("saves exact text before dispatch and retains queued text across reload without claiming delivery", () => {
     const disk = storage(), memory = new SteeringMemory(disk), text = "  Keep é and 👋\nexactly.\n";
     memory.update(id(1), () => ({ draft: text }));
@@ -130,7 +137,42 @@ describe("saved outgoing messages", () => {
       entries: [{ id: "reply", at: "2026-09-08T12:00:02.000Z", kind: "assistant", text: "I inspected it", attribution: "assistant-reported" }] };
     const view = render(<AgentConversation client={selected} memory={new SteeringMemory(disk)} onContext={() => {}} />);
     expect([...view.container.querySelectorAll(".conversation-messages li > p")].map((row) => row.textContent)).toEqual(["Please inspect", "I inspected it"]);
-    expect(screen.getByRole("status", { name: "Queued" })).toBeTruthy();
+    expect(screen.getByRole("status", { name: "Sent to queue" })).toBeTruthy();
+  });
+
+  it("keeps duplicate submissions and other-session history separate without text-based acknowledgement", () => {
+    const disk = storage(), text = "Please inspect", at = "2026-09-08T12:00:00.000Z";
+    const saved = [
+      { id: id(8), sessionId: id(1), text, at, status: "queued" as const, receiptId: id(18) },
+      { id: id(9), sessionId: id(1), text, at, status: "queued" as const, receiptId: id(19) },
+      { id: id(10), sessionId: id(2), text, at, status: "queued" as const, receiptId: id(20) },
+    ];
+    writeOutbox(disk, saved);
+    const selected = client();
+    selected.detail = { session: { id: id(1), label: "Root", evidence: "local", status: "observed", parentId: null,
+      ancestry: "root", observationId: "a".repeat(64), observedAt: at, message: "", contextPaths: [] },
+      handoff: "unavailable", coverage: { tailBytes: 0, partial: false, omittedRecords: 0, message: "" },
+      entries: [{ id: "received-input", at, kind: "user", text, attribution: "user-message" },
+        { id: "reply", at, kind: "assistant", text: "I received your message", attribution: "assistant-reported" }] };
+    const memory = new SteeringMemory(disk);
+    const view = render(<AgentConversation client={selected} memory={memory} onContext={() => {}} />);
+    expect(screen.getAllByRole("status", { name: "Sent to queue" })).toHaveLength(2);
+    expect(view.container.querySelectorAll(".conversation-outgoing")).toHaveLength(2);
+    expect(readOutbox(disk)).toEqual(saved);
+    // A fork can contain the same inherited conversational text. Selecting it
+    // must neither consume the parent's two submissions nor merge their rows.
+    const child = client(id(2));
+    child.detail = { ...selected.detail, session: { ...selected.detail.session, id: id(2), label: "Child", parentId: id(1), ancestry: "registered-parent" } };
+    view.rerender(<AgentConversation client={child} memory={memory} onContext={() => {}} />);
+    expect(screen.getAllByRole("status", { name: "Sent to queue" })).toHaveLength(1);
+    expect(readOutbox(disk)).toEqual(saved);
+    view.unmount();
+    const resumed = new SteeringMemory(disk);
+    render(<AgentConversation client={selected} memory={resumed} onContext={() => {}} />);
+    expect(screen.getAllByRole("status", { name: "Sent to queue" })).toHaveLength(2);
+    expect(resumed.getSnapshot().outgoing).toEqual(saved);
+    expect(selected.read).not.toHaveBeenCalled(); expect(selected.refresh).not.toHaveBeenCalled();
+    expect(selected.handoff).not.toHaveBeenCalled();
   });
 
   it("shows exact Enter-submitted text before a held reply, then retains it after a full memory remount", async () => {
@@ -156,6 +198,8 @@ describe("saved outgoing messages", () => {
     await act(async () => resolve({ protocolVersion: PROTOCOL_VERSION, requestId: request.mock.calls[0][0].requestId,
       ok: true, sequence: 1, snapshot: initialSnapshot(), external: { kind: "send", sessionId: id(1), receiptId: id(9), status: "queued", message: "Stored" } }));
     expect((screen.getByRole("textbox") as HTMLTextAreaElement).value).toBe("");
+    expect(screen.getAllByRole("status", { name: "Sent to queue" })).toHaveLength(2); // Saved row and composer receipt.
+    expect(screen.queryByRole("status", { name: "Queued" })).toBeNull();
     view.unmount();
     const after = render(<AgentConversation client={selected} bridge={bridge} memory={new SteeringMemory(disk)} onContext={() => {}} />);
     expect(after.container.querySelector(".conversation-outgoing p")?.textContent).toBe(text);

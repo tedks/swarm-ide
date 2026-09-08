@@ -12,8 +12,9 @@ An operator should not see a permanent waiting indicator after their message has
 
 - [x] (2026-09-08) Read the current sender, outbox, canonical user-message reader and the supplied real ROOT record without modifying any agent or queue.
 - [x] (2026-09-08) Confirm the bounded stopping boundary: the queue receipt exposes a queue item UUID; the user-message event exposes a client UUID and no queue-item link.
-- [ ] Add regression coverage for submitted status, matching text/replies, different sessions and reload retention.
-- [ ] Change only shared outgoing presentation and its design explanation; run focused Bazel checks and native review.
+- [x] (2026-09-08 18:10Z) Added regression coverage; baseline has four expected presentation failures and 74 passing checks, both TypeScript boundaries passed.
+- [x] (2026-09-08 18:12Z) Changed only shared outgoing presentation and its design explanation.
+- [ ] Run corrected focused Bazel checks and native review.
 - [ ] Push the reviewed PR, sync accomplishment/follow-up notes and hand back without app adoption.
 
 ## Surprises & Discoveries
