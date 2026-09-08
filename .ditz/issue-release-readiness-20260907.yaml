@@ -1,0 +1,18 @@
+id: release-readiness-20260907
+title: Verify merged demo installation and evaluator guidance
+desc: Release-only evaluator documentation correction and one existing local install
+  plus connected-tour rehearsal. No feature work, model turns, app adoption or publication.
+  ROOT owns normal landing and final closure.
+type: task
+component: documentation
+release:
+reporter: Ted Smith <tedks@riseup.net>
+status: unstarted
+disposition:
+creation_time: 2026-09-08T02:10:46-00:00
+references: []
+log_events:
+- time: 2026-09-08T02:10:46-00:00
+  who: Ted Smith
+  what: created
+  comment: ""
