@@ -29,8 +29,8 @@ attach that document to an agent's prompt.
 ## 2. Component → actual work → source
 
 Expand **Tasks** and **Refresh tasks** if needed. From the component, activate
-**Inspect task · repo-task-context-core-d4**. This is the actual closed task
-“Prepare authoritative pinned repository-task context.” Adjacent D2–D6 links
+**Inspect task · repo-task-context-core-d4**. This closed task covers reading the
+exact saved repository-task version into agent context. Adjacent D2–D6 links
 show design, common contract, core, UI and integration as separate records.
 To find them in the rail, select **All** and search the full ID.
 
