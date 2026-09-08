@@ -1,14 +1,22 @@
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import * as fsPromises from "node:fs/promises";
 import { appendFile, mkdir, mkdtemp, rm, stat, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
-import { ExternalAgentService } from "../core/external-agents";
+import { ExternalAgentService, boundFleet } from "../core/external-agents";
+import { EXTERNAL_FLEET_MAX_ENTRIES, EXTERNAL_FLEET_MAX_ENTRY_BYTES, externalEntryBytes, ExternalSnapshotSchema } from "../protocol/external-agents";
 import { terminalCommands, type TmuxTarget } from "../core/external-agents-handoff";
 import { PROTOCOL_VERSION } from "../protocol/common";
+
+vi.mock("node:fs/promises", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("node:fs/promises")>();
+  return { ...actual, open: vi.fn(actual.open) };
+});
 
 const ids = ["10000000-0000-4000-8000-000000000001", "10000000-0000-4000-8000-000000000002", "10000000-0000-4000-8000-000000000003"];
 const dirs: string[] = [], services: ExternalAgentService[] = [];
 afterEach(async () => {
+  vi.clearAllMocks();
   for (const service of services.splice(0)) await service.dispose();
   for (const dir of dirs.splice(0)) await rm(dir, { recursive: true, force: true });
 });
@@ -34,6 +42,35 @@ async function setup() {
 }
 
 describe("all-registered external fleet reads", () => {
+  it("does not reopen unchanged historical transcripts, but rereads changed files", async () => {
+    const { snapshot, rollouts } = await setup();
+    await snapshot();
+    const opens = () => vi.mocked(fsPromises.open).mock.calls.filter(([path]) => rollouts.includes(String(path))).length;
+    const initial = opens(); expect(initial).toBe(3);
+    await snapshot(); expect(opens()).toBe(initial);
+    await appendFile(rollouts[1]!, command("new historical note"));
+    const changed = await snapshot(); expect(opens()).toBe(initial + 1);
+    expect(changed.fleet?.[1]?.entries.at(-1)?.command).toBe("new historical note");
+  });
+
+  it("bounds all 64 session feeds together and prioritizes interactive registrations", async () => {
+    const { snapshot } = await setup();
+    const base = (await snapshot()).fleet![0]!;
+    const many = Array.from({ length: 64 }, (_, n) => ({ ...base,
+      session: { ...base.session, id: `20000000-0000-4000-8000-${String(n).padStart(12, "0")}`, control: n === 63 ? "tmux" as const : "read-only" as const },
+      entries: Array.from({ length: 120 }, (_, index) => ({ ...base.entries[0]!, id: `event-${n}-${index}` })),
+    }));
+    const bounded = boundFleet(many), entries = bounded.flatMap((detail) => detail.entries);
+    expect(entries).toHaveLength(EXTERNAL_FLEET_MAX_ENTRIES);
+    expect(bounded[63]?.entries).toHaveLength(120);
+    expect(bounded.some((detail) => detail.coverage.partial)).toBe(true);
+    expect(ExternalSnapshotSchema.safeParse({ status: "observed", observedAt: new Date().toISOString(), message: "", sessions: many.map((detail) => detail.session), fleet: many }).success).toBe(false);
+    const large = many.map((detail) => ({ ...detail, entries: detail.entries.map((entry) => ({ ...entry, patch: "x".repeat(16384) })) }));
+    const byteBounded = boundFleet(large).flatMap((detail) => detail.entries);
+    expect(byteBounded.length).toBeGreaterThan(0);
+    expect(byteBounded.length).toBeLessThan(EXTERNAL_FLEET_MAX_ENTRIES);
+    expect(byteBounded.reduce((sum, entry) => sum + externalEntryBytes(entry), 0)).toBeLessThanOrEqual(EXTERNAL_FLEET_MAX_ENTRY_BYTES);
+  });
   it("snapshot alone exposes three live tails, exact registered worktrees and fork ancestry", async () => {
     const { snapshot, worktrees } = await setup();
     const result = await snapshot();
@@ -54,6 +91,7 @@ describe("all-registered external fleet reads", () => {
     await writeFile(rollouts[0]!, metadata(ids[0]!) + large.join(""));
     expect((await stat(rollouts[0]!)).size).toBeGreaterThan(262144);
     const before = (await snapshot()).fleet![0]!;
+    expect(before.entries).toHaveLength(16);
     await appendFile(rollouts[0]!, command(`next ${"界".repeat(1200)}`));
     const after = (await snapshot()).fleet![0]!;
     const oldIds = new Map(before.entries.map((entry) => [entry.command, entry.id]));
