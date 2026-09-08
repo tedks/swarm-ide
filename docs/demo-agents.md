@@ -40,17 +40,22 @@ Context links are usable only when `contextRoot` exactly matches the registered
 repository's canonical root, and source opening still goes through the existing
 contained file broker. No transcript path becomes a clickable file capability.
 
-The registry is read on explicit Refresh. It admits up to 64 unique registrations,
+The registry refreshes automatically while the document is visible, with a
+three-second interval after each registry read; the selected transcript has a
+one-second interval. Explicit Refresh remains available. One read runs at a time.
+The observer admits up to 64 unique registrations,
 a 64 KiB registry and first metadata record, a 256 KiB tail, 120 visible events,
 and 4096 characters per message. Larger conversation history is intentionally not
 loaded. Partial/malformed/oversized tail records are omitted and coverage stays
-visible. Missing or unsafe metadata revokes transcript and handoff availability.
+visible. Missing or unsafe metadata revokes handoff and Send availability; any
+retained transcript is labeled as earlier recorded evidence, not a current read.
 The observer reads only current-user-owned regular files and rejects symlink
 aliases, noncanonical paths, wrong session IDs and duplicate registrations.
 
 ## Walk through the UI
 
-In **Agent runs → External sessions**, press Refresh and select a session. Its
+In **Agent runs → External sessions**, select an automatically observed session
+(or press Refresh). Its
 main information panel shows proven parent ID, authored role/task, observation
 time, and a chronological worklog. The conversation tab shows actual bounded
 assistant messages as **read-only** recorded text. User input prompts, reasoning,
@@ -61,9 +66,10 @@ invented. The observer does not claim to capture all effective context.
 
 Source buffers, draft text and graph instances remain open. Click **Return to
 source information**, select a source, or follow an explicitly associated context
-file to return to ordinary navigation. Explicit Refresh observes new records;
-there is no periodic polling. Core recovery invalidates in-flight observations
-and requires a fresh observation before handoff.
+file to return to ordinary navigation. Hiding the document pauses new automatic
+reads; an outstanding read drains without publishing into a later observation.
+Core recovery invalidates in-flight observations and requires a fresh observation
+before handoff or Send. Automatic observation never sends an instruction.
 
 ## Optional interactive handoff
 
@@ -95,7 +101,43 @@ visual-only race remains between the final validation and selection; successful
 selection is not acknowledgement from an agent. An uncertain handoff must be
 checked visually, not replayed as an agent command. Closing Swarm never kills
 observed agents. The only subprocesses the observer owns are short-lived tmux
-query/selection CLI invocations.
+query/selection CLI invocations (and the queue CLI described below).
+
+## Deliberate session steering
+
+For a registered `evidence: local` session with a valid `tmux` target, the
+information panel also offers **Message existing session**. Check the displayed
+label and session ID, type an instruction, then press **Send message**. Viewing
+or refreshing a session never sends it anything. Unsent text and receipts survive
+returning to source information and reopening the panel within this UI session.
+
+The core resolves the operator's normal `codex` installation, or the absolute
+`SWARM_CODEX_BIN` configured when launching Swarm, then executes only
+`queue --thread <exact UUID> --message <text>` as arguments, never a shell command.
+No renderer-controlled executable, working directory, profile or autonomy override
+is accepted. Normal Codex account/configuration applies; no credentials are read
+or copied by the IDE. This path was verified against installed Codex 0.153.4.
+An installation without this command leaves checked tmux handoff available.
+
+Messages must be nonblank, contain no NUL and fit in 4000 UTF-8 bytes. The private
+registration, current process and observed transcript are checked again before
+dispatch. A stale or closed target is rejected before queueing. There is no
+atomic operation spanning tmux identity, filesystem observation and the Codex
+queue: the exact UUID addresses the session, while the final checks minimize the
+remaining interval in which that session can close. Nothing is inferred about
+when an agent consumes the message.
+
+**Queued** means Codex returned a receipt for the exact session, not consumed or
+completed. **Rejected** means this attempt did not dispatch. **Delivery unknown**
+means the CLI may have queued the message before an error, timeout or disconnect;
+inspect the conversation before deciding to send again. Swarm does not retry or
+replay messages automatically. A single target has at most one pending Send;
+the core retains up to 256 attempted request IDs to reject duplicate requests.
+Receipts/drafts here are not durable history across application reloads.
+
+Closing Swarm cancels and drains its own short-lived queue CLI, never the external
+session. There is deliberately no Stop or Kill action for observed agents.
+Only the separately managed trusted-local runs are owned by the IDE.
 
 ## Local verification
 

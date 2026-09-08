@@ -1,6 +1,8 @@
 import { useState, type CSSProperties } from "react";
 import type { ExternalAgentSummary } from "../../../protocol/external-agents";
 import type { ExternalClient } from "./client";
+import type { SwarmBridge } from "../../electron/preload";
+import { SessionSteering } from "./SessionSteering";
 import "./external-agents.css";
 
 type LineageRow = {
@@ -62,14 +64,15 @@ export function ExternalAgentRail({ client, onSelect }: { client: ExternalClient
   </section>;
 }
 
-export function ExternalAgentInformation({ client, onReturn, onOpen }: { client: ExternalClient; onReturn(): void; onOpen(path: string): void }) {
+export function ExternalAgentInformation({ client, bridge, visible = true, onReturn, onOpen }: { client: ExternalClient; bridge?: SwarmBridge; visible?: boolean; onReturn(): void; onOpen(path: string): void }) {
   const [tab, setTab] = useState<"worklog" | "conversation">("worklog");
   const detail = client.detail, session = detail?.session;
   const entries = detail?.entries.filter((entry) => tab === "worklog" || entry.kind === "assistant") ?? [];
-  return <section className="external-information" aria-label="External agent information" data-external-session={client.selected}>
+  return <section className="external-information" aria-label="External agent information" data-external-session={client.selected} hidden={!visible} style={visible ? undefined : { display: "none" }}>
     <header><span className="eyebrow">external supervised session</span><h2>{session?.label ?? "Reading session…"}</h2>
       <button onClick={onReturn}>Return to source information</button></header>
-    <p className="external-boundary">Read-only observation. This view observes existing sessions; launching runs is a separate action.</p>
+    <p className="external-boundary">Observe an existing session or deliberately send it an instruction. Launching new runs is separate.</p>
+    <SessionSteering detail={detail} bridge={bridge} />
     {client.busy ? <p role="status">Observing…</p> : null}
     {client.notice ? <p role="status">{client.notice}</p> : null}
     {session ? <>
