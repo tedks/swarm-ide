@@ -16,8 +16,8 @@ the graph, and containment must not look like an architectural interface.
 
 - [x] 2026-09-08: confirmed clean designated worktree and created the fresh branch.
 - [x] Read current projection, canvas and App composition; confirmed selection-key remount and fixed-column routing.
-- [ ] Repair component graph truth, readability and camera/identity stability; push useful increment.
-- [ ] Compose one four-pane workspace and central document layout without duplicate readers or graph instances.
+- [x] Repair component graph truth, readability and camera/identity stability; pushed 945cd22 with native CLEAN and focused checks.
+- [x] Compose one four-pane workspace and central document layout without duplicate readers or graph instances; focused mounted checks pass.
 - [ ] Run focused checks, native review and one owned virtual journey; record limits, push and hand off.
 
 ## Surprises & Discoveries

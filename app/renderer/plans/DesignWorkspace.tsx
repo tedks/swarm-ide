@@ -6,6 +6,8 @@ import { ProjectionCanvas, type ProjectionEdge, type ProjectionNode } from "./Pr
 import { usePlanNavigation, type PlanNavigation } from "./navigation";
 import "./design.css";
 
+export interface DesignWorkspaceParts { components: ReactNode; document: ReactNode; tasks: ReactNode }
+
 export interface DesignWorkspaceProps {
   visible: boolean; worldId: string; repositoryId: string; generation: number; connected: boolean;
   onOpenFile: (path: string) => void;
@@ -14,6 +16,9 @@ export interface DesignWorkspaceProps {
   navigation?: PlanNavigation;
   taskPane?: ReactNode;
   taskOnly?: boolean;
+  documentVisible?: boolean;
+  onOpenDesign?: () => void;
+  renderWorkspace?: (parts: DesignWorkspaceParts) => ReactNode;
 }
 
 export function designProjection(index: PlanIndex, selected: PlanNode) {
@@ -27,10 +32,12 @@ export function designProjection(index: PlanIndex, selected: PlanNode) {
   const ids = new Set(shown.map((node) => node.id));
   const nodes: ProjectionNode[] = shown.map((node, i) => {
     const angle = (i - 1) * Math.PI * 2 / Math.max(1, shown.length - 1) - Math.PI / 2;
-    const radius = Math.max(280, shown.length * 34);
+    // A shallow ellipse uses the wide graph card without forcing a distant
+    // circular fit. More neighbours still grow the layout, never lose links.
+    const radius = Math.max(220, shown.length * 32), vertical = Math.max(80, shown.length * 12);
     return { id: node.id, title: node.title,
     subtitle: node.design?.state === "planned" ? "Planned component" : node.id === selected.id ? "Current component" : primary.has(node.id) ? "Open component" : "Connected component",
-    position: i === 0 ? { x: radius, y: radius } : { x: radius + Math.cos(angle) * radius, y: radius + Math.sin(angle) * radius },
+    position: i === 0 ? { x: radius, y: vertical } : { x: radius + Math.cos(angle) * radius, y: vertical + Math.sin(angle) * vertical },
     port: i === 0 ? Position.Bottom : Math.abs(Math.cos(angle)) > .6 ? Math.cos(angle) > 0 ? Position.Left : Position.Right : Math.sin(angle) > 0 ? Position.Top : Position.Bottom,
   }; });
   const edges: ProjectionEdge[] = children.map((node) => ({ id: `contains:${node.id}`, source: selected.id, target: node.id, label: "contains", kind: "containment" }));
@@ -120,7 +127,7 @@ export function DesignWorkspace(props: DesignWorkspaceProps) {
   const docPath = node?.docs[0];
   useEffect(() => {
     setDocument(null); setDocNotice("");
-    if (!visible || props.taskOnly || !current || !docPath || !window.swarm) return;
+    if (!visible || props.taskOnly || props.documentVisible === false || !current || !docPath || !window.swarm) return;
     let cancelled = false;
     const origin = lifetime;
     const request = { protocolVersion: PROTOCOL_VERSION, type: "file.read" as const, requestId: `design-doc:${crypto.randomUUID()}`, path: docPath };
@@ -133,7 +140,7 @@ export function DesignWorkspace(props: DesignWorkspaceProps) {
       setDocument({ path: docPath, content: result.file.content }); setDocNotice("");
     }).catch(() => { if (!cancelled && live.current === origin) setDocNotice("Document unavailable. Refresh or open its source."); });
     return () => { cancelled = true; };
-  }, [visible, props.taskOnly, current, docPath, lifetime, refresh, repositoryId, worldId]);
+  }, [visible, props.taskOnly, props.documentVisible, current, docPath, lifetime, refresh, repositoryId, worldId]);
   const graph = useMemo(() => index && node ? designProjection(index, node) : null, [index, node]);
   const implementation = useMemo(() => node ? implementationProjection(node) : null, [node]);
   const interfaces = useMemo(() => index && node ? index.nodes.flatMap((source) => (source.design?.connections ?? [])
@@ -144,13 +151,8 @@ export function DesignWorkspace(props: DesignWorkspaceProps) {
     if (onOpenBuild) onOpenBuild(label);
     else setLinkNotice("Open the Build view to inspect this target when its graph is available.");
   };
-  return <section className="design-workspace" data-task-only={props.taskOnly || undefined} aria-label="System design workspace" hidden={!visible}>
-    <header><strong>System design</strong><button disabled={!connected || loading} onClick={() => { setRefresh((value) => value + 1); void navigation.read(); }}>Refresh design</button></header>
-    <nav aria-label="Design breadcrumb">{breadcrumbs.map((item) => <button key={item.id} disabled={!current} aria-current={item.id === selected ? "page" : undefined} onClick={() => select(item.id)}>{item.title}</button>)}</nav>
-    {notice ? <div className="design-empty"><p role="status">{notice}</p><button onClick={() => onOpenFile(".swarm/plans.json")}>Open plan index</button></div> : null}
-    <div className="design-quadrants">
-      {node && graph ? <>
-        <article className="design-document" aria-label="Design document"><h2>{node.title}</h2>{node.design?.state === "planned" ? <span className="design-planned">Planned</span> : null}
+
+  const documentPane = node && graph ? (<article className="design-document" aria-label="Design document"><h2>{node.title}</h2>{node.design?.state === "planned" ? <span className="design-planned">Planned</span> : null}
           <p>{node.design?.summary}</p>
           {node.design?.constraints?.length ? <div className="design-constraints"><h3>Design constraints</h3><PlanLinkList key={`${node.id}:constraints`} label="Constraints" limit={3} items={node.design.constraints.map((constraint, i) => <p key={i}>{constraint}</p>)} /></div> : null}
           <p role="status">{!current ? "Reconnect or refresh to navigate this design." : docNotice}</p>
@@ -160,29 +162,53 @@ export function DesignWorkspace(props: DesignWorkspaceProps) {
             const component = index!.nodes.find((item) => item.docs.includes(path));
             if (component) select(component.id); else onOpenFile(path);
           }} /> : null}
-        </article>
-        <section className="design-components" aria-label="Component connections"><h3>Components & connections</h3>
+        </article>) : null;
+  const componentPane = node && graph ? (<section className="design-components" aria-label="Component connections"><h3>Components & connections</h3>
           <p className="design-legend">Dashed: contains · arrows: interfaces. Focus a component or edge to inspect its connections.</p>
           <div className="design-graph"><ProjectionCanvas key={`${worldId}:${repositoryId}`} cameraScope={node.id} label="Component design canvas" {...graph} selected={selected} onSelect={select} /></div>
-          <div className="design-details"><aside aria-label="Design links">
+          <details className="design-details" open={!props.renderWorkspace}><summary>Connections & constraints</summary><aside aria-label="Design links">
+            {props.renderWorkspace && node.design?.constraints?.map((constraint, i) => <p key={i}>{constraint}</p>)}
             <PlanLinkList key={`${node.id}:components`} label="Components" items={index!.nodes.filter((item) => item.parentId === node.id).map((item) => <button key={item.id} disabled={!current} onClick={() => select(item.id)}>{item.title}</button>)} />
             {node.parentId && <button disabled={!current} onClick={() => select(node.parentId!)}>Up one level</button>}
             <PlanLinkList key={`${node.id}:connections`} label="Connections" items={interfaces.map(({ source, link, target }, i) => <button key={`${source.id}:${target.id}:${link.label}:${i}`} disabled={!current} onClick={() => select(source.id === node.id ? target.id : source.id)}>{source.title} → {target.title}: {link.label}</button>)} />
-          </aside></div>
-        </section>
-        <section className="design-implementation" aria-label="Design implementation"><h3>Implementation</h3>
-          {implementation?.nodes.length ? <div className="design-implementation-graph"><ProjectionCanvas key={`${worldId}:${repositoryId}`} cameraScope={node.id} label="Component build mappings" {...implementation} selected={null} onSelect={openBuild} /></div> : <p className="design-empty">Select a component to explore its build connections.</p>}
+          </aside></details>
+        </section>) : <div className="design-empty">
+    <p>{notice || (loading ? "Loading components…" : "Add .swarm/plans.json to describe this project's components.")}</p>
+    <button onClick={() => onOpenFile(".swarm/plans.json")}>Open plan index</button>
+  </div>;
+  const implementationPane = node && graph ? (<section className="design-implementation" aria-label="Design implementation"><h3>Implementation</h3>
+          {!props.renderWorkspace && (implementation?.nodes.length ? <div className="design-implementation-graph"><ProjectionCanvas key={`${worldId}:${repositoryId}`} cameraScope={node.id} label="Component build mappings" {...implementation} selected={null} onSelect={openBuild} /></div> : <p className="design-empty">Select a component to explore its build connections.</p>)}
           {linkNotice ? <p role="status">{linkNotice}</p> : null}
           <PlanLinkList key={`${node.id}:source`} label="Source files" items={node.sourcePaths.map((path) => <button key={path} disabled={!current} onClick={() => onOpenFile(path)}>{path}</button>)} />
           <PlanLinkList key={`${node.id}:build`} label="Build targets" items={(node.design?.buildTargets ?? []).map((target) => <button key={target.label} disabled={!current} title={target.role} onClick={() => openBuild(target.label)}>{target.label}</button>)} />
           <PlanLinkList key={`${node.id}:docs`} label="Documents" items={node.docs.map((path) => <button key={path} disabled={!current} onClick={() => onOpenFile(path)}>Edit {path}</button>)} />
-        </section>
+        </section>) : null;
+  const guidancePane = <section className="design-work" aria-label="Design tasks and guidance"><h3>Tasks & guidance</h3>
+    {onOpenTask && node?.taskIds.length ? <PlanLinkList key={`${node.id}:tasks`} label="Tasks" items={node.taskIds.map((id) => <button key={id} disabled={!current} onClick={() => onOpenTask(id)}>Task · {id}</button>)} /> : <p className="design-empty">No tasks linked to this component.</p>}
+    {node ? <PlanLinkList key={`${node.id}:context`} label="Guidance" items={node.contextRefs.map((ref, i) => <button key={i} disabled={!current} title={ref.note ?? undefined} onClick={() => onOpenFile(ref.path)}>{ref.kind} · {ref.path}</button>)} /> : null}
+    {!props.renderWorkspace && props.taskPane}
+  </section>;
+  if (props.renderWorkspace) return <>{props.renderWorkspace({
+    components: <section className="component-graph-card design-workspace" aria-label="Component design">
+      <header><strong>Components</strong><button disabled={!node || !current} onClick={props.onOpenDesign}>Read design</button>
+        <button aria-label="Refresh design" disabled={!connected || loading} onClick={() => { void navigation.read(); }}>↻</button></header>
+      <nav aria-label="Design breadcrumb">{breadcrumbs.map((item) => <button key={item.id} disabled={!current} aria-current={item.id === selected ? "page" : undefined} onClick={() => select(item.id)}>{item.title}</button>)}</nav>
+      {componentPane}
+    </section>,
+    document: <div className="design-document-body design-workspace">{documentPane}{implementationPane}{guidancePane}</div>,
+    tasks: props.taskPane,
+  })}</>;
+  return <section className="design-workspace" data-task-only={props.taskOnly || undefined} aria-label="System design workspace" hidden={!visible}>
+    <header><strong>System design</strong><button disabled={!connected || loading} onClick={() => { setRefresh((value) => value + 1); void navigation.read(); }}>Refresh design</button></header>
+    <nav aria-label="Design breadcrumb">{breadcrumbs.map((item) => <button key={item.id} disabled={!current} aria-current={item.id === selected ? "page" : undefined} onClick={() => select(item.id)}>{item.title}</button>)}</nav>
+    {notice ? <div className="design-empty"><p role="status">{notice}</p><button onClick={() => onOpenFile(".swarm/plans.json")}>Open plan index</button></div> : null}
+    <div className="design-quadrants">
+      {node && graph ? <>
+        {documentPane}
+        {componentPane}
+        {implementationPane}
       </> : <div className="design-empty">{!notice ? <p>{loading ? "Loading system design…" : index ? "This plan has no components yet. Add a top-level design and its component links in .swarm/plans.json." : "Open the plan to browse the repository's architecture."}</p> : null}</div>}
-        <section className="design-work" aria-label="Design tasks and guidance"><h3>Tasks & guidance</h3>
-          {onOpenTask && node?.taskIds.length ? <PlanLinkList key={`${node.id}:tasks`} label="Tasks" items={node.taskIds.map((id) => <button key={id} disabled={!current} onClick={() => onOpenTask(id)}>Task · {id}</button>)} /> : <p className="design-empty">No tasks linked to this component.</p>}
-          {node ? <PlanLinkList key={`${node.id}:context`} label="Guidance" items={node.contextRefs.map((ref, i) => <button key={i} disabled={!current} title={ref.note ?? undefined} onClick={() => onOpenFile(ref.path)}>{ref.kind} · {ref.path}</button>)} /> : null}
-          {props.taskPane}
-        </section>
+        {guidancePane}
       </div>
   </section>;
 }

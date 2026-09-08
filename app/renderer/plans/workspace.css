@@ -1,0 +1,35 @@
+/* Four permanent panes. Layout changes size, never projection identity. */
+.navigation-field.unified-graph-workspace { container-type: inline-size; grid-template-columns: minmax(0, 1fr); grid-template-rows: 65px 32px minmax(0, 1fr); }
+.navigation-field.unified-graph-workspace:not(:has(> .surface-tabs-strip)) { grid-template-rows: 65px 0 minmax(0, 1fr); }
+.navigation-field.unified-graph-workspace.source-open { grid-template-columns: minmax(225px, min(var(--graph-share, 43%), calc(100% - 390px))) minmax(390px, 1fr); }
+.unified-graph-workspace > .graphs-grid { grid-row: 3; grid-column: 1; display: block; min-width: 0; container-type: inline-size; }
+.unified-graph-workspace .graph-panels { height: 100%; min-height: 440px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-rows: repeat(2, minmax(220px, 1fr)); gap: 8px; }
+.unified-graph-workspace .graph-panels > * { min-width: 0; min-height: 0; overflow: hidden; border: 1px solid #25413f; }
+.component-graph-card { display: flex; flex-direction: column; height: 100%; }
+.component-graph-card > header { padding: 3px 7px; gap: 6px; align-items: center; flex: 0 0 auto; }
+.component-graph-card > header strong { margin-right: auto; }
+.component-graph-card > nav { padding: 4px 7px; max-height: 64px; overflow: auto; flex: 0 0 auto; }
+.component-graph-card .design-components { order: 0; padding: 0; display: flex; flex-direction: column; min-height: 0; flex: 1; overflow: auto; }
+.component-graph-card .planning-node { min-height: 40px; padding: 5px; }
+.component-graph-card .planning-node small { display: none; }
+.component-graph-card .design-components > h3 { display: none; }
+.component-graph-card .design-legend { font-size: 10px; padding: 0 7px; margin: 2px 0 4px; }
+.component-graph-card .design-graph { height: auto; min-height: 100px; flex: 1 0 100px; }
+.component-graph-card .design-details { padding: 4px 7px; max-height: 160px; overflow: auto; flex: 0 0 auto; font-size: 11px; }
+.component-graph-card .design-details summary { cursor: pointer; }
+.task-graph-card > .task-projection { height: 100%; border: 0; }
+.task-graph-card .planning-heading { padding: 5px; gap: 4px; }
+.task-graph-card .planning-heading small { display: none; }
+.task-graph-card .planning-heading strong { display: block; }
+.task-graph-card .planning-status { max-height: 80px; overflow: auto; }
+.task-graph-card .planning-inspector { max-height: 75px; }
+.design-document-surface { grid-row: 3; grid-column: 2; min-width: 0; min-height: 0; overflow: auto; border-left: 1px solid #25413f; }
+.design-document-surface[hidden] { display: none; }
+.design-document-body { height: auto; min-height: 100%; padding: 14px; gap: 16px; overflow: visible; }
+.design-document-body > * { flex: 0 0 auto; }
+@container (max-width: 560px) {
+  .graph-panels { grid-template-columns: minmax(0, 1fr) !important; grid-template-rows: repeat(4, minmax(245px, 1fr)) !important; min-height: 1000px !important; }
+}
+@media (max-width: 700px) {
+  .navigation-field.unified-graph-workspace.source-open { grid-template-columns: minmax(160px, 30%) minmax(300px, 1fr); overflow: auto; }
+}

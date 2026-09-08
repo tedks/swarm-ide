@@ -1,15 +1,14 @@
 import { z } from "zod";
 import { FocusRefSchema, WorkspaceSnapshotSchema, type FocusRef, type WorkspaceSnapshot } from "../../protocol/schema";
 
-export function navigationLens(lens: string | undefined, hasDocuments = false): "Plan" | "Code" {
-  if (lens === "Code" || lens === "System" && hasDocuments) return "Code";
-  return "Plan";
+export function navigationLens(_lens: string | undefined, _hasDocuments = false): "Workspace" {
+  return "Workspace";
 }
 
 export const NavigationSchema = z.object({
   paths: z.array(z.string().min(1).max(4096)).max(128),
   activeSurface: z.string().max(4096),
-  lens: z.enum(["Code", "System", "Plan", "Performance", "Refactor"]),
+  lens: z.enum(["Workspace", "Code", "System", "Plan", "Performance", "Refactor"]),
   focus: FocusRefSchema.nullable(),
   snapshot: WorkspaceSnapshotSchema.optional(),
 }).transform((saved) => ({ ...saved, lens: navigationLens(saved.lens, saved.paths.length > 0) }));

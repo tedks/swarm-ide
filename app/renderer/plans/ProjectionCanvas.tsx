@@ -71,7 +71,7 @@ export function ProjectionCanvas({ label, nodes: input, edges: links, selected, 
     if (!id || !event.currentTarget.contains(target) || !input.some((node) => node.id === id)) return;
     event.preventDefault(); event.stopPropagation(); onSelect(id);
   }}>
-    <ReactFlow nodes={graph.nodes} edges={graph.edges} edgeTypes={edgeTypes} onInit={(instance) => { flow.current = instance; }} fitView fitViewOptions={{ padding: .2, maxZoom: 1 }}
+    <ReactFlow nodes={graph.nodes} edges={graph.edges} edgeTypes={edgeTypes} onInit={(instance) => { flow.current = instance; }} fitView fitViewOptions={{ padding: cameraScope ? .07 : .2, maxZoom: 1 }}
       minZoom={.08} maxZoom={2} nodesConnectable={false} nodesDraggable={false} elementsSelectable
       onNodeClick={(_event, node) => onSelect(node.id)}
       onNodeDragStop={(_event, node) => setPositions((prior) => new Map(prior).set(node.id, node.position))}>

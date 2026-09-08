@@ -49,14 +49,15 @@ Both live Activity file events and operator-associated briefing links carry the
 registered session into this inspector. A different opened repository does not
 hide canonical worktree briefing links or redirect them into local same-path files.
 
-Plan is the fresh-start home for the living component diagram/document and its
-related planning views. Code opens the separate repository/service/build
-projections. There is one architectural entry point, not separate System and
-Plan hierarchies; empty Performance/Refactor lenses have been retired. Saved
-navigation retains paths and focus while migrating those old values to Plan
-(a saved System source session resumes Code). The Plan home never discards the
-mounted editor or graph instances. Explicit source, task and worktree activation
-returns to Code; background observations do not switch the lens.
+Workspace is one home with four coordinated panes: component design, task
+dependencies, repository navigation, and the existing build/services chooser.
+Plan and Code are no longer separate modes. Their saved preferences migrate to
+Workspace while preserving open paths and focus. A full design document, source,
+task, worktree or log opens beside the same panes. The graph group uses 2×2 where
+space permits and 1×4 beside narrower text areas; the source editor retains at
+least 390px on desktop. Workspace returns to the overview without destroying
+the hidden dirty editor. Scope cameras and graph selections survive layout
+changes; Ctrl+W on the overview does not close a hidden source buffer.
 
 The Work Log is mounted once in a persistent dock column immediately left of
 Activity, independent of the scrolling or folded agent list, with explicit Start/Stop; live
@@ -89,7 +90,7 @@ retain tabs; old stored runs retain their own tabs rather than a competing sideb
 composition. Actual transcript reads are separate from controlled Send evidence.
 With a registered-conversation surface, the default dock takes about 32% of the
 viewport (220–400px). Context starts at23% width so a normal desktop leaves room
-for a two-column Plan overview; smaller windows stack readable plan sections.
+for a four-pane overview; smaller graph groups stack four navigable panes.
 Context and the outer dock can be resized. The horizontal dock divider supports
 dragging, Up/Down and Home; a deliberate adjustment takes22–55% of the workbench
 height, consistently using that container even when interface zoom makes it
@@ -102,7 +103,7 @@ internal reconciliation epochs. Operational document-title observations remain
 available to the local verification harness.
 
 `useBuildGraph` observes the current repository while the core is ready, regardless
-of selected Plan/Code lens, and receives the working-source fingerprint for
+of the open central document, and receives the working-source fingerprint for
 debounced invalidation. The hook pauses on blur and keeps settled input quiet.
 The old automatic service-artifact binary build is not the repository graph:
 it stays an explicit **Build service topology** action under the toolbar's
@@ -128,10 +129,10 @@ Scrollbars elsewhere, including source editors and diffs, stay visible when need
 with a slim dark theme. These renderer inputs use the same root build targets.
 
 `//tools/operator-cockpit:plan-first` checks startup, old-navigation migration,
-real CodeMirror text/cursor retention and mounted graph identities through Plan
-and Code, target activation, dock keyboard/pointer bounds and task-consumer
+real CodeMirror text/cursor retention and mounted graph identities through home,
+design and source, target activation, dock keyboard/pointer bounds and task-consumer
 compatibility. Domain graph correctness belongs to the corresponding provider
 checks; the mounted tests do not claim actual browser geometry. The owned
-`SWARM_COCKPIT_PLAN_ONLY=1` operator smoke mode opens the actual packaged app
-against a disposable repository containing the authored design, and checks the
-desktop/compact Plan layout, native source editing and retained cameras.
+`//tools/living-design:smoke` opens the packaged app against this repository and
+checks four-pane overview/compact geometry, native source editing, unchanged
+refresh identities and component-camera roundtrips. It does not launch agents.

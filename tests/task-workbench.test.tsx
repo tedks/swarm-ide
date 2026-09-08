@@ -71,27 +71,25 @@ async function openSource() {
   return EditorView.findFromDOM(document.querySelector(".cm-editor")!)!;
 }
 
-it("keeps settled automatic build context quiet across Plan and Code lens changes", async () => {
+it("keeps settled automatic build context quiet across design and overview navigation", async () => {
   vi.spyOn(document, "hasFocus").mockReturnValue(true);
   vi.spyOn(document, "visibilityState", "get").mockReturnValue("visible");
   const { request } = setup(); render(<App />);
   await screen.findByRole("button", { name: "Select task task-fixture" });
   const reads = () => request.mock.calls.filter(([input]) => input.type === "buildGraph.observe").length;
   await waitFor(() => expect(reads()).toBeGreaterThan(0));
-  fireEvent.click(screen.getByRole("button", { name: "Code" }));
   fireEvent.click(screen.getByRole("button", { name: "Build graph" }));
-  fireEvent.click(screen.getByRole("button", { name: "Plan" }));
+  fireEvent.click(screen.getByRole("button", { name: "System plan" }));
   const hiddenReads = reads();
   await act(async () => { await new Promise((resolve) => setTimeout(resolve, 750)); });
   expect(reads()).toBe(hiddenReads);
-  fireEvent.click(screen.getByRole("button", { name: "Code" }));
+  fireEvent.click(screen.getByRole("button", { name: "Workspace" }));
   expect(reads()).toBe(hiddenReads);
 });
 
-it("revokes a held planning-task activation when the user switches lens", async () => {
+it("revokes a held planning-task activation when the user returns to the overview", async () => {
   const { request } = setup(); render(<App />);
   await screen.findByRole("button", { name: "Select task task-fixture" });
-  fireEvent.click(screen.getByRole("button", { name: "Plan" }));
   fireEvent.click(screen.getByRole("button", { name: "Load dependency graph" }));
   await screen.findByText(/1\/1 details read/);
   fireEvent.click(screen.getByText(/Keyboard task outline/));
@@ -101,7 +99,7 @@ it("revokes a held planning-task activation when the user switches lens", async 
   }) : original(input));
   fireEvent.click(screen.getByRole("button", { name: "Open graph task task-fixture" }));
   await waitFor(() => expect(finish).toBeTypeOf("function"));
-  const system = screen.getByRole("button", { name: "Code" });
+  const system = screen.getByRole("button", { name: "Workspace" });
   fireEvent.pointerDown(system); fireEvent.click(system);
   await act(async () => finish());
   expect(document.querySelector(".artifact-context")?.getAttribute("data-context-kind")).not.toBe("task");
@@ -166,18 +164,17 @@ it("rejects a delayed backlink after file A to another source and back to A", as
   expect(document.querySelector(".task-editor-surface")).toBeNull();
 });
 
-it("folds the Tasks consumer without stopping a visible file Context or duplicating its five-second timer", async () => {
+it("folds Tasks without stopping the visible graph/Context or duplicating its five-second timer", async () => {
   const intervals = vi.spyOn(globalThis, "setInterval"), cleared = vi.spyOn(globalThis, "clearInterval");
   const { request } = setup(); render(<App />); await screen.findByRole("button", { name: "Select task task-fixture" });
-  // Plan now contains a visible task projection; enter Code to isolate this
-  // test's sidebar/Context consumer union before folding the Tasks section.
-  fireEvent.click(screen.getByRole("button", { name: "Code" }));
+  // The unified workspace keeps a task projection visible when its sidebar
+  // folds; all visible consumers continue sharing the same timer.
   const fiveSecond = () => intervals.mock.calls.flatMap((args, index) => args[1] === 5000 ? [intervals.mock.results[index]!.value] : []);
   const first = fiveSecond().at(-1); expect(first).toBeDefined();
   fireEvent.click(screen.getByRole("button", { name: "Tasks" }));
-  expect(cleared.mock.calls.some(([id]) => id === first)).toBe(true);
+  expect(cleared.mock.calls.some(([id]) => id === first)).toBe(false);
   await openContextPath(source);
-  await waitFor(() => expect(fiveSecond().length).toBeGreaterThan(1));
+  expect(fiveSecond()).toEqual([first]);
   const active = fiveSecond().at(-1), scans = request.mock.calls.filter(([r]) => r.type === "tasks.snapshot" && r.refresh).length;
   fireEvent.click(screen.getByRole("button", { name: "Tasks" }));
   fireEvent.click(screen.getByRole("button", { name: "Tasks" }));

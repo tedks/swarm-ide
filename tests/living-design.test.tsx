@@ -26,6 +26,28 @@ function reply(request: CoreRequest): CoreResponse {
       : request.type === "file.read" ? { file: { kind: "read" as const, path: request.path, content: `# Actual document\n\n${request.path}`, revision: "a".repeat(64), size: 64 } } : {}) };
 }
 describe("living system design", () => {
+  it("keeps authored task/guidance links in the full reading slot without mounting extra graphs", async () => {
+    const request = vi.fn(async (input: CoreRequest) => reply(input));
+    window.swarm = { request, onEvent: () => () => {} };
+    const onOpenTask = vi.fn(), onOpenFile = vi.fn();
+    render(<DesignWorkspace {...base} onOpenFile={onOpenFile} onOpenTask={onOpenTask} documentVisible
+      taskPane={<div data-testid="task-pane">Task graph</div>}
+      renderWorkspace={({ components, document, tasks }) => <>{components}<main>{document}</main>{tasks}</>} />);
+    await screen.findByText("Actual document");
+    const rootNode = index.nodes[0]!;
+    const guidance = screen.getByRole("region", { name: "Design tasks and guidance" });
+    for (const id of rootNode.taskIds) {
+      fireEvent.click(within(guidance).getByRole("button", { name: `Task · ${id}` }));
+      expect(onOpenTask).toHaveBeenLastCalledWith(id);
+    }
+    for (const ref of rootNode.contextRefs) {
+      fireEvent.click(within(guidance).getByRole("button", { name: `${ref.kind} · ${ref.path}` }));
+      expect(onOpenFile).toHaveBeenLastCalledWith(ref.path);
+    }
+    expect(screen.getAllByTestId("task-pane")).toHaveLength(1);
+    expect(document.querySelector(".design-implementation-graph")).toBeNull();
+    expect(screen.getByRole("region", { name: "Design implementation" })).toBeTruthy();
+  });
   it("opens only exact observed build declarations, including BUILD without the bazel suffix", () => {
     const capture: BuildLinkSnapshot = { repositoryId: base.repositoryId, revision: "a", capturedAt: "now", command: "query", links: [], targets: [
       { label: "//core:runtime", kind: "rule", path: "core", buildFile: "core/BUILD" },
