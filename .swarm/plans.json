@@ -144,6 +144,9 @@
       "protocol/service-declarations.ts",
       "tools/services/BUILD.bazel",
       "tools/services/inspect.ts",
+      "examples/checkout-world/README.md",
+      "examples/checkout-world/services/fraudcheck/service.swarm.json",
+      "examples/checkout-world/services/payments/service.swarm.json",
       "app/renderer/repository/BuildGraphPane.tsx",
       "tools/context-source-links/BUILD.bazel",
       "core/project-context/node.ts",
@@ -179,6 +182,16 @@
         }
       ],
       "buildTargets": [
+        {
+          "label": "//tools/services:example-checks",
+          "role": "Checks ordinary checkout example declarations and unrelated-repository empty behavior",
+          "dependencies": [{ "label": "//:quality_sources", "relation": "data" }, { "label": "//examples/checkout-world:all_sources", "relation": "data" }]
+        },
+        {
+          "label": "//examples/checkout-world:all_sources",
+          "role": "Sample service declarations, contracts and local implementations; not a Swarm runtime component",
+          "dependencies": [{ "label": "//examples/checkout-world/services/fraudcheck:fraudcheck_sources", "relation": "srcs" }, { "label": "//examples/checkout-world/services/payments:payments_sources", "relation": "srcs" }]
+        },
         {
           "label": "//tools/services:checks",
           "role": "Checks declared service sources, provider refresh and Context without building or deploying",
