@@ -1,0 +1,23 @@
+id: swarm-message-receipt-correlation
+title: Confirm when a queued message reaches its agent
+desc: PR126 clarifies Sent to queue but does not infer receipt. Current codex queue
+  acknowledgement supplies a queue item UUID; normal user_message transcript exposes
+  client_id without an established supported join. Add a supported exact queue-item/client-input/session
+  relationship before updating saved rows to received or coalescing transcript copies.
+  Do not match text/timestamps, infer from missing queue items, replay sends, modify
+  queue SQLite, or resume a competing owner. Preserve duplicates, copied fork history,
+  reload and current sender authority. The supplied ROOT input was observed at 2026-09-08T17:25:19.576Z;
+  this is proof of that input, not arbitrary stored queue receipts.
+type: feature
+component: default
+release:
+reporter: Ted Smith <tedks@riseup.net>
+status: unstarted
+disposition:
+creation_time: 2026-09-08T18:14:35-00:00
+references: []
+log_events:
+- time: 2026-09-08T18:14:35-00:00
+  who: Ted Smith
+  what: created
+  comment: ""
