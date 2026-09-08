@@ -135,7 +135,7 @@ export class TrustedLocalSession {
     return id!;
   }
   private trimActivities(): void {
-    while (this.activities.length > 128 || Buffer.byteLength(JSON.stringify(this.activities)) > 64 * 1024) this.activities.shift();
+    while (this.activities.length > 100 || Buffer.byteLength(JSON.stringify(this.activities)) > 64 * 1024) this.activities.shift();
   }
   private unfinishedActivities(reason: string): void {
     for (const entry of this.activities) if (entry.status === "running") {

@@ -42,7 +42,7 @@ No storage migration or global changes. Tests use owned transports/workspaces, a
 
 ## Outcomes & Retrospective
 
-PR71 supplies the session accessor with no service/protocol/UI changes. The smallest join is F1 publishing session.activity() through its approved optional activities field. The feed holds at most 128 rows and 64KiB encoded; rows are first-observed order, stable opaque local IDs, original observation timestamps and copied objects. Known terminal item evidence is sticky even after trimming. Unsupported items are ignored. Structural labels intentionally omit arbitrary command text, tool names, outputs, paths and diffs; approval and chat surfaces are unchanged, not newly redacted. Failed activity can mean observed failure/decline/interruption or explicitly unconfirmed outcome on lost completion; its summary distinguishes these. A tool completing never changes task state. UI and fleet adoption remain ROOT/peer work, not evidence claimed by A2.
+PR71 supplies the session accessor with no service/UI changes. Following explicit ROOT clearance it incorporates only the exact F1 contract a6e7c8c, not unfinished runtime/store. The smallest join is F1 publishing session.activity() through its approved optional activities field. The feed now holds at most 100 rows (aligned to the cleared wire limit) and 64KiB encoded; rows are first-observed order, stable opaque local IDs, original observation timestamps and copied objects. Known terminal item evidence is sticky even after trimming. Unsupported items are ignored. Structural labels intentionally omit arbitrary command text, tool names, outputs, paths and diffs; approval and chat surfaces are unchanged, not newly redacted. Failed activity can mean observed failure/decline/interruption or explicitly unconfirmed outcome on lost completion; its summary distinguishes these. A tool completing never changes task state. UI and fleet adoption remain ROOT/peer work, not evidence claimed by A2.
 
 ## Artifacts and Interfaces
 
@@ -51,3 +51,5 @@ Coordination is /tmp/swarm-ide-real-swarms.Djy75P/provider-activity/seam.md. The
 Initial plan: bounded core event projection only, to preserve independent parallel implementation.
 
 Completion update: actual provider proof and exact local/native evidence recorded; no broader UI or security-platform work added.
+
+Contract continuation: ROOT cleared a6e7c8c, composed normally as dda4f62 without conflicts. Comparing exact producer schema found its 100-row maximum versus A2's former128. Directly parsing the 128-row accessor result through that schema reproduced1RED/20PASS. Lowering only the retention count to100 corrects the concrete dependency mismatch; a focused schema test guards it. Prior full quality/live evidence remains attributed to its original head; no duplicate product turn or full legacy test run is authorized or needed for this bounded join.
