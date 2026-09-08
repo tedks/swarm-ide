@@ -9,8 +9,8 @@ type: feature
 component: default
 release:
 reporter: Ted Smith <tedks@riseup.net>
-status: in_progress
-disposition:
+status: closed
+disposition: fixed
 creation_time: 2026-09-08T05:30:18-00:00
 references: []
 log_events:
@@ -37,3 +37,11 @@ log_events:
     retention, zero renderer errors/resize warnings/control writes and cleanup1. Used
     a labelled controlled saved outcome, not a generated summary/provider proof. ROOT
     normal merge/adoption and issue closure pending.
+- time: 2026-09-08T05:50:07-00:00
+  who: Ted Smith
+  what: 'closed: fixed'
+  comment: Merged PR98 as6cff8c09 and adopted in managed :0/55176. One Work Log now
+    persists immediately left of Activity, independent of the sidebar, preserving
+    controls, outcome links, source, drafts, cameras and tab arrows.31 focused checks/types
+    plus native CLEAN; owned packaged wide/compact layout2.112s/noerrors/cleanup,
+    with labelled saved outcome and no model call.
