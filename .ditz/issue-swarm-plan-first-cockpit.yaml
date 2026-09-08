@@ -70,5 +70,13 @@ log_events:
     Only lifecycle documentation/design links changed since the passing targeted Activity/settings
     check, so no repeated test cycle. PR115 aligned at ae43665; runtime unchanged
     and ROOT can land the coherent cockpit.
+- time: 2026-09-08T15:04:08-00:00
+  who: Ted Smith
+  what: commented
+  comment: PR107 now normally composes reviewed master and GitHub reports it mergeable
+    at f27313f. Resolved only a planning-document line-wrap conflict; product behavior
+    unchanged. ROOT joined checks remain attributed with the known nonblocking stale
+    label assertion. PR115 deliberately untouched until107 lands; no new test or feature
+    cycle.
 blocks:
 - swarm-usability-join
