@@ -114,6 +114,23 @@ async function main() {
   await fs.writeFile(path.join(evidence, 'agent-briefing-source.png'), (await wc.capturePage()).toPNG());
   await click('.worktree-inspection header > button');
   assert.deepEqual(await source(), retained);
+  if (process.env.SWARM_COCKPIT_BRIEFING_ONLY === '1') {
+    assert.deepEqual(await cameras(), retainedCameras);
+    const graphNodesRetained = await run(() => globalThis.__cockpitGraphNodes.every((e) => e.isConnected));
+    assert(graphNodesRetained);
+    await click('.file-state button');
+    await until(() => run(() => document.querySelector('.file-state').classList.contains('file-saved')), 'owned source save');
+    assert.equal(await fs.readFile(path.join(repository.root, 'README.md'), 'utf8'), retained.text);
+    assert(requests.filter((r) => r.type === 'file.write').every((r) => r.path === 'README.md'));
+    const agentWrites = requests.filter((r) => /^(?:externalAgents\.(?:send|handoff)|trusted\.(?:prepare|launch|send|fork|stop|decide)|agent\.(?:prepare|launch|steer|cancel)|workLog\.(?:start|record))$/.test(r.type));
+    assert.deepEqual(agentWrites, []); assert.deepEqual(errors, []);
+    await fs.writeFile(path.join(evidence, 'proof.json'), JSON.stringify({ ok: true, scope: 'briefing-only', packagedCore: true,
+      realRegisteredSession: repository.target.id, crossWorktreeBriefingOpened: true, crossWorktreeBytes: true,
+      readOnly: true, sourceRetained: true, camerasRetained: true, graphNodesRetained, ownedSourceSaved: true,
+      agentWrites, requests, blockingErrors: errors, acceptedResizeWarnings: [], elapsedMs: Date.now() - started }, null, 2));
+    return;
+  }
+  stage = 'real registered session activity';
   // Follow an actual recorded file event through the persistent Activity log.
   // No renderer injection or direct bridge call supplies the navigation.
   await click('.dock-activity .activity-open-heading');
