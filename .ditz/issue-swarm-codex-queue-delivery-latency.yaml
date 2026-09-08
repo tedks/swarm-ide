@@ -1,0 +1,21 @@
+id: swarm-codex-queue-delivery-latency
+title: Investigate delayed Codex queued milestone delivery
+desc: Two direct worker milestone messages received exit-zero Codex queue receipts
+  in under one second, but appeared in ROOT user-message records about49 minutes later,
+  after PR108/114 and PR106 merged. Supervisor status coalescing reduces owned backlog
+  but does not establish or fix upstream scheduling. Investigate only through supported
+  read-only diagnostics; do not clear queues or replay assignments. See PR118 and
+  docs/supervisor.md.
+type: bugfix
+component: default
+release:
+reporter: Ted Smith <tedks@riseup.net>
+status: unstarted
+disposition:
+creation_time: 2026-09-08T15:29:13-00:00
+references: []
+log_events:
+- time: 2026-09-08T15:29:13-00:00
+  who: Ted Smith
+  what: created
+  comment: ""
