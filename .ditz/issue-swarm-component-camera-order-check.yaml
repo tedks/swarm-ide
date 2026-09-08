@@ -1,0 +1,21 @@
+id: swarm-component-camera-order-check
+title: Investigate retained camera state across component tests
+desc: 'During PR133 final joined checks, existing component-graph-stability.test.tsx:180
+  expected viewport 30,70,0.7 but received the preceding test viewport 67,-42,0.63.
+  Living-design target had 90 pass/1 fail; actual mapping check passed. No camera
+  implementation changed, no unchanged retry or fix claim. Shared retainedCameras/deferred
+  onInit restoration is a candidate needing a controlled reproduction. Treat as separate
+  noncritical graph/test follow-up; preserve current camera behavior. Evidence: /tmp/swarm-ide-startup-simple.Wz8BqH/component-plan/final-joined-checks.log.'
+type: bugfix
+component: default
+release:
+reporter: Ted Smith <tedks@riseup.net>
+status: unstarted
+disposition:
+creation_time: 2026-09-08T20:19:33-00:00
+references: []
+log_events:
+- time: 2026-09-08T20:19:33-00:00
+  who: Ted Smith
+  what: created
+  comment: ""
