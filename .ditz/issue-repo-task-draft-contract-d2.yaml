@@ -1,8 +1,9 @@
 id: repo-task-draft-contract-d2
-title: Design explicit pinned task attachment to a fixed-source draft
-desc: 'D2 short design-only gate: draft append/replace/cancel, typed task revision/context/hash/store
-  compatibility, revalidation and bounded follow-on owners. No implementation, model,
-  credentials or app adoption. Parent repo-task-draft-provenance remains open.'
+title: Design explicit, revision-pinned task attachments for fixed-source drafts
+desc: 'D2 is a short design-only step: specify draft append/replace/cancel, typed
+  task revision/context/hash/store compatibility, revalidation, and limited follow-on
+  work with assigned owners. No implementation, model use, credentials, or app adoption.
+  Parent repo-task-draft-provenance remains open.'
 type: task
 component: workbench
 release:
@@ -32,5 +33,13 @@ log_events:
     single-slot/source/bytes/hash/V1-V2/revalidation/disposal/timeout decisions complete;
     actual attachment implementation not delivered. Native convergence CLEAN; local
     docs checks passed; hosted ignored.
+- time: 2026-09-08T04:30:48-00:00
+  who: Ted Smith
+  what: changed title
+  comment: ""
+- time: 2026-09-08T04:30:48-00:00
+  who: Ted Smith
+  what: updated description
+  comment: ""
 blocks:
 - repo-task-draft-provenance
