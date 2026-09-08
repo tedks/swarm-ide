@@ -1,8 +1,8 @@
 id: first-real-agent-run-surface
-title: Implement the first real agent-run surface
-desc: After the real repository topology truth path is established, replace fabricated
-  agent activity with one honest wrapped-agent run lifecycle through typed contracts
-  and the cockpit.
+title: Show the first real agent run in the cockpit
+desc: After the path for displaying real repository topology is established, replace
+  fabricated agent activity with the full lifecycle of one real wrapped-agent run,
+  using typed interfaces and the cockpit.
 type: feature
 component: default
 release:
@@ -55,6 +55,14 @@ log_events:
 - time: 2026-09-06T14:12:26-00:00
   who: Ted Smith
   what: blocked by live-agent-admission-contract-p6
+  comment: ""
+- time: 2026-09-08T04:29:39-00:00
+  who: Ted Smith
+  what: changed title
+  comment: ""
+- time: 2026-09-08T04:29:39-00:00
+  who: Ted Smith
+  what: updated description
   comment: ""
 blocked_by:
 - real-service-topology-provider
