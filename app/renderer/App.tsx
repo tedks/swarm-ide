@@ -42,6 +42,8 @@ import { protectsAgentIntent } from "./agents/live-state";
 import "./agents/agents.css";
 import { TaskBridgeClient } from "./tasks/client";
 import { PlanWorkspace } from "./plans/PlanWorkspace";
+import { usePlanGeneration } from "./plans/use-plan-generation";
+import { startComponentPlan } from "./plans/start-generation";
 import { TaskPanel } from "./tasks/TaskPanel";
 import { TaskDetail } from "./tasks/TaskDetail";
 import { TaskContext } from "./tasks/TaskContext";
@@ -179,6 +181,10 @@ export function App() {
   const workspacePendingRef = useRef(false), workspaceVisit = useRef(0);
   const scopedBridge = useMemo(() => workspaceBridge(window.swarm, workspace.snapshot?.project.id), [workspace.snapshot?.project.id]);
   const scopedBridgeRef = useRef(scopedBridge); scopedBridgeRef.current = scopedBridge;
+  const planGeneration = usePlanGeneration({ identity: `${workspace.snapshot?.world.id}\0${workspace.snapshot?.project.id}`,
+    connected: !workspacePending && Boolean(workspace.snapshot && window.swarm) && (!window.swarmLifecycle || lifecycle?.core.phase === "ready"),
+    launch: (token, settings) => startComponentPlan(scopedBridge, token, settings),
+    onOpen: openTrustedRun, observation: trustedObservation });
   const history = useRef(createNavigationHistory());
   const [, changedHistory] = useState(0);
   const historyRestoring = useRef(false);
@@ -1539,6 +1545,7 @@ export function App() {
           {taskDocumentOpen ? <div className={`surface-tab ${textDocumentVisible ? "active" : ""}`}><button className="surface-tab-main" onClick={() => { setTaskDocumentVisible(true); inspectTask(tasks.selectedTaskId); }} title={tasks.selectedTaskId ?? "Task"}>▤ {tasks.detail?.title ?? "Task document"}</button><button className="surface-tab-close" aria-label="Close task document" onClick={closeTaskDocument}>×</button></div> : null}
         </nav></OverflowStrip> : null}
         <PlanWorkspace visible worldId={snapshot.world.id} repositoryId={snapshot.project.id}
+          generationAction={planGeneration}
           generation={coreGenerationRef.current} connected={!coreUnavailable && Boolean(window.swarm)} tasks={tasks} client={taskClient}
           onOpenFile={openLinkedFile} onOpenTask={openPlanningTask} onOpenBuild={openPlanBuildTarget}
           restoreSelection={planRestore} onSelectComponent={(id) => recordLocation({ kind: "component", id })}

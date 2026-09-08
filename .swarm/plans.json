@@ -261,6 +261,7 @@
       "app/renderer/plans/PlanGeneration.tsx",
       "app/renderer/plans/generation-settings.ts",
       "app/renderer/plans/use-plan-generation.ts",
+      "app/renderer/plans/start-generation.ts",
       "core/tasks/draft-context.ts",
       "app/renderer/plans/DesignWorkspace.tsx",
       "app/renderer/plans/design.css",
