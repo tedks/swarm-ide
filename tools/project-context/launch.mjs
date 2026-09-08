@@ -22,6 +22,7 @@ await writeFile(join(root, "package.json"), JSON.stringify({ name: "automatic-co
 await writeFile(join(root, "README.md"), "# Runtime context proof\n");
 for (const args of [["init"], ["add", "."], ["-c", "user.name=Swarm proof", "-c", "user.email=proof@example.invalid", "-c", "core.hooksPath=/dev/null", "commit", "-m", "Initial fixture"]]) execFileSync("git", args, { cwd: root, stdio: "pipe" });
 const testServer = spawn(process.execPath, ["-e", "require('node:http').createServer((q,s)=>s.end('project context')).listen(0,'127.0.0.1',function(){console.log(this.address().port)})"], { cwd: root, stdio: ["ignore", "pipe", "inherit"] });
+const serverExited = new Promise((resolve) => { testServer.once("exit", resolve); testServer.once("error", resolve); });
 let desktop, timer;
 const readiness = createServer((_request, response) => response.end("project context"));
 const stop = () => { desktop?.kill("SIGTERM"); testServer.kill("SIGTERM"); timer ??= setTimeout(() => { desktop?.kill("SIGKILL"); testServer.kill("SIGKILL"); }, 2000); };
@@ -39,7 +40,7 @@ try {
   process.exitCode = await new Promise((resolve, reject) => { desktop.once("error", reject); desktop.once("exit", (code) => resolve(code ?? 1)); });
 } finally {
   process.removeListener("SIGTERM", stop); process.removeListener("SIGINT", stop); clearTimeout(timer);
-  testServer.kill("SIGTERM");
+  if (testServer.exitCode === null && testServer.signalCode === null) testServer.kill("SIGTERM");
   await new Promise((resolve) => readiness.close(resolve));
-  if (testServer.exitCode === null) await new Promise((resolve) => testServer.once("exit", resolve));
+  await serverExited;
 }

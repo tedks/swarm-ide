@@ -1,7 +1,10 @@
-const { app, BrowserWindow } = require("electron");
+const { app, BrowserWindow, shell } = require("electron");
 const fs = require("node:fs/promises"), path = require("node:path"), assert = require("node:assert/strict");
 const evidence = process.env.SWARM_PROJECT_CONTEXT_EVIDENCE;
 const rendererErrors = [];
+const opened = [];
+// Observe the native browser handoff without opening a browser on any desktop.
+shell.openExternal = async (url) => { opened.push(url); };
 app.on("web-contents-created", (_event, contents) => {
   contents.on("console-message", (event) => { if (event.level === "error") rendererErrors.push(event.message); });
   contents.on("render-process-gone", (_event, details) => rendererErrors.push(details.reason));
@@ -23,6 +26,12 @@ async function main() {
   await until(() => run((pid) => document.querySelector(".project-runtime")?.textContent.includes(`PID ${pid}`), fixture.pid), "real Node process appears");
   const link = await run((port) => [...document.querySelectorAll(".project-runtime a")].find((node) => new URL(node.href).port === String(port))?.href, fixture.port);
   assert.equal(link, `http://localhost:${fixture.port}/`);
+  await run(() => document.querySelector(".project-runtime a").scrollIntoView({ block: "center" }));
+  const point = await run(() => { const box = document.querySelector(".project-runtime a").getBoundingClientRect(); return { x: Math.round(box.x + box.width / 2), y: Math.round(box.y + box.height / 2) }; });
+  wc.sendInputEvent({ type: "mouseDown", button: "left", clickCount: 1, ...point });
+  wc.sendInputEvent({ type: "mouseUp", button: "left", clickCount: 1, ...point });
+  await until(() => opened.includes(link), "native web link handoff");
+  assert.equal(BrowserWindow.getAllWindows().length, 1);
   assert(await run(() => /No containers for this worktree|Docker unavailable/.test(document.querySelector(".project-runtime")?.textContent ?? "")));
   const observed = await run(() => document.querySelector(".project-runtime")?.textContent);
   assert(!observed.includes("goals-local"), "unrelated host containers excluded");
@@ -30,7 +39,7 @@ async function main() {
   await run(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
   await fs.writeFile(path.join(evidence, "project-runtime.png"), (await wc.capturePage()).toPNG());
   assert.deepEqual(rendererErrors, []);
-  await fs.writeFile(path.join(evidence, "proof.json"), JSON.stringify({ ok: true, realNodeServer: true, pid: fixture.pid, port: fixture.port, elapsedMs: Date.now() - started, rendererErrors }));
+  await fs.writeFile(path.join(evidence, "proof.json"), JSON.stringify({ ok: true, realNodeServer: true, browserHandoff: opened, pid: fixture.pid, port: fixture.port, elapsedMs: Date.now() - started, rendererErrors }));
   // Keep the window alive for the owned scenario's final capture. The harness
   // then terminates this exact application/process group.
 }
