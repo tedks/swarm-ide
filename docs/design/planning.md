@@ -19,11 +19,15 @@ Plan relationships are authored in-repo. The core reads a bounded canonical
 index and validates its structure; a reference remains a candidate until its
 target can actually be opened. The accompanying component graph descends to the
 actual source and Bazel boundaries instead of manufacturing a function inventory.
-Component document and implementation lists are bounded by the overall 64 KiB
-index, not an arbitrary per-component reference count. The UI collapses long
-lists and lets the operator expand them. `//tools/living-design:checks`
+Component document, source and build-target lists are bounded by the overall
+64 KiB index, not an arbitrary per-component reference count. Build mappings still
+require strict canonical local labels and unique targets per component. The UI
+collapses long lists and lets the operator expand them. `//tools/living-design:checks`
 reads the actual committed index through the core reader, preserving every source
-link; design edits must pass that inexpensive check before landing.
+and build mapping. For an isolated index edit, run
+`//tools/demo-syntax:editor-tests --test_arg=tests/plans-reader.test.ts` through
+Bazel; both targets track the index through `//:quality_sources`. Design edits
+must pass the actual-index reader regression before landing.
 
 When the core verifies that the index is absent, Components offers **Generate
 component plan**. A missing index is distinct from unreadable, malformed,
@@ -108,8 +112,12 @@ The complete task list has no arbitrary issue-count cap. Reader and response
 capacity is bounded by bytes, deadlines and validated data shape instead;
 closed issues are not discarded to fit. Git batch framing scales with the
 entries in the byte-bounded metadata tree. Oversized or malformed updates still
-retain the last good revision. Task graphs and backlink projections keep their
-separate, explicitly reported display/projection bounds.
+retain the last good revision. Task graphs include every available task and
+recorded edge without graph count truncation. Detail loading keeps four requests
+in flight, coalesces progress, and cancels on hide, disposal or identity/revision
+change. The ordinary overview includes isolated tasks and missing endpoints;
+deliberate focused scope includes all direct neighbors. Unread relations remain
+explicit. Backlink projections retain their separate reported bounds.
 
 Missing relationships and partial coverage must not turn into fabricated “ready”
 tasks. Updating the list does not silently retarget a revision-pinned detail or
@@ -124,6 +132,8 @@ and then `//:desktop-bundle`. `//tools/demo-plans:regressions` consumes that
 filegroup; `//tools/demo-plans:packaged-plans-test` consumes the desktop bundle,
 plan test sources, task-integration sources and owned virtual-desktop support.
 These edges are declared in [tools/demo-plans/BUILD.bazel](../../tools/demo-plans/BUILD.bazel).
+`//tools/demo-plans:graph-checks` also consumes `//:quality_sources` and runs the
+complete-graph, client, scope and mounted graph tests plus both TypeScript checks.
 The task client and its regressions are already included by `//:quality_sources`;
 focused client tests and both TypeScript boundaries can run through
 `//tools/demo-syntax:editor-tests --test_arg=tests/task-client.test.ts`.

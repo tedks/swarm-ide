@@ -69,6 +69,7 @@ export class TaskBridgeClient {
   private visible = false;
   private timer: ReturnType<typeof setInterval> | undefined;
   private graphReadsInFlight = 0;
+  private graphSlotWaiters = new Set<() => void>();
 
   getSnapshot = () => this.state;
   getAttachmentCandidate(taskId: string | null): TaskAttachmentCandidate | null {
@@ -319,7 +320,22 @@ export class TaskBridgeClient {
     const epoch = this.epoch;
     const summary = snapshot.summaries.find((row) => row.id === taskId);
     const valid = () => !signal.aborted && this.epoch === epoch && this.graphCurrent(snapshot);
-    if (!summary || !valid() || this.graphReadsInFlight >= TASK_GRAPH_LIMITS.concurrency) return null;
+    if (!summary || !valid()) return null;
+    // A hidden/replaced graph can still own sent RPCs. Wait for their settlement
+    // instead of misreporting every new task as unavailable while slots are full.
+    while (this.graphReadsInFlight >= TASK_GRAPH_LIMITS.concurrency) {
+      await new Promise<void>((resolve) => {
+        const wake = () => {
+          this.graphSlotWaiters.delete(wake);
+          signal.removeEventListener("abort", wake);
+          resolve();
+        };
+        this.graphSlotWaiters.add(wake);
+        signal.addEventListener("abort", wake, { once: true });
+        if (!valid()) wake();
+      });
+      if (!valid()) return null;
+    }
     // Cancellation fences adoption, not the already-sent RPC. Its slot stays
     // owned until settlement, including across hide/reopen and core lifetimes.
     this.graphReadsInFlight++;
@@ -329,7 +345,10 @@ export class TaskBridgeClient {
       if (!valid() || result.kind !== "read" || !result.result.ok || !sameSummary(result.result.detail, summary)) return null;
       return result.result.detail;
     } catch { return null; }
-    finally { this.graphReadsInFlight--; }
+    finally {
+      this.graphReadsInFlight--;
+      for (const wake of [...this.graphSlotWaiters]) wake();
+    }
   }
 
   /** Deliberate graph/plan activation pins the displayed revision, not whatever

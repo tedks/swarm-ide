@@ -19,7 +19,7 @@ vi.mock("@xyflow/react", () => ({ Background: () => null, Controls: () => null, 
 afterEach(() => { cleanup(); delete window.swarm; });
 const root = resolve(import.meta.dirname, "..");
 const index = PlanIndexSchema.parse(JSON.parse(readFileSync(resolve(root, ".swarm/plans.json"), "utf8")));
-const base = { worldId: "world:working", repositoryId: "project:swarm-ide", generation: 1, connected: true, visible: true };
+const base = { worldId: "world:working", repositoryId: initialSnapshot().project.id, generation: 1, connected: true, visible: true };
 function reply(request: CoreRequest): CoreResponse {
   return { protocolVersion: PROTOCOL_VERSION, requestId: request.requestId, ok: true as const, sequence: 1, snapshot: initialSnapshot(),
     ...(request.workspaceId ? { workspaceId: request.workspaceId, snapshot: { ...initialSnapshot(), project: { ...initialSnapshot().project, id: request.workspaceId } } } : {}),

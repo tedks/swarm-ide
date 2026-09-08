@@ -33,7 +33,8 @@
     "title": "Cockpit, focus & source",
     "parentId": "design:system",
     "docs": [
-      "docs/design/cockpit.md"
+      "docs/design/cockpit.md",
+      "docs/design/graph-agent-locations.md"
     ],
     "sourcePaths": [
       "app/renderer/App.tsx",
@@ -42,6 +43,9 @@
       "app/renderer/repository/reveal.ts",
       "app/renderer/repository/focus-reveal.ts",
       "tools/graph-recenter/BUILD.bazel",
+      "app/renderer/graph-agents/GraphAgents.tsx",
+      "app/renderer/graph-agents/locations.ts",
+      "app/renderer/graph-agents/graph-agents.css",
       "app/renderer/WorktreeInspection.tsx",
       "core/worktree-inspection.ts",
       "app/renderer/FleetActivityView.tsx",
@@ -130,6 +134,14 @@
           "dependencies": [
             { "label": "//:quality_sources", "relation": "data" },
             { "label": "//tools/operator-cockpit:sources", "relation": "data" }
+          ]
+        },
+        {
+          "label": "//tools/live-sprites:checks",
+          "role": "Checks exact-worktree agent locations, gestures and stable graph overlays",
+          "dependencies": [
+            { "label": "//:quality_sources", "relation": "data" },
+            { "label": "//tools/live-sprites:sources", "relation": "data" }
           ]
         }
       ]
@@ -419,6 +431,13 @@
               "label": "//docs/design:sources",
               "relation": "data"
             }
+          ]
+        },
+        {
+          "label": "//tools/demo-plans:graph-checks",
+          "role": "Complete task graph, cancellation, scope and mounted state checks",
+          "dependencies": [
+            { "label": "//:quality_sources", "relation": "data" }
           ]
         }
       ]

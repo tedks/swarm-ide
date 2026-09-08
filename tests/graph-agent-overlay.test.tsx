@@ -1,0 +1,76 @@
+// @vitest-environment jsdom
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { createElement, useEffect } from "react";
+import type { ExternalClient } from "../app/renderer/external-agents/client";
+import type { ExternalDetail } from "../protocol/external-agents";
+import { GraphAgents, GraphAgentLayer, GraphAgentSprites, GraphAgentsToggle } from "../app/renderer/graph-agents/GraphAgents";
+import { ProjectionCanvas } from "../app/renderer/plans/ProjectionCanvas";
+
+const captured = vi.hoisted(() => ({ nodes: undefined as unknown, edges: undefined as unknown, mounts: 0, fit: vi.fn(), viewport: vi.fn() }));
+vi.mock("@xyflow/react", async (original) => {
+  const actual = await original<typeof import("@xyflow/react")>();
+  return { ...actual, Background: () => null, Controls: () => null, ReactFlow: (props: any) => {
+    captured.nodes = props.nodes; captured.edges = props.edges;
+    useEffect(() => { captured.mounts++; props.onInit?.({ fitView: captured.fit, setViewport: captured.viewport, getViewport: () => ({ x: 73, y: 25, zoom: .6 }) }); }, []);
+    return createElement("div", {}, props.nodes.map((node: any) => createElement("div", { key: node.id, className: "react-flow__node", "data-id": node.id, onClick: () => props.onNodeClick?.({}, node) }, node.data.label)));
+  } };
+});
+
+const root = "/projects/app/master", at = "2026-09-08T12:00:00Z";
+function detail(id = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa", state: "working" | "completed" | "failed" | "waiting" = "working"): ExternalDetail {
+  return { session: { id, label: id === "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa" ? "F7" : "K7", evidence: "local", status: "observed", parentId: null, ancestry: "root", observationId: "a".repeat(64), observedAt: at, message: "", contextPaths: [], worktree: root, lifecycle: { state } },
+    entries: [{ id: "edit", at, kind: "tool-call", path: "app.ts", text: "Edited app.ts", attribution: "recorded-tool-event" }], handoff: "unavailable", coverage: { tailBytes: 10, omittedRecords: 0, partial: false, message: "" } };
+}
+function client(fleet = [detail()], stale = false): ExternalClient {
+  return { fleet, snapshot: { status: "observed", message: "", observedAt: at, sessions: fleet.map((row) => row.session), fleet }, detail: null, selected: null, observing: true, stale, busy: false, notice: "", read: vi.fn(async () => {}), refresh: vi.fn(async () => {}), handoff: vi.fn(async () => {}) };
+}
+afterEach(() => { cleanup(); captured.mounts = 0; vi.clearAllMocks(); });
+
+describe("real agent graph overlays", () => {
+  it("opens independent exact identities, suppressing node click, drag and keyboard propagation", () => {
+    const open = vi.fn(), nodeClick = vi.fn(), nodeKey = vi.fn(), down = vi.fn();
+    render(<GraphAgents client={client([detail(), detail("bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb")])} root={root} connected onOpen={open}>
+      <GraphAgentLayer locations={[{ id: "file", paths: ["app.ts"] }]}><div onClick={nodeClick} onKeyDown={nodeKey} onPointerDown={down}><GraphAgentSprites nodeId="file" /></div></GraphAgentLayer>
+    </GraphAgents>);
+    const first = screen.getByRole("button", { name: /Open F7/ }), second = screen.getByRole("button", { name: /Open K7/ });
+    fireEvent.pointerDown(first); fireEvent.keyDown(first, { key: "Enter" }); fireEvent.click(first); fireEvent.click(second);
+    expect(open.mock.calls.map(([id]) => id)).toEqual(["aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa", "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb"]);
+    expect(nodeClick).not.toHaveBeenCalled(); expect(nodeKey).not.toHaveBeenCalled(); expect(down).not.toHaveBeenCalled();
+  });
+  it("updates lifecycle/retained labels and visibility without a new timer", () => {
+    const setTimer = vi.spyOn(globalThis, "setInterval");
+    const view = (observation: ExternalClient) => <GraphAgents client={observation} root={root} connected onOpen={vi.fn()}>
+      <GraphAgentsToggle /><GraphAgentLayer locations={[{ id: "file", paths: ["app.ts"] }]}><GraphAgentSprites nodeId="file" /></GraphAgentLayer></GraphAgents>;
+    const mounted = render(view(client()));
+    expect(screen.getByRole("button", { name: /Open F7/ }).dataset.agentWorking).toBe("true");
+    for (const state of ["waiting", "failed", "completed"] as const) {
+      mounted.rerender(view(client([detail(undefined, state)])));
+      expect(screen.getByRole("button", { name: /Open F7/ }).dataset.agentWorking).toBe("false");
+    }
+    mounted.rerender(view(client([detail()], true)));
+    expect(screen.getByRole("button", { name: /Last seen/ }).dataset.agentWorking).toBe("false");
+    fireEvent.click(screen.getByRole("button", { name: "♧ Agents" }));
+    expect(screen.queryByRole("button", { name: /Open F7/ })).toBeNull(); expect(setTimer).not.toHaveBeenCalled(); setTimer.mockRestore();
+  });
+  it("does not rebuild graph arrays, mount a new camera, or select the component when activity changes", () => {
+    const open = vi.fn(), select = vi.fn();
+    const nodes = [{ id: "component", title: "App", subtitle: "Component", position: { x: 3, y: 7 } }], edges: [] = [];
+    const locations = [{ id: "component", paths: ["app.ts"] }];
+    const canvas = <GraphAgentLayer locations={locations}><ProjectionCanvas label="Agent stability" nodes={nodes} edges={edges} selected="component" onSelect={select} /></GraphAgentLayer>;
+    const view = (observation: ExternalClient) => <GraphAgents client={observation} root={root} connected onOpen={open}>{canvas}</GraphAgents>;
+    const mounted = render(view(client())), originalNodes = captured.nodes, originalEdges = captured.edges;
+    mounted.rerender(view(client([detail(undefined, "waiting")])));
+    expect(captured.nodes).toBe(originalNodes); expect(captured.edges).toBe(originalEdges); expect(captured.mounts).toBe(1);
+    const button = screen.getByRole("button", { name: /Open F7.*Waiting/ });
+    fireEvent.keyDown(button, { key: "Enter" }); fireEvent.click(button);
+    expect(select).not.toHaveBeenCalled(); expect(open).toHaveBeenCalledOnce(); expect(captured.fit).not.toHaveBeenCalled(); expect(captured.viewport).not.toHaveBeenCalled();
+  });
+  it("removes placement immediately on canonical worktree change", () => {
+    const canvas = <GraphAgentLayer locations={[{ id: "file", paths: ["app.ts"] }]}><GraphAgentSprites nodeId="file" /></GraphAgentLayer>;
+    const mounted = render(<GraphAgents client={client()} root={root} connected onOpen={vi.fn()}>{canvas}</GraphAgents>);
+    expect(screen.getByRole("button", { name: /Open F7/ })).toBeTruthy();
+    mounted.rerender(<GraphAgents client={client()} root="/projects/app/feature" connected onOpen={vi.fn()}>{canvas}</GraphAgents>);
+    expect(screen.queryByRole("button", { name: /Open F7/ })).toBeNull();
+  });
+});

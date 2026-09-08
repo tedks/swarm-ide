@@ -10,8 +10,10 @@ import { parentDirectory } from "./repository/navigation";
 import { useGraphReframe } from "./repository/reframe";
 import { useGraphReveal } from "./repository/reveal";
 import { focusRevealNodes, type GraphFocusNavigation } from "./repository/focus-reveal";
-import type { ServiceDeclarations } from "../../protocol/service-declarations";
 import { AgentSprites } from "./repository/AgentSprites";
+import { GraphAgentLayer, GraphAgentSprites, GraphAgentsToggle } from "./graph-agents/GraphAgents";
+import { serviceAgentLocations } from "./graph-agents/locations";
+import type { ServiceDeclarations } from "../../protocol/service-declarations";
 import { directoryBuildLinks, withMockDirectoryAgents, type BuildLinkSnapshot } from "./repository/layers";
 import "./service-graph-status.css";
 export type { GraphConnectionFocus } from "./graph-adapter";
@@ -32,10 +34,10 @@ function EmptyServiceGraph({ graph }: { graph: GraphSlice; running: boolean }) {
   </div>;
 }
 
-function TopologyNode({ data }: NodeProps) {
+function TopologyNode({ id, data }: NodeProps) {
   const node = data as TopologyNodeData;
   const buildHandles = <><Handle id="build-in" type="target" position={Position.Left} className="directory-build-handle" /><Handle id="build-out" type="source" position={Position.Right} className="directory-build-handle" /></>;
-  if (node.directoryContainer) return <div className={`directory-map-frame ${node.focused ? "is-focused" : ""}`}><header>▱ {node.focus.path || node.label}<span>directory</span></header>{buildHandles}{node.mockAgents ? <AgentSprites count={node.mockAgents} /> : null}</div>;
+  if (node.directoryContainer) return <div className={`directory-map-frame ${node.focused ? "is-focused" : ""}`}><header>▱ {node.focus.path || node.label}<span>directory</span></header>{buildHandles}{node.mockAgents ? <AgentSprites count={node.mockAgents} /> : null}<GraphAgentSprites nodeId={id} /></div>;
   return (
     <div className={`topology-node ${node.directoryEntry ? "directory-map-node" : ""} status-${node.status} ${node.focused ? "is-focused" : ""} ${node.ambiguous ? "is-ambiguous" : ""} ${node.ignored ? "is-ignored" : ""} ${node.unavailable ? "is-unavailable" : ""}`} title={node.mappingReason ?? node.detail}>
       {!node.directoryEntry ? <Handle type="target" position={Position.Left} /> : null}
@@ -46,6 +48,7 @@ function TopologyNode({ data }: NodeProps) {
       {node.ambiguous && node.mappingConfidence !== undefined ? <span className="mapping-badge">candidate {Math.round(node.mappingConfidence * 100)}%</span> : null}
       {!node.directoryEntry ? <Handle type="source" position={Position.Right} /> : null}
       {node.mockAgents ? <AgentSprites count={node.mockAgents} /> : null}
+      <GraphAgentSprites nodeId={id} />
     </div>
   );
 }
@@ -54,6 +57,7 @@ const nodeTypes = { topology: TopologyNode };
 
 interface GraphPaneProps {
   workspaceId?: string;
+  serviceDeclarations?: ServiceDeclarations;
   graph: GraphSlice;
   focus: FocusRef;
   mappings: NavigationMapping[];
@@ -75,7 +79,6 @@ interface GraphPaneProps {
   reframeVersion?: number;
   navigation?: GraphFocusNavigation | null;
   cameraScope?: string;
-  serviceDeclarations?: ServiceDeclarations;
 }
 
 export function GraphPane(props: GraphPaneProps) {
@@ -96,6 +99,10 @@ const GraphPaneContent = memo(function GraphPaneContent({ workspaceId, graph, fo
   const [selectedBuildLink, setSelectedBuildLink] = useState<string | null>(null);
   const buildEdges = useMemo(() => graph.directory && buildLinksVisible && buildLinkSnapshot ? directoryBuildLinks(adapted.nodes, buildLinkSnapshot) : [], [graph.directory, adapted.nodes, buildLinksVisible, buildLinkSnapshot]);
   const displayNodes = useMemo(() => mockAgentsVisible ? withMockDirectoryAgents(adapted.nodes) : adapted.nodes, [mockAgentsVisible, adapted.nodes]);
+  const agentLocations = useMemo(() => graph.topologyId === "repo" ? adapted.nodes.filter((node) => !node.data.unavailable && node.data.focus.path !== undefined)
+    .map((node) => ({ id: node.id, paths: [node.data.focus.path!], directory: node.data.kind === "directory" }))
+    : serviceDeclarations && serviceDeclarations.repositoryId === workspaceId && serviceDeclarations.sourceFingerprint === graph.inputFingerprint
+      ? serviceAgentLocations(serviceDeclarations) : [], [adapted.nodes, graph.topologyId, graph.inputFingerprint, serviceDeclarations, workspaceId]);
   const selectedBuild = buildEdges.find((edge) => edge.id === selectedBuildLink);
   const [repositoryView, setRepositoryView] = useState<"tree" | "map">("tree");
   const explorer = Boolean(graph.directory && repositoryNavigation);
@@ -141,11 +148,13 @@ const GraphPaneContent = memo(function GraphPaneContent({ workspaceId, graph, fo
       </header>
       {graph.directory ? <div className="directory-layers" aria-label="Directory map layers">
         <button aria-pressed={buildLinksVisible} disabled={!buildLinkSnapshot && !onBuildLinksVisibility} title={buildLinkSnapshot?.observation ? `Bazel observation ${buildGraphStatus}; not a binary build` : "Show repository-scoped Bazel dependency observations"} onClick={() => { setBuildLinksVisible((shown) => !shown); setSelectedBuildLink(null); }}>{buildLinksVisible ? "☑" : "☐"} Build links</button>
-        <button aria-pressed={mockAgentsVisible} onClick={() => setMockAgentsVisible((shown) => !shown)}>♧ Mock agents</button>
+        <GraphAgentsToggle />
+        {mockAgents ? <button aria-pressed={mockAgentsVisible} onClick={() => setMockAgentsVisible((shown) => !shown)}>♧ Mock agents</button> : null}
         <span>{!buildLinkSnapshot ? `Build graph ${buildGraphStatus ?? "not requested"}` : buildLinksVisible ? `${buildLinkSnapshot.observation ? `Observation ${buildGraphStatus}` : "CAPTURE"} · ${buildEdges.length} visible links · not binary build truth` : "Build links off · click to show dependencies"}</span>
       </div> : null}
       {repositoryNavigation ? <div className="repository-browser-surface" hidden={explorer && repositoryView !== "tree"}>{repositoryNavigation}</div> : null}
-      <div className="graph-canvas" ref={canvas} onPointerDownCapture={reveal.onControlGesture} onKeyDownCapture={reveal.onControlGesture}>
+      {!graph.directory ? <div className="directory-layers"><GraphAgentsToggle /></div> : null}
+      <GraphAgentLayer locations={agentLocations} nearest={graph.topologyId === "repo"}><div className="graph-canvas" ref={canvas} onPointerDownCapture={reveal.onControlGesture} onKeyDownCapture={reveal.onControlGesture}>
         <ReactFlow
           nodes={displayNodes}
           edges={buildEdges.length ? buildEdges : adapted.edges}
@@ -195,7 +204,7 @@ const GraphPaneContent = memo(function GraphPaneContent({ workspaceId, graph, fo
         <EmptyServiceGraph graph={graph} running={reconciliationRunning} />
         {mockAgentsVisible ? <div className="directory-layer-note">MOCK ACTIVITY · visual only · no agents launched</div> : null}
         {selectedBuild?.data ? <aside className="directory-build-detail" aria-label="Captured Bazel link"><button aria-label="Close captured link" onClick={() => setSelectedBuildLink(null)}>×</button><strong>Bazel snapshot · {buildLinkSnapshot?.revision}</strong><small>Consumer → dependency · not live evidence</small><ul>{selectedBuild.data.labels.map((label) => <li key={label}>{label}</li>)}</ul></aside> : null}
-      </div>
+      </div></GraphAgentLayer>
     </section>
   );
 });

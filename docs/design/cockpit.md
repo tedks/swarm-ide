@@ -36,6 +36,7 @@ fixture targets.
 | Composition and commands | [App.tsx](../../app/renderer/App.tsx) | Chooses central surface and coordinates consumers |
 | Source editing | [EditorPane.tsx](../../app/renderer/EditorPane.tsx), [state.ts](../../app/renderer/state.ts) | CodeMirror and source-tab lifetime |
 | Graph presentation | [GraphPane.tsx](../../app/renderer/GraphPane.tsx), [graph-adapter.ts](../../app/renderer/graph-adapter.ts) | Domain graph data becomes React Flow nodes/edges |
+| Agent locations | [GraphAgents.tsx](../../app/renderer/graph-agents/GraphAgents.tsx), [locations.ts](../../app/renderer/graph-agents/locations.ts) | Registered tool events place selectable agents on exact-worktree source memberships, independently of layout |
 | Contextual instruments | [ContextPane.tsx](../../app/renderer/context/ContextPane.tsx) | Facts and links for the current attention target |
 | Side instruments | [WorkbenchSidebar.tsx](../../app/renderer/WorkbenchSidebar.tsx) | Agent/task/activity surfaces beside the central work |
 | Persistent dock | [AgentDock.tsx](../../app/renderer/agents/AgentDock.tsx) | Build resources, agent messages, Work Log and Activity in independently scrolling columns |
@@ -54,6 +55,9 @@ re-establishing current-core authority.
 The renderer owns presentation and gestures, not filesystem or process access.
 See [runtime](runtime.md) for the bridge and [repository](repository.md) for
 the data supplying graphs and context.
+
+See [agent locations on graphs](graph-agent-locations.md) for observed-path coverage,
+execution versus last-touch semantics and the current native-run location limit.
 
 ## Build connections
 

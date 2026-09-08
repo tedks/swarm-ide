@@ -9,6 +9,7 @@ import {
 import { applyCoreEvent, emptyWorkspaceState, loadSnapshot, type WorkspaceState } from "./state";
 import { EditorPane, type EditorMemory, type SourceLineNavigation } from "./EditorPane";
 import { GraphPane, type GraphConnectionFocus } from "./GraphPane";
+import { GraphAgents } from "./graph-agents/GraphAgents";
 import { sourceFlash, type SourceFlash } from "./source-diff";
 import {
   DEFAULT_INTERFACE_ZOOM,
@@ -871,8 +872,9 @@ export function App() {
     }
     const visit = workspaceVisit.current;
     const selection = selectedWorktreeRef.current;
-    void bridge.request(selection ? { type: "workspace.open", sessionId: selection.sessionId, requestId: requestId(), protocolVersion: PROTOCOL_VERSION }
-      : { type: "workspace.snapshot", requestId: requestId(), protocolVersion: PROTOCOL_VERSION }).then((response) => {
+    // Learn the canonical launch root on a fresh window as well as a restored
+    // worktree. A bare snapshot has no descriptor for exact agent placement.
+    void bridge.request({ type: "workspace.open", sessionId: selection?.sessionId ?? null, requestId: requestId(), protocolVersion: PROTOCOL_VERSION }).then((response) => {
       if (!live || visit !== workspaceVisit.current || coreGenerationRef.current !== generation) return;
       if (!response.ok) {
         setError(response.error.message);
@@ -1510,6 +1512,7 @@ export function App() {
 
   if (!snapshot) return <main className="loading-screen"><div className="loading-mark hmr-probe" />Opening the working world…{error ? <strong>{error}</strong> : null}<small>{lifecycleNotice}</small><AgentReloadGuard state={liveAgents} client={agentClient} /></main>;
   return (
+    <GraphAgents client={externalAgents} root={selectedWorktree?.root} connected={!workspacePending && (!window.swarmLifecycle || lifecycle?.core.phase === "ready")} onOpen={showConversation}>
     <main className="workbench" onPointerDownCapture={(event) => { cancelHistoryRestore(); interruptPendingReveal(event); }} onFocusCapture={interruptPendingReveal} onKeyDownCapture={(event) => { cancelHistoryRestore(); if (event.key === "Escape" && definitionRef.current) { event.preventDefault(); event.stopPropagation(); cancelDefinition(); } }} data-compact-panel={compactPanel ?? "none"} style={{ "--context-width": `${contextWidth}%`, ...(dockShare !== null ? { gridTemplateRows: `var(--topbar-height) minmax(0, 1fr) ${dockShare}%` } : agents.selected || liveAgents.paneOpen ? { gridTemplateRows: `var(--topbar-height) minmax(0, 1fr) calc(160px + (clamp(180px, 40vh, 448px) - 160px) * ${Math.min(1, Math.max(0, ((liveAgents.paneOpen ? liveAgents.height : agentPaneHeight) - 230) / 190))})` } : {}) } as CSSProperties}>
       <header className="topbar">
         <div className="product-mark"><span className="hmr-probe" />swarm</div>
@@ -1672,6 +1675,6 @@ export function App() {
       {reloadNotice || lifecycleNotice ? <div className="lifecycle-notice" role="status" tabIndex={0} aria-label="Development status">{reloadNotice || lifecycleNotice}</div> : null}
       {error ? <div className="error-toast">{error}</div> : null}
       {zoomNotice ? <div className="zoom-toast" role="status">{zoomNotice}</div> : null}
-    </main>
+    </main></GraphAgents>
   );
 }

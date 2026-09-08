@@ -1,0 +1,14 @@
+.graph-agent-sprites { position: absolute; left: 4px; top: calc(100% - 4px); z-index: 6; display: flex; flex-wrap: wrap; gap: 3px; max-width: 240px; pointer-events: auto; }
+.topology-node:has(.graph-agent-sprites) { overflow: visible; }
+.graph-agent-sprite { display: inline-flex; align-items: center; gap: 3px; max-width: 125px; min-height: 24px; padding: 2px 5px; border: 1px solid #548379; border-radius: 5px; color: #d7eee5; background: #102b2b; font-size: 10px; line-height: 14px; cursor: pointer; box-shadow: 0 2px 5px #00181688; }
+.graph-agent-sprite span { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.graph-agent-sprite svg { width: 19px; height: 19px; flex-shrink: 0; fill: #173a35; stroke: #aad7bd; stroke-width: 1.5; }
+.graph-agent-sprite i { width: 6px; height: 6px; flex: 0 0 6px; border: 1px solid #95aaa5; border-radius: 50%; }
+.graph-agent-sprite.state-working i { border-color: #e6c56f; background: #e6c56f; border-radius: 1px; }
+.graph-agent-sprite.state-completed i { background: #75c69a; border-color: #75c69a; }
+.graph-agent-sprite.state-failed i { border-color: #ef9797; background: linear-gradient(135deg, transparent 40%, #ef9797 40%, #ef9797 60%, transparent 60%); }
+.graph-agent-sprite.state-waiting i { border-color: #e6c56f; }
+.graph-agent-sprite.is-retained { border-style: dashed; opacity: .75; }
+.graph-agent-sprite:focus-visible { outline: 2px solid #e6c56f; outline-offset: 2px; }
+@media (prefers-reduced-motion: no-preference) { .graph-agent-sprite[data-agent-working="true"] svg { animation: graph-agent-working 1.8s ease-in-out infinite; } }
+@keyframes graph-agent-working { 50% { transform: translateY(-2px); } }

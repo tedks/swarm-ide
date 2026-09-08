@@ -6,6 +6,8 @@ import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { readPlanIndex } from "../core/plans";
+import { componentPlanMissing, prepareComponentPlan } from "../core/plan-generation";
+import { PlanGenerationSettingsSchema } from "../protocol/plan-generation";
 import { PLAN_INDEX_PATH, PLAN_LIMITS, PLAN_READ_MESSAGES, PlanIndexSchema, PlanReadResultSchema, type PlanIndex, type PlanNode } from "../protocol/plans";
 
 const roots: string[] = [];
@@ -23,6 +25,10 @@ const node = (id: string, parentId: string | null = null): PlanNode => ({
   id, parentId, kind: "plan", title: `Plan ${id}`, docs: [], sourcePaths: [], taskIds: [], contextRefs: [],
 });
 const index = (...nodes: PlanNode[]): PlanIndex => ({ version: 1, nodes });
+const component = (count: number): PlanNode => ({ ...node("component"), kind: "component", design: {
+  summary: "Actual build inputs", state: "implemented", connections: [],
+  buildTargets: Array.from({ length: count }, (_, i) => ({ label: `//component:target-${i}`, role: "Source input", dependencies: [] })),
+} });
 const unavailable = (code: keyof typeof PLAN_READ_MESSAGES) => ({ status: "unavailable", code, message: PLAN_READ_MESSAGES[code] });
 afterEach(async () => { await Promise.all(roots.splice(0).map((root) => rm(root, { recursive: true, force: true }))); });
 
@@ -89,6 +95,35 @@ describe("authored plan index contract", () => {
     expect(PlanIndexSchema.safeParse(index({ ...node("component"), sourcePaths: Array(8000).fill("core/long-source-name.ts") })).success).toBe(false);
   });
 
+  it("preserves component build mappings beyond sixteen within the overall byte budget", () => {
+    const authored = index(component(100));
+    expect(Buffer.byteLength(JSON.stringify(authored))).toBeLessThan(PLAN_LIMITS.indexBytes);
+    expect(PlanIndexSchema.parse(authored)).toEqual(authored);
+    const oversized = index(component(1000));
+    expect(Buffer.byteLength(JSON.stringify(oversized))).toBeGreaterThan(PLAN_LIMITS.indexBytes);
+    expect(PlanIndexSchema.safeParse(oversized).success).toBe(false);
+  });
+
+  it.each(["@external//component:target", "//../component:target", "//component:../target", "component:target", "//component:bad target"])("still rejects invalid local build label %j", (label) => {
+    const entry = component(1);
+    entry.design!.buildTargets[0]!.label = label;
+    expect(PlanIndexSchema.safeParse(index(entry)).success).toBe(false);
+  });
+
+  it("keeps build mapping uniqueness, strict fields and connection references", () => {
+    const duplicate = component(2);
+    duplicate.design!.buildTargets[1]!.label = duplicate.design!.buildTargets[0]!.label;
+    expect(PlanIndexSchema.safeParse(index(duplicate)).success).toBe(false);
+    const extra = component(1);
+    Object.assign(extra.design!.buildTargets[0]!, { command: "not part of a mapping" });
+    expect(PlanIndexSchema.safeParse(index(extra)).success).toBe(false);
+    for (const targetId of ["missing", "component"]) {
+      const invalid = component(1);
+      invalid.design!.connections = [{ targetId, label: "depends on" }];
+      expect(PlanIndexSchema.safeParse(index(invalid)).success).toBe(false);
+    }
+  });
+
   it("requires exact safe diagnostics and bounded observed provenance", () => {
     for (const code of Object.keys(PLAN_READ_MESSAGES) as (keyof typeof PLAN_READ_MESSAGES)[]) {
       expect(PlanReadResultSchema.parse(unavailable(code))).toEqual(unavailable(code));
@@ -104,14 +139,22 @@ describe("authored plan index contract", () => {
 });
 
 describe("contained authored plan index reader", () => {
-  it("loads the actual committed plan without losing any design source links", async () => {
+  it("loads the actual committed plan without losing source or build mappings or permitting replacement", async () => {
     const committedRoot = resolve(import.meta.dirname, "..");
     const authored = JSON.parse(await readFile(join(committedRoot, PLAN_INDEX_PATH), "utf8"));
     const result = await readPlanIndex(committedRoot);
     expect(result.status).toBe("observed");
     if (result.status !== "observed") throw new Error(result.code);
     expect(result.index).toEqual(authored);
+    expect(PlanIndexSchema.parse(authored)).toEqual(authored);
     expect(result.index.nodes.find((entry) => entry.id === "design:repository")!.sourcePaths.length).toBeGreaterThan(16);
+    const targets = result.index.nodes.find((entry) => entry.id === "design:repository")!.design!.buildTargets;
+    expect(targets.length).toBeGreaterThan(16);
+    expect(targets.map((target) => target.label)).toEqual(expect.arrayContaining([
+      "//tools/services:example-checks", "//examples/checkout-world:all_sources",
+    ]));
+    expect(await componentPlanMissing(committedRoot)).toBe(false);
+    await expect(prepareComponentPlan(committedRoot, PlanGenerationSettingsSchema.parse({}))).rejects.toThrow("already exists");
   });
 
   it("reads only the fixed index and preserves raw-byte provenance and literal references", async () => {

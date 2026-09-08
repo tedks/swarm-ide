@@ -43,7 +43,7 @@ const PlanNodeSchema = z.object({
     buildTargets: z.array(z.object({
       label: PlanBuildLabelSchema, role: text(256, 1),
       dependencies: z.array(z.object({ label: PlanBuildLabelSchema, relation: z.enum(["srcs", "data", "tools", "actual", "tests"]) }).strict()).max(32),
-    }).strict()).max(16),
+    }).strict()),
   }).strict().optional(),
 }).strict();
 export type PlanNode = z.infer<typeof PlanNodeSchema>;

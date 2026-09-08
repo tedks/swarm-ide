@@ -2,6 +2,7 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Background, BaseEdge, Controls, getBezierPath, MarkerType, Position, ReactFlow, type Edge, type EdgeProps, type Node, type ReactFlowInstance, type Viewport } from "@xyflow/react";
 import { compactTaskPositions, dependencyPositions } from "../tasks/graph";
 import { useGraphReveal } from "../repository/reveal";
+import { GraphAgentSprites } from "../graph-agents/GraphAgents";
 
 export interface ProjectionNode { id: string; title: string; subtitle: string; warning?: boolean; position?: { x: number; y: number }; port?: Position }
 export interface ProjectionEdge { id: string; source: string; target: string; label: string; kind?: "containment" | "interface" | "request" | "result" | "data" | "navigation" }
@@ -85,7 +86,7 @@ export function ProjectionCanvas({ label, nodes: input, edges: links, selected, 
     const nodes: Node[] = input.map((node) => ({ id: node.id, position: positions.get(node.id) ?? node.position ?? layout.get(node.id)!,
       sourcePosition: node.port ?? (taskScopeVersion === undefined ? Position.Right : Position.Bottom),
       targetPosition: node.port ?? (taskScopeVersion === undefined ? Position.Left : Position.Top), selected: selected === node.id,
-      data: { label: <><strong>{node.title}</strong><small>{node.subtitle}</small></> },
+      data: { label: <><strong>{node.title}</strong><small>{node.subtitle}</small><GraphAgentSprites nodeId={node.id} /></> },
       className: `planning-node ${node.warning ? "planning-warning" : ""}`, ariaLabel: `${node.title} · ${node.subtitle}` }));
     const edges: Edge[] = links.map((edge) => ({ ...edge, ...(edge.kind ? { type: "design", data: {
       kind: edge.kind, emphasized: edge.kind !== "containment" && (edge.source === selected || edge.target === selected),
@@ -101,6 +102,7 @@ export function ProjectionCanvas({ label, nodes: input, edges: links, selected, 
   return <div ref={canvas} className="planning-canvas" aria-label={label} onPointerDownCapture={reveal.onControlGesture} onKeyDownCapture={(event) => {
     reveal.onControlGesture(event);
     if (event.key !== "Enter" && event.key !== " ") return;
+    if (event.target instanceof Element && event.target.closest("[data-graph-agents]")) return;
     const edgeTarget = event.target instanceof Element ? event.target.closest(".react-flow__edge[data-id]") : null;
     const edgeId = edgeTarget?.getAttribute("data-id");
     if (edgeId && onSelectEdge && event.currentTarget.contains(edgeTarget) && links.some((edge) => edge.id === edgeId && edge.kind !== "containment")) {
