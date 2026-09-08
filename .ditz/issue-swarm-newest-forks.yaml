@@ -18,3 +18,12 @@ log_events:
   who: Ted Smith
   what: started
   comment: ""
+- time: 2026-09-08T04:34:47-00:00
+  who: Ted Smith
+  what: commented
+  comment: 'Implemented PR91 72035d5 from reviewed8f6c76e: optional actual session
+    creation timestamp; newest-first siblings, parents before descendants, stable
+    missing/tied ID fallback, unchanged solid connectors/arbitrary depth. Focused105
+    tests and both typechecks PASS after3 behavior RED; native delta CLEAN including
+    living doc/build mappings. No GUI/model call or discovery expansion. Ready for
+    ROOT normal landing; keep in-progress until merged.'
