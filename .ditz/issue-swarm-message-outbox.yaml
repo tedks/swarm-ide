@@ -5,7 +5,7 @@ type: feature
 component: default
 release:
 reporter: Ted Smith <tedks@riseup.net>
-status: unstarted
+status: in_progress
 disposition:
 creation_time: 2026-09-08T13:28:50-00:00
 references: []
@@ -31,5 +31,9 @@ log_events:
   comment: User wants IDE plus terminal access to the same agent as a bug fallback.
     Keep checked copyable tmux target and visible pending message text; no second
     resume or automatic replay. CLI association belongs Linux-install.
+- time: 2026-09-08T13:33:00-00:00
+  who: Ted Smith
+  what: started
+  comment: ""
 blocks:
 - swarm-usability-join
