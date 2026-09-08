@@ -30,5 +30,12 @@ log_events:
     Ditz no longer changes execution state. PR106 ready:152 focused tests plus TypeScript
     boundaries pass, native review clean. Activity UI label consumer must join before
     app adoption; ROOT owns normal merge and issue closure.
+- time: 2026-09-08T14:13:08-00:00
+  who: Ted Smith
+  what: commented
+  comment: 'Applied the plan owner approved exact graph mapping with PR106: both lifecycle
+    source files and the existing demo-agents unit evidence role are now linked. Existing
+    build edges preserved; exact patch/reverse applicability and source existence
+    checked. No new runtime delta or test-cycle claim.'
 blocks:
 - swarm-usability-join
