@@ -5,8 +5,8 @@ type: feature
 component: default
 release:
 reporter: Ted Smith <tedks@riseup.net>
-status: in_progress
-disposition:
+status: closed
+disposition: fixed
 creation_time: 2026-09-08T04:38:24-00:00
 references: []
 log_events:
@@ -28,3 +28,11 @@ log_events:
     renderer errors, owned cleanup). Native code/docs reviews CLEAN. Coverage and
     fallback limits documented; follow-up swarm-language-grammar-followups. Waiting
     for ROOT normal landing/adoption; no shared app changes.'
+- time: 2026-09-08T06:20:41-00:00
+  who: Ted Smith
+  what: 'closed: fixed'
+  comment: Merged PR102 as0045e6e2.27 highlighted selections plus plain text, including
+    Bazel/Nix/Python, web/config/OCaml/systems modes; same CodeMirror state identity
+    and no new keybindings/completion.100 focused tests/types/native CLEAN and actual
+    six-file packaged edit/tab/save3.626s/noerrors/cleanup. Starlark uses Python lexical
+    syntax, Move approximate Rust coloring; remaining grammar coverage tracked separately.
