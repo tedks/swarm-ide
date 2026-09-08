@@ -55,9 +55,10 @@ increment does not claim to repair that lifecycle class.
 
 ## Current join and verification boundary
 
-`app/components/TrustedForkControl.tsx` provides an isolated explicit form with
-shared-directory disclosure and one-shot intent handling. Until ROOT releases
-W6 and mounts it, backend support is not a visible Fork action in the application.
+`app/components/TrustedForkControl.tsx` provides an explicit form with
+shared-directory disclosure and one-shot intent handling. ROOT released W6 PR73
+and the trusted-run pane now mounts the control for the selected conversation.
+The list labels children; the selected child links back to its retained parent.
 Its `onFork` callback must reject non-ok or ambiguous bridge replies; resolving
 means admission acknowledgement, not provider confirmation.
 
@@ -66,6 +67,13 @@ Run focused local checks with
 The manual live proof is separately authorized and never part of ordinary tests.
 Do not equate controlled unit/component evidence with a real provider turn or a
 packaged GUI journey. Actual proof outcomes are recorded in the PR and ExecPlan.
+
+The one authorized live proof at8af0d5a passed using two new Codex conversations
+and three observed turns: native history recall, child Stop preserving parent,
+parent follow-up, and retained lineage after restart with no replay. The child's
+goal was already absent in that proof; active-goal removal remains controlled
+test evidence. The UI join is separately verified using deterministic external
+app-server peers, not extra real provider turns.
 
 API fields were checked against locally generated Codex 0.153.4 schemas and the
 [official app-server documentation](https://learn.chatgpt.com/docs/app-server).

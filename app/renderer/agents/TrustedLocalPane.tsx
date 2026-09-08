@@ -4,6 +4,7 @@ import type { LiveAgentState } from "./live-state";
 import type { SwarmBridge } from "../../electron/preload";
 import { emptyComposer } from "./fleet-state";
 import { useTrustedFleet, type TrustedSelection } from "./use-trusted-fleet";
+import { TrustedForkControl } from "../../components/TrustedForkControl";
 import "./trusted-local.css";
 
 export function TrustedLocalPane({ draft, bridge, generation = 0, connected, selection, onSnapshot }: {
@@ -21,6 +22,8 @@ export function TrustedLocalPane({ draft, bridge, generation = 0, connected, sel
   const composer = fleet.selected ? fleet.composers[fleet.selected] ?? emptyComposer : emptyComposer;
   const runPending = fleet.selected ? cockpit.pending[fleet.selected] ?? false : false;
   const showPreparation = cockpit.newConversation || !fleet.summaries.length;
+  const lineage = state?.runToken ? fleet.summaries.find((run) => run.runToken === state.runToken)?.fork : undefined;
+  const parent = lineage ? fleet.summaries.find((run) => run.runToken === lineage.parentRunToken) : undefined;
   return <section className="trusted-local" aria-label="Trusted-local Codex">
     <header><strong>Codex · trusted local</strong><small>{state?.status ?? "unobserved"}</small></header>
     <p className="trusted-profile">Normal account, tools and approvals. Not the isolated read-only profile.</p>
@@ -33,6 +36,7 @@ export function TrustedLocalPane({ draft, bridge, generation = 0, connected, sel
       {fleet.summaries.map((run) => <button key={run.runToken} type="button" aria-pressed={fleet.selected === run.runToken}
         data-run-token={run.runToken} onClick={() => cockpit.select(run.runToken)} title={run.message}>
         <span>{run.title}</span><small>{run.archived ? "Archived · " : ""}{run.status}{run.approvalCount ? ` · ${run.approvalCount} approval${run.approvalCount === 1 ? "" : "s"}` : ""}</small>
+        {run.fork ? <small>{run.fork.confirmed ? "Child conversation" : "Fork requested"}</small> : null}
       </button>)}
     </nav> : null}
     {showPreparation ? <div className="trusted-new-conversation">
@@ -48,6 +52,9 @@ export function TrustedLocalPane({ draft, bridge, generation = 0, connected, sel
     {cockpit.preparationNotice ? <p role="status">{cockpit.preparationNotice}</p> : null}
     {fleet.selected && !state ? <p role="status">Observing selected conversation… Controls wait for a fresh observation.</p> : null}
     {state?.runToken ? <div className="trusted-selected-run" data-run-token={state.runToken}>
+      {lineage ? <p className="trusted-fork-lineage">{lineage.confirmed ? "Fork of" : "Fork requested from"} {parent?.title || "earlier conversation"} · shared workspace
+        {parent ? <> <button type="button" onClick={() => cockpit.select(parent.runToken)}>View parent</button></> : null}
+      </p> : null}
       {state.archived ? <p className="trusted-archive">Archived conversation · {state.status}. No automatic resume or replay.</p> : null}
       {state.output ? <pre className="trusted-output" aria-label="Codex conversation">{state.output}</pre> : <p className="trusted-empty">No output observed yet.</p>}
       {state.activities?.length ? <section className="trusted-live-activity" aria-label="Selected conversation activity"><h4>Activity</h4>
@@ -62,6 +69,7 @@ export function TrustedLocalPane({ draft, bridge, generation = 0, connected, sel
         <label>Message Codex<textarea rows={2} value={composer.text} maxLength={16384} onChange={(event) => cockpit.edit(state.runToken!, event.target.value)} /></label>
         <button disabled={runPending || !connected || !composer.text.trim() || !["ready", "running"].includes(state.status) || (state.status === "running" && !state.turnId)}>{state.status === "running" ? "Steer current turn" : "Send next turn"}</button>
       </form><button type="button" disabled={!connected || runPending || state.status === "stopping"} onClick={() => cockpit.control(state, "stop")}>Stop conversation</button></> : composer.text ? <details><summary>Unsent local draft · not delivered</summary><pre>{composer.text}</pre></details> : null}
+      {!state.archived ? <TrustedForkControl parent={state} disabled={!connected || runPending} onFork={cockpit.fork} /> : null}
     </div> : null}
     <p role="status" className="trusted-notice">{cockpit.selectedNotice || cockpit.observationNotice || state?.message}</p>
     <small>Live conversations survive a renderer refresh while the core stays alive. App/core shutdown stops them; archived history is not a running or resumable conversation.</small>

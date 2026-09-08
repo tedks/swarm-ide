@@ -78,7 +78,7 @@ function ForkForm({ parent, disabled = false, onFork }: TrustedForkControlProps)
     <p className="trusted-workspace">Shared working directory: {parent.workspace}</p>
     <p>Shares this directory; not an isolated worktree.</p>
     {eligible ? <form aria-label="Fork child conversation" onSubmit={(event) => { event.preventDefault(); void submit(); }}>
-      <small>Inherits history through the last completed turn. Uses the normal configured model.</small>
+      <small>Inherits history through the last completed turn and uses inherited Codex settings.</small>
       <label>Child instructions<textarea rows={2} value={text} maxLength={instructionLimit}
         disabled={disabled || pending} aria-describedby={`${descriptionId}${text && error ? ` ${errorId}` : ""}`}
         aria-invalid={Boolean(text && error)} onChange={(event) => {

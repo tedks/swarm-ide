@@ -85,17 +85,17 @@ export function useTrustedFleet({ bridge, connected, generation, selection, onSn
   }, [update]);
   useEffect(() => { if (selection) select(selection.runToken); }, [selection?.id, select]);
   const begin = () => { ++selectionVersion.current; setNewConversation(true); setConfirmed(false); };
-  const dispatch = async (command: TrustedRequest, options: { inputKey?: string; composerRevision?: number } = {}) => {
+  const dispatch = async (command: TrustedRequest, options: { inputKey?: string; composerRevision?: number } = {}): Promise<boolean> => {
     const key = command.type === "trusted.prepare" || command.type === "trusted.launch" ? PREPARE
       : "token" in command ? command.token ?? OBSERVATION : OBSERVATION;
-    if (!bridge || !connected || pendingRef.current.has(key)) return;
+    if (!bridge || !connected || pendingRef.current.has(key)) return false;
     const current = epoch.current, selectedAtDispatch = selectionVersion.current;
     pendingRef.current.set(key, command.requestId); setPending((old) => ({ ...old, [key]: true })); notice(key, "");
     try {
       const response = parseCoreResponseForRequest(await bridge.request(command), command);
-      if (current !== epoch.current) return;
-      if (!response.ok) { notice(key, response.error.message); return; }
-      if (!response.trusted) return;
+      if (current !== epoch.current) return false;
+      if (!response.ok) { notice(key, response.error.message); return false; }
+      if (!response.trusted) return false;
       accept(response.trusted.snapshot, response.sequence);
       if (command.type === "trusted.prepare" && response.trusted.snapshot.preparation && options.inputKey !== undefined)
         setPrepared({ value: response.trusted.snapshot.preparation, inputKey: options.inputKey });
@@ -103,13 +103,17 @@ export function useTrustedFleet({ bridge, connected, generation, selection, onSn
         setPrepared(null);
         if (selectedAtDispatch === selectionVersion.current && response.trusted.snapshot.runToken) select(response.trusted.snapshot.runToken);
       }
+      if (command.type === "trusted.fork" && selectedAtDispatch === selectionVersion.current)
+        select(command.childToken);
       if (command.type === "trusted.send" && options.composerRevision !== undefined)
         update((state) => acknowledgeFleetComposer(state, command.token, options.composerRevision!));
+      return true;
     } catch {
       if (current === epoch.current) notice(key, "Outcome unconfirmed. Observe this conversation; the command will not be repeated automatically.");
+      return false;
     } finally {
       if (current === epoch.current && pendingRef.current.get(key) === command.requestId) {
-        pendingRef.current.delete(key); setPending((old) => ({ ...old, [key]: false })); refreshRef.current?.(command.type === "trusted.launch");
+        pendingRef.current.delete(key); setPending((old) => ({ ...old, [key]: false })); refreshRef.current?.(command.type === "trusted.launch" || command.type === "trusted.fork");
       }
     }
   };
@@ -129,6 +133,14 @@ export function useTrustedFleet({ bridge, connected, generation, selection, onSn
     void dispatch(request({ type: "trusted.launch", token }));
   };
   const selected = fleet.selected ? fleet.details[fleet.selected]?.snapshot ?? null : null;
+  const fork = async (fields: Omit<Extract<TrustedRequest, { type: "trusted.fork" }>, "type" | "protocolVersion" | "requestId">) => {
+    const snapshot = fleetRef.current.details[fields.token]?.snapshot;
+    if (fleetRef.current.selected !== fields.token || !snapshot || snapshot.instanceId !== fields.expectedInstanceId ||
+        snapshot.archived || snapshot.status !== "ready" || snapshot.forkPoint?.threadId !== fields.expectedThreadId || snapshot.forkPoint.turnId !== fields.expectedTurnId)
+      throw new Error("Parent changed; refresh the completed conversation before forking.");
+    const command = safeRequest({ type: "trusted.fork", ...fields }, fields.token);
+    if (!command || !await dispatch(command)) throw new Error("Fork was not acknowledged; inspect conversations before a new explicit attempt.");
+  };
   const control = (observed: TrustedSnapshot, kind: "send" | "stop" | "decide", approvalId?: string, choice?: string) => {
     const token = observed.runToken;
     if (!token) return;
@@ -148,7 +160,7 @@ export function useTrustedFleet({ bridge, connected, generation, selection, onSn
       void dispatch(request({ type: "trusted.decide", token, approvalId, choice }));
   };
   return { fleet, selected, workspace, pending, newConversation, prepared, confirmed, setConfirmed,
-    select, begin, prepare, launch, control, refresh: () => refreshRef.current?.(true),
+    select, begin, prepare, launch, fork, control, refresh: () => refreshRef.current?.(true),
     preparationPending: pending[PREPARE] ?? false,
     preparationNotice: notices[PREPARE] ?? "", observationNotice: notices[OBSERVATION] ?? "",
     selectedNotice: fleet.selected ? notices[fleet.selected] || notices[`@read:${fleet.selected}`] || "" : "",
