@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { PROTOCOL_VERSION, parseCoreResponseForRequest } from "../../../protocol/schema";
 import { ChangelogRequestSchema, entryEvidence, type ChangelogResult } from "../../../protocol/changelog";
 import "./journal.css";
@@ -55,20 +55,21 @@ export function JournalActivity({ state, onOpen }: { state: JournalState; onOpen
   </div>;
 }
 
-export function JournalPanel({ open, state, selectedEntry, selectionVersion = 0, onClose, onOpenSource, pullRequests }: {
+export function JournalPanel({ open, state, selectedEntry, selectionVersion = 0, onClose, onOpenSource, pullRequests, liveContent }: {
   open: boolean; state: JournalState; selectedEntry: string | null; selectionVersion?: number; onClose(): void; onOpenSource(path: string): void;
   pullRequests?: GithubPrState;
+  liveContent?: ReactNode;
 }) {
   const { observation, notice, busy, refresh } = state;
   const [filter, setFilter] = useState("");
-  const [view, setView] = useState<"changes" | "prs">("changes");
+  const [view, setView] = useState<"activity" | "changes" | "prs">(liveContent ? "activity" : "changes");
   const body = useRef<HTMLDivElement>(null);
   const heading = useRef<HTMLHeadingElement>(null);
   const [pendingEntry, setPendingEntry] = useState<string | null>(null);
   useEffect(() => {
     if (!open) return;
     if (selectedEntry) { setView("changes"); setFilter(""); setPendingEntry(selectedEntry); }
-    else heading.current?.focus();
+    else { if (liveContent) setView("activity"); heading.current?.focus(); }
   }, [selectedEntry, selectionVersion, open, observation?.document.inputDigest]);
   useLayoutEffect(() => {
     if (!open || !pendingEntry || filter) return;
@@ -82,10 +83,11 @@ export function JournalPanel({ open, state, selectedEntry, selectionVersion = 0,
   return <section className="journal-panel" aria-label="Activity log" hidden={!open} data-journal-digest={observation?.document.inputDigest ?? ""}>
     <header className="journal-header"><div><h2 ref={heading} tabIndex={-1}>Activity log</h2></div>
       <div className="journal-controls"><button onClick={() => void refresh()} disabled={busy} aria-label="Refresh logical changes">{busy ? "Reading…" : "Refresh"}</button><button onClick={onClose} aria-label="Close logical changes">×</button></div></header>
-    {pullRequests ? <nav className="journal-view-tabs" aria-label="Activity views"><button aria-pressed={view === "changes"} onClick={() => setView("changes")}>Changes</button><button aria-pressed={view === "prs"} onClick={() => setView("prs")}>Pull requests</button></nav> : null}
+    {pullRequests || liveContent ? <nav className="journal-view-tabs" aria-label="Activity views">{liveContent ? <button aria-pressed={view === "activity"} onClick={() => setView("activity")}>Live activity</button> : null}<button aria-pressed={view === "changes"} onClick={() => setView("changes")}>Saved summaries</button>{pullRequests ? <button aria-pressed={view === "prs"} onClick={() => setView("prs")}>Pull requests</button> : null}</nav> : null}
     <div className="journal-body" ref={body}>
       {pullRequests ? <div hidden={view !== "prs"}><GithubPullRequests state={pullRequests} onOpenSource={onOpenSource} /></div> : null}
-      <div hidden={Boolean(pullRequests && view !== "changes")}>
+      {liveContent ? <div hidden={view !== "activity"}>{liveContent}</div> : null}
+      <div hidden={view !== "changes"}>
       {notice ? <p role="status" className="journal-warning">{observation ? "Retained · " : "Unavailable · "}{notice}</p> : null}
       {busy && observation ? <p className="journal-warning">Retained while observing the current artifacts…</p> : null}
       {!observation && !busy ? <p className="journal-empty">No recorded activity summary. <code>docs/logical-changelog.md</code> describes how to add one.</p> : null}

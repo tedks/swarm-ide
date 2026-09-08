@@ -6,3 +6,12 @@ sh_test(
     data = ["//:quality_sources"],
     tags = ["local"],
 )
+
+filegroup(name = "sources", srcs = glob(["*.sh", "*.cjs"]))
+
+sh_binary(
+    name = "smoke",
+    srcs = ["smoke.sh"],
+    data = [":sources", "//:desktop-bundle", "//tools:virtual-desktop-run.sh", "//tools:x11-driver-source", "//tools:electron-runtime-source", "//tools/task-integration:sources"],
+    tags = ["manual"],
+)

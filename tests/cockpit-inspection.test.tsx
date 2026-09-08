@@ -9,6 +9,8 @@ import { initialSnapshot } from "../fixtures/world";
 import { PROTOCOL_VERSION, type CoreRequest, type CoreResponse } from "../protocol/schema";
 import { JournalPanel } from "../app/renderer/changelog/JournalPanel";
 import { syntheticJournal } from "./journal-fixture";
+import { FleetActivityView } from "../app/renderer/FleetActivityView";
+import type { ExternalDetail } from "../protocol/external-agents";
 
 afterEach(cleanup);
 const id = "00000000-0000-4000-8000-000000000007";
@@ -19,6 +21,20 @@ function response(input: CoreRequest, content: string): CoreResponse {
     worktreeInspection: { sessionId: input.sessionId, path: input.path, label: "C7", worktree: "/repos/agent-worktree", content, diff: "-old\n+agent change\n" } };
 }
 describe("operator cockpit inspection", () => {
+  it("opens a raw fleet event with its containing agent identity and recorded patch", () => {
+    const session = { id, label: "C7", evidence: "local" as const, status: "observed" as const, parentId: null,
+      ancestry: "root" as const, observationId: "a".repeat(64), observedAt: "2026-09-08T04:00:00Z", message: "", contextPaths: [], worktree: "/repos/child" };
+    const entry = { id: "edit-1", at: "2026-09-08T04:00:00Z", kind: "tool-call" as const, attribution: "recorded-tool-event" as const,
+      text: "Edited app/file.ts", path: "app/file.ts", patch: "+child-only" };
+    const detail: ExternalDetail = { session, entries: [entry], handoff: "unavailable", coverage: { tailBytes: 200, partial: false, omittedRecords: 0, message: "" } };
+    const onInspect = vi.fn(), onSelect = vi.fn();
+    render(<FleetActivityView fleet={[detail]} selected={null} onSelect={onSelect} onAgent={vi.fn()} onInspect={onInspect} />);
+    fireEvent.click(screen.getByRole("button", { name: "app/file.ts" }));
+    expect(onInspect).toHaveBeenCalledExactlyOnceWith(id, "app/file.ts", "+child-only");
+    fireEvent.click(screen.getByRole("button", { name: /C7 Edited app\/file.ts/ }));
+    expect(onSelect).toHaveBeenCalledExactlyOnceWith({ session, entry });
+    expect(document.querySelector("time")?.dateTime).toBe("2026-09-08T04:00:00.000Z");
+  });
   it("keeps a dirty local buffer mounted while inspecting the agent worktree and its labelled diff", async () => {
     const request = vi.fn(async (input: CoreRequest) => response(input, "agent worktree source"));
     const bridge: SwarmBridge = { request, onEvent: () => () => {} };
