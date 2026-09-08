@@ -14,8 +14,8 @@ When a repository has no `.swarm/plans.json`, its Components view offers Generat
 - [x] (2026-09-08) Normally join pushed c192151, add explicit effort forwarding and selected-registration recovery; focused checks and both typechecks pass.
 - [x] (2026-09-08) Native convergence clean after retained identity, stale callback, nested boundary and failed-process cleanup corrections.
 - [x] (2026-09-08) Controlled packaged GUI passed3.203s/cleanup1/zero renderer errors; single real run produced three useful docs/nodes but was stopped at300s during validation, with originals unchanged and confirmed cleanup.
-- [x] (2026-09-08) Joined final reviewed PR132 a5ca4fbe, conflict-free. Generation123 and New-agent206 focused cases pass with both types. Living-design mapping checks pass; its separate camera case failed (90 pass/1 fail), preserved as a noncritical follow-up.
-- [ ] Final accomplishment notes, push, cleanup and handoff.
+- [x] (2026-09-08) Joined final reviewed PR132 a5ca4fbe, conflict-free. Generation123 and New-agent UI32 focused cases pass with both types. Living-design mapping checks pass; its separate camera case failed (90 pass/1 fail), preserved as a noncritical follow-up.
+- [x] (2026-09-08) Ready PR133, concrete Ditz accomplishment and two follow-ups, pushed source, final handoff and owned cleanup.
 
 ## Context and Orientation
 
