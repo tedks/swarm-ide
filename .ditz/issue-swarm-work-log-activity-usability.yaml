@@ -58,5 +58,13 @@ log_events:
     other evidence and backend provenance preserved.8 focused Context cases and Back
     assertion pass; unrelated5 draft-entrypoint setup failures recorded separately.
     No App/provider/schema edit or GUI sweep.
+- time: 2026-09-08T14:22:59-00:00
+  who: Ted Smith
+  what: commented
+  comment: PR105 normally merged after ROOT native intake. Activity rows, accessible
+    status shapes, historical outcomes, settings gear, job status and directory Context
+    cleanup are complete. Prior focused and labelled-fixture GUI checks retain their
+    attribution; old Context setup failures are tracked separately. Managed adoption
+    follows the current cockpit header join.
 blocks:
 - swarm-usability-join
