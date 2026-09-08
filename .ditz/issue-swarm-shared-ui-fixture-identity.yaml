@@ -1,0 +1,16 @@
+id: swarm-shared-ui-fixture-identity
+title: Repair mismatched project identities in shared UI test fixtures
+desc: ""
+type: bugfix
+component: default
+release:
+reporter: Ted Smith <tedks@riseup.net>
+status: unstarted
+disposition:
+creation_time: 2026-09-08T20:48:37-00:00
+references: []
+log_events:
+- time: 2026-09-08T20:48:37-00:00
+  who: Ted Smith
+  what: created
+  comment: ""
