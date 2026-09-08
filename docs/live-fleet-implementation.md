@@ -25,6 +25,14 @@ conditionals, functions and other unsupported expressions keep the entire
 wrapper generic. This intentionally favors incomplete detail over attributing
 an unexecuted branch to a worker. Fleet refresh follows the existing three-second
 visible observer timer; selected conversation refresh remains one second.
+The aggregate published fleet is capped at 240 useful events and 512 KiB of
+serialized event content, with registered interactive owners prioritized before
+historical sessions. Tool-result placeholders are omitted from that feed.
+Historical sessions retain at most 16 recent events and use an inode/size/time/
+mode/registration check instead of reopening unchanged transcript contents.
+Changed files are reread, removed registrations evicted, and disposal clears the
+small cache. Explicitly selecting a conversation still reads its full bounded
+120-entry tail and revalidates any owner controls.
 
 Reading the fleet never selects tmux panes or sends messages. A selected detail
 may expose copyable terminal commands only after its existing live target is
