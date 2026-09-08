@@ -1,0 +1,20 @@
+id: swarm-dev-initial-control-read
+title: Avoid the initial missing-control-file warning during desktop startup
+desc: 'Observed on managed0045e6e2 startup02:21:03ET: Electron readDevUpdate caught
+  ENOENT for .swarm-dev/control-97921.json. Electron/core remained alive; controller
+  published unchanged update by02:21:05 and file exists. Nonblocking startup warning;
+  preserve ordering evidence and initialize or defer initial read appropriately in
+  a later bounded fix. Not a language-parser failure; no historical fix claimed.'
+type: bugfix
+component: default
+release:
+reporter: Ted Smith <tedks@riseup.net>
+status: unstarted
+disposition:
+creation_time: 2026-09-08T06:23:14-00:00
+references: []
+log_events:
+- time: 2026-09-08T06:23:14-00:00
+  who: Ted Smith
+  what: created
+  comment: ""
