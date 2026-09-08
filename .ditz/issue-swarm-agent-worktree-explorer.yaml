@@ -21,3 +21,10 @@ log_events:
   who: Ted Smith
   what: started
   comment: ""
+- time: 2026-09-08T06:20:08-00:00
+  who: Ted Smith
+  what: commented
+  comment: Implemented registered directory browsing and changed-file/master comparison.
+    Actual two-worktree core and mounted editor-retention checks pass; native review
+    corrections preserve renames, focus and a total read deadline. Owned virtual composed-browser
+    proof is underway; normal App entry remains the conversation owner join.
