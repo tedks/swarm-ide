@@ -1,0 +1,21 @@
+id: swarm-task-repeat-sidebar-reveal
+title: Reveal an already selected task when its sidebar item is clicked again
+desc: Task canvas and outline clicks have explicit camera gesture identities, but
+  the TaskClient sidebar exposes only selectedTaskId. Clicking an already selected
+  sidebar task after manually panning cannot distinguish a new gesture from passive
+  metadata updates. Add a small explicit selection nonce at the sidebar/client boundary;
+  preserve no-replay through detail acknowledgement, failed reads and recovery. Outside
+  PR139 camera-helper scope; no fabricated links or freshness-based camera triggers.
+type: bugfix
+component: default
+release:
+reporter: Ted Smith <tedks@riseup.net>
+status: unstarted
+disposition:
+creation_time: 2026-09-08T21:55:50-00:00
+references: []
+log_events:
+- time: 2026-09-08T21:55:50-00:00
+  who: Ted Smith
+  what: created
+  comment: ""
