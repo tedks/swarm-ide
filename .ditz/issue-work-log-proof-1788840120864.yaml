@@ -19,3 +19,18 @@ log_events:
   who: Ted Smith
   what: 'closed: fixed'
   comment: 'Disposable test issue only: validates explicit completed-issue note recording.'
+- time: 2026-09-08T04:02:18-00:00
+  who: Ted Smith
+  what: commented
+  comment: "[swarm-work-log:proof-c31bcbf3-94ae-4486-ba7a-e778f02f7314]\nROOT: The
+    live-agent cockpit integration advanced: F7\u2019s activity format was reviewed
+    and accepted, C7 was cleared to integrate it, and cockpit source/diff inspection
+    has focused checks passing. Five workers are running. Separate forks were launched
+    for plain-language editing and reusable launcher tooling.\nChanged areas: Cockpit
+    integration, Worker supervision, Launcher tooling, Language editing\nChecks: S7
+    reported verified.; All five workers were reported running.; Focused cockpit inspection
+    checks were reported passing.; F7\u2019s additive interface was reviewed and accepted.\nFollow-ups:
+    F7\u2019s runtime activity-collection code remains unfinished.; The launcher fork
+    still needs implementation, tests, usage instructions, and one-off tooling inventory.;
+    Plain-language editing work remains to be completed.\nSession: 01a0702a-7b5e-71e0-bb62-287d55a7f9ba;
+    turn observed 2026-09-08T04:01:25.671Z"
