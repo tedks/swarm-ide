@@ -8,7 +8,7 @@ type: task
 component: default
 release:
 reporter: Ted Smith <tedks@riseup.net>
-status: unstarted
+status: in_progress
 disposition:
 creation_time: 2026-09-08T03:40:02-00:00
 references: []
@@ -28,6 +28,10 @@ log_events:
 - time: 2026-09-08T03:40:07-00:00
   who: Ted Smith
   what: blocks swarm-operator-demo
+  comment: ""
+- time: 2026-09-08T03:47:55-00:00
+  who: Ted Smith
+  what: started
   comment: ""
 blocks:
 - swarm-owner-steering
