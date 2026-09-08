@@ -31,7 +31,7 @@ it("retains same-world data on failure without raw diagnostic disclosure", async
   const request = vi.fn(async (input: CoreRequest) => reply(input)); vi.stubGlobal("swarm", { request }); render(<Host />);
   fireEvent.click(screen.getByLabelText("Refresh pull requests")); await screen.findByText("Synthetic PR");
   request.mockRejectedValue(new Error("credential-ish debug DO-NOT-EXPOSE")); fireEvent.click(screen.getByLabelText("Refresh pull requests"));
-  await screen.findByText(/Retained · GitHub unavailable/); expect(screen.getByText("Synthetic PR")).toBeTruthy();
+  await screen.findByText(/Showing previous results. GitHub unavailable/); expect(screen.getByText("Synthetic PR")).toBeTruthy();
   expect(screen.queryByText(/DO-NOT-EXPOSE/)).toBeNull();
 });
 it("hides foreign repositories immediately and rejects held replies across switches and core recovery", async () => {

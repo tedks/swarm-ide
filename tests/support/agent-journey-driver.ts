@@ -214,7 +214,7 @@ export async function runJourney(options: {
   const prepare = async (task: string) => {
     await evaluate({ action: "text", field: "task", value: task });
     await click("Prepare disk context");
-    await ui("inspectable prepared context", (value) => value.context.includes("Context hash:") && value.context.includes("not a frozen filesystem"));
+    await ui("inspectable prepared context", (value) => value.context.includes("Context hash:") && value.context.includes("Files may have changed since preparation"));
     await evaluate({ action: "confirm" });
   };
   const receipt = (run: Run, index: number, status: string) => run.instructions[index]?.status === status;

@@ -5,18 +5,18 @@ around a file or service, and prepare and steer a focused agent conversation.
 Source, design, tasks, and instructions stay with the repository; separate views
 help you move between them without losing your place.
 
-This is a working prototype, not a general-purpose replacement for your editor.
-Repository browsing, source editing, Ditz tasks and dependency graphs, authored
-plan hierarchies, per-repository Bazel queries, and disk-context preparation are
-real. The separate **Codex · trusted local** profile supports explicit launch
-using your installed Codex's normal account, configuration, tools and approvals;
-the isolated read-only profile remains unavailable. Explicitly registered external
-sessions can be observed without controlling them; an explicit **Send message**
-can steer a checked live target. Queue acceptance is not delivery or completion,
-and the IDE does not own those external processes. Activity log contains supervised-generated,
-recorded summaries, not live in-app summarization. Mocks and deterministic
-rehearsals are not live execution. Start with [installation and troubleshooting](docs/evaluator-install.md),
-then the [connected walkthrough](docs/demo.md).
+This prototype browses and edits real repositories, reads Ditz tasks and their
+dependencies, navigates authored plans, queries Bazel build graphs, and prepares
+source context for agents. **Codex · trusted local** runs conversations using your
+installed Codex account, configuration, tools and approvals. You can also
+register existing terminal sessions to follow their output and send messages
+through their running harness.
+
+The Activity log includes saved summaries of how Swarm was built. Example metrics
+and rehearsal runs are labelled separately. The isolated read-only execution
+profile is not available; use trusted local execution to run Codex. Start with
+[installation and troubleshooting](docs/evaluator-install.md), then the
+[connected walkthrough](docs/demo.md).
 
 ## Current controls
 
@@ -24,14 +24,16 @@ then the [connected walkthrough](docs/demo.md).
   log and blocking relationships. See [task workspace](docs/task-workspace.md).
 - From a source-file draft, optionally attach a task, then **Prepare trusted-local
   context**, review the exact prompt and confirm **Launch trusted-local Codex**.
-  No account is copied or extra autonomy granted. Use **New conversation** and
+  Use **New conversation** and
   the run list to manage up to eight live conversations with independent message
-  composers. Up to twenty records retain bounded history, including admitted
-  task links; restart archives history without automatically resuming or replaying
+  composers. Up to twenty saved conversations keep recent history and attached
+  task links; restart archives history without automatically resuming
   conversations. See [execution and limits](docs/trusted-local-execution.md).
 - Optionally [register a known external worker](docs/session-registration.md)
-  to inspect its ancestry, activity and checked steering controls. Registration
-  neither launches an agent nor scans for unregistered sessions.
+  to inspect its parent/child relationships, activity and available controls.
+  Registration adds an existing session; it does not launch or discover agents.
+  Messages may be queued before the agent reads them. These sessions keep running
+  independently when the IDE closes.
 - **Recent Activity → Activity log → Pull requests → Refresh PRs** reads the
   opened repository's GitHub PRs using normal `gh` authentication. See
   [Activity and PRs](docs/logical-changelog.md#github-pull-requests).
@@ -75,8 +77,8 @@ SWARM_DEV_PORT=55173 nix develop --command bazel run --jobs=3 //:dev -- --worksp
 The target must be an existing Git working-tree root with a committed `HEAD`.
 Relative paths are resolved from the directory where you invoke the command.
 The IDE's dependencies and development output stay in the IDE checkout, not the
-target. A non-Bazel repository can still be browsed; unavailable build or service
-evidence is not replaced by demo data. Use trusted local repositories: explicit
+target. A non-Bazel repository can still be browsed, with unavailable build or
+service information shown as such. Use trusted local repositories:
 Build can execute their build rules and Bazel wrapper. Opening **Build graph**
 or enabling **Build links**, including file Context's build-target observation,
 also loads repository-controlled Bazel definitions for a query; that is not a
@@ -119,9 +121,9 @@ to read existing tasks in the IDE.
   and rerun the frozen install; do not substitute a global Electron or update
   package versions independently.
 - No display or sandbox support: use a supported logged-in Linux/X11 session.
-  Automated verification below owns a virtual desktop and needs no logged-in
-  display. It is not an invitation to bypass the sandbox.
-- Build/service information unavailable: inspect the reported evidence scope.
+  Automated verification below uses its own virtual desktop. Keep the Electron
+  sandbox enabled.
+- Build/service information unavailable: check which sources the view supports.
   The current service extractor supports Swarm's checked-in example, not every
   arbitrary repository.
 
@@ -167,7 +169,8 @@ interactive entry for this prototype is the Nix/Bazel command above.
 - `fixtures/` and `tests/`: explicitly synthetic worlds and verification
 - `tools/`: supported launch and desktop-verification entry points
 - `docs/`: [product foundation](docs/product-foundation.md),
-  [architecture](docs/architecture.md), and implementation decisions
+  [architecture](docs/architecture.md), implementation decisions, and
+  [plain-language writing guide](docs/plain-language.md)
 
 Licensed under [GNU AGPLv3](LICENSE) (`AGPL-3.0-only`). See
 [AGENTS.md](AGENTS.md) for contributor instructions.

@@ -97,8 +97,8 @@ describe("live workbench presentation", () => {
     const view = render(<PreparedLaunchDraft state={state} client={client} dirtyPaths={[]} />);
     expect((screen.getByRole("button", { name: "Launch read-only run" }) as HTMLButtonElement).disabled).toBe(true);
     expect((screen.getByLabelText("Requested reasoning") as HTMLSelectElement).disabled).toBe(true);
-    expect(screen.getByText(/not a frozen filesystem/, { selector: "p" })).toBeTruthy();
-    expect(screen.getByText(/not a host confidentiality sandbox/)).toBeTruthy();
+    expect(screen.getByText(/Files may have changed since preparation/, { selector: "p" })).toBeTruthy();
+    expect(screen.getByText(/harness may still read other files accessible to your account/)).toBeTruthy();
     view.rerender(<PreparedLaunchDraft state={{ ...state, draft: { ...state.draft, confirmed: true } }} client={client} dirtyPaths={[]} />);
     expect((screen.getByRole("button", { name: "Launch read-only run" }) as HTMLButtonElement).disabled).toBe(false);
   });
@@ -111,7 +111,7 @@ describe("live workbench presentation", () => {
     expect(props.onReveal).not.toHaveBeenCalled();
     expect(screen.getByRole("log", { name: "Agent transcript" }).textContent).toContain("<img src=x onerror=alert(1)>\\u{202e}hello");
     expect(document.querySelector("img")).toBeNull();
-    expect(screen.getByText(/World advanced since launch/)).toBeTruthy();
+    expect(screen.getByText(/The workspace has changed since launch/)).toBeTruthy();
     expect(screen.getByText(/Observed model: unobserved/)).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Reveal launch focus" }));
     expect(props.onReveal).toHaveBeenCalledWith(paymentsFileFocus);
@@ -141,6 +141,20 @@ describe("live workbench presentation", () => {
     expect((screen.getByRole("button", { name: "Send to this run" }) as HTMLButtonElement).disabled).toBe(true);
   });
 
+  it("does not promise an update when a failed read leaves stale details", () => {
+    const state = runningState();
+    state.detailStale = true;
+    state.reading = false;
+    state.instructions[state.selectedRunId!] = "Wait for the current results";
+    const props = callbacks();
+    render(<LiveRunPane state={state} {...props} />);
+    expect(screen.getByText("Run details are out of date or unavailable. Controls are disabled.")).toBeTruthy();
+    expect(screen.queryByText(/Updating run details/)).toBeNull();
+    expect((screen.getByRole("button", { name: "Send to this run" }) as HTMLButtonElement).disabled).toBe(true);
+    expect((screen.getByRole("button", { name: "Stop" }) as HTMLButtonElement).disabled).toBe(true);
+    expect(props.onRead).not.toHaveBeenCalled();
+  });
+
   it("pages explicitly with gaps and does not render the wrong selected run", () => {
     const state = runningState(); const props = callbacks();
     state.run!.transcript = { lastRecord: 20, bytes: 100, truncated: true, tailMayBeLost: true };
@@ -148,7 +162,7 @@ describe("live workbench presentation", () => {
     state.records = [4, 10].map((recordId) => ({ ...state.records[0]!, recordId, text: `record ${recordId}` }));
     const view = render(<LiveRunPane state={state} {...props} />);
     expect(screen.getByText(/Record gap: 5–9/)).toBeTruthy();
-    expect(screen.getByText(/tail may have been lost/)).toBeTruthy();
+    expect(screen.getByText(/last messages may have been lost/)).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Read next transcript page" }));
     expect(props.onRead).toHaveBeenCalledWith();
     fireEvent.click(screen.getByRole("button", { name: "Read transcript from start" }));
