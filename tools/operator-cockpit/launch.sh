@@ -16,9 +16,12 @@ const evidence = await realpath(process.env.SWARM_COCKPIT_EVIDENCE);
 const electron = process.env.SWARM_ELECTRON_BIN;
 if (!electron || !isAbsolute(electron)) throw new Error('Pinned Nix Electron required');
 const tabsOnly = process.env.SWARM_COCKPIT_TABS_ONLY === '1';
+const workLogOnly = process.env.SWARM_COCKPIT_WORKLOG_ONLY === '1';
+if (tabsOnly && workLogOnly) throw new Error('Choose one isolated cockpit proof mode');
+const isolatedMode = tabsOnly || workLogOnly;
 let registered, targetRoot;
 const targetPath = 'app/renderer/App.tsx';
-if (!tabsOnly) {
+if (!isolatedMode) {
 const registryPath = process.env.SWARM_COCKPIT_REGISTRY;
 if (!registryPath || !isAbsolute(registryPath) || await realpath(registryPath) !== registryPath) throw new Error('Canonical private registry required');
 const registryStat = await lstat(registryPath);
@@ -53,6 +56,15 @@ try {
       const name = `operator-overflow-source-${String(index).padStart(2, '0')}.ts`;
       tabFiles.push(name); files[name] = `// Disposable overflow source ${index}\nexport const index = ${index};\n`;
     }
+  } else if (workLogOnly) {
+    // Explicitly controlled saved data, loaded by the unchanged real Work Log
+    // reader. This is neither generated output nor evidence of a model run.
+    workLog = { version: 1, entries: [{ id: 'controlled-work-log-dock-outcome', sessionId: 'controlled-ui-example',
+      agent: 'Controlled recorded example', taskId: null, at: '2026-09-08T05:00:00Z', state: 'completed',
+      outcome: 'Controlled example: moved the Work Log beside Recent Activity.',
+      areas: ['Cockpit dock layout'], checks: ['Controlled saved entry for visual acceptance'],
+      followUps: ['No model or Ditz mutation is exercised by this layout proof.'], recorded: false }] };
+    files['.swarm/work-log.json'] = JSON.stringify(workLog);
   } else {
   // Captured real design documents and K7's previously generated summary are
   // ordinary on-disk inputs, not new inference or injected renderer rows.
@@ -81,9 +93,10 @@ try {
   git('init', '-b', 'cockpit-proof'); git('add', '--', ...Object.keys(files)); git('commit', '-m', 'Owned local editor proof');
   const privateRegistry = join(scratch, 'registry.json');
   // Only operator briefing metadata is added. Real rollout and worktree remain unchanged.
-  await writeFile(privateRegistry, JSON.stringify({ version: 1, sessions: tabsOnly ? [] : [{ ...registered, contextPaths: [targetPath] }] }), { mode: 0o600 });
+  await writeFile(privateRegistry, JSON.stringify({ version: 1, sessions: isolatedMode ? [] : [{ ...registered, contextPaths: [targetPath] }] }), { mode: 0o600 });
   await writeFile(join(evidence, 'repository.json'), JSON.stringify({ root, files,
-    ...(tabsOnly ? { tabsOnly: true, tabFiles } : { capturedWorkLog: { id: workLog.entries[0].id, outcome: workLog.entries[0].outcome }, capturedDesign: true,
+    ...(tabsOnly ? { tabsOnly: true, tabFiles } : workLogOnly ? { workLogOnly: true, controlledWorkLog: workLog.entries[0] }
+      : { capturedWorkLog: { id: workLog.entries[0].id, outcome: workLog.entries[0].outcome }, capturedDesign: true,
       target: { id: registered.id, label: registered.label, root: targetRoot, path: targetPath } }) }, null, 2));
   execFileSync('tar', ['-xzf', archive, '-C', packaged], { timeout: 30000 });
   server = createServer((_req, res) => { res.writeHead(200); res.end('owned cockpit proof'); });
