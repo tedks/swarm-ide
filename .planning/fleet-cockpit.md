@@ -1,0 +1,61 @@
+# Operate independent trusted-local conversations
+
+This ExecPlan follows `.planning/PLANS.md`. It is a living account of implementation and evidence, not authority to activate a provider or merge another department.
+
+## Purpose / Big Picture
+
+The operator can select independent real Codex conversations, retain an unsent message for each, inspect output and activity, and direct approval, follow-up, or Stop to exactly that conversation. A second conversation can be prepared from the existing fixed-source agent draft without closing the first. Selecting or refreshing runs does not replace the source editor, task draft, or graph cameras.
+
+## Progress
+
+- [x] Read the designated worktree instructions, ROOT wave contract, current single-conversation pane and protocol.
+- [ ] Implement independently testable fleet selection, composer and response freshness state.
+- [ ] Join only ROOT-cleared F1 protocol and mount the real fleet cockpit.
+- [ ] Exercise targeted controls, stale responses, retained work and controlled owned virtual UI; converge native review.
+- [ ] Push ready PR, synchronize Ditz, and report exact integration boundary to ROOT.
+
+## Surprises & Discoveries
+
+The original pane has one snapshot, one composer, and one global response sequence. Changing selected runs requires separating the latest run-list observation from each conversation's own response freshness. Current protocol rejects extra request fields, so renderer requests cannot use the new token/expectedTurnId fields until the reviewed producer contract is available.
+
+## Decision Log
+
+Use per-run state keyed by the core-issued run token, with separate list and snapshot watermarks. Run selection is UI state, never inferred from a late command response. Draft text is local presentation state and is cleared only for the exact acknowledged text of the exact run. No pending command is retried automatically.
+
+Keep the existing trusted-local profile and preparation confirmation. Do not create another fixture-only cockpit or weaken runtime validation. F1 owns protocol/core and W6 consumes a reviewed pushed increment only after ROOT clearance. T5 can use a minimal explicit select-run prop and snapshot callback without a new global event bus.
+
+## Outcomes & Retrospective
+
+Implementation and verification pending. This lane does not prove a live model turn; controlled provider/UI evidence will be labelled, and F1 owns the bounded real multi-conversation proof.
+
+## Context and Orientation
+
+`app/renderer/agents/TrustedLocalPane.tsx` currently mounts inside the existing AgentDock in `app/renderer/App.tsx`. It uses the typed preload bridge, validates replies with `parseCoreResponseForRequest`, prepares source/task context in core, and sends explicit trusted-local commands. `protocol/trusted-local.ts` is F1's shared declaration. `tests/trusted-local-pane.test.tsx` is the existing mounted UI suite. Add fleet helpers/tests alongside these without moving or re-keying the editor, AgentDock, or graph instances.
+
+## Plan of Work
+
+First add a small presentation state module which can accept validated snapshots and optional frozen run summaries, retain per-run composers, and reject stale observations. Then replace the single-run presentation with an accessible list plus selected conversation, explicit New conversation preparation, live transcript/activity, and exact-run controls. Keep old snapshots without optional fleet fields usable. Poll read-only selected snapshots with one in-flight read; stop on disposal or disconnection and fence results by core generation. Commands capture run token, observed turn and generation before awaiting. Preparation remains bound to the current fixed draft input and one-use launch confirmation.
+
+After ROOT clears F1, use its actual runtime schemas rather than local casts. Add mounted delayed-response, targeted command, archive and retention regressions. Extend an owned controlled virtual proof in a new `tools/fleet-cockpit` package, using the unchanged packaged core plus a deterministic provider where appropriate. No model request is permitted in W6.
+
+## Concrete Steps
+
+Run commands in `/home/tedks/Projects/swarm-ide/fleet-cockpit`. Materialize dependencies using `nix develop --command pnpm install --frozen-lockfile`. Add a focused Bazel target under `tools/fleet-cockpit` and run `nix develop --command bazel test //tools/fleet-cockpit:unit --jobs=3 --test_output=errors`. Build the actual package with `nix develop --command bazel build //:desktop-bundle --jobs=3`. Run the owned virtual target with `SWARM_VIRTUAL_DISPLAY=:152 SWARM_VIRTUAL_DESKTOP_PORT=55232`; use a different validated free pair if necessary, never the user's forwarded display.
+
+## Validation and Acceptance
+
+Tests must show that selecting B while A's send/approval/Stop is pending retains B's transcript and composer; A's acknowledged send cannot clear B or later text in A. Refreshes cannot replace newer same-run observations. A stale generation cannot deliver queued work or populate the new core. Archived runs cannot send, approve, stop or claim resumability. Preparing another run requires the existing explicit review and confirmation and does not dispatch on mount. Existing single-run tests remain valid. Owned virtual evidence must retain source bytes, logical cursor, draft and graph identity/cameras, with zero new renderer exceptions and no product model turn.
+
+## Idempotence and Recovery
+
+The renderer only issues read-only observations automatically. Uncertain command results are labelled and reconciled by observation, never repeated. Unsent messages remain local to each run while mounted. A core change clears command/preparation authority while retaining text only as non-executable local drafts. ROOT owns merge/adoption; preserve all worktrees and evidence.
+
+## Artifacts and Notes
+
+Operational milestone and ownership requests live in `/tmp/swarm-ide-real-swarms.Djy75P/fleet-cockpit/seam.md`. The deterministic issue ID is `fleet-cockpit-w6-20260907`.
+
+## Interfaces and Dependencies
+
+Use React and existing protocol types only, with no new dependencies. F1 optional fields are `runs`, `taskReference`, `activities`, and `archived`; `trusted.snapshot` accepts optional token and `trusted.send` optional expectedTurnId. New UI always supplies its observed turn expectation. A possible T5 seam is explicit `{id, runToken}` selection intent plus an `onSnapshot` callback delivering only validated core state. Agree the exact seam before App integration.
+
+Initial plan records scope, assumptions and evidence requirements before code changes.
