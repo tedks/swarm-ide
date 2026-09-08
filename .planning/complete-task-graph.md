@@ -13,9 +13,10 @@ must show all of those neighbors.
 ## Progress
 
 - [x] (2026-09-08 21:05Z) Inspected graph, client, existing tests and schema; claimed `swarm-complete-task-graph`.
-- [ ] Reproduce completeness failures with contract-valid large input.
-- [ ] Remove graph count caps and coalesce progress without weakening cancellation.
-- [ ] Run focused tests/types and native review, push a ready PR and hand off.
+- [x] (2026-09-08 21:09Z) Reproduced five pure completeness failures and two mounted completeness/lifetime failures. Nine existing client tests also exposed their mismatched workspace fixture.
+- [x] (2026-09-08 21:12Z) Removed graph caps and coalesced progress; 27 focused tests and both TypeScript boundaries passed after the fixture correction.
+- [x] (2026-09-08 21:16Z) Reproduced the native review slot-saturation finding, then repaired it; 31 focused tests/types passed and native fix-delta review was CLEAN. Code pushed as `633aea1` in PR138.
+- [ ] Finish documentation/status handoff and mark the pushed PR ready for ROOT.
 
 ## Surprises & Discoveries
 
@@ -23,6 +24,20 @@ The old projection tests supplied dependency arrays without updating summary
 counts. New large examples will parse through the actual task schemas. The core
 permits 32 incoming and 32 outgoing declarations per task, sufficient for a
 64-neighbor regression without changing that unrelated reader contract.
+
+The first new check launcher lacked executable mode, so its first invocation
+never ran tests. The actual baseline then recorded 16 failures / 10 passes:
+seven intended graph/lifetime failures and nine inherited graph-client setup
+failures. `initialSnapshot()` names `project:test-fixture` while those tests pass
+tasks for `project:swarm-ide`. Aligning only `snapshot.project.id` restores the
+strict client tests. A first correction mistakenly used `snapshot.repository.id`;
+that failed visibly before being corrected, not hidden as an environment failure.
+
+Native review found that restarting a batch while canceled RPCs still occupied
+all four slots returned null for all new reads. Its added regression was one
+failure / 27 passes before repair. Waiting abortably for slots fixes this without
+increasing actual request concurrency. The current local metadata tree contains
+311 Ditz issue files; this count is read-only Git evidence, not an app/UI proof.
 
 ## Decision Log
 
@@ -32,9 +47,20 @@ progress publications so cached results do not rebuild the entire graph for each
 detail. Keep the plan schema and shared canvas unchanged; parallel workers own
 those concerns. ROOT owns merge and managed-app adoption.
 
+The graph client now waits for occupied read slots and rechecks identity after
+waking. It still owns each sent RPC until settlement. Use indexed task IDs in the
+edge outline and component-local edges for layout to avoid repeated full scans.
+These are narrow scaling corrections inside the existing graph, not a new
+rendering platform. The shared canvas implementation and its tab/camera API are
+unchanged.
+
 ## Outcomes & Retrospective
 
-Pending implementation and verification.
+The complete available graph and every direct neighbor now survive projection.
+31 focused tests, both TypeScript checks and native fix-delta review are clean.
+The mounted test uses a canvas stand-in to prove TaskGraph keeps that component's
+identity, selection and camera state; no new actual ReactFlow/desktop proof is
+claimed. ROOT still owns merge, canonical index mapping integration and adoption.
 
 ## Context and Orientation
 
@@ -92,4 +118,5 @@ The final recap records PR, checks, review, Ditz status and remaining limits.
 Existing task schemas, client bridge, projection types and React canvas remain
 the integration boundary. No new package, provider or shared App seam is planned.
 
-Initial plan recorded before code changes, 2026-09-08.
+Initial plan recorded before code changes, 2026-09-08. Updated after focused
+verification and native convergence to preserve actual failures and proof limits.
