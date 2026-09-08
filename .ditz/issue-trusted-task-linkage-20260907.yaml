@@ -18,3 +18,11 @@ log_events:
   who: Ted Smith
   what: started
   comment: ""
+- time: 2026-09-08T00:47:40-00:00
+  who: Ted Smith
+  what: commented
+  comment: 'PR74 independent consumer ca1fd9a: exact admitted task filtering, correlated
+    output, explicit conversation selection and archived/retained truth. Native source/fix/tooling
+    CLEAN, quality1804/135, focused8 and owned standalone component proof1308ms cleanup1.
+    No actual admission/model or production App graph claim. ROOT-cleared F1/W6 join
+    remains; issue stays in progress until integrated landing.'
