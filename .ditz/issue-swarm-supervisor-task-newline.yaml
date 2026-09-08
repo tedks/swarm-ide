@@ -33,3 +33,12 @@ log_events:
     or fresh-compaction gates. PR #99 is pushed and ready; focused local Bazel supervisor
     verification and native Codex-only review underway. No live session launches/messages
     or supervisor restarts.'
+- time: 2026-09-08T06:01:09-00:00
+  who: Ted Smith
+  what: commented
+  comment: 'Implementation complete in pushed ready PR #99, commit 5ad89889129ba21106a1a7f8c6db67b69df0ee11.
+    One focused nix develop --command bazel test --jobs=3 //tools/supervisor:unit
+    --test_output=errors passed all 25 tests (3.8s), including 8 new exact-text cases;
+    diff check passed. Native Codex review CLEAN with zero findings; full record posted
+    in PR. Remains in_progress only pending ROOT-owned normal merge. No foreign review,
+    hosted-CI wait, broad suite, live session launch/message or live supervisor mutation.'
