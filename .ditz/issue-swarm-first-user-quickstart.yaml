@@ -25,5 +25,15 @@ log_events:
   who: Ted Smith
   what: started
   comment: ""
+- time: 2026-09-08T18:19:10-00:00
+  who: Ted Smith
+  what: commented
+  comment: Replaced development-only README/evaluator setup with installed nix run/profile
+    commands, per-project profiles and existing tmux/registry examples. Rewrote the
+    5-minute tour around current design/source/live agents/Activity/Work Log/worktree
+    inspector, retained pending navigation/build/receipt limits, and frontloaded truthful
+    Mac container scope. CLI 19 checks passed; installed help and links checked; native
+    review corrected profile upgrades and converged clean. PR123 is pushed for ROOT
+    normal landing; no runtime or app changes.
 blocks:
 - swarm-close-working-loop
