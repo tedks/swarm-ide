@@ -22,6 +22,11 @@ log_events:
   who: Ted Smith
   what: blocked by swarm-container-evaluator-demo
   comment: ""
+- time: 2026-09-08T13:28:46-00:00
+  who: Ted Smith
+  what: blocked by swarm-usability-join
+  comment: ""
 blocked_by:
 - swarm-installable-cli-flake
 - swarm-container-evaluator-demo
+- swarm-usability-join
