@@ -9,8 +9,8 @@ type: feature
 component: default
 release:
 reporter: Ted Smith <tedks@riseup.net>
-status: in_progress
-disposition:
+status: closed
+disposition: fixed
 creation_time: 2026-09-08T05:37:17-00:00
 references: []
 log_events:
@@ -40,3 +40,11 @@ log_events:
     separately tested. Final actual probes show Pairmarket8 relationships, Speech13
     withinpartialcoverage, both website destinations and Pure Sky Python+Node. Configured
     sites are not live deployment metrics. ROOT owns normal merge/adoption and closure.
+- time: 2026-09-08T06:07:25-00:00
+  who: Ted Smith
+  what: 'closed: fixed'
+  comment: 'Merged PR96 as9652204d: generic manifest components/workflow categories,
+    supported local workspace/dependency relationships and configured sites, empty
+    instruments hidden. Actual Pairmarket8 links and website2 destinations; declared
+    sites are not live health.96 focused/types/package/native CLEAN plus actual packaged
+    authored-catalog path655ms. Remaining adapters tracked separately.'
