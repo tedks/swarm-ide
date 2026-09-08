@@ -1,0 +1,19 @@
+id: swarm-target-build-jobs
+title: Build real selected targets and keep useful build jobs visible
+desc: 'Assigned true ROOT fork, current reviewed220742e base. Concrete scope and ownership:
+  /tmp/swarm-ide-demo-close.BrSWmt/build-jobs/task-prompt. Start the issue, maintain
+  repo design and human accomplishment notes, push focused checked/reviewed PR. No
+  shared app adoption. Build real selected targets and keep useful build jobs visible.'
+type: feature
+component: default
+release:
+reporter: Ted Smith <tedks@riseup.net>
+status: unstarted
+disposition:
+creation_time: 2026-09-08T18:01:06-00:00
+references: []
+log_events:
+- time: 2026-09-08T18:01:06-00:00
+  who: Ted Smith
+  what: created
+  comment: ""
