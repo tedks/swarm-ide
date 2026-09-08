@@ -13,6 +13,7 @@ An operator can submit an instruction, switch agents or reload the renderer, and
 - [x] (2026-09-08 13:47Z) Agreed narrow SessionSteering hook ownership with chat-input; actual form/save-before-dispatch unit proof and packaged held receipt/full document reload/native clipboard proof pass.
 - [x] (2026-09-08 13:50Z) Final native delta CLEAN; PR110 ready and implementation pushed, Ditz outcome recorded; ROOT owns normal merge/adoption.
 - [x] (2026-09-08 13:54Z) Direct user clarification: exposed the existing checked attach command beside the conversation.63 focused tests/both types pass; narrow native review CLEAN. No process or messaging call on Copy.
+- [x] (2026-09-08 14:00Z) Normally composed landed keyboard PR109, preserving all IME/focus/keyboard attributes and saved-message adapter. Narrow native conflict review CLEAN; joined Enter-to-saved-outbox/reload and peer keyboard checks pass.
 
 ## Assumptions and boundaries
 
@@ -61,3 +62,5 @@ Revision note: initial plan records concrete retention behavior and narrow peer 
 Revision note: completion evidence, final form ownership and bounded archive/steering limits added after actual local and packaged verification.
 
 Revision note: the targeted project/tmux clarification adds a copy-only terminal fallback in the existing conversation header. Linux-install owns launch/discovery. This change reuses the core-provided command and performs no process/message operation; it adds no renderer callback or protocol schema.
+
+Revision note: user-authorized keyboard composition uses normal PR109 merge17b0e328 (base a8c8ea1 plus reviewed4011805; docs only after cleared4d0226e). The only conflict was SessionSteering imports/textarea; both behaviors were preserved. The focused target includes peer keyboard/editor-observation cases and explicitly drives the existing saved-message form test via Enter. No new GUI/model run or cursor-fix claim.

@@ -133,7 +133,7 @@ describe("saved outgoing messages", () => {
     expect(screen.getByRole("status", { name: "Queued" })).toBeTruthy();
   });
 
-  it("shows exact form-submitted text before a held reply, then retains it after a full memory remount", async () => {
+  it("shows exact Enter-submitted text before a held reply, then retains it after a full memory remount", async () => {
     const disk = storage(), memory = new SteeringMemory(disk), selected = client();
     selected.detail = { session: { id: id(1), label: "Root", evidence: "local", status: "observed", parentId: null,
       ancestry: "root", observationId: "a".repeat(64), observedAt: "2026-09-08T12:00:03.000Z", message: "", contextPaths: [] },
@@ -149,7 +149,7 @@ describe("saved outgoing messages", () => {
     const view = render(<AgentConversation client={selected} bridge={bridge} memory={memory} onContext={() => {}} />);
     const text = "  Exact submitted text\n👋\n";
     fireEvent.change(screen.getByRole("textbox"), { target: { value: text } });
-    fireEvent.click(screen.getByRole("button", { name: "Send message" }));
+    fireEvent.keyDown(screen.getByRole("textbox"), { key: "Enter", code: "Enter" });
     expect(view.container.querySelector(".conversation-outgoing p")?.textContent).toBe(text);
     expect(readOutbox(disk)[0].text).toBe(text);
     expect(request).toHaveBeenCalledTimes(1);

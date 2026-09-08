@@ -62,6 +62,14 @@ its active turn ID. The inspected installation has no running default app-server
 control socket; creating another server/resume is not a supported shortcut for
 steering that existing TUI. The checked tmux command is the immediate manual route.
 
+Both registered-session and native Codex message boxes use `use-chat-submit.ts`:
+Enter submits their existing form, Shift-Enter inserts a newline, and composition
+confirmation or a held Enter never sends. The form's original target, validity
+and pending-request guards remain authoritative; this keyboard shortcut adds no
+sender, retry or delivery claim. The shortcut is also available in the textarea's
+hover hint. Focused checks in `tests/chat-input.test.tsx` mount both real forms
+and test their existing bridge paths with controlled responses.
+
 Native trusted conversations, approvals, forks, new drafts and saved history
 remain mounted in the secondary **Native agents / New** tab. Legacy stored runs
 keep their individual tabs; the competing old run-list mount is removed. Exact
@@ -102,6 +110,12 @@ checks initial selection, per-target drafts, remount/unknown-delivery behavior,
 native controls and the existing observation/messaging cases. Its `:smoke` target
 reads actual registered sessions on an owned virtual desktop, but intercepts Send
 with a controlled receipt before core; it is not a real message to those agents.
+That packaged journey uses native Enter and Shift-Enter in the registered
+conversation textarea and samples the source caret across a real background
+conversation read, retaining the exact editor instance, state and focus.
+The shared keyboard cases can be run with
+`//tools/demo-syntax:editor-tests --test_arg=tests/chat-input.test.tsx`;
+the helper is already part of the shared application source inputs.
 
 `//tools/message-outbox:checks` exercises saved exact text, queue/error/unknown
 states, storage refusal, target identity, restart recovery, chronological rows,
