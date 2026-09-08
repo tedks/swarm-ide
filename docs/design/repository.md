@@ -14,13 +14,16 @@ collapsing these distinct questions into one graph.
 | Declared services/interfaces | [service-topology.ts](../../core/service-topology.ts), [provider.ts](../../core/provider.ts) | Service graph and declaration navigation |
 | Selected facts and links | [context/compose.ts](../../app/renderer/context/compose.ts) | [ContextPane](../../app/renderer/context/ContextPane.tsx) |
 | Change observation | [working-world-observer.ts](../../core/working-world-observer.ts), [watchers.ts](../../core/watchers.ts) | Invalidates or refreshes derived observations |
+| Automatic build context | [use-build-graph.ts](../../app/renderer/repository/use-build-graph.ts) | Shares startup/source-change/return observations across graph and Context consumers |
 | Local servers and containers | [project-context/provider.ts](../../core/project-context/provider.ts) | [ProjectContextPanel](../../app/renderer/project-context/ProjectContextPanel.tsx), automatic worktree-scoped runtime instruments |
 | Declared project components and sites | [project-context/catalog.ts](../../core/project-context/catalog.ts) | [ProjectCatalogPanel](../../app/renderer/project-context/ProjectCatalogPanel.tsx), manifest relationships and configured destinations |
 | Registered agent worktrees | [worktree-inspection.ts](../../core/worktree-inspection.ts) | [AgentWorktreeBrowser](../../app/renderer/AgentWorktreeBrowser.tsx), read-only directories, changed paths and master comparison |
 
 The Bazel graph uses an actual per-repository query rather than a hardcoded demo
-directory. Explicit observation/refresh and working-world changes govern its
-cache. A target with no dependency edges is still a target. Query results are
+directory. Its shared hook supports automatic opened-project startup, debounced
+working-world changes and return from an inactive window. App enables that policy
+at its mount; explicit Refresh remains available. No settled polling or binary
+build loop is added. A target with no dependency edges is still a target. Query results are
 not compiled binaries and do not mean a deployment exists.
 
 Service topology needs a registered declaration/artifact; a plain repository
@@ -68,6 +71,8 @@ explorer, not a second editable workspace or a whole-graph repository switch.
 
 The producer, protocol and renderer modules enter `//:quality_sources`, which
 feeds `//:desktop-bundle`. In [tools/build-graph/BUILD.bazel](../../tools/build-graph/BUILD.bazel),
+`//tools/build-graph:checks` consumes `//:quality_sources` and verifies update
+triggers, quietness, input failure recovery and process lifetime. The separate
 `//tools/build-graph:packaged-build-graph-test` consumes that bundle plus query
 test sources and the owned virtual-desktop driver. It exercises real disposable
 Bazel repositories; it is not the application build graph itself.

@@ -181,7 +181,7 @@ export class BuildGraphProvider {
   private controller = new AbortController();
   private closed = false;
   private checkedAt = 0;
-  private attemptedDigest?: string;
+  private failedQuery?: { digest: string; message: string };
   private refreshQueued = false;
   private cleanupBlocked = false;
   constructor(private readonly root: string, repositoryId: string, worldId: string,
@@ -194,9 +194,12 @@ export class BuildGraphProvider {
     if (refresh && this.pending) this.refreshQueued = true;
     if (!this.pending && (refresh || this.dependencies.now() - this.checkedAt >= 1500 || !this.checkedAt)) {
       this.checkedAt = this.dependencies.now();
-      if (refresh || this.state.message === "Build graph has not been requested.") this.state = { ...this.state, status: "refreshing", message: "Observing Bazel declarations; not building binaries." };
+      // Report the in-flight input sample too, so an event-driven consumer knows
+      // to collect its result rather than stopping at the old cached status.
+      this.state = { ...this.state, status: "refreshing", message: "Checking repository build inputs." };
       this.pending = this.reconcile(refresh).finally(() => {
         this.pending = undefined;
+        this.checkedAt = this.dependencies.now();
         if (this.refreshQueued && !this.closed) { this.refreshQueued = false; this.observe(true); }
       });
     }
@@ -204,23 +207,39 @@ export class BuildGraphProvider {
   }
   private async reconcile(refresh: boolean) {
     const generation = this.state.generation + 1;
+    let queryingDigest: string | undefined;
     try {
       const before = await this.dependencies.digest(this.root, this.controller.signal);
       if (this.closed) return;
       if (before === null) { this.state = { ...this.state, status: "unavailable", message: "No registered local WORKSPACE or MODULE.bazel; Bazel graph provider unavailable." }; return; }
-      if (!refresh && (this.state.graph?.inputDigest === before || this.attemptedDigest === before)) return;
-      this.attemptedDigest = before;
+      if (!refresh && this.failedQuery?.digest === before) {
+        this.state = { ...this.state, status: "error", message: this.failedQuery.message }; return;
+      }
+      if (!refresh && this.state.graph?.inputDigest === before) {
+        this.failedQuery = undefined;
+        this.state = { ...this.state, status: "current", message: "Build declarations are current." }; return;
+      }
+      this.failedQuery = undefined;
+      queryingDigest = before;
       this.state = { ...this.state, generation, status: "refreshing", message: "Build inputs changed or Refresh requested; retained graph is not current." };
       const output = await this.dependencies.query(this.root, this.controller.signal);
       const parsed = parseBuildQuery(output);
+      // A failed post-query input read is not a failed query of these inputs.
+      // Leave passive recovery possible; never publish unvalidated query bytes.
+      queryingDigest = undefined;
       const after = await this.dependencies.digest(this.root, this.controller.signal);
       if (this.closed) return;
-      if (before !== after) { this.attemptedDigest = undefined; this.state = { ...this.state, status: "stale", message: "Build inputs moved during query; retained result only. Refresh to observe again." }; return; }
+      if (before !== after) { this.state = { ...this.state, status: "stale", message: "Build inputs changed during the query; checking again." }; return; }
+      queryingDigest = before; // Final query-schema failures also require deliberate retry.
       const graph = BuildGraphDataSchema.parse({ ...parsed, repositoryId: this.state.repositoryId, worldId: this.state.worldId, inputDigest: before, observedAt: new Date(this.dependencies.now()).toISOString(), command: "bazel query --noimplicit_deps --notool_deps //...:*" });
       this.state = { ...this.state, status: "current", graph, message: "Current local declaration observation; not compilation or deployment evidence." };
     } catch (error) {
       if (error instanceof BuildQueryCleanupError) this.cleanupBlocked = true;
-      if (!this.closed) this.state = { ...this.state, status: "error", message: (error instanceof Error ? error.message : "Build graph observation failed").slice(0, 512) };
+      if (!this.closed) {
+        const message = (error instanceof Error ? error.message : "Build graph observation failed").slice(0, 512);
+        if (queryingDigest) this.failedQuery = { digest: queryingDigest, message };
+        this.state = { ...this.state, status: "error", message };
+      }
     }
   }
   async dispose(): Promise<void> { this.closed = true; this.controller.abort(); await this.pending; if (this.cleanupBlocked) throw new BuildQueryCleanupError("Build query cleanup remains unconfirmed"); }

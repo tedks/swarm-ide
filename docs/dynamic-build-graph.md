@@ -1,7 +1,7 @@
 # Build graph: current repository declarations
 
-Open **Build graph**, or enable directory **Build links**, to request a real
-Bazel observation for the registered repository. There is no production fallback
+The repository has a shared real Bazel observation, available to **Build graph**,
+directory **Build links** and Context. There is no production fallback
 to the old Swarm-only capture. Follow file, manual target patterns, source opening
 and existing graph cameras use the same observation. Context reuses an available
 observation for exact declared file references; merely moving the source cursor
@@ -32,11 +32,20 @@ Starlark. Use repositories you intend to load with Bazel.
 
 ## Refresh and truth labels
 
-While a graph/link consumer is visible, one renderer request chain samples status
-at 500 ms; the core coalesces work and samples inputs at most once per 1.5 seconds.
-Queries occur on first demand, explicit **Refresh build graph**, or changed input
-fingerprints—not on every request, camera movement, React render or source edit.
-Hidden consumers stop the chain. Reopening them revalidates retained data.
+`useBuildGraph` observes once when enabled for the opened project. Its optional
+`changeToken` is the existing working-source revision: changes debounce for two
+seconds. Hidden or blurred documents stop scheduling, and returning to the app
+revalidates after two seconds. A settled observation has no polling timer. While
+an input sample or query is running, one request chain checks its result every
+500 ms, for at most 40 seconds per update cycle. The core samples inputs at most
+once per 1.5 seconds and coalesces requests. Queries occur only on first demand,
+explicit **Refresh build graph**, or changed build inputs—not every source edit.
+
+The cockpit App owner mounts this shared hook with live-core readiness independent
+of pane visibility, and passes `snapshot.revisions.working.id` as `changeToken`.
+The hook alone does not change the App's selected-pane policy. The fixed example
+service-artifact build is a separate explicit operation; this automatic path
+never compiles binaries or advances the built/deployed revision.
 
 The fingerprint covers tracked plus nonignored filename membership, physical
 presence/kind, symlink targets, and bytes of BUILD, BUILD.bazel, WORKSPACE variants,
@@ -70,6 +79,12 @@ confirmed cleanup. Unconfirmed cleanup retains scratch evidence, blocks subseque
 queries and refuses successful shutdown attestation. No unowned Bazel server is
 killed. Graph refresh does not grant agent/model/provider authority.
 
+If a temporary input-read failure or missing workspace marker is repaired and
+the inputs match the retained graph, that graph becomes current without another
+query. A failed query of those same inputs remains an error until explicit retry
+or an input change. This distinction keeps recovery useful without hiding a
+failed refresh.
+
 ## Reproducible acceptance
 
 The dedicated `//tools/build-graph:packaged-build-graph-test` creates two independent
@@ -81,7 +96,9 @@ turns. These small repositories are authored test inputs to real Bazel, not capt
 or injected provider observations. Controlled unit tests separately cover malformed
 output, overflow, timeout, cancellation, moved inputs and unavailable providers.
 
+`//tools/build-graph:checks` runs focused automatic hook, provider, process-owner
+and legacy explicit service-startup checks plus both TypeScript boundaries.
 Run all builds/tests through Nix and Bazel with `--jobs=3`. Desktop acceptance must
-own a virtual X11 desktop and port55174 under the shared virtual-test lock; never
-automate the physical preview. B1 evidence and precise test attribution are recorded
+own a virtual X11 desktop and an available configured port; never automate the
+physical preview. B1 evidence and precise test attribution are recorded
 in `.planning/dynamic-build-graph.md` and its linked step directory.
