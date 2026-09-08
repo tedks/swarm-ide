@@ -8,8 +8,8 @@ type: task
 component: default
 release:
 reporter: Ted Smith <tedks@riseup.net>
-status: in_progress
-disposition:
+status: closed
+disposition: fixed
 creation_time: 2026-09-08T03:40:02-00:00
 references: []
 log_events:
@@ -59,6 +59,12 @@ log_events:
   comment: Final incoming F7 seam documented prospectively in agents.md at6e14d9b,
     docs-only after reviewed6787462; real shared build/focused unit labels checked.
     ROOT normal merge pending, no code/test cycle added.
+- time: 2026-09-08T04:08:27-00:00
+  who: Ted Smith
+  what: 'closed: fixed'
+  comment: 'Merged PR86: system design and six component docs now browse through graphs
+    into actual Bazel relationships; focused checks and real packaged navigation passed.
+    Main cockpit placement joins in C7.'
 blocks:
 - swarm-operator-demo
 blocked_by:
