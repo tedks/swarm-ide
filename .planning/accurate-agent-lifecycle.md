@@ -13,9 +13,10 @@ Recording the accomplishment in Ditz is a separate action.
 
 - [x] (2026-09-08) Confirmed WorkLogService writes completed-turn summaries as working.
 - [x] Read the wave ownership and inspected current observer and Work Log files.
-- [ ] Implement and publish the shared lifecycle contract and bounded transcript projection.
-- [ ] Repair new and corroborated legacy Work Log states without new summary calls.
-- [ ] Run focused regression checks, native review, push a ready PR and hand off.
+- [x] (2026-09-08 13:46Z) Implemented shared lifecycle and bounded transcript projection; code3e0b007 pushed.
+- [x] Repaired new and corroborated legacy Work Log states without new summary calls.
+- [x] Focused152 tests/types passed; native review converged clean after cache corrections.
+- [x] Ready PR106 published and Ditz accomplishment handoff prepared; ROOT owns landing and renderer adoption.
 
 ## Surprises & Discoveries
 
@@ -23,17 +24,33 @@ The external observer already bounds individual tails and the whole fleet, but
 only exposes whether a transcript was readable. That availability is not an
 execution state. Work Log recording currently changes the execution label.
 
+Actual Codex0.153.4 forks rewrite inherited outer timestamps but preserve
+`started_at`. Failed task_complete records carry an explicit error object.
+Async human questions return acceptance, not answers, and do not pause the agent.
+Native review found stale cache after same-header growth rewrites and oversized
+records; bounded raw overlap checks and unknown resets fix both. A follow-up
+review corrected truncation cache publication with read-owner identity checks.
+
 ## Decision Log
 
 Use only explicit own-session harness events, not file age, tmux presence or a
 tool command failing. Unknown is a legitimate state when the bounded observation
 does not contain sufficient evidence. Compute lifecycle before trimming activity.
 Keep schema fields additive for older saved records and existing UI consumers.
+An intentional interruption and an ambiguous second-precision fork birth are
+unknown, not fabricated failure/success. Legacy seen-only boundary attempts are
+unknown until actual terminal success/failure is available.
 
 ## Outcomes & Retrospective
 
-Implementation and evidence pending. The activity-ui department owns visible
-badges; this department publishes core state and preserves saved outcomes.
+The core publishes independent current execution state and historical outcomes.
+Focused observer126 and Work Log26 tests passed with TypeScript boundaries;
+one existing real-send test remains deliberately skipped. Native review CLEAN.
+No provider or GUI proof was claimed. The activity-ui department owns badges;
+plans owns the existing malformed index repair and new source mappings.
+The old WorkLogPanel and WorkLogEntryDetail binary status labels must be adopted
+with activity-ui's enum-aware consumer. This joined adoption requirement was
+sent directly to that owner and ROOT.
 
 ## Context and Orientation
 
@@ -86,3 +103,8 @@ Use existing Zod contracts and Node file readers. Shared lifecycle values are
 working, waiting, failed, completed and unknown, with an evidence timestamp and
 turn identity only where established. No provider, registry or process-control
 dependency is added.
+
+Plan updated after implementation and native convergence on2026-09-08. Focused
+evidence is attributed to code3e0b007; later plan/handoff edits do not claim new
+runtime tests. The sampled installed harness established actual terminal shapes;
+waiting correlation remains deterministic-record coverage, not a real input run.
