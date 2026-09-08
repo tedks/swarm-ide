@@ -1,0 +1,22 @@
+id: swarm-project-context-sui
+title: Connect safe Sui and Walrus deployment indicators
+desc: Follow automatic manifest/runtime PR96 with selected read-only chain identity,
+  deployed package/registry consistency and dated Walrus Site storage/retrieval observations.
+  Reuse PredictionBook launch-readiness full-genesis/GetServiceInfo contract and exact
+  non-secret project deployment metadata; generalize to Pairmarket/Speech devstacks.
+  Never infer deployed IDs from Move 0x0, stale docs, image names or .env values;
+  no account records, signing, deployment writes or credentials. Keep configured versus
+  observed site state separate.
+type: feature
+component: default
+release:
+reporter: Ted Smith <tedks@riseup.net>
+status: unstarted
+disposition:
+creation_time: 2026-09-08T05:49:47-00:00
+references: []
+log_events:
+- time: 2026-09-08T05:49:47-00:00
+  who: Ted Smith
+  what: created
+  comment: ""
