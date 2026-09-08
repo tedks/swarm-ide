@@ -72,5 +72,12 @@ log_events:
     across reload and uncertainty, compact receipts and same-agent terminal copy retained
     with Enter/Shift-Enter. No automatic replay or unsupported delivered claim. ROOT
     will adopt with one protected restart.'
+- time: 2026-09-08T14:16:10-00:00
+  who: Ted Smith
+  what: commented
+  comment: The merged outbox and keyboard controls are now running in the managed
+    local IDE after the user-approved restart. Existing profile and Work Log were
+    preserved. Completed worker retired; message-delivery correlation and archive
+    controls remain follow-ups.
 blocks:
 - swarm-usability-join
