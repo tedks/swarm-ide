@@ -22,5 +22,12 @@ log_events:
   who: Ted Smith
   what: started
   comment: ""
+- time: 2026-09-08T13:46:58-00:00
+  who: Ted Smith
+  what: commented
+  comment: Implemented a Docker-only browser desktop around the real Electron bundle,
+    with a small editable Git design demo and explicit per-repo mounts. Proved Linux
+    namespace prerequisite under the scoped profile without added capabilities; actual
+    image/browser verification is underway. No Mac execution claim or public image.
 blocks:
 - swarm-usability-pass
