@@ -48,6 +48,13 @@ log_events:
     proof issue work-log-proof-1788840120864 retained one note after two writes. Focused19
     tests/typechecks and scoped native convergence pass; C7 mount/ROOT landing remain.
     No automatic task closure, model replay, worker messaging or app adoption.'
+- time: 2026-09-08T04:09:27-00:00
+  who: Ted Smith
+  what: commented
+  comment: 'C7 integration seam completed: onOpen(entry)/onAgent/onTask callbacks,
+    compatible old names, exported pure WorkLogEntryDetail. 21 focused tests/typechecks
+    pass; native light delta CLEAN. No extra model call; same PR83 awaiting ROOT normal
+    merge.'
 blocks:
 - swarm-operator-demo
 blocked_by:
