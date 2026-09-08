@@ -29,5 +29,15 @@ log_events:
     with a small editable Git design demo and explicit per-repo mounts. Proved Linux
     namespace prerequisite under the scoped profile without added capabilities; actual
     image/browser verification is underway. No Mac execution claim or public image.
+- time: 2026-09-08T14:19:17-00:00
+  who: Ted Smith
+  what: commented
+  comment: Built a Docker-only evaluator path around the real Electron app with a
+    small Git/design project, localhost browser access and generated desktop password.
+    Actual Linux amd64 image and browser keyboard opening README passed, with renderer
+    namespace/seccomp/no-new-privileges evidence and exact owned cleanup. Ten direct
+    checks pass; native review converged. Mac/ARM validation and the denied owned-process
+    proc mount are explicit separate follow-ups; no host agents/accounts/public image
+    implied.
 blocks:
 - swarm-usability-pass
