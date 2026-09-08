@@ -9,3 +9,19 @@ sh_test(
     local = True,
     timeout = "short",
 )
+
+genrule(
+    name = "live-bundle",
+    srcs = ["build-live.sh", ":sources", "//:quality_sources", "//:package.json"],
+    outs = ["live.cjs"],
+    cmd = "bash $(location build-live.sh) $@ $(location //:package.json)",
+    local = True,
+    tags = ["manual"],
+)
+
+sh_binary(
+    name = "live",
+    srcs = ["live.sh"],
+    data = [":live-bundle", "//:quality_sources"],
+    tags = ["manual"],
+)
