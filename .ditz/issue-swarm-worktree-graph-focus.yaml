@@ -1,0 +1,16 @@
+id: swarm-worktree-graph-focus
+title: Rebind graph navigation to the selected agent worktree
+desc: ""
+type: feature
+component: cockpit
+release:
+reporter: Ted Smith <tedks@riseup.net>
+status: unstarted
+disposition:
+creation_time: 2026-09-08T06:22:49-00:00
+references: []
+log_events:
+- time: 2026-09-08T06:22:49-00:00
+  who: Ted Smith
+  what: created
+  comment: ""
