@@ -1,0 +1,16 @@
+id: swarm-build-query-output-monitoring
+title: Revisit build-query buffering only if measured resource use becomes a problem
+desc: ""
+type: task
+component: default
+release:
+reporter: Ted Smith <tedks@riseup.net>
+status: unstarted
+disposition:
+creation_time: 2026-09-08T19:44:29-00:00
+references: []
+log_events:
+- time: 2026-09-08T19:44:29-00:00
+  who: Ted Smith
+  what: created
+  comment: ""
