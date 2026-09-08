@@ -12,7 +12,7 @@ Opening a project should show the running development servers and containers tha
 - [x] (2026-09-08 04:49Z) Recorded actual project inventory; chose generic Node/socket and Compose ownership defaults.
 - [x] (2026-09-08 05:06Z) Implemented validated observation, providers and standalone panel. Native review converged after finite Docker metadata admission, pinned daemon and retained-source fixes.
 - [x] (2026-09-08 05:10Z) Added only the coordinated import/panel mount and native HTTP(S) browser handoff in this worktree. ROOT still owns merge/adoption; no peer files or shared app changed.
-- [ ] Verify identity switching, cancellation, unavailable tooling and real owned desktop behavior; review, push and hand off to ROOT.
+- [x] (2026-09-08 05:12Z) Verified 38 focused tests plus both typechecks and shell/JavaScript syntax; native review converged. Actual packaged Node/HTTP link scenario passed in 664ms with zero renderer errors and owned cleanup. PR is pushed; ROOT owns normal merge/adoption.
 
 ## Surprises & Discoveries
 
@@ -26,7 +26,7 @@ Use existing manifests and concrete process/container ownership for automatic de
 
 ## Outcomes & Retrospective
 
-Core discovery is implemented and demonstrated against real Pure Sky/Goals runtime metadata. Focused contracts/provider/panel tests and typechecks pass; native review is clean for core changes. The panel and browser-link mount are implemented in the private feature worktree, with packaged checks running. No managed-app adoption or packaged-UI success is claimed until that check completes. Python/FastAPI and cloud observations are filed follow-ups rather than silently implemented.
+Core discovery is implemented and demonstrated against real Pure Sky/Goals runtime metadata. The panel is connected through production main/preload/core and the typed bridge. An actual disposable Node listener appeared automatically and a real native click reached the browser handoff; the test recorded that handoff without launching a browser. All 38 focused tests and typechecks passed, and scoped native review reached a clean fixpoint. The virtual desktop and test processes were cleaned. ROOT still owns normal merge and managed-app adoption. Python/FastAPI and cloud observations remain filed follow-ups, not live integrations.
 
 ## Context and Orientation
 
@@ -52,6 +52,10 @@ All discovery is read-only. Requests coalesce, expire and stop with the core; no
 
 The worker's concise handoff files are under `/tmp/swarm-ide-project-context.4Mi48a/`; `seam.md` identifies integration boundaries, and later inventory/verification files record actual findings and proof.
 
+Actual packaged evidence is also retained in `artifacts/project-context-proof/project-context/run.F0luLM/`. The scenario reports `realNodeServer: true`, the exact browser handoff URL, zero renderer errors and 664ms elapsed. The enclosing owned virtual harness reported `cleanup_complete=1`; physical `:0` was never automated.
+
 ## Interfaces and Dependencies
 
 Use Zod for the new `projectContext.observe` request/result. The request carries repository and world identity, never arbitrary filesystem roots or executable commands. Node filesystem APIs and bounded fixed Docker read commands live only in local core. The renderer consumes typed data and uses small reusable server/container rows. No new package dependency is intended.
+
+Revision note (2026-09-08): updated the living plan from intended discovery through observed runtime behavior and focused verification. Native review drove endpoint pinning, retained-source timestamps, bounded abandoned filesystem reads and complete Bazel verifier input declarations. No broader provider framework was added.
