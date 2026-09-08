@@ -35,3 +35,15 @@ log_events:
   who: Ted Smith
   what: started
   comment: ""
+- time: 2026-09-08T13:53:33-00:00
+  who: Ted Smith
+  what: commented
+  comment: 'Implemented in PR113: Tasks automatically adopts changed local metadata
+    after its normal visible/focus check, retains the old list while a read is pending
+    or fails, and leaves pinned task detail/agent attachment references unchanged.
+    Repeated failures at the same ref do not trigger repeated full scans; another
+    revision or rollback can recover. Final local checks passed124 tests in five focused
+    files and both TypeScript boundaries; native initial and fix-delta reviews CLEAN.
+    No GUI/model turn or shared app changes. PR ready for ROOT normal merge; keep
+    issue in progress until landed. First-read failure before any usable list remains
+    follow-up swarm-task-first-read-recovery.'
