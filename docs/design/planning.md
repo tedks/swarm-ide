@@ -24,7 +24,7 @@ lists and lets the operator expand them. `//tools/living-design:checks`
 reads the actual committed index through the core reader, preserving every source
 link; design edits must pass that inexpensive check before landing.
 
-The unified workspace starts with component/interface connections, task
+The unified workspace starts with a component responsibility hierarchy, task
 dependencies, repository navigation and the existing build/services chooser.
 One `usePlanNavigation` observation and selection serve the component graph,
 document and breadcrumbs. `PlanWorkspace` exposes these as layout slots rather
@@ -32,11 +32,18 @@ than duplicating readers. Read design opens full prose beside the same graph
 instances; implementation, task and guidance links remain in that reading area.
 The root selector keeps all authored design/plan forests reachable, including
 older plans with task, contract and lesson links.
-Selecting a component shows its incoming/outgoing interfaces and constraints.
+Selecting a component shows its own incoming/outgoing contracts and constraints,
+not the combined relationships of all its children. Optional connection `kind`
+and `detail` fields distinguish requests, results, data and navigation while
+older version 1 indices continue to work as generic contracts. A contract picker
+or explicit edge click/keyboard activation isolates that directed pair and shows
+its explanation. Selecting a contract never opens source, sends a request to an
+agent or changes the component selection; Explore deliberately navigates to its
+other endpoint. Core/workspace changes revoke the inspected contract.
 Build rules stay in their separate graph projection; component source and target
 lists link into it without guessing declarations.
 Long reference lists are expandable; the index does not discard their contents.
-Component containment is dashed and muted; authored interfaces retain their
+Component containment is dashed and muted; authored contracts retain their
 directions, with reciprocal links in separate lanes. Labels appear on focused
 interfaces or hovered/keyboard-focused edges, with exact incoming/outgoing
 connections also available in the inspector. A selected component shows its

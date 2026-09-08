@@ -4,6 +4,13 @@ Swarm trusts the local machine and its configured agent harnesses, while keeping
 privileged operations out of the renderer. The boundary is practical: a graph
 label or clicked document cannot become an arbitrary process command.
 
+The top-level Runtime area describes this routing and ownership boundary across
+the application, not a service separate from the Repository and Agents areas.
+Repository request/result arrows are two directions of one capability. Agent
+results distinguish the IDE-owned native app-server from the read-only transcript
+observation and checked queue handoff of an existing terminal owner. Reporting a
+terminal process never makes that process owned by the IDE.
+
 ## Lower-level map
 
 | Layer | Actual implementation | Responsibility |

@@ -101,10 +101,10 @@ describe("living system design", () => {
       }
     }
   });
-  it("renders connected top components then real target/input edges at component depth", () => {
+  it("renders top responsibilities then separate real target/input edges at component depth", () => {
     const top = designProjection(index, index.nodes[0]!);
     expect(top.nodes).toHaveLength(7);
-    expect(top.edges.some((edge) => edge.label === "Files & target definitions")).toBe(true);
+    expect(top.edges.every((edge) => edge.kind === "containment")).toBe(true);
     const leaf = implementationProjection(index.nodes[1]!);
     expect(leaf.edges).toContainEqual(expect.objectContaining({ source: "//:desktop-bundle", target: "//:quality_sources", label: "srcs" }));
   });

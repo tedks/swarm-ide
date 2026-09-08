@@ -3,6 +3,12 @@
 Activity answers “what is happening?” The Work Log answers “what was done?”
 Both are persistent cockpit instruments, but they serve different reading speeds.
 
+The component graph separates three outgoing contracts: **Open responsible
+agent** navigates to a conversation; **Latest saved summary** supplies the rail's
+historical one-line outcome; **Record outcome note** deliberately comments on a
+known already-closed Ditz issue. None of them starts or completes an agent or
+closes a task. Current lifecycle comes from agent evidence, not Work Log prose.
+
 Activity is a timestamped stream: an agent edited a file, ran a command, received
 a tool result or completed a turn. It should preserve agent/worktree identity so
 opening an event reveals the right source. A command starting is not a build

@@ -5,6 +5,13 @@ includes or depends on it. Service topology answers how declared interfaces fit
 together. Context puts useful facts and links beside the selected item without
 collapsing these distinct questions into one graph.
 
+In the component map, **Repository & build queries** is the outgoing typed
+request to Runtime; **Filesystem, Git & Bazel results** is its return direction.
+Both describe one capability routed through preload and the core dispatcher,
+not two deployed services depending on each other. **Graphs & Context links**
+describes the observations consumed by the cockpit. It does not infer architecture
+from file co-location or shared Bazel inputs.
+
 ## Lower-level map
 
 | Projection | Producer | Consumer |
