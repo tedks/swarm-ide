@@ -3,24 +3,13 @@ import { open, realpath, lstat, type FileHandle } from "node:fs/promises";
 import { isAbsolute, relative } from "node:path";
 import { createHash, randomUUID } from "node:crypto";
 import { z } from "zod";
-import { isRepositoryPath } from "../protocol/repository";
 import { ExternalSessionId, ExternalRequestSchema, ExternalResultSchema, type ExternalRequest, type ExternalResult,
   type ExternalAgentSummary, type ExternalDetail, type ExternalEntry, type ExternalSnapshot } from "../protocol/external-agents";
-import { TmuxTargetSchema, validateHandoff, openHandoff } from "./external-agents-handoff";
+import { validateHandoff, openHandoff } from "./external-agents-handoff";
+import { Registry, type Registered } from "./external-agents-registry";
 import { queueExternalMessage, resolveExternalCodex, type QueueMessage, type ExternalSendReceipt } from "./external-agents-send";
 
 const HEADER = 65536, TAIL = 262144, MAX_ENTRIES = 120;
-const Registration = z.object({ id: ExternalSessionId, label: z.string().min(1).max(120),
-  rollout: z.string().min(1).max(4096), evidence: z.enum(["local", "synthetic"]).default("local"),
-  role: z.string().max(120).optional(), task: z.string().max(200).optional(),
-  contextRoot: z.string().max(4096).optional(),
-  contextPaths: z.array(z.string().max(512).refine((p) => isRepositoryPath(p) && p !== "")).max(12).default([]),
-  tmux: TmuxTargetSchema.optional(),
-}).strict();
-const Registry = z.object({ version: z.literal(1), sessions: z.array(Registration).max(64) }).strict()
-  .refine((r) => new Set(r.sessions.map((s) => s.id)).size === r.sessions.length &&
-    new Set(r.sessions.map((s) => s.rollout)).size === r.sessions.length, "Duplicate session registration");
-type Registered = z.infer<typeof Registration>;
 const Meta = z.object({ type: z.literal("session_meta"), payload: z.object({ id: ExternalSessionId,
   forked_from_id: ExternalSessionId.nullable().optional() }) });
 const safe = (text: string, size = 4096) => (text.length > size ? text.slice(0, size - 16) + " … [truncated]" : text).replace(/[\p{Cf}\p{Cc}]/gu,
