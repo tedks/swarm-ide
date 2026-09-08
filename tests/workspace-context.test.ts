@@ -37,11 +37,11 @@ const selection = (id: string, sessionId: string | null = null): WorkspaceSelect
 const snapshot = (id: string): WorkspaceSnapshot => ({ ...initialSnapshot(), project: { id, name: id } });
 const command = (type: string, fields = {}) => ({ protocolVersion: PROTOCOL_VERSION, requestId: crypto.randomUUID(), type, ...fields });
 function fixture() {
-  const calls: Array<{ id: string; input: unknown }> = [], outputs: unknown[] = [];
+  const calls: Array<{ id: string; input: unknown; context?: { trustedStartRoot: string } }> = [], outputs: unknown[] = [];
   const primary = selection("primary"), other = selection("other", SESSION);
   const create = vi.fn((selected: WorkspaceSelection): RootedRuntime => ({
     ready: Promise.resolve(snapshot(selected.id)), snapshot: async () => snapshot(selected.id),
-    async request(input) { calls.push({ id: selected.id, input }); }, shutdown: vi.fn(async () => {}), close: vi.fn(),
+    async request(input, context) { calls.push({ id: selected.id, input, ...(context ? { context } : {}) }); }, shutdown: vi.fn(async () => {}), close: vi.fn(),
   }));
   const router = new WorkspaceContextRouter({ resolve: async (sessionId) => sessionId === null ? primary : other,
     create, post: (value) => outputs.push(value) });
@@ -78,6 +78,28 @@ describe("workspace routing", () => {
     expect(calls[0]!.input).not.toHaveProperty("workspaceId");
     expect(outputs[0]).toMatchObject({ ok: true, workspaceId: "other", workspace: { id: "other" }, snapshot: { project: { id: "other" } } });
     await router.shutdown();
+  });
+  it("captures a freshly checked opened worktree for direct start while controls keep one owner", async () => {
+    const f = fixture();
+    await f.router.request(command("workspace.open", { sessionId: SESSION }));
+    await f.router.request(command("trusted.start", { workspaceId: "other", token: SESSION, text: "No source required" }));
+    expect(f.calls).toHaveLength(1);
+    expect(f.calls[0]).toMatchObject({ id: "primary", context: { trustedStartRoot: "/work/other" }, input: { type: "trusted.start" } });
+    expect(f.calls[0]!.input).not.toHaveProperty("workspaceId");
+    await f.router.request(command("trusted.stop", { workspaceId: "primary", token: SESSION }));
+    expect(f.calls[1]).toMatchObject({ id: "primary", input: { type: "trusted.stop" } });
+    await f.router.request(command("trusted.start", { workspaceId: "never-opened", token: crypto.randomUUID(), text: "No" }));
+    expect(f.calls).toHaveLength(2); expect(f.outputs.at(-1)).toMatchObject({ ok: false });
+    await f.router.shutdown();
+  });
+  it("rejects a changed registered root rather than starting at the old or replacement path", async () => {
+    const f = fixture();
+    await f.router.request(command("workspace.open", { sessionId: SESSION }));
+    f.other.root = "/work/replaced";
+    await f.router.request(command("trusted.start", { workspaceId: "other", token: SESSION, text: "No" }));
+    expect(f.calls).toHaveLength(0);
+    expect(f.outputs.at(-1)).toMatchObject({ ok: false, error: { message: expect.stringContaining("registration changed") } });
+    await f.router.shutdown();
   });
   it("rejects unopened/mixed roots and nonlaunch preparation while observation remains shared", async () => {
     const { router, calls, outputs } = fixture();

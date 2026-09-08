@@ -582,7 +582,7 @@ export function isExternalRequest(request: CoreRequest): request is ExternalRequ
 }
 
 export function uncertainMutationCode(request: CoreRequest): "WRITE_OUTCOME_UNKNOWN" | "AGENT_OUTCOME_UNKNOWN" | null {
-  if (["trusted.launch", "trusted.fork", "trusted.send", "trusted.decide", "trusted.stop"].includes(request.type)) return "AGENT_OUTCOME_UNKNOWN";
+  if (["trusted.start", "trusted.launch", "trusted.fork", "trusted.send", "trusted.decide", "trusted.stop"].includes(request.type)) return "AGENT_OUTCOME_UNKNOWN";
   if (request.type === "file.write") return "WRITE_OUTCOME_UNKNOWN";
   return ["agent.launch", "agent.steer", "agent.cancel"].includes(request.type)
     ? "AGENT_OUTCOME_UNKNOWN" : null;

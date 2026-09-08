@@ -89,6 +89,14 @@ describe("typed native fork boundary", () => {
 });
 
 describe("owned child admission and retained lineage", () => {
+  it("forks a directly started parent in its own worktree, not the current browser root", async () => {
+    const f = await fixture(), token = randomUUID();
+    await f.service.request(command("trusted.start", { token, text: "A new worktree task" }), "/checked/agent-worktree");
+    const child = await f.service.request(f.fork(token), "/checked/other-view");
+    expect(child.workspace).toBe("/checked/agent-worktree");
+    expect(f.createSession).toHaveBeenLastCalledWith(expect.any(Function), "/checked/agent-worktree");
+    expect(JSON.parse(f.sessions.at(-1)!.start.mock.calls[0]![0]).workspace).toBe("/checked/agent-worktree");
+  });
   it("keeps a real materialized parent's task as inherited context only through recursive forks", async () => {
     const f = await fixture(true);
     expect(f.service.snapshot(f.parent).taskReference).toEqual(f.taskReference);

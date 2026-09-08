@@ -37,7 +37,7 @@ type Session = Pick<TrustedLocalSession, "snapshot" | "start" | "send" | "decide
 export interface TrustedLocalOptions {
   root: string;
   context: Context;
-  createSession(onChange: () => void): Promise<Session>;
+  createSession(onChange: () => void, root: string): Promise<Session>;
   store?: TrustedLocalStore;
   now?: () => number;
 }
@@ -75,7 +75,7 @@ export class TrustedLocalService {
   private pending = new Set<Promise<unknown>>();
   private commands = new Set<string>();
   private admittedTokens = new Set<string>();
-  private message = "Trusted local · normal Codex settings and approvals. No agent starts until Launch.";
+  private message = "Start a conversation with Codex using your normal settings and approvals.";
   private readonly store: TrustedLocalStore;
   private readonly initialization: Promise<void>;
   private savePending: Promise<void> | null = null;
@@ -102,6 +102,7 @@ export class TrustedLocalService {
         this.runs.set(saved.summary.runToken, { saved: boundHistory(saved), session: null, stopped: true, launching: false });
         this.selected = saved.summary.runToken;
       }
+      for (const token of this.store.admittedTokens?.() ?? []) this.admittedTokens.add(token);
       if (this.runs.size) await this.persist();
     } catch (error) {
       this.unreadableHistory = true;
@@ -138,7 +139,7 @@ export class TrustedLocalService {
       try {
         while (this.dirty) {
           this.dirty = false;
-          await this.store.save([...this.runs.values()].map((run) => structuredClone(run.saved)));
+          await this.store.save([...this.runs.values()].map((run) => structuredClone(run.saved)), [...this.admittedTokens]);
         }
       } catch {
         this.storageError = "Trusted history could not be saved. No new commands are permitted; Stop remains available. Delivery already in progress may be unknown.";
@@ -157,18 +158,19 @@ export class TrustedLocalService {
     if (token && !run) throw new Error("This request does not target a retained conversation.");
     if (run) this.refresh(run);
     const p = this.preparation;
-    return TrustedSnapshotSchema.parse({ instanceId: this.instanceId, profile: "trusted-local", workspace: this.options.root,
+    return TrustedSnapshotSchema.parse({ instanceId: this.instanceId, profile: "trusted-local", workspace: run?.saved.summary.workspace ?? this.options.root,
       preparation: p ? { token: p.token, prompt: p.prompt, expiresAt: p.materialized.expiresAt, model: p.input.model } : null,
       runToken: run?.saved.summary.runToken ?? null,
       status: run?.saved.summary.status ?? (this.closed ? "closed" : this.preparing ? "preparing" : "idle"),
       threadId: run?.saved.threadId ?? null, turnId: run?.saved.turnId ?? null, output: run?.saved.output ?? "",
+      initialText: run?.saved.summary.initialText ?? null,
       approvals: run?.session?.snapshot().approvals ?? [],
       message: this.storageError ?? run?.saved.summary.message ?? this.message,
       taskReference: run?.saved.summary.taskReference ?? null, activities: run?.saved.activities ?? [], archived: run?.saved.summary.archived ?? false,
       forkPoint: run && !run.stopped && !run.launching ? run.session?.forkPoint?.() ?? null : null,
       runs: [...this.runs.values()].map((r) => r.saved.summary) });
   }
-  async request(raw: TrustedRequest): Promise<TrustedSnapshot> {
+  async request(raw: TrustedRequest, startRoot = this.options.root): Promise<TrustedSnapshot> {
     const request = TrustedRequestSchema.parse(raw);
     await this.initialization;
     if (request.type === "trusted.snapshot") return this.snapshot(request.token);
@@ -199,9 +201,9 @@ export class TrustedLocalService {
     }
     if (request.type === "trusted.prepare" && this.preparing) throw new Error("Preparation is already in progress.");
     if (request.type === "trusted.prepare") this.preparing = true;
-    const operation = this.execute(request);
+    const operation = this.execute(request, startRoot);
     this.pending.add(operation);
-    try { await operation; if (request.type === "trusted.prepare") this.preparing = false; return this.snapshot(request.type === "trusted.fork" ? request.childToken : request.type === "trusted.launch" ? request.token : undefined); }
+    try { await operation; if (request.type === "trusted.prepare") this.preparing = false; return this.snapshot(request.type === "trusted.fork" ? request.childToken : request.type === "trusted.launch" || request.type === "trusted.start" ? request.token : undefined); }
     finally { if (request.type === "trusted.prepare") this.preparing = false; this.pending.delete(operation); }
   }
   private reserveCapacity() {
@@ -220,9 +222,10 @@ export class TrustedLocalService {
     if (this.admittedTokens.has(request.childToken) || this.runs.has(request.childToken) || this.preparation?.token === request.childToken)
       throw new Error("Child token was already used; no automatic replay.");
     this.reserveCapacity();
+    const root = parent!.saved.summary.workspace ?? this.options.root;
     const at = this.timestamp(), run: Run = { session: null, stopped: false, launching: true, saved: {
       summary: { runToken: request.childToken, title: tail(request.text.trim(), 256), createdAt: at, updatedAt: at,
-        status: "starting", archived: false, approvalCount: 0, taskReference: null,
+        status: "starting", archived: false, approvalCount: 0, taskReference: null, workspace: root, initialText: request.text,
         message: "Forking completed history into a child sharing this workspace. No isolated worktree is created.",
         fork: { parentRunToken: request.token, parentThreadId: point.threadId, parentTurnId: point.turnId,
           sharedWorkspace: true, inheritedTaskReference: parent!.saved.summary.taskReference ?? parent!.saved.summary.fork?.inheritedTaskReference ?? null, confirmed: false } },
@@ -233,11 +236,11 @@ export class TrustedLocalService {
     try {
       await this.persist();
       if (this.closed || run.stopped) throw new Error("Fork cancelled before provider start.");
-      run.session = await this.options.createSession(() => this.changed(run));
+      run.session = await this.options.createSession(() => this.changed(run), root);
       if (this.closed || run.stopped) { await run.session.stop(); throw new Error("Fork cancelled before provider start."); }
       const prompt = JSON.stringify({ profile: "trusted-local-child", instructions: request.text,
         contextNotice: "You inherit the parent's conversation through a completed turn. Its task and previous instructions are context, not a new task assignment or permission grant. Follow this child's explicit instruction and normal Codex settings/approvals. The parent and child share this working directory; no isolated worktree was created.",
-        workspace: this.options.root });
+        workspace: root });
       void run.session.start(prompt, request.model, point).catch(() => { /* observable session failure; never replay */ }).finally(() => this.changed(run));
       this.refresh(run); await this.persist();
     } catch (error) {
@@ -247,7 +250,37 @@ export class TrustedLocalService {
       await this.persist().catch(() => {}); throw error;
     } finally { run.launching = false; }
   }
-  private async execute(request: Extract<TrustedRequest, { type: "trusted.prepare" | "trusted.launch" | "trusted.fork" }>) {
+  private async start(request: Extract<TrustedRequest, { type: "trusted.start" }>, root: string) {
+    if (!isAbsolute(root)) throw new Error("Select a working directory before starting an agent.");
+    if (this.admittedTokens.has(request.token) || this.preparation?.token === request.token)
+      throw new Error("This conversation was already submitted. Open it instead of starting it again.");
+    this.reserveCapacity();
+    const at = this.timestamp();
+    const run: Run = { session: null, stopped: false, launching: true, saved: {
+      summary: { runToken: request.token, title: tail(request.text.trim(), 256), createdAt: at, updatedAt: at,
+        status: "starting", archived: false, approvalCount: 0, taskReference: null, workspace: root,
+        initialText: request.text, message: "Starting Codex…" },
+      threadId: null, turnId: null, output: "", activities: [],
+    } };
+    // Permanently consume the client identity before awaiting storage or opening
+    // a process. A lost acknowledgement must not create another conversation.
+    this.admittedTokens.add(request.token); this.runs.set(request.token, run); this.selected = request.token;
+    try {
+      await this.persist();
+      if (this.closed || run.stopped) throw new Error("Start cancelled before Codex opened.");
+      run.session = await this.options.createSession(() => this.changed(run), root);
+      if (this.closed || run.stopped) { await run.session.stop(); throw new Error("Start cancelled before Codex opened."); }
+      void run.session.start(request.text, request.model ?? null).catch(() => { /* session exposes startup failure; no replay */ }).finally(() => this.changed(run));
+      this.refresh(run); await this.persist();
+    } catch (error) {
+      if (!run.session) run.saved.summary = { ...run.saved.summary, status: run.stopped ? "closed" : "failed", archived: true,
+        message: error instanceof Error ? tail(error.message, 4096) : "Codex could not start. Your message is saved." };
+      else this.refresh(run);
+      await this.persist().catch(() => {}); throw error;
+    } finally { run.launching = false; }
+  }
+  private async execute(request: Extract<TrustedRequest, { type: "trusted.prepare" | "trusted.launch" | "trusted.fork" | "trusted.start" }>, startRoot: string) {
+    if (request.type === "trusted.start") return this.start(request, startRoot);
     if (request.type === "trusted.fork") return this.fork(request);
     if (request.type === "trusted.prepare") {
       this.preparation = null;
@@ -268,7 +301,7 @@ export class TrustedLocalService {
     const at = this.timestamp();
     const run: Run = { session: null, stopped: false, launching: true, saved: {
       summary: { runToken: p.token, title: tail(p.input.taskText.trim() || "Repository task conversation", 256), createdAt: at, updatedAt: at,
-        status: "starting", archived: false, approvalCount: 0, taskReference: p.input.taskReference ?? null, message: "Revalidating exact context before local Codex start." },
+        status: "starting", archived: false, approvalCount: 0, taskReference: p.input.taskReference ?? null, workspace: this.options.root, message: "Revalidating exact context before local Codex start." },
       threadId: null, turnId: null, output: "", activities: [],
     } };
     // Consume authority before any await. A timeout, repeated click or new request
@@ -280,7 +313,7 @@ export class TrustedLocalService {
     if (!fresh.ok || trustedPrompt(fresh.value) !== p.prompt ||
         fresh.value.launchContext.root !== this.options.root) throw new Error("Disk/task context changed; no provider was started. Prepare again.");
     if (this.closed || run.stopped) throw new Error("Launch was cancelled before provider start.");
-    run.session = await this.options.createSession(() => this.changed(run));
+    run.session = await this.options.createSession(() => this.changed(run), this.options.root);
     if (this.closed || run.stopped) { await run.session.stop(); throw new Error("Launch was cancelled before provider start."); }
     // Session start owns its finite handshake; returning this pending status lets
     // the UI observe/Stop it without holding a bridge request open for a turn.
@@ -327,14 +360,15 @@ export async function createTrustedLocalService(rootPath: string, snapshot: () =
     provenance: async () => ({ instructions: [], configuration: [] }),
   });
   const stateHome = process.env.XDG_STATE_HOME && isAbsolute(process.env.XDG_STATE_HOME) ? process.env.XDG_STATE_HOME : join(homedir(), ".local/state");
-  return new TrustedLocalService({ root, context, store: new FileTrustedLocalStore(join(stateHome, "swarm-ide/trusted-local", `${identity}.json`)), async createSession(onChange) {
+  return new TrustedLocalService({ root, context, store: new FileTrustedLocalStore(join(stateHome, "swarm-ide/trusted-local", `${identity}.json`)), async createSession(onChange, runRoot) {
+    if (await realpath(runRoot) !== runRoot || !(await stat(runRoot)).isDirectory()) throw new Error("The selected working directory changed. Select it again before starting Codex.");
     const selected = process.env.SWARM_CODEX_BIN ?? "codex";
     if (selected !== "codex" && !isAbsolute(selected)) throw new Error("SWARM_CODEX_BIN must be an absolute executable path.");
     const [executable, node, unshare, setpriv] = await Promise.all([selected, "node", "unshare", "setpriv"].map(findTrustedExecutable));
     // Worker bundling places this module in app/core/worker.js, alongside the
     // existing build-query factory; the lifetime helper keeps its agents folder.
     const ownerScript = join(__dirname, "agents/owner-process.js"); await access(ownerScript);
-    return new TrustedLocalSession({ root, executable, openTransport: (sink) => createOwnedCodexTransport({ root, executable,
+    return new TrustedLocalSession({ root: runRoot, executable, openTransport: (sink) => createOwnedCodexTransport({ root: runRoot, executable,
       nodeExecutable: node!, unshareExecutable: unshare!, setprivExecutable: setpriv!, ownerScript,
       args: ["app-server", "--listen", "stdio://"] }, sink) }, onChange);
   } });
