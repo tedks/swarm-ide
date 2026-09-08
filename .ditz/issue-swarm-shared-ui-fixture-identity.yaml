@@ -14,3 +14,18 @@ log_events:
   who: Ted Smith
   what: created
   comment: ""
+- time: 2026-09-08T20:48:39-00:00
+  who: Ted Smith
+  what: commented
+  comment: PR134 joined tab-overflow gate passed tab-order3, overflow1, agent-dock10
+    and both type boundaries, but cockpit-app stopped before Select task task-fixture.
+    ROOT read-only intake found initialSnapshot uses project:test-fixture while taskObservationFixture
+    uses project:swarm-ide; task client correctly rejects mismatched repositories.
+    Both fixtures, rejection logic and cockpit test are unchanged from reviewed master
+    eedf2f8. Downstream cockpit retention assertions were not reached, not called
+    passed. Earlier pre-join run instead reached the later obsolete C7 / Worktree
+    selector. Repair exact shared fixture identity and stale selectors, retaining
+    repository rejection and retention assertions. Earlier quality aggregate had 16
+    failed files/40 tests including node:test discovery, stale selectors and unknown
+    UI failures; do not claim all environmental or fixed by this issue. Existing camera-order
+    issue remains separate.
