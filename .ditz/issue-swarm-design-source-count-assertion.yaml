@@ -1,0 +1,21 @@
+id: swarm-design-source-count-assertion
+title: Make the design source-list test follow its declared inputs
+desc: On reviewed base 6e652e19, tests/living-design.test.tsx:107 expects Show all
+  20 source files, while design:repository already has 22 paths. The optional PR121
+  living-design run passed 80 cases (including actual map validation) and failed this
+  unchanged literal assertion. PR121 changes only design:agents mapping, not repository
+  paths or this test. Preserve collapse/expand/exact BUILD.bazel activation assertions
+  when correcting the stale expectation; original log /tmp/swarm-ide-agent-status-summary.2md4dp/design-check.log.
+type: bugfix
+component: default
+release:
+reporter: Ted Smith <tedks@riseup.net>
+status: unstarted
+disposition:
+creation_time: 2026-09-08T16:08:46-00:00
+references: []
+log_events:
+- time: 2026-09-08T16:08:46-00:00
+  who: Ted Smith
+  what: created
+  comment: ""
