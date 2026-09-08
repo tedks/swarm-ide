@@ -48,6 +48,51 @@ describe("inert project manifest catalog", () => {
     expect(second.relationships).toEqual([]);
   });
 
+  it("uses literal pnpm workspace membership for grouping and local dependencies with exact evidence", async () => {
+    await put("package.json", { name: "pairmarket-like", packageManager: "pnpm@11.9.0" });
+    await put("pnpm-workspace.yaml", 'packages:\n  - "apps/*" # browser\n  - packages/*\n  - \'services/*\'\nallowBuilds:\n  esbuild: true\nminimumReleaseAgeExclude:\n  - "private-unused-setting"\n');
+    await put("apps/web/package.json", { name: "@example/web", dependencies: { "@example/core": "workspace:*", "@example/wallet": "workspace:*" } });
+    await put("packages/core/package.json", { name: "@example/core" });
+    await put("services/api/package.json", { name: "@example/api", dependencies: { "@example/core": "workspace:*", "@example/wallet": "workspace:*" } });
+    await put("services/wallet/package.json", { name: "@example/wallet", dependencies: { "@example/core": "workspace:*" } });
+    const result = await scan(); expect(result.scan.status).toBe("observed"); expect(result.components).toHaveLength(5);
+    expect(result.components.some((component) => component.id === "pnpm-workspace.yaml")).toBe(false);
+    expect(result.relationships.filter((edge) => edge.kind === "contains")).toEqual([
+      { from: "package.json", to: "apps/web/package.json", kind: "contains", evidence: "pnpm-workspace.yaml" },
+      { from: "package.json", to: "packages/core/package.json", kind: "contains", evidence: "pnpm-workspace.yaml" },
+      { from: "package.json", to: "services/api/package.json", kind: "contains", evidence: "pnpm-workspace.yaml" },
+      { from: "package.json", to: "services/wallet/package.json", kind: "contains", evidence: "pnpm-workspace.yaml" },
+    ]);
+    expect(result.relationships.filter((edge) => edge.kind === "depends-on")).toHaveLength(5);
+    expect(result.relationships).toContainEqual({ from: "apps/web/package.json", to: "packages/core/package.json", kind: "depends-on", evidence: "apps/web/package.json" });
+    expect(JSON.stringify(result)).not.toContain("private-unused-setting");
+  });
+
+  it.each([
+    'packages:\n  - "apps/*"\n  - "services/*"\n  - "!apps/private"\n',
+    'packages: ["apps/*", "services/*-extra"]\n',
+    'patterns: &patterns ["apps/*", "services/*"]\npackages: *patterns\n',
+    'packages: ["apps/*", "services/*"]\npackages: ["**"]\n',
+    'packages: { apps: "apps/*" }\n',
+    'packages: ["apps/*", "../services/*"]\n',
+    'packages: ["apps/*", 42]\n',
+    'packages: [' + Array.from({ length: 25 }, () => '"**"').join(",") + ']\n',
+  ])("rejects unsupported pnpm membership completely instead of ignoring exclusions or falling back", async (yaml) => {
+    await put("package.json", { name: "root", workspaces: ["apps/*", "services/*"] });
+    await put("pnpm-workspace.yaml", yaml);
+    await put("apps/web/package.json", { name: "web", dependencies: { api: "workspace:*" } });
+    await put("services/api/package.json", { name: "api" });
+    const result = await scan(); expect(result.scan.status).toBe("partial"); expect(result.relationships).toEqual([]);
+  });
+
+  it("does not fall back around an unreadable pnpm membership declaration", async () => {
+    await put("package.json", { name: "root", workspaces: ["apps/*"] });
+    await put("apps/web/package.json", { name: "web" });
+    await put("external-workspace.yaml", 'packages: ["apps/*"]\n', scratch);
+    await symlink(join(scratch, "external-workspace.yaml"), join(root, "pnpm-workspace.yaml"));
+    const result = await scan(); expect(result.scan.status).toBe("partial"); expect(result.relationships).toEqual([]);
+  });
+
   it("recognizes literal Python, Move, OCaml and Bazel metadata without inventing deployments", async () => {
     await put("backend/pyproject.toml", '[project]\nname = "api"\ndependencies = [\n "fastapi>=0.1", # comment\n "pydantic>=2",\n]\n[project.optional-dependencies]\ntest = ["pytest>=8"]\n');
     await put("worker/requirements.txt", "flask==3.0\n-r private.txt\n--index-url https://user:secret@packages.test\npandas>=2\n");
@@ -93,11 +138,13 @@ describe("inert project manifest catalog", () => {
   });
 
   it("ignores hidden, dependency, output and vendored trees without guessing workflows from code", async () => {
-    for (const folder of [".git", ".private", "node_modules", "vendor", "build", "dist", "target", "bazel-bin"]) await put(`${folder}/package.json`, { name: "excluded" });
+    for (const folder of [".git", ".private", "node_modules", "vendor", "build", "dist", "target", "bazel-bin", "fixtures", "__fixtures__", "testdata"]) await put(`${folder}/package.json`, { name: "excluded" });
     await put("frontend/vite.config.ts", 'throw new Error("MUST_NOT_RUN"); proxy = "https://private:secret@rpc.test"');
     await put(".env", "SECRET=not-project-metadata");
     const result = await scan(); expect(result.components).toEqual([]); expect(result.relationships).toEqual([]); expect(result.sites).toEqual([]);
     expect(result.scan.status).toBe("observed");
+    await put("tests/harness/package.json", { name: "real-test-harness" });
+    expect((await scan()).components.map((component) => component.name)).toEqual(["real-test-harness"]);
   });
 
   it("does not follow file or directory links outside the project, while accepting an aliased root", async () => {

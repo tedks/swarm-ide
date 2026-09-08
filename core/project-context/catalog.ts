@@ -1,12 +1,13 @@
 import { constants, type Dirent } from "node:fs";
 import { open, opendir, realpath, type FileHandle } from "node:fs/promises";
 import { basename, isAbsolute, join, posix, relative } from "node:path";
+import { isMap, isScalar, isSeq, parseDocument } from "yaml";
 import { ProjectCatalogSchema, ProjectComponentSchema, ProjectSiteSchema,
   type ProjectCatalog, type ProjectComponent, type ProjectRelationship } from "../../protocol/project-context";
 
 const MAX_BYTES = 256 * 1024, MAX_FILES = 128, MAX_DIRS = 256, MAX_DEPTH = 6, MAX_ENTRIES = 8192;
-const excluded = new Set(["node_modules", "vendor", "build", "dist", "target", "coverage", "out", "__pycache__", "venv", "env", "site-packages"]);
-const names = new Set(["package.json", "pyproject.toml", "requirements.txt", "hugo.toml", "config.toml", "Move.toml", "dune-project", "MODULE.bazel", "WORKSPACE", "WORKSPACE.bazel"]);
+const excluded = new Set(["node_modules", "vendor", "build", "dist", "target", "coverage", "out", "__pycache__", "venv", "env", "site-packages", "fixtures", "__fixtures__", "testdata"]);
+const names = new Set(["package.json", "pnpm-workspace.yaml", "pyproject.toml", "requirements.txt", "hugo.toml", "config.toml", "Move.toml", "dune-project", "MODULE.bazel", "WORKSPACE", "WORKSPACE.bazel"]);
 const nodeFrameworks: Record<string, string> = { react: "React", next: "Next.js", vite: "Vite", vue: "Vue", svelte: "Svelte", "@sveltejs/kit": "SvelteKit", astro: "Astro", nuxt: "Nuxt", express: "Express", fastify: "Fastify", "@nestjs/core": "NestJS", electron: "Electron", typescript: "TypeScript", vitest: "Vitest", "@playwright/test": "Playwright", jest: "Jest", "@mysten/sui": "Sui", "@mysten/seal": "SEAL", "@mysten/walrus": "Walrus" };
 const pythonFrameworks: Record<string, string> = { django: "Django", flask: "Flask", fastapi: "FastAPI", uvicorn: "Uvicorn", pytest: "pytest", pydantic: "Pydantic", numpy: "NumPy", pandas: "pandas", torch: "PyTorch", tensorflow: "TensorFlow", sqlalchemy: "SQLAlchemy" };
 const safe = (value: unknown): value is string => typeof value === "string" && value.length > 0 && value.length <= 512 && !/[\x00-\x1f\x7f]/.test(value);
@@ -16,7 +17,7 @@ function inside(root: string, path: string): boolean {
   const suffix = relative(root, path);
   return !isAbsolute(suffix) && suffix !== ".." && !suffix.startsWith("../");
 }
-type Declaration = { component: ProjectComponent; dependencies: [string, string][]; workspaces: string[] };
+type Declaration = { component: ProjectComponent; dependencies: [string, string][]; workspaces: string[]; workspaceEvidence: string };
 type Manifest = { path: string; text: string };
 let pendingWalk: Promise<ProjectCatalog> | undefined;
 export interface CatalogDiscoveryOptions {
@@ -61,6 +62,27 @@ function tableField(value: string, field: string): string | undefined {
   if (entries.some((entry) => !entry)) return undefined;
   const matches = entries.filter((entry) => entry![1] === field);
   return matches.length === 1 ? literal(matches[0]![2]) : undefined;
+}
+/** Inspect YAML nodes without converting or resolving aliases. Membership must
+ * be one complete literal list; exclusions/unsupported globs invalidate the list
+ * rather than being dropped while their broader positive patterns survive. */
+function pnpmPackages(text: string): string[] | undefined {
+  try {
+    const document = parseDocument(text, { schema: "core", merge: false, uniqueKeys: true, stringKeys: true, prettyErrors: false, logLevel: "silent" });
+    if (document.errors.length || document.warnings.length || !isMap(document.contents) || document.contents.has("<<")) return undefined;
+    const packages = document.get("packages", true);
+    if (!isSeq(packages) || packages.anchor || packages.tag || packages.items.length > 24) return undefined;
+    const patterns: string[] = [];
+    for (const item of packages.items) {
+      if (!isScalar(item) || item.anchor || item.tag || item.type === "BLOCK_FOLDED" || item.type === "BLOCK_LITERAL" || !safe(item.value)) return undefined;
+      const pattern = item.value;
+      if (pattern.startsWith("/") || /[!{}()[\]\\?]/.test(pattern)) return undefined;
+      const parts = pattern.replace(/^\.\//, "").replace(/\/$/, "").split("/");
+      if (parts.some((part) => !part || part === ".." || (part.includes("*") && part !== "*" && part !== "**"))) return undefined;
+      patterns.push(pattern);
+    }
+    return patterns;
+  } catch { return undefined; }
 }
 function toml(text: string): { entries: Map<string, string>; partial: boolean } {
   const entries = new Map<string, string>(); let section = "", pending = "", pendingLines = 0, partial = false;
@@ -144,7 +166,7 @@ export async function discoverProjectCatalog(root: string, signal: AbortSignal, 
   const work = async (): Promise<ProjectCatalog> => {
     if (options.beforeWalk) { check(active); await options.beforeWalk(); }
     check(active); canonicalRoot = await realpath(root); check(active);
-    const manifests: Manifest[] = []; let directories = 0, entries = 0, files = 0;
+    const manifests: Manifest[] = [], pnpmDirectories = new Set<string>(); let directories = 0, entries = 0, files = 0;
     async function readManifest(path: string, parent: FileHandle, name: string): Promise<void> {
       check(active);
       if (files === MAX_FILES) { partial = true; return; }
@@ -191,6 +213,7 @@ export async function discoverProjectCatalog(root: string, signal: AbortSignal, 
         children.sort((a, b) => a.name.localeCompare(b.name));
         for (const child of children) {
           check(active); if (!names.has(child.name) || (child.name === "config.toml" && !hugoLayout)) continue;
+          if (child.name === "pnpm-workspace.yaml") pnpmDirectories.add(path || ".");
           if (!child.isFile()) { partial = true; continue; }
           try { await readManifest(posix.join(path, child.name), file, child.name); } catch { check(active); partial = true; }
         }
@@ -206,11 +229,13 @@ export async function discoverProjectCatalog(root: string, signal: AbortSignal, 
     const declarations: Declaration[] = [];
     for (const manifest of manifests) {
       check(active);
+      // Workspace membership augments the owning package; it is not a service.
+      if (basename(manifest.path) === "pnpm-workspace.yaml") continue;
       if (components.length === 64) { partial = true; break; }
       const filename = basename(manifest.path), directory = posix.dirname(manifest.path);
       const component: ProjectComponent = { id: manifest.path, evidence: manifest.path, directory,
         name: directory === "." ? basename(canonicalRoot) : posix.basename(directory), family: "node", frameworks: [], workflows: [] };
-      const declaration: Declaration = { component, dependencies: [], workspaces: [] };
+      const declaration: Declaration = { component, dependencies: [], workspaces: [], workspaceEvidence: manifest.path };
       try {
         if (filename === "package.json") {
           const data = record(JSON.parse(manifest.text)); if (!data) throw new Error("Malformed manifest");
@@ -289,10 +314,20 @@ export async function discoverProjectCatalog(root: string, signal: AbortSignal, 
         components.push(component); declarations.push(declaration);
       } catch { partial = true; }
     }
-    const add = (from: ProjectComponent, to: string, kind: ProjectRelationship["kind"]) => {
+    for (const directory of pnpmDirectories) {
+      const owner = declarations.find((entry) => entry.component.family === "node" && entry.component.directory === directory);
+      if (!owner) { partial = true; continue; }
+      const path = posix.join(directory, "pnpm-workspace.yaml"), manifest = manifests.find((entry) => entry.path === path);
+      // The pnpm declaration takes precedence, including when it cannot be read.
+      // Do not fall back to a broader package.json list around exclusions.
+      owner.workspaces = []; owner.workspaceEvidence = path;
+      const packages = manifest && pnpmPackages(manifest.text);
+      if (packages === undefined) partial = true; else owner.workspaces = packages;
+    }
+    const add = (from: ProjectComponent, to: string, kind: ProjectRelationship["kind"], evidence = from.evidence) => {
       if (relationships.some((edge) => edge.from === from.id && edge.to === to && edge.kind === kind)) return;
       if (relationships.length === 128) { partial = true; return; }
-      relationships.push({ from: from.id, to, kind, evidence: from.evidence });
+      relationships.push({ from: from.id, to, kind, evidence });
     };
     const belongs = (owner: Declaration, child: ProjectComponent) => owner.component.id === child.id ||
       owner.workspaces.some((pattern) => workspaceMatch(pattern, posix.relative(owner.component.directory, child.directory)));
@@ -314,7 +349,7 @@ export async function discoverProjectCatalog(root: string, signal: AbortSignal, 
       for (const child of components) {
         if (child.family !== "node" || child.id === from.id) continue;
         const local = posix.relative(from.directory, child.directory);
-        if (declaration.workspaces.some((pattern) => workspaceMatch(pattern, local))) add(from, child.id, "contains");
+        if (declaration.workspaces.some((pattern) => workspaceMatch(pattern, local))) add(from, child.id, "contains", declaration.workspaceEvidence);
       }
     }
     check(active); if (await realpath(root) !== canonicalRoot) throw new Error("Root moved"); check(active);
