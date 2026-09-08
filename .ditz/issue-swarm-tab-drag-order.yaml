@@ -38,3 +38,13 @@ log_events:
     coverage. component-plan checks pass; tab-order/overflow/agent-dock checks pass
     inside tab-overflow, whose sole cockpit-app failure is the absent joined fixture
     selector Select task task-fixture. Native joined-delta review CLEAN.'
+- time: 2026-09-08T20:49:29-00:00
+  who: Ted Smith
+  what: commented
+  comment: ROOT normally merged PR134 as b20c69f0 and adopted the renderer-only changes
+    into the managed IDE. All tab surfaces reorder within their strip; session-local
+    order, no cross-panel docking. Actual joined generation123/tab-order3/overflow1/agent-dock10
+    plus types pass and native review clean. Shared cockpit fixture identity failure
+    tracked as swarm-shared-ui-fixture-identity, downstream assertions not reached.
+    Earlier aggregate failures remain honestly attributed, not all green. No new GUI/model
+    or full-suite run; worker branch retained.
