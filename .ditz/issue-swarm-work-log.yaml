@@ -9,8 +9,8 @@ type: task
 component: default
 release:
 reporter: Ted Smith <tedks@riseup.net>
-status: in_progress
-disposition:
+status: closed
+disposition: fixed
 creation_time: 2026-09-08T03:40:02-00:00
 references: []
 log_events:
@@ -55,6 +55,13 @@ log_events:
     compatible old names, exported pure WorkLogEntryDetail. 21 focused tests/typechecks
     pass; native light delta CLEAN. No extra model call; same PR83 awaiting ROOT normal
     merge.'
+- time: 2026-09-08T04:19:09-00:00
+  who: Ted Smith
+  what: 'closed: fixed'
+  comment: 'PR83 merged: configurable online Codex Luna summaries produce persistent
+    Work Log outcomes with agent/task links and idempotent completed-task Ditz notes.
+    One actual model call and disposable Ditz readback verified. Cockpit mounting
+    remains in swarm-operator-cockpit.'
 blocks:
 - swarm-operator-demo
 blocked_by:
