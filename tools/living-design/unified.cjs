@@ -54,6 +54,15 @@ async function main() {
   assert((await text('.design-contract-detail')).includes('canonical source broker'));
   assert(await run(() => document.querySelector('.design-graph .design-edge').classList.contains('request')), 'authored request kind');
   assert.equal(await camera(), rootCamera, 'contract selection leaves camera alone');
+  // This deliberately follows the preserved zoomed camera with the ordinary
+  // Fit control; inspecting a contract must not secretly refit the user's view.
+  await click('.design-graph .react-flow__controls-fitview'); await sleep(250);
+  assert(await run(() => {
+    const r = document.querySelector('.design-graph').getBoundingClientRect();
+    return [...document.querySelectorAll('.design-graph .react-flow__node')].every(node => {
+      const n = node.getBoundingClientRect(); return n.left >= r.left - 1 && n.right <= r.right + 1 && n.top >= r.top - 1 && n.bottom <= r.bottom + 1;
+    });
+  }), 'explicit Fit makes both contract endpoints fully visible');
   await shot('selected-contract');
   await click('.component-graph-card nav button', 'Swarm IDE · system design'); await paint();
   assert.equal(await camera(), rootCamera);

@@ -45,7 +45,7 @@ export function designProjection(index: PlanIndex, selected: PlanNode, contractI
   const nodes: ProjectionNode[] = shown.map((node, i) => {
     return { id: node.id, title: node.title,
     subtitle: node.design?.state === "planned" ? "Planned component" : node.id === selected.id ? children.length ? "System overview" : "Selected component" : children.includes(node) ? "Responsibility area" : "Connected component",
-    position: focused ? { x: i * 300, y: 65 }
+    position: focused ? { x: i * 420, y: 65 }
       : i === 0 ? { x: 200, y: 0 } : { x: ((i - 1) % 3) * 200, y: 65 + Math.floor((i - 1) / 3) * 65 },
     port: focused ? i === 0 ? Position.Right : Position.Left : i === 0 ? Position.Bottom : Position.Top,
   }; });

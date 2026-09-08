@@ -14,17 +14,24 @@ keep their existing independent navigation and cameras.
 
 - [x] Read the current projection, plan schema and component documents; start
   `swarm-component-contract-clarity` on reviewed `220742e8`.
-- [ ] Add backwards-compatible contract kinds and a scoped graph/detail view.
-- [ ] Align actual authored relationships and documents with implementation.
-- [ ] Run focused checks, native review and one owned packaged screenshot journey.
-- [ ] Push the ready PR, record accomplishments in Ditz and hand back to ROOT.
+- [x] Add backwards-compatible contract kinds and a scoped graph/detail view.
+- [x] Align actual authored relationships and documents with implementation.
+- [x] Run 91 focused checks/types, native convergence and owned packaged default,
+  selected-contract, explicit Fit and retained editor/task-camera journeys.
+- [x] Push PR127, record accomplishments and the compact-controls follow-up in
+  Ditz; ROOT retains final merge and managed app adoption.
 
 ## Surprises & Discoveries
 
-The root projection currently includes every child's outgoing edge. All 13 links
-share one interface appearance despite representing reads, results, navigation
-and explicit outcome writes. `ProjectionCanvas` already retains independent
-cameras and SVG edge labels; no new layout engine or App change is needed.
+The old root projection included every child's outgoing edge. All 13 links shared
+one interface appearance despite representing reads, results, navigation and
+explicit outcome writes. The corrected index adds the separately implemented
+latest-summary data contract instead of conflating it with event navigation.
+Native review found parallel contract lanes colliding, a plan-read wording error
+and reusable-boundary selection restoration. Fix review caught transient refresh
+detail removal and a now-closed proof disclosure. Each was corrected, with native
+convergence clean. Direct screenshots also drove tighter overview spacing and
+deliberate Fit for the retained zoomed camera; no new layout engine was needed.
 
 ## Decision Log
 
@@ -37,10 +44,24 @@ cameras and SVG edge labels; no new layout engine or App change is needed.
   distinguish owned native execution from observation of terminal owners.
 - Use Codex native proportional review and local gates only, as this wave's
   explicit instructions require. ROOT owns landing and shared app adoption.
+- Preserve selected read-only detail during ordinary pending refresh, disable
+  actions, and clear selection on actual connection/workspace/generation changes.
+- Give same-direction and reciprocal contracts stable separate curve lanes.
+- Preserve every old source/build mapping; add existing observer client.ts per
+  the chat-speed owner's request. New build/worktree runtime mappings belong with
+  those still-active implementations, not speculative entries in this increment.
 
 ## Outcomes & Retrospective
 
-Implementation and evidence pending.
+PR127 supplies a seven-node/six-containment-edge overview and 14 explicit typed
+contracts reachable through their own components. Selecting one keeps only its
+two endpoints and directed edge, with full contract prose and deliberate Explore.
+The actual working index, not fixture metadata, was exercised in packaged Electron
+on owned :174/55434. Default four panes, component/document navigation, exact
+dirty source, mounted editor, loaded task graph and cameras were retained with
+zero renderer errors and confirmed owned cleanup. No live provider/model or
+message was invoked. The existing compact overlay controls can cover part of a
+node; `swarm-compact-diagram-controls` records this nonblocking visual follow-up.
 
 ## Context and Orientation
 
@@ -89,6 +110,10 @@ reported accurately rather than retried into an unexplained success.
 
 Current progress and evidence live in
 `/tmp/swarm-ide-demo-close.BrSWmt/architecture/seam.md` and `verification.md`.
+Baseline recorded 3 new RED/84 PASS. The corrected final focused suite recorded
+91 PASS plus both TypeScript boundaries. Later coordinate-only spacing and
+explicit-Fit proof additions have separate native/packaged attribution; no full
+legacy sweep or hosted CI was requested or claimed.
 
 ## Interfaces and Dependencies
 
@@ -96,3 +121,6 @@ Extend existing PlanNode design connections additively; no wire version bump,
 new package, renderer filesystem access, App workspace edits or layout library.
 The graph reads authored semantics only. Mechanical peer mapping additions are
 validated against committed files/targets before inclusion.
+
+Revision note: completed the bounded implementation and captured actual native,
+local and owned-desktop evidence, including the remaining compact-control nit.
