@@ -54,3 +54,10 @@ log_events:
     and three focused targets plus package build PASS. Original proof attribution
     retained; ROOT owns merge/adoption. Renderer-retention and failed-capacity follow-ups
     remain open.'
+- time: 2026-09-08T01:37:40-00:00
+  who: Ted Smith
+  what: commented
+  comment: 'Final ROOT completion gate94A7 satisfied at unchanged PR73 head5cc12ae:
+    one existing actual-service deterministic-peer packaged trusted-local smoke PASS2.593s,
+    prepare/approval/next-turn/Stop, zero model/errors, source/camera retention and
+    cleanup1; fresh session-unit PASS. Joined verification updated; ROOT owns merge/adoption.'
