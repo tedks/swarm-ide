@@ -3,20 +3,30 @@ import { mkdtempSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { tmpdir } from 'node:os';
 import assert from 'node:assert/strict';
+import { randomUUID } from 'node:crypto';
+import { disposeContainer } from './cleanup.mjs';
 const evidence = mkdtempSync(join(tmpdir(), 'swarm-container-proof.'));
-const name = `swarm-container-proof-${process.pid}`;
+const name = `swarm-container-proof-${randomUUID()}`;
 const image = process.env.SWARM_CONTAINER_IMAGE || 'swarm-ide-demo:local';
 const port = process.env.SWARM_CONTAINER_PORT || '55418';
 assert(/^[1-9][0-9]{0,4}$/.test(port) && Number(port) <= 65535, 'Valid dedicated host port required');
 const docker = (...args) => execFileSync('docker', args, { encoding: 'utf8', timeout: 120000, maxBuffer: 8 * 1024 * 1024 });
 const sleep = (ms) => new Promise((done) => setTimeout(done, ms));
-let created = false;
+let ownedId;
+function cleanup() {
+  if (!ownedId) return;
+  const id = ownedId; ownedId = undefined;
+  disposeContainer(id, docker, (file, bytes) => writeFileSync(join(evidence, file), bytes));
+}
+for (const signal of ['SIGINT', 'SIGTERM']) process.on(signal, () => {
+  try { cleanup(); } finally { process.exit(signal === 'SIGINT' ? 130 : 143); }
+});
 try {
   docker('image', 'inspect', image);
-  docker('run', '--detach', '--name', name, '--init', '--cap-drop=ALL', '--security-opt=no-new-privileges:true',
+  ownedId = docker('create', '--name', name, '--init', '--cap-drop=ALL', '--security-opt=no-new-privileges:true',
     `--security-opt=seccomp=${resolve('tools/container/seccomp.json')}`, '--shm-size=512m',
-    '--publish', `127.0.0.1:${port}:6080`, image);
-  created = true;
+    '--publish', `127.0.0.1:${port}:6080`, image).trim();
+  docker('start', ownedId);
   const deadline = Date.now() + 60000;
   let response;
   while (Date.now() < deadline) {
@@ -47,15 +57,29 @@ try {
   assert(processes.includes('--type=renderer'), 'Real renderer process exists');
   assert(!processes.includes('--no-sandbox'), 'No sandbox-disabling flags');
   writeFileSync(join(evidence, 'processes.txt'), processes);
+  const sandbox = JSON.parse(docker('exec', name, 'node', '-e', `
+    const fs = require('fs');
+    const results = [];
+    for (const pid of fs.readdirSync('/proc').filter(p => /^\\d+$/.test(p))) {
+      try {
+        const args = fs.readFileSync('/proc/' + pid + '/cmdline', 'utf8').split('\\0');
+        if (!args.includes('--type=renderer')) continue;
+        const status = fs.readFileSync('/proc/' + pid + '/status', 'utf8');
+        results.push({pid, nspid: status.match(/^NSpid:\\s+(.+)$/m)?.[1].trim().split(/\\s+/),
+          seccomp: status.match(/^Seccomp:\\s+(\\d+)/m)?.[1], noNewPrivs: status.match(/^NoNewPrivs:\\s+(\\d+)/m)?.[1]});
+      } catch {}
+    }
+    console.log(JSON.stringify(results));
+  `));
+  assert(sandbox.some((p) => p.nspid?.length >= 2 && p.seccomp === '2' && p.noNewPrivs === '1'), 'Actual renderer has a nested PID namespace and active seccomp/no-new-privileges');
+  writeFileSync(join(evidence, 'renderer-sandbox.json'), JSON.stringify(sandbox, null, 2));
   writeFileSync(join(evidence, 'proof.json'), JSON.stringify({ ok: true, dockerArchitecture: JSON.parse(docker('image', 'inspect', image))[0].Architecture,
     nativeMacTest: false, noHostMounts: true, loopbackOnly: true, nonroot: true, realElectron: true, browserTransport: true }, null, 2));
   console.log(`Actual container/browser proof passed: ${evidence}`);
+} catch (error) {
+  writeFileSync(join(evidence, 'failure.txt'), error.stack || String(error));
+  throw error;
 } finally {
-  if (created) {
-    writeFileSync(join(evidence, 'container.log'), docker('logs', name));
-    docker('stop', '--time', '10', name);
-    docker('rm', name);
-    writeFileSync(join(evidence, 'cleanup.txt'), 'Only owned container removed; cleanup_complete=1\n');
-  }
+  cleanup();
   console.log(`Evidence retained: ${evidence}`);
 }

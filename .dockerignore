@@ -1,6 +1,7 @@
 # Send only build inputs, never private state, Git history or host dependencies.
 **
 !Dockerfile
+!compose.yaml
 !.dockerignore
 !flake.nix
 !flake.lock
@@ -28,8 +29,16 @@
 **/.git
 **/artifacts
 **/result
-**/bazel-*
+/bazel-*
 **/*local-registry*
 **/work-log.json
 **/*.jsonl
 **/auth.json
+**/.env
+**/.env.*
+**/.codex
+**/.claude
+**/.ssh
+**/.aws
+**/*.pem
+**/*.key

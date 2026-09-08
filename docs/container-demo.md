@@ -37,6 +37,12 @@ its design, follow the quote-adapter/spread-engine relationship, and open
 `src/spread.ts` through the file palette. The build declarations connect actual
 source filegroups; there are no invented running agents or deployments.
 
+The current container supports reading those declarations and following authored
+design/source links. **Live Bazel graph queries and agent subprocess runs are not
+available under this container profile**: their owned-process helper additionally
+needs a private proc mount. This demo does not expand mount permissions to enable
+them. Use the native Linux install for the full agent/build workflow.
+
 Edit a comment and save it. The repository and app state live in the `demo-data`
 named volume. Ctrl-C stops the attached launch; `docker compose down` removes its
 container/network without deleting the volume. Restart with `docker compose up`.

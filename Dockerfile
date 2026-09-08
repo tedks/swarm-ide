@@ -4,7 +4,8 @@ ENV NIX_CONFIG="experimental-features = nix-command flakes"
 WORKDIR /source
 COPY . .
 # Nix builds run inside Docker's build sandbox; application sandboxing is separate.
-RUN nix develop --option sandbox false --option filter-syscalls false --command bash -c 'pnpm install --frozen-lockfile && bazel build --jobs=3 //:desktop-bundle && mkdir -p /opt/swarm && tar -xzf bazel-bin/swarm-ide-foundation.tar.gz -C /opt/swarm && bazel shutdown'
+RUN nix develop --option sandbox false --option filter-syscalls false --command pnpm install --frozen-lockfile
+RUN nix develop --option sandbox false --option filter-syscalls false --command bash -c 'bazel build --jobs=3 --action_env=HOME=/root --action_env=CI=true //:desktop-bundle && mkdir -p /opt/swarm && tar -xzf bazel-bin/swarm-ide-foundation.tar.gz -C /opt/swarm && bazel shutdown'
 RUN nix build --option sandbox false --option filter-syscalls false --impure --file tools/container/runtime.nix --out-link /opt/runtime && \
     mkdir /runtime-store && cp -a $(nix-store --query --requisites /opt/runtime) /runtime-store/ && \
     cp -aL /opt/runtime/share/webapps/novnc /opt/novnc

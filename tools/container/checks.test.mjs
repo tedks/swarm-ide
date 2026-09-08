@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { execFileSync } from 'node:child_process';
+import { disposeContainer } from './cleanup.mjs';
 const read = (name) => readFileSync(new URL(name, import.meta.url), 'utf8');
 
 test('localhost display transport, no host control mounts or added capabilities', () => {
@@ -17,7 +18,7 @@ test('localhost display transport, no host control mounts or added capabilities'
 
 test('real production Electron is nonroot and keeps its sandbox', () => {
   const docker = read('../../Dockerfile'), entry = read('entrypoint.sh');
-  assert.match(docker, /bazel build --jobs=3 \/\/:desktop-bundle/);
+  assert.match(docker, /bazel build --jobs=3 .*\/\/:desktop-bundle/);
   assert.match(docker, /USER 1000:1000/);
   assert.match(entry, /dbus-run-session -- electron \/opt\/swarm\/app\/electron\/main\.js/);
   assert.match(entry, /unshare --user --map-root-user --pid --fork true/);
@@ -31,8 +32,10 @@ test('real production Electron is nonroot and keeps its sandbox', () => {
 test('build context excludes local identity and generated reports', () => {
   const ignore = read('../../.dockerignore');
   assert.match(ignore, /^\*\*$/m);
-  for (const name of ['**/.git', '**/node_modules', '**/artifacts', '**/*local-registry*', '**/work-log.json', '**/*.jsonl', '**/auth.json']) assert(ignore.split('\n').includes(name));
+  for (const name of ['**/.git', '**/node_modules', '**/artifacts', '**/*local-registry*', '**/work-log.json', '**/*.jsonl', '**/auth.json', '**/.env', '**/.env.*', '**/.codex', '**/.claude', '**/.ssh', '**/.aws', '**/*.pem', '**/*.key']) assert(ignore.split('\n').includes(name));
   assert(!ignore.split('\n').includes('!.swarm/**'));
+  assert(ignore.split('\n').includes('/bazel-*'));
+  assert(!ignore.split('\n').includes('**/bazel-*'), 'Source modules named bazel-reference.ts must remain included');
 });
 
 test('sandbox profile stays deny-by-default and permits only documented namespace adjustment', () => {
@@ -66,4 +69,35 @@ test('shell entrypoints parse and initialization does not overwrite retained dem
   assert.match(read('entrypoint.sh'), /\[\[ \$# == 0 && ! -e \/data\/demo \]\]/);
   assert.match(read('entrypoint.sh'), /rev-parse --verify HEAD/);
   assert.match(read('entrypoint.sh'), /trap cleanup EXIT/);
+});
+
+test('cleanup still removes its exact container after logs and stop failures', () => {
+  const calls = [], evidence = [];
+  assert.throws(() => disposeContainer('owned-id', (...args) => {
+    calls.push(args);
+    if (args[0] !== 'rm') throw new Error(`Failed ${args[0]}`);
+    return '';
+  }, (name) => evidence.push(name)), /Failed stop/);
+  assert.deepEqual(calls, [['logs', 'owned-id'], ['stop', '--time', '10', 'owned-id'], ['rm', '--force', 'owned-id']]);
+  assert(evidence.includes('cleanup.txt'));
+  const smoke = read('smoke.mjs');
+  assert.match(smoke, /ownedId = docker\('create'/);
+  assert.match(smoke, /docker\('start', ownedId\)/);
+});
+
+test('cleanup does not report success when removal fails', () => {
+  const evidence = [];
+  assert.throws(() => disposeContainer('owned-id', (...args) => {
+    if (args[0] === 'rm') throw new Error('removal failed');
+    return '';
+  }, (name) => evidence.push(name)), /removal failed/);
+  assert(!evidence.includes('cleanup.txt'));
+});
+
+test('full evidence storage cannot prevent owned process cleanup', () => {
+  const calls = [];
+  assert.throws(() => disposeContainer('owned-id', (...args) => {
+    calls.push(args); return '';
+  }, () => { throw new Error('ENOSPC'); }), /ENOSPC/);
+  assert.deepEqual(calls, [['logs', 'owned-id'], ['stop', '--time', '10', 'owned-id'], ['rm', '--force', 'owned-id']]);
 });
