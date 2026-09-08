@@ -114,18 +114,22 @@ export function ExternalAgentRail({ client, onSelect }: { client: ExternalClient
   </section>;
 }
 
-export function ExternalAgentInformation({ client, bridge, visible = true, onReturn, onOpen }: { client: ExternalClient; bridge?: SwarmBridge; visible?: boolean; onReturn(): void; onOpen(path: string): void }) {
+export function ExternalAgentInformation({ client, bridge, visible = true, contextOnly = false, onReturn, onOpen, onWorktree }: { client: ExternalClient; bridge?: SwarmBridge; visible?: boolean; contextOnly?: boolean; onReturn(): void; onOpen(path: string): void; onWorktree?(id: string): void }) {
   const [tab, setTab] = useState<"worklog" | "conversation">("worklog");
   const detail = client.detail, session = detail?.session;
   const entries = detail?.entries.filter((entry) => tab === "worklog" || entry.kind === "assistant") ?? [];
   return <section className="external-information" aria-label="External agent information" data-external-session={client.selected} hidden={!visible} style={visible ? undefined : { display: "none" }}>
-    <header><span className="eyebrow">external supervised session</span><h2>{session?.label ?? "Reading session…"}</h2>
+    <header><span className="eyebrow">agent context</span><h2>{session?.label ?? "Reading session…"}</h2>
       <button onClick={onReturn}>Return to source information</button></header>
-    <SessionSteering detail={detail} bridge={bridge} />
+    {!contextOnly ? <SessionSteering detail={detail} bridge={bridge} /> : null}
     {client.busy ? <p role="status">Observing…</p> : null}
     {client.notice ? <p role="status">{client.notice}</p> : null}
     {session ? <>
       {session.evidence === "synthetic" ? <p className="external-caption">Example session</p> : null}
+      {contextOnly ? <dl><dt>Worktree</dt><dd>{session.worktree ? <>{session.worktree}{onWorktree ? <button onClick={() => onWorktree(session.id)}>Explore worktree</button> : null}</> : "Not registered"}</dd>
+        {session.role ? <><dt>Role</dt><dd>{session.role}</dd></> : null}
+        {session.task ? <><dt>Task</dt><dd>{session.task}</dd></> : null}
+        <dt>Control</dt><dd>{detail.handoff === "available" ? "Terminal · message from IDE or tmux" : "Read-only history"}</dd></dl> : null}
       <details className="external-provenance"><summary>Fork ancestry & provenance · {session.parentId ? `parent ${session.parentId.slice(0, 8)}…` : "no recorded parent"}</summary>
       <dl><dt>Evidence</dt><dd>{session.evidence}</dd>
         <dt>Session</dt><dd>{session.id}</dd><dt>Forked from</dt><dd>{session.parentId ?? (session.status === "observed" ? "No parent in metadata" : "Unavailable")}</dd>
@@ -141,12 +145,12 @@ export function ExternalAgentInformation({ client, bridge, visible = true, onRet
         <label>Inside tmux<input aria-label="Switch terminal command" readOnly value={detail.terminal.switch} onFocus={(event) => event.currentTarget.select()} /></label>
       </details> : detail.handoff !== "available" ? <p className="external-caption">Terminal session unavailable.</p> : null}
       {session.contextPaths.length ? <details><summary>Why this context?</summary><p>Operator-associated briefing links, not a claim of all effective context.</p>{session.contextPaths.map((path) => <button key={path} onClick={() => onOpen(path)}>{path}</button>)}</details> : null}
-      <nav aria-label="External information views"><button aria-pressed={tab === "worklog"} onClick={() => setTab("worklog")}>Activity</button><button aria-pressed={tab === "conversation"} onClick={() => setTab("conversation")}>Conversation</button></nav>
+      {!contextOnly ? <><nav aria-label="External information views"><button aria-pressed={tab === "worklog"} onClick={() => setTab("worklog")}>Activity</button><button aria-pressed={tab === "conversation"} onClick={() => setTab("conversation")}>Conversation</button></nav>
       <details><summary>Observation details</summary><p>{detail.coverage.message} {detail.coverage.tailBytes} bytes read; {detail.coverage.omittedRecords} records omitted.</p></details>
       <ol className="external-worklog" aria-label={tab === "worklog" ? "Recorded agent worklog" : "Recorded assistant conversation"}>{entries.map((entry) => <li key={entry.id}>
         <header><time>{entry.at}</time><small>{entry.attribution}</small></header><p>{entry.text}</p>
       </li>)}</ol>
-      {!entries.length ? <p>No recent messages to show.</p> : null}
+      {!entries.length ? <p>No recent messages to show.</p> : null}</> : null}
     </> : null}
   </section>;
 }

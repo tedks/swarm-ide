@@ -15,7 +15,7 @@ vi.mock("../app/renderer/external-agents/client", () => ({ useExternalAgents: ()
 }) }));
 vi.mock("../app/renderer/external-agents/ExternalAgents", () => ({
   ExternalAgentRail: ({ onSelect }: { onSelect(): void }) => <button onClick={onSelect}>Inspect C7</button>,
-  ExternalAgentInformation: ({ onOpen, visible }: { onOpen(path: string): void; visible: boolean }) => <div hidden={!visible}><button onClick={() => onOpen("app/file.ts")}>Inspect agent file</button></div>,
+  ExternalAgentInformation: ({ onOpen, onWorktree, visible }: { onOpen(path: string): void; onWorktree?(id: string): void; visible: boolean }) => <div hidden={!visible}><button onClick={() => onOpen("app/file.ts")}>Inspect agent file</button><button onClick={() => onWorktree?.("00000000-0000-4000-8000-000000000007")}>Explore agent worktree</button></div>,
 }));
 import { App } from "../app/renderer/App";
 
@@ -33,7 +33,10 @@ it("Ctrl+W closes the agent inspection, not the underlying editor or file watch"
     if (input.type === "agent.snapshot") return { ...common, agent: { kind: "snapshot", snapshot: emptyAgentWorkbench().snapshot } };
     if (input.type === "tasks.snapshot") return { ...common, task: { kind: "snapshot", observation: taskObservationFixture() } };
     if (input.type === "file.read") return { ...common, file: { kind: "read", path: input.path, content: "local source\n", revision: "a".repeat(64), size: 13 } };
-    if (input.type === "worktree.inspect") return { ...common, worktreeInspection: { sessionId: input.sessionId, path: input.path, label: "C7", worktree: "/repos/child", content: "child source", diff: "" } };
+    if (input.type === "worktree.inspect") return { ...common, worktreeInspection: { sessionId: input.sessionId, path: input.path, label: "C7", worktree: "/repos/child", content: "child source", diff: "", ...(input.comparison ? { comparison: input.comparison, base: "origin/master" } : {}) } };
+    if (input.type === "worktree.browse") return { ...common, worktreeBrowse: { sessionId: input.sessionId, label: "C7", worktree: "/repos/child", branch: "feature/child", base: "origin/master", changesComplete: true, changes: [{ path: "app/file.ts", status: "modified" }], directory: {
+      directory: input.directory, observationId: "browser", capturedAt: "2026-09-08T06:00:00Z", state: "observed", complete: true, capturedCount: 0, filteredCount: 0, page: input.page, pageCount: 1, filter: "", entries: [],
+    } } };
     if (input.type === "workLog.read") return { ...common, workLog: { running: false, summarizing: false, settings: WorkLogSettingsSchema.parse({}), notice: "", entries: [
       { id: "outcome-1", sessionId: "00000000-0000-4000-8000-000000000007", agent: "C7", taskId: null, at: "2026-09-08T04:00:00Z", state: "working", outcome: "Connected the real operator cockpit.", areas: ["app/renderer/App.tsx"], checks: ["Mounted editor retained"], followUps: [], recorded: false },
     ] } };
@@ -58,6 +61,19 @@ it("Ctrl+W closes the agent inspection, not the underlying editor or file watch"
   const editor = EditorView.findFromDOM(editorNode)!;
   act(() => editor.dispatch({ changes: { from: 0, insert: "dirty " }, selection: { anchor: 4 } }));
   fireEvent.click(screen.getByRole("button", { name: "Inspect C7" }));
+  fireEvent.click(screen.getByRole("button", { name: "Explore agent worktree" }));
+  await screen.findByText("C7 / Worktree");
+  expect(request.mock.calls.find(([input]) => input.type === "worktree.browse")?.[0]).toMatchObject({ sessionId: "00000000-0000-4000-8000-000000000007", directory: "" });
+  fireEvent.click(screen.getByRole("button", { name: "modified app/file.ts" }));
+  await screen.findByText("Changes against origin/master, including committed and local edits.");
+  fireEvent.click(screen.getByRole("button", { name: "Source" }));
+  await screen.findByText("child source");
+  expect(request.mock.calls.find(([input]) => input.type === "worktree.inspect" && input.comparison === "master")?.[0]).toMatchObject({ sessionId: "00000000-0000-4000-8000-000000000007", comparison: "master" });
+  fireEvent.click(screen.getByRole("button", { name: "Return to workspace" }));
+  expect(document.querySelector(".cm-editor")).toBe(editorNode);
+  expect(editor.state.doc.toString()).toBe("dirty local source\n");
+  expect(editor.state.selection.main.anchor).toBe(4);
+  expect(screen.getAllByTestId("retained-graph")).toEqual(graphs);
   fireEvent.click(screen.getByRole("button", { name: "Inspect agent file" }));
   await screen.findByText("child source");
   fireEvent.click(screen.getByRole("button", { name: "System design" }));

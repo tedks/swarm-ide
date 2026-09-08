@@ -94,9 +94,9 @@ export function composeContext(subject: ContextSubject | null, input: ContextObs
       observedAt: c.capturedAt, timeBasis: "producer", freshness: c.observation ? input.ready && c.observation.status === "current" ? "current" : "retained" : "CAPTURE", coverage: c.observation?.coverage ?? "Recorded entries only; unknown outside this dated capture",
     } : undefined;
     const scope = !membership ? "No build observation yet." : c?.observation ? `${c.observation.complete ? "Returned query scope" : "Partial query scope"} · declarations, not compiled binaries.` : "Recorded capture only; not current ownership.";
-    sections.push({ id: "capture", title: "Direct build targets", rows: (membership?.direct ?? []).map((label) => ({ label: "Direct reference", value: label })), evidence,
+    sections.push({ id: "capture", title: "Direct build targets", rows: (membership?.direct ?? []).map((label) => ({ label: "Direct reference", value: label, link: { kind: "graph", topologyId: "build", id: label } })), evidence,
       empty: !membership?.direct.length ? "No targets" : undefined, notice: scope });
-    sections.push({ id: "indirect-targets", title: "Indirect build targets", rows: (membership?.indirect ?? []).map((label) => ({ label: "Transitive dependent", value: label })), evidence,
+    sections.push({ id: "indirect-targets", title: "Indirect build targets", rows: (membership?.indirect ?? []).map((label) => ({ label: "Transitive dependent", value: label, link: { kind: "graph", topologyId: "build", id: label } })), evidence,
       empty: !membership?.indirect.length ? "No targets" : undefined, notice: membership?.indirect.length ? "Includes this file through dependency paths; direct targets excluded." : scope });
     const latency = illustrativeLatency(subject, file, membership?.direct ?? []);
     sections.push({ id: "latency", title: "Latency", rows: [], latency, empty: latency ? undefined : "No latency profile", notice: latency ? undefined : "No declared demo tag or target profile for this file." });

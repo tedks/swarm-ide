@@ -63,6 +63,29 @@ At narrow widths the dock scrolls horizontally while its columns retain usable
 minimum widths and independent vertical scrolling. This keeps agent messaging,
 summary settings and Recent Activity reachable without remounting their content.
 
+The dock's primary **Conversation** tab follows the selected registered agent.
+The unique real root is the initial default unless a previous explicit selection
+is still registered. Child selection switches chat/control, not the central
+source, task or diff. Context keeps the agent's worktree and terminal details;
+it no longer duplicates the conversation's message owner. One retained
+`SteeringMemory` keeps target drafts/receipts through loading and development
+remounts. Native trusted execution/history and New/Fork remain in a secondary
+tab; old stored runs retain their own tabs rather than a competing sidebar list.
+`//tools/conversation-cockpit:unit` and its owned-virtual `:smoke` cover this
+composition. Actual transcript reads are separate from controlled Send evidence.
+With a registered-conversation surface, the default dock takes about 42% of the
+viewport (340–460px), leaving room for both readable messages and the composer.
+The message list retains at least 80px after a delivery receipt; timestamps and
+message/receipt controls remain visible instead of squeezing chat to zero height.
+
+The selected agent's **Worktree** action opens `AgentWorktreeBrowser` in the
+center, carrying the registered session ID into the typed broker. Its directory
+navigation and master comparison do not change the main repository or editor
+buffer. Returning hides the browser and restores the original surface; closing
+its tab or Ctrl+W closes only that inspection. File-event inspections remain a
+separate compatible route. The normal mount is tested in `cockpit-app.test.tsx`;
+the broker/browser's real two-worktree package evidence belongs to its producer.
+
 `OverflowStrip.tsx` wraps the existing document, lens and agent tab lists without
 changing their selection or keyboard owners. Native horizontal scrolling remains;
 overflow arrows are available only when needed and do not activate tabs. Selection

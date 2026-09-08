@@ -5,7 +5,7 @@ import { cockpitAgentNotice } from "./LiveRunRail";
 import "./agent-dock.css";
 import { OverflowStrip } from "../OverflowStrip";
 
-type DockTab = "agents" | "fixture" | `mock:${string}` | `run:${string}`;
+type DockTab = "conversation" | "agents" | "fixture" | `mock:${string}` | `run:${string}`;
 export interface AgentDockProps {
   state: LiveAgentState;
   client: AgentBridgeClient;
@@ -17,6 +17,7 @@ export interface AgentDockProps {
   workLogContent?: ReactNode;
   activityContent: ReactNode;
   onOpenActivity?: () => void;
+  conversation?: { content: ReactNode; selectionVersion?: string };
   fixtureContent?: ReactNode;
   mockConversation?: {
     tabs: ReadonlyArray<{ id: string; name: string }>;
@@ -32,12 +33,12 @@ export interface AgentDockProps {
   trustedSelectionVersion?: string;
 }
 
-export function AgentDock({ state, client, onDraft, runContent, draftContent, trustedContent, jobsContent, workLogContent, activityContent, onOpenActivity, fixtureContent, mockConversation, selectionVersion = 0, fixtureSelectionVersion = 0, trustedSelectionVersion }: AgentDockProps) {
+export function AgentDock({ state, client, onDraft, runContent, draftContent, trustedContent, jobsContent, workLogContent, activityContent, onOpenActivity, conversation, fixtureContent, mockConversation, selectionVersion = 0, fixtureSelectionVersion = 0, trustedSelectionVersion }: AgentDockProps) {
   const id = useId();
   const runs = state.snapshot?.runs ?? [];
   const notice = cockpitAgentNotice(state, Boolean(trustedContent));
   const hasSelection = state.selectedRunId !== null;
-  const [active, setActive] = useState<DockTab>(() => !state.draft && state.paneOpen && hasSelection ? `run:${state.selectedRunId}` : "agents");
+  const [active, setActive] = useState<DockTab>(() => !state.draft && state.paneOpen && hasSelection ? `run:${state.selectedRunId}` : conversation && !state.draft ? "conversation" : "agents");
   const previousSelection = useRef({ runId: state.selectedRunId, open: state.paneOpen, version: selectionVersion, selected: hasSelection });
   useEffect(() => {
     const previous = previousSelection.current;
@@ -56,9 +57,12 @@ export function AgentDock({ state, client, onDraft, runContent, draftContent, tr
   const mockSelectionVersion = mockConversation?.selectionVersion;
   useEffect(() => { if (mockSelected) setActive(`mock:${mockSelected}`); }, [mockSelected, mockSelectionVersion]);
   useEffect(() => { if (trustedSelectionVersion) setActive("agents"); }, [trustedSelectionVersion]);
+  const conversationSelection = conversation?.selectionVersion;
+  useEffect(() => { if (conversationSelection) setActive("conversation"); }, [conversationSelection]);
 
   const tabs: Array<{ key: DockTab; label: string; detail?: string }> = [
-    { key: "agents", label: draftOpen ? "Agents · draft" : "Agents" },
+    ...(conversation ? [{ key: "conversation" as const, label: "Conversation" }] : []),
+    { key: "agents", label: draftOpen ? "Agents · draft" : conversation ? "Native agents / New" : "Agents" },
     ...runs.map((run) => ({ key: `run:${run.runId}` as const, label: displayAgentText(run.taskLabel), detail: run.state })),
     ...(state.selectedRunId && !runs.some((run) => run.runId === state.selectedRunId) ? [{ key: `run:${state.selectedRunId}` as const, label: "Unconfirmed run", detail: "unknown" }] : []),
     ...(fixtureContent ? [{ key: "fixture" as const, label: "Fixture · no model turn" }] : []),
@@ -90,6 +94,9 @@ export function AgentDock({ state, client, onDraft, runContent, draftContent, tr
         aria-controls={panelId(tab.key)} aria-label={tab.detail ? `${tab.label} ${tab.detail}` : tab.label} tabIndex={current === tab.key ? 0 : -1} title={tab.detail ? `${tab.label} · ${tab.detail}` : tab.label}
         onClick={() => choose(tab.key)}><span>{tab.label}</span>{tab.detail ? <small className={`agent-state agent-state-${tab.detail}`}>{tab.detail}</small> : null}</button>)}
     </div></OverflowStrip>
+    {conversation ? <div id={panelId("conversation")} role="tabpanel" aria-labelledby={tabId("conversation")}
+      hidden={current !== "conversation"} className="agent-dock-panel agent-dock-conversation">{conversation.content}</div> : null}
+    {conversation && notice ? <p className="agent-dock-operation-notice" role="status">{displayAgentText(notice)}</p> : null}
     <div id={panelId("agents")} role="tabpanel" aria-labelledby={tabId("agents")} hidden={current !== "agents"} className="agent-dock-panel agent-dock-home">
       {!draftOpen && !proposalId ? <div className="agent-dock-welcome"><strong>{runs.length ? "Select an agent run" : "Agent interaction"}</strong>
         <p>{runs.length ? "Open a run from the sidebar or its tab to inspect output and send instructions when available."
@@ -97,7 +104,7 @@ export function AgentDock({ state, client, onDraft, runContent, draftContent, tr
             : !state.snapshot ? "Agent availability has not been observed yet."
             : state.snapshot.capabilities.availability === "available" ? "No agent runs yet. Prepare a focused draft to begin."
               : "No live agent runs. Execution is unavailable; you can prepare a draft without launching a run."}</p>
-        {notice ? <p className="agent-dock-notice" role="status">{displayAgentText(notice)}</p> : null}
+        {!conversation && notice ? <p className="agent-dock-notice" role="status">{displayAgentText(notice)}</p> : null}
         <button className="agent-primary" onClick={onDraft}>Prepare an agent draft</button>
       </div> : null}
       {draftContent}

@@ -10,6 +10,7 @@
 .dock-activity > .activity-list { grid-template-columns: minmax(0, 1fr); }
 .agent-interaction-dock { height: 100%; min-height: 0; min-width: 0; display: flex; flex-direction: column; background: #091715; border-inline: 1px solid #284139; container-type: inline-size; }
 .workbench:has(.agent-interaction-dock) { grid-template-rows: var(--topbar-height) minmax(0, 1fr) clamp(180px, 26vh, 320px); }
+.workbench:has(.agent-conversation) { grid-template-rows: var(--topbar-height) minmax(0, 1fr) clamp(340px, 42vh, 460px); }
 .agent-dock-home > .agent-draft { max-width: 900px; margin: 0 auto; }
 .agent-dock-tabs { display: flex; flex-shrink: 0; min-width: 0; overflow-x: auto; border-bottom: 1px solid #284139; background: #0d1b18; }
 .agent-dock-tabs > button { display: flex; align-items: center; gap: 8px; flex-shrink: 0; max-width: 240px; min-height: 34px; padding: 7px 13px; border: 0; border-right: 1px solid #203830; border-bottom: 2px solid transparent; background: transparent; color: #90aaa1; font-size: 11px; text-align: left; }
@@ -18,6 +19,8 @@
 .agent-interaction-dock :focus-visible { outline: 2px solid #57d3ad; outline-offset: -2px; }
 .agent-dock-panel { flex: 1; min-height: 0; min-width: 0; overflow: auto; }
 .agent-dock-panel[hidden] { display: none !important; }
+.agent-dock-conversation { overflow: hidden; }
+.agent-dock-operation-notice { margin: 0; padding: 5px 12px; font-size: 11px; color: #f3c997; overflow-wrap: anywhere; }
 .agent-dock-run { display: flex; flex-direction: column; overflow: hidden; }
 .agent-dock-run > .agent-pane { flex: 1; min-height: 0; }
 .agent-dock-welcome { max-width: 780px; padding: 17px 20px; font-size: 12px; }

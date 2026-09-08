@@ -77,9 +77,37 @@ The current service examples have their own declarations under
 Their labels describe example services, not Swarm's TypeScript component
 boundaries. See [dynamic build graph](../dynamic-build-graph.md) for query limits.
 
+## Target and file links
+
+Context's direct and indirect target rows carry exact build-graph identities.
+An explicit click supplies the observation's repository and revision to
+`BuildGraphPane`; this switches out of file-follow mode and reveals the selected
+target. Unrelated service and repository graph instances stay mounted. The
+declaration action uses the target's recorded `buildFile`, whether `BUILD` or
+`BUILD.bazel`; old captures without declaration paths cannot invent one.
+
+[The reference resolver](../../app/renderer/bazel-reference.ts) handles simple
+literal strings on Alt-click in Bazel sources. BUILD files accept observed
+absolute labels, `:target`, and package-relative source names. Starlark macros
+may interpret relative strings in their caller's package, so `.bzl` files accept
+only absolute `//package:target` labels for now. Generated/external targets,
+computed strings, ambiguous records and absent observations are not followed.
+The normal source broker still controls opening and dirty-buffer handoff; the
+resolver does not read the filesystem or choose another agent's worktree.
+
+`//tools/context-source-links:unit` consumes `//:quality_sources` and checks the
+literal resolver, editor gesture, both Context categories and explicit graph
+selection. App's callback mount checks the current repository/world and preserves
+the existing source-opening authority, then deliberately opens the exact target
+in the Build graph lens without replacing the service graph.
+
 `//tools/worktree-browser:checks` consumes `//:quality_sources` and checks the
 actual two-worktree Git broker plus mounted browser and original-buffer retention.
 `//tools/worktree-browser:smoke` packages the production core and places the real
 App and browser in a labelled controlled renderer wrapper on owned virtual X11.
 That wrapper proves retention before the independent conversation-owner App mount;
 it is not a live-agent or normal-entry-point claim.
+The conversation cockpit now supplies the normal selected-agent Worktree action
+and a persistent hidden browser surface. Its mounted App regression separately
+checks selected session identity, master comparison and original buffer/camera
+retention; the earlier wrapper proof is not relabelled as normal-entry evidence.

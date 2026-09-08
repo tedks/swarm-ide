@@ -1,0 +1,127 @@
+# Make the conversation the operator's home
+
+This living ExecPlan follows `.planning/PLANS.md`.
+
+## Purpose / Big Picture
+
+Opening Swarm should show the registered root agent's conversation and message
+box, not instructions to prepare an unrelated draft. Selecting a child should
+switch the conversation without losing another agent's unsent message. Source,
+task, graphs and worktree inspection remain in the central work area.
+
+## Progress
+
+- [x] Inspected existing observer, dock and messaging state; claimed Ditz
+  `swarm-conversation-cockpit`.
+- [x] Add conservative initial/root selection and restore deliberate choices.
+- [x] Mount one conversation/message owner in the dock; leave facts in Context.
+- [x] Preserve native runs, drafts and errors in secondary controls.
+- [x] Join reviewed navigation and worktree producer APIs with separate App mounts.
+- [x] Focused native/local checks and functional owned virtual proof.
+- [x] Final readable-layout proof, documentation/push and implementation handoff;
+  ROOT retains normal merge and managed-app adoption.
+
+## Surprises & Discoveries
+
+The current right Context panel owns SessionSteering, while AgentDock leads with
+new-run preparation and the left rail repeats an older run list. The observer
+already serializes reads and fences stale results; no new harness is needed.
+The existing transcript projection deliberately excludes user text, so a small
+explicit user-message projection is needed for a two-sided conversation.
+Actual packaged inspection caught two things DOM-only assertions missed: this
+ROOT is itself a fork outside the registry, and the initial dock gave its message
+list only 11px (then zero after a receipt). The root predicate and dock space were
+corrected directly; old failures remain in the step evidence. Test-support defects
+(too-small metadata-header read and an incomplete controlled response envelope)
+were separate from production defects and fixed with corresponding direct checks.
+
+## Decision Log
+
+- Default only a unique locally observed top-level registered ancestor, never a role label or
+  recent activity. Restore a still-registered explicit selection first. Do not
+  switch a deliberate choice during refresh or after its removal.
+- Actual ROOT metadata has an unregistered parent. The first real UI check
+  exposed the overstrict null-parent assumption; root means the top of this
+  registered projection, not a fabricated claim of never having been forked.
+- Keep native controls mounted in a secondary dock tab. Moving presentation must
+  not change their ownership or discard queued/unknown delivery state.
+- Preserve bounded conversation input/output as text, not executable markup;
+  reasoning and raw tool output remain excluded.
+
+## Context and Orientation
+
+`app/renderer/external-agents/client.ts` owns registry and selected transcript
+reads through the validated bridge. `SessionSteering.tsx` owns target-specific
+drafts and queue receipts. `AgentDock.tsx` coordinates persistent conversation,
+native controls and run tabs. `App.tsx` mounts those surfaces alongside source
+and graphs. `core/external-agents-activity.ts` extracts bounded visible records;
+`protocol/external-agents.ts` validates their exact shape.
+
+## Plan of Work
+
+First add default selection and mounted tests, then present the existing
+conversation in a dock panel without a second SessionSteering mount. Remove only
+the redundant LiveRunRail mount; retain run tabs, native fleet/history and error
+notices. Keep agent facts and registered worktree links in Context. Update
+`docs/design/agents.md`, `cockpit.md` and the component build mappings.
+Reviewed navigation2ce9dbb and worktree9583246 were normally merged. App now
+deliberately selects observed build targets, opens resolvable Alt-click sources
+through the existing broker, and opens the selected agent's worktree browser.
+Only the shared repository design document conflicted; both sections were retained.
+
+## Concrete Steps
+
+Run from `/home/tedks/Projects/swarm-ide/conversation-cockpit` using
+`nix develop --command bazel test --jobs=3 //tools/demo-agents:unit` and the
+conversation-focused target. Package with `bazel build //:desktop-bundle` under
+the same Nix environment. A new owned virtual proof uses port 55401 and a private
+display, never the physical desktop. It reads real registered sessions but
+intercepts Send before core with a controlled receipt; it never messages workers.
+
+## Validation and Acceptance
+
+Verify unique ROOT selection, ambiguity and remembered-child precedence, no
+refresh selection theft, draft/receipt retention through selection/loading,
+native history/error visibility and unchanged editor/graph state. The GUI should
+show ROOT, allow reading and typing, switch to a child and return, and retain an
+unknown-delivery message without retry. Actual transcript reads and controlled
+Send evidence must be distinguished.
+
+## Idempotence and Recovery
+
+No unsolicited messages, new provider process, session resume, application
+adoption or other worktree edits occur. Use granular commits and a draft PR;
+ROOT performs normal merge. Cleanup only owned test resources and preserve the
+steerable implementation tmux session until acknowledged.
+
+## Interfaces and Dependencies
+
+Reuse `ExternalClient`, `ExternalDetail`, `SessionSteering` and the existing
+`externalAgents.send` queue. Add optional dock conversation content/selection
+props; existing native run callers remain compatible. No parser packages or
+global configuration changes belong to this stream.
+
+## Outcomes & Retrospective
+
+PR103 contains the conversation implementation and reviewed narrow peer mounts.
+The real registered ROOT/child packaged journey passed reading, target drafts,
+unknown-receipt retention, worktree open/return and source/cameras. Send was
+intercepted before core, not delivered to an agent. Native review found and
+verified fixes for automatic-selection theft and transcript collapse. Final
+proof adds visible message-height and composer bounds, not only DOM presence.
+The final real registered journey passed in 2.073 seconds with no renderer
+errors and complete owned-desktop cleanup. Visible transcript height stayed
+145px before and 105px after the controlled receipt. The three final scoped
+Bazel targets (conversation, navigation, worktree) passed together in 18.309
+seconds; native review converged CLEAN. One opt-in live-send test remained
+disabled deliberately, because working agents were not test-message targets.
+No ROOT merge or managed-app adoption is performed by this implementation owner.
+
+## Artifacts and Notes
+
+Concise coordination and verification live in
+`/tmp/swarm-ide-finish-loop.0vkfJQ/conversation`.
+
+Updated September8 after implementation and native/real UI feedback; the plan
+now reflects actual registered ancestry and visible-layout acceptance rather
+than the initial assumptions.

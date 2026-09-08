@@ -134,7 +134,7 @@ function toolEntries(name: string, input: unknown, base: ExternalEntry): Externa
 }
 
 /** Recorded invocation is a request, never proof of success. Preserve assistant
- * messages, but omit user input, reasoning and raw tool output. Only actual tool
+ * messages and explicit user-message events, but omit reasoning and raw tool output. Only actual tool
  * literals provide file/command attribution; prose and shell commands never do. */
 export function extractEntries(input: unknown, id: string): ExternalEntry[] {
   const record = object(input), payload = object(record?.payload);
@@ -142,6 +142,10 @@ export function extractEntries(input: unknown, id: string): ExternalEntry[] {
   const at = typeof record.timestamp === "string" ? bounded(record.timestamp, 64) : "timestamp unavailable";
   const base: ExternalEntry = { id: id.slice(0, 100), at, kind: "tool-call", text: "", attribution: "recorded-tool-event",
     ...(typeof payload.call_id === "string" ? { callId: bounded(payload.call_id, 160) } : {}) };
+  // One canonical event avoids duplicating response_item copies, injected
+  // developer instructions and inherited context as conversational input.
+  if (record.type === "event_msg" && payload.type === "user_message" && typeof payload.message === "string")
+    return [{ id: base.id, at, kind: "user", text: bounded(payload.message), attribution: "user-message" }];
   if (record.type === "response_item" && payload.type === "message" && payload.role === "assistant" && payload.phase !== "analysis" && Array.isArray(payload.content)) {
     const chunks = payload.content.flatMap((item: unknown) => {
       const part = object(item);

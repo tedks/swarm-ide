@@ -13,7 +13,7 @@ export function FleetActivityView({ fleet, selected, onSelect, onAgent, onInspec
   onAgent(id: string): void; onInspect(id: string, path: string, patch?: string): void;
 }) {
   const entries = fleet.flatMap(({ session, entries }) => entries.map((entry) => ({ session, entry })))
-    .filter(({ entry }) => entry.kind !== "assistant")
+    .filter(({ entry }) => entry.kind !== "assistant" && entry.kind !== "user")
     .sort((a, b) => b.entry.at.localeCompare(a.entry.at)).slice(0, 200);
   return <section className="fleet-activity-view" aria-label="Live swarm activity">
     {selected ? <article className="fleet-event-detail">

@@ -107,6 +107,10 @@
       "core/build-graph.ts",
       "app/renderer/context/ContextPane.tsx",
       "core/project-context/provider.ts",
+      "app/renderer/bazel-reference.ts",
+      "app/renderer/context/compose.ts",
+      "app/renderer/repository/BuildGraphPane.tsx",
+      "tools/context-source-links/BUILD.bazel",
       "core/project-context/node.ts",
       "core/project-context/docker.ts",
       "core/project-context/catalog.ts",
@@ -136,6 +140,11 @@
           "label": "//tools/project-context:checks",
           "role": "Checks automatic runtime ownership, bounded manifest discovery and Context rendering",
           "dependencies": [{ "label": "//:quality_sources", "relation": "data" }, { "label": "//tools/project-context:sources", "relation": "data" }]
+        },
+        {
+          "label": "//tools/context-source-links:unit",
+          "role": "Checks exact Context target links, Bazel references and editor gestures",
+          "dependencies": [{ "label": "//:quality_sources", "relation": "data" }]
         },
         {
           "label": "//tools/project-context:probe",
@@ -247,12 +256,16 @@
       "core/external-agents-send.ts",
       "protocol/external-agents.ts",
       "app/renderer/external-agents/ExternalAgents.tsx",
+      "app/renderer/external-agents/AgentConversation.tsx",
+      "app/renderer/external-agents/conversation-selection.ts",
+      "app/renderer/external-agents/steering-memory.ts",
+      "app/renderer/external-agents/SessionSteering.tsx",
       "BUILD.bazel"
     ],
     "taskIds": [],
     "contextRefs": [],
     "design": {
-      "summary": "Own native agent sessions or observe registered terminal sessions, preserving the real parent and execution owner.",
+      "summary": "Read and steer the selected registered conversation by default, with native execution/history in secondary controls and the real parent, worktree and execution owner preserved.",
       "state": "implemented",
       "connections": [
         {
@@ -295,6 +308,14 @@
           "dependencies": [
             { "label": "//:quality_sources", "relation": "data" },
             { "label": "//tools/demo-agents:sources", "relation": "data" }
+          ]
+        },
+        {
+          "label": "//tools/conversation-cockpit:unit",
+          "role": "Conversation selection, target drafts/receipts, native controls and existing observer checks",
+          "dependencies": [
+            { "label": "//:quality_sources", "relation": "data" },
+            { "label": "//tools/conversation-cockpit:sources", "relation": "data" }
           ]
         }
       ]
