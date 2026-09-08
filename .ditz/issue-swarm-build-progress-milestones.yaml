@@ -27,3 +27,11 @@ log_events:
     message before exit and confirmed cleanup. Native review caught and verified fixes
     for terminal-escape parsing cost and advisory close errors. PR114 is ready above
     automatic-query PR108; ROOT owns landing. No App or shared preview changes.
+- time: 2026-09-08T14:23:47-00:00
+  who: Ted Smith
+  what: commented
+  comment: 'Added the exact plan-owner-approved runtime map in PR114 58ca874: progress
+    reader/provider paths plus the real focused-check and owned-probe targets with
+    verified data dependencies. Structural comparison confirms every other node/link
+    is unchanged. No executable change or additional test cycle. ROOT preserves additive
+    CLI/container mappings during peer composition and owns landing.'
