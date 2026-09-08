@@ -3,6 +3,7 @@ import type { ExternalAgentSummary } from "../../../protocol/external-agents";
 import type { ExternalClient } from "./client";
 import type { SwarmBridge } from "../../electron/preload";
 import { SessionSteering } from "./SessionSteering";
+import { RunStatus } from "./RunStatus";
 import "./external-agents.css";
 
 type LineageRow = {
@@ -104,8 +105,11 @@ export function ExternalAgentRail({ client, onSelect }: { client: ExternalClient
           onClick={() => setCollapsed((prior) => { const next = new Set(prior); if (next.has(session.id)) next.delete(session.id); else next.add(session.id); return next; })}>
           <span aria-hidden="true">{folded ? "▸" : "▾"}</span>
         </button> : null}
-        <button aria-label={`Inspect external agent ${session.label}`} aria-pressed={client.selected === session.id} onClick={() => { onSelect(); void client.read(session.id); }}>
-          <span>{session.label}<small>{session.evidence === "synthetic" ? "synthetic · " : ""}{session.status === "unavailable" ? "unavailable" : session.ancestry === "unknown-parent" ? "parent not registered" : session.ancestry === "cycle" ? "invalid cyclic ancestry" : `fork depth ${depth}`}</small></span>
+        <button aria-label={`Inspect external agent ${session.label}`} aria-describedby={`${listId}-${session.id}-state`} aria-pressed={client.selected === session.id} onClick={() => { onSelect(); void client.read(session.id); }}>
+          <span className="external-agent-label">{session.label}<RunStatus id={`${listId}-${session.id}-state`} state={session.lifecycle?.state} />
+            {session.evidence === "synthetic" || session.status === "unavailable" || session.ancestry === "unknown-parent" || session.ancestry === "cycle" ?
+              <small>{session.evidence === "synthetic" ? "example · " : ""}{session.status === "unavailable" ? "Observation unavailable" : session.ancestry === "unknown-parent" ? "Parent not registered" : session.ancestry === "cycle" ? "Invalid cyclic ancestry" : ""}</small> : null}
+          </span>
         </button>
       </li>)}</ul></div> : <p className="external-caption">{client.busy ? "Reading registrations…" : "No observed sessions. Supply an operator registry to connect existing harnesses."}</p>}
     {client.notice ? <p role="status">{client.notice}</p> : null}
@@ -125,6 +129,7 @@ export function ExternalAgentInformation({ client, bridge, visible = true, conte
     {client.busy ? <p role="status">Observing…</p> : null}
     {client.notice ? <p role="status">{client.notice}</p> : null}
     {session ? <>
+      <RunStatus state={session.lifecycle?.state} />
       {session.evidence === "synthetic" ? <p className="external-caption">Example session</p> : null}
       {contextOnly ? <dl><dt>Worktree</dt><dd>{session.worktree ? <>{session.worktree}{onWorktree ? <button onClick={() => onWorktree(session.id)}>Explore worktree</button> : null}</> : "Not registered"}</dd>
         {session.role ? <><dt>Role</dt><dd>{session.role}</dd></> : null}

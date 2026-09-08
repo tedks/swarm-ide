@@ -8,7 +8,7 @@ import type { ExternalDetail, ExternalEntry } from "../protocol/external-agents"
 afterEach(cleanup);
 const id = "00000000-0000-4000-8000-000000000001", at = "2026-09-07T20:00:00.000Z";
 function entry(n: number): ExternalEntry {
-  return { id: `0:${n}`, at, kind: "assistant", text: `Reported change ${n}`, attribution: "assistant-reported" };
+  return { id: `0:${n}`, at, kind: "tool-call", text: `Ran command ${n}`, attribution: "recorded-tool-event" };
 }
 function detail(): ExternalDetail {
   return { session: { id, label: "Implementation agent", evidence: "local", status: "observed", parentId: null, ancestry: "root", observationId: "a".repeat(64), observedAt: at, message: "Registered local session", contextPaths: [] },
@@ -19,12 +19,23 @@ function client(overrides: Partial<ExternalClient> = {}): ExternalClient {
 }
 
 describe("compact observed activity", () => {
-  it("labels local transcript observation separately from generated summaries and opens only deliberately", () => {
+  it("retains the newest source records when timestamps tie or are missing, not opaque ID order", () => {
+    const observed = detail();
+    observed.entries = [900, 1000, 1100, 1200, 1300].map((offset) => ({ ...entry(offset), id: `dev:ino:${offset}:hash` }));
+    const view = render(<ObservedActivity client={client({ detail: observed })} onOpen={() => {}} />);
+    expect(screen.queryByText("Ran command 900")).toBeNull();
+    expect(screen.getAllByRole("listitem").map((row) => row.textContent)).toEqual(expect.arrayContaining([expect.stringContaining("Ran command 1000")]));
+    expect(screen.getAllByRole("listitem")[0]?.textContent).toContain("Ran command 1300");
+    view.rerender(<ObservedActivity client={client({ detail: { ...observed, entries: observed.entries.map((event) => ({ ...event, at: "" })) } })} onOpen={() => {}} />);
+    expect(screen.queryByText("Ran command 900")).toBeNull();
+    expect(screen.getAllByRole("listitem")[0]?.textContent).toContain("Ran command 1300");
+  });
+  it("renders raw operations without redundant live labels and opens only deliberately", () => {
     const state = client(), onOpen = vi.fn();
     const view = render(<ObservedActivity client={{ ...state, observing: true }} onOpen={onOpen} />);
-    expect(screen.getByText("Session activity · updates automatically")).toBeTruthy();
-    expect(screen.getByText("Auto-refresh on")).toBeTruthy();
-    expect(screen.getByText("Agent update")).toBeTruthy();
+    expect(screen.queryByText("Live")).toBeNull();
+    expect(screen.queryByText("Refreshing observation")).toBeNull();
+    expect(screen.getByText("Ran command 1")).toBeTruthy();
     expect(view.container.querySelector("time")?.getAttribute("datetime")).toBe(at);
     expect(onOpen).not.toHaveBeenCalled();
     fireEvent.click(screen.getByRole("button", { name: "Open observed activity for Implementation agent" }));
@@ -36,18 +47,17 @@ describe("compact observed activity", () => {
     const before = detail(); before.entries = Array.from({ length: 8 }, (_, i) => entry(i)); before.coverage.partial = true;
     const state = client({ detail: before });
     const view = render(<ObservedActivity client={{ ...state, observing: true }} onOpen={() => {}} />);
-    const button = screen.getByRole("button"); button.focus();
+    const button = screen.getByRole("button", { name: "Open observed activity for Implementation agent" }); button.focus();
     const list = screen.getByRole("list", { name: "Latest observed transcript entries" });
     expect(within(list).getAllByRole("listitem")).toHaveLength(4);
-    expect(screen.queryByText("Reported change 0")).toBeNull();
+    expect(screen.queryByText("Ran command 0")).toBeNull();
     const next = { ...before, entries: [4, 5, 6, 7].map((n) => ({ ...entry(n), id: `1024:${n}` })) };
     view.rerender(<ObservedActivity client={{ ...state, detail: next, observing: true, refreshing: true }} onOpen={() => {}} />);
-    expect(screen.getAllByText("Reported change 7")).toHaveLength(1);
+    expect(screen.getAllByText("Ran command 7")).toHaveLength(1);
     expect(within(list).getAllByRole("listitem")).toHaveLength(4);
     expect(document.activeElement).toBe(button);
     expect(view.container.querySelector("[aria-live], [role=status], [role=alert]")).toBeNull();
-    expect(screen.getByText("Refreshing observation")).toBeTruthy();
-    expect(screen.getByText(/Showing 4 latest entries/)).toBeTruthy();
+    expect(screen.queryByText("Refreshing observation")).toBeNull();
   });
 
   it("renders only bounded plain text and never interprets transcript links, HTML or completion as verified work", () => {
@@ -57,37 +67,36 @@ describe("compact observed activity", () => {
       { ...entry(3), text: "Turn completed", kind: "turn-complete", attribution: "harness-event", at: "" }];
     render(<ObservedActivity client={client({ detail: observed })} onOpen={() => {}} />);
     const log = screen.getByRole("list");
-    expect(within(log).queryByRole("button")).toBeNull(); expect(within(log).queryByRole("link")).toBeNull();
+    expect(within(log).queryByRole("button", { name: "Run me" })).toBeNull(); expect(within(log).queryByRole("link")).toBeNull();
     expect(within(log).getByText("x".repeat(240) + "…")).toBeTruthy();
     expect(within(log).getByText("Time not recorded")).toBeTruthy();
-    expect(within(log).getByText("Tool activity")).toBeTruthy();
-    expect(within(log).getByText("Session activity")).toBeTruthy();
+    expect(within(log).getByText("Turn completed")).toBeTruthy();
   });
 
   it("labels synthetic records and leaves paused retained observations visible", () => {
     const observed = detail(); observed.session.evidence = "synthetic";
     render(<ObservedActivity client={{ ...client({ detail: observed }), observing: false }} onOpen={() => {}} />);
-    expect(screen.getByText("Example session")).toBeTruthy();
-    expect(screen.getByText("Auto-refresh paused")).toBeTruthy();
-    expect(screen.getByText("Reported change 1")).toBeTruthy();
+    expect(screen.getByText("Implementation agent · example")).toBeTruthy();
+    expect(screen.getByText("Paused")).toBeTruthy();
+    expect(screen.getByText("Ran command 1")).toBeTruthy();
   });
 
   it("marks retained unavailable observations stale without rewriting their last-observed time", () => {
     const state = client({ observing: true, stale: true });
     const view = render(<ObservedActivity client={state} onOpen={() => {}} />);
-    expect(screen.getByText("Retained observation · refresh unavailable")).toBeTruthy();
+    expect(screen.getByText("Reconnecting…")).toBeTruthy();
     expect(screen.queryByText("Auto-refresh on")).toBeNull();
-    expect(screen.getByText("Reported change 1")).toBeTruthy();
+    expect(screen.getByText("Ran command 1")).toBeTruthy();
     expect(view.container.querySelector("time")?.getAttribute("datetime")).toBe(at);
   });
 
   it("withholds a stale selected tail and distinguishes no selection from an empty eligible tail", () => {
     const state = client(); const view = render(<ObservedActivity client={{ ...state, selected: "another-agent" }} onOpen={() => {}} />);
-    expect(screen.queryByText("Reported change 1")).toBeNull();
+    expect(screen.queryByText("Ran command 1")).toBeNull();
     expect(screen.getByText("Waiting for this agent’s observation.")).toBeTruthy();
     view.rerender(<ObservedActivity client={{ ...state, selected: null }} onOpen={() => {}} />);
-    expect(screen.getByText("Select an external agent to follow its observed activity.")).toBeTruthy();
+    expect(screen.getByText("Registered agents’ tool calls and edits appear here.")).toBeTruthy();
     view.rerender(<ObservedActivity client={{ ...state, detail: { ...detail(), entries: [] } }} onOpen={() => {}} />);
-    expect(screen.getByText("No recent messages to show.")).toBeTruthy();
+    expect(screen.getByText("No recent operations.")).toBeTruthy();
   });
 });

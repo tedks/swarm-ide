@@ -18,6 +18,11 @@ Plan relationships are authored in-repo. The core reads a bounded canonical
 index and validates its structure; a reference remains a candidate until its
 target can actually be opened. The accompanying component graph descends to the
 actual source and Bazel boundaries instead of manufacturing a function inventory.
+Component document and implementation lists are bounded by the overall 64 KiB
+index, not an arbitrary per-component reference count. The UI collapses long
+lists and lets the operator expand them. `//tools/living-design:checks`
+reads the actual committed index through the core reader, preserving every source
+link; design edits must pass that inexpensive check before landing.
 
 Ditz reads are pinned to metadata revisions. The visible list checks the local ref
 every five seconds and on focus/reopening, then automatically reads changed
