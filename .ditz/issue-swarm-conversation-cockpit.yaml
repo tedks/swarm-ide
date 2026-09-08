@@ -22,3 +22,12 @@ log_events:
   who: Ted Smith
   what: started
   comment: ""
+- time: 2026-09-08T06:24:40-00:00
+  who: Ted Smith
+  what: commented
+  comment: 'PR103 pushed62a8f14: conversation-first dock and one retained draft/receipt
+    owner; native controls preserved secondary. Native convergence CLEAN, focused137
+    pass plus1 existing opt-in skipped. Actual UI exposed overstrict null-parent ROOT
+    assumption; corrected to unique registered top-level ancestry with exact tests.
+    Reviewed navigation producer and App mount joined, both focused targets pass.
+    Owned conversation proof and worktree mount finishing.'
