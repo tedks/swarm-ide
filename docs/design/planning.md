@@ -30,6 +30,8 @@ One `usePlanNavigation` observation and selection serve the component graph,
 document and breadcrumbs. `PlanWorkspace` exposes these as layout slots rather
 than duplicating readers. Read design opens full prose beside the same graph
 instances; implementation, task and guidance links remain in that reading area.
+The root selector keeps all authored design/plan forests reachable, including
+older plans with task, contract and lesson links.
 Selecting a component shows its incoming/outgoing interfaces and constraints.
 Build rules stay in their separate graph projection; component source and target
 lists link into it without guessing declarations.

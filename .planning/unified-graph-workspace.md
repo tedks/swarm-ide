@@ -18,7 +18,9 @@ the graph, and containment must not look like an architectural interface.
 - [x] Read current projection, canvas and App composition; confirmed selection-key remount and fixed-column routing.
 - [x] Repair component graph truth, readability and camera/identity stability; pushed 945cd22 with native CLEAN and focused checks.
 - [x] Compose one four-pane workspace and central document layout without duplicate readers or graph instances; focused mounted checks pass.
-- [ ] Run focused checks, native review and one owned virtual journey; record limits, push and hand off.
+- [x] Focused checks: 86 design/projection tests and 62 cockpit/recovery/task tests, both TypeScript boundaries; native fix-delta review CLEAN.
+- [x] Owned virtual 1440px overview/design/source journey passed with actual loaded Ditz graph, retained cameras/editor and zero renderer errors (2.536s; cleanup complete).
+- [ ] ROOT composition/landing: newly merged PR121 changes Work Log selection in four overlapping App hunks. Exact request is in the step handoff; no shared app adoption by this department.
 
 ## Surprises & Discoveries
 
@@ -42,8 +44,17 @@ real agents, write to user worktrees or drive the physical desktop.
 
 ## Outcomes & Retrospective
 
-Implementation is in progress. Do not claim a joined workspace from projection
-tests alone or claim the unproven idle flashing symptom fixed.
+The four-pane workspace is implemented and proved on this topic branch. Root
+containment and every authored interface remain represented; scoped cameras,
+unchanged labels, full document reading and dirty-source return are exercised.
+Native review caught and fixed omitted component guidance and an explicit task
+return that otherwise left source hidden. Actual screenshots exposed inherited
+CSS row/order rules; direct pane hit-testing caught and verified their correction.
+The final owned proof loads actual Ditz relationships and retains that graph too.
+An independent periodic idle-flash cause has not been established. Existing
+task loading, service availability and build-query semantics are unchanged.
+PR121 landed meanwhile; this branch intentionally does not silently consume its
+overlapping Work Log state. ROOT owns that small composition and normal landing.
 
 ## Context and Orientation
 
