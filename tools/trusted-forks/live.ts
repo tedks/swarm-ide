@@ -113,13 +113,22 @@ async function main() {
     }
     for (const listener of listeners) listener();
   };
-  const waitFor = (condition: () => boolean): Promise<void> => within(new Promise<void>((resolve, reject) => {
-    const inspect = () => {
-      try { guard(); if (condition()) { listeners.delete(inspect); resolve(); } }
-      catch (cause) { listeners.delete(inspect); reject(cause); }
-    };
-    listeners.add(inspect); inspect();
-  }));
+  const waitFor = async (condition: () => boolean): Promise<void> => {
+    let inspect!: () => void;
+    const ready = new Promise<void>((resolve, reject) => {
+      inspect = () => {
+        try { guard(); if (condition()) resolve(); }
+        catch (cause) { reject(cause); }
+      };
+      listeners.add(inspect); inspect();
+    });
+    // Completion can precede turn/start acknowledgement. That acknowledgement's
+    // final busy=false is intentionally not a provider event, so recheck only
+    // this owned snapshot on a bounded proof timer, not model/supervisor polling.
+    const timer = setInterval(inspect, 25);
+    try { await within(ready); }
+    finally { clearInterval(timer); listeners.delete(inspect); }
+  };
   try {
     const rootInfo = await lstat(root);
     check(rootInfo.isDirectory() && rootInfo.uid === process.getuid!() && (rootInfo.mode & 0o777) === 0o700 && await realpath(root) === root,
