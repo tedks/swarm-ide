@@ -123,6 +123,12 @@ async function main() {
   await open("settings.json"); await inspectColors("settings.json", ['"enabled"', "true", "42"]);
   stage = "markdown";
   await open("README.md"); await inspectColors("README.md", ["Syntax proof", "inline code"]);
+  stage = "bazel";
+  await open("BUILD.bazel"); await inspectColors("BUILD.bazel", ['"demo"', '# Bazel source']);
+  stage = "nix";
+  await open("flake.nix"); await inspectColors("flake.nix", ['let', '"demo"', '42', '# Nix source']);
+  stage = "python";
+  await open("main.py"); await inspectColors("main.py", ['def', 'return', '"hello"', '# Python source']);
   stage = "retention";
   await click('.surface-tab-main[title="syntax.ts"]');
   await until(async () => (await source())?.path === "syntax.ts", "return to dirty TypeScript tab");

@@ -3,6 +3,7 @@ import { ProjectContextProvider } from "../core/project-context/provider";
 import { ProjectContextObservationSchema, ProjectEndpointSchema } from "../protocol/project-context";
 import { PROTOCOL_VERSION, parseCoreResponseForRequest } from "../protocol/schema";
 import { initialSnapshot } from "../fixtures/world";
+import type { ProjectCatalog } from "../protocol/project-context";
 
 const node = async () => ({ scan: { status: "observed" as const }, servers: [] });
 const docker = async () => ({ scan: { status: "unavailable" as const, message: "Docker unavailable" }, containers: [] });
@@ -66,5 +67,20 @@ describe("automatic project observation", () => {
     expect(parseCoreResponseForRequest(reply, request).ok).toBe(true);
     expect(() => parseCoreResponseForRequest({ ...reply, projectContext: { ...reply.projectContext, worldId: "other" } }, request)).toThrow();
     expect(() => parseCoreResponseForRequest(reply, { type: "workspace.snapshot", requestId: "test", protocolVersion: PROTOCOL_VERSION })).toThrow();
+  });
+  it("retains catalog facts only at their original observation time during metadata failure", async () => {
+    let failure = false;
+    const original = Date.now();
+    const clock = vi.spyOn(Date, "now").mockReturnValue(original);
+    const catalog = async (): Promise<ProjectCatalog> => ({ scan: { status: failure ? "unavailable" : "observed" },
+      components: [], relationships: [], sites: failure ? [] : [{ name: "Docs", url: "https://example.org", evidence: "hugo.toml" }] });
+    const provider = new ProjectContextProvider("/project", "repo", "world", node, docker, catalog);
+    try {
+      const first = await provider.observe();
+      failure = true; clock.mockReturnValue(original + 10_000);
+      const second = await provider.observe();
+      expect(second.catalog?.sites).toEqual(first.catalog?.sites);
+      expect(second.catalog?.scan).toMatchObject({ retained: true, status: "unavailable", observedAt: first.catalog?.scan.observedAt });
+    } finally { await provider.dispose(); clock.mockRestore(); }
   });
 });

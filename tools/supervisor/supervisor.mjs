@@ -182,7 +182,8 @@ export async function supervise(config, signal = new AbortController().signal) {
               entry.rollout = path.resolve(role.stepDirectory, rollout.trim());
               entry.recapReader = new Records(Number(cursor));
               entry.startReader = new Records(Number(startCursor));
-              entry.assignment = assignment.replace(/\n+$/, '');
+              // The queue preserves task-prompt text, including final newlines.
+              entry.assignment = assignment;
             }
           }
           if (entry.rollout && !entry.ready) {

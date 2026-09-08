@@ -15,6 +15,7 @@ collapsing these distinct questions into one graph.
 | Selected facts and links | [context/compose.ts](../../app/renderer/context/compose.ts) | [ContextPane](../../app/renderer/context/ContextPane.tsx) |
 | Change observation | [working-world-observer.ts](../../core/working-world-observer.ts), [watchers.ts](../../core/watchers.ts) | Invalidates or refreshes derived observations |
 | Local servers and containers | [project-context/provider.ts](../../core/project-context/provider.ts) | [ProjectContextPanel](../../app/renderer/project-context/ProjectContextPanel.tsx), automatic worktree-scoped runtime instruments |
+| Declared project components and sites | [project-context/catalog.ts](../../core/project-context/catalog.ts) | [ProjectCatalogPanel](../../app/renderer/project-context/ProjectCatalogPanel.tsx), manifest relationships and configured destinations |
 | Registered agent worktrees | [worktree-inspection.ts](../../core/worktree-inspection.ts) | [AgentWorktreeBrowser](../../app/renderer/AgentWorktreeBrowser.tsx), read-only directories, changed paths and master comparison |
 
 The Bazel graph uses an actual per-repository query rather than a hardcoded demo
@@ -30,9 +31,13 @@ connected; build resource observations and service deployment facts have their o
 sources. See [context metrics](../context-metrics-demo.md).
 
 [Automatic runtime context](../project-context.md) separately discovers actual
-Node listeners and Compose-owned containers. Process/socket identity and exact
+Node/Python/Hugo listeners and Compose-owned containers. Process/socket identity and exact
 canonical worktree metadata establish ownership; neither filenames nor familiar
-container names do. Cloud deployment and telemetry adapters remain planned.
+container names do. Electron-internal Node servers are not offered as browser apps.
+An independent manifest catalog shows local components, declared dependency links
+and configured sites. These are source facts rather than running-service or
+deployment assertions. Empty instruments disappear. Cloud deployment and telemetry
+adapters remain planned.
 
 ## Agent worktree exploration
 
