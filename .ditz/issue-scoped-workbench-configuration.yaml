@@ -1,8 +1,10 @@
 id: scoped-workbench-configuration
-title: Compose scoped workbench configuration with provenance
-desc: After real contextual instruments, pin/resize widgets and combine repo/folder/user
-  defaults additively; deepest default wins with standard alternative, clickable provenance,
-  user-approved shortcut conflict/backout. No HR ontology.
+title: Combine repository, folder, and user workbench settings and show their sources
+desc: After real contextual instruments are available, let users pin/resize widgets
+  and add together repo/folder/user defaults. The deepest default wins, with a standard
+  alternative available. Show clickable links to each setting's source. Ask before
+  accepting conflicting shortcuts, and let the user back out. Do not introduce an
+  HR data model.
 type: feature
 component: default
 release:
@@ -19,6 +21,14 @@ log_events:
 - time: 2026-09-06T16:23:41-00:00
   who: Ted Smith
   what: blocked by contextual-information
+  comment: ""
+- time: 2026-09-08T04:31:23-00:00
+  who: Ted Smith
+  what: changed title
+  comment: ""
+- time: 2026-09-08T04:31:23-00:00
+  who: Ted Smith
+  what: updated description
   comment: ""
 blocked_by:
 - contextual-information
