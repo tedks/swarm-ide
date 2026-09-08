@@ -33,6 +33,17 @@ log_events:
   who: Ted Smith
   what: started
   comment: ""
+- time: 2026-09-08T04:02:38-00:00
+  who: Ted Smith
+  what: commented
+  comment: Implemented all-registered-session live snapshots and a fleet Activity
+    feed, with actual command/patch extraction, stable event identities across shifted
+    or rewritten tails, and exact registered worktree attribution. Actual packaged
+    production UI read ROOT plus five current children from the private registry and
+    displayed unselected activity/fork edges on owned X11 :90 port55331, zero renderer
+    errors and cleanup complete. PR84 pushed; awaiting ROOT integration/landing. Worktree
+    event activation is C7-owned; unsupported wrapper syntax remains a generic tool
+    event.
 blocks:
 - swarm-owner-steering
 - swarm-operator-demo
