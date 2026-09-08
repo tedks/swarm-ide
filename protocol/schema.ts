@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { WorkLogRequestSchema, WorkLogSnapshotSchema } from "./work-log";
 import { TrustedRequestSchema, TrustedResultSchema } from "./trusted-local";
 import { PlanReadRequestSchema, PlanReadResultSchema } from "./plans";
 import { sameAgentTaskReference } from "./agent-task";
@@ -293,7 +294,7 @@ const WorkspaceRequestSchema = z.discriminatedUnion("type", [
     path: z.string().min(1).max(4_096),
   }),
 ]);
-export const CoreRequestSchema = z.union([WorkspaceRequestSchema, AgentRequestSchema, TaskRequestSchema, RepositoryRequestSchema, RepositorySearchRequestSchema, ChangelogRequestSchema, PlanReadRequestSchema, ExternalRequestSchema, BuildGraphRequestSchema, TaskActivityRequestSchema, TrustedRequestSchema, GithubPrRequestSchema]);
+export const CoreRequestSchema = z.union([WorkspaceRequestSchema, AgentRequestSchema, TaskRequestSchema, RepositoryRequestSchema, RepositorySearchRequestSchema, ChangelogRequestSchema, PlanReadRequestSchema, ExternalRequestSchema, BuildGraphRequestSchema, TaskActivityRequestSchema, TrustedRequestSchema, GithubPrRequestSchema, WorkLogRequestSchema]);
 export type CoreRequest = z.infer<typeof CoreRequestSchema>;
 
 export const FileResultSchema = z.discriminatedUnion("kind", [
@@ -337,6 +338,7 @@ export const CoreResponseSchema = z.discriminatedUnion("ok", [
     buildGraph: BuildGraphObservationSchema.optional(),
     githubPrs: GithubPrObservationSchema.optional(),
     trusted: TrustedResultSchema.optional(),
+    workLog: WorkLogSnapshotSchema.optional(),
   }).strict(),
   z.object({
     protocolVersion: z.literal(PROTOCOL_VERSION),
@@ -396,6 +398,11 @@ const agentResultKind = {
 export function parseCoreResponseForRequest(input: unknown, request: CoreRequest): CoreResponse {
   const response = parseCoreResponse(input);
   if (response.requestId !== request.requestId) throw new Error("Response request ID mismatch");
+  if (request.type.startsWith("workLog.")) {
+    if (response.ok && (!response.workLog || response.file || response.agent || response.task || response.taskActivity || response.repo || response.search || response.changelog || response.plans || response.external || response.buildGraph || response.githubPrs || response.trusted))
+      throw new Error("Unexpected Work Log response");
+    return response;
+  } else if (response.ok && response.workLog) throw new Error("Work Log supplied for another command");
   if (request.type === "githubPrs.refresh") {
     if (response.ok && (!response.githubPrs || response.file || response.agent || response.task || response.taskActivity || response.trusted || response.repo || response.search || response.changelog || response.plans || response.external || response.buildGraph ||
       response.snapshot.project.id !== request.repositoryId || response.snapshot.world.id !== request.worldId ||

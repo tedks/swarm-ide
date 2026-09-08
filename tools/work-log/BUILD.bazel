@@ -1,0 +1,18 @@
+package(default_visibility = ["//visibility:public"])
+
+filegroup(name = "sources", srcs = glob(["*.sh", "*.ts"]))
+
+sh_test(
+    name = "check",
+    srcs = ["check.sh"],
+    data = [":sources", "//:quality_sources"],
+    local = True,
+    timeout = "short",
+)
+
+sh_binary(
+    name = "proof",
+    srcs = ["proof.sh"],
+    data = [":sources", "//:quality_sources"],
+    tags = ["manual"],
+)
