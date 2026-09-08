@@ -1,5 +1,5 @@
 id: trusted-provider-activity-20260907
-title: Readable trusted provider activity
+title: Make trusted provider activity readable
 desc: ""
 type: feature
 component: agents
@@ -36,3 +36,11 @@ log_events:
   what: 'closed: fixed'
   comment: PR71 normally merged; bounded correlated session activity, native clean,
     focused/local and one actual provider turn with owned cleanup verified
+- time: 2026-09-08T04:32:19-00:00
+  who: Ted Smith
+  what: changed title
+  comment: ""
+- time: 2026-09-08T04:32:19-00:00
+  who: Ted Smith
+  what: updated description
+  comment: ""
