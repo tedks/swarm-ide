@@ -8,3 +8,18 @@ sh_test(
     data = ["//:quality_sources"],
     tags = ["local"],
 )
+
+sh_binary(
+    name = "smoke",
+    srcs = ["smoke.sh"],
+    data = [
+        ":sources",
+        "//:desktop-bundle",
+        "//tools:electron-runtime-source",
+        "//tools:virtual-desktop-run.sh",
+        "//tools:x11-driver-source",
+        "//tools/build-graph:sources",
+        "//tools/task-integration:sources",
+    ],
+    tags = ["manual"],
+)
