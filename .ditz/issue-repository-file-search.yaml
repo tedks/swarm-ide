@@ -1,8 +1,8 @@
 id: repository-file-search
 title: Find repository files outside the current graph slice
-desc: After real navigation, search filenames/paths in a bounded index with explicit
-  coverage and open through the same canonical path activation. No fixed demo command
-  labels or claimed symbol search.
+desc: After real navigation is available, search filenames/paths in an index with
+  clear limits, show what the index covers, and open results through the same canonical
+  path activation. Do not use fixed demo command labels or claim symbol search.
 type: feature
 component: default
 release:
@@ -49,6 +49,10 @@ log_events:
     lookup, high-rate input attribution and independent existing ownership-observer
     discrepancy are separate filed followups, not hidden by green confirmation; no
     model/preview/master adoption.
+- time: 2026-09-08T04:31:07-00:00
+  who: Ted Smith
+  what: updated description
+  comment: ""
 blocks:
 - contextual-information
 blocked_by:
