@@ -1,9 +1,10 @@
 id: agent-run-model-capabilities
-title: Verify model-specific reasoning controls before exposing effort selection
-desc: R1 rejects non-null effort with UNSUPPORTED_CONTROL because existing AdapterCapabilities
-  has no model/effort evidence. R2+ should probe installed model capabilities, preserve
-  requested versus actual and reject unsupported effort without silent fallback. Do
-  not invent supported values from CLI version.
+title: Check each model's reasoning options before offering them in the UI
+desc: R1 rejects a non-null effort with UNSUPPORTED_CONTROL because AdapterCapabilities
+  does not yet describe model-specific reasoning support. In R2 or later, query the
+  installed provider's model capabilities, keep requested settings distinct from actual
+  settings, and reject unsupported effort values instead of silently falling back.
+  Do not infer supported values from the CLI version.
 type: task
 component: default
 release:
@@ -16,4 +17,12 @@ log_events:
 - time: 2026-09-06T02:47:40-00:00
   who: Ted Smith
   what: created
+  comment: ""
+- time: 2026-09-08T04:27:30-00:00
+  who: Ted Smith
+  what: changed title
+  comment: ""
+- time: 2026-09-08T04:27:30-00:00
+  who: Ted Smith
+  what: updated description
   comment: ""
