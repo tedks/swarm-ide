@@ -35,3 +35,12 @@ log_events:
     and complete cleanup. 38 focused tests/types pass; native review converged clean.
     PR is ready; issue remains in progress until ROOT normal merge/adoption. Python
     and cloud follow-ups filed separately.
+- time: 2026-09-08T05:30:22-00:00
+  who: Ted Smith
+  what: commented
+  comment: First Node/Docker increment PR94 normally merged and adopted with PR95;
+    three relevant joined local targets pass. Real Pure Sky/Goals probes and controlled
+    packaged Node/native-link handoff are separately recorded. User has requested
+    additional project exploration directly in this agent, so keep the session open
+    and account for the continuation separately; no cloud or extra runtime completion
+    claimed.
