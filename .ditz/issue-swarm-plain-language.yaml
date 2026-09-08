@@ -9,8 +9,8 @@ type: task
 component: default
 release:
 reporter: Ted Smith <tedks@riseup.net>
-status: in_progress
-disposition:
+status: closed
+disposition: fixed
 creation_time: 2026-09-08T03:53:21-00:00
 references: []
 log_events:
@@ -32,3 +32,9 @@ log_events:
     fixing misleading update wording. Active C7/F7/P7/K7 modules untouched and relevant
     wording suggestions sent directly. ROOT may close after normal merge; remaining
     backend/legacy copy and post-wave doc refresh tracked separately.
+- time: 2026-09-08T04:19:09-00:00
+  who: Ted Smith
+  what: 'closed: fixed'
+  comment: 'PR87 merged: simplified eight UI surfaces and current installation/tour
+    documentation, with behavior and essential warnings preserved; 191 focused tests
+    and native meaning review passed. Remaining copy work tracked in swarm-language-followup.'
