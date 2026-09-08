@@ -1,0 +1,21 @@
+id: swarm-saved-summary-test-label
+title: Update the saved-summary test to match its current label
+desc: 'Update the old Changes button selector in tests/github-prs-ui.test.tsx to the
+  intentional Saved summaries label, keeping selected-state and expanded-entry assertions.
+  PR107 joined check: 64 passed, one selector failure; both the stale test and label
+  were unchanged from merged master. Relevant Activity activation and 33 cockpit tests
+  passed. Nonblocking test maintenance, not a product failure or a claim that the
+  whole target passed.'
+type: bugfix
+component: default
+release:
+reporter: Ted Smith <tedks@riseup.net>
+status: unstarted
+disposition:
+creation_time: 2026-09-08T14:51:34-00:00
+references: []
+log_events:
+- time: 2026-09-08T14:51:34-00:00
+  who: Ted Smith
+  what: created
+  comment: ""
