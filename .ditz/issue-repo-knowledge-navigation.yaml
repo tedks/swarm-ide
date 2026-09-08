@@ -1,8 +1,9 @@
 id: repo-knowledge-navigation
-title: Navigate repo documentation and reverse task instruction links
-desc: After actual navigation/context, browse linked human docs and agent-readable
-  instructions with exact provenance and reverse file-to-task links. T3 Ditz browsing
-  is complete; reuse repo-task-draft-provenance for D2, not duplicate it.
+title: Browse repository docs and follow file-to-task instruction links
+desc: After actual navigation/context is available, let users browse linked human
+  documentation and agent-readable instructions, with exact source details and reverse
+  file-to-task links. T3 Ditz browsing is complete. Reuse repo-task-draft-provenance
+  for D2; do not duplicate it.
 type: feature
 component: default
 release:
@@ -43,5 +44,13 @@ log_events:
     opens exact authored references through the source broker. This closes explicit
     repo knowledge navigation, not inferred links, generated documentation or execution
     authority.
+- time: 2026-09-08T04:30:33-00:00
+  who: Ted Smith
+  what: changed title
+  comment: ""
+- time: 2026-09-08T04:30:33-00:00
+  who: Ted Smith
+  what: updated description
+  comment: ""
 blocked_by:
 - contextual-information
