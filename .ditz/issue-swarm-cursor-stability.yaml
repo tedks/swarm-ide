@@ -5,7 +5,7 @@ type: bugfix
 component: default
 release:
 reporter: Ted Smith <tedks@riseup.net>
-status: in_progress
+status: paused
 disposition:
 creation_time: 2026-09-08T13:28:39-00:00
 references: []
@@ -31,5 +31,9 @@ log_events:
     defect reproduced. No production cursor change. Keep this report open pending
     a specific reproduction (caret versus mouse pointer, action and display). Evidence:
     PR109 owned virtual run.e9gQJ3; zero renderer errors and cleanup complete.'
+- time: 2026-09-08T13:44:39-00:00
+  who: Ted Smith
+  what: stopped
+  comment: ""
 blocks:
 - swarm-usability-join
