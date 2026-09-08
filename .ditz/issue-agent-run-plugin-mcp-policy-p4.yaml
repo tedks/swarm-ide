@@ -1,9 +1,12 @@
 id: agent-run-plugin-mcp-policy-p4
-title: Prove one plugin-supplied MCP startup exclusion without a model turn
-desc: P4 bounded source feasibility then one immutable fixed local plugin positive/negative
-  startup control under existing independent26-boundary acceptance; stop at reviewed
-  exact source finding if turn/auth/remote install/writable config ancestry is required.
-  No production availability or credentialed equivalence.
+title: Verify that one plugin-supplied MCP server is blocked at startup without a
+  model call
+desc: 'P4: first inspect whether this can be tested from the source, then test one
+  fixed local plugin with allowed and blocked startup cases using immutable inputs
+  and the existing independent 26-boundary checks. Stop with a reviewed source finding
+  if the test requires a model turn, authentication, remote installation or writable
+  configuration ancestry. This step does not enable production use or establish equivalent
+  behavior for an authenticated process.'
 type: task
 component: default
 release:
@@ -45,5 +48,13 @@ log_events:
     generation. Native+Google CLEAN; Anthropic session-limit MISSING; hosted earlier
     SEEDPIPE failure under local waiver. Broader hook/executor/remote/telemetry/independent-observer/credentialed
     gates open.'
+- time: 2026-09-08T04:27:38-00:00
+  who: Ted Smith
+  what: changed title
+  comment: ""
+- time: 2026-09-08T04:27:38-00:00
+  who: Ted Smith
+  what: updated description
+  comment: ""
 blocks:
 - agent-run-offline-activation-proof
