@@ -33,8 +33,13 @@ log_events:
   who: Ted Smith
   what: blocked by swarm-component-contract-clarity
   comment: ""
+- time: 2026-09-08T18:01:11-00:00
+  who: Ted Smith
+  what: blocked by swarm-first-user-quickstart
+  comment: ""
 blocked_by:
 - swarm-selected-conversation-latency
 - swarm-repository-worktree-overview
 - swarm-target-build-jobs
 - swarm-component-contract-clarity
+- swarm-first-user-quickstart
