@@ -14,3 +14,14 @@ log_events:
   who: Ted Smith
   what: created
   comment: ""
+- time: 2026-09-08T19:36:36-00:00
+  who: Ted Smith
+  what: commented
+  comment: 'Direct user request: when no component plan exists, show Generate component
+    plan in the Components surface. Persist an editable prompt/harness/model/reasoning
+    configuration in the established Work Log-style settings pattern; default Codex
+    gpt-5.6-sol xhigh. A deliberate click starts a normal visible agent to inspect
+    actual source and write canonical in-repo design docs and graph, with cancellation/progress
+    and automatic validated reload. Do not overwrite existing plans or manufacture
+    call edges. Separate implementation fork coordinated with the simple New agent
+    API.'
