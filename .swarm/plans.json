@@ -523,7 +523,12 @@
       "tools/container/BUILD.bazel",
       "BUILD.bazel",
       "core/build-progress.ts",
-      "core/provider.ts"
+      "core/provider.ts",
+      "protocol/build-jobs.ts",
+      "core/build-jobs.ts",
+      "core/target-build-process.ts",
+      "app/renderer/build-resources/use-target-builds.ts",
+      "app/renderer/build-resources/BuildResources.tsx"
     ],
     "taskIds": [],
     "contextRefs": [],
@@ -608,6 +613,31 @@
             { "label": "//tools/build-graph:sources", "relation": "data" },
             { "label": "//tools/build-graph:progress-probe-module", "relation": "data" },
             { "label": "//:desktop-bundle", "relation": "data" }
+          ]
+        },
+        {
+          "label": "//tools/build-graph:target-checks",
+          "role": "Checks selected-target admission, process cleanup and retained job controls",
+          "dependencies": [{ "label": "//:quality_sources", "relation": "data" }]
+        },
+        {
+          "label": "//tools/build-graph:target-probe",
+          "role": "Builds real passing and failing targets through worker routes",
+          "dependencies": [
+            { "label": "//tools/build-graph:sources", "relation": "data" },
+            { "label": "//tools/build-graph:target-probe-module", "relation": "data" },
+            { "label": "//:desktop-bundle", "relation": "data" }
+          ]
+        },
+        {
+          "label": "//tools/build-graph:target-smoke",
+          "role": "Exercises selected target build and retained source on an owned desktop",
+          "dependencies": [
+            { "label": "//tools/build-graph:sources", "relation": "data" },
+            { "label": "//:desktop-bundle", "relation": "data" },
+            { "label": "//tools:virtual-desktop-run.sh", "relation": "data" },
+            { "label": "//tools:x11-driver-source", "relation": "data" },
+            { "label": "//tools/task-integration:sources", "relation": "data" }
           ]
         }
       ]

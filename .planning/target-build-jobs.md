@@ -16,8 +16,8 @@ The opened repository is trusted to execute build actions. The renderer is not a
 - [x] (2026-09-08 18:14Z) Published build start/observe/cancel protocol and scoped service in PR124.
 - [x] (2026-09-08 18:15Z) Mounted explicit graph controls and retained build results without replacing editor state.
 - [x] (2026-09-08 18:34Z) Proved actual successful/failing disposable targets, progress before exit, broker-save and completed-query retention; 56 focused checks/types and native convergence CLEAN. One owned packaged UI proof passed through build.
-- [ ] Complete architecture-owner mapping coordination and final push/cleanup.
-- [ ] Push the ready PR, update Ditz and clean owned resources.
+- [x] (2026-09-08 18:38Z) Architecture handoff permits additive mappings with active implementations; exact runtime source/target additions and native review are clean.
+- [ ] Push the ready PR, update Ditz and clean owned resources (final handoff in progress).
 
 ## Surprises & Discoveries
 
