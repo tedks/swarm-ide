@@ -1,0 +1,16 @@
+id: trusted-activity-contract-bound-20260907
+title: Align provider activity retention with fleet wire contract
+desc: ""
+type: bugfix
+component: agents
+release:
+reporter: Ted Smith <tedks@riseup.net>
+status: unstarted
+disposition:
+creation_time: 2026-09-08T00:51:26-00:00
+references: []
+log_events:
+- time: 2026-09-08T00:51:26-00:00
+  who: Ted Smith
+  what: created
+  comment: ""
