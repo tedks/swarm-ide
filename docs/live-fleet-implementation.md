@@ -4,6 +4,11 @@ The existing external-agent adapter observes only explicitly registered Codex
 sessions. Fleet snapshots now carry an additive `fleet` collection of bounded
 session details, so consumers can follow every registered worker without
 changing the selected conversation. `useExternalAgents().fleet` exposes it.
+`ObservedActivity` accepts `onOpen(sessionId)` for conversation activation and
+`onOpenFile(sessionId, path, patch?)` for exact-origin file activation. Its
+optional richer `onEntry(session, entry)` fallback remains compatible; a file
+callback takes precedence when the entry has an explicit path. The cockpit owns
+the registered-root read route and center display, not this observer component.
 
 Each summary carries its operator-registered worktree and control mode. Worktree
 identity is not inferred from a nearby command or the IDE's current repository.

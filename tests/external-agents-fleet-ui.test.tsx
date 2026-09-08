@@ -24,6 +24,20 @@ it("shows two agents without selection and activates an event with exact worktre
   fireEvent.click(screen.getByRole("button", { name: "Worker 1" }));
   expect(state.read).toHaveBeenCalledExactlyOnceWith(fleet[0]!.session.id);
   expect(onOpen).toHaveBeenCalledOnce();
+  expect(onOpen).toHaveBeenCalledWith(fleet[0]!.session.id);
+});
+
+it("routes file and conversation callbacks with originating session rather than current selection", () => {
+  const state = client(), onOpen = vi.fn(), onEntry = vi.fn(), onOpenFile = vi.fn();
+  const patch = "*** Begin Patch\n*** Update File: source-2.ts\n@@\n-old\n+new\n*** End Patch";
+  const withPatch = fleet.map((d, index) => index === 1 ? { ...d, entries: d.entries.map((e) => ({ ...e, patch })) } : d);
+  render(<ObservedActivity client={{ ...state, selected: fleet[0]!.session.id, fleet: withPatch }} onOpen={onOpen} onEntry={onEntry} onOpenFile={onOpenFile} />);
+  fireEvent.click(screen.getByRole("button", { name: "Edited source-2.ts" }));
+  expect(onOpenFile).toHaveBeenCalledExactlyOnceWith(fleet[1]!.session.id, "source-2.ts", patch);
+  expect(onEntry).not.toHaveBeenCalled(); expect(state.read).not.toHaveBeenCalled();
+  fireEvent.click(screen.getByRole("button", { name: "Worker 2" }));
+  expect(onOpen).toHaveBeenCalledExactlyOnceWith(fleet[1]!.session.id);
+  expect(state.read).toHaveBeenCalledExactlyOnceWith(fleet[1]!.session.id);
 });
 
 it("preserves focused event DOM across routine refresh and marks retained fleet disconnected", () => {
