@@ -11,7 +11,8 @@ From a source file, clicking either a direct or transitive Context target should
 - [x] (2026-09-08) Confirmed isolated branch, current graph contracts and ownership; claimed both Ditz issues.
 - [x] (2026-09-08 06:14Z) Implemented exact graph selection, Context links and bounded reference gestures; pushed PR101.
 - [x] (2026-09-08 06:17Z) 60 focused tests, both typechecks, existing Context regressions and desktop package pass; native production and harness review CLEAN.
-- [ ] Consume the conversation owner's small reviewed App mount and run the prepared owned virtual proof, then publish final handoff.
+- [x] (2026-09-08 06:29Z) Normally composed reviewed App mount 62a8f14; actual packaged proof passed 9.910s on owned :162/55402 with zero renderer errors and cleanup complete.
+- [x] (2026-09-08 06:32Z) Fresh joined navigation/conversation local targets passed in 14.605s; final documentation and review handoff prepared.
 
 ## Assumptions and Boundaries
 
@@ -47,13 +48,22 @@ Use renderer-local explicit selection intents and existing callbacks, not new co
 
 ## Outcomes & Retrospective
 
-Producer callbacks and resolver are reviewed and pushed. The actual application
-mount is an explicit dependency owned by the conversation workstream; component
-tests alone are not described as completed user-facing integration.
+The joined application follows direct and transitive Context targets, opens their
+exact observed BUILD filenames, and follows an observed target/source with native
+Alt-click. The real packaged two-package journey retained original dirty text,
+logical cursor and independent graph instances, made no source writes or model
+calls, and had zero renderer errors. Remaining reference forms are tracked as a
+follow-up rather than guessed. Compact Context overlay dismissal is a small App
+owner follow-up; this proof exercised the wide operator cockpit.
 
 ## Artifacts and Notes
 
 Concise external handoffs live in `/tmp/swarm-ide-finish-loop.0vkfJQ/navigation/`.
+
+The actual proof is `packaged/run.fAMO5H/proof.json`, with four screenshots and
+owned harness cleanup evidence. Producer 2ce9dbb and App mount 62a8f14 each had
+native CLEAN review; their normal joined commit was ee8808b. All GUI inputs used
+the owned virtual desktop; the watched application was not changed.
 
 ## Interfaces and Dependencies
 

@@ -102,7 +102,10 @@ the existing source-opening authority, then deliberately opens the exact target
 in the Build graph lens without replacing the service graph.
 `//tools/context-source-links:smoke` consumes the desktop bundle,
 real disposable Bazel inputs and the owned virtual-desktop driver to exercise
-the joined mouse-driven path.
+the joined mouse-driven path. The packaged journey uses a real disposable
+two-package Bazel repository, not injected graph metadata. Relative `.bzl`
+load forms and shorthand package labels remain tracked in
+`swarm-bazel-reference-forms`.
 
 `//tools/worktree-browser:checks` consumes `//:quality_sources` and checks the
 actual two-worktree Git broker plus mounted browser and original-buffer retention.
