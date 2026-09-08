@@ -1,0 +1,22 @@
+id: swarm-plan-generation-finish-check
+title: Verify a complete first-design turn with the lighter generation prompt
+desc: 'PR133 real gpt-5.6-sol/xhigh run created three useful canonical docs and a
+  valid three-node plan with exact source/Bazel inputs, unchanged originals and confirmed
+  owned cleanup. Its single authorized proof stopped at the 300-second deadline during
+  validation; no completed-turn success claimed. The initial run invoked Bazel and
+  left MODULE.bazel.lock. The revised editable default explicitly reads declarations
+  without starting builds/setup. Under fresh explicit model authority, verify terminal
+  completion on that prompt; do not replay the prior request. Evidence: /tmp/swarm-component-plan-real.KVuha6/real-generation.json.'
+type: task
+component: default
+release:
+reporter: Ted Smith <tedks@riseup.net>
+status: unstarted
+disposition:
+creation_time: 2026-09-08T20:19:32-00:00
+references: []
+log_events:
+- time: 2026-09-08T20:19:32-00:00
+  who: Ted Smith
+  what: created
+  comment: ""
