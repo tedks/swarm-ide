@@ -1,0 +1,20 @@
+id: swarm-work-log
+title: Summarize accomplishments and persist completed Ditz notes
+desc: 'K7: Configurable online summary worker default Codex gpt-5.6-luna, registered
+  roster and incremental meaningful-event batches. Understandable completed outcomes,
+  active/completed sessions, persistent repo Work Log and idempotent Ditz completion
+  comments. Explicit start/stop, no model per tool, do not equate process exit with
+  completed task. One real bounded summary proof. docs/swarm-operator-hour.md.'
+type: task
+component: default
+release:
+reporter: Ted Smith <tedks@riseup.net>
+status: unstarted
+disposition:
+creation_time: 2026-09-08T03:40:02-00:00
+references: []
+log_events:
+- time: 2026-09-08T03:40:02-00:00
+  who: Ted Smith
+  what: created
+  comment: ""
