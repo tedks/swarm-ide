@@ -1,9 +1,9 @@
 id: generic-development-instruments
-title: Expose generic build test logs and actual resource instruments
-desc: After declared target/provider metadata, select a supported build/test beyond
-  fixed FraudCheck target and inspect real logs, measured resources and source-version
-  outcome. Unknown telemetry remains unavailable; basic file navigation never depends
-  on a build.
+title: Show build/test logs, measured resources, and source-version results
+desc: Once target/provider metadata is declared, allow selection of a supported build/test
+  beyond the fixed FraudCheck target. Show its real logs, measured resource use, and
+  the outcome for its source version. Keep unknown telemetry marked unavailable. Basic
+  file navigation must never depend on a build.
 type: feature
 component: default
 release:
@@ -16,4 +16,12 @@ log_events:
 - time: 2026-09-06T16:23:40-00:00
   who: Ted Smith
   what: created
+  comment: ""
+- time: 2026-09-08T04:29:52-00:00
+  who: Ted Smith
+  what: changed title
+  comment: ""
+- time: 2026-09-08T04:29:52-00:00
+  who: Ted Smith
+  what: updated description
   comment: ""
