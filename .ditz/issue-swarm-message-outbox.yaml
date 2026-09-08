@@ -5,8 +5,8 @@ type: feature
 component: default
 release:
 reporter: Ted Smith <tedks@riseup.net>
-status: in_progress
-disposition:
+status: closed
+disposition: fixed
 creation_time: 2026-09-08T13:28:50-00:00
 references: []
 log_events:
@@ -42,5 +42,13 @@ log_events:
     recovery. Native review found recovered-state reversion and chronological row
     ordering; both corrected with regressions. Queue remains distinct from consumed;
     actual pending ROOT messages untouched. PR110, focused checks in progress.
+- time: 2026-09-08T13:50:33-00:00
+  who: Ted Smith
+  what: 'closed: fixed'
+  comment: Submitted agent messages are now saved before dispatch, remain visible/copyable
+    across selection and reload, and show compact honest queue/uncertain/not-sent
+    states.57 focused checks and actual packaged reload/clipboard proof passed with
+    native CLEAN. PR110 ready; ROOT owns merge/adoption. No actual pending message
+    was resent; archive/correlation follow-up remains open.
 blocks:
 - swarm-usability-join
