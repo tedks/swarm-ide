@@ -18,3 +18,10 @@ log_events:
   who: Ted Smith
   what: started
   comment: ""
+- time: 2026-09-08T06:15:10-00:00
+  who: Ted Smith
+  what: commented
+  comment: Alt-click literal extraction and observed label/file resolver are implemented
+    in PR101. Ordinary editor input and dirty-buffer authority retained; generated/external/unobserved
+    and ambiguous relative .bzl macro strings are not guessed. App mount and owned
+    packaged proof next.
