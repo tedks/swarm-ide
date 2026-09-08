@@ -43,6 +43,13 @@ log_events:
     execution owner, terminal process or unsolicited message was launched. Focused
     owner/transport/UI tests passed; real messaging was not repeated. PR84 awaits
     ROOT landing.
+- time: 2026-09-08T04:27:23-00:00
+  who: Ted Smith
+  what: commented
+  comment: PR89 b3b12b0 simplifies unknown-delivery guidance while retaining Message
+    queued, terminal identity, per-target draft/receipt and no-replay behavior. Corrected
+    one stale display assertion; added exact retained delivery-status assertion. Focused106
+    pass; no unsolicited sends/model turns or emulator launch. ROOT closes after landing.
 blocks:
 - swarm-operator-demo
 blocked_by:
