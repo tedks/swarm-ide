@@ -50,6 +50,15 @@ log_events:
   comment: 'Added the C7-requested exact-origin Activity callback seam: onOpen(sessionId),
     onOpenFile(sessionId,path,patch?), with richer onEntry fallback preserved. Focused
     97 tests/typechecks and native delta CLEAN; PR84 updated for cockpit integration.'
+- time: 2026-09-08T04:14:50-00:00
+  who: Ted Smith
+  what: commented
+  comment: 'Completed ROOT aggregate resource follow-up: fleet-wide240-event/512KiB
+    cap prioritizes current interactive registrations;16-entry historical cache avoids
+    reopening unchanged transcripts and invalidates on version/registration changes.
+    Selected conversation and owner controls still read fresh.99 focused tests/typechecks
+    and native delta clean; actual packaged read-only real fleet proof passes on owned
+    virtual desktop with zero errors/cleanup1. PR84 pushed5c0d1b8 awaits ROOT landing.'
 blocks:
 - swarm-owner-steering
 - swarm-operator-demo
