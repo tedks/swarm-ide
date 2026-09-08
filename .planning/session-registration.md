@@ -15,7 +15,8 @@ Nothing launches an agent or sends a message. ROOT adopts the helper separately.
 - [x] (2026-09-08 01:54Z) Shared schema/CLI implemented; PR78 pushed116073c and discovery correction58559a2.
 - [x] (2026-09-08 01:54Z) Actual CLI concurrency, lock owner SIGKILL, owned tmux and existing observer integration: focused61 and all typechecks passed20.4s.
 - [x] (2026-09-08 01:59Z) Real known G1 read-only metadata registration proved exact ROOT parent/checked-live, idempotent repeat and retirement in disposable registry only.
-- [ ] Native final dependency/test delta, relevant final local gates, push and hand off.
+- [x] (2026-09-08 01:59Z) Final61/typechecks PASS20.6s and desktop bundle PASS4.7s on02f1b0f; Nix resolves declared tmux3.7c. Native code/dependency/test convergence CLEAN.
+- [x] (2026-09-08 02:03Z) Docs receipt clarification native CLEAN; implementation ready for ROOT handoff, with normal merge/adoption ROOT-owned.
 
 ## Context and Orientation
 
@@ -117,7 +118,9 @@ within a finite deadline. An incomplete scan yields no steering authority.
 The operational vertical works through the real CLI and existing observer. No
 renderer, provider or trusted-run contract was changed. Actual G1 metadata was
 read-only; no product model turn, message or live ROOT registry edit. Final
-dependency delta review/build pending. ROOT retains normal merge and adoption.
+relevant gates and native code convergence passed. Documentation distinguishes
+ROOT's custom ready receipt from the generic launcher's rollout-path receipt.
+ROOT retains normal merge and adoption.
 
 ## Artifacts and Notes
 

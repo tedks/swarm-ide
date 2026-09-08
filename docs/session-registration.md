@@ -50,9 +50,12 @@ terminal handoff; a `checked-live` receipt is not a lifetime guarantee.
 
 ## Opt-in after a successful spawn-fork receipt
 
-The existing fork launcher writes `ready` and `rollout-path`. After its startup
-supervisor has verified the exact assignment/compaction, use those receipts
-without changing the globally installed spawn skill:
+The following example uses ROOT's custom startup supervisor: it writes `ready`
+with an `id` after verifying ancestry, assignment and compaction, alongside the
+launcher's requested `rollout-path` receipt. The generic spawn skill does **not**
+write that `ready` file. With a generic launch, use its requested rollout-path
+receipt and omit optional `--session-id`, or supply an independently known UUID.
+No change to the globally installed spawn skill is required:
 
 ```bash
 step_dir=/absolute/spawn-step
