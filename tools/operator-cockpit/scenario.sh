@@ -13,7 +13,12 @@ done
 node - "$SWARM_COCKPIT_EVIDENCE/proof.json" <<'JS'
 const assert = require('node:assert/strict');
 const p = JSON.parse(require('node:fs').readFileSync(process.argv[2], 'utf8'));
-if (p.tabsOnly) {
+if (p.workLogOnly) {
+assert(p.ok && p.packagedCore && p.controlledSavedEntry && p.singlePanel && p.independentSidebar && p.wideAndCompactOrdering);
+assert(p.outcomeOpened && p.settingsReachable && p.agentPanelReachable && p.sourceRetained && p.camerasRetained && p.graphNodesRetained && p.sourceBarsPreserved && p.ownedSourceSaved);
+assert.equal(p.modelCalls, 0); assert.deepEqual(p.agentWrites, []); assert.deepEqual(p.blockingErrors, []);
+console.log('Actual packaged Work Log dock with one controlled saved entry; wide/compact ordering, settings, central outcome and retained source. No model calls.');
+} else if (p.tabsOnly) {
 assert(p.ok && p.packagedCore && p.documentControls && p.selectedTabVisible && p.sourceRetained && p.darkScrollbars && p.ownedSourceSaved);
 assert.equal(p.disposableSourceFiles, 10);
 assert.deepEqual(p.agentWrites, []); assert.deepEqual(p.blockingErrors, []);

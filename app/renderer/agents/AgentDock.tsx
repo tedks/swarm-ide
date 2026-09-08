@@ -14,6 +14,7 @@ export interface AgentDockProps {
   draftContent: ReactNode;
   trustedContent?: ReactNode;
   jobsContent: ReactNode;
+  workLogContent?: ReactNode;
   activityContent: ReactNode;
   onOpenActivity?: () => void;
   fixtureContent?: ReactNode;
@@ -31,7 +32,7 @@ export interface AgentDockProps {
   trustedSelectionVersion?: string;
 }
 
-export function AgentDock({ state, client, onDraft, runContent, draftContent, trustedContent, jobsContent, activityContent, onOpenActivity, fixtureContent, mockConversation, selectionVersion = 0, fixtureSelectionVersion = 0, trustedSelectionVersion }: AgentDockProps) {
+export function AgentDock({ state, client, onDraft, runContent, draftContent, trustedContent, jobsContent, workLogContent, activityContent, onOpenActivity, fixtureContent, mockConversation, selectionVersion = 0, fixtureSelectionVersion = 0, trustedSelectionVersion }: AgentDockProps) {
   const id = useId();
   const runs = state.snapshot?.runs ?? [];
   const notice = cockpitAgentNotice(state, Boolean(trustedContent));
@@ -81,7 +82,7 @@ export function AgentDock({ state, client, onDraft, runContent, draftContent, tr
       : (index + (event.key === "ArrowRight" ? 1 : -1) + buttons.length) % buttons.length;
     buttons[next]?.focus(); // Manual activation: Enter/Space selects the run.
   };
-  return <div className="activity-instruments">
+  return <div className={`activity-instruments${workLogContent ? " has-work-log" : ""}`}>
     <section className="dock-side-panel dock-builds" aria-label="Build jobs" tabIndex={0}><header className="dock-section-heading">Builds & resources</header>{jobsContent}</section>
     <section className="agent-interaction-dock" aria-label="Agent messages">
     <OverflowStrip className="agent-tabs-strip" label="agent conversations" activeKey={current}><div className="agent-dock-tabs" role="tablist" aria-label="Agent conversations" onKeyDown={keyboard}>
@@ -109,6 +110,7 @@ export function AgentDock({ state, client, onDraft, runContent, draftContent, tr
     </div> : null}
     {mockConversation ? <div id={panelId("mock:current")} role="tabpanel" aria-labelledby={tabId(`mock:${mockConversation.selected}`)} hidden={!current.startsWith("mock:")} className="agent-dock-panel agent-dock-run">{mockConversation.content}</div> : null}
     </section>
+    {workLogContent ? <div className="dock-side-panel dock-work-log" tabIndex={0} role="group" aria-label="Work Log column">{workLogContent}</div> : null}
     <section className="dock-side-panel dock-activity" aria-label="Recent activity" tabIndex={0}><header className="dock-section-heading">{onOpenActivity ? <button className="activity-open-heading journal-activity-heading" onClick={onOpenActivity}>Recent Activity <span aria-hidden="true">↗</span></button> : "Recent activity"}</header>{activityContent}</section>
   </div>;
 }

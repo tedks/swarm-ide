@@ -39,6 +39,8 @@
       "core/worktree-inspection.ts",
       "app/renderer/FleetActivityView.tsx",
       "app/renderer/OverflowStrip.tsx",
+      "app/renderer/agents/AgentDock.tsx",
+      "app/renderer/WorkbenchSidebar.tsx",
       "BUILD.bazel"
     ],
     "taskIds": [],

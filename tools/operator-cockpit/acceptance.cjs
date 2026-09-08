@@ -86,6 +86,83 @@ async function main() {
     return Date.now() - stableAt >= 300; }, 'source navigation settled');
   const retainedCameras = await cameras(); assert(retainedCameras.length >= 2);
   await run(() => { globalThis.__cockpitGraphNodes = [...document.querySelectorAll('.graphs-grid > *')]; });
+  if (repository.workLogOnly) {
+    stage = 'independent Work Log dock';
+    const outcomeSelector = `.dock-work-log [data-work-log-entry=${JSON.stringify(repository.controlledWorkLog.id)}] .work-log-outcome`;
+    await until(() => run((s) => Boolean(document.querySelector(s)), outcomeSelector), 'controlled saved outcome loaded by actual core');
+    const measureDock = () => run(() => {
+      const rect = (selector) => { const r = document.querySelector(selector).getBoundingClientRect();
+        return { left: r.left, right: r.right, top: r.top, bottom: r.bottom, width: r.width, height: r.height }; };
+      const log = document.querySelector('.dock-work-log'), activity = document.querySelector('.dock-activity');
+      return { width: innerWidth, panels: document.querySelectorAll('section[aria-label="Work Log"]').length,
+        order: log.nextElementSibling === activity, outsideSidebar: !log.closest('.work-rail'),
+        log: rect('.dock-work-log'), activity: rect('.dock-activity'), agents: rect('.agent-interaction-dock'),
+        tabs: rect('.surface-tabs-strip'), source: rect('.source-surface'), graphs: rect('.graphs-grid') };
+    });
+    const checkLayout = (geometry) => {
+      assert.equal(geometry.panels, 1); assert(geometry.order && geometry.outsideSidebar);
+      assert(geometry.log.width > 0 && geometry.agents.width > 0);
+      assert(geometry.log.right <= geometry.activity.left + 1 && Math.abs(geometry.log.top - geometry.activity.top) <= 1,
+        'Work Log is immediately left of Recent Activity');
+      assert(geometry.tabs.left >= geometry.graphs.right - 1 && geometry.tabs.bottom <= geometry.source.top + 1,
+        'Document tabs remain above source, to the right of graphs');
+    };
+    const wide = await measureDock(); checkLayout(wide);
+    // Folding the sidebar's agent section cannot remove the independent dock.
+    await click('[aria-label="Agent runs"]');
+    assert.equal(await run(() => document.querySelector('[aria-label="Agent runs"]').getAttribute('aria-expanded')), 'false');
+    assert.equal(await run(() => document.querySelectorAll('section[aria-label="Work Log"]').length), 1);
+    assert(await run(() => document.querySelector('.dock-work-log').getClientRects().length > 0));
+    stage = 'native Work Log outcome';
+    await click(outcomeSelector);
+    await until(() => run(() => Boolean(document.querySelector('.work-log-center'))), 'saved outcome opens centrally');
+    assert.equal(await run(() => document.querySelector('.work-log-center .work-log-outcome').textContent), repository.controlledWorkLog.outcome);
+    assert.equal(await run(() => document.querySelectorAll('section[aria-label="Work Log"]').length), 1, 'Expanded detail adds no second live Work Log panel');
+    await fs.writeFile(path.join(evidence, 'work-log-dock-outcome.png'), (await wc.capturePage()).toPNG());
+    await click('[aria-label="Close work log outcome"]');
+    await until(() => run(() => !document.querySelector('.work-log-center')), 'outcome closed');
+    assert.deepEqual(await source(), retained); assert.deepEqual(await cameras(), retainedCameras);
+    assert(await run(() => globalThis.__cockpitGraphNodes.every((e) => e.isConnected)));
+    stage = 'native Work Log settings';
+    await click('.dock-work-log .work-log-settings > summary');
+    await until(() => run(() => document.querySelector('.dock-work-log .work-log-settings').open), 'settings opened');
+    const settings = await run(() => { const scope = document.querySelector('.dock-work-log .work-log-settings');
+      const model = scope.querySelector('input:not([type="number"])');
+      return { model: model.value, enabled: !model.disabled, harness: scope.querySelector('select').value }; });
+    assert.deepEqual(settings, { model: 'gpt-5.6-luna', enabled: true, harness: 'codex' });
+    await fs.writeFile(path.join(evidence, 'work-log-dock-settings.png'), (await wc.capturePage()).toPNG());
+    await click('.dock-work-log .work-log-settings > summary');
+    await click('.agent-dock-tabs [role="tab"]');
+    assert.equal(await run(() => document.querySelector('.agent-dock-tabs [role="tab"]').getAttribute('aria-selected')), 'true');
+    assert(await run(() => document.querySelector('.agent-dock-home:not([hidden])').getClientRects().length > 0));
+    await fs.writeFile(path.join(evidence, 'work-log-dock-wide.png'), (await wc.capturePage()).toPNG());
+    stage = 'compact Work Log dock';
+    win.setSize(1080, 760); await paint();
+    await until(() => run(() => innerWidth <= 1100), 'native compact window size');
+    const compact = await measureDock(); checkLayout(compact);
+    await click('.dock-work-log .work-log-settings > summary');
+    assert(await run(() => document.querySelector('.dock-work-log .work-log-settings').open));
+    await click('.dock-work-log .work-log-settings > summary');
+    await click('.agent-dock-tabs [role="tab"]');
+    assert.deepEqual(await source(), retained);
+    assert(await run(() => globalThis.__cockpitGraphNodes.every((e) => e.isConnected)));
+    await fs.writeFile(path.join(evidence, 'work-log-dock-compact.png'), (await wc.capturePage()).toPNG());
+    await fs.writeFile(path.join(evidence, 'work-log-dock-geometry.json'), JSON.stringify({ wide, compact, settings }, null, 2));
+    assert.equal(await fs.readFile(path.join(repository.root, 'README.md'), 'utf8'), repository.files['README.md']);
+    await click('.file-state button');
+    await until(() => run(() => document.querySelector('.file-state').classList.contains('file-saved')), 'owned source save');
+    assert.equal(await fs.readFile(path.join(repository.root, 'README.md'), 'utf8'), retained.text);
+    const agentWrites = requests.filter((r) => /^(?:externalAgents\.(?:send|handoff)|trusted\.(?:prepare|launch|send|fork|stop|decide)|agent\.(?:prepare|launch|steer|cancel)|workLog\.(?:start|stop|record))$/.test(r.type));
+    const acceptedResizeWarnings = errors.filter((e) => e.message === 'ResizeObserver loop completed with undelivered notifications.');
+    const blockingErrors = errors.filter((e) => e.message !== 'ResizeObserver loop completed with undelivered notifications.');
+    assert.deepEqual(agentWrites, []); assert.deepEqual(blockingErrors, []);
+    await fs.writeFile(path.join(evidence, 'proof.json'), JSON.stringify({ ok: true, workLogOnly: true, packagedCore: true,
+      controlledSavedEntry: true, modelCalls: 0, singlePanel: true, independentSidebar: true, wideAndCompactOrdering: true,
+      outcomeOpened: true, settingsReachable: true, agentPanelReachable: true, sourceRetained: true, camerasRetained: true,
+      graphNodesRetained: true, sourceBarsPreserved: true, ownedSourceSaved: true, agentWrites,
+      blockingErrors, acceptedResizeWarnings, elapsedMs: Date.now() - started }, null, 2));
+    return;
+  }
   if (repository.tabsOnly) {
     stage = 'native document tab overflow';
     const strip = '.surface-tabs';

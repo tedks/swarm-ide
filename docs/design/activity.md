@@ -40,7 +40,8 @@ Record outcome action appends an idempotent Ditz comment to a known completed
 issue; it does not close worker issues. Private transcript bytes remain local.
 This is a small producer over the registered roster, not another fleet platform.
 
-`App.tsx` mounts that panel below the agent list and opens its selected outcome
+`App.tsx` mounts that panel once in `AgentDock`, immediately left of Recent Activity
+and independent of the agent sidebar's scrolling/folding, and opens its selected outcome
 through the pure `WorkLogEntryDetail` in the central document area. Opening an
 outcome does not start a model, record a task or create another polling consumer.
 
