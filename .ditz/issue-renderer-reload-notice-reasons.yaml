@@ -1,10 +1,11 @@
 id: renderer-reload-notice-reasons
 title: Use typed renderer reload notice reasons rather than matching copy
-desc: W2B council noted App.tsx inherited reloadNotice is a string; agent-resolution
-  cleanup matches a controlled phrase. Existing guards remain direct live-state predicates,
-  so wording drift can only leave a stale message, not bypass safety. Follow up with
-  typed source/agent/storage/reload reason state when centralizing notices; deliberately
-  outside bounded W2B source persistence/lifecycle scope.
+desc: The W2B council noted that the inherited reloadNotice in App.tsx is a string,
+  and agent-resolution cleanup matches a controlled phrase. Existing safety checks
+  still read live state directly, so wording changes can leave a stale message but
+  cannot bypass safety. When centralizing notices, add typed source/agent/storage/reload
+  reasons. This follow-up was deliberately excluded from W2B's limited source-persistence/lifecycle
+  work.
 type: task
 component: default
 release:
@@ -17,4 +18,8 @@ log_events:
 - time: 2026-09-06T04:49:14-00:00
   who: Ted Smith
   what: created
+  comment: ""
+- time: 2026-09-08T04:30:30-00:00
+  who: Ted Smith
+  what: updated description
   comment: ""
