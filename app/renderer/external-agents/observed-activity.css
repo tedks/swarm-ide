@@ -1,11 +1,12 @@
-.observed-activity { padding: 9px 10px; border-bottom: 1px solid #33404a; color: #cbdad6; min-width: 0; font-size: 11px; }
+.observed-activity { padding: 0; color: #cbdad6; min-width: 0; font-size: 11px; }
 .observed-activity > header, .observed-activity li > header { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
 .observed-activity small, .observed-activity time, .observed-activity-evidence, .observed-activity-observed, .observed-activity-coverage, .observed-activity-empty { color: #9eafa9; font-size: 10px; line-height: 1.5; }
 .observed-activity-open { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; width: 100%; margin: 7px 0 0; padding: 4px 0; color: #cce9df; background: transparent; border: 0; text-align: left; font: inherit; cursor: pointer; overflow-wrap: anywhere; }
-.observed-activity-open:focus-visible { outline: 2px solid #77c9bb; outline-offset: 3px; }
+.observed-activity button:focus-visible { outline: 2px solid #77c9bb; outline-offset: 3px; }
 .observed-activity p { margin: 4px 0; overflow-wrap: anywhere; }
-.observed-activity ol { list-style: none; margin: 8px 0 0; padding: 0; }
-.observed-activity li { margin: 0 0 9px 3px; padding-left: 9px; border-left: 1px solid #567b73; }
+.observed-activity ol { list-style: none; margin: 0; padding: 0; }
+.observed-activity li { margin: 0; padding: 8px 0; border-top: 1px solid #344039; }
+.observed-activity-state { color: #b7b08a; font-size: 10px; }
 .observed-activity li > p { white-space: pre-wrap; line-height: 1.5; }
 .observed-activity li > header > span { color: #b9d5cb; font-size: 10px; }
 .observed-activity-event { display: block; width: 100%; text-align: left; border: 0; background: transparent; color: inherit; padding: 4px 0; font: inherit; overflow-wrap: anywhere; cursor: pointer; }

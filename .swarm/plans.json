@@ -113,6 +113,8 @@
       "app/renderer/AgentWorktreeBrowser.tsx",
       "tools/worktree-browser/BUILD.bazel",
       "core/build-graph.ts",
+      "app/renderer/repository/use-build-graph.ts",
+      "tools/build-graph/BUILD.bazel",
       "app/renderer/context/ContextPane.tsx",
       "core/project-context/provider.ts",
       "app/renderer/bazel-reference.ts",
@@ -148,6 +150,11 @@
         }
       ],
       "buildTargets": [
+        {
+          "label": "//tools/build-graph:checks",
+          "role": "Checks automatic repository build observation, invalidation and retained graph context",
+          "dependencies": [{ "label": "//:quality_sources", "relation": "data" }]
+        },
         {
           "label": "//tools/project-context:checks",
           "role": "Checks automatic runtime ownership, bounded manifest discovery and Context rendering",
@@ -282,6 +289,8 @@
     ],
     "sourcePaths": [
       "core/agents/trusted-local-session.ts",
+      "core/agent-lifecycle.ts",
+      "protocol/agent-lifecycle.ts",
       "core/external-agents.ts",
       "core/external-agents-send.ts",
       "protocol/external-agents.ts",
@@ -338,7 +347,7 @@
         },
         {
           "label": "//tools/demo-agents:unit",
-          "role": "Registered fleet creation ordering, deep lineage disclosures and observer checks",
+          "role": "Agent lifecycle evidence, registered fleet creation ordering, deep lineage disclosures and observer checks",
           "dependencies": [
             { "label": "//:quality_sources", "relation": "data" },
             { "label": "//tools/demo-agents:sources", "relation": "data" }
@@ -369,6 +378,9 @@
       "app/renderer/changelog/JournalPanel.tsx",
       "app/renderer/FleetActivityView.tsx",
       "app/renderer/external-agents/ObservedActivity.tsx",
+      "app/renderer/external-agents/activity-entries.ts",
+      "app/renderer/external-agents/RunStatus.tsx",
+      "app/renderer/build-resources/BuildResources.tsx",
       "app/renderer/work-log/WorkLogPanel.tsx",
       "core/work-log/service.ts",
       "BUILD.bazel"
@@ -416,6 +428,21 @@
               "relation": "data"
             }
           ]
+        },
+        {
+          "label": "//tools/live-observers:unit",
+          "role": "Checks lifecycle badges, raw activity and refresh retention",
+          "dependencies": [{ "label": "//:quality_sources", "relation": "data" }]
+        },
+        {
+          "label": "//tools/work-log:check",
+          "role": "Checks logical outcomes and explicit summary controls",
+          "dependencies": [{ "label": "//:quality_sources", "relation": "data" }]
+        },
+        {
+          "label": "//tools/activity-usability:smoke",
+          "role": "Packaged raw activity, keyboard settings and retained work proof",
+          "dependencies": [{ "label": "//:desktop-bundle", "relation": "data" }]
         }
       ]
     }
@@ -426,12 +453,17 @@
     "title": "Typed local core & configuration",
     "parentId": "design:system",
     "docs": [
-      "docs/design/runtime.md"
+      "docs/design/runtime.md",
+      "docs/container-demo.md"
     ],
     "sourcePaths": [
       "protocol/schema.ts",
       "core/worker-runtime.ts",
       "app/electron/main.ts",
+      "Dockerfile",
+      "tools/container/runtime.nix",
+      "tools/container/entrypoint.sh",
+      "tools/container/BUILD.bazel",
       "BUILD.bazel"
     ],
     "taskIds": [],
@@ -477,6 +509,16 @@
               "relation": "data"
             }
           ]
+        },
+        {
+          "label": "//tools/container:checks",
+          "role": "Checks the browser-display container transport",
+          "dependencies": [{ "label": "//tools/container:sources", "relation": "data" }]
+        },
+        {
+          "label": "//tools/container:smoke",
+          "role": "Exercises the Docker-packaged desktop through noVNC",
+          "dependencies": [{ "label": "//tools/container:sources", "relation": "data" }]
         }
       ]
     }

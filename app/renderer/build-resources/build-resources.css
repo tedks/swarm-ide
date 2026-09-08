@@ -1,6 +1,7 @@
 .build-resources { min-width: 0; container-type: inline-size; color: #b9cec5; font-size: 10px; }
 .build-resources :focus-visible { outline: 2px solid #62d9ad; outline-offset: 2px; }
 .resource-idle { margin: 0 0 8px; color: #8ca59a; font-size: 10px; }
+.resource-job-summary { margin: 0 0 8px; color: #acbfb5; font-size: 10px; }
 .resource-muted { color: #7d948a; font-size: 9px; }
 .resource-jobs { display: grid; gap: 8px; margin-bottom: 8px; }
 .resource-job { min-width: 0; border-left: 2px solid currentColor; padding: 1px 0 1px 8px; }
@@ -8,7 +9,8 @@
 .resource-job > header strong { flex: 1; min-width: 0; color: #c8d9d0; overflow-wrap: anywhere; font: 500 10px "DM Mono", monospace; }
 .resource-job > header span { flex-shrink: 0; font-size: 9px; }
 .resource-progress-row { display: flex; align-items: center; gap: 8px; padding: 5px 0; font: 9px "DM Mono", monospace; color: #9cafaa; }
-.resource-progress-row progress { width: 100%; height: 3px; appearance: none; border: 0; background: #203831; accent-color: #58c79e; }
+.resource-progress-row progress { width: 100%; min-width: 20px; height: 3px; appearance: none; border: 0; background: #203831; accent-color: #58c79e; }
+.resource-progress-row > span { flex-shrink: 0; }
 .resource-progress-row progress::-webkit-progress-bar { background: #203831; }
 .resource-progress-row progress::-webkit-progress-value { background: #58c79e; }
 .resource-job.status-red progress::-webkit-progress-value { background: #e9957a; }

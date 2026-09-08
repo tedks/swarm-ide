@@ -7,7 +7,7 @@ import type { ExternalClient } from "../app/renderer/external-agents/client";
 import { initialSnapshot } from "../fixtures/world";
 import { PROTOCOL_VERSION, type CoreRequest, type CoreResponse } from "../protocol/schema";
 
-afterEach(cleanup);
+afterEach(() => { cleanup(); localStorage.clear(); });
 const sessionId = "00000000-0000-4000-8000-000000000001";
 const receiptId = "00000000-0000-4000-8000-000000000009";
 function setup() {
@@ -54,11 +54,10 @@ describe("session steering across source-information navigation", () => {
     await act(async () => { resolve({ protocolVersion: PROTOCOL_VERSION, requestId: request.mock.calls[0][0].requestId,
       ok: true, sequence: 1, snapshot: initialSnapshot(), external: { kind: "send", sessionId, receiptId, status, message: `Recorded outcome: ${status}` } }); });
     view.rerender(panel(true));
-    expect(screen.getByText(status === "delivery-unknown"
-      ? "Delivery could not be confirmed. Check the conversation before sending again."
-      : `Recorded outcome: ${status}`)).toBeTruthy();
+    expect(screen.getByRole("status", { name: status === "delivery-unknown" ? "Unconfirmed" : "Queued" })).toBeTruthy();
     expect(view.container.querySelector("[data-delivery-status]")?.getAttribute("data-delivery-status")).toBe(status);
-    expect(screen.getByText(receiptId)).toBeTruthy();
+    expect(screen.queryByText(receiptId)).toBeNull();
+    expect(localStorage.getItem("swarm.message-outbox.v1")).toContain(receiptId);
     expect(view.container.querySelector(".external-information")?.getAttribute("data-external-session")).toBe(sessionId);
     expect(textbox().value).toBe(status === "queued" ? "" : "Inspect once");
     expect(request).toHaveBeenCalledTimes(1);

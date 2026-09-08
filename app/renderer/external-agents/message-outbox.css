@@ -1,0 +1,4 @@
+.conversation-outgoing .outgoing-state { font-size: 14px; line-height: 1; color: #dfbd77; }
+.conversation-outgoing[data-outgoing-status="rejected"] .outgoing-state { color: #eea5a0; }
+.conversation-outgoing header button { margin-left: auto; padding: 1px 5px; font: inherit; color: #bfd9d0; border: 1px solid #365247; border-radius: 3px; background: #14281f; cursor: pointer; }
+.conversation-outgoing header button:focus-visible { outline: 2px solid #77c9bb; outline-offset: 2px; }

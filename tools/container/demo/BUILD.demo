@@ -1,0 +1,2 @@
+filegroup(name = "quotes", srcs = ["src/quote.ts"])
+filegroup(name = "spread", srcs = ["src/spread.ts", ":quotes"])

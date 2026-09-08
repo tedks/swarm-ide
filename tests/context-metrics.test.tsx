@@ -38,6 +38,23 @@ function input() {
   return { observations, subject };
 }
 describe("bounded Context instruments", () => {
+  it("hides only the Repository reader disclosure while retaining directory facts, notices and other evidence", () => {
+    const { observations, subject } = input();
+    const source = composeContext(subject, observations).find((section) => section.id === "source")!;
+    const directory = { ...source, id: "directory", title: "Directory observation",
+      rows: [{ label: "Captured entries", value: "23" }], notice: "Directory read failed; showing retained entries.",
+      evidence: { ...source.evidence!, provider: "Repository reader", revisionKind: "directory" as const, freshness: "retained" as const } };
+    const view = render(<ContextPane subject={{ ...subject, kind: "directory", path: "src" }} sections={[directory, source]} onOpen={() => {}} />);
+    expect(screen.queryByText("Evidence · Repository reader")).toBeNull();
+    expect(screen.getByText("Directory observation")).toBeTruthy();
+    expect(screen.getByText("Captured entries")).toBeTruthy(); expect(screen.getByText("23")).toBeTruthy();
+    expect(screen.getByText(directory.notice)).toBeTruthy();
+    expect(view.container.querySelector('[data-context-section="directory"] [data-context-freshness="retained"]')).toBeTruthy();
+    expect(screen.getByText("Evidence · Source broker")).toBeTruthy();
+    expect(directory.evidence.provider).toBe("Repository reader"); expect(directory.evidence.origin).toBe(source.evidence!.origin);
+    view.rerender(<ContextPane subject={subject} sections={[{ ...directory, evidence: { ...directory.evidence, provider: "Another reader" } }]} onOpen={() => {}} />);
+    expect(screen.getByText("Evidence · Another reader")).toBeTruthy();
+  });
   it.each(["unknown", "conflict"])("keeps actionable %s source diagnostics alongside dirty-buffer warning", (status) => {
     const { observations, subject } = input();
     observations.files[0]!.content += "unsaved";

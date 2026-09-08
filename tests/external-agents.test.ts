@@ -29,6 +29,60 @@ async function setup(content = meta() + message()) {
   return { dir, root, rollout, registry, service };
 }
 describe("operator-registered external observation", () => {
+  it("retains execution state before trimming activity and across observed append-only tails", async () => {
+    const at = "2026-09-08T12:00:01Z", started = Date.parse(at) / 1000;
+    const begin = JSON.stringify({ type: "event_msg", timestamp: at, payload: { type: "task_started", turn_id: "current", started_at: started } }) + "\n";
+    const { service, rollout } = await setup(meta() + begin + message().repeat(140));
+    const first = await service.request(request("externalAgents.snapshot"));
+    expect(first).toMatchObject({ snapshot: { sessions: [{ lifecycle: { state: "working", turnId: "current" } }] } });
+    // Every individual append interval remains observed, but the original start
+    // eventually leaves the bounded raw tail. Its state is not a raw feed row.
+    for (let i = 0; i < 3; i++) {
+      await appendFile(rollout, message("x".repeat(3000)).repeat(60));
+      expect(await service.request(request("externalAgents.snapshot"))).toMatchObject({ snapshot: { sessions: [{ lifecycle: { state: "working" } }] } });
+    }
+    await appendFile(rollout, JSON.stringify({ type: "event_msg", timestamp: "2026-09-08T12:02:00Z", payload: { type: "task_complete", turn_id: "current", started_at: started } }) + "\n");
+    expect(await service.request(request("externalAgents.snapshot"))).toMatchObject({ snapshot: { sessions: [{ lifecycle: { state: "completed" } }] } });
+    await writeFile(rollout, meta() + message("Replaced contents without execution evidence"));
+    expect(await service.request(request("externalAgents.snapshot"))).toMatchObject({ snapshot: { sessions: [{ lifecycle: { state: "unknown" } }] } });
+  });
+
+  it("does not carry old running state over an unobserved byte gap", async () => {
+    const begin = JSON.stringify({ type: "event_msg", timestamp: "2026-09-08T12:00:01Z", payload: { type: "task_started", turn_id: "old" } }) + "\n";
+    const { service, rollout } = await setup(meta() + begin);
+    await service.request(request("externalAgents.snapshot"));
+    await appendFile(rollout, message("x".repeat(3000)).repeat(100));
+    expect(await service.request(request("externalAgents.snapshot"))).toMatchObject({ snapshot: { sessions: [{ lifecycle: { state: "unknown" } }] } });
+  });
+
+  it("does not carry status through same-inode same-header growth rewrites", async () => {
+    const begin = JSON.stringify({ type: "event_msg", timestamp: "2026-09-08T12:00:01Z", payload: { type: "task_started", turn_id: "old" } }) + "\n";
+    const { service, rollout } = await setup(meta() + begin);
+    expect(await service.request(request("externalAgents.snapshot"))).toMatchObject({ snapshot: { sessions: [{ lifecycle: { state: "working" } }] } });
+    await writeFile(rollout, meta() + message("A larger replacement without execution evidence".repeat(10)));
+    expect(await service.request(request("externalAgents.snapshot"))).toMatchObject({ snapshot: { sessions: [{ lifecycle: { state: "unknown" } }] } });
+  });
+
+  it("drops old working evidence when an oversized terminal record cannot be inspected", async () => {
+    const begin = JSON.stringify({ type: "event_msg", timestamp: "2026-09-08T12:00:01Z", payload: { type: "task_started", turn_id: "old" } }) + "\n";
+    const { service, rollout } = await setup(meta() + begin);
+    await service.request(request("externalAgents.snapshot"));
+    await appendFile(rollout, JSON.stringify({ type: "event_msg", timestamp: "2026-09-08T12:02:00Z", payload: { type: "task_complete", turn_id: "old", last_agent_message: "x".repeat(70000) } }) + "\n");
+    expect(await service.request(request("externalAgents.snapshot"))).toMatchObject({ snapshot: { sessions: [{ lifecycle: { state: "unknown" } }] } });
+  });
+
+  it("starts a new observed interval after truncation even below the previous cached cursor", async () => {
+    const begin = JSON.stringify({ type: "event_msg", timestamp: "2026-09-08T12:00:01Z", payload: { type: "task_started", turn_id: "new" } }) + "\n";
+    const { service, rollout } = await setup(meta() + message("x".repeat(3000)).repeat(300));
+    await service.request(request("externalAgents.snapshot"));
+    await writeFile(rollout, meta() + begin);
+    await service.request(request("externalAgents.snapshot"));
+    for (let i = 0; i < 3; i++) {
+      await appendFile(rollout, message("x".repeat(3000)).repeat(60));
+      expect(await service.request(request("externalAgents.snapshot"))).toMatchObject({ snapshot: { sessions: [{ lifecycle: { state: "working", turnId: "new" } }] } });
+    }
+  });
+
   it("publishes immutable session creation metadata, not event or observation timestamps", async () => {
     const createdAt = "2026-09-05T06:03:47.422Z";
     const metadata = JSON.stringify({ type: "session_meta", timestamp: "2026-09-08T04:00:00Z", payload: { id: A, timestamp: createdAt, forked_from_id: B } }) + "\n";

@@ -25,7 +25,7 @@ export function ContextPane({ subject, sections, onOpen, onGraph, onTask, onRefr
         <details><summary>Task evidence · {row.link.target.taskId}</summary><dl><dt>Full ID</dt><dd>{row.link.target.taskId}</dd><dt>Issue blob</dt><dd>{row.link.target.issueBlob.algorithm}:{row.link.target.issueBlob.hex}</dd></dl></details>
       </> : row.link?.kind === "graph" ? <button type="button" className="source-link" disabled={!onGraph} aria-label={`Show build target ${row.link.id}`} onClick={() => { if (row.link?.kind === "graph") onGraph?.(row.link); }}>{row.value}</button> : row.value}</dd></div>)}</dl>
       {(section.total ?? 0) > section.rows.length ? <p>Showing {section.rows.length} of {section.total} relationships; partial display.</p> : null}
-      {section.evidence ? <details><summary>Evidence · {section.evidence.provider}</summary><dl>
+      {section.evidence && !(section.id === "directory" && section.evidence.provider === "Repository reader") ? <details><summary>Evidence · {section.evidence.provider}</summary><dl>
         <dt>Origin</dt><dd>{section.evidence.origin}</dd>{section.evidence.revisionKind !== "source-read" ? <><dt>Revision · {section.evidence.revisionKind}</dt><dd>{section.evidence.revision}</dd></> : null}
         <dt>Observed · {section.evidence.timeBasis}</dt><dd>{section.evidence.observedAt ?? "unavailable"}</dd>
         <dt>Scope</dt><dd>{section.evidence.coverage}</dd><dt>Repository / world</dt><dd>{section.evidence.repositoryId} / {section.evidence.worldId}</dd>
