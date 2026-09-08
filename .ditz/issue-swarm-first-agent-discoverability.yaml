@@ -11,8 +11,8 @@ type: bugfix
 component: default
 release:
 reporter: Ted Smith <tedks@riseup.net>
-status: in_progress
-disposition:
+status: closed
+disposition: fixed
 creation_time: 2026-09-08T18:30:04-00:00
 references: []
 log_events:
@@ -54,5 +54,10 @@ log_events:
     that owner. 203 focused tests/types, 77 separate tab tests/types, actual packaged
     selected-worktree proof and one actual Codex turn passed; native review CLEAN.
     ROOT owns normal merge/adoption.'
+- time: 2026-09-08T20:02:55-00:00
+  who: Ted Smith
+  what: 'closed: fixed'
+  comment: "Direct New agent \u2192 prompt \u2192 Enter implemented and locally verified
+    in pushed PR132; ready for ROOT landing."
 blocks:
 - swarm-close-working-loop
