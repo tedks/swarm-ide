@@ -20,7 +20,8 @@ This changes display scheduling only, not message delivery or model response tim
 - [x] (2026-09-08 18:13Z) Focused observer/steering checks: 148 passed, 1 existing
   opt-in real-send case skipped; both typechecks passed. Native review and the
   subsequent test-only review returned CLEAN.
-- [ ] Push ready PR and hand back; ROOT merges and adopts.
+- [x] (2026-09-08 18:16Z) Pushed implementation dfc0ee5 and marked PR125 ready;
+  Ditz accomplishment recorded. ROOT owns merge/adoption and issue closure.
 
 ## Surprises & Discoveries
 
@@ -126,3 +127,6 @@ before implementation, rather than attributing upstream message delay to it.
 
 Revision 2: recorded the implemented 1s/3s start cadence, corrected test-only
 expectation, actual append check and native clean review before PR handoff.
+
+Revision 3: recorded pushed, reviewed PR readiness; remaining integration is
+deliberately ROOT-owned, not a claim about the currently running application.
