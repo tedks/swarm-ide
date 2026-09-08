@@ -10,6 +10,7 @@ import { RegisteredAgentContextProvider } from "../core/agents/context";
 import { computeWorkingWorldFingerprint } from "../core/fingerprint";
 import { PROTOCOL_VERSION, parseCoreRequest, uncertainMutationCode } from "../protocol/schema";
 import { TrustedRequestSchema, type TrustedRequest } from "../protocol/trusted-local";
+import { MemoryTrustedLocalStore } from "../core/agents/trusted-local-store";
 
 const roots: string[] = [], owners: TrustedLocalService[] = [];
 afterEach(async () => { await Promise.all(owners.splice(0).map((s) => s.shutdown())); await Promise.all(roots.splice(0).map((r) => rm(r, { recursive: true, force: true }))); });
@@ -34,6 +35,72 @@ async function fixture() {
   return { root, service, session, context, createSession, input };
 }
 describe("explicit trusted-local core authority", () => {
+  it("starts exact plain text without source preparation in the captured selected worktree", async () => {
+    const f = await fixture(), token = randomUUID();
+    const prepare = vi.spyOn(f.context, "prepare");
+    const request = command("trusted.start", { token, text: "\nExplain this project λ\n" });
+    const snapshot = await f.service.request(request, "/checked/selected-worktree");
+    expect(prepare).not.toHaveBeenCalled();
+    expect(f.createSession).toHaveBeenCalledWith(expect.any(Function), "/checked/selected-worktree");
+    expect(f.session.start).toHaveBeenCalledExactlyOnceWith("\nExplain this project λ\n", null);
+    expect(snapshot).toMatchObject({ runToken: token, workspace: "/checked/selected-worktree", initialText: "\nExplain this project λ\n" });
+    expect(snapshot.runs?.[0]).toMatchObject({ workspace: "/checked/selected-worktree", initialText: "\nExplain this project λ\n", taskReference: null });
+    await expect(f.service.request({ ...request, requestId: randomUUID() }, f.root)).rejects.toThrow("already submitted");
+    await f.service.request(command("trusted.send", { token, text: "Continue" }), f.root);
+    await f.service.request(command("trusted.stop", { token }), f.root);
+    expect(f.session.send).toHaveBeenCalledWith("Continue"); expect(f.session.stop).toHaveBeenCalled();
+    expect(f.createSession).toHaveBeenCalledOnce();
+    expect(uncertainMutationCode(request)).toBe("AGENT_OUTCOME_UNKNOWN");
+    expect(() => parseCoreRequest({ ...request, root: "/unchecked" })).toThrow();
+    for (const text of [" ", "\0bad", "x".repeat(16385)]) expect(() => command("trusted.start", { token: randomUUID(), text })).toThrow();
+  });
+  it("saves failed startup text and permanently reserves its token before creating Codex", async () => {
+    const f = await fixture(), store = new MemoryTrustedLocalStore(), token = randomUUID();
+    const createSession = vi.fn(async () => {
+      expect((await store.load())[0]?.summary).toMatchObject({ runToken: token, initialText: "Do not lose this" });
+      expect(store.admittedTokens()).toContain(token);
+      throw new Error("Codex is not installed. Install Codex and try a new conversation.");
+    });
+    const owner = new TrustedLocalService({ root: f.root, context: f.context, createSession, store }); owners.push(owner);
+    await expect(owner.request(command("trusted.start", { token, text: "Do not lose this" }))).rejects.toThrow("not installed");
+    expect(owner.snapshot(token)).toMatchObject({ status: "failed", archived: true, initialText: "Do not lose this" });
+    await owner.shutdown();
+    const restarted = new TrustedLocalService({ root: f.root, context: f.context, createSession, store }); owners.push(restarted);
+    const saved = await restarted.request(command("trusted.snapshot", { token }));
+    expect(saved.initialText).toBe("Do not lose this");
+    await expect(restarted.request(command("trusted.start", { token, text: "Do not lose this" }))).rejects.toThrow("already submitted");
+    expect(createSession).toHaveBeenCalledOnce();
+  });
+  it("does not start a stopped direct admission when its process factory arrives late", async () => {
+    const f = await fixture(), token = randomUUID();
+    let release!: () => void;
+    const gate = new Promise<void>((done) => { release = done; });
+    f.createSession.mockImplementation(async () => { await gate; return f.session; });
+    const pending = f.service.request(command("trusted.start", { token, text: "Start once" }));
+    await vi.waitFor(() => expect(f.createSession).toHaveBeenCalledOnce());
+    await f.service.request(command("trusted.stop", { token })); release();
+    await expect(pending).rejects.toThrow("cancelled");
+    expect(f.session.start).not.toHaveBeenCalled(); expect(f.session.stop).toHaveBeenCalled();
+    expect(f.service.snapshot(token).initialText).toBe("Start once");
+  });
+  it("keeps evicted direct admission identities across restart without opening sessions", async () => {
+    const f = await fixture(), store = new MemoryTrustedLocalStore();
+    const owner = new TrustedLocalService({ root: f.root, context: f.context, createSession: f.createSession, store }); owners.push(owner);
+    const first = randomUUID();
+    for (let n = 0; n < 21; n++) {
+      const token = n === 0 ? first : randomUUID();
+      await owner.request(command("trusted.start", { token, text: `Task ${n}` }));
+      await owner.request(command("trusted.stop", { token }));
+    }
+    expect(owner.snapshot().runs).toHaveLength(20);
+    expect(owner.snapshot().runs?.some((run) => run.runToken === first)).toBe(false);
+    await owner.shutdown();
+    const createSession = vi.fn(f.createSession.getMockImplementation()!);
+    const restarted = new TrustedLocalService({ root: f.root, context: f.context, createSession, store }); owners.push(restarted);
+    await restarted.request(command("trusted.snapshot"));
+    await expect(restarted.request(command("trusted.start", { token: first, text: "Do not replay" }))).rejects.toThrow("already submitted");
+    expect(createSession).not.toHaveBeenCalled();
+  });
   it("materializes exact disk context, excludes false read-only claims and launches once", async () => {
     const f = await fixture();
     const prepared = await f.service.request(command("trusted.prepare", { input: f.input }));

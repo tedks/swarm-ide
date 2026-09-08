@@ -30,6 +30,13 @@ afterEach(async () => {
 });
 
 describe("bounded trusted-local history", () => {
+  it("persists retired admission tokens independently of displayed history", async () => {
+    const f = await fixture(), active = run(), retired = randomUUID();
+    await f.store.save([active], [retired, active.summary.runToken]); await f.store.close();
+    const restarted = fileStore(f.path);
+    expect(await restarted.load()).toEqual([active]);
+    expect(restarted.admittedTokens()).toEqual([retired, active.summary.runToken]);
+  });
   it("returns detached values and captures input before the serialized write", async () => {
     const store = new MemoryTrustedLocalStore(), original = run(), expected = structuredClone(original);
     const saving = store.save([original]); original.output = "caller mutation"; original.activities[0]!.summary = "changed";

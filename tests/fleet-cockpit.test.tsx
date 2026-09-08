@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 import { TrustedLocalPane } from "../app/renderer/agents/TrustedLocalPane";
 import type { SwarmBridge } from "../app/electron/preload";
@@ -66,12 +66,12 @@ async function selectB(h: Harness, value = snapshot(B), sequence = 2) {
   click(/^Run B/);
   await h.answer(h.take("trusted.snapshot", B), value, sequence);
 }
-afterEach(cleanup);
+afterEach(() => { cleanup(); localStorage.clear(); });
 
 describe("mounted trusted fleet response races", () => {
   it("targets the observed run and turn and never clears another selected run's composer", async () => {
     const { h } = await mounted();
-    edit("Steer A"); click("Steer current turn");
+    edit("Steer A"); click("Send message");
     const send = h.take("trusted.send", A);
     expect(send.request).toMatchObject({ token: A, expectedTurnId: `turn:${A}`, text: "Steer A" });
     await selectB(h); edit("Unsent B");
@@ -84,7 +84,7 @@ describe("mounted trusted fleet response races", () => {
 
   it("retains edits made to the sending composer's revision while its response is delayed", async () => {
     const { h } = await mounted();
-    edit("First revision"); click("Steer current turn");
+    edit("First revision"); click("Send message");
     const send = h.take("trusted.send", A);
     edit("New unsent revision");
     await h.answer(send, snapshot(), 2);
@@ -94,23 +94,23 @@ describe("mounted trusted fleet response races", () => {
 
   it("allows independent pending runs without duplicate delivery or cross-run busy release", async () => {
     const { h } = await mounted();
-    edit("A pending"); click("Steer current turn"); click("Steer current turn");
+    edit("A pending"); click("Send message"); click("Send message");
     const a = h.take("trusted.send", A);
-    await selectB(h); edit("B pending"); click("Steer current turn");
+    await selectB(h); edit("B pending"); click("Send message");
     const b = h.take("trusted.send", B);
     await h.answer(a, snapshot(), 3);
-    expect((screen.getByRole("button", { name: "Steer current turn" }) as HTMLButtonElement).disabled).toBe(true);
-    click("Steer current turn");
+    expect((screen.getByRole("button", { name: "Send message" }) as HTMLButtonElement).disabled).toBe(true);
+    click("Send message");
     expect(h.calls.filter((c) => c.request.type === "trusted.send")).toHaveLength(2);
     await h.answer(b, snapshot(B), 4);
     expect(composer()).toBe("");
     edit("B again");
-    expect((screen.getByRole("button", { name: "Steer current turn" }) as HTMLButtonElement).disabled).toBe(false);
+    expect((screen.getByRole("button", { name: "Send message" }) as HTMLButtonElement).disabled).toBe(false);
   });
 
   it("accepts older A detail independently of a newer B response without moving selection", async () => {
     const { h } = await mounted();
-    edit("A delivery"); click("Steer current turn");
+    edit("A delivery"); click("Send message");
     const a = h.take("trusted.send", A);
     await selectB(h, snapshot(B, { output: "B newer" }), 12);
     await h.answer(a, snapshot(A, { output: "A delayed detail" }), 11);
@@ -121,26 +121,26 @@ describe("mounted trusted fleet response races", () => {
 
   it("does not roll the same run back when a stale observation follows a newer command response", async () => {
     const { h } = await mounted();
-    click("Observe conversations"); const oldRead = h.take("trusted.snapshot");
+    click("Refresh conversations"); const oldRead = h.take("trusted.snapshot");
     expect(oldRead.request).not.toHaveProperty("token");
-    edit("A delivery"); click("Steer current turn");
+    edit("A delivery"); click("Send message");
     await h.answer(h.take("trusted.send", A), snapshot(A, { output: "New output", turnId: "new-turn" }), 10);
     await h.answer(oldRead, snapshot(A, { status: "ready", turnId: null, output: "Stale output" }), 9);
     expect(screen.getByLabelText("Codex conversation").textContent).toBe("New output");
-    edit("New turn target"); click("Steer current turn");
+    edit("New turn target"); click("Send message");
     expect(h.take("trusted.send", A).request).toMatchObject({ expectedTurnId: "new-turn" });
   });
 
   it("drops old-generation completion and gates retained drafts on fresh observation", async () => {
     const { h, view } = await mounted();
-    edit("Keep local draft"); click("Steer current turn"); const oldSend = h.take("trusted.send", A);
+    edit("Keep local draft"); click("Send message"); const oldSend = h.take("trusted.send", A);
     view.rerender(<TrustedLocalPane bridge={h.bridge} draft={draft} connected generation={2} />);
-    expect(screen.queryByRole("textbox")).toBeNull();
+    expect(screen.queryByRole("textbox", { name: "Message Codex" })).toBeNull();
     await h.answer(oldSend, snapshot(A, { output: "Old core reply" }), 100);
     expect(screen.queryByText("Old core reply")).toBeNull();
     await h.answer(h.take("trusted.snapshot"), snapshot(A, { instanceId: P, output: "Replacement core" }), 1);
     expect(composer()).toBe("Keep local draft");
-    expect((screen.getByRole("button", { name: "Steer current turn" }) as HTMLButtonElement).disabled).toBe(false);
+    expect((screen.getByRole("button", { name: "Send message" }) as HTMLButtonElement).disabled).toBe(false);
     expect(h.calls.filter((c) => c.request.type === "trusted.send")).toHaveLength(1);
   });
 
@@ -159,13 +159,14 @@ describe("mounted trusted fleet response races", () => {
         error: { code: "AGENT_RUN_UNAVAILABLE", message: "Selected run is absent from this core" } })));
     };
     await unavailable(h.take("trusted.snapshot", A));
+    fireEvent.click(screen.getByText("Use attached source or task"));
     click("Prepare trusted-local context");
     await h.answer(h.take("trusted.prepare"), { ...idle, preparation: { token: B, prompt: "New B prompt",
       expiresAt: "2099-01-01T00:00:00.000Z", model: null } }, 2);
     fireEvent.click(screen.getByRole("checkbox", { name: /Launch in this workspace/ }));
     click("Launch trusted-local Codex");
     await h.fail(h.take("trusted.launch", B), true);
-    click("Observe conversations");
+    // An uncertain launch now refreshes automatically; the empty-state composer has no toolbar.
     // Finish the old targeted read if a serialized refresh was already in flight.
     const oldRead = h.calls.find((call) => !call.settled && call.request.type === "trusted.snapshot" && call.request.token === A);
     if (oldRead) await unavailable(oldRead);
@@ -184,17 +185,20 @@ describe("mounted trusted fleet response races", () => {
 
   it("prepares beside a pending live run and reconciles uncertain launch without replay", async () => {
     const { h } = await mounted();
-    edit("Existing draft"); click("Steer current turn");
-    click("New conversation"); click("Prepare trusted-local context");
+    edit("Existing draft"); click("Send message");
+    click("New agent"); fireEvent.click(screen.getByText("Use attached source or task")); click("Prepare trusted-local context");
     const preparation = { token: P, prompt: "Exact new prompt", expiresAt: "2099-01-01T00:00:00.000Z", model: null };
     await h.answer(h.take("trusted.prepare"), snapshot(A, { preparation }), 2);
+    click(/^Run A/);
     expect(composer()).toBe("Existing draft");
+    click("New agent");
+    fireEvent.click(screen.getByText("Use attached source or task"));
     fireEvent.click(screen.getByRole("checkbox", { name: /Launch in this workspace/ }));
     click("Launch trusted-local Codex");
     const launch = h.take("trusted.launch", P);
     await h.fail(launch, true);
     expect(screen.queryByRole("checkbox")).toBeNull();
-    expect(screen.getByText(/Outcome unconfirmed/)).toBeTruthy();
+    expect(screen.getByText(/Connection interrupted/)).toBeTruthy();
     const runs = [...snapshot().runs!, { ...snapshot().runs![1]!, runToken: P, title: "Newly launched run" }];
     await h.answer(h.take("trusted.snapshot"), snapshot(A, { runs }), 3);
     click(/^Newly launched run/);
@@ -217,7 +221,7 @@ describe("mounted trusted fleet response races", () => {
     click("Allow once"); const decide = h.take("trusted.decide", A);
     expect(decide.request).toMatchObject({ token: A, approvalId: "approval-a", choice: "accept" });
     await selectB(h, snapshot(B, { status: "ready", turnId: null }));
-    edit("Next B turn"); click("Send next turn"); const send = h.take("trusted.send", B);
+    edit("Next B turn"); click("Send message"); const send = h.take("trusted.send", B);
     expect(send.request).toMatchObject({ expectedTurnId: null, token: B });
     await h.fail(send);
     expect(composer()).toBe("Next B turn");
@@ -229,7 +233,7 @@ describe("mounted trusted fleet response races", () => {
     expect(screen.queryByRole("textbox")).toBeNull();
     expect(screen.queryByRole("button", { name: "Allow once" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Stop conversation" })).toBeNull();
-    expect(screen.getByText("Next B turn")).toBeTruthy();
+    expect(within(screen.getByText("Unsent draft").parentElement!).getByText("Next B turn")).toBeTruthy();
     expect(h.calls.filter((c) => c.request.type === "trusted.send")).toHaveLength(1);
   });
 });

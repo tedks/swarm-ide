@@ -4,6 +4,34 @@ An agent has a conversation, a task, a parent and a source world. It also has on
 execution owner. Swarm observes normal terminal agents and owns native IDE agents;
 showing them together must not launch a second copy of a running conversation.
 
+## Direct startup and worktree ownership
+
+**New agent → message → Enter** calls `trusted.start` through the existing typed
+bridge. `core/workspace-context.ts` rechecks the selected, already-open worktree
+registration and passes its resolved directory only inside the core. One primary
+`TrustedLocalService` reserves the client token and saves the exact initial text
+before constructing Codex. Each run's session factory receives that captured
+directory; subsequent Send and Stop use its token, not the directory currently
+being browsed. Forks inherit the parent's directory. The older source-bound
+Prepare workflow remains restricted to its materialized launch context.
+
+Run snapshots distinguish the run's `workspace` from the owner's
+`launchWorkspace`, so reopening history from another worktree cannot mislabel
+the next new agent. Old history without the additive fields remains readable.
+Restored history never automatically starts or resumes a provider. Reserved
+tokens persist even when the small visible history has been trimmed.
+
+`native-outbox.ts` saves initial and follow-up instructions in the local operator
+profile before dispatch. Failed or unconfirmed messages remain copyable after
+reload, with no automatic resend. An acknowledgement cannot erase newer typing
+or select a conversation after the user deliberately moved elsewhere. The
+composer uses the shared Enter/Shift-Enter/IME behavior and a compact send arrow.
+
+Direct checks are `//tools/trusted-local:start-unit`,
+`//tools/trusted-forks:unit` and `//tools/workspace-navigation:core-checks`.
+`//tools/trusted-local:start-smoke` runs the actual packaged UI and selected
+worktree routing against a deterministic protocol peer; it is not a live model.
+
 ## Lower-level map
 
 | Path | Actual implementation | Ownership |
@@ -89,8 +117,12 @@ focus synchronously to the composer; receipts and observation updates never take
 focus back from another agent, source file or dialog. Unavailable sessions remain
 disabled. These are presentation rules, not a new sender or delivery guarantee.
 
-Native trusted conversations, approvals, forks, new drafts and saved history
-remain mounted behind the **Agent tools** icon, not a permanent generic category.
+Native Codex conversations start from the visible **New agent** button. Type an
+instruction and press Enter; Shift-Enter inserts a newline. No source file,
+task attachment, Prepare step or launch checkbox is required. Optional model
+selection stays under Settings; an empty model inherits the normal Codex model,
+account and approvals. Source/task preparation remains an optional attachment
+workflow rather than the entrance to agent execution.
 An opened draft gets a Draft tab; explicit native-run selection keeps its controls
 reachable. Registered tabs and their selected Terminal, Worktree and Details
 icons share one header, with no repeated conversation title. Terminal only copies
@@ -182,7 +214,8 @@ view until explicitly reopened. It never stops an agent, clears its outgoing
 messages, or sends an instruction. Temporary core recovery retains the open and
 dismissed sets; only an observed registry can remove a registration. Status badges
 use the core's shared lifecycle, not another renderer classifier.
-When no enabled conversation tab remains, Agent tools stays keyboard-accessible.
+When no enabled conversation tab remains, New agent stays keyboard-accessible
+and the empty native pane offers its composer immediately.
 The optional `SWARM_CONVERSATION_HEADER_ONLY=1` mode of the existing owned
 conversation smoke check reads real registrations and checks the single header,
 320px icon layout and retained drafts with no Send request. Its loading path

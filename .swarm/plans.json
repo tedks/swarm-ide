@@ -348,12 +348,20 @@
       "app/renderer/external-agents/steering-memory.ts",
       "app/renderer/external-agents/SessionSteering.tsx",
       "BUILD.bazel",
-      "app/renderer/external-agents/message-outbox.ts"
+      "app/renderer/external-agents/message-outbox.ts",
+      "core/agents/trusted-local.ts",
+      "core/agents/trusted-local-store.ts",
+      "core/workspace-context.ts",
+      "core/worker-runtime.ts",
+      "protocol/trusted-local.ts",
+      "app/renderer/agents/TrustedLocalPane.tsx",
+      "app/renderer/agents/use-trusted-fleet.ts",
+      "app/renderer/agents/native-outbox.ts"
     ],
     "taskIds": [],
     "contextRefs": [],
     "design": {
-      "summary": "Read and steer the selected registered conversation by default, with native execution/history in secondary controls and the real parent, worktree and execution owner preserved.",
+      "summary": "Read and steer registered conversations, or start Codex with New agent, a message and Enter. Each admitted run captures its selected worktree and retains its own controls and saved messages.",
       "state": "implemented",
       "constraints": [
         "Observing a terminal does not launch or take ownership of it.",
@@ -430,6 +438,14 @@
           "dependencies": [
             { "label": "//:quality_sources", "relation": "data" },
             { "label": "//tools/operator-cockpit:sources", "relation": "data" }
+          ]
+        },
+        {
+          "label": "//tools/trusted-local:start-unit",
+          "role": "Direct no-source startup, saved messages, composer focus and legacy conversation compatibility",
+          "dependencies": [
+            { "label": "//:quality_sources", "relation": "data" },
+            { "label": "//tools/trusted-local:sources", "relation": "data" }
           ]
         },
         {

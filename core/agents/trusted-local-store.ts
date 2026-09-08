@@ -19,7 +19,9 @@ export type TrustedStoredRun = {
 };
 export interface TrustedLocalStore {
   load(): Promise<TrustedStoredRun[]>;
-  save(runs: TrustedStoredRun[]): Promise<void>;
+  save(runs: TrustedStoredRun[], admittedTokens?: string[]): Promise<void>;
+  /** Retired identities survive history eviction, preventing restart replay. */
+  admittedTokens?(): readonly string[];
   close?(): Promise<void>;
 }
 
@@ -32,9 +34,10 @@ const RunSchema = z.object({
   output: text(262144),
   activities: z.array(TrustedActivitySchema).max(100),
 }).strict();
-const SnapshotSchema = z.object({ version: z.literal(1), runs: z.array(RunSchema).max(20) }).strict();
+const SnapshotSchema = z.object({ version: z.literal(1), runs: z.array(RunSchema).max(20),
+  admittedTokens: z.array(z.string().uuid()).optional() }).strict();
 
-function validate(input: unknown): TrustedStoredRun[] {
+function validate(input: unknown): z.infer<typeof SnapshotSchema> {
   // Reject large collections before Zod accumulates errors for every item.
   const runs = input && typeof input === "object" && "runs" in input ? input.runs : undefined;
   if (!Array.isArray(runs) || runs.length > 20 || runs.some((run) =>
@@ -52,7 +55,7 @@ function validate(input: unknown): TrustedStoredRun[] {
     throw new Error("Invalid trusted history identity or correlation.");
   }
   if (utf8Bytes(JSON.stringify(parsed)) > MAX_FILE_BYTES) throw new Error("Trusted history exceeds its storage bound.");
-  return parsed.runs;
+  return parsed;
 }
 
 /** Every operation shares a recovering serial queue;
@@ -70,10 +73,12 @@ class SerialStore {
 
 export class MemoryTrustedLocalStore extends SerialStore implements TrustedLocalStore {
   private runs: TrustedStoredRun[] = [];
+  private tokens: string[] = [];
+  admittedTokens(): readonly string[] { return [...this.tokens]; }
   load(): Promise<TrustedStoredRun[]> { return this.enqueue(() => structuredClone(this.runs)); }
-  async save(runs: TrustedStoredRun[]): Promise<void> {
-    const captured = validate({ version: 1, runs });
-    await this.enqueue(() => { this.runs = captured; });
+  async save(runs: TrustedStoredRun[], admittedTokens?: string[]): Promise<void> {
+    const captured = validate({ version: 1, runs, ...(admittedTokens ? { admittedTokens } : {}) });
+    await this.enqueue(() => { this.runs = captured.runs; this.tokens = captured.admittedTokens ?? this.tokens; });
   }
 }
 
@@ -119,6 +124,8 @@ export class FileTrustedLocalStore extends SerialStore implements TrustedLocalSt
   private readonly name: string;
   private lock: { file: FileHandle; directory: Stats; inode: Stats } | undefined;
   private closing: Promise<void> | undefined;
+  private tokens: string[] = [];
+  admittedTokens(): readonly string[] { return [...this.tokens]; }
   constructor(filePath: string) {
     super();
     if (!isAbsolute(filePath) || resolve(filePath) !== filePath || dirname(filePath) === filePath) {
@@ -197,15 +204,17 @@ export class FileTrustedLocalStore extends SerialStore implements TrustedLocalSt
           chunks.push(Buffer.from(buffer.subarray(0, bytesRead)));
         }
         const text = new TextDecoder("utf-8", { fatal: true }).decode(Buffer.concat(chunks, total));
-        return validate(JSON.parse(text));
+        const saved = validate(JSON.parse(text));
+        this.tokens = saved.admittedTokens ?? [];
+        return saved.runs;
       } finally { await file.close(); }
     }));
   }
 
-  async save(runs: TrustedStoredRun[]): Promise<void> {
+  async save(runs: TrustedStoredRun[], admittedTokens?: string[]): Promise<void> {
     if (this.closing) throw new Error("Trusted history store is closed.");
-    const captured = validate({ version: 1, runs });
-    const serialized = JSON.stringify({ version: 1, runs: captured });
+    const captured = validate({ version: 1, runs, ...(admittedTokens ? { admittedTokens } : {}) });
+    const serialized = JSON.stringify(captured);
     await this.enqueue(() => this.withDirectory(async (directory, path) => {
       // Do not replace a suspicious destination, even though rename itself
       // would not follow a link. Preserve the unexpected entry for inspection.
@@ -221,6 +230,7 @@ export class FileTrustedLocalStore extends SerialStore implements TrustedLocalSt
         await file.close(); file = undefined;
         await rename(temporary, path); renamed = true;
         await directory.sync();
+        this.tokens = captured.admittedTokens ?? this.tokens;
       } finally {
         try { await file?.close(); }
         finally { if (!renamed) await unlink(temporary).catch((cause) => { if (!missing(cause)) throw cause; }); }

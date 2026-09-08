@@ -35,7 +35,7 @@ export async function resolveWorkspaceSelection(launchRoot: string, registry: st
 
 export interface RootedRuntime {
   ready: Promise<WorkspaceSnapshot>;
-  request(input: unknown): Promise<void>;
+  request(input: unknown, context?: { trustedStartRoot: string }): Promise<void>;
   snapshot(): Promise<WorkspaceSnapshot>;
   shutdown(): Promise<void>;
   close(): void;
@@ -45,6 +45,7 @@ export interface RootedRuntime {
  * under an in-flight request; accepted writes may safely settle in old contexts. */
 export class WorkspaceContextRouter {
   private contexts = new Map<string, Promise<RootedRuntime>>();
+  private selections = new Map<string, WorkspaceSelection>();
   private ids = new BoundedRequestIds(512);
   private stopping = false;
   private lifetime = new AbortController();
@@ -64,8 +65,9 @@ export class WorkspaceContextRouter {
     if (this.stopping) throw new Error("Core is shutting down.");
     const existing = this.contexts.get(selection.id);
     if (existing) return existing;
+    this.selections.set(selection.id, structuredClone(selection));
     const runtime = this.options.create(selection, primary);
-    const pending = runtime.ready.then(() => runtime).catch((error) => { runtime.close(); this.contexts.delete(selection.id); throw error; });
+    const pending = runtime.ready.then(() => runtime).catch((error) => { runtime.close(); this.contexts.delete(selection.id); this.selections.delete(selection.id); throw error; });
     this.contexts.set(selection.id, pending);
     return pending;
   }
@@ -93,7 +95,7 @@ export class WorkspaceContextRouter {
       }
       const id = request.workspaceId ?? ("repositoryId" in request ? request.repositoryId : undefined) ?? primary.selection.id;
       if ("repositoryId" in request && request.repositoryId !== id) throw new Error("Workspace and repository identities disagree.");
-      if (id !== primary.selection.id && ["agent.prepare", "trusted.prepare", "trusted.launch", "trusted.start", "trusted.fork"].includes(request.type)) {
+      if (id !== primary.selection.id && ["agent.prepare", "trusted.prepare", "trusted.launch"].includes(request.type)) {
         this.options.post(CoreResponseSchema.parse({ protocolVersion: PROTOCOL_VERSION, requestId: request.requestId, workspaceId: id, ok: false,
           error: { code: "UNSUPPORTED_CONTROL", message: "Agent launch context remains in the original workspace. Switch back before preparing a run." } }));
         return;
@@ -102,7 +104,14 @@ export class WorkspaceContextRouter {
       if (!context) throw new Error("This worktree is not open. Select it before using its files.");
       if (this.stopping) throw new Error("Core is shutting down.");
       const { workspaceId: _workspaceId, ...command } = request;
-      await context.request(command);
+      if (request.type === "trusted.start") {
+        const selected = this.selections.get(id);
+        if (!selected || !await this.contexts.get(id)) throw new Error("Select this worktree before starting an agent.");
+        const current = await this.options.resolve(selected.sessionId, this.lifetime.signal);
+        if (current.id !== selected.id || current.root !== selected.root) throw new Error("This worktree registration changed. Select it again before starting an agent.");
+        if (this.stopping) throw new Error("Core is shutting down.");
+        await context.request(command, { trustedStartRoot: current.root });
+      } else await context.request(command);
     } catch (error) {
       this.options.post(CoreResponseSchema.parse({ protocolVersion: PROTOCOL_VERSION, requestId: request?.requestId ?? "invalid-request", ok: false,
         ...(request?.workspaceId ? { workspaceId: request.workspaceId } : {}),

@@ -209,7 +209,7 @@ async function shutdown(): Promise<void> {
     projectContextPromise.then((context) => context.dispose()),
   ]);
 }
-async function requestMessage(input: unknown): Promise<void> {
+async function requestMessage(input: unknown, requestContext?: { trustedStartRoot: string }): Promise<void> {
   let requestId = "invalid-request";
   try {
     const request = parseCoreRequest(input);
@@ -250,7 +250,7 @@ async function requestMessage(input: unknown): Promise<void> {
           createTrustedLocalService(workspaceRoot, () => provider.snapshot())).catch(() => null);
         const trusted = await trustedPromise;
         if (!trusted || shuttingDown) throw new Error("Trusted-local context is unavailable for this working repository.");
-        const state = await trusted.request(TrustedRequestSchema.parse(request));
+        const state = await trusted.request(TrustedRequestSchema.parse(request), request.type === "trusted.start" ? requestContext?.trustedStartRoot : undefined);
         ++sequence;
         const response = ok(requestId, provider.snapshot());
         if (!response.ok) throw new Error("Snapshot unavailable");

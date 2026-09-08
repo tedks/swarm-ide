@@ -25,14 +25,25 @@ try {
   for (const args of [['init', '-q'], ['add', 'proof.ts'], ['-c', 'user.name=Proof', '-c', 'user.email=proof@example.invalid', '-c', 'commit.gpgsign=false', 'commit', '-qm', 'Disposable trusted-local proof']])
     execFileSync('git', args, { cwd: root, timeout: 10000 });
   const fixture = { root, sourceText };
-  await writeFile(join(root, '.proof-fixture.json'), JSON.stringify(fixture));
+  if (process.env.SWARM_TRUSTED_START_PROOF === '1') {
+    const selected = join(scratch, 'selected-worktree');
+    execFileSync('git', ['-c', 'core.hooksPath=/dev/null', 'worktree', 'add', '-b', 'selected', selected], { cwd: root, timeout: 10000 });
+    fixture.primary = root; fixture.root = selected;
+    const rollout = join(scratch, 'registered.jsonl');
+    const id = '10000000-0000-4000-8000-000000000001';
+    await writeFile(rollout, JSON.stringify({ type: 'session_meta', payload: { id, timestamp: new Date().toISOString() } }) + '\n', { mode: 0o600 });
+    fixture.registry = join(scratch, 'registry.json');
+    await writeFile(fixture.registry, JSON.stringify({ version: 1, sessions: [{ id, label: 'Selected worker', contextRoot: selected, rollout }] }), { mode: 0o600 });
+  }
+  await writeFile(join(fixture.root, '.proof-fixture.json'), JSON.stringify(fixture));
   await writeFile(join(evidence, 'fixture.json'), JSON.stringify(fixture));
   const fake = join(scratch, 'fake-codex.cjs'); await copyFile(join(scripts, 'fake-codex.cjs'), fake); await chmod(fake, 0o700);
   server = createServer((_request, response) => { response.writeHead(200); response.end('owned trusted-local proof'); });
   await new Promise((resolve, reject) => { server.once('error', reject); server.listen(port, '127.0.0.1', resolve); });
-  const env = { ...process.env, NODE_PATH: '', SWARM_CODEX_BIN: fake, SWARM_TRUSTED_PACKAGE: extracted, SWARM_TRUSTED_PROFILE: profile };
+  const env = { ...process.env, NODE_PATH: '', SWARM_CODEX_BIN: fake, SWARM_TRUSTED_PACKAGE: extracted, SWARM_TRUSTED_PROFILE: profile, XDG_STATE_HOME: join(scratch, 'state') };
   for (const name of ['SWARM_RENDERER_URL', 'SWARM_DEV_CONTROL', 'SWARM_WORKSPACE_ROOT', 'SWARM_AGENT_STORE_ROOT', 'SWARM_EXTERNAL_AGENTS_REGISTRY', 'NODE_OPTIONS', 'ELECTRON_RUN_AS_NODE']) delete env[name];
-  desktop = spawn(electron, [...resolveElectronRuntimeArguments(), join(scripts, 'acceptance.cjs'), `--user-data-dir=${profile}`, process.env.SWARM_RENDERER_PROCESS_ARGUMENT], { cwd: root, env, stdio: 'inherit' });
+  if (fixture.registry) env.SWARM_EXTERNAL_AGENTS_REGISTRY = fixture.registry;
+  desktop = spawn(electron, [...resolveElectronRuntimeArguments(), join(scripts, process.env.SWARM_TRUSTED_START_PROOF === '1' ? 'start-acceptance.cjs' : 'acceptance.cjs'), `--user-data-dir=${profile}`, process.env.SWARM_RENDERER_PROCESS_ARGUMENT], { cwd: root, env, stdio: 'inherit' });
   for (const signal of ['SIGINT', 'SIGTERM', 'SIGHUP']) {
     const handler = () => { desktop.kill('SIGTERM'); killTimer ??= setTimeout(() => desktop.kill('SIGKILL'), 2000); };
     handlers.set(signal, handler); process.on(signal, handler);

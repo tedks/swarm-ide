@@ -13,6 +13,9 @@ export const TrustedForkLineageSchema = z.object({
 const base = z.object({ protocolVersion: z.literal(PROTOCOL_VERSION), requestId: z.string().min(1).max(160) });
 export const TrustedRequestSchema = z.discriminatedUnion("type", [
   base.extend({ type: z.literal("trusted.snapshot"), token: id.optional() }).strict(),
+  base.extend({ type: z.literal("trusted.start"), token: id,
+    text: text(16384).refine((s) => Boolean(s.trim()) && !s.includes("\0")),
+    model: text(256).min(1).nullable().optional() }).strict(),
   base.extend({ type: z.literal("trusted.prepare"), input: AgentPrepareInputSchema }).strict(),
   base.extend({ type: z.literal("trusted.launch"), token: id }).strict(),
   base.extend({ type: z.literal("trusted.fork"), token: id, childToken: id, expectedInstanceId: id,
@@ -34,16 +37,19 @@ export const TrustedRunSummarySchema = z.object({
   runToken: id, title: text(256), createdAt: z.string().datetime(), updatedAt: z.string().datetime(),
   status: TrustedStatusSchema, archived: z.boolean(), approvalCount: z.number().int().min(0).max(16),
   taskReference: AgentTaskReferenceSchema.nullable(), message: text(4096),
+  workspace: text(4096).min(1).optional(), initialText: text(16384).optional(),
   fork: TrustedForkLineageSchema.optional(),
 }).strict();
 export type TrustedRunSummary = z.infer<typeof TrustedRunSummarySchema>;
 export const TrustedSnapshotSchema = z.object({
   instanceId: id, profile: z.literal("trusted-local"), workspace: text(4096),
+  launchWorkspace: text(4096).optional(),
   preparation: z.object({ token: id, prompt: text(131072), expiresAt: z.string().datetime(), model: text(256).nullable() }).strict().nullable(),
   runToken: id.nullable(),
   status: TrustedStatusSchema,
   threadId: text(256).nullable(), turnId: text(256).nullable(),
   output: text(262144), message: text(4096),
+  initialText: text(16384).nullable().optional(),
   approvals: z.array(z.object({ id: text(256), method: text(256), summary: text(16384), choices: z.array(text(128)).max(8) }).strict()).max(16),
   runs: z.array(TrustedRunSummarySchema).max(20).optional(),
   taskReference: AgentTaskReferenceSchema.nullable().optional(),
