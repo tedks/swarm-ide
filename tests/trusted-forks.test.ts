@@ -1,7 +1,7 @@
 // @vitest-environment node
 import { execFileSync } from "node:child_process";
 import { randomUUID } from "node:crypto";
-import { mkdtemp, rm } from "node:fs/promises";
+import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -13,20 +13,26 @@ import { MemoryTrustedLocalStore } from "../core/agents/trusted-local-store";
 import { RegisteredAgentContextProvider } from "../core/agents/context";
 import { computeWorkingWorldFingerprint } from "../core/fingerprint";
 import type { TrustedForkPoint, TrustedLocalSessionSnapshot } from "../core/agents/trusted-local-session";
+import type { AgentTaskReference } from "../protocol/agent-task";
 
 const roots: string[] = [], services: TrustedLocalService[] = [];
 afterEach(async () => { await Promise.all(services.splice(0).map((s) => s.shutdown())); await Promise.all(roots.splice(0).map((r) => rm(r, { recursive: true, force: true }))); });
 const command = (type: TrustedRequest["type"], fields = {}) => TrustedRequestSchema.parse({ protocolVersion: PROTOCOL_VERSION, requestId: randomUUID(), type, ...fields });
 function held<T>() { let resolve!: (value: T) => void; const promise = new Promise<T>((done) => { resolve = done; }); return { promise, resolve }; }
-async function fixture() {
+async function fixture(withTask = false) {
   const root = await mkdtemp(join(tmpdir(), "swarm-fork-unit-")); roots.push(root);
   const git = (...args: string[]) => execFileSync("git", args, { cwd: root, stdio: "pipe" });
-  git("init", "-q"); git("-c", "user.name=Fixture", "-c", "user.email=fixture@example.invalid", "-c", "core.hooksPath=/dev/null", "-c", "commit.gpgsign=false", "commit", "--allow-empty", "-qm", "fixture");
+  git("init", "-q");
+  if (withTask) { await writeFile(join(root, "source.ts"), "export const taskContext = true;\n"); git("add", "source.ts"); }
+  git("-c", "user.name=Fixture", "-c", "user.email=fixture@example.invalid", "-c", "core.hooksPath=/dev/null", "-c", "commit.gpgsign=false", "commit", "--allow-empty", "-qm", "fixture");
   const revision = await computeWorkingWorldFingerprint(root);
+  const taskReference: AgentTaskReference = { version: 1, provider: "ditz", repositoryId: "repository:fixture", worldId: "world:working", taskId: "parent-assignment",
+    metadataCommit: { algorithm: "sha1", hex: "a".repeat(40) }, issueBlob: { algorithm: "sha1", hex: "b".repeat(40) } };
   const context = await RegisteredAgentContextProvider.create({ root, repositoryId: "repository:fixture", worldId: "world:working",
-    workingRevision: () => revision, resolveFocus: async () => [{ attachmentPath: null, sourcePaths: [] }], provenance: async () => ({ instructions: [], configuration: [] }) });
-  const input = { worldId: "world:working", focus: { worldId: "world:working", revisionKind: "working", revisionId: revision, domain: "repo", key: "directory:." },
-    taskText: "Parent instructions", model: null, effort: null, links: { parentRunId: null, task: null, spec: null } };
+    workingRevision: () => revision, resolveFocus: async () => [{ attachmentPath: withTask ? "source.ts" : null, sourcePaths: withTask ? ["source.ts"] : [] }], provenance: async () => ({ instructions: [], configuration: [] }),
+    taskResolver: { resolveTask: async () => ({ reference: taskReference, title: "Parent task", description: "Only the parent's assignment." }), checkRevision: async () => {} } });
+  const input = { worldId: "world:working", focus: { worldId: "world:working", revisionKind: "working", revisionId: revision, domain: "repo", key: withTask ? "file:source.ts" : "directory:.", ...(withTask ? { path: "source.ts" } : {}) },
+    taskText: "Parent instructions", model: null, effort: null, links: { parentRunId: null, task: null, spec: null }, ...(withTask ? { taskReference } : {}) };
   const session = (notify: () => void) => {
     const state: TrustedLocalSessionSnapshot = { status: "starting", threadId: null, turnId: null, output: "", approvals: [], message: "controlled" };
     return { state, snapshot: () => structuredClone(state), forkPoint: () => state.status === "ready" && state.threadId && state.turnId ? { threadId: state.threadId, turnId: state.turnId } : null,
@@ -47,7 +53,7 @@ async function fixture() {
     return command("trusted.fork", { token, childToken: randomUUID(), expectedInstanceId: snapshot.instanceId, expectedThreadId: point.threadId, expectedTurnId: point.turnId,
       text: "Explain the inherited context", model: null, ...extra });
   };
-  return { service, sessions, createSession, store, options, context, launch, prepare, parent, fork };
+  return { service, sessions, createSession, store, options, context, launch, prepare, parent, fork, taskReference };
 }
 
 describe("typed native fork boundary", () => {
@@ -83,6 +89,16 @@ describe("typed native fork boundary", () => {
 });
 
 describe("owned child admission and retained lineage", () => {
+  it("keeps a real materialized parent's task as inherited context only through recursive forks", async () => {
+    const f = await fixture(true);
+    expect(f.service.snapshot(f.parent).taskReference).toEqual(f.taskReference);
+    const child = await f.service.request(f.fork()), grandchild = await f.service.request(f.fork(child.runToken!));
+    for (const snapshot of [child, grandchild]) {
+      expect(snapshot.taskReference).toBeNull();
+      expect(snapshot.runs?.find((r) => r.runToken === snapshot.runToken)?.fork?.inheritedTaskReference).toEqual(f.taskReference);
+    }
+    expect(f.service.snapshot(f.parent).taskReference).toEqual(f.taskReference);
+  });
   it("forks a child recursively while preserving parent and unrelated preparation", async () => {
     const f = await fixture(), before = f.service.snapshot(f.parent), preparation = await f.prepare();
     const request = f.fork(), child = await f.service.request(request);
