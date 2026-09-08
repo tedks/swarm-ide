@@ -30,6 +30,9 @@ try {
     "syntax.ts": '// Syntax acceptance source\nexport const greeting: string = "hello";\nexport function double(value: number): number {\n  return value * 2;\n}\n',
     "settings.json": '{\n  "enabled": true,\n  "message": "hello",\n  "count": 42\n}\n',
     "README.md": '# Syntax proof\n\nA **retained** buffer with `inline code`.\n\n- Plain repository source\n',
+    "BUILD.bazel": '# Bazel source\nfilegroup(name = "demo", srcs = ["main.py"])\n',
+    "flake.nix": '# Nix source\nlet name = "demo"; in { answer = 42; inherit name; }\n',
+    "main.py": '# Python source\ndef greeting():\n    return "hello"\n',
   };
   for (const [name, content] of Object.entries(files)) await writeFile(join(root, name), content);
   const git = (...args) => execFileSync("git", ["-c", "core.hooksPath=/dev/null", "-c", "commit.gpgsign=false", ...args], {
