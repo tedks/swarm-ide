@@ -1,13 +1,13 @@
 id: agent-run-boundary-diagnostics
-title: Refine agent boundary diagnostics and operator-facing text safety
-desc: 'Non-blocking Anthropic convergence nits deferred from R0 to R1/W2: preload
-  read failures currently share conservative mutation wording and INVALID_CORE_MESSAGE;
-  distinguish unavailable transport from invalid response when safe. Preserve bounded
-  sanitized validation diagnostics without logging raw request/context/transcript
-  secrets. Evaluate visible escaping of Unicode bidi/control characters in provider
-  error/terminal/cleanup summaries; do not rewrite immutable submitted context. Provider
-  normalization and UI diagnostic polish belong to later owned modules, not another
-  R0 runtime expansion.'
+title: Make agent connection errors clearer without exposing private text
+desc: Nonblocking Anthropic R0 review follow-up for R1/W2. Preload read failures currently
+  use the same conservative wording as writes and report INVALID_CORE_MESSAGE. Where
+  safe, distinguish an unavailable connection from an invalid reply. Keep validation
+  messages short and sanitized; never log raw requests, context, transcripts or secrets.
+  Check whether provider errors, terminal summaries and cleanup messages should visibly
+  escape Unicode direction and control characters. Do not rewrite the saved submitted
+  context. Implement this in the later provider and UI modules, not by expanding the
+  R0 runtime.
 type: task
 component: default
 release:
@@ -28,3 +28,11 @@ log_events:
     LF/TAB), with Unicode-safe byte splitting and fixed sanitized provider diagnostics.
     Raw provider error/stderr/reasoning not published. Remaining read-boundary and
     W2 diagnostics stay open.
+- time: 2026-09-08T04:27:05-00:00
+  who: Ted Smith
+  what: changed title
+  comment: ""
+- time: 2026-09-08T04:27:05-00:00
+  who: Ted Smith
+  what: updated description
+  comment: ""
