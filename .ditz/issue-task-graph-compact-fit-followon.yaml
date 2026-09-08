@@ -1,9 +1,10 @@
 id: task-graph-compact-fit-followon
-title: Task graph compact scope fit may need a manual fit in a short pane
-desc: Noncritical T4 packaged screenshot03 shows readable vertical task cards but
-  outer card can be partly clipped in the short graph area after attachment dock growth.
-  Existing Fit/pan available; follow up on explicit scope fit timing/size adaptation
-  without camera jumps. No task/source/draft correctness issue or demo blocking.
+title: Compact task graphs may need a manual Fit in short panes
+desc: 'T4 packaged screenshot03 shows readable vertical task cards, but an outer card
+  can be partly clipped in the short graph area after the attachment dock grows. Fit
+  and pan are already available. Follow up on when explicit scope fitting runs and
+  how it adapts to size changes, without causing camera jumps. This is noncritical:
+  it does not affect task, source or draft correctness and does not block the demo.'
 type: task
 component: ui
 release:
@@ -16,4 +17,12 @@ log_events:
 - time: 2026-09-07T23:28:29-00:00
   who: Ted Smith
   what: created
+  comment: ""
+- time: 2026-09-08T04:32:03-00:00
+  who: Ted Smith
+  what: changed title
+  comment: ""
+- time: 2026-09-08T04:32:03-00:00
+  who: Ted Smith
+  what: updated description
   comment: ""
