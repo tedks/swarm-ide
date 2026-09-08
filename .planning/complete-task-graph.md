@@ -16,7 +16,7 @@ must show all of those neighbors.
 - [x] (2026-09-08 21:09Z) Reproduced five pure completeness failures and two mounted completeness/lifetime failures. Nine existing client tests also exposed their mismatched workspace fixture.
 - [x] (2026-09-08 21:12Z) Removed graph caps and coalesced progress; 27 focused tests and both TypeScript boundaries passed after the fixture correction.
 - [x] (2026-09-08 21:16Z) Reproduced the native review slot-saturation finding, then repaired it; 31 focused tests/types passed and native fix-delta review was CLEAN. Code pushed as `633aea1` in PR138.
-- [ ] Finish documentation/status handoff and mark the pushed PR ready for ROOT.
+- [x] (2026-09-08 21:20Z) PR138 ready, pushed/clean and Ditz notes synced. Verification and additive plan-mapping handoff recorded for ROOT's normal merge/adoption.
 
 ## Surprises & Discoveries
 
