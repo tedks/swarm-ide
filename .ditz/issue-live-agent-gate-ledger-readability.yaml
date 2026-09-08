@@ -1,5 +1,6 @@
 id: live-agent-gate-ledger-readability
-title: Render finite live-agent gate evidence as a readable implementation ledger
+title: Show implementation status and evidence for the fixed set of live-agent readiness
+  checks
 desc: ""
 type: task
 component: default
@@ -21,3 +22,11 @@ log_events:
     the finite side-by-side map for this two-document design because it exposes enforcement/proof/rejection
     differences; when implementing gates, render concise per-gate evidence/status
     rather than expanding table cells. No security finding deferred.'
+- time: 2026-09-08T04:30:10-00:00
+  who: Ted Smith
+  what: changed title
+  comment: ""
+- time: 2026-09-08T04:30:10-00:00
+  who: Ted Smith
+  what: updated description
+  comment: ""
