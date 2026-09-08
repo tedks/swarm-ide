@@ -42,7 +42,13 @@
 .conversation-heading { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; padding: 6px 10px; flex-shrink: 0; }
 .conversation-heading strong { color: #d5e9e2; }
 .conversation-heading small { color: #91afa2; font-size: 10px; }
-.conversation-heading button { margin-left: auto; color: #b5d8cd; border: 1px solid #365247; background: #14281f; border-radius: 4px; }
+.conversation-heading .conversation-actions { margin-left: auto; }
+.conversation-actions { display: flex; align-items: center; gap: 2px; position: relative; flex-shrink: 0; }
+.conversation-actions button { color: #b5d8cd; border: 0; background: transparent; border-radius: 3px; padding: 6px; }
+.conversation-actions button:hover:not(:disabled) { background: #213a30; }
+.conversation-actions button:disabled { opacity: .45; cursor: default; }
+.conversation-actions svg { display: block; width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.8; }
+.conversation-actions > [role="status"] { position: absolute; top: 100%; right: 0; z-index: 2; width: max-content; max-width: 220px; padding: 6px; background: #14281f; border: 1px solid #365247; color: #d5e9e2; font-size: 11px; }
 .conversation-messages { flex: 1 1 0; min-height: 80px; overflow: auto; margin: 0; padding: 0 12px; list-style: none; }
 .conversation-messages li { border-left: 2px solid #35584a; padding: 6px 10px; margin: 6px 0; }
 .conversation-messages li.conversation-user { border-color: #6c9ab0; background: #102027; }

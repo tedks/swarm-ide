@@ -72,14 +72,19 @@ At narrow widths the dock scrolls horizontally while its columns retain usable
 minimum widths and independent vertical scrolling. This keeps agent messaging,
 summary settings and Activity reachable without remounting their content.
 
-The dock's primary **Conversation** tab follows the selected registered agent.
+The dock's single header contains named registered conversations, with the
+selected agent's Terminal, Worktree and Details icons aligned to the right.
+There is no second Conversation/title row. Terminal copies the checked command;
+unavailable session actions stay disabled. The selected conversation follows the
+registered agent.
 The unique real root is the initial default unless a previous explicit selection
 is still registered. Child selection switches chat/control, not the central
 source, task or diff. Context keeps the agent's worktree and terminal details;
 it no longer duplicates the conversation's message owner. One retained
 `SteeringMemory` keeps target drafts/receipts through loading and development
-remounts. Native trusted execution/history and New/Fork remain in a secondary
-tab; old stored runs retain their own tabs rather than a competing sidebar list.
+remounts. The Agent tools icon opens native trusted execution/history and New/Fork
+without a permanent generic tab. Real drafts and explicitly opened native runs
+retain tabs; old stored runs retain their own tabs rather than a competing sidebar list.
 `//tools/conversation-cockpit:unit` and its owned-virtual `:smoke` cover this
 composition. Actual transcript reads are separate from controlled Send evidence.
 With a registered-conversation surface, the default dock takes about 32% of the

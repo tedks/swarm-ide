@@ -23,7 +23,14 @@
 .agent-tab-item .run-status > span { display: none; }
 .agent-tab-close { border: 0; padding: 3px 7px; color: #90aaa1; background: transparent; }
 .agent-tab-close:hover { color: #e8f4ee; background: #213a30; }
-.agent-tab-shortcut { padding: 3px 10px; color: #8ca69c; font-size: 9px; flex-shrink: 0; }
+.agent-conversation-header { display: flex; align-items: center; min-width: 0; flex-shrink: 0; border-bottom: 1px solid #284139; background: #0d1b18; }
+.agent-conversation-header .agent-tabs-strip { flex: 1; min-width: 0; }
+.agent-conversation-header .agent-dock-tabs { border-bottom: 0; }
+.agent-header-actions { display: flex; align-items: center; flex-shrink: 0; gap: 2px; padding: 2px 4px; }
+.agent-header-actions > button { color: #b5d8cd; background: transparent; border: 0; padding: 6px; border-radius: 3px; }
+.agent-header-actions > button:hover { background: #213a30; }
+.agent-header-actions > button svg { display: block; width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.8; }
+.agent-dock-empty { flex: 1; padding: 12px; color: #90aaa1; font-size: 12px; }
 .agent-interaction-dock :focus-visible { outline: 2px solid #57d3ad; outline-offset: -2px; }
 .agent-dock-panel { flex: 1; min-height: 0; min-width: 0; overflow: auto; }
 .agent-dock-panel[hidden] { display: none !important; }

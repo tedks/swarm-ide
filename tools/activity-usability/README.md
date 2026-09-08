@@ -24,3 +24,11 @@ Each run writes `proof.json`, screenshots (including the full dock), and owned
 supervisor/cleanup evidence beneath `artifacts/activity-usability/run.*`.
 Interactions must complete within 15 seconds after the initial registered
 activity appears; startup and the outer supervisor have separate finite bounds.
+
+`nix develop --command bazel run //tools/activity-usability:central-refresh`
+adds a central Activity check using the same owned fixture, package and bounds.
+It appends two explicitly controlled transcript records, watches the existing
+observer publish the first without clicking, and uses the actual central Refresh
+for the second. It checks the chosen reader, overview/event reopening, draft
+focus, retained source/cameras and zero renderer errors. No recorded command is
+executed, and the bridge is not replaced. Screenshots 03/04 show the central list.
