@@ -48,6 +48,7 @@ async function main() {
     assert(automaticObservations.every((item) => item.refresh === false && !item.cancel), "no explicit refresh or driver graph request");
   }
   await clickText("Build graph"); await until(async () => await current() === "current", "actual Bazel graph current");
+  if (process.env.SWARM_STARTUP_BUILD_PROOF === "1") await until(async () => await node(fixture.target) && await node("//b:isolated") && await edge("//b:library"), "newly opened graph laid out its nodes and edge");
   assert(await node(fixture.target)); assert(await node("//b:isolated")); assert(await edge("//b:library"));
   if (fixture.kind === "second") assert(!await node("//a:consumer"), "second repository never borrows first graph");
   const before = await read(); assert.equal(before.repositoryId, project.id); assert.equal(before.graph.repositoryId, project.id);

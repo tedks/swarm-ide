@@ -9,21 +9,27 @@ Opening a trusted Bazel project should load its declared build dependencies with
 ## Progress
 
 - [x] (2026-09-08) Read the provider, hook, worktree router and existing compatibility checks. Confirmed streamed JSON records, whole-output collection, and offline automatic queries.
-- [ ] Record a real Goals query failure/output measurement and focused behavior regressions.
-- [ ] Implement automatic declared-dependency loading and the minimum output correction, preserving cancellation and cache ownership.
-- [ ] Run focused tests, native review, actual read-only query and an owned virtual startup proof; update living design and handoff.
+- [x] (2026-09-08 19:38Z) Actual Goals baseline failed at the raw cutoff after 10.3 seconds; two new behavior regressions failed, 64 tests passed.
+- [x] (2026-09-08 19:42Z) Automatic loading and query-only raw cutoff removal implemented; 67 focused tests and both TypeScript boundaries passed.
+- [x] (2026-09-08 19:47Z) Goals and Pure Sky read-only automatic queries passed; corrected owned virtual startup/change proof passed, native review CLEAN, final two focused Bazel targets passed. Documentation and ready PR handoff finishing.
 
 ## Surprises & Discoveries
 
-The 4 MiB limit currently counts stdout plus stderr in the process collector, then checks stdout again in the parser. It is unrelated to the number or size of source files. The renderer already observes on project open, changes and reactivation; the privileged provider deliberately forbids dependency downloads unless refresh is explicit. The worktree router already creates one immutable runtime/provider per opened worktree and reuses it.
+The old 4 MiB limit counted stdout plus stderr in the process collector, then checked stdout again in the parser. It is unrelated to the number or size of source files. The renderer already observed on project open, changes and reactivation; the privileged provider forbade dependency downloads unless refresh was explicit. The worktree router already creates one immutable runtime/provider per opened worktree and reuses it.
+
+Actual Goals query returns 7,566,560 bytes and 9,752 records: 9,365 RULE and 387 SOURCE_FILE records. Most records are in GoalsApp (6,948) and backend (2,753), despite 449 tracked files. It succeeds in 11.345 seconds after the correction. Pure Sky returns 1,037,458 bytes and 1,976 records in 6.827 seconds. These are Bazel declarations, not evidence of huge source trees. Existing projection caps still report both graphs partial (Goals 2,000 targets/4,198 edges; Pure Sky 2,000/6,385).
+
+The first startup GUI already observed a current graph before lens opening, but its immediate SVG-edge assertion raced ReactFlow's initial node sizing. The test now waits for those exact nodes and edge before the unchanged assertions. The corrected proof passed in 11.014 seconds with zero renderer exceptions and confirmed cleanup. A separate large-buffer test originally used deep object equality and exceeded its deadline; Buffer.equals checks the same exact bytes without millions of object comparisons.
 
 ## Decision Log
 
-Preserve the existing provider and typed observation path. Do not add a second watcher, service discovery, build executor or project-specific case. Automatic queries may load declared dependencies under the user's trusted-project authority, but unchanged successful or failed inputs must not re-query on status ticks. Keep cancellation, owned process cleanup, three loading workers, the 512 MiB Bazel JVM budget and finite query deadlines. Raw query byte policy will follow the user's latest explicit direction; graph rendering bounds remain separate and visible.
+Preserve the existing provider and typed observation path. Do not add a second watcher, service discovery, build executor or project-specific case. Automatic queries may load declared dependencies under the user's trusted-project authority, but unchanged successful or failed inputs must not re-query on status ticks. Keep cancellation, owned process cleanup, three loading workers, the 512 MiB Bazel JVM budget and finite query deadlines.
+
+Follow the user's explicit removal of the raw-output cutoff instead of adding a larger arbitrary cap. Only actual Bazel queries pass maximumBytes:null to the shared collector; other collector consumers retain their previous bound. The parser accepts larger raw output while the compact graph's independent wire/target/edge bounds remain. Output MiB is surfaced during query progress. `swarm-build-query-output-monitoring` records the deliberate remaining buffering tradeoff; `swarm-build-graph-large-query-coverage` stays open for target access beyond the retained projection. No claim of complete project closure.
 
 ## Outcomes & Retrospective
 
-Implementation and measured outcomes are pending.
+The useful startup vertical is implemented without new App/worker routing or dependencies. Actual automatic queries succeed in Goals and Pure Sky, each proving unchanged-result reuse with exactly one query, unchanged Git status and confirmed cleanup. The owned packaged proof on :182/55442 observes graph readiness through a passive copy of real IPC responses before opening the lens, then a real BUILD edit updates it without Refresh and retains graph/camera. Local focused checks and native fix-delta review are clean; hosted and foreign review are intentionally not run under current policy. ROOT retains landing/shared-app ownership.
 
 ## Context and Orientation
 
@@ -35,7 +41,7 @@ First reproduce the Goals failure with the existing query and add tests for auto
 
 ## Concrete Steps
 
-Work in `/home/tedks/Projects/swarm-ide/startup-build-graphs`. Materialize dependencies with `nix develop --command pnpm install --frozen-lockfile` if absent. Run `nix develop --command bazel test --jobs=3 //tools/build-graph:compat-checks` for provider, hook, compatibility and TypeScript checks. Run the existing `//tools/build-graph:compat-probe` against `/home/tedks/Projects/goals/master` and update the probe to record automatic startup/output counts. Use `//tools/build-graph:smoke` or a narrowly scoped startup scenario with an owned Xvfb display/port, never the physical desktop. Record exact targets and results in this document as work proceeds.
+Work in `/home/tedks/Projects/swarm-ide/startup-build-graphs`. Materialize dependencies with `nix develop --command pnpm install --frozen-lockfile` if absent. The final focused command was `nix develop --command bazel test --jobs=3 //tools/build-graph:compat-checks //tools/build-graph:checks`, with both targets passing in 15.880 seconds. Actual repository commands were `nix develop --command bazel run --jobs=3 //tools/build-graph:compat-probe -- /home/tedks/Projects/goals/master` and the same with `/home/tedks/Projects/puresky/master`. GUI command was `SWARM_VIRTUAL_DISPLAY=:182 SWARM_VIRTUAL_DESKTOP_PORT=55442 SWARM_ARTIFACT_DIR=/tmp/swarm-ide-startup-simple.Wz8BqH/project-graphs/startup-ui-corrected nix develop --command bazel run --jobs=3 //tools/build-graph:startup-smoke`.
 
 ## Validation and Acceptance
 
@@ -49,6 +55,10 @@ Explicit refresh is the retry action after a query error or user cancellation. E
 
 Progress and concise verification are written under `/tmp/swarm-ide-startup-simple.Wz8BqH/project-graphs/`. Historical failing runs stay attributed to their original code; a later passing test is not evidence of unrelated historical causes.
 
+Actual query evidence is in `goals-baseline.log`, `goals-automatic.log` and `puresky-automatic.log`. Focused red/green logs and `final-checks.log` retain exact attribution. GUI proof is `startup-ui-corrected/run.TbJYzv/build-graph-proof.json`; its screenshot also shows the current compact layout clips the graph below the control row until scrolled, a separate presentation concern rather than a startup failure.
+
 ## Interfaces and Dependencies
 
 Retain `BuildGraphProvider.observe(refresh?)`, `cancel()` and `dispose()`, and `useBuildGraph`'s observation/refresh/cancel interface. No added dependency is planned. If raw-output measurement is exposed, keep it optional and bounded typed metadata, not captured full output in UI or logs. Update `docs/design/runtime.md`, the build-graph documentation and `.swarm/plans.json` only for actual touched source/target mappings.
+
+Revision note (2026-09-08): implementation, actual query counts, test-harness corrections and explicit remaining coverage/buffering limits recorded after focused verification.

@@ -23,6 +23,7 @@ try {
       const kinds = {}, packages = {};
       let records = 0, largestRecordBytes = 0;
       const text = new TextDecoder().decode(bytes);
+      assert.ok(text.endsWith("\n"), "complete final query record");
       for (let offset = 0; offset < text.length;) {
         const end = text.indexOf("\n", offset), line = text.slice(offset, end); offset = end + 1;
         if (!line) continue;
