@@ -1,10 +1,10 @@
 id: ui-artifact-tiling
 title: Tile artifact text panes with independent tab groups
-desc: UI sprint delivered one independent source/task tab area, closing when empty.
-  User also requested VS Code-style multiple tiled text views, independent tab groups,
-  and eventually drag arrangement. Preserve dirty buffers, cursor, typed artifact
-  focus, graph coordination and Context when implementing; do not call existing single-pane
-  tabs tiling.
+desc: The UI sprint delivered one independent source/task tab area that closes when
+  empty. The user also requested VS Code-style multiple tiled text views, independent
+  tab groups and, eventually, drag arrangement. Preserve unsaved buffers, cursor position,
+  typed artifact focus, graph coordination and Context when implementing this. Do
+  not describe the existing single-pane tabs as tiling.
 type: feature
 component: default
 release:
@@ -17,4 +17,8 @@ log_events:
 - time: 2026-09-07T00:20:18-00:00
   who: Ted Smith
   what: created
+  comment: ""
+- time: 2026-09-08T04:32:23-00:00
+  who: Ted Smith
+  what: updated description
   comment: ""
