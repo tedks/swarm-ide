@@ -62,6 +62,14 @@ The list labels children; the selected child links back to its retained parent.
 Its `onFork` callback must reject non-ok or ambiguous bridge replies; resolving
 means admission acknowledgement, not provider confirmation.
 
+To use it, prepare and explicitly launch a normal trusted-local conversation.
+After a successful turn reaches **ready**, enter a new instruction in **Child
+instructions** and choose **Fork child conversation**. The new child becomes
+selected after admission; its confirmed **Fork of … · shared workspace** marker
+links back through **View parent**. Selecting either run restores its own
+composer. Stop acts on that selected conversation only. Archived history is
+visible but cannot fork or automatically resume.
+
 Run focused local checks with
 `nix develop --command bazel test //tools/trusted-forks:unit --jobs=3`.
 The manual live proof is separately authorized and never part of ordinary tests.
@@ -74,6 +82,16 @@ parent follow-up, and retained lineage after restart with no replay. The child's
 goal was already absent in that proof; active-goal removal remains controlled
 test evidence. The UI join is separately verified using deterministic external
 app-server peers, not extra real provider turns.
+
+The manual `//tools/trusted-forks:gui-smoke` target exercises the real packaged
+main/preload/core with two deterministic external peers and zero model turns.
+Its accepted run verified Fork, exact lineage, independent Stops and retained
+source/cursor/draft/graph cameras, then explicitly restored its disposable
+buffer and cleared its own draft before normal window close. Both peer exits,
+two persisted closed archives and owned desktop cleanup were confirmed. This
+does not attest shutdown draining a still-running turn. The initial two runs
+found test cleanup assumptions (uninstalled editor Undo and the correctly
+protecting unsent-draft veto); those failures remain recorded, not product fixes.
 
 API fields were checked against locally generated Codex 0.153.4 schemas and the
 [official app-server documentation](https://learn.chatgpt.com/docs/app-server).

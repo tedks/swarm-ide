@@ -19,7 +19,8 @@ mounting that control requires ROOT to release W6's renderer ownership.
 - [x] (2026-09-08 01:55Z) Prove lifecycle, correlation, duplicate and legacy boundaries locally. Initial4RED/81PASS, expanded123PASS; native findings reproduced2RED/123PASS then corrected127PASS.
 - [x] (2026-09-08 02:03Z) One live proof at8af0d5a passed23.5s, two providers/three turns, both cleanup confirmed; backend and proof native review CLEAN.
 - [x] (2026-09-08 02:10Z) ROOT released W6; normal composition41f2d24 includes exact reviewed1f54845. Small visible Fork/View-parent join implemented; targeted mounted gates pass before final copy adjustment.
-- [ ] Finish joined owned-virtual proof and final local/review attribution.
+- [x] (2026-09-08 02:21Z) Joined owned virtual proof passed5.2s, two deterministic peers/no model, zero renderer errors/cleanup1. Explicit Stops and retained lineage/source/draft/cameras proved; two test-only cleanup corrections preserved normal close guards.
+- [ ] Final joined quality1977PASS/1FAIL/1existingoptinSKIP: old task assertion counts reviewed W6 background trusted.snapshot. ROOT exact test ownership requested; no unowned edit or green claim.
 - [ ] Push reviewed result, report exact visible join and leave ROOT to land.
 
 ## Surprises & Discoveries
@@ -65,7 +66,13 @@ null); active-goal removal is controlled evidence only. No additional model turn
 
 Initial quality at pre-W6 backend passed1959 tests with one existing opt-in
 external-self-message skip. Joined renderer focused tests and package are passing;
-owned packaged deterministic-peer GUI evidence remains pending. ROOT owns merge,
+owned packaged deterministic-peer GUI passed with exact Fork dispatch, native
+lineage, independent Stop and retained source/draft/graph state. Initial cleanup
+assumed an editor undo extension that is not installed, then encountered the
+proper separate agent-draft close veto; the test now uses explicit normal input
+restoration and draft clearing after retention is asserted. No product close
+guard changed. Joined final quality has one exact legacy traffic assertion
+failure pending ownership disposition, not a feature or full-green claim. ROOT owns merge,
 final Ditz closure and app adoption. No claim of isolated worktrees, external ROOT
 transcript cloning or automatic ticket completion belongs to this slice.
 
