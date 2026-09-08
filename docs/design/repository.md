@@ -123,8 +123,13 @@ Bazel repositories; it is not the application build graph itself.
 source Context and compatibility tests plus both TypeScript boundaries.
 `//tools/services:smoke` consumes its scripts, desktop bundle and owned-X11 driver
 for an actual disposable Compose edit/navigation proof. `//tools:desktop-smoke`
-delegates to that proof. The removed checkout example remains in Git history,
-not in active application code. Neutral fixtures remain explicitly test-only.
+delegates to that proof. The [checkout example](../../examples/checkout-world/README.md)
+is ordinary in-repo data: two native declarations with source and contract links,
+discovered by the unchanged generic reader. It is never injected into unrelated
+repositories. Its source-only Bazel filegroups do not generate a topology artifact.
+`//tools/services:example-checks` consumes `//examples/checkout-world:all_sources`
+and `//:quality_sources` to verify actual example discovery, links and no fallback.
+Neutral fixtures remain explicitly test-only.
 See [service declarations](../service-declarations.md) for the manifest contract
 and [dynamic build graph](../dynamic-build-graph.md) for independent query limits.
 

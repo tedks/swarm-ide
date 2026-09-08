@@ -9,6 +9,7 @@ instructions. These link to one another, but they are not interchangeable record
 | Part | Source of truth | Implementation |
 | --- | --- | --- |
 | Design/component hierarchy | [.swarm/plans.json](../../.swarm/plans.json) and component documents | [protocol/plans.ts](../../protocol/plans.ts), [core/plans.ts](../../core/plans.ts), [PlanWorkspace](../../app/renderer/plans/PlanWorkspace.tsx) |
+| Generate a first design | Explicit operator request; editable local-profile prompt and Codex model/reasoning | [generation contract](../../protocol/plan-generation.ts), [absence guard](../../core/plan-generation.ts), [Generate component plan](../../app/renderer/plans/PlanGeneration.tsx) |
 | Tasks and blockage | Ditz YAML on `ditz-metadata` | [git-reader.ts](../../core/tasks/git-reader.ts), [metadata.ts](../../core/tasks/metadata.ts), [TaskGraph](../../app/renderer/tasks/TaskGraph.tsx) |
 | Current task list | Last complete local metadata revision; automatic adoption after a ref change | [task client](../../app/renderer/tasks/client.ts), [task provider](../../core/tasks/provider.ts) |
 | Task detail and links | Revision-pinned task observation | [TaskDetail](../../app/renderer/tasks/TaskDetail.tsx), [TaskContext](../../app/renderer/tasks/TaskContext.tsx) |
@@ -23,6 +24,37 @@ index, not an arbitrary per-component reference count. The UI collapses long
 lists and lets the operator expand them. `//tools/living-design:checks`
 reads the actual committed index through the core reader, preserving every source
 link; design edits must pass that inexpensive check before landing.
+
+When the core verifies that the index is absent, Components offers **Generate
+component plan**. A missing index is distinct from unreadable, malformed,
+symlinked or nested-repository content. The default editable prompt asks Codex
+`gpt-5.6-sol` with `xhigh` reasoning to explain real responsibilities and
+interfaces, write ordinary design documents, and create the version-1 index last.
+Settings are saved in the local IDE profile; opening or editing them never runs
+an agent. The requested harness is currently Codex; the UI does not pretend that
+other harnesses are connected. A deliberate click uses the same normal live
+conversation owner, selected worktree, approvals and Stop as New agent.
+Admission rechecks absence and the prompt requires exclusive index creation and
+preserving existing documents. The agent can leave partial files after failure
+or Stop: they remain inspectable. A final message is not validation; completion
+refreshes the existing plan reader, and malformed output remains an error.
+No background generation, fabricated runtime relationships or silent model
+substitution is permitted. Run identity survives worktree switching and renderer
+reload; an uncertain send is observed instead of replayed. Explicit Check or
+retry launch uses the same permanently admitted identity, so recovering a
+rejected request cannot duplicate a run whose acknowledgement was lost. Failed
+writers keep their generation slot until owned process cleanup is confirmed.
+
+`//tools/component-plan:checks` checks settings, absence, admission, lifecycle
+and the normal selected-worktree bridge. `//tools/component-plan:smoke` consumes
+the desktop bundle and owned virtual-X11 harness, using a labelled controlled
+provider to exercise the button, visible conversation, generated-file observation,
+dirty source retention and closing the completed conversation. It makes no model
+request. The separate opt-in `//tools/component-plan:live` runs one real generation
+in a disposable source repository, checks the resulting normal plan reader,
+contained docs/source links, actual fixture build inputs and unchanged originals,
+and retains cleanup evidence. Its `live-bundle` target compiles that proof with
+the ordinary owner through the shared quality sources; it is not another harness.
 
 The unified workspace starts with a component responsibility hierarchy, task
 dependencies, repository navigation and the existing build/services chooser.

@@ -7,6 +7,7 @@ import { usePlanNavigation, type PlanNavigation } from "./navigation";
 import "./design.css";
 import { GraphAgentLayer, GraphAgentsToggle } from "../graph-agents/GraphAgents";
 import { componentAgentLocations } from "../graph-agents/locations";
+import { PlanGeneration, type PlanGenerationAction } from "./PlanGeneration";
 
 export interface DesignWorkspaceParts { components: ReactNode; document: ReactNode; tasks: ReactNode }
 
@@ -21,6 +22,7 @@ export interface DesignWorkspaceProps {
   documentVisible?: boolean;
   onOpenDesign?: () => void;
   renderWorkspace?: (parts: DesignWorkspaceParts) => ReactNode;
+  generationAction?: PlanGenerationAction;
 }
 
 export function designContracts(index: PlanIndex, selected: PlanNode) {
@@ -166,6 +168,8 @@ export function DesignWorkspace(props: DesignWorkspaceProps) {
     if (onOpenBuild) onOpenBuild(label);
     else setLinkNotice("Open the Build view to inspect this target when its graph is available.");
   };
+  const generate = navigation.result?.status === "unavailable" && navigation.result.missing && props.generationAction
+    ? <PlanGeneration action={props.generationAction} disabled={!connected || loading} /> : null;
 
   const documentPane = node && graph ? (<article className="design-document" aria-label="Design document"><h2>{node.title}</h2>{node.design?.state === "planned" ? <span className="design-planned">Planned</span> : null}
           <p>{node.design?.summary}</p>
@@ -201,6 +205,7 @@ export function DesignWorkspace(props: DesignWorkspaceProps) {
         </section>) : <div className="design-empty">
     <p>{notice || (loading ? "Loading components…" : "Add .swarm/plans.json to describe this project's components.")}</p>
     <button onClick={() => onOpenFile(".swarm/plans.json")}>Open plan index</button>
+    {generate}
   </div>;
   const implementationPane = node && graph ? (<section className="design-implementation" aria-label="Design implementation"><h3>Implementation</h3>
           {!props.renderWorkspace && (implementation?.nodes.length ? <div className="design-implementation-graph"><ProjectionCanvas cameraScope={`${worldId}:${repositoryId}:${node.id}`} label="Component build mappings" {...implementation} selected={null} onSelect={openBuild} /></div> : <p className="design-empty">Select a component to explore its build connections.</p>)}
@@ -219,6 +224,7 @@ export function DesignWorkspace(props: DesignWorkspaceProps) {
       <header><strong>Components</strong>{index && index.nodes.filter(item => !item.parentId).length > 1 ? <select aria-label="Design or plan root" disabled={!current} value={breadcrumbs[0]?.id ?? ""} onChange={event => select(event.target.value)}>{index.nodes.filter(item => !item.parentId).map(item => <option key={item.id} value={item.id}>{item.title}</option>)}</select> : null}<button disabled={!node || !current} onClick={props.onOpenDesign}>Read design</button>
         <button aria-label="Refresh design" disabled={!connected || loading} onClick={() => { void navigation.read(); }}>↻</button></header>
       <nav aria-label="Design breadcrumb">{breadcrumbs.map((item) => <button key={item.id} disabled={!current} aria-current={item.id === selected ? "page" : undefined} onClick={() => select(item.id)}>{item.title}</button>)}</nav>
+      {!generate && props.generationAction?.open ? <div className="design-empty"><p role="status">{props.generationAction.pending ? "Design agent is working…" : notice || (index ? "Component plan loaded." : props.generationAction.notice)}</p><button onClick={props.generationAction.open}>View generation agent</button></div> : null}
       {componentPane}
     </section>,
     document: <div className="design-document-body design-workspace">{documentPane}{implementationPane}{guidancePane}</div>,
@@ -227,7 +233,7 @@ export function DesignWorkspace(props: DesignWorkspaceProps) {
   return <section className="design-workspace" data-task-only={props.taskOnly || undefined} aria-label="System design workspace" hidden={!visible}>
     <header><strong>System design</strong><button disabled={!connected || loading} onClick={() => { setRefresh((value) => value + 1); void navigation.read(); }}>Refresh design</button></header>
     <nav aria-label="Design breadcrumb">{breadcrumbs.map((item) => <button key={item.id} disabled={!current} aria-current={item.id === selected ? "page" : undefined} onClick={() => select(item.id)}>{item.title}</button>)}</nav>
-    {notice ? <div className="design-empty"><p role="status">{notice}</p><button onClick={() => onOpenFile(".swarm/plans.json")}>Open plan index</button></div> : null}
+    {notice ? <div className="design-empty"><p role="status">{notice}</p><button onClick={() => onOpenFile(".swarm/plans.json")}>Open plan index</button>{generate}</div> : null}
     <div className="design-quadrants">
       {node && graph ? <>
         {documentPane}

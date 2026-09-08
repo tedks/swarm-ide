@@ -28,8 +28,8 @@ function fixture(cleanup: "confirmed" | "unknown" = "confirmed") {
     expect(request).toBeDefined(); receive({ id: request!.id, result }); await flush();
   };
   let started: Promise<void>;
-  const setup = async (model: string | null = null) => {
-    started = session.start("Initial prompt", model);
+  const setup = async (model: string | null = null, effort?: "xhigh") => {
+    started = session.start("Initial prompt", model, undefined, effort);
     // Observe rejection immediately, including deliberately failed fixtures.
     void started.catch(() => {});
     await reply("initialize", { userAgent: "codex/0.153.4" });
@@ -43,6 +43,22 @@ function fixture(cleanup: "confirmed" | "unknown" = "confirmed") {
 }
 
 describe("trusted-local app-server conversation", () => {
+  it("does not confirm failure cleanup until transport closure actually finishes", async () => {
+    const f = fixture(); await f.running();
+    let finish!: (value: { status: "confirmed"; observedAt: string; detail: string }) => void;
+    f.close.mockImplementationOnce(() => new Promise(resolve => { finish = resolve; }));
+    f.sink.error(); await flush();
+    expect(f.session.snapshot().status).toBe("failed"); expect(f.session.cleanupConfirmed()).toBe(false);
+    finish({ status: "confirmed", observedAt: new Date().toISOString(), detail: "closed" }); await flush();
+    expect(f.session.snapshot().status).toBe("failed"); expect(f.session.cleanupConfirmed()).toBe(true);
+    const uncertain = fixture("unknown"); await uncertain.running(); uncertain.sink.error(); await flush();
+    expect(uncertain.session.cleanupConfirmed()).toBe(false);
+  });
+  it("forwards explicit generation reasoning effort to the actual turn request", async () => {
+    const f = fixture(); await f.setup("gpt-5.6-sol", "xhigh");
+    expect(f.sent.find(message => message.method === "turn/start")?.params).toMatchObject({ model: "gpt-5.6-sol", effort: "xhigh" });
+    await f.reply("turn/start", { turn: { id: "turn-1" } }); await f.started; f.complete();
+  });
   it("publishes readable activity without changing snapshot shape or leaking provider payloads", async () => {
     const f = fixture(); await f.running();
     const beforeKeys = Object.keys(f.session.snapshot()); f.changed.mockClear();

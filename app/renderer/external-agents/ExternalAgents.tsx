@@ -5,6 +5,7 @@ import type { ExternalClient } from "./client";
 import type { SwarmBridge } from "../../electron/preload";
 import { SessionSteering } from "./SessionSteering";
 import { RunStatus } from "./RunStatus";
+import { useTabOrder } from "../use-tab-order";
 import { ActivityTime } from "../ActivityTime";
 import "./external-agents.css";
 
@@ -152,6 +153,7 @@ function TerminalCommand({ command, kind, label }: { command: string; kind: "att
 
 export function ExternalAgentInformation({ client, bridge, visible = true, contextOnly = false, onReturn, onOpen, onWorktree }: { client: ExternalClient; bridge?: SwarmBridge; visible?: boolean; contextOnly?: boolean; onReturn(): void; onOpen(path: string): void; onWorktree?(id: string): void }) {
   const [tab, setTab] = useState<"worklog" | "conversation">("worklog");
+  const tabOrder = useTabOrder(["worklog", "conversation"] as const);
   const detail = client.detail, session = detail?.session;
   const entries = detail?.entries.filter((entry) => tab === "worklog" || entry.kind === "assistant") ?? [];
   return <section className="external-information" aria-label="External agent information" data-external-session={client.selected} hidden={!visible} style={visible ? undefined : { display: "none" }}>
@@ -182,7 +184,7 @@ export function ExternalAgentInformation({ client, bridge, visible = true, conte
         <TerminalCommand key={`switch:${session.id}:${detail.terminal.switch}`} command={detail.terminal.switch} kind="switch" label="Inside tmux" />
       </details> : detail.handoff !== "available" ? <p className="external-caption">Terminal session unavailable.</p> : null}
       {session.contextPaths.length ? <details><summary>Why this context?</summary><p>Operator-associated briefing links, not a claim of all effective context.</p>{session.contextPaths.map((path) => <button key={path} onClick={() => onOpen(path)}>{path}</button>)}</details> : null}
-      {!contextOnly ? <><nav aria-label="External information views"><button aria-pressed={tab === "worklog"} onClick={() => setTab("worklog")}>Activity</button><button aria-pressed={tab === "conversation"} onClick={() => setTab("conversation")}>Conversation</button></nav>
+      {!contextOnly ? <><nav aria-label="External information views">{tabOrder.ordered.map((key) => <button key={key} {...tabOrder.props(key)} aria-pressed={tab === key} onClick={() => setTab(key)}>{key === "worklog" ? "Activity" : "Conversation"}</button>)}</nav>
       <details><summary>Observation details</summary><p>{detail.coverage.message} {detail.coverage.tailBytes} bytes read; {detail.coverage.omittedRecords} records omitted.</p></details>
       <ol className="external-worklog" aria-label={tab === "worklog" ? "Recorded agent worklog" : "Recorded assistant conversation"}>{entries.map((entry) => <li key={entry.id}>
         <header><time>{entry.at}</time><small>{entry.attribution}</small></header><p>{entry.text}</p>

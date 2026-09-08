@@ -1,0 +1,25 @@
+{
+  "schemaVersion": 1,
+  "service": { "id": "service:fraud-check", "displayName": "FraudCheck" },
+  "owningTarget": "//examples/checkout-world/services/fraudcheck:fraudcheck_sources",
+  "implementationPaths": ["examples/checkout-world/services/fraudcheck/fraudcheck.ts"],
+  "providedInterfaces": [
+    {
+      "id": "interface:fraud-check.assess", "name": "Assess",
+      "requestType": "checkout.fraud.v1.FraudAssessmentRequest",
+      "responseType": "checkout.fraud.v1.FraudAssessmentDecision"
+    }
+  ],
+  "requiredInterfaces": [
+    {
+      "id": "interface:payments.authorize", "name": "Payments.Authorize",
+      "serviceId": "service:payments",
+      "requestType": "checkout.payments.v1.PaymentAuthorizationRequest",
+      "responseType": "checkout.payments.v1.PaymentAuthorizationDecision"
+    }
+  ],
+  "interfaceDeclarationPaths": [
+    { "interfaceId": "interface:fraud-check.assess", "path": "examples/checkout-world/services/fraudcheck/fraudcheck.proto" },
+    { "interfaceId": "interface:payments.authorize", "path": "examples/checkout-world/services/payments/payments.proto" }
+  ]
+}

@@ -14,6 +14,11 @@ copied into graph metadata.
 
 A native declaration uses the existing `service.swarm.json` convention:
 
+The [checkout example](../examples/checkout-world/README.md) contains two ordinary
+manifests with implementation and contract links. It is sample repository data,
+not a built-in provider or fallback. Its required and provided interface nodes
+show authored roles, not observed calls.
+
 ```json
 {
   "schemaVersion": 1,

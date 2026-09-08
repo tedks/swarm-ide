@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "service": { "id": "service:payments", "displayName": "Payments" },
+  "owningTarget": "//examples/checkout-world/services/payments:payments_sources",
+  "implementationPaths": ["examples/checkout-world/services/payments/payments.ts"],
+  "providedInterfaces": [
+    {
+      "id": "interface:payments.authorize", "name": "Authorize",
+      "requestType": "checkout.payments.v1.PaymentAuthorizationRequest",
+      "responseType": "checkout.payments.v1.PaymentAuthorizationDecision"
+    }
+  ],
+  "requiredInterfaces": [],
+  "interfaceDeclarationPaths": [
+    { "interfaceId": "interface:payments.authorize", "path": "examples/checkout-world/services/payments/payments.proto" }
+  ]
+}
