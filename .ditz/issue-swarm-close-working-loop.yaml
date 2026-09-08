@@ -37,9 +37,14 @@ log_events:
   who: Ted Smith
   what: blocked by swarm-first-user-quickstart
   comment: ""
+- time: 2026-09-08T18:01:12-00:00
+  who: Ted Smith
+  what: blocked by swarm-message-consumption-status
+  comment: ""
 blocked_by:
 - swarm-selected-conversation-latency
 - swarm-repository-worktree-overview
 - swarm-target-build-jobs
 - swarm-component-contract-clarity
 - swarm-first-user-quickstart
+- swarm-message-consumption-status
