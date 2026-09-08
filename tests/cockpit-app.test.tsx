@@ -7,6 +7,7 @@ import { taskObservationFixture } from "../fixtures/tasks";
 import { emptyAgentWorkbench } from "../app/renderer/agents/state";
 import { PROTOCOL_VERSION, type CoreRequest, type CoreResponse, type GraphSlice } from "../protocol/schema";
 import { openContextPath } from "./context-navigation";
+import { WorkLogSettingsSchema } from "../protocol/work-log";
 
 vi.mock("../app/renderer/GraphPane", () => ({ GraphPane: ({ graph }: { graph: GraphSlice }) => <div data-testid="retained-graph">{graph.title}</div> }));
 vi.mock("../app/renderer/external-agents/client", () => ({ useExternalAgents: () => ({
@@ -33,6 +34,9 @@ it("Ctrl+W closes the agent inspection, not the underlying editor or file watch"
     if (input.type === "tasks.snapshot") return { ...common, task: { kind: "snapshot", observation: taskObservationFixture() } };
     if (input.type === "file.read") return { ...common, file: { kind: "read", path: input.path, content: "local source\n", revision: "a".repeat(64), size: 13 } };
     if (input.type === "worktree.inspect") return { ...common, worktreeInspection: { sessionId: input.sessionId, path: input.path, label: "C7", worktree: "/repos/child", content: "child source", diff: "" } };
+    if (input.type === "workLog.read") return { ...common, workLog: { running: false, summarizing: false, settings: WorkLogSettingsSchema.parse({}), notice: "", entries: [
+      { id: "outcome-1", sessionId: "00000000-0000-4000-8000-000000000007", agent: "C7", taskId: null, at: "2026-09-08T04:00:00Z", state: "working", outcome: "Connected the real operator cockpit.", areas: ["app/renderer/App.tsx"], checks: ["Mounted editor retained"], followUps: [], recorded: false },
+    ] } };
     return common;
   });
   window.swarm = { request, onEvent: () => () => {} };
@@ -59,4 +63,19 @@ it("Ctrl+W closes the agent inspection, not the underlying editor or file watch"
   expect(editor.state.selection.main.anchor).toBe(4);
   expect(screen.getAllByTestId("retained-graph")).toEqual(graphs);
   expect(request.mock.calls.slice(before).some(([input]) => input.type === "file.unwatch")).toBe(false);
+  fireEvent.click(await screen.findByRole("button", { name: "Connected the real operator cockpit." }));
+  expect(screen.getByRole("region", { name: "Work Log outcome" }).textContent).toContain("Mounted editor retained");
+  expect(document.querySelector<HTMLElement>(".source-surface")?.hidden).toBe(true);
+  fireEvent.click(screen.getByRole("button", { name: "System design" }));
+  expect(screen.queryByRole("region", { name: "Work Log outcome" })).toBeNull();
+  fireEvent.click(screen.getByRole("button", { name: "Connected the real operator cockpit." }));
+  expect(document.querySelector<HTMLElement>(".design-center")?.hidden).toBe(true);
+  fireEvent.keyDown(window, { key: "w", ctrlKey: true });
+  expect(screen.queryByRole("region", { name: "Work Log outcome" })).toBeNull();
+  expect(document.querySelector<HTMLElement>(".source-surface")?.hidden).toBe(false);
+  expect(document.querySelector(".cm-editor")).toBe(editorNode);
+  expect(editor.state.doc.toString()).toBe("dirty local source\n");
+  expect(editor.state.selection.main.anchor).toBe(4);
+  expect(screen.getAllByTestId("retained-graph")).toEqual(graphs);
+  expect(request.mock.calls.some(([input]) => input.type === "workLog.start" || input.type === "workLog.record")).toBe(false);
 });
