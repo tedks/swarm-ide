@@ -116,6 +116,18 @@ also records the evidence time and turn ID. Unknown evidence never becomes
 working merely because a transcript or terminal exists. Intentional interruption
 is not success or failure. A completed turn does not close every assigned issue.
 
+The rail places that current status beside the latest saved Work Log outcome for
+the exact session ID. The outcome is a timestamped, one-line subtitle; selecting
+the agent expands the same text to three lines while opening its conversation
+and Context as before. Equal labels never mix outcomes, and an agent with no
+saved outcome gets no invented summary. A resumed working session can therefore
+show **In progress** beside what it accomplished in an earlier turn.
+
+App owns one Work Log observation shared by the rail, dock panel and selected
+outcome document. The rail only reads that observation; selection cannot start a
+summarizer or another polling lane. The existing fork ordering, folds and primary
+keyboard navigation remain independent of summary updates.
+
 The core reduces lifecycle before Activity trimming. A bounded per-registration
 cache bridges observed append intervals only while the file identity and a raw
 overlap anchor agree. Missing bytes, unreadable records, replacement or truncation
@@ -219,6 +231,14 @@ The projection passes through `protocol/external-agents.ts` to
 `app/renderer/external-agents/ExternalAgents.tsx`. Focused checks at
 `//tools/demo-agents:unit` cover metadata compatibility, sibling ordering, deep
 connectors and focus stability as activity updates.
+
+The same target covers session-keyed summaries and all current lifecycle states,
+including a resumed turn beside a completed historical outcome.
+`//tools/demo-agents:status-smoke` is an optional owned-desktop check using an
+explicit real registry and a copy of an existing saved Work Log. It exercises the
+packaged bridge, current ROOT/H7 status and selected summary expansion; it neither
+starts a model nor mutates the original saved log. This is a fresh-package check,
+not evidence about the bytes or state in an already-open operator window.
 
 Agent core/protocol/renderer modules feed `//:quality_sources` and
 `//:desktop-bundle`. `//tools/session-registration:bundle` consumes its dedicated

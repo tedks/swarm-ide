@@ -5,7 +5,6 @@ import {
   type WorkLogEntry, type WorkLogRequest, type WorkLogSettings, type WorkLogSnapshot,
 } from "../../../protocol/work-log";
 import { ActivityTime } from "../ActivityTime";
-import { RunStatus } from "../external-agents/RunStatus";
 import "./work-log.css";
 export type { WorkLogEntry } from "../../../protocol/work-log";
 
@@ -15,7 +14,7 @@ type Action = { type: "workLog.read" | "workLog.stop" }
 const defaults = WorkLogSettingsSchema.parse({});
 
 /** A single request lane. Reads never start a model; mutations are never retried. */
-function useWorkLog(coreGeneration: number) {
+export function useWorkLog(coreGeneration: number, ready = true) {
   const [snapshot, setSnapshot] = useState<WorkLogSnapshot | null>(null);
   const [notice, setNotice] = useState("");
   const [pending, setPending] = useState(false);
@@ -25,6 +24,7 @@ function useWorkLog(coreGeneration: number) {
     let queued: Action | null = null;
     let timer: ReturnType<typeof setTimeout> | undefined;
     setSnapshot(null); setNotice(""); setPending(false);
+    if (!ready) { send.current = () => {}; return; }
     const run = async (action: Action) => {
       if (!active) return;
       inFlight = true;
@@ -57,8 +57,14 @@ function useWorkLog(coreGeneration: number) {
     };
     void run({ type: "workLog.read" });
     return () => { active = false; queued = null; clearTimeout(timer); send.current = () => {}; };
-  }, [coreGeneration]);
+  }, [coreGeneration, ready]);
   return { snapshot, notice, pending, send: (action: Action) => send.current(action) };
+}
+export type WorkLogController = ReturnType<typeof useWorkLog>;
+
+/** Outcome labels describe past evidence, never the current agent's liveness. */
+export function workOutcomeLabel(entry: WorkLogEntry): string {
+  return entry.state === "completed" ? "Completed turn" : entry.state === "failed" ? "Failed turn" : "Saved update";
 }
 
 function Outcome({ entry, pending, onRecord, onOpen, onOpenAgent, onOpenTask }: {
@@ -72,7 +78,7 @@ function Outcome({ entry, pending, onRecord, onOpen, onOpenAgent, onOpenTask }: 
   return <li className="work-log-entry" data-work-log-entry={entry.id}>
     <div className="work-log-entry-heading">
       {onOpenAgent ? <button className="work-log-link" onClick={() => onOpenAgent(entry.sessionId)}>{entry.agent}</button> : <strong>{entry.agent}</strong>}
-      <RunStatus state={entry.state} />
+      <span className="work-log-outcome-state">{workOutcomeLabel(entry)}</span>
       <ActivityTime at={entry.at} />
     </div>
     {onOpen ? <button className="work-log-outcome work-log-link" onClick={() => onOpen(entry)}>{entry.outcome}</button>
@@ -92,11 +98,22 @@ function Outcome({ entry, pending, onRecord, onOpen, onOpenAgent, onOpenTask }: 
   </li>;
 }
 
-export function WorkLogPanel({ onOpen, onAgent, onTask, onOpenAgent, onOpenTask, coreGeneration = 0 }: {
+type WorkLogPanelProps = {
   onOpen?(entry: WorkLogEntry): void; onAgent?(sessionId: string): void; onTask?(taskId: string): void;
   onOpenAgent?(sessionId: string): void; onOpenTask?(taskId: string): void; coreGeneration?: number;
-}) {
-  const { snapshot, notice, pending, send } = useWorkLog(coreGeneration);
+  controller?: WorkLogController;
+};
+/** App supplies its single observation. The standalone wrapper remains useful
+ * for existing isolated panel mounts, without creating a second hook in App. */
+export function WorkLogPanel(props: WorkLogPanelProps) {
+  return props.controller ? <WorkLogView {...props} controller={props.controller} /> : <StandaloneWorkLogPanel {...props} />;
+}
+function StandaloneWorkLogPanel(props: WorkLogPanelProps) {
+  const controller = useWorkLog(props.coreGeneration ?? 0);
+  return <WorkLogView {...props} controller={controller} />;
+}
+function WorkLogView({ onOpen, onAgent, onTask, onOpenAgent, onOpenTask, controller }: WorkLogPanelProps & { controller: WorkLogController }) {
+  const { snapshot, notice, pending, send } = controller;
   const [settings, setSettings] = useState<WorkLogSettings>(defaults);
   const editedSettings = useRef(false);
   const settingsId = useId();
@@ -109,8 +126,7 @@ export function WorkLogPanel({ onOpen, onAgent, onTask, onOpenAgent, onOpenTask,
   const updateSettings = (change: Partial<WorkLogSettings>) => {
     editedSettings.current = true; setSettings((current) => ({ ...current, ...change }));
   };
-  const entries = [...(snapshot?.entries ?? [])].sort((left, right) =>
-    Number(right.state === "working") - Number(left.state === "working") || right.at.localeCompare(left.at));
+  const entries = [...(snapshot?.entries ?? [])].sort((left, right) => right.at.localeCompare(left.at) || left.id.localeCompare(right.id));
   return <section className="work-log-panel" aria-label="Work Log">
     <header className="work-log-heading"><h3>Work Log</h3><span>{snapshot?.summarizing ? "Summarizing…" : snapshot?.running ? "Watching" : "Stopped"}</span>
       <button disabled={!snapshot || pending || (!snapshot.running && !validSettings)}
@@ -146,7 +162,7 @@ export function WorkLogEntryDetail({ entry, onAgent, onTask, onClose }: {
     <header className="work-log-heading"><h2>Work Log</h2>{onClose ? <button onClick={onClose}>Close</button> : null}</header>
     <div className="work-log-entry-heading">
       {onAgent ? <button className="work-log-link" onClick={() => onAgent(entry.sessionId)}>{entry.agent}</button> : <strong>{entry.agent}</strong>}
-      <RunStatus state={entry.state} /><ActivityTime at={entry.at} />
+      <span className="work-log-outcome-state">{workOutcomeLabel(entry)}</span><ActivityTime at={entry.at} />
     </div>
     <p className="work-log-outcome">{entry.outcome}</p>
     {entry.taskId ? onTask ? <button className="work-log-link" onClick={() => onTask(entry.taskId!)}>Task · {entry.taskId}</button> : <p>Task · {entry.taskId}</p> : null}

@@ -19,7 +19,11 @@
 .external-agents li > .external-fork-toggle { position: absolute; z-index: 1; left: var(--lineage-indent); top: 50%; transform: translateY(-50%); width: 16px; min-width: 0; padding: 0; justify-content: center; align-items: center; color: #c6ded9; background: #152822; border-color: #3b5b51; }
 .external-agents > .external-older-toggle { margin-top: 5px; width: 100%; text-align: left; color: #9cafa9; background: transparent; }
 .external-agents small { display: block; color: #9cafa9; font-size: 10px; }
-.external-agent-label { display: flex; flex-direction: column; gap: 2px; }
+.external-agent-label { display: flex; flex-direction: column; gap: 2px; min-width: 0; width: 100%; }
+.external-agent-outcome { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: start; gap: 6px; color: #a7bbb3; font-size: 11px; line-height: 1.4; }
+.external-agent-outcome-text { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 1; overflow: hidden; overflow-wrap: anywhere; }
+.external-agent-outcome.is-expanded .external-agent-outcome-text { -webkit-line-clamp: 3; }
+.external-agent-outcome time { font-size: 10px; color: #829d91; white-space: nowrap; }
 .external-caption { color: #a3b1bd; font-size: 11px; line-height: 1.5; }
 .external-information { padding: 15px; overflow-wrap: anywhere; font-size: 12px; }
 .external-information h2 { font-size: 20px; font-weight: 500; margin: 5px 0 12px; }
