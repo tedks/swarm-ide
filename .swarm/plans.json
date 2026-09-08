@@ -99,6 +99,11 @@
       "core/repository.ts",
       "core/build-graph.ts",
       "app/renderer/context/ContextPane.tsx",
+      "core/project-context/provider.ts",
+      "core/project-context/node.ts",
+      "core/project-context/docker.ts",
+      "protocol/project-context.ts",
+      "app/renderer/project-context/ProjectContextPanel.tsx",
       "BUILD.bazel"
     ],
     "taskIds": [],

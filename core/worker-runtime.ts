@@ -42,6 +42,7 @@ import { TrustedRequestSchema } from "../protocol/trusted-local";
 import { inspectRegisteredWorktree } from "./worktree-inspection";
 import { WorkLogService } from "./work-log/service";
 import { WorkLogRequestSchema } from "../protocol/work-log";
+import { ProjectContextProvider } from "./project-context/provider";
 
 export interface WorkerDependencies {
   createAgents?: typeof createProductionAgentService;
@@ -61,6 +62,7 @@ const providerPromise = RealWorkspaceProvider.create(workspaceRoot);
 let trustedPromise: Promise<TrustedLocalService | null> | undefined;
 const buildGraphPromise = providerPromise.then((provider) => new BuildGraphProvider(workspaceRoot, provider.snapshot().project.id, provider.snapshot().world.id));
 const githubPrsPromise = providerPromise.then((provider) => new GithubPrProvider(workspaceRoot, provider.snapshot().project.id, provider.snapshot().world.id));
+const projectContextPromise = providerPromise.then((provider) => new ProjectContextProvider(workspaceRoot, provider.snapshot().project.id, provider.snapshot().world.id));
 let workingWorldObserver: WorkingWorldObserver | null = null;
 let shuttingDown = false;
 const journalLifetime = new AbortController();
@@ -186,6 +188,7 @@ process.parentPort?.on("message", async (event) => {
           ...[...worktreeInspections].map((pending) => pending.catch(() => {})),
           buildGraphPromise.then((graph) => graph.dispose()),
           githubPrsPromise.then((prs) => prs.dispose()),
+          projectContextPromise.then((context) => context.dispose()),
         ]);
         process.parentPort?.postMessage({ type: "core.shutdown.ready" });
       } catch { /* No successful shutdown attestation; supervisor's deadline owns fallback. */ }
@@ -295,6 +298,21 @@ process.parentPort?.on("message", async (event) => {
       return;
     }
     switch (request.type) {
+      case "projectContext.observe": {
+        const snapshot = provider.snapshot();
+        if (request.repositoryId !== snapshot.project.id || request.worldId !== snapshot.world.id) {
+          post(fail(requestId, "PROJECT_CONTEXT_IDENTITY", "Project context requires the opened project.")); return;
+        }
+        try {
+          const context = await projectContextPromise;
+          if (shuttingDown) return;
+          const projectContext = await context.observe();
+          if (!shuttingDown) post(parseCoreResponseForRequest({ ...ok(requestId, provider.snapshot()), projectContext }, request));
+        } catch {
+          if (!shuttingDown) post(fail(requestId, "PROJECT_CONTEXT_UNAVAILABLE", "Project context unavailable."));
+        }
+        return;
+      }
       case "githubPrs.refresh": {
         const snapshot = provider.snapshot();
         if (request.repositoryId !== snapshot.project.id || request.worldId !== snapshot.world.id) {
@@ -438,6 +456,7 @@ void providerPromise.then(async (provider) => {
 process.on("exit", () => {
   void buildGraphPromise.then((graph) => graph.dispose());
   void githubPrsPromise.then((prs) => prs.dispose());
+  void projectContextPromise.then((context) => context.dispose());
   void providerPromise.then((provider) => provider.dispose());
   workingWorldObserver?.close();
   fileWatchers.closeAll();

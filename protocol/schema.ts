@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { ProjectContextRequestSchema, ProjectContextObservationSchema } from "./project-context";
 import { WorktreeInspectionRequestSchema, WorktreeInspectionResultSchema } from "./worktree-inspection";
 import { WorkLogRequestSchema, WorkLogSnapshotSchema } from "./work-log";
 import { TrustedRequestSchema, TrustedResultSchema } from "./trusted-local";
@@ -295,7 +296,7 @@ const WorkspaceRequestSchema = z.discriminatedUnion("type", [
     path: z.string().min(1).max(4_096),
   }),
 ]);
-export const CoreRequestSchema = z.union([WorkspaceRequestSchema, AgentRequestSchema, TaskRequestSchema, RepositoryRequestSchema, RepositorySearchRequestSchema, ChangelogRequestSchema, PlanReadRequestSchema, ExternalRequestSchema, BuildGraphRequestSchema, TaskActivityRequestSchema, TrustedRequestSchema, GithubPrRequestSchema, WorktreeInspectionRequestSchema, WorkLogRequestSchema]);
+export const CoreRequestSchema = z.union([WorkspaceRequestSchema, AgentRequestSchema, TaskRequestSchema, RepositoryRequestSchema, RepositorySearchRequestSchema, ChangelogRequestSchema, PlanReadRequestSchema, ExternalRequestSchema, BuildGraphRequestSchema, TaskActivityRequestSchema, TrustedRequestSchema, GithubPrRequestSchema, WorktreeInspectionRequestSchema, WorkLogRequestSchema, ProjectContextRequestSchema]);
 export type CoreRequest = z.infer<typeof CoreRequestSchema>;
 
 export const FileResultSchema = z.discriminatedUnion("kind", [
@@ -341,6 +342,7 @@ export const CoreResponseSchema = z.discriminatedUnion("ok", [
     trusted: TrustedResultSchema.optional(),
     worktreeInspection: WorktreeInspectionResultSchema.optional(),
     workLog: WorkLogSnapshotSchema.optional(),
+    projectContext: ProjectContextObservationSchema.optional(),
   }).strict(),
   z.object({
     protocolVersion: z.literal(PROTOCOL_VERSION),
@@ -400,6 +402,14 @@ const agentResultKind = {
 export function parseCoreResponseForRequest(input: unknown, request: CoreRequest): CoreResponse {
   const response = parseCoreResponse(input);
   if (response.requestId !== request.requestId) throw new Error("Response request ID mismatch");
+  if (request.type === "projectContext.observe") {
+    if (response.ok && (!response.projectContext || response.snapshot.project.id !== request.repositoryId || response.snapshot.world.id !== request.worldId ||
+      response.projectContext.repositoryId !== request.repositoryId || response.projectContext.worldId !== request.worldId ||
+      response.file || response.agent || response.task || response.taskActivity || response.repo || response.search || response.external || response.trusted ||
+      response.changelog || response.plans || response.buildGraph || response.githubPrs || response.worktreeInspection || response.workLog))
+      throw new Error("Project context response mismatch");
+    return response;
+  } else if (response.ok && response.projectContext) throw new Error("Project context supplied for another command");
   if (request.type === "worktree.inspect") {
     if (response.ok && (!response.worktreeInspection || response.worktreeInspection.sessionId !== request.sessionId ||
       response.worktreeInspection.path !== request.path || response.file || response.agent || response.task || response.taskActivity ||
