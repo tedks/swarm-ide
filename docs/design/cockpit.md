@@ -57,3 +57,10 @@ Selecting a Work Log outcome opens `WorkLogEntryDetail` in the center with its
 agent, task, changed areas, checks and follow-ups. This is a pure view of the
 selected outcome: the sidebar remains the single polling/control owner. Closing
 the outcome, switching documents or Ctrl+W preserves the mounted source editor.
+
+`OverflowStrip.tsx` wraps the existing document, lens and agent tab lists without
+changing their selection or keyboard owners. Native horizontal scrolling remains;
+overflow arrows are available only when needed and do not activate tabs. Selection
+and resize reveal the active tab; a fixed control slot avoids layout jumps.
+Scrollbars elsewhere, including source editors and diffs, stay visible when needed
+with a slim dark theme. These renderer inputs use the same root build targets.

@@ -86,6 +86,97 @@ async function main() {
     return Date.now() - stableAt >= 300; }, 'source navigation settled');
   const retainedCameras = await cameras(); assert(retainedCameras.length >= 2);
   await run(() => { globalThis.__cockpitGraphNodes = [...document.querySelectorAll('.graphs-grid > *')]; });
+  if (repository.tabsOnly) {
+    stage = 'native document tab overflow';
+    const strip = '.surface-tabs';
+    const geometry = () => run((selector) => {
+      const nav = document.querySelector(selector), active = nav.querySelector('.active'), outer = nav.getBoundingClientRect(), selected = active?.getBoundingClientRect();
+      return { left: nav.scrollLeft, width: nav.clientWidth, maximum: nav.scrollWidth - nav.clientWidth,
+        activeVisible: Boolean(selected && selected.left >= outer.left - 1 && selected.right <= outer.right + 1) };
+    }, strip);
+    for (const filename of repository.tabFiles) {
+      await click('.command-trigger');
+      await until(() => run(() => document.activeElement?.getAttribute('aria-label') === 'Workspace command'), 'palette native focus');
+      await wc.insertText(filename);
+      const selector = `[data-file-search-path=${JSON.stringify(filename)}]`;
+      await until(() => run((s) => Boolean(document.querySelector(s)), selector), `source search ${filename}`);
+      await click(selector);
+      await until(async () => (await source())?.path === filename && (await source())?.text === repository.files[filename], `open ${filename}`);
+      await until(async () => (await geometry()).activeVisible, 'newly selected document revealed');
+    }
+    const initial = await geometry(); assert(initial.maximum > 100 && initial.left > 0);
+    const lastSource = await source();
+    const scrollTo = async (direction, selector = 'document tabs') => {
+      for (let n = 0; n < 30; n++) {
+        const control = `[aria-label=${JSON.stringify(`Scroll ${selector} ${direction}`)}]`;
+        const disabled = await run((s) => document.querySelector(s)?.disabled, control);
+        if (disabled) return;
+        assert.notEqual(disabled, undefined, `Missing overflow control ${control}`);
+        await click(control);
+      }
+      throw new Error(`Overflow strip did not reach ${direction} edge`);
+    };
+    await scrollTo('left'); const left = await geometry(); assert(left.left <= 1);
+    assert.deepEqual(await source(), lastSource, 'Browsing hidden tabs does not activate another source');
+    await scrollTo('right'); const right = await geometry(); assert(right.left >= right.maximum - 1);
+    assert.deepEqual(await source(), lastSource);
+    const layout = await run(() => {
+      const rect = (selector) => { const r = document.querySelector(selector).getBoundingClientRect();
+        return { left: r.left, right: r.right, top: r.top, bottom: r.bottom, width: r.width, height: r.height }; };
+      return { tabs: rect('.surface-tabs-strip'), source: rect('.source-surface'), graphs: rect('.graphs-grid') };
+    });
+    assert(layout.tabs.left >= layout.graphs.right - 1, 'Document tabs stay to the right of the graphs');
+    assert(layout.tabs.bottom <= layout.source.top + 1 && layout.tabs.top < layout.source.top, 'Document tabs stay above the editor');
+    await fs.writeFile(path.join(evidence, 'document-tabs-overflow.png'), (await wc.capturePage()).toPNG());
+    await scrollTo('left');
+    await click('.surface-tab-main[title="README.md"]');
+    await until(async () => (await source())?.path === 'README.md' && (await geometry()).activeVisible, 'dirty document visible again');
+    assert.deepEqual(await source(), retained, 'Original dirty source and logical cursor survive tab overflow');
+    assert.equal(await fs.readFile(path.join(repository.root, 'README.md'), 'utf8'), repository.files['README.md']);
+    // A real compact window and normal zoom controls, not CSS/DOM injection.
+    stage = 'compact strip and scrollbar evidence';
+    win.setSize(1080, 760); await paint();
+    for (let n = 0; n < 2; n++) {
+      await click('[aria-label="Zoom in"]');
+      await until(() => run(() => document.querySelector('[aria-label="Interface zoom"]')?.getAttribute('aria-busy') === 'false'), 'native zoom applied');
+    }
+    const compact = await run(() => ({ width: innerWidth, zoom: document.querySelector('.zoom-value').textContent,
+      strips: [...document.querySelectorAll('.overflow-strip')].map((wrapper) => {
+        const nav = wrapper.firstElementChild;
+        return { label: nav.getAttribute('aria-label'), width: nav.clientWidth, contentWidth: nav.scrollWidth,
+          controls: [...wrapper.querySelectorAll('.overflow-strip-actions button')].map((e) => e.getAttribute('aria-label')) };
+      }) }));
+    const lens = compact.strips.find((item) => item.label === 'Workspace lenses');
+    let compactLensControls = false;
+    if (lens?.controls.length) {
+      await scrollTo('right', 'workspace lenses'); await scrollTo('left', 'workspace lenses'); compactLensControls = true;
+    }
+    const scrollbar = await run(() => {
+      const element = document.querySelector('.source-surface .cm-scroller'), computed = getComputedStyle(element);
+      return { colorScheme: getComputedStyle(document.documentElement).colorScheme, scrollbarColor: computed.scrollbarColor,
+        width: computed.scrollbarWidth, scrollHeight: element.scrollHeight, clientHeight: element.clientHeight,
+        track: getComputedStyle(element, '::-webkit-scrollbar-track').backgroundColor,
+        thumb: getComputedStyle(element, '::-webkit-scrollbar-thumb').backgroundColor };
+    });
+    assert(scrollbar.scrollHeight > scrollbar.clientHeight && scrollbar.colorScheme.includes('dark'));
+    assert(scrollbar.scrollbarColor.includes('rgb(11, 23, 22)'), 'Explicit dark scrollbar track');
+    await fs.writeFile(path.join(evidence, 'tabs-dark-scrollbars.png'), (await wc.capturePage()).toPNG());
+    await fs.writeFile(path.join(evidence, 'tabs-geometry.json'), JSON.stringify({ initial, left, right, layout, compact, scrollbar }, null, 2));
+    assert.deepEqual(await source(), retained);
+    assert(await run(() => globalThis.__cockpitGraphNodes.every((e) => e.isConnected)));
+    await click('.file-state button');
+    await until(() => run(() => document.querySelector('.file-state').classList.contains('file-saved')), 'owned source save');
+    assert.equal(await fs.readFile(path.join(repository.root, 'README.md'), 'utf8'), retained.text);
+    const agentWrites = requests.filter((r) => /^(?:externalAgents\.(?:send|handoff)|trusted\.(?:prepare|launch|send|fork|stop|decide)|agent\.(?:prepare|launch|steer|cancel)|workLog\.(?:start|record))$/.test(r.type));
+    const acceptedResizeWarnings = errors.filter((e) => e.message === 'ResizeObserver loop completed with undelivered notifications.');
+    const blockingErrors = errors.filter((e) => e.message !== 'ResizeObserver loop completed with undelivered notifications.');
+    assert.deepEqual(agentWrites, []); assert.deepEqual(blockingErrors, []);
+    await fs.writeFile(path.join(evidence, 'proof.json'), JSON.stringify({ ok: true, tabsOnly: true, packagedCore: true,
+      disposableSourceFiles: repository.tabFiles.length, documentControls: true, selectedTabVisible: true, sourceRetained: true,
+      compactLensControls, agentOverflowTested: false, darkScrollbars: true, ownedSourceSaved: true,
+      agentWrites, blockingErrors, acceptedResizeWarnings, elapsedMs: Date.now() - started }, null, 2));
+    return;
+  }
   stage = 'real registered session';
   const sessionSelector = `[aria-label=${JSON.stringify(`Inspect external agent ${repository.target.label}`)}]`;
   await until(() => run((s) => Boolean(document.querySelector(s)), sessionSelector), 'real registered agent');

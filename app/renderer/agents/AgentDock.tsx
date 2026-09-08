@@ -3,6 +3,7 @@ import type { AgentBridgeClient } from "./bridge-client";
 import { displayAgentText, type LiveAgentState } from "./live-state";
 import { cockpitAgentNotice } from "./LiveRunRail";
 import "./agent-dock.css";
+import { OverflowStrip } from "../OverflowStrip";
 
 type DockTab = "agents" | "fixture" | `mock:${string}` | `run:${string}`;
 export interface AgentDockProps {
@@ -83,11 +84,11 @@ export function AgentDock({ state, client, onDraft, runContent, draftContent, tr
   return <div className="activity-instruments">
     <section className="dock-side-panel dock-builds" aria-label="Build jobs" tabIndex={0}><header className="dock-section-heading">Builds & resources</header>{jobsContent}</section>
     <section className="agent-interaction-dock" aria-label="Agent messages">
-    <div className="agent-dock-tabs" role="tablist" aria-label="Agent conversations" onKeyDown={keyboard}>
+    <OverflowStrip className="agent-tabs-strip" label="agent conversations" activeKey={current}><div className="agent-dock-tabs" role="tablist" aria-label="Agent conversations" onKeyDown={keyboard}>
       {tabs.map((tab) => <button key={tab.key} id={tabId(tab.key)} role="tab" aria-selected={current === tab.key}
         aria-controls={panelId(tab.key)} aria-label={tab.detail ? `${tab.label} ${tab.detail}` : tab.label} tabIndex={current === tab.key ? 0 : -1} title={tab.detail ? `${tab.label} · ${tab.detail}` : tab.label}
         onClick={() => choose(tab.key)}><span>{tab.label}</span>{tab.detail ? <small className={`agent-state agent-state-${tab.detail}`}>{tab.detail}</small> : null}</button>)}
-    </div>
+    </div></OverflowStrip>
     <div id={panelId("agents")} role="tabpanel" aria-labelledby={tabId("agents")} hidden={current !== "agents"} className="agent-dock-panel agent-dock-home">
       {!draftOpen && !proposalId ? <div className="agent-dock-welcome"><strong>{runs.length ? "Select an agent run" : "Agent interaction"}</strong>
         <p>{runs.length ? "Open a run from the sidebar or its tab to inspect output and send instructions when available."

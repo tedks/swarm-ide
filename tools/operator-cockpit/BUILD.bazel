@@ -1,6 +1,13 @@
 package(default_visibility = ["//visibility:public"])
 
 sh_test(
+    name = "tab-overflow",
+    srcs = ["tab-overflow.sh"],
+    data = ["//:quality_sources"],
+    tags = ["local"],
+)
+
+sh_test(
     name = "trusted-home",
     srcs = ["trusted-home.sh"],
     data = ["//:quality_sources"],

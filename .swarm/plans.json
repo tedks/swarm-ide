@@ -38,6 +38,7 @@
       "app/renderer/WorktreeInspection.tsx",
       "core/worktree-inspection.ts",
       "app/renderer/FleetActivityView.tsx",
+      "app/renderer/OverflowStrip.tsx",
       "BUILD.bazel"
     ],
     "taskIds": [],

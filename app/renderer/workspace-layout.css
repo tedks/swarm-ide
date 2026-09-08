@@ -2,7 +2,7 @@
   .workbench[style] { grid-template-columns: 205px minmax(0, 1fr) minmax(230px, var(--context-width, 30%)); }
 }
 .workbench .navigation-field.source-open { grid-template-columns: minmax(0, var(--graph-share, 43%)) minmax(0, 1fr); }
-.navigation-field.source-open > .surface-tabs { grid-column: 2; grid-row: 2; }
+.navigation-field.source-open > .surface-tabs-strip { grid-column: 2; grid-row: 2; }
 .navigation-field.source-open > .graphs-grid { grid-column: 1; grid-row: 2 / span 2; }
 .navigation-field:not(.source-open) { grid-template-rows: 65px minmax(0, 1fr); }
 .navigation-field:not(.source-open) > .graphs-grid { grid-row: 2; }
