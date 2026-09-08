@@ -1,17 +1,18 @@
 id: supervisor-notification-cli-version-drift
-title: Bind supervisor notifications to a verified Codex executable
-desc: 'Root reported on2026-09-06 that the stable-window recap watcher saved its marker-qualified
-  recap but failed to wake root: the selected installed Codex0.146.0 rejected queue
-  --thread, while the running root uses0.153.4. Root has installed a replacement watcher
-  for the new landing marker using the running root executable0.153.4. Follow-up:
-  make notification tooling select and record an explicit executable compatible with
-  the destination session; probe queue capability before declaring the watcher operational;
-  distinguish recap capture success from notification delivery; surface an actionable
-  failure without discarding the recap or duplicating a wake. Test mismatched PATH/current-process
-  versions, unsupported queue, correct executable selection and delivery failure/retry.
-  Treat this report as observed operational evidence, not an independently verified
-  diagnosis of every version. No tooling changes authorized in the landing step; root
-  owns the current watcher and no manual wake should be sent.'
+title: Use a verified Codex executable for supervisor notifications
+desc: 'On 2026-09-06, root reported that the stable-window recap watcher saved a recap
+  matching its required marker but failed to wake root. The selected installed Codex
+  0.146.0 rejected queue --thread, while the running root uses 0.153.4. Root has installed
+  a replacement watcher for the new landing marker using the running root''s 0.153.4
+  executable. Follow-up: make notification tooling select and record an explicit executable
+  compatible with the destination session. Check queue support before reporting the
+  watcher as operational. Distinguish successful recap capture from notification delivery,
+  and show a useful failure message without discarding the recap or duplicating a
+  wake. Test mismatched PATH/current-process versions, unsupported queue, correct
+  executable selection, and delivery failure/retry. This is a report of observed behavior,
+  not an independently verified diagnosis of every version. No tooling changes are
+  authorized in the landing step. Root owns the current watcher; do not send a manual
+  wake.'
 type: bugfix
 component: tooling
 release:
@@ -24,4 +25,12 @@ log_events:
 - time: 2026-09-06T00:09:38-00:00
   who: Ted Smith
   what: created
+  comment: ""
+- time: 2026-09-08T04:31:37-00:00
+  who: Ted Smith
+  what: changed title
+  comment: ""
+- time: 2026-09-08T04:31:37-00:00
+  who: Ted Smith
+  what: updated description
   comment: ""
