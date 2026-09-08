@@ -48,3 +48,8 @@ Work Log is mounted below the running-agent list with explicit Start/Stop; live
 timestamped activity is separate in the persistent dock and center log. Saved
 summaries remain a separate log tab. Graph controls and required attribution use
 explicit dark-theme colors.
+
+Selecting a Work Log outcome opens `WorkLogEntryDetail` in the center with its
+agent, task, changed areas, checks and follow-ups. This is a pure view of the
+selected outcome: the sidebar remains the single polling/control owner. Closing
+the outcome, switching documents or Ctrl+W preserves the mounted source editor.

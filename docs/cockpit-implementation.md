@@ -11,3 +11,23 @@ Graph control icons and required React Flow attribution use explicit dark-theme 
 Direct validation: `nix develop --command bazel test --jobs=3 //tools/operator-cockpit:checks`. The focused check covers registered-root reads, stale reply fencing, read-only source/diff rendering, local buffer retention and Work Log placement. Automated desktop verification uses the owned virtual-X11 harness on port 55332, never the physical display.
 
 Native review found and corrected two concrete cases: Ctrl+W now closes inspection rather than the hidden source tab, and malformed event paths produce an actionable notice rather than escaping a React effect. Mounted tests preserve the actual CodeMirror document, logical cursor, graph instances and file-watch lifetime. `//tools/operator-cockpit:regressions` runs these direct tests separately from both TypeScript checks.
+
+Work Log outcomes open K7's pure `WorkLogEntryDetail` in the center. Changed areas,
+checks and follow-ups stay attached to their agent/task; opening the detail does
+not add polling, start a model or mutate Ditz. Closing it or opening System design
+preserves the local source buffer. The native pass also corrected simultaneous
+design/worktree visibility and a misleading empty-diff message after a failed
+read; recorded patches remain accessible when current source is unavailable.
+
+The focused suite contains 30 tests with both node/renderer typechecks. The
+packaged operator harness uses an owned X11 session and real registered C7
+transcript/worktree, with a separate dirty local repository containing a same-path
+decoy. It also reads an archived K7-generated outcome and copied `docs/design/`
+documents through the normal core; those are captured inputs, not new inference.
+Run it through `//tools/operator-cockpit:smoke` with an explicit private registry,
+session ID and `SWARM_COCKPIT_WORK_LOG_ARCHIVE`. No observed agent is messaged.
+
+Current limit: the external-agent briefing still hides configured context links
+when its worktree differs from the opened repository. The actual Activity event
+path is connected and reads the correct registered worktree. Unsupported tool
+wrappers remain generic activity rather than guessed file attribution.

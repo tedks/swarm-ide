@@ -6,7 +6,7 @@ exec node --input-type=module - "$cockpit_scripts" <<'JS'
 import { execFileSync, spawn } from 'node:child_process';
 import { createServer } from 'node:http';
 import { access, lstat, mkdir, mkdtemp, readFile, realpath, rm, writeFile } from 'node:fs/promises';
-import { isAbsolute, join } from 'node:path';
+import { dirname, isAbsolute, join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 const scripts = process.argv[2];
 const { resolveOwnedVirtualPort } = await import(pathToFileURL(join(scripts, '../task-integration/owned-port.mjs')));
@@ -40,6 +40,22 @@ try {
   await mkdir(join(root, 'app/renderer'), { recursive: true });
   const files = { 'README.md': '# Owned local editor\nKeep this buffer intact while inspecting another worktree.\n',
     [targetPath]: '// Decoy in opened repository. This is not the agent worktree.\n' };
+  // Captured real design documents and K7's previously generated summary are
+  // ordinary on-disk inputs, not new inference or injected renderer rows.
+  const designBytes = await readFile(join(process.cwd(), '.swarm/plans.json'), 'utf8');
+  const design = JSON.parse(designBytes);
+  files['.swarm/plans.json'] = designBytes;
+  for (const doc of new Set(design.nodes.flatMap((node) => node.docs))) {
+    if (!doc.startsWith('docs/design/')) continue;
+    if (!/^docs\/design\/[a-z-]+\.md$/.test(doc)) throw new Error('Unexpected design document path');
+    files[doc] = await readFile(join(process.cwd(), doc), 'utf8');
+  }
+  const archivePath = process.env.SWARM_COCKPIT_WORK_LOG_ARCHIVE;
+  if (!archivePath || !isAbsolute(archivePath)) throw new Error('Supply the archived generated Work Log');
+  const workLogBytes = await readFile(archivePath, 'utf8'), workLog = JSON.parse(workLogBytes);
+  if (workLog.version !== 1 || !workLog.entries?.[0]?.outcome) throw new Error('Invalid archived Work Log');
+  files['.swarm/work-log.json'] = workLogBytes;
+  for (const name of Object.keys(files)) await mkdir(dirname(join(root, name)), { recursive: true });
   for (const [name, content] of Object.entries(files)) await writeFile(join(root, name), content);
   const git = (...args) => execFileSync('git', ['-c', 'core.hooksPath=/dev/null', '-c', 'commit.gpgsign=false', ...args], {
     cwd: root, encoding: 'utf8', timeout: 10000,
@@ -51,7 +67,7 @@ try {
   const privateRegistry = join(scratch, 'registry.json');
   // Only operator briefing metadata is added. Real rollout and worktree remain unchanged.
   await writeFile(privateRegistry, JSON.stringify({ version: 1, sessions: [{ ...registered, contextPaths: [targetPath] }] }), { mode: 0o600 });
-  await writeFile(join(evidence, 'repository.json'), JSON.stringify({ root, files,
+  await writeFile(join(evidence, 'repository.json'), JSON.stringify({ root, files, capturedWorkLog: { id: workLog.entries[0].id, outcome: workLog.entries[0].outcome }, capturedDesign: true,
     target: { id: registered.id, label: registered.label, root: targetRoot, path: targetPath } }, null, 2));
   execFileSync('tar', ['-xzf', archive, '-C', packaged], { timeout: 30000 });
   server = createServer((_req, res) => { res.writeHead(200); res.end('owned cockpit proof'); });

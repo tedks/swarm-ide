@@ -132,6 +132,22 @@ async function main() {
   })));
   await fs.writeFile(path.join(evidence, 'graph-colors.json'), JSON.stringify(graphColors, null, 2));
   await fs.writeFile(path.join(evidence, 'retained-source-controls.png'), (await wc.capturePage()).toPNG());
+  stage = 'saved generated Work Log outcome';
+  const outcomeSelector = `[data-work-log-entry=${JSON.stringify(repository.capturedWorkLog.id)}] .work-log-outcome`;
+  await until(() => run((s) => Boolean(document.querySelector(s)), outcomeSelector), 'archived real generated outcome read through core');
+  await click(outcomeSelector);
+  await until(() => run(() => Boolean(document.querySelector('.work-log-center'))), 'outcome opens in center');
+  assert.equal(await run(() => document.querySelector('.work-log-center .work-log-outcome').textContent), repository.capturedWorkLog.outcome);
+  await fs.writeFile(path.join(evidence, 'work-log-outcome.png'), (await wc.capturePage()).toPNG());
+  stage = 'captured system design';
+  await click('.design-open-button');
+  await until(() => run(() => document.querySelector('.design-prose')?.textContent.includes('engineering organization')), 'real design document through core');
+  assert(await run(() => document.querySelector('.design-graph').textContent.includes('Cockpit')));
+  assert.equal(await run(() => Boolean(document.querySelector('.work-log-center'))), false);
+  await fs.writeFile(path.join(evidence, 'system-design.png'), (await wc.capturePage()).toPNG());
+  await click('[aria-label="Close system design"]');
+  assert.deepEqual(await source(), retained); assert.deepEqual(await cameras(), retainedCameras);
+  assert(await run(() => globalThis.__cockpitGraphNodes.every((e) => e.isConnected)));
   // Only the disposable local source is saved, through its ordinary editor UI.
   await click('.file-state button');
   await until(() => run(() => document.querySelector('.file-state').classList.contains('file-saved')), 'owned source save');
@@ -145,6 +161,7 @@ async function main() {
   await fs.writeFile(path.join(evidence, 'proof.json'), JSON.stringify({ ok: true, packagedCore: true,
     realRegisteredSession: repository.target.id, privateRegistrationCopy: true, originalTranscriptUnchanged: true,
     crossWorktreeBytes: true, readOnly: true, sourceRetained: true, camerasRetained: true, graphNodesRetained,
+    archivedGeneratedWorkLogOpened: true, capturedSystemDesignOpened: true, newSummaryCalls: 0,
     ownedSourceSaved: true, agentWrites, requests, blockingErrors, acceptedResizeWarnings, elapsedMs: Date.now() - started }, null, 2));
 }
 main().catch(async (error) => {
