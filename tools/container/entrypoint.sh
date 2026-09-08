@@ -67,7 +67,7 @@ x11vnc -display "$DISPLAY" -auth "$XAUTHORITY" -localhost -rfbport 5900 -forever
 children+=("$!")
 websockify --web=/opt/novnc 6080 127.0.0.1:5900 & children+=("$!")
 cd "$workspace"
-dbus-run-session -- electron /opt/swarm/app/electron/main.js & children+=("$!")
+dbus-run-session --config-file=/opt/runtime/share/dbus-1/session.conf -- electron /opt/swarm/app/electron/main.js & children+=("$!")
 echo 'Swarm desktop starting. Open http://127.0.0.1:6080/vnc.html?autoconnect=1&resize=scale (or your configured host port).'
 echo "This launch's desktop password: $browser_password"
 unset browser_password

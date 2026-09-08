@@ -19,7 +19,8 @@ COPY --from=build /opt/swarm /opt/swarm
 COPY tools/container/entrypoint.sh /opt/container/entrypoint.sh
 COPY tools/container/demo /opt/demo
 RUN groupadd --gid 1000 swarm && useradd --uid 1000 --gid 1000 --create-home swarm && \
-    mkdir /data && chown 1000:1000 /data && chmod 755 /opt/container/entrypoint.sh
+    mkdir /data /tmp/.X11-unix && chmod 1777 /tmp/.X11-unix && \
+    chown 1000:1000 /data && chmod 755 /opt/container/entrypoint.sh
 ENV PATH="/opt/runtime/bin:/usr/bin:/bin" \
     HOME="/home/swarm" DISPLAY=":99" XDG_RUNTIME_DIR="/tmp/swarm-runtime" \
     XDG_CONFIG_HOME="/data/config" XDG_CACHE_HOME="/data/cache" \

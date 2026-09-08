@@ -42,10 +42,10 @@ try {
   assert.equal(inspection.HostConfig.Privileged, false);
   assert.equal(inspection.Mounts.length, 0, 'No host data/credentials mounted in proof');
   assert.equal(inspection.NetworkSettings.Ports['6080/tcp'][0].HostIp, '127.0.0.1');
-  const windows = docker('exec', name, 'xdotool', 'search', '--sync', '--onlyvisible', '--name', 'swarm-ide');
+  const windows = docker('exec', '--env', 'XAUTHORITY=/tmp/swarm-runtime/Xauthority', name, 'xdotool', 'search', '--sync', '--onlyvisible', '--name', 'swarm-ide');
   assert(windows.trim(), 'Actual Electron window is visible on the container display');
   docker('cp', 'tools/container/browser-proof.cjs', `${name}:/tmp/browser-proof.cjs`);
-  docker('exec', name, 'electron', '/tmp/browser-proof.cjs');
+  docker('exec', '--env', 'XAUTHORITY=/tmp/swarm-runtime/Xauthority', name, 'electron', '/tmp/browser-proof.cjs');
   docker('cp', `${name}:/tmp/container-browser.png`, join(evidence, 'browser.png'));
   docker('cp', `${name}:/tmp/container-browser.json`, join(evidence, 'browser.json'));
   const processes = docker('exec', name, 'ps', '-eo', 'pid,args');
