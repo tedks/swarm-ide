@@ -15,16 +15,17 @@ const bridge = (request = vi.fn(async (input: CoreRequest) => reply(input))) => 
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); vi.useRealTimers(); });
 
 describe("online Work Log panel", () => {
-  it("shows unrecorded completed outcomes as Complete, with separate failed/waiting/unknown history", async () => {
+  it("labels historical outcomes without presenting old states as current liveness", async () => {
     const data = observation();
     data.entries = (["completed", "failed", "waiting", "unknown"] as const).map((state) => ({ ...data.entries[0], id: state, state, recorded: false }));
     bridge(vi.fn(async (input: CoreRequest) => reply(input, data)));
     render(<WorkLogPanel />);
-    await screen.findByText("Complete");
+    await screen.findByText("Completed turn");
     expect(screen.queryByText("In progress")).toBeNull();
-    expect(screen.getByText("Failed")).toBeTruthy();
-    expect(screen.getByText("Waiting on you")).toBeTruthy();
-    expect(screen.getByText("Status unavailable")).toBeTruthy();
+    expect(screen.getByText("Failed turn")).toBeTruthy();
+    expect(screen.getAllByText("Saved update")).toHaveLength(2);
+    expect(screen.queryByText("Waiting on you")).toBeNull();
+    expect(screen.queryByText("Status unavailable")).toBeNull();
     expect(screen.queryByText("Recorded in Ditz")).toBeNull();
   });
   it("offers a compact accessible settings gear without starting or stopping the summarizer", async () => {
@@ -141,7 +142,7 @@ describe("online Work Log panel", () => {
     render(<WorkLogPanel />); await screen.findByText("<img src=x onerror=alert(1)>");
     expect(document.querySelector("img")).toBeNull();
     expect([...document.querySelectorAll("[data-work-log-entry]")].map((entry) => entry.getAttribute("data-work-log-entry")))
-      .toEqual(["outcome-1", "outcome-2"]);
+      .toEqual(["outcome-2", "outcome-1"]);
     expect(screen.getByText("Recorded in Ditz")).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Summary settings" }));
     fireEvent.change(screen.getByLabelText("Model"), { target: { value: "bad model --exec" } });

@@ -9,8 +9,9 @@ opening an event reveals the right source. A command starting is not a build
 finishing; a reported file edit and the current Git diff are distinct observations.
 
 The Work Log groups evidence into understandable accomplishments: what changed,
-why it matters, what was checked and what remains. Active entries lead back to the
-running agents; completed sessions remain below. A completed Ditz issue should
+why it matters, what was checked and what remains. Entries lead back to their
+agents and appear newest first, without pretending old outcomes are live work.
+A completed Ditz issue should
 retain these outcome notes in-repo, not just disappear from the live roster.
 
 ## Current implementation
@@ -72,10 +73,14 @@ corroborates a turn boundary but not success, so its state becomes `unknown`.
 Unmatched user-authored rows stay intact; missing transcripts are not guessed.
 The repair works while summarization is stopped and never re-bills old history.
 
-`App.tsx` mounts that panel once in `AgentDock`, immediately left of Activity
-and independent of the agent sidebar's scrolling/folding, and opens its selected outcome
-through the pure `WorkLogEntryDetail` in the central document area. Opening an
-outcome does not start a model, record a task or create another polling consumer.
+`App.tsx` owns the existing `useWorkLog` observation and mounts its panel once in
+`AgentDock`, immediately left of Activity and independent of the agent sidebar's
+scrolling/folding. The rail and pure `WorkLogEntryDetail`
+reuse that same observation. App stores the selected outcome ID, not a frozen
+entry object, so a repaired state or newly recorded flag appears in an already
+open document. Temporary recovery keeps a closable placeholder for that ID; it
+does not reopen source or steal focus. Opening an outcome does not start a model,
+record a task or create another polling consumer.
 
 The compact Activity body has no second Activity/Live heading. Its timestamped
 rows use the same horizontal separators as Work Log, retain their original
@@ -88,8 +93,11 @@ The shared `RunStatus.tsx` presents the core lifecycle with visible text and
 different shapes: a yellow square for working, paused bars for waiting on input,
 a red hollow slashed circle for failure, and a filled green circle for completion.
 Missing evidence is neutral and never invents progress. The rail and agent
-information use the current session lifecycle; each Work Log row/detail uses
-that outcome's own historical state. Recording in Ditz stays a separate fact.
+information use the current session lifecycle. Work Log rows and documents use
+past-tense **Completed turn**, **Failed turn**, or neutral **Saved update** labels,
+not the current-agent badge. In particular, an unmatched legacy `working` entry
+does not say its agent is still in progress. This changes only presentation;
+historical text, stored states and recorded flags stay intact.
 
 The neighboring `BuildResources.tsx` instrument counts actual provided build
 jobs, puts running/queued work before failed/completed rows, and preserves full
@@ -108,6 +116,9 @@ verification without covering the normal UI in diagnostic prose.
 
 The Work Log modules use the same root source/bundle targets. Its dedicated
 `//tools/work-log:check` target runs the focused service/panel checks.
+`//tools/demo-agents:unit` checks the shared reader and exact-session rail summaries;
+`//tools/operator-cockpit:checks` verifies refreshed outcome documents in the
+actual App with retained editor, cursor, focus and graph instances.
 `//tools/live-observers:unit` checks raw operation ordering, originating-session
 activation and refresh retention; `//tools/build-resources:regressions` checks
 truthful counts, progress, examples and preserved source state.

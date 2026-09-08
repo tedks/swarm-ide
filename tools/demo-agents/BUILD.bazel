@@ -22,3 +22,10 @@ sh_binary(
     data = [":sources", "//:desktop-bundle", "//tools:desktop-automation-sources", "//tools:x11-driver-source"],
     tags = ["manual"],
 )
+
+sh_binary(
+    name = "status-smoke",
+    srcs = ["status-smoke.sh"],
+    data = [":sources", "//:desktop-bundle", "//tools:desktop-automation-sources", "//tools:x11-driver-source"],
+    tags = ["manual"],
+)

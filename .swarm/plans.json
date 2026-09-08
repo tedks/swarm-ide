@@ -360,10 +360,20 @@
         },
         {
           "label": "//tools/demo-agents:unit",
-          "role": "Agent lifecycle evidence, registered fleet creation ordering, deep lineage disclosures and observer checks",
+          "role": "Current lifecycle, session-keyed saved summaries, one shared Work Log reader, fleet ordering and lineage checks",
           "dependencies": [
             { "label": "//:quality_sources", "relation": "data" },
             { "label": "//tools/demo-agents:sources", "relation": "data" }
+          ]
+        },
+        {
+          "label": "//tools/demo-agents:status-smoke",
+          "role": "Owned packaged read-only registered lifecycle and saved-summary expansion proof",
+          "dependencies": [
+            { "label": "//tools/demo-agents:sources", "relation": "data" },
+            { "label": "//:desktop-bundle", "relation": "data" },
+            { "label": "//tools:desktop-automation-sources", "relation": "data" },
+            { "label": "//tools:x11-driver-source", "relation": "data" }
           ]
         },
         {

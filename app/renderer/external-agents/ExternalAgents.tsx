@@ -1,9 +1,11 @@
 import { useId, useState, type CSSProperties } from "react";
 import type { ExternalAgentSummary } from "../../../protocol/external-agents";
+import type { WorkLogEntry } from "../../../protocol/work-log";
 import type { ExternalClient } from "./client";
 import type { SwarmBridge } from "../../electron/preload";
 import { SessionSteering } from "./SessionSteering";
 import { RunStatus } from "./RunStatus";
+import { ActivityTime } from "../ActivityTime";
 import "./external-agents.css";
 
 type LineageRow = {
@@ -51,11 +53,17 @@ export function lineageRows(sessions: ExternalAgentSummary[]): LineageRow[] {
   return rows;
 }
 
-export function ExternalAgentRail({ client, onSelect }: { client: ExternalClient; onSelect(): void }) {
+export function ExternalAgentRail({ client, onSelect, workLogEntries = [] }: { client: ExternalClient; onSelect(): void; workLogEntries?: WorkLogEntry[] }) {
   const [collapsed, setCollapsed] = useState(new Set<string>());
   const [showOlder, setShowOlder] = useState(false);
   const listId = useId();
   const sessions = client.snapshot?.sessions ?? [];
+  const latestOutcomes = new Map<string, WorkLogEntry>();
+  for (const entry of workLogEntries) {
+    const prior = latestOutcomes.get(entry.sessionId);
+    const newer = !prior || Date.parse(entry.at) > Date.parse(prior.at) || entry.at === prior.at && entry.id.localeCompare(prior.id) < 0;
+    if (newer) latestOutcomes.set(entry.sessionId, entry);
+  }
   const byId = new Map(sessions.map((session) => [session.id, session]));
   const withAncestors = (ids: Iterable<string>) => {
     const keep = new Set<string>();
@@ -107,6 +115,7 @@ export function ExternalAgentRail({ client, onSelect }: { client: ExternalClient
         </button> : null}
         <button aria-label={`Inspect external agent ${session.label}`} aria-describedby={`${listId}-${session.id}-state`} aria-pressed={client.selected === session.id} onClick={() => { onSelect(); void client.read(session.id); }}>
           <span className="external-agent-label">{session.label}<RunStatus id={`${listId}-${session.id}-state`} state={session.lifecycle?.state} />
+            <AgentOutcome entry={latestOutcomes.get(session.id)} expanded={client.selected === session.id} />
             {session.evidence === "synthetic" || session.status === "unavailable" || session.ancestry === "unknown-parent" || session.ancestry === "cycle" ?
               <small>{session.evidence === "synthetic" ? "example · " : ""}{session.status === "unavailable" ? "Observation unavailable" : session.ancestry === "unknown-parent" ? "Parent not registered" : session.ancestry === "cycle" ? "Invalid cyclic ancestry" : ""}</small> : null}
           </span>
@@ -116,6 +125,13 @@ export function ExternalAgentRail({ client, onSelect }: { client: ExternalClient
     {olderCount ? <button className="external-older-toggle" aria-expanded={showOlder} aria-controls={listId}
       onClick={() => setShowOlder((prior) => !prior)}><span aria-hidden="true">{showOlder ? "▾" : "▸"} </span>Older sessions ({olderCount})</button> : null}
   </section>;
+}
+
+function AgentOutcome({ entry, expanded }: { entry?: WorkLogEntry; expanded: boolean }) {
+  if (!entry) return null;
+  return <span className={`external-agent-outcome${expanded ? " is-expanded" : ""}`} title={`Latest saved outcome: ${entry.outcome}`}>
+    <span className="external-agent-outcome-text">{entry.outcome}</span><ActivityTime at={entry.at} />
+  </span>;
 }
 
 function TerminalCommand({ command, kind, label }: { command: string; kind: "attach" | "switch"; label: string }) {
