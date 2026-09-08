@@ -1,0 +1,16 @@
+id: fleet-renderer-retention-bounds-20260907
+title: Bound retained renderer fleet history and orphaned drafts over long sessions
+desc: ""
+type: task
+component: default
+release:
+reporter: Ted Smith <tedks@riseup.net>
+status: unstarted
+disposition:
+creation_time: 2026-09-08T00:56:16-00:00
+references: []
+log_events:
+- time: 2026-09-08T00:56:16-00:00
+  who: Ted Smith
+  what: created
+  comment: ""
