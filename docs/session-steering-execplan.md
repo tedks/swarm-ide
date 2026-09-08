@@ -15,6 +15,7 @@ An operator can select a registered external Codex session, type an instruction 
 - [x] (2026-09-08 00:49Z) One authorized actual Codex0.153.4 queue message to this implementation session returned a correlated receipt. Consumption is not attested by that receipt.
 - [x] (2026-09-08 00:54Z) Implementation pushed through89faa42 on PR76; code and fix deltas native CLEAN. Final docs/status handoff prepared for ready PR and Ditz synchronization.
 - [x] (2026-09-08) Normally composed ROOT-cleared E3 base a2a8036 as e709371, preserving the observer API/Activity mount and navigation-retained steering panel. Focused steering/observer suites passed (78 and 71 tests respectively; each skips the opt-in self test), including typechecking. Native composition review CLEAN. No repeated GUI proof or queue message.
+- [x] (2026-09-08 01:14Z) ROOT subsequently authorized one existing packaged S3 scenario against joined code56e7be0. Production package build and owned display154/port55234 proof passed in2.065s including setup, with zero renderer errors and cleanup complete. Original assertions retained; no production correction, additional real queue message or model turn.
 - [ ] ROOT normal landing and shared app adoption (outside this child increment).
 
 ## Assumptions and Failure Modes
@@ -70,6 +71,8 @@ Non-durable external receipts/drafts across application reloads remain a scoped 
 The authorized self-queue instruction was subsequently delivered to and explicitly acknowledged by this same child session. That later conversation event attests consumption separately from the original queue receipt; neither proves completion of any requested implementation. The original single-attempt fence remains intact and no second message was sent.
 
 ROOT's subsequent E3 clearance was composed normally as e709371, importing only reviewed peer commits through a2a8036. The existing live observer API remains compatible: paused/failed reads revoke Send availability, selection changes do not misattribute pending receipts, and the separate ObservedActivity mount opens the retained S3 information panel. The two focused Bazel targets passed in 13.7 seconds and native seam review was CLEAN. Original full-build, quality and packaged results above remain attributed to their original heads, not claimed as newly executed on this composition. The evaluator guide now describes E3's bounded automatic refresh instead of the retired manual-only behavior.
+
+Under ROOT's later bounded join authority, exactly one additional existing packaged scenario ran against joined56e7be0 at01:14Z. All unchanged controlled Send, literal argv, queue receipt, stale/closed target rejection, navigation draft/receipt, source/camera retention and observed-process survival assertions passed. The production package rebuilt successfully; the owned virtual journey completed in2.065s including setup with zero renderer errors and cleanup1. This is a controlled executable/registered-holder proof, not another real Codex message or provider turn. No whole-suite rerun or product changes were needed. Evidence: `joined-packaged/run.L26hws` and `joined-packaged.log` in the private step directory.
 
 ## Artifacts and Notes
 
