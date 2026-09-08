@@ -431,7 +431,9 @@
       "tools/container/runtime.nix",
       "tools/container/entrypoint.sh",
       "tools/container/BUILD.bazel",
-      "BUILD.bazel"
+      "BUILD.bazel",
+      "core/build-progress.ts",
+      "core/provider.ts"
     ],
     "taskIds": [],
     "contextRefs": [],
@@ -482,6 +484,22 @@
           "label": "//tools/container:smoke",
           "role": "Exercises the Docker-packaged desktop through noVNC",
           "dependencies": [{ "label": "//tools/container:sources", "relation": "data" }]
+        },
+        {
+          "label": "//tools/build-graph:progress-checks",
+          "role": "Checks explicit-build progress reading and late-event guards",
+          "dependencies": [
+            { "label": "//:quality_sources", "relation": "data" }
+          ]
+        },
+        {
+          "label": "//tools/build-graph:progress-probe",
+          "role": "Exercises real build milestones and owned process cleanup",
+          "dependencies": [
+            { "label": "//tools/build-graph:sources", "relation": "data" },
+            { "label": "//tools/build-graph:progress-probe-module", "relation": "data" },
+            { "label": "//:desktop-bundle", "relation": "data" }
+          ]
         }
       ]
     }

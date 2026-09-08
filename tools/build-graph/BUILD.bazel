@@ -7,6 +7,12 @@ sh_test(
     tags = ["local"],
 )
 sh_test(
+    name = "progress-checks",
+    srcs = ["progress-checks.sh"],
+    data = ["//:quality_sources"],
+    tags = ["local"],
+)
+sh_test(
     name = "owned-port-test",
     srcs = ["owned-port.test.sh"],
     data = [":sources"],
@@ -15,6 +21,9 @@ sh_binary(name = "probe-build", srcs = ["probe-build.sh"])
 genrule(name = "probe-module", srcs = ["//:quality_sources", "//:package.json"], outs = ["probe.cjs"], cmd = "$(location :probe-build) $@ $(location //:package.json)", tools = [":probe-build"], local = True)
 sh_binary(name = "probe", srcs = ["probe.sh"], data = [":sources", ":probe-module", "//:desktop-bundle"], tags = ["manual"])
 sh_binary(name = "automatic-probe", srcs = ["automatic-probe.sh"], data = [":sources", ":probe-module", "//:desktop-bundle"], tags = ["manual"])
+sh_binary(name = "progress-probe-build", srcs = ["progress-probe-build.sh"])
+genrule(name = "progress-probe-module", srcs = ["//:quality_sources", "//:package.json"], outs = ["progress-probe.cjs"], cmd = "$(location :progress-probe-build) $@ $(location //:package.json)", tools = [":progress-probe-build"], local = True)
+sh_binary(name = "progress-probe", srcs = ["progress-probe.sh"], data = [":sources", ":progress-probe-module", "//:desktop-bundle"], tags = ["manual"])
 sh_test(
     name = "packaged-build-graph-test",
     srcs = ["smoke.sh"],
