@@ -14,14 +14,17 @@ The whole index remains limited to 64 KiB and structurally validated.
 
 - [x] (2026-09-08) Confirm designated clean branch and exact schema cap.
 - [x] (2026-09-08 21:06Z) Baseline: actual-index and 100-target regressions fail; 58 other tests and both type boundaries pass.
-- [ ] Remove only that cap; run focused reader and generation checks.
-- [ ] Obtain native review, push ready PR, update Ditz and hand off to ROOT.
+- [x] (2026-09-08 21:07Z) Remove only that cap; 83 reader/generation tests and both type boundaries pass.
+- [x] (2026-09-08 21:10Z) Native review CLEAN with no findings; executable commit627f29d pushed in PR137.
+- [ ] Push final evidence notes, mark PR ready, sync Ditz and hand off to ROOT.
 
 ## Surprises & Discoveries
 
 The actual-index reader regression already exists in `tests/plans-reader.test.ts`.
-It currently checks source links, and will also explicitly check build mappings.
+It now also explicitly checks build mappings and refuses plan replacement.
 The current plan is 37,295 raw bytes, below the existing 65,536-byte bound.
+The focused target's transitive Bazel inputs include `//:.swarm/plans.json`,
+verified by a query; no missing test-data declaration caused this failure.
 
 ## Decision Log
 
@@ -33,8 +36,10 @@ Do not regenerate the plan or alter App, graphs, reader behavior or model contro
 ## Outcomes & Retrospective
 
 The old cap is reproduced through the actual repository reader and synthetic
-schema input: 2 failures / 58 passes. Repair and final review pending. ROOT owns
-normal PR merge and app adoption.
+schema input: 2 failures / 58 passes. The one-line repair passes all 83 focused
+reader and generation tests, including 100 valid targets, oversized input and
+existing-plan preservation. Native review is CLEAN with no findings. ROOT owns normal PR
+merge and app adoption. No index content or core/renderer behavior was rewritten.
 
 ## Context and Orientation
 
@@ -62,8 +67,10 @@ From `/home/tedks/Projects/swarm-ide/plan-index-repair`:
     nix develop --command pnpm install --frozen-lockfile --offline
     nix develop --command bazel test --jobs=2 //tools/demo-syntax:editor-tests --test_arg=tests/plans-reader.test.ts
 
-Use the same supported target with the generation test filenames for the final
-focused checks. Commit and push on `fix/plan-index-target-count`, open a draft PR,
+The corrected run also supplies `--test_arg=tests/plan-generation.test.ts` and
+`--test_arg=tests/plan-generation-ui.test.tsx`: 83 tests passed in 3 files, with
+both TypeScript boundaries, Bazel elapsed15.653s. Commit and push on
+`fix/plan-index-target-count`, open a draft PR,
 then mark ready after checks/review; never push directly to master.
 
 ## Validation and Acceptance
@@ -93,4 +100,6 @@ existing types and result states. Existing Bazel data already includes the actua
 plan; no extra build graph mapping is required unless validation disproves that.
 
 Plan created before implementation; updated after the recorded two-failure
-baseline to distinguish actual reproduction from the still-pending correction.
+baseline and successful 83-test correction to distinguish exact gate attribution.
+Final review confirmed the one-line production scope, unchanged plan content and
+existing build mappings; remaining steps are delivery only.
