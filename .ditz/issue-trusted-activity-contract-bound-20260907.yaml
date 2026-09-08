@@ -18,3 +18,9 @@ log_events:
   who: Ted Smith
   what: started
   comment: ""
+- time: 2026-09-08T00:52:19-00:00
+  who: Ted Smith
+  what: commented
+  comment: PR77 ready, pushed. Cleared exact F1 contract a6e7c8c consumed; count mismatch1RED/20PASS
+    then100-row correction21GREEN/native CLEAN. Original PR71 already merged; ROOT
+    owns follow-up normal landing. No new provider turn/adoption.
