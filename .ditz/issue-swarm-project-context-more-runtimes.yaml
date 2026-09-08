@@ -22,3 +22,11 @@ log_events:
   who: Ted Smith
   what: started
   comment: ""
+- time: 2026-09-08T05:57:53-00:00
+  who: Ted Smith
+  what: commented
+  comment: Completed Python/Hugo discovery, nested Bazel roots, nearest-package desktop-specific
+    Electron exclusion and timeout retention in PR96. Actual Pure Sky probe found
+    Python8000 plus clickable Node5173; Swarm internal Node was absent. Final 96 focused
+    tests/types and package passed; native convergence CLEAN. Root retains merge/adoption;
+    no containers or apps were started/stopped.
