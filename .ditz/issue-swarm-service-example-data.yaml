@@ -1,0 +1,18 @@
+id: swarm-service-example-data
+title: Restore checkout service example as ordinary repository data
+desc: Keep FraudCheck and Payments as generic service.swarm.json example inputs with
+  contract/source links, no special IDE behavior or fixed build. Verify actual generic
+  discovery and unrelated-repo empty behavior.
+type: task
+component: default
+release:
+reporter: Ted Smith <tedks@riseup.net>
+status: unstarted
+disposition:
+creation_time: 2026-09-08T20:26:50-00:00
+references: []
+log_events:
+- time: 2026-09-08T20:26:50-00:00
+  who: Ted Smith
+  what: created
+  comment: ""
