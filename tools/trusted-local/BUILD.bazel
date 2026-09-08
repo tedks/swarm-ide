@@ -1,5 +1,12 @@
 package(default_visibility = ["//visibility:public"])
 
+sh_test(
+    name = "start-unit",
+    srcs = ["start-unit.sh"],
+    data = [":sources", "//:quality_sources"],
+    tags = ["local"],
+)
+
 filegroup(
     name = "sources",
     srcs = glob(["*.ts", "*.cjs", "*.mjs", "*.sh"]),
@@ -46,5 +53,27 @@ sh_binary(
     name = "smoke",
     srcs = ["smoke.sh"],
     data = [":sources", "//:desktop-bundle", "//:quality_sources", "//tools/task-integration:sources", "//tools:virtual-desktop-run.sh", "//tools:x11-driver-source", "//tools:electron-runtime-source"],
+    tags = ["manual"],
+)
+
+sh_binary(
+    name = "start-smoke",
+    srcs = ["start-smoke.sh"],
+    data = [":smoke"],
+    tags = ["manual"],
+)
+
+genrule(
+    name = "start-live-bundle",
+    srcs = ["build-start-live.sh", ":sources", "//:quality_sources", "//:package.json"],
+    outs = ["start-live.cjs"],
+    cmd = "bash $(location build-start-live.sh) $@ $(location //:package.json)",
+    tags = ["manual", "local"],
+)
+
+sh_binary(
+    name = "start-live",
+    srcs = ["start-live.sh"],
+    data = [":start-live-bundle", "//:quality_sources"],
     tags = ["manual"],
 )
