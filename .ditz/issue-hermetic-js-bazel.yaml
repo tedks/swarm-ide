@@ -1,8 +1,8 @@
 id: hermetic-js-bazel
 title: Make JavaScript production packaging hermetic under Bazel
-desc: Evaluate and adopt a rules_js-style hermetic JavaScript toolchain once a second
-  production packaging consumer justifies it; the foundation intentionally uses a
-  bounded local Bazel genrule over frozen node_modules.
+desc: Evaluate and adopt a rules_js-style hermetic JavaScript toolchain when a second
+  production packaging consumer justifies it. The foundation intentionally uses a
+  limited local Bazel genrule over frozen node_modules.
 type: task
 component: default
 release:
@@ -24,3 +24,7 @@ log_events:
     not claim same-head causal red/green from that interval. Final85e6dc6 inputs were
     frozen throughout all34/all13 successful gates; no hermeticity fix or product-race
     resolution inferred.
+- time: 2026-09-08T04:30:00-00:00
+  who: Ted Smith
+  what: updated description
+  comment: ""
