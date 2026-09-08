@@ -1,5 +1,5 @@
 id: graph-space-disclosure-keyboard
-title: Keep native disclosures usable beside graph Space shortcuts
+title: Keep native expand/collapse controls usable beside graph Space shortcuts
 desc: ""
 type: bugfix
 component: swarm-ide
@@ -22,3 +22,11 @@ log_events:
     GREEN after; resource widget now protected. Follow-up: audit other native summary/disclosure
     controls outside graph panes. Do not weaken graph shortcuts globally; installed
     @xyflow/system isInputDOMNode recognizes .nokey. No other widgets changed in PR68.'
+- time: 2026-09-08T04:29:58-00:00
+  who: Ted Smith
+  what: changed title
+  comment: ""
+- time: 2026-09-08T04:29:58-00:00
+  who: Ted Smith
+  what: updated description
+  comment: ""
