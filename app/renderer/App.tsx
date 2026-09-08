@@ -67,6 +67,7 @@ import { JournalActivity, JournalPanel, useJournal } from "./changelog/JournalPa
 import { useGithubPullRequests } from "./changelog/GithubPullRequests";
 import { useExternalAgents } from "./external-agents/client";
 import { ExternalAgentRail, ExternalAgentInformation } from "./external-agents/ExternalAgents";
+import { ObservedActivity } from "./external-agents/ObservedActivity";
 
 const lensTabs = ["System", "Plan", "Performance", "Refactor"] as const;
 const FRAUDCHECK_IMPLEMENTATION = "examples/checkout-world/services/fraudcheck/fraudcheck.ts";
@@ -1341,7 +1342,7 @@ export function App() {
           else setError("Launch focus cannot be mapped to this working world.");
         }} onClose={() => setAgents((state) => ({ ...state, selected: false }))} height={agentPaneHeight} onHeight={setAgentPaneHeight} /> : undefined}
           jobsContent={<BuildResources jobs={snapshot.jobs} />}
-          activityContent={<><JournalActivity state={journal} onOpen={showJournal} /><div className="activity-list">{snapshot.activity.slice(0, 4).map((activity) => <div key={activity.id}><i className={`status-${activity.status}`} /><span>{activity.summary}</span><small>{activity.kind}</small></div>)}</div></>}
+          activityContent={<><ObservedActivity client={externalAgents} onOpen={() => { ++navigationIntent.current; inspect(null); setExternalInformation(true); setCompactPanel("info"); }} /><JournalActivity state={journal} onOpen={showJournal} /><div className="activity-list">{snapshot.activity.slice(0, 4).map((activity) => <div key={activity.id}><i className={`status-${activity.status}`} /><span>{activity.summary}</span><small>{activity.kind}</small></div>)}</div></>}
         />
       </section>
 

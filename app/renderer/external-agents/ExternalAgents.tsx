@@ -76,7 +76,7 @@ export function ExternalAgentInformation({ client, bridge, visible = true, onRet
     {client.busy ? <p role="status">Observing…</p> : null}
     {client.notice ? <p role="status">{client.notice}</p> : null}
     {session ? <>
-      <p className="external-caption">{session.evidence === "synthetic" ? "Synthetic example — not a real agent run" : "Registered local JSONL — recorded, not live telemetry"}</p>
+      <p className="external-caption">{session.evidence === "synthetic" ? "Synthetic example — not a real agent run" : "Auto-refreshed local JSONL — observed transcript events, not generated summaries"}</p>
       <details className="external-provenance"><summary>Fork ancestry & provenance · {session.parentId ? `parent ${session.parentId.slice(0, 8)}…` : "no recorded parent"}</summary>
       <dl><dt>Evidence</dt><dd>{session.evidence}</dd>
         <dt>Session</dt><dd>{session.id}</dd><dt>Forked from</dt><dd>{session.parentId ?? (session.status === "observed" ? "No parent in metadata" : "Unavailable")}</dd>

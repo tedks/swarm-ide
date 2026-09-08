@@ -5,6 +5,28 @@ filegroup(
     srcs = glob(["*.ts", "*.cjs", "*.mjs", "*.sh"]),
 )
 
+sh_test(
+    name = "session-unit",
+    srcs = ["session-unit.sh"],
+    data = [":sources", "//:quality_sources"],
+    tags = ["local"],
+)
+
+genrule(
+    name = "activity-live-bundle",
+    srcs = ["build-activity-live.sh", ":sources", "//:quality_sources", "//:package.json"],
+    outs = ["activity-live-proof.cjs"],
+    cmd = "bash $(location build-activity-live.sh) $@ $(location //:package.json)",
+    tags = ["manual", "local"],
+)
+
+sh_binary(
+    name = "activity-live",
+    srcs = ["activity-live.sh"],
+    data = [":activity-live-bundle", "//:quality_sources"],
+    tags = ["manual"],
+)
+
 genrule(
     name = "live-bundle",
     srcs = ["build-live.sh", ":sources", "//:quality_sources", "//:package.json"],

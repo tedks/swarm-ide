@@ -6,10 +6,13 @@ import { parseCoreResponseForRequest, PROTOCOL_VERSION } from "../../../protocol
 import { type TaskActivity, type TaskActivityRequest } from "../../../protocol/task-activity";
 import { entryEvidence, type ChangelogResult } from "../../../protocol/changelog";
 import type { Run, TranscriptRecord } from "../../../protocol/agents";
+import { TaskTrustedRuns } from "./TaskTrustedRuns";
+import type { TaskTrustedObservation } from "./trusted-runs";
 
 export interface TaskContextProps extends TaskDetailProps {
   connected: boolean; generation: number; journal: ChangelogResult | null; journalRetained: boolean;
   run: Run | null; runRecords?: TranscriptRecord[]; runRetained?: boolean; onJournal: (id: string) => void;
+  trustedObservation?: TaskTrustedObservation; onOpenTrustedRun?: (token: string) => void;
 }
 export function TaskContext(props: TaskContextProps) {
   const { snapshot, detail, detailRevision, selectedTaskId, connected, generation, journal, run } = props;
@@ -51,8 +54,10 @@ export function TaskContext(props: TaskContextProps) {
         </> : <p className="task-empty">{!connected ? "Update history unavailable while disconnected." : history?.key === key ? history.notice : "No update history loaded."}</p>}
       </section>} />
     <div className="task-ui task-context-supplement">
-      <section className="task-detail-section"><h3>Agent log & linked activity</h3>
-        <p className="task-hint">Explicit task associations in the loaded run and repository activity log only.</p>
+      {snapshot && selectedTaskId ? <TaskTrustedRuns scope={{ worldId: snapshot.worldId, repositoryId: snapshot.repositoryId, taskId: selectedTaskId }}
+        observation={props.trustedObservation} connected={connected} onOpen={props.onOpenTrustedRun} /> : null}
+      <section className="task-detail-section"><h3>Isolated run & recorded activity</h3>
+        <p className="task-hint">The loaded isolated/rehearsal run and repository activity log, separate from trusted conversations.</p>
         {linkedRun ? <>
           <p>Loaded run · {linkedRun.state}{props.runRetained ? " · retained observation" : ""} · <code>{linkedRun.runId}</code><br />Task attached at metadata {reference!.metadataCommit.hex.slice(0, 8)}.</p>
           <details><summary>Loaded agent output · last {Math.min(8, props.runRecords?.length ?? 0)} records</summary>
@@ -65,7 +70,7 @@ export function TaskContext(props: TaskContextProps) {
         {associations.length ? <ul className="task-dependencies">{associations.map((entry) => <li key={entry.id}>
           <button onClick={() => props.onJournal(entry.id)}>{entry.headline}</button><small>Recorded {entry.reasoning} · {entry.state}{props.journalRetained ? " · retained observation" : ""} · {journal ? [...new Set(entryEvidence(entry, journal.bundle).map((evidence) => evidence.kind))].join(", ") : ""}</small>
         </li>)}</ul> : null}
-        {!linkedRun && !associations.length ? <p className="task-empty">No agent activity in this scope.</p> : null}
+        {!linkedRun && !associations.length ? <p className="task-empty">No isolated run or recorded activity in this scope.</p> : null}
       </section>
     </div>
   </section>;

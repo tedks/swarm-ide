@@ -1,0 +1,25 @@
+package(default_visibility = ["//visibility:public"])
+
+filegroup(name = "sources", srcs = glob(["*.sh", "*.mjs", "*.cjs", "*.tsx", "*.md"]))
+
+genrule(
+    name = "controlled-bundle",
+    srcs = ["build.sh", ":sources", "//:quality_sources", "//:package.json"],
+    outs = ["controlled.tar.gz"],
+    cmd = "bash $(location build.sh) $@ $(location //:package.json)",
+    tags = ["local", "manual"],
+)
+
+sh_test(
+    name = "regressions",
+    srcs = ["regressions.sh"],
+    data = [":sources", "//:quality_sources"],
+    tags = ["local"],
+)
+
+sh_binary(
+    name = "smoke",
+    srcs = ["smoke.sh"],
+    data = [":sources", ":controlled-bundle", "//tools:virtual-desktop-run.sh", "//tools:x11-driver-source", "//tools:electron-runtime-source", "//tools/task-integration:sources"],
+    tags = ["manual"],
+)
