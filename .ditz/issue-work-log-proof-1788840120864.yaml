@@ -1,7 +1,7 @@
 id: work-log-proof-1788840120864
-title: Work Log disposable note proof
-desc: Disposable K7 verification of an idempotent generated Work Log note; not product
-  completion.
+title: Check a disposable Work Log note
+desc: Disposable K7 check that a generated Work Log note is idempotent; this does
+  not verify product completion.
 type: task
 component: default
 release:
@@ -34,3 +34,11 @@ log_events:
     still needs implementation, tests, usage instructions, and one-off tooling inventory.;
     Plain-language editing work remains to be completed.\nSession: 01a0702a-7b5e-71e0-bb62-287d55a7f9ba;
     turn observed 2026-09-08T04:01:25.671Z"
+- time: 2026-09-08T04:32:47-00:00
+  who: Ted Smith
+  what: changed title
+  comment: ""
+- time: 2026-09-08T04:32:47-00:00
+  who: Ted Smith
+  what: updated description
+  comment: ""
