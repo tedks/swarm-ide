@@ -16,7 +16,7 @@ fingerprints alone still decide success. There is no new event platform or UI.
 - [x] Confirmed official BEP event shapes and coordinated BuildResources ownership.
 - [x] Add a bounded incremental file reader and optional builder progress callback.
 - [x] Prove chunk handling, live delivery, throttling, late-event fencing and cleanup.
-- [ ] Native review, focused local checks, pushed stacked PR and handoff.
+- [x] Native review to CLEAN, focused local checks and pushed stacked PR114.
 
 ## Context and Orientation
 
@@ -103,6 +103,9 @@ owned process cleanup.
 The implementation passes 27 focused tests and both TypeScript checks (13.1 s).
 The real owned Bazel probe independently proves pre-exit message delivery. The
 default-provider test uses a controlled process callback plus an actual event file;
-it is not relabelled as a real process test. Native convergence and final handoff
-are pending. Scope is one existing explicit build path, not external agent builds,
-generic test discovery or automatic binary builds.
+it is not relabelled as a real process test. Native fix-delta and scoped living-doc
+review are CLEAN. Code is pushed as `66eae13` in PR114, stacked above independent
+automatic-query PR108; ROOT owns normal merge/adoption. Scope is one existing
+explicit build path, not external agent builds, generic test discovery or
+automatic binary builds. Plan-data mappings were sent to the plans owner rather
+than competing with that owner's manifest repair.
