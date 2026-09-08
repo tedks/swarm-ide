@@ -1,0 +1,20 @@
+id: swarm-compose-service-coverage
+title: Expand declared service coverage when projects need it
+desc: The generic reader supports separate Compose documents and native service.swarm.json
+  declarations. Includes/extends, effective multi-file merging and declarations in
+  ignored dependency/test trees are deliberately not inferred. Add narrowly supported
+  read-only coverage with actual-project evidence when needed; preserve source/runtime
+  distinctions and never start Docker or scripts for discovery.
+type: feature
+component: default
+release:
+reporter: Ted Smith <tedks@riseup.net>
+status: unstarted
+disposition:
+creation_time: 2026-09-08T20:07:08-00:00
+references: []
+log_events:
+- time: 2026-09-08T20:07:08-00:00
+  who: Ted Smith
+  what: created
+  comment: ""
