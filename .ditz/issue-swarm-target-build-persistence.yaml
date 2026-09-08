@@ -1,0 +1,19 @@
+id: swarm-target-build-persistence
+title: Persist target build history and cache across core restarts
+desc: Selected-target builds now retain 20 jobs and a private Bazel cache for the
+  current core lifetime. Extend persistence with explicit root identity, stale-running
+  reconciliation and cache cleanup policy; never replay builds during recovery. Followup
+  to swarm-target-build-jobs / PR124.
+type: feature
+component: swarm-ide
+release:
+reporter: Ted Smith <tedks@riseup.net>
+status: unstarted
+disposition:
+creation_time: 2026-09-08T18:36:45-00:00
+references: []
+log_events:
+- time: 2026-09-08T18:36:45-00:00
+  who: Ted Smith
+  what: created
+  comment: ""
