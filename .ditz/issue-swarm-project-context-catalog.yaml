@@ -1,0 +1,20 @@
+id: swarm-project-context-catalog
+title: Recognize project components and configured sites automatically
+desc: Use bounded manifest discovery, not per-project configuration, to show Node/Python/Hugo/Move/OCaml/Bazel
+  components, workflow names, exact local dependency relationships and configured
+  sites. Keep declared metadata separate from actual process/deployment measurements.
+  User requested after scanning PredictionBook, Pairmarket, Speech, discord-agents,
+  slowed and website. Hide empty instruments. PR96 follows merged PR94.
+type: feature
+component: default
+release:
+reporter: Ted Smith <tedks@riseup.net>
+status: unstarted
+disposition:
+creation_time: 2026-09-08T05:37:17-00:00
+references: []
+log_events:
+- time: 2026-09-08T05:37:17-00:00
+  who: Ted Smith
+  what: created
+  comment: ""
