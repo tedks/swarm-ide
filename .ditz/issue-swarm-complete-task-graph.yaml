@@ -18,3 +18,12 @@ log_events:
   who: Ted Smith
   what: started
   comment: ""
+- time: 2026-09-08T21:19:00-00:00
+  who: Ted Smith
+  what: commented
+  comment: 'Implemented in PR138 (code 633aea1): removed all task-graph detail/node/edge/endpoint/overview/neighborhood
+    count cutoffs. Four real RPCs remain; canceled occupied slots now wait rather
+    than skipping tasks. Coalesced progress and preserved revision/cancellation/selection.
+    Contract-valid 800-edge/800-missing-endpoint and 64-neighbor proofs; 31 focused
+    tests plus both types passed; native fix-delta CLEAN. ROOT normal merge/adoption
+    remains. Current repo read-only tree has 311 issue files; no GUI/model proof claimed.'
