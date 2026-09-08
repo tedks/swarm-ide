@@ -8,8 +8,8 @@ type: task
 component: default
 release:
 reporter: Ted Smith <tedks@riseup.net>
-status: in_progress
-disposition:
+status: closed
+disposition: fixed
 creation_time: 2026-09-08T03:40:02-00:00
 references: []
 log_events:
@@ -59,6 +59,14 @@ log_events:
     Selected conversation and owner controls still read fresh.99 focused tests/typechecks
     and native delta clean; actual packaged read-only real fleet proof passes on owned
     virtual desktop with zero errors/cleanup1. PR84 pushed5c0d1b8 awaits ROOT landing.'
+- time: 2026-09-08T04:19:08-00:00
+  who: Ted Smith
+  what: 'closed: fixed'
+  comment: 'PR84 merged: read real registered agent transcripts across worktrees,
+    show timestamped commands and edits across the fleet, preserve actual fork ancestry,
+    and offer checked tmux commands. Direct live GUI and focused checks passed. Newest-first
+    ordering is a separate small follow-up; cockpit integration remains separately
+    tracked.'
 blocks:
 - swarm-owner-steering
 - swarm-operator-demo
