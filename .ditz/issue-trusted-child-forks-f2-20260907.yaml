@@ -36,3 +36,13 @@ log_events:
     background read-only trusted.snapshot; ROOT exact test ownership requested. No
     shared edit or merge/adoption. Existing failed-capacity untouched; editor Undo
     gap separately filed. ROOT owns final landing and closure.'
+- time: 2026-09-08T02:34:01-00:00
+  who: Ted Smith
+  what: commented
+  comment: 'ROOT-approved continuation complete: test-only a3355a8 excludes only background
+    trusted.snapshot from the one exact task inspection assertion, all other requests/order/retention
+    unchanged. Native actual-delta CLEAN. Exactly one uncached Bazel quality passed1978
+    tests/1existing optin skip plus typechecks/node/renderer builds48.219s. Final
+    docs-only53f6131 pushed PR79; old1977PASS/1FAIL preserved, no GUI/model/provider/app
+    rerun. task-test-verification.md records evidence. Ready ROOT normal landing/adoption
+    and final issue closure.'
