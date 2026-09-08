@@ -4,7 +4,7 @@ import type { ContextSubject } from "../../../protocol/context";
 import { contextLabel, type ContextInstrument } from "./compose";
 import "./context.css";
 
-export function ContextPane({ subject, sections, onOpen, onTask, onRefreshTasks, headingRef }: { subject: ContextSubject | null; sections: ContextInstrument[]; onOpen: (path: string) => void; onTask?: (target: TaskBacklinkTarget) => void; onRefreshTasks?: () => void; headingRef?: Ref<HTMLHeadingElement> }) {
+export function ContextPane({ subject, sections, onOpen, onGraph, onTask, onRefreshTasks, headingRef }: { subject: ContextSubject | null; sections: ContextInstrument[]; onOpen: (path: string) => void; onGraph?: (target: { topologyId: string; id: string }) => void; onTask?: (target: TaskBacklinkTarget) => void; onRefreshTasks?: () => void; headingRef?: Ref<HTMLHeadingElement> }) {
   return <div className="artifact-context" data-context-kind={subject?.kind ?? "none"} data-context-subject={contextLabel(subject)}>
     <div className="instrument-heading"><div><span className="eyebrow">Context · {subject?.kind ?? "none"}</span><h2 ref={headingRef} tabIndex={-1}>{contextLabel(subject)}</h2></div></div>
     <div className="widget-grid">{sections.map((section) => <article className={`widget context-section${section.empty ? " context-empty" : ""}`} key={section.id} data-context-section={section.id}>
@@ -23,7 +23,7 @@ export function ContextPane({ subject, sections, onOpen, onTask, onRefreshTasks,
       <dl>{section.rows.map((row, index) => <div key={`${index}:${row.label}`}><dt>{row.label}</dt><dd>{row.link?.kind === "source" ? <button className="source-link" onClick={() => onOpen(row.link!.kind === "source" ? row.link!.path : "")}>{row.value}</button> : row.link?.kind === "task" ? <>
         <button type="button" className="source-link" aria-label={`Inspect linked task ${row.link.target.taskId}`} onClick={() => { if (row.link?.kind === "task") onTask?.(row.link.target); }}>{row.value}</button>
         <details><summary>Task evidence · {row.link.target.taskId}</summary><dl><dt>Full ID</dt><dd>{row.link.target.taskId}</dd><dt>Issue blob</dt><dd>{row.link.target.issueBlob.algorithm}:{row.link.target.issueBlob.hex}</dd></dl></details>
-      </> : row.value}</dd></div>)}</dl>
+      </> : row.link?.kind === "graph" ? <button type="button" className="source-link" disabled={!onGraph} aria-label={`Show build target ${row.link.id}`} onClick={() => { if (row.link?.kind === "graph") onGraph?.(row.link); }}>{row.value}</button> : row.value}</dd></div>)}</dl>
       {(section.total ?? 0) > section.rows.length ? <p>Showing {section.rows.length} of {section.total} relationships; partial display.</p> : null}
       {section.evidence ? <details><summary>Evidence · {section.evidence.provider}</summary><dl>
         <dt>Origin</dt><dd>{section.evidence.origin}</dd>{section.evidence.revisionKind !== "source-read" ? <><dt>Revision · {section.evidence.revisionKind}</dt><dd>{section.evidence.revision}</dd></> : null}

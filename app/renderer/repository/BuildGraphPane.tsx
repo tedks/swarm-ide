@@ -13,17 +13,24 @@ function BuildNode({ data }: NodeProps) {
 }
 const nodeTypes = { buildTarget: BuildNode };
 
-export function TopologyViews({ service, capture, mockAgents, mockVersion, onOpenBuild, reframeVersion = 0, showBuildVersion = 0, focusedFile = null, observation, onRefresh, onVisibility }: { observation?: BuildGraphObservation; onRefresh?: () => void; onVisibility?: (visible: boolean) => void; service: ReactNode; capture?: BuildLinkSnapshot; mockAgents: boolean; mockVersion: number; onOpenBuild: (path: string) => void; reframeVersion?: number; showBuildVersion?: number; focusedFile?: string | null }) {
+/** A deliberate click, pinned to the observation that supplied its label. */
+export interface BuildTargetSelection { id: string; repositoryId: string; revision: string; nonce: number }
+export function matchesTargetSelection(capture: BuildLinkSnapshot | undefined, selection: BuildTargetSelection | null | undefined): boolean {
+  return Boolean(capture && selection && selection.repositoryId === capture.repositoryId && selection.revision === capture.revision && buildTargets(capture).includes(selection.id));
+}
+
+export function TopologyViews({ service, capture, mockAgents, mockVersion, onOpenBuild, reframeVersion = 0, showBuildVersion = 0, focusedFile = null, observation, onRefresh, onVisibility, targetSelection }: { targetSelection?: BuildTargetSelection | null; observation?: BuildGraphObservation; onRefresh?: () => void; onVisibility?: (visible: boolean) => void; service: ReactNode; capture?: BuildLinkSnapshot; mockAgents: boolean; mockVersion: number; onOpenBuild: (path: string) => void; reframeVersion?: number; showBuildVersion?: number; focusedFile?: string | null }) {
   const [view, setView] = useState<"service" | "build">("service"), [opened, setOpened] = useState(false);
   useEffect(() => { if (showBuildVersion) { setOpened(true); setView("build"); } }, [showBuildVersion]);
+  useEffect(() => { if (matchesTargetSelection(capture, targetSelection)) { setOpened(true); setView("build"); } }, [targetSelection]);
   useEffect(() => { onVisibility?.(view === "build"); return () => onVisibility?.(false); }, [view, onVisibility]);
   return <section className="topology-views"><nav aria-label="Component graph lenses"><button aria-pressed={view === "service"} onClick={() => setView("service")}>Service</button><button aria-pressed={view === "build"} onClick={() => { setOpened(true); setView("build"); }}>Build graph</button></nav>
     <div className="topology-view" hidden={view !== "service"}>{service}</div>
-    {opened ? <div className="topology-view" hidden={view !== "build"}><BuildGraphPane observation={observation} onRefresh={onRefresh} focusedFile={focusedFile} visible={view === "build"} capture={capture} mockAgents={mockAgents} mockVersion={mockVersion} onOpenBuild={onOpenBuild} reframeVersion={view === "build" ? reframeVersion : 0} /></div> : null}
+    {opened ? <div className="topology-view" hidden={view !== "build"}><BuildGraphPane targetSelection={targetSelection} observation={observation} onRefresh={onRefresh} focusedFile={focusedFile} visible={view === "build"} capture={capture} mockAgents={mockAgents} mockVersion={mockVersion} onOpenBuild={onOpenBuild} reframeVersion={view === "build" ? reframeVersion : 0} /></div> : null}
   </section>;
 }
 
-export function BuildGraphPane({ capture, mockAgents, mockVersion, onOpenBuild, reframeVersion = 0, focusedFile = null, visible = true, observation, onRefresh }: { observation?: BuildGraphObservation; onRefresh?: () => void; capture?: BuildLinkSnapshot; mockAgents: boolean; mockVersion: number; onOpenBuild: (path: string) => void; reframeVersion?: number; focusedFile?: string | null; visible?: boolean }) {
+export function BuildGraphPane({ capture, mockAgents, mockVersion, onOpenBuild, reframeVersion = 0, focusedFile = null, visible = true, observation, onRefresh, targetSelection }: { targetSelection?: BuildTargetSelection | null; observation?: BuildGraphObservation; onRefresh?: () => void; capture?: BuildLinkSnapshot; mockAgents: boolean; mockVersion: number; onOpenBuild: (path: string) => void; reframeVersion?: number; focusedFile?: string | null; visible?: boolean }) {
   const targets = useMemo(() => capture ? buildTargets(capture) : [], [capture]);
   const [roots, setRoots] = useState<string[]>(["//..."]), [target, setTarget] = useState("//...");
   const [followFile, setFollowFile] = useState(true);
@@ -37,7 +44,12 @@ export function BuildGraphPane({ capture, mockAgents, mockVersion, onOpenBuild, 
   const slice = useMemo(() => fileSlice ?? (capture ? selectBuildView(capture, roots, transitive) : null), [fileSlice, capture, roots, transitive]);
   const scope = JSON.stringify([followingFile ? focusedFile : roots, transitive]);
   const framedScope = useRef<string | null>(null);
-  useEffect(() => { setSelected(null); }, [scope]);
+  useEffect(() => { if (selected && !slice?.depths.has(selected)) setSelected(null); }, [slice, selected]);
+  useEffect(() => {
+    if (!matchesTargetSelection(capture, targetSelection)) return;
+    setFollowFile(false); setRoots([targetSelection!.id]); setTarget(targetSelection!.id); setSelected(targetSelection!.id);
+    setFitVersion((n) => n + 1);
+  }, [targetSelection]);
   useEffect(() => {
     if (!visible || framedScope.current === scope) return;
     framedScope.current = scope; setFitVersion((n) => n + 1);
@@ -47,8 +59,8 @@ export function BuildGraphPane({ capture, mockAgents, mockVersion, onOpenBuild, 
   const canAdd = matches.length > 0 && (roots.includes(pattern) ? followingFile : roots.length < BUILD_PATTERN_LIMIT);
   const nodes = useMemo(() => {
     return [...layoutBuildTargets(slice?.depths ?? new Map())].map(([label, position]): Node =>
-      ({ id: label, type: "buildTarget", position, draggable: false, data: { label, unresolved: capture?.targets?.find((target) => target.label === label)?.kind === "unresolved", mock: sprites, ownsFile: fileSlice?.owners.includes(label) ?? false } }));
-  }, [slice, sprites, fileSlice]);
+      ({ id: label, type: "buildTarget", position, selected: label === selected, draggable: false, data: { label, unresolved: capture?.targets?.find((target) => target.label === label)?.kind === "unresolved", mock: sprites, ownsFile: fileSlice?.owners.includes(label) ?? false } }));
+  }, [slice, sprites, fileSlice, selected, capture]);
   const edges = useMemo(() => slice?.links.map((link) => ({ id: `${link.from}->${link.to}`, source: link.from, target: link.to, type: "smoothstep", markerEnd: { type: MarkerType.ArrowClosed, color: "#b7a078" }, style: { stroke: "#b7a078" } })) ?? [], [slice]);
   const status = <div className={`build-observation status-${observation?.status === "current" ? "green" : observation?.status === "error" ? "red" : "yellow"}`} data-build-status={observation?.status ?? "unavailable"} role="status"><strong>{observation?.status ?? "unavailable"}</strong> · {observation?.message ?? "No build-graph observation requested."} {onRefresh ? <button onClick={onRefresh} disabled={observation?.status === "refreshing"}>Refresh build graph</button> : null}</div>;
   if (!capture) return <div className="build-view-empty">{status}</div>;
@@ -62,7 +74,7 @@ export function BuildGraphPane({ capture, mockAgents, mockVersion, onOpenBuild, 
     {capture.observation ? <details className="build-capture-caption"><summary>Observation scope and limits</summary>{capture.observation.coverage} Symlinked build definitions are unsupported.</details> : null}
     <div className="build-canvas"><ReactFlow onInit={(instance) => { flow.current = instance; }} onMoveStart={(event) => { if (event) cancelReframe(); }} nodes={nodes} edges={edges} nodeTypes={nodeTypes} fitView fitViewOptions={{ padding: .2, maxZoom: 1.2 }} minZoom={.05} nodesConnectable={false} onNodeClick={(_event, node) => setSelected(node.id)}><Background gap={22} color="#20352c" /><Controls showInteractive={false} /></ReactFlow>
       {nodes.length === 0 ? <p className="build-empty-hint">{followingFile ? "No observed build links for this file. Uncheck Follow file to explore targets manually." : "Add an observed target to explore its dependencies. No build is started."}</p> : null}
-      {selected ? <div className="build-selection"><strong>{selected}</strong>{capture.targets ? capture.targets.find((target) => target.label === selected)?.buildFile ? <button onClick={() => onOpenBuild(capture.targets!.find((target) => target.label === selected)!.buildFile!)}>Open build definition</button> : <span>Declaration path unavailable (external or unlocated target).</span> : <button onClick={() => onOpenBuild(`${selected.slice(2).split(":")[0] ? `${selected.slice(2).split(":")[0]}/` : ""}BUILD.bazel`)}>Open BUILD.bazel</button>}<button aria-label="Close target details" onClick={() => setSelected(null)}>×</button></div> : null}
+      {selected ? <div className="build-selection"><strong>{selected}</strong>{capture.targets?.find((target) => target.label === selected)?.buildFile ? <button onClick={() => onOpenBuild(capture.targets!.find((target) => target.label === selected)!.buildFile!)}>Open build definition</button> : <span>Declaration path unavailable.</span>}<button aria-label="Close target details" onClick={() => setSelected(null)}>×</button></div> : null}
     </div>
   </section>;
 }

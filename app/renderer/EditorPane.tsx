@@ -13,6 +13,7 @@ import {
 } from "@codemirror/view";
 import type { SourceFlash } from "./source-diff";
 import { sourceLanguage, sourceSyntaxHighlighting } from "./editor-language";
+import { bazelStringAt } from "./bazel-reference";
 
 const setSourceFlash = StateEffect.define<SourceFlash | null>();
 
@@ -72,7 +73,7 @@ function minimalReplacement(previous: string, next: string): { from: number; to:
   return { from, to: previous.length - suffix, insert: next.slice(from, next.length - suffix) };
 }
 
-export function EditorPane({ path, content, flash, onChange, onSave, memory, navigation, onNavigation }: {
+export function EditorPane({ path, content, flash, onChange, onSave, memory, navigation, onNavigation, onReference }: {
   path?: string;
   content: string;
   flash: SourceFlash | null;
@@ -81,6 +82,8 @@ export function EditorPane({ path, content, flash, onChange, onSave, memory, nav
   memory?: EditorMemory;
   navigation?: SourceLineNavigation | null;
   onNavigation?: (nonce: number, applied: boolean) => void;
+  /** Resolve against the current matching repository observation; true consumes Alt-click. */
+  onReference?: (reference: string) => boolean;
 }) {
   const container = useRef<HTMLDivElement>(null);
   const view = useRef<EditorView | null>(null);
@@ -89,9 +92,11 @@ export function EditorPane({ path, content, flash, onChange, onSave, memory, nav
   const onChangeRef = useRef(onChange);
   const onSaveRef = useRef(onSave);
   const onNavigationRef = useRef(onNavigation);
+  const onReferenceRef = useRef(onReference);
   onChangeRef.current = onChange;
   onSaveRef.current = onSave;
   onNavigationRef.current = onNavigation;
+  onReferenceRef.current = onReference;
 
   useEffect(() => {
     if (!container.current) return;
@@ -104,6 +109,17 @@ export function EditorPane({ path, content, flash, onChange, onSave, memory, nav
         drawSelection(),
         highlightActiveLine(),
         sourceFlashField,
+        EditorView.domEventHandlers({
+          mousedown(event, editor) {
+            if (!event.altKey || event.ctrlKey || event.metaKey || event.shiftKey || event.button !== 0 || !onReferenceRef.current) return false;
+            const position = editor.posAtCoords({ x: event.clientX, y: event.clientY });
+            if (position === null) return false;
+            const reference = bazelStringAt(editor.state.doc.toString(), position);
+            if (!reference || !onReferenceRef.current(reference)) return false;
+            event.preventDefault();
+            return true;
+          },
+        }),
         keymap.of([
           { key: "Mod-s", preventDefault: true, run: () => { onSaveRef.current(); return true; } },
           ...defaultKeymap,

@@ -103,6 +103,10 @@
       "core/build-graph.ts",
       "app/renderer/context/ContextPane.tsx",
       "core/project-context/provider.ts",
+      "app/renderer/bazel-reference.ts",
+      "app/renderer/context/compose.ts",
+      "app/renderer/repository/BuildGraphPane.tsx",
+      "tools/context-source-links/BUILD.bazel",
       "core/project-context/node.ts",
       "core/project-context/docker.ts",
       "protocol/project-context.ts",
@@ -130,6 +134,11 @@
           "label": "//tools/project-context:checks",
           "role": "Checks automatic runtime ownership, cancellation and Context rendering",
           "dependencies": [{ "label": "//:quality_sources", "relation": "data" }, { "label": "//tools/project-context:sources", "relation": "data" }]
+        },
+        {
+          "label": "//tools/context-source-links:unit",
+          "role": "Checks exact Context target links, Bazel references and editor gestures",
+          "dependencies": [{ "label": "//:quality_sources", "relation": "data" }]
         },
         {
           "label": "//tools/project-context:probe",
