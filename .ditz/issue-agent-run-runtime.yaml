@@ -1,9 +1,10 @@
 id: agent-run-runtime
-title: Implement owned Codex run lifecycle and bounded persistence
-desc: 'R1/R2/R3: app-server stdio adapter, version conformance, durable launch/steer
-  identity, one active run, truthful cancel/terminal/unknown states, bounded storage/output,
-  crash-safe owned-process cleanup and local-core uncertainty. Runtime is integration
-  lead. See first-agent-run-wave plan.'
+title: Implement Codex run control, saved state and reliable process cleanup
+desc: 'R1/R2/R3: implement the app-server stdio adapter and version checks; durable
+  launch and steering request identities; one active run; accurate cancel, finished
+  and unknown states; limits on saved data and output; crash-safe cleanup of processes
+  the runtime owns; and uncertain outcomes during local-core failures. Runtime leads
+  integration. See the first-agent-run-wave plan.'
 type: feature
 component: default
 release:
@@ -58,6 +59,14 @@ log_events:
     Follow-up agent-run-runtime-r2-vertical plus E2 virtual journey must prove explicit
     test-only worker-to-W2 lifecycle; policy remains unavailable and ROOT owns adoption.
     No real model turn.'
+- time: 2026-09-08T04:27:53-00:00
+  who: Ted Smith
+  what: changed title
+  comment: ""
+- time: 2026-09-08T04:27:53-00:00
+  who: Ted Smith
+  what: updated description
+  comment: ""
 blocks:
 - agent-run-vertical-proof
 blocked_by:
