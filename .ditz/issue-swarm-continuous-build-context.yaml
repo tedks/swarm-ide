@@ -22,5 +22,15 @@ log_events:
   who: Ted Smith
   what: started
   comment: ""
+- time: 2026-09-08T13:47:03-00:00
+  who: Ted Smith
+  what: commented
+  comment: 'Implemented the shared automatic build-context hook: startup, debounced
+    source changes and app return revalidate real Bazel declarations; settled views
+    do not poll, source-only edits do not query, and last-good graphs survive failure.
+    55 focused tests and both TypeScript checks pass; native review clean. Real packaged
+    core probe observed a dependency removal with two queries (~3.9s/~3.8s), no repository
+    wrapper execution and confirmed cleanup. PR108 is ready for cockpit App mount
+    and ROOT adoption; that assigned join remains pending, so issue stays in progress.'
 blocks:
 - swarm-usability-join
