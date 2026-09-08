@@ -1,0 +1,19 @@
+id: swarm-install-aarch64-proof
+title: Verify the installed Swarm package on aarch64 Linux
+desc: The x86_64 Linux Nix package builds and launches on owned virtual X11. The aarch64
+  flake output evaluates but has not been built or exercised. Build and install it
+  on an actual aarch64 Linux host, open a chosen repository, and verify profile and
+  host-tool behavior before advertising that architecture as tested.
+type: task
+component: default
+release:
+reporter: Ted Smith <tedks@riseup.net>
+status: unstarted
+disposition:
+creation_time: 2026-09-08T14:21:15-00:00
+references: []
+log_events:
+- time: 2026-09-08T14:21:15-00:00
+  who: Ted Smith
+  what: created
+  comment: ""
