@@ -18,3 +18,11 @@ log_events:
   who: Ted Smith
   what: started
   comment: ""
+- time: 2026-09-08T21:07:01-00:00
+  who: Ted Smith
+  what: commented
+  comment: Reproduced actual committed-index reader rejection and valid100-target
+    schema rejection before repair:2RED/58PASS, both TypeScript checks passed. Removed
+    only buildTargets.max(16), retaining current17 mappings and whole64KiB/strict/unique/forest
+    guards. PR137 code627f29d pushed; focused reader+generation checks and native
+    review underway. No plan content, renderer or app changes.
