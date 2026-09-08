@@ -9,14 +9,17 @@ The operator can select independent real Codex conversations, retain an unsent m
 ## Progress
 
 - [x] Read the designated worktree instructions, ROOT wave contract, current single-conversation pane and protocol.
-- [ ] Implement independently testable fleet selection, composer and response freshness state.
-- [ ] Join only ROOT-cleared F1 protocol and mount the real fleet cockpit.
-- [ ] Exercise targeted controls, stale responses, retained work and controlled owned virtual UI; converge native review.
+- [x] Implement independently testable fleet selection, composer and response freshness state; eight mounted delayed-response cases passed with the legacy pane/reducer cases.
+- [x] Normally compose exactly ROOT-cleared F1 contract a6e7c8c and T5 consumer ca1fd9a; mount explicit TaskContext-to-cockpit selection with approved AgentDock visibility effect.
+- [x] Initial packaged one-run protocol peer proof passed3.5s; initial controlled fleet IPC proof passed1.979s, both owned:152/55232 cleanup1 and no model turn.
+- [ ] Finish review-discovered missing-selection recovery red/green, stronger existing-draft virtual proof, native convergence and final relevant quality/build gates.
 - [ ] Push ready PR, synchronize Ditz, and report exact integration boundary to ROOT.
 
 ## Surprises & Discoveries
 
 The original pane has one snapshot, one composer, and one global response sequence. Changing selected runs requires separating the latest run-list observation from each conversation's own response freshness. Current protocol rejects extra request fields, so renderer requests cannot use the new token/expectedTurnId fields until the reviewed producer contract is available.
+
+Native review found a missing-selection recovery edge: after restart a retained A token absent in the new core caused every subsequent read to target A, so an uncertain B launch could not be discovered. The exact mounted regression failed alone (17 passed) before correction. Manual observation and uncertain launch now request an untargeted catalog; targeted read errors also schedule catalog recovery. Old tests that assumed every manual observation targets A require only their controlled transport choreography to reflect that deliberate behavior.
 
 ## Decision Log
 
@@ -27,6 +30,8 @@ Keep the existing trusted-local profile and preparation confirmation. Do not cre
 ## Outcomes & Retrospective
 
 Implementation and verification pending. This lane does not prove a live model turn; controlled provider/UI evidence will be labelled, and F1 owns the bounded real multi-conversation proof.
+
+The visible list/select/output/approval/Stop implementation and minimal task-linked opening are present. Multi-run core/store implementation is not consumed or proved by this lane. The owned fleet proof uses synthetic trusted IPC through the actual packaged renderer/preload and real core file operations; its disposable repository has no build/task metadata, so populated service/build behavior is not claimed.
 
 ## Context and Orientation
 
@@ -59,3 +64,5 @@ Operational milestone and ownership requests live in `/tmp/swarm-ide-real-swarms
 Use React and existing protocol types only, with no new dependencies. F1 optional fields are `runs`, `taskReference`, `activities`, and `archived`; `trusted.snapshot` accepts optional token and `trusted.send` optional expectedTurnId. New UI always supplies its observed turn expectation. A possible T5 seam is explicit `{id, runToken}` selection intent plus an `onSnapshot` callback delivering only validated core state. Agree the exact seam before App integration.
 
 Initial plan records scope, assumptions and evidence requirements before code changes.
+
+Updated after contract/consumer clearance, mounted/owned evidence and native-review recovery finding to preserve precise implementation-versus-proof attribution.
