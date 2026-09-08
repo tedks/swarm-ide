@@ -22,3 +22,12 @@ log_events:
   who: Ted Smith
   what: started
   comment: ""
+- time: 2026-09-08T15:12:59-00:00
+  who: Ted Smith
+  what: commented
+  comment: 'The message box now keeps its cursor after sending, so the next message
+    needs no extra click. A compact arrow replaces the large button. Pending input
+    remains locked without disabling the textarea; late replies never take focus from
+    another agent or source. PR117: 76 focused tests/types, clean native review, and
+    actual virtual Chromium focus/arrow/reload/copy proof passed. No live instruction
+    was sent. ROOT owns landing and app adoption.'
