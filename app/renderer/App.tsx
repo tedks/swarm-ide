@@ -68,7 +68,7 @@ import { JournalPanel, useJournal } from "./changelog/JournalPanel";
 import { useGithubPullRequests } from "./changelog/GithubPullRequests";
 import { useExternalAgents } from "./external-agents/client";
 import { ExternalAgentRail, ExternalAgentInformation } from "./external-agents/ExternalAgents";
-import { AgentConversation } from "./external-agents/AgentConversation";
+import { AgentConversation, AgentConversationActions } from "./external-agents/AgentConversation";
 import { useConversationSelection } from "./external-agents/conversation-selection";
 import { SteeringMemory } from "./external-agents/steering-memory";
 import { AgentWorktreeBrowser } from "./AgentWorktreeBrowser";
@@ -133,7 +133,7 @@ export function App() {
   const [worktreeSelection, setWorktreeSelection] = useState<WorktreeSelection | null>(null);
   const [worktreeVisible, setWorktreeVisible] = useState(false);
   const [worktreeBrowserSession, setWorktreeBrowserSession] = useState<string | null>(null);
-  const [selectedActivity, setSelectedActivity] = useState<SelectedActivity | null>(null);
+  const [activitySelection, setActivitySelection] = useState<{ realm: string; value: SelectedActivity } | null>(null);
   const [workLogEntryId, setWorkLogEntry] = useState<string | null>(null);
   const demo = useUiDemo();
   const [contextWidth, setContextWidth] = useState(23), [graphShare, setGraphShare] = useState(43);
@@ -172,6 +172,10 @@ export function App() {
   const workLog = useWorkLog(lifecycle?.core.generation ?? 0, Boolean(workspace.snapshot) && (!window.swarmLifecycle || lifecycle?.core.phase === "ready"));
   const workLogEntry = workLog.snapshot?.entries.find((entry) => entry.id === workLogEntryId) ?? null;
   const workLogOpen = workLogEntryId !== null;
+  const activityRealm = JSON.stringify([workspace.snapshot?.project.id, workspace.snapshot?.world.id, lifecycle?.core.generation ?? 0, lifecycle?.core.phase ?? "ready"]);
+  const selectedActivity = activitySelection?.realm === activityRealm ? activitySelection.value : null;
+  const selectActivity = (value: SelectedActivity | null) => setActivitySelection(value ? { realm: activityRealm, value } : null);
+  useLayoutEffect(() => { setActivitySelection(null); }, [activityRealm]);
   useConversationSelection(externalAgents);
   const agentContextVisible = externalInformation && externalAgents.selected !== null;
   const showConversation = (id?: string) => {
@@ -215,7 +219,9 @@ export function App() {
   const [taskDocumentVisible, setTaskDocumentVisible] = useState(false);
   const [taskSidebarVisible, setTaskSidebarVisible] = useState(true);
   const journal = useJournal(workspace.snapshot?.project.id ?? null, lifecycle?.core.phase === "ready" ? lifecycle.core.generation : null);
-  const showJournal = (entry?: string) => { setWorkLogEntry(null); setDesignVisible(false); setWorktreeVisible(false); setJournalOpen(true); setJournalVisible(true); setTaskDocumentVisible(false); setJournalEntry(entry ?? null); setJournalSelection((value) => value + 1); };
+  const openJournal = (entry?: string) => { setWorkLogEntry(null); setDesignVisible(false); setWorktreeVisible(false); setJournalOpen(true); setJournalVisible(true); setTaskDocumentVisible(false); setJournalEntry(entry ?? null); setJournalSelection((value) => value + 1); };
+  const showJournal = (entry?: string) => { selectActivity(null); openJournal(entry); };
+  const showActivityEvent = (session: SelectedActivity["session"], entry: SelectedActivity["entry"]) => { selectActivity({ session, entry }); openJournal(); };
   const inspectWorktree = (sessionId: string, path: string, patch?: string) => {
     ++navigationIntent.current;
     setWorktreeBrowserSession(null);
@@ -1399,7 +1405,8 @@ export function App() {
         {workLogOpen ? <div className="work-log-center">{workLogEntry ? <WorkLogEntryDetail entry={workLogEntry} onAgent={showConversation} onTask={openTaskDocument} onClose={() => setWorkLogEntry(null)} />
           : <section className="work-log-panel" aria-label="Work Log outcome"><p>{workLog.snapshot ? "This outcome is no longer in the current Work Log." : "Reading the selected outcome…"}</p><button onClick={() => setWorkLogEntry(null)}>Close outcome</button></section>}</div> : null}
         <JournalPanel key={snapshot.project.id} open={journalVisible} state={journal} selectedEntry={journalEntry} selectionVersion={journalSelection} pullRequests={githubPrs}
-          liveContent={<FleetActivityView fleet={externalAgents.fleet ?? []} selected={selectedActivity} onSelect={setSelectedActivity} onAgent={showConversation} onInspect={inspectWorktree} />}
+          liveState={externalAgents} onActivityOverview={() => selectActivity(null)}
+          liveContent={<FleetActivityView fleet={externalAgents.fleet ?? []} sessions={externalAgents.snapshot?.status === "observed" && !externalAgents.stale ? externalAgents.snapshot.sessions : []} selected={selectedActivity} onSelect={selectActivity} onAgent={showConversation} onInspect={inspectWorktree} />}
           onClose={() => setJournalVisible(false)} onOpenSource={openLinkedFile} />
         {taskDocumentOpen ? <div className="task-editor-surface" hidden={!textDocumentVisible} onPointerDownCapture={(event) => { if (!(event.target as Element).closest(".task-attach")) inspectTask(tasks.selectedTaskId); }} onFocusCapture={(event) => { if (!(event.target as Element).closest(".task-attach")) inspectTask(tasks.selectedTaskId); }}><TaskDetail surface="editor" selectedTaskId={tasks.selectedTaskId} snapshot={tasks.observation?.snapshot ?? null} detail={tasks.detail} detailRevision={tasks.detailRevision} detailStale={tasks.detailStale || tasks.observation?.status !== "observed" || Boolean(tasks.notice)} reading={tasks.reading} notice={tasks.detailNotice} attachment={taskAttachment(tasks.selectedTaskId)} onRefresh={() => { void taskClient.refresh(); }} onSelect={(id) => openTaskDocument(id)} onReveal={(ref) => { void revealTaskReference(ref); }} onReturnToSource={() => { setTaskDocumentVisible(false); if (!activeFile) setTaskDocumentOpen(false); returnToSourceInformation(); }} /></div> : null}
       </section>
@@ -1425,7 +1432,8 @@ export function App() {
           shortcutsBlocked={paletteOpen}
           conversation={{ selectionVersion: conversationSelection ? String(conversationSelection) : undefined,
             registered: { sessions: externalAgents.snapshot?.status === "observed" ? externalAgents.snapshot.sessions : null, selected: externalAgents.selected, onSelect: showConversation },
-            content: <AgentConversation client={externalAgents} bridge={window.swarm} memory={steeringMemory} onWorktree={browseAgentWorktree} onContext={() => { setExternalInformation(true); setCompactPanel("info"); }} /> }}
+            actions: <AgentConversationActions client={externalAgents} onWorktree={browseAgentWorktree} onContext={() => { setExternalInformation(true); setCompactPanel("info"); }} />,
+            content: <AgentConversation embeddedHeader client={externalAgents} bridge={window.swarm} memory={steeringMemory} onContext={() => { setExternalInformation(true); setCompactPanel("info"); }} /> }}
           mockConversation={demo.conversation ? { tabs: MOCK_AGENTS, selected: demo.selected, onSelect: demo.select, selectionVersion: demo.selectionVersion, content: <MockConversation selected={demo.selected} /> } : undefined}
           onDraft={() => agentClient.openDraft(snapshot.focus)}
           draftContent={<PreparedLaunchDraft state={liveAgents} client={agentClient} previewCurrent={taskAttachment(tasks.selectedTaskId).alreadyAttached} dirtyPaths={fileTabs.filter((tab) => protectsBuffer(tab)).map((tab) => tab.path)} />}
@@ -1443,7 +1451,7 @@ export function App() {
         }} onClose={() => setAgents((state) => ({ ...state, selected: false }))} height={agentPaneHeight} onHeight={setAgentPaneHeight} /> : undefined}
           jobsContent={<BuildResources jobs={snapshot.jobs} />}
           workLogContent={<WorkLogPanel controller={workLog} onOpen={showWorkLogEntry} onAgent={showConversation} onTask={openTaskDocument} />}
-          activityContent={<><ObservedActivity client={externalAgents} onOpen={showConversation} onEntry={(session, entry) => { setSelectedActivity({ session, entry }); showJournal(); }} /><div className="activity-list">{snapshot.activity.slice(0, 4).map((activity) => <div key={activity.id}><i className={`status-${activity.status}`} /><span>{activity.summary}</span><small>{activity.kind}</small><ActivityTime at={activity.at} /></div>)}</div></>}
+          activityContent={<><ObservedActivity client={externalAgents} onOpen={showConversation} onEntry={showActivityEvent} /><div className="activity-list">{snapshot.activity.slice(0, 4).map((activity) => <div key={activity.id}><i className={`status-${activity.status}`} /><span>{activity.summary}</span><small>{activity.kind}</small><ActivityTime at={activity.at} /></div>)}</div></>}
         />
       </section>
 

@@ -148,6 +148,62 @@ async function main() {
     globalThis.__conversationGraphs = [...document.querySelectorAll(".graphs-grid > *")];
     globalThis.__conversationEditor = document.querySelector(".source-surface .cm-content").cmView.rootView.view;
   });
+  if (process.env.SWARM_CONVERSATION_HEADER_ONLY === "1") {
+    stage = "unified read-only conversation header";
+    const assertHeader = async () => {
+      const header = await run(() => {
+        const h = document.querySelector('.agent-conversation-header'), strip = h.querySelector('[role="tablist"]');
+        const box = h.getBoundingClientRect(), nav = strip.getBoundingClientRect();
+        const icons = [...h.querySelectorAll('.conversation-actions button')].map((button) => {
+          const r = button.getBoundingClientRect();
+          return { name: button.getAttribute('aria-label'), svg: !!button.querySelector('svg'), text: button.textContent,
+            x: r.x, right: r.right, y: r.y, bottom: r.bottom, width: r.width, height: r.height };
+        });
+        return { duplicate: !!document.querySelector('.conversation-heading'),
+          labels: [...h.querySelectorAll('[role="tab"]')].map((e) => e.textContent),
+          box: { x: box.x, right: box.right, y: box.y, bottom: box.bottom }, navRight: nav.right, icons };
+      });
+      assert.equal(header.duplicate, false);
+      assert(!header.labels.some((label) => /Native agents|^Conversation$/.test(label)));
+      assert.deepEqual(header.icons.map((icon) => icon.name), ['Copy terminal command', 'Worktree', 'Agent details']);
+      assert(header.icons.every((icon) => icon.svg && !icon.text.trim() && icon.width >= 28 && icon.height >= 28
+        && icon.x >= header.navRight && icon.right <= header.box.right && icon.y >= header.box.y && icon.bottom <= header.box.bottom),
+        'Actions are visible icons right of the tabs in one row');
+      return header;
+    };
+    const wide = await assertHeader();
+    await click(textarea); await wc.insertText('Header proof unsent root draft');
+    await run((s) => { globalThis.__headerSenderId = document.querySelector(s).id;
+      globalThis.__headerConversation = document.querySelector('.agent-conversation');
+      globalThis.__headerMessages = document.querySelector('.conversation-messages'); }, textarea);
+    await select(child);
+    await click(textarea); await wc.insertText('Header proof unsent child draft');
+    wc.sendInputEvent({ type: 'keyDown', keyCode: 'Tab', modifiers: ['control', 'shift'] });
+    wc.sendInputEvent({ type: 'keyUp', keyCode: 'Tab', modifiers: ['control', 'shift'] }); await paint();
+    await until(async () => await current() === root.id && await draft() === 'Header proof unsent root draft', 'Ctrl-Shift-Tab restores root draft');
+    // SessionSteering deliberately renders no textarea during a target read.
+    // Its stable useId and retained parent/list prove owner identity, not a DOM
+    // textarea identity that the existing loading behavior does not promise.
+    assert.equal(await run((s) => document.querySelector(s).id === globalThis.__headerSenderId
+      && document.querySelector('.agent-conversation') === globalThis.__headerConversation
+      && document.querySelector('.conversation-messages') === globalThis.__headerMessages, textarea), true);
+    await fs.writeFile(path.join(evidence, 'unified-header-wide.png'), (await wc.capturePage()).toPNG());
+    // Simulate a narrow dock without changing any product state or selection.
+    await run(() => { document.querySelector('.agent-interaction-dock').style.width = '320px'; }); await paint();
+    const compact = await assertHeader(); assertReadable(await layout());
+    await fs.writeFile(path.join(evidence, 'unified-header-compact.png'), (await wc.capturePage()).toPNG());
+    await click(".conversation-actions [aria-label='Agent details']");
+    assert.equal(await current(), root.id); assert.equal(await draft(), 'Header proof unsent root draft');
+    assert.deepEqual(await source(), retained); assert.deepEqual(errors, []); assert.equal(sends.length, 0);
+    // Save only the disposable source after retention checks, then normal owned close.
+    await click('.file-state button');
+    await until(() => run(() => document.querySelector('.file-state')?.classList.contains('file-saved')), 'save disposable source');
+    await fs.writeFile(path.join(evidence, 'proof.json'), JSON.stringify({ ok: true, elapsedMs: Date.now() - started,
+      actualRegisteredRead: true, headerOnly: true, modelTurns: 0, actualMessagesSent: 0, interceptedSendRequests: sends.length,
+      sameSender: true, nativeKeyboardCycle: true, draftsSourceAndCamerasRetained: true, wide, compact, rendererErrors: errors }));
+    await until(() => fs.access(path.join(evidence, 'close-request')).then(() => true, () => false), 'capture complete');
+    app.quit(); return;
+  }
   stage = "caret during background observation";
   const readsBeforeCaret = detailResponses, caretStarted = Date.now(), caret = [];
   await run(() => { globalThis.__conversationEditorState = globalThis.__conversationEditor.state; });

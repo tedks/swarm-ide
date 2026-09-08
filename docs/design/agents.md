@@ -84,7 +84,12 @@ focus back from another agent, source file or dialog. Unavailable sessions remai
 disabled. These are presentation rules, not a new sender or delivery guarantee.
 
 Native trusted conversations, approvals, forks, new drafts and saved history
-remain mounted in the secondary **Native agents / New** tab. Legacy stored runs
+remain mounted behind the **Agent tools** icon, not a permanent generic category.
+An opened draft gets a Draft tab; explicit native-run selection keeps its controls
+reachable. Registered tabs and their selected Terminal, Worktree and Details
+icons share one header, with no repeated conversation title. Terminal only copies
+the validated command. Closing the last registered tab shows a selection prompt
+without selecting another agent or discarding any draft. Legacy stored runs
 keep their individual tabs; the competing old run-list mount is removed. Exact
 obsolete isolated-policy capability text stays suppressed when trusted controls
 exist, while operation errors remain visible. This changes presentation, not
@@ -159,6 +164,12 @@ view until explicitly reopened. It never stops an agent, clears its outgoing
 messages, or sends an instruction. Temporary core recovery retains the open and
 dismissed sets; only an observed registry can remove a registration. Status badges
 use the core's shared lifecycle, not another renderer classifier.
+When no enabled conversation tab remains, Agent tools stays keyboard-accessible.
+The optional `SWARM_CONVERSATION_HEADER_ONLY=1` mode of the existing owned
+conversation smoke check reads real registrations and checks the single header,
+320px icon layout and retained drafts with no Send request. Its loading path
+retains the sender component and stable field ID; it does not promise a DOM
+textarea while selected-session detail is absent.
 
 Ctrl-Tab / Ctrl-Shift-Tab cycles the dock's visible conversations and native-run
 tabs while focus is inside the agent pane. The selection lands on the chosen tab;

@@ -20,6 +20,7 @@ current liveness, and the open outcome document must follow refreshed data.
 - [x] Focused observer/Work Log/cockpit checks pass; native implementation review is CLEAN.
 - [x] Fresh packaged real-registry/saved-outcome proof passes on owned virtual X11, with no model turn or renderer error.
 - [x] Pushed implementation a331716 in PR121, recorded accomplishments and synced Ditz.
+- [x] Normally composed ROOT-reviewed 1216f59 (PR120 header and PR119 Activity) with PR121; focused joined checks and native integration review pass.
 - [ ] ROOT normal landing/adoption and check of the original operator-window status report (swarm-agent-status-window).
 
 ## Surprises & Discoveries
@@ -67,6 +68,15 @@ independently recorded as a pre-correction RED.
 The later proof-only evidence-label correction names before/after summary
 equality and driver model actions precisely; the original evidence JSON is kept
 unchanged, and that naming-only delta did not repeat the GUI journey.
+
+The landing continuation normally joins only ROOT-cleared 1216f59. App conflicts
+keep the realm-pinned Activity selection and its event/overview distinction beside
+the shared Work Log observation and selected outcome ID. The activity document
+combines both descriptions; automatic plan/CSS/agent-doc joins are additive. The
+unified header and composer are unchanged from that reviewed input. Both TypeScript
+boundaries and eleven focused mounted test files pass in one 19.001s Bazel run;
+native review of the integration delta is CLEAN. No GUI/model/full-suite replay
+or new lifecycle diagnosis accompanies this composition.
 
 ## Context and Orientation
 

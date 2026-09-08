@@ -32,6 +32,23 @@ Codex `gpt-5.6-luna`. It writes deduplicated Ditz accomplishment notes through
 the CLI. F7 supplies the
 separate granular whole-fleet Activity stream.
 
+The central Activity overview uses the same current fleet snapshots as the dock;
+it does not create another timer. Opening the overview clears only an inspected
+raw event. Selecting a particular event deliberately keeps its recorded text and
+patch open as newer operations arrive. Returning to Activity shows those newer
+rows. Event navigation requires the current registered session/worktree, and a
+repository, world or core change clears the inspected selection. Bounded tail
+eviction alone does not revoke a still-registered worktree.
+An agent without a registered worktree can still be opened as a conversation,
+but its recorded file event cannot offer a working-file inspection.
+
+The central header Refresh reads the selected tab's source: the existing external
+observer for Activity, `changelog.read` for Saved summaries, and the explicit
+GitHub reader for Pull requests. Busy state and notices stay with that source;
+switching views neither starts a summarizer nor polls GitHub. Background data
+does not choose a tab or move keyboard focus. A delayed saved-entry reveal opens
+its details but leaves focus alone if the operator has resumed typing elsewhere.
+
 The pipeline is: known registered transcript tails → meaningful
 turn boundaries → one summary → human outcome entries in `.swarm/work-log.json`.
 Its modules are [protocol/work-log.ts](../../protocol/work-log.ts), [core/work-log/service.ts](../../core/work-log/service.ts) and
@@ -57,7 +74,8 @@ Unmatched user-authored rows stay intact; missing transcripts are not guessed.
 The repair works while summarization is stopped and never re-bills old history.
 
 `App.tsx` owns the existing `useWorkLog` observation and mounts its panel once in
-`AgentDock`, immediately left of Activity. The rail and pure `WorkLogEntryDetail`
+`AgentDock`, immediately left of Activity and independent of the agent sidebar's
+scrolling/folding. The rail and pure `WorkLogEntryDetail`
 reuse that same observation. App stores the selected outcome ID, not a frozen
 entry object, so a repaired state or newly recorded flag appears in an already
 open document. Temporary recovery keeps a closable placeholder for that ID; it
@@ -104,10 +122,16 @@ actual App with retained editor, cursor, focus and graph instances.
 `//tools/live-observers:unit` checks raw operation ordering, originating-session
 activation and refresh retention; `//tools/build-resources:regressions` checks
 truthful counts, progress, examples and preserved source state.
+`//tools/operator-cockpit:activity-refresh` checks central per-source refresh,
+client-published rows, explicit overview/event selection, current registration
+and workspace identity, and retained editor/composer/graph state.
 `//tools/activity-usability:smoke` exercises the packaged application with two
 explicitly labelled private JSONL proof fixtures on an owned virtual desktop.
 It checks raw event timestamps, keyboard settings and retained source/draft/cameras;
 those recorded operations are not executed commands or model responses.
+The optional `//tools/activity-usability:central-refresh` journey extends that
+same harness with controlled transcript appends, automatic central publication
+and actual Refresh/overview navigation. It does not execute those operations.
 
 See [logical changelog](../logical-changelog.md) for saved-report behavior and
 [the operator plan](../swarm-operator-hour.md) for the new online Work Log.
