@@ -27,9 +27,10 @@ not mounted; that is not evidence that a declaration exists there.
 
 ## Decision Log
 
-Keep the existing 64 KiB total index and 128-node bounds. Increase only the
-source mapping allowance, keeping docs separately bounded, and test the actual
-committed index explicitly. Preserve every legitimate mapping. Export one plan
+Keep the existing 64 KiB total index and 128-node bounds. On direct user feedback,
+remove per-component source/document counts rather than repeatedly raising them;
+collapse long lists in presentation while retaining every mapping. Test the actual
+committed index explicitly. Export one plan
 navigation controller so the cockpit can compose a practical layout without
 separate selections or extra reads. Build navigation uses observed target
 identity; absent observations are unavailable rather than guessed paths.

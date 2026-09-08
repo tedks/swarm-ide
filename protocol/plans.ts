@@ -7,7 +7,7 @@ import { isTaskSourcePath, TASK_LIMITS, TaskIdSchema } from "./tasks";
 export const PLAN_INDEX_PATH = ".swarm/plans.json" as const;
 export const PLAN_LIMITS = {
   indexBytes: 64 * 1024, nodes: 128, idBytes: 128, titleBytes: 256,
-  pathsPerNode: 16, taskIdsPerNode: 32, contextRefsPerNode: 16,
+  taskIdsPerNode: 32, contextRefsPerNode: 16,
   pathBytes: TASK_LIMITS.pathBytes, noteBytes: 512,
 } as const;
 
@@ -18,7 +18,9 @@ const text = (maximum: number, minimum = 0) => z.string().min(minimum).max(maxim
   .refine((value) => !/[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/u.test(value), "Invalid Unicode plan text");
 const id = z.string().min(1).max(PLAN_LIMITS.idBytes).regex(/^[A-Za-z0-9_-]+(?::[A-Za-z0-9_-]+)*$/);
 const path = text(PLAN_LIMITS.pathBytes, 1).refine(isTaskSourcePath, "A canonical repository-relative path is required");
-const paths = z.array(path).max(PLAN_LIMITS.pathsPerNode);
+// The whole index is byte-bounded. A large but valid component must not make
+// the entire design unavailable; reference disclosure is a presentation choice.
+const paths = z.array(path);
 export const PlanBuildLabelSchema = z.string().max(256).regex(/^\/\/(?:[A-Za-z0-9_.+-]+\/)*[A-Za-z0-9_.+-]*:[A-Za-z0-9_.+/-]+$/)
   .refine((value) => !value.split(/[/:]/).some((part) => part === "." || part === ".."), "Canonical local Bazel label required");
 const PlanNodeSchema = z.object({
