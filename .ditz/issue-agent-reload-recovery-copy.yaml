@@ -1,15 +1,16 @@
 id: agent-reload-recovery-copy
-title: Polish local agent reload recovery notices and empty actions
-desc: 'Nonblocking Anthropic W2B final nits at63def45: clear-text control can be no-op
-  when only unresolved receipts remain and its loss-decision copy is broad; stale
-  observed clear may say newer intent when draft was closed/text emptied; obsolete
-  read notice can replace newer pending-read notice; loading-screen veto notice is
-  not displayed and work-rail wording is location-specific; all read failures use
-  absence wording even transport/storage errors. Safety predicates, no-replay/status
-  and explicit discard remain independent and tested. Polish in a bounded presentation
-  pass with renderer-reload-notice-reasons; avoid expanding W2B into lifecycle/source
-  persistence. Stale selected detail intentionally stays stale after dropped snapshot
-  until explicit Refresh agent state or event; guard discard still works.'
+title: Clarify agent reload notices and avoid controls that do nothing
+desc: Follow up on nonblocking Anthropic W2B review comments at 63def45. Clearing
+  text can do nothing when only unresolved receipts remain, and the discard warning
+  is too broad. A stale clear action can report newer work even after the draft was
+  closed or emptied. An old read notice can replace a newer pending-read notice. The
+  loading screen does not show the refresh-blocking notice; work-rail copy assumes
+  one location; and all read failures look like missing data, including transport
+  and storage errors. Improve these messages alongside renderer-reload-notice-reasons.
+  Keep the tested safety conditions, no-replay behavior, status handling and explicit
+  discard action unchanged; do not add lifecycle or source-persistence work. After
+  a dropped snapshot, selected details intentionally remain stale until Refresh agent
+  state or a new event; discard still works.
 type: task
 component: default
 release:
@@ -22,4 +23,12 @@ log_events:
 - time: 2026-09-06T04:57:29-00:00
   who: Ted Smith
   what: created
+  comment: ""
+- time: 2026-09-08T04:27:03-00:00
+  who: Ted Smith
+  what: changed title
+  comment: ""
+- time: 2026-09-08T04:27:03-00:00
+  who: Ted Smith
+  what: updated description
   comment: ""
