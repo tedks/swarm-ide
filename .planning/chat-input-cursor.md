@@ -9,22 +9,29 @@ Pressing Enter in a live agent conversation should send the current draft throug
 ## Progress
 
 - [x] (2026-09-08) Read the wave instructions, confirmed the clean designated branch, and started both Ditz issues.
-- [ ] Add focused keyboard regressions and prove the missing behavior.
-- [ ] Implement one shared keyboard handler for registered-session and native Codex chat.
-- [ ] Diagnose a concrete caret cause, fix only a reproduced cause, and check retained editor state.
-- [ ] Run focused Bazel checks and an owned virtual desktop journey, converge native review, push and hand off.
+- [x] (2026-09-08 13:37Z) Four new keyboard behavior tests failed on the original implementation; the invalid/modified-key case already passed.
+- [x] (2026-09-08 13:39Z) Shared keyboard handler mounted in both registered-session and native Codex chat; 61 focused tests and both TypeScript boundaries passed.
+- [x] (2026-09-08 13:41Z) Native review found an interrupted-composition lifecycle case; exact regression failed first, then the corrected 62-test check passed.
+- [x] (2026-09-08 13:42Z) Packaged native keyboard/caret journey passed in 3.868 seconds with zero renderer exceptions and owned cleanup. No separate cursor defect reproduced.
+- [x] (2026-09-08 13:43Z) Native fix-delta review CLEAN; PR109 implementation pushed. Final outcome documentation and ROOT handoff prepared.
 
 ## Surprises & Discoveries
 
 `SessionSteering` currently has no textarea keyboard handler. Its form is the only sender and synchronously locks the shared `SteeringMemory` while a request is pending. Native Codex uses a separate `TrustedLocalPane` textarea and an existing guarded fleet control path. The plan index is already malformed on the starting revision; another department owns that repair, not this increment.
 
+The initial test fixture omitted a required receipt ID and failed TypeScript before behavioral execution; that test-only error was corrected before recording the four-test behavior baseline. The first packaged attempt reached the caret assertions but watched the three-second registry timer for only 1.8 seconds; it failed its own observation assertion with zero renderer errors and complete cleanup. The corrected driver samples the actual successful detail-read counter until a read has completed and a full blink interval has elapsed, within five seconds. Neither failure is a production cursor cause.
+
+The existing persistent composition ref could outlive a textarea removed by observation. A focus reset clears that stale state; a new mounted regression reproduced the bug before correction. CodeMirror suppresses the native caret and draws its own normal 1.2-second animation. Actual packaged samples retained editor identity, the exact editor state and focus during background conversation reads.
+
 ## Decision Log
 
 The keyboard behavior will invoke the enclosing form, not call a new sender. Plain Enter is consumed even when the form cannot send; Shift-Enter and other modified keys remain ordinary editing gestures. Repeated Enter events cannot send. IME composition is tracked, with the browser composition flag and key code 229 retained as compatibility checks. These decisions prevent an input convenience from bypassing delivery authority.
 
+Native review is the only review seat for this wave, per the user's explicit local/Codex-only directive. The interrupted-composition correction was reviewed as a delta and returned CLEAN. No speculative caret setting was changed: the user's remaining cursor report stays open with a concrete negative boundary. Outbox owns the later narrow sender adapter and receipt presentation in its own branch; it must retain this keyboard hook when composing.
+
 ## Outcomes & Retrospective
 
-Work is underway. No cursor cause or model delivery is yet claimed.
+Enter/Shift-Enter now work in both actual chat components without introducing a sender. Registered-session native keyboard input was exercised in the production desktop bundle using an intercepted uncertain result before core; no message or model turn occurred. The native Codex component used its real mounted fleet control path with controlled bridge responses in focused tests, not a new model run. Cursor observation was stable; a separate reported defect remains unreproduced. The design/graph and layout repairs belong to independent departments.
 
 ## Context and Orientation
 
@@ -50,8 +57,10 @@ Tests use isolated state and disposable owned desktop resources. Preserve existi
 
 Step evidence lives in `/tmp/swarm-ide-usability.BirZCk/chat-input/`. `seam.md` identifies the exact committed API peers can consume. `verification.md` will record commands, observed behavior and remaining limits. The last response uses the assigned completion marker.
 
+`keyboard-baseline.log` records four failures and one pass on the old behavior; `composition-red.log` records one new failure and five passes before focus reset. `final-focused.log` records both type checks and 62 tests. `packaged-corrected/run.e9gQJ3/proof.json` and `caret-observation.json` record the actual native Enter/Shift-Enter and editor samples; `retained-drafts.png` shows the final UI. The first failed driver run remains in `packaged/run.aTBllZ`.
+
 ## Interfaces and Dependencies
 
 The helper depends only on React keyboard/composition event types and refs. It returns textarea event handlers and uses `HTMLFormElement.requestSubmit()` to reach the existing form. It adds no bridge request, provider, dependency or automatic retry. Editor corrections, if warranted, use the existing CodeMirror extensions.
 
-Initial plan recorded before implementation; later evidence will replace hypotheses with observed results.
+Updated after implementation and actual verification to record the two real review findings, their bounded corrections, and the unreproduced cursor boundary. No historical cause or live-delivery claim is inferred from the successful test.
