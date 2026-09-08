@@ -1,0 +1,22 @@
+id: swarm-cross-worktree-briefing-links
+title: Expose registered context links across worktrees
+desc: C7 actual packaged first attempt could not open registered contextPaths from
+  another worktree because core/external-agents.ts still clears contextPaths when
+  session.contextRoot differs from the opened repository. Activity event activation
+  now reads the correct registered worktree through worktree.inspect and passed actual
+  GUI; that valid alternative does not fix the hidden briefing links. Expose cross-worktree
+  briefing paths with their session identity and use existing read-only inspector.
+  Do not map paths into the opened repository.
+type: bugfix
+component: default
+release:
+reporter: Ted Smith <tedks@riseup.net>
+status: unstarted
+disposition:
+creation_time: 2026-09-08T04:26:28-00:00
+references: []
+log_events:
+- time: 2026-09-08T04:26:28-00:00
+  who: Ted Smith
+  what: created
+  comment: ""
