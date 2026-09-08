@@ -5,8 +5,8 @@ type: feature
 component: default
 release:
 reporter: Ted Smith <tedks@riseup.net>
-status: in_progress
-disposition:
+status: closed
+disposition: fixed
 creation_time: 2026-09-08T15:51:45-00:00
 references: []
 log_events:
@@ -41,5 +41,13 @@ log_events:
     cockpit/Work Log checks with both type boundaries. Previous integration hold resolved;
     PR122 ready for ROOT normal landing/adoption. No additional GUI/model or broad
     gate cycle.
+- time: 2026-09-08T16:48:26-00:00
+  who: Ted Smith
+  what: 'closed: fixed'
+  comment: 'Merged PR122: one Workspace home shows components, task dependencies,
+    repository and build/services panes; full documents open beside retained graphs.
+    Old Plan/Code preferences migrate, dirty editor/cursor/cameras remain, and the
+    PR121 shared Work Log integration passed 90 joined tests/types and native review.
+    Actual owned four-pane/Ditz/source journey passed before the narrow integration.'
 blocked_by:
 - swarm-component-graph-stability
