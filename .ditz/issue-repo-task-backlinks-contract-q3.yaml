@@ -1,9 +1,10 @@
 id: repo-task-backlinks-contract-q3
-title: Design explicit revision-pinned file-to-Ditz backlinks
-desc: 'Q3 docs-only contract and bounded Q4 ExecPlan: atomic complete-or-unavailable
-  reverse associations from existing metadata refresh, exact file matching and pinned
-  task navigation. ROOT evaluation required before code. Broad contextual-information
-  and repo-knowledge-navigation remain open.'
+title: Design explicit file-to-Ditz links pinned to an exact revision
+desc: 'Q3 is documentation only: define the contract and a scoped Q4 ExecPlan for
+  reverse file-to-task associations. Existing metadata refresh must provide all associations
+  together or report them unavailable. Require exact file matching and task navigation
+  pinned to the recorded revision. ROOT must evaluate the design before code. Broad
+  contextual-information and repo-knowledge-navigation remain open.'
 type: task
 component: default
 release:
@@ -29,3 +30,11 @@ log_events:
     Local docs scope/whitespace/links/plan checks and independent native light review
     CLEAN. No product implementation, GUI/model/adoption. ROOT evaluates before Q4;
     broad Context/knowledge remain open.'
+- time: 2026-09-08T04:30:37-00:00
+  who: Ted Smith
+  what: changed title
+  comment: ""
+- time: 2026-09-08T04:30:37-00:00
+  who: Ted Smith
+  what: updated description
+  comment: ""
