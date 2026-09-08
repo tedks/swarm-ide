@@ -1,4 +1,4 @@
-import { useState, type CSSProperties } from "react";
+import { useId, useState, type CSSProperties } from "react";
 import type { ExternalAgentSummary } from "../../../protocol/external-agents";
 import type { ExternalClient } from "./client";
 import type { SwarmBridge } from "../../electron/preload";
@@ -51,24 +51,66 @@ export function lineageRows(sessions: ExternalAgentSummary[]): LineageRow[] {
 }
 
 export function ExternalAgentRail({ client, onSelect }: { client: ExternalClient; onSelect(): void }) {
-  const rows = lineageRows(client.snapshot?.sessions ?? []);
-  const maxDepth = rows.reduce((max, row) => Math.max(max, row.depth), 0);
+  const [collapsed, setCollapsed] = useState(new Set<string>());
+  const [showOlder, setShowOlder] = useState(false);
+  const listId = useId();
+  const sessions = client.snapshot?.sessions ?? [];
+  const byId = new Map(sessions.map((session) => [session.id, session]));
+  const withAncestors = (ids: Iterable<string>) => {
+    const keep = new Set<string>();
+    for (const id of ids) {
+      let session = byId.get(id);
+      while (session && !keep.has(session.id)) {
+        keep.add(session.id);
+        session = session.ancestry === "registered-parent" && session.parentId ? byId.get(session.parentId) : undefined;
+      }
+    }
+    return keep;
+  };
+  // This is a recency view, not a completion classifier. Unknown creation times
+  // remain visible; neither availability nor read-only control implies finished.
+  const recent = new Set(sessions.filter((session) => !Number.isFinite(Date.parse(session.createdAt ?? "")) ||
+    Date.parse(session.lastActivityAt ?? "") >= Date.now() - 30 * 60_000).map((session) => session.id));
+  sessions.filter((session) => Number.isFinite(Date.parse(session.createdAt ?? "")))
+    .sort(newestForkFirst).slice(0, 7).forEach((session) => recent.add(session.id));
+  if (client.selected) recent.add(client.selected);
+  const keep = withAncestors(recent);
+  const selectedAncestors = withAncestors(client.selected ? [client.selected] : []);
+  if (client.selected) selectedAncestors.delete(client.selected);
+  const olderCount = sessions.filter((session) => !keep.has(session.id)).length;
+  const rows = lineageRows(showOlder ? sessions : sessions.filter((session) => keep.has(session.id)))
+    .map((row) => ({ ...row, folded: collapsed.has(row.session.id) && !selectedAncestors.has(row.session.id) }));
+  let foldedDepth: number | undefined;
+  const visibleRows = rows.filter((row) => {
+    if (foldedDepth !== undefined && row.depth > foldedDepth) return false;
+    foldedDepth = row.hasChildren && row.folded ? row.depth : undefined;
+    return true;
+  });
+  const maxDepth = visibleRows.reduce((max, row) => Math.max(max, row.depth), 0);
   return <section className="external-agents" aria-label="External supervised sessions">
     <header><strong>Agents</strong><button disabled={client.busy} onClick={() => { void client.refresh(); }} aria-label="Refresh external sessions">↻</button></header>
-    {rows.length ? <div className="external-lineage-scroll"><ul aria-label="Fork lineage" style={{ minWidth: `${maxDepth * lineageStep + 190}px` }}>{rows.map(({ session, depth, ancestorTrunks, lastSibling, hasChildren }) =>
+    {rows.length ? <div className="external-lineage-scroll"><ul id={listId} aria-label="Fork lineage" style={{ minWidth: `${maxDepth * lineageStep + 190}px` }}>{visibleRows.map(({ session, depth, ancestorTrunks, lastSibling, hasChildren, folded }) =>
       <li key={session.id} style={{ "--lineage-indent": `${depth * lineageStep}px` } as CSSProperties} data-session={session.id} data-depth={depth}>
         <span className="external-lineage-lines" aria-hidden="true">
           {ancestorTrunks.map((continues, level) => continues ? <span key={level} className="external-lineage-trunk" style={{ left: `${level * lineageStep + 8}px` }} /> : null)}
           {depth > 0 ? <><span className="external-lineage-branch" style={{ left: `${(depth - 1) * lineageStep + 8}px` }} />
             {!lastSibling ? <span className="external-lineage-tail" style={{ left: `${(depth - 1) * lineageStep + 8}px` }} /> : null}</> : null}
-          {hasChildren ? <span className="external-lineage-stem" /> : null}
-          <span className={`external-lineage-node${depth === 0 ? " external-lineage-root" : ""}`} />
+          {hasChildren && !folded ? <span className="external-lineage-stem" /> : null}
+          {!hasChildren ? <span className={`external-lineage-node${depth === 0 ? " external-lineage-root" : ""}`} /> : null}
         </span>
+        {hasChildren ? <button className="external-fork-toggle" aria-expanded={!folded} aria-controls={listId}
+          aria-label={`${folded ? "Expand" : "Collapse"} forks of ${session.label}`} disabled={selectedAncestors.has(session.id)}
+          title={selectedAncestors.has(session.id) ? "Keeping the selected session visible" : undefined}
+          onClick={() => setCollapsed((prior) => { const next = new Set(prior); if (next.has(session.id)) next.delete(session.id); else next.add(session.id); return next; })}>
+          <span aria-hidden="true">{folded ? "▸" : "▾"}</span>
+        </button> : null}
         <button aria-label={`Inspect external agent ${session.label}`} aria-pressed={client.selected === session.id} onClick={() => { onSelect(); void client.read(session.id); }}>
           <span>{session.label}<small>{session.evidence === "synthetic" ? "synthetic · " : ""}{session.status === "unavailable" ? "unavailable" : session.ancestry === "unknown-parent" ? "parent not registered" : session.ancestry === "cycle" ? "invalid cyclic ancestry" : `fork depth ${depth}`}</small></span>
         </button>
       </li>)}</ul></div> : <p className="external-caption">{client.busy ? "Reading registrations…" : "No observed sessions. Supply an operator registry to connect existing harnesses."}</p>}
     {client.notice ? <p role="status">{client.notice}</p> : null}
+    {olderCount ? <button className="external-older-toggle" aria-expanded={showOlder} aria-controls={listId}
+      onClick={() => setShowOlder((prior) => !prior)}><span aria-hidden="true">{showOlder ? "▾" : "▸"} </span>Older sessions ({olderCount})</button> : null}
   </section>;
 }
 

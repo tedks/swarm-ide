@@ -59,6 +59,7 @@ describe("external observer presentation and lifecycle", () => {
     const client = { snapshot: { status: "observed" as const, observedAt: at, message: "Test", sessions: input }, detail: null, selected: id(8),
       busy: false, notice: "", read: vi.fn(async () => {}), refresh: vi.fn(async () => {}), handoff: vi.fn(async () => {}) };
     const view = render(<ExternalAgentRail client={client} onSelect={() => {}} />);
+    fireEvent.click(screen.getByRole("button", { name: /Older sessions/ }));
     const selected = screen.getByRole("button", { name: "Inspect external agent Agent 8" }); selected.focus();
     const changedActivity = [...input].reverse().map((row) => ({ ...row, observedAt: "2030-01-01T00:00:00Z", lastActivityAt: row.id === id(2) ? "2031-01-01T00:00:00Z" : at }));
     view.rerender(<ExternalAgentRail client={{ ...client, snapshot: { ...client.snapshot, sessions: changedActivity } }} onSelect={() => {}} />);
