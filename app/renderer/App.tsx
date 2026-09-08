@@ -55,7 +55,8 @@ import { useFileSearch } from "./repository/file-search";
 import type { RepositorySearchRequest } from "../../protocol/repository-search";
 import { useStartupTopology } from "./startup-topology";
 import { WorkbenchSidebar } from "./WorkbenchSidebar";
-import { TopologyViews } from "./repository/BuildGraphPane";
+import { TopologyViews, type BuildTargetSelection } from "./repository/BuildGraphPane";
+import { resolveBazelReference } from "./bazel-reference";
 import { ResizeDivider } from "./ResizeDivider";
 import type { ContextSubject } from "../../protocol/context";
 import { emptyContextAttention, permitsContextActivation, reduceContextAttention, subjectFromFocus, type AttentionEvent } from "./context/attention";
@@ -144,6 +145,7 @@ export function App() {
   const [contextWidth, setContextWidth] = useState(30), [graphShare, setGraphShare] = useState(43);
   const [graphReframe, setGraphReframe] = useState(0);
   const [showBuildVersion, setShowBuildVersion] = useState(0);
+  const [buildTargetSelection, setBuildTargetSelection] = useState<BuildTargetSelection | null>(null);
   const textWasOpen = useRef(false);
   const { client: agentClient, state: liveAgents } = useAgentWorkbench();
   const agentIntentProtected = protectsAgentIntent(liveAgents);
@@ -1091,6 +1093,21 @@ export function App() {
   const buildGraph = useBuildGraph(snapshot?.project.id, snapshot?.world.id, contextRealm(),
     (activeLens !== "Plan" && (buildGraphVisible || directoryBuildVisible) || !agentContextVisible && contextSubject?.kind === "file") && (!window.swarmLifecycle || lifecycle?.core.phase === "ready"));
   const buildLinks = useMemo(() => buildGraphLinks(buildGraph.observation), [buildGraph.observation]);
+  const openContextBuildTarget = (target: { topologyId: string; id: string }) => {
+    const current = workspaceRef.current.snapshot;
+    if (target.topologyId !== "build" || !current || !buildLinks || contextSubject !== attentionRef.current.subject ||
+      contextSubject?.repositoryId !== current.project.id || contextSubject.worldId !== current.world.id ||
+      buildLinks.repositoryId !== current.project.id || buildGraph.observation?.worldId !== current.world.id) return;
+    setBuildTargetSelection({ id: target.id, repositoryId: buildLinks.repositoryId, revision: buildLinks.revision, nonce: ++navigationIntent.current });
+    setActiveLens("System");
+  };
+  const openEditorReference = (path: string, reference: string): boolean => {
+    const current = workspaceRef.current.snapshot;
+    if (!current || buildLinks?.repositoryId !== current.project.id || buildGraph.observation?.worldId !== current.world.id) return false;
+    const resolved = resolveBazelReference(path, reference, buildLinks);
+    if (!resolved) return false;
+    openLinkedFile(resolved.path); return true;
+  };
   const captureIndex = useMemo(() => indexCapture(buildLinks, buildGraph.observation?.worldId), [buildLinks, buildGraph.observation?.worldId]);
   const contextSections = snapshot ? composeContext(contextSubject, { snapshot, files: fileTabs, service: serviceIndex, capture: captureIndex,
     realm: contextRealm(), session: contextSession, tasks, ready: observedCoreGeneration === coreGenerationRef.current && (!window.swarmLifecycle || lifecycle?.core.phase === "ready") }) : [];
@@ -1325,7 +1342,7 @@ export function App() {
         </nav></OverflowStrip> : null}
         <div hidden={activeLens === "Plan"} inert={activeLens === "Plan"} tabIndex={-1} className={`graphs-grid ${textOpen ? "is-sidebar" : "is-active"}`}>{snapshot.graphs.map((graph) => {
           const pane = <GraphPane key={graph.topologyId} graph={graph} mockAgents={demo.graphs} mockGraphVersion={demo.graphVersion} buildLinkSnapshot={graph.directory ? buildLinks : undefined} onBuildLinksVisibility={graph.directory ? setDirectoryBuildVisible : undefined} buildGraphStatus={buildGraph.observation?.status} focus={snapshot.focus} mappings={snapshot.mappings} reframeVersion={graphReframe} interfaceZoom={zoomPercent} onFocus={selectFocus} onActivate={graph.topologyId === "service" ? activateDefinition : undefined} onInspectFocus={(focus) => { ++navigationIntent.current; inspectGraph(focus); setSelectedConnection(null); void invoke({ type: "focus.select", requestId: requestId(), protocolVersion: PROTOCOL_VERSION, focus }); }} onNavigateDirectory={graph.directory ? enterDirectory : undefined} onConnectionFocus={(connection) => selectConnection(connection, graph.topologyId)} onReconcile={() => { void reconcile(); }} reconciliationRunning={reconciliationRunning} repositoryCameraIntent={graph.directory ? repository.cameraIntent : undefined} />;
-          return graph.topologyId === "service" ? <TopologyViews key={graph.topologyId} service={pane} focusedFile={snapshot.focus.domain === "repo" && snapshot.focus.path && snapshot.focus.key === `file:${snapshot.focus.path}` ? snapshot.focus.path : activeFile?.path ?? null} showBuildVersion={showBuildVersion} capture={buildLinks} observation={buildGraph.observation} onRefresh={() => { void buildGraph.refresh(); }} onVisibility={setBuildGraphVisible} mockAgents={demo.graphs} mockVersion={demo.graphVersion} onOpenBuild={openLinkedFile} reframeVersion={graphReframe} /> : pane;
+          return graph.topologyId === "service" ? <TopologyViews key={graph.topologyId} service={pane} targetSelection={buildTargetSelection} focusedFile={snapshot.focus.domain === "repo" && snapshot.focus.path && snapshot.focus.key === `file:${snapshot.focus.path}` ? snapshot.focus.path : activeFile?.path ?? null} showBuildVersion={showBuildVersion} capture={buildLinks} observation={buildGraph.observation} onRefresh={() => { void buildGraph.refresh(); }} onVisibility={setBuildGraphVisible} mockAgents={demo.graphs} mockVersion={demo.graphVersion} onOpenBuild={openLinkedFile} reframeVersion={graphReframe} /> : pane;
         })}</div>
         <PlanWorkspace key={`${snapshot.project.id}:${snapshot.world.id}`} visible={activeLens === "Plan"} worldId={snapshot.world.id} repositoryId={snapshot.project.id}
           generation={coreGenerationRef.current} connected={!coreUnavailable && Boolean(window.swarm)} tasks={tasks} client={taskClient}
@@ -1336,6 +1353,7 @@ export function App() {
           {activeFile.status === "loading" ? <div className="source-message">Loading the canonical working file…</div> : <>
             {["conflict", "unknown", "error"].includes(activeFile.status) ? <div className="source-message source-error source-banner"><span>{activeFile.message}</span><button disabled={coreUnavailable || savesInFlightRef.current.has(activeFile.path)} onClick={() => void reloadFile(activeFile.path)}>{activeFile.status === "unknown" ? "Check disk" : "Reload disk"}</button></div> : null}
             {activeFile.revision ? <EditorPane key={activeFile.path} path={activeFile.path} content={activeFile.content} flash={activeFile.flash}
+              onReference={(reference) => openEditorReference(activeFile.path, reference)}
               memory={(() => { let memory = editorMemories.current.get(activeFile.path); if (!memory) { memory = { state: null }; editorMemories.current.set(activeFile.path, memory); } return memory; })()}
               navigation={sourceNavigation?.path === activeFile.path ? sourceNavigation : null}
               onNavigation={acknowledgeSourceNavigation} onChange={(content) => {
@@ -1368,7 +1386,7 @@ export function App() {
         {revealNotice ? <p ref={revealNoticeElement} className="tasks-reveal-notice" role="status" tabIndex={0}>{revealNotice}</p> : null}
         {contextSubject?.kind === "task" ? <div className="artifact-context" data-context-kind="task" data-context-subject={contextSubject.id}><TaskContext returnButtonRef={taskReturnButton} selectedTaskId={contextSubject.id} snapshot={tasks.observation?.snapshot ?? null} detail={tasks.detail?.id === contextSubject.id ? tasks.detail : null} detailRevision={tasks.detailRevision} detailStale={tasks.detailStale || tasks.refreshing || tasks.observation?.status !== "observed" || Boolean(tasks.notice)} reading={tasks.reading} notice={tasks.detailNotice} attachment={taskAttachment(contextSubject.id)} onSelect={openTaskDocument} onReveal={(ref) => { void revealTaskReference(ref); }} onReturnToSource={returnToSourceInformation} onShowDocument={showPinnedTaskDocument} onRefresh={() => { void taskClient.refresh(); }} connected={tasks.connected} generation={coreGenerationRef.current} journal={journal.observation} journalRetained={Boolean(journal.notice) || journal.busy} run={liveAgents.run} runRecords={liveAgents.records} runRetained={liveAgents.detailStale || !liveAgents.connected} onJournal={showJournal} trustedObservation={{ snapshot: trustedObservation, retained: !liveAgents.connected }} onOpenTrustedRun={openTrustedRun} /></div> : <>
         {tasks.selectedTaskId ? <button className="tasks-show-details" onClick={showTaskDetails}>Show task details</button> : null}
-        <ContextPane subject={contextSubject} sections={contextSections} onOpen={openLinkedFile} onTask={(target) => { void inspectBacklink(target); }} onRefreshTasks={() => { void taskClient.refresh(); }} headingRef={sourceInformationHeading} />
+        <ContextPane subject={contextSubject} sections={contextSections} onOpen={openLinkedFile} onGraph={openContextBuildTarget} onTask={(target) => { void inspectBacklink(target); }} onRefreshTasks={() => { void taskClient.refresh(); }} headingRef={sourceInformationHeading} />
         </>}
         {demo.context ? <MockContext focus={contextSubject && "path" in contextSubject ? contextSubject.path : contextSubject && "id" in contextSubject ? contextSubject.id ?? "No task selected" : "Nothing selected"} /> : null}
         </> : null}
