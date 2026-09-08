@@ -1,0 +1,11 @@
+const assert = require("node:assert/strict"), fs = require("node:fs"), path = require("node:path");
+const root = process.argv[2];
+const proof = JSON.parse(fs.readFileSync(path.join(root, "proof.json")));
+const close = JSON.parse(fs.readFileSync(path.join(root, "postclose.json")));
+assert(proof.ok && proof.controlledSynthetic && proof.packaged && proof.modelTurns === 0);
+assert(proof.nativeExplicitSend && proof.literalArgv && proof.queuedReceipt && proof.staleRejected && proof.closedPaneRejected);
+assert(proof.sourceAndCamerasRetained);
+assert.deepEqual(proof.rendererErrors, []);
+assert(close.observedProcessSurvivedAppClose && close.ownedTmuxCleaned);
+assert.equal(close.desktopCode, 0);
+console.log("Controlled synthetic session steering passed: native Send, literal argv, queue receipt, stale/closed rejection, source retention and owned process survival. No model turn or consumption claim.");

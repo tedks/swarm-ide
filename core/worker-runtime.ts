@@ -218,7 +218,9 @@ process.parentPort?.on("message", async (event) => {
         if (shuttingDown) throw new Error("Shutting down");
         post(parseCoreResponseForRequest(ok(requestId, provider.snapshot(), undefined, undefined, undefined, undefined, undefined, external), request));
       } catch {
-        post(fail(requestId, "EXTERNAL_OBSERVER_UNAVAILABLE", "External observation or existing-window identity is unavailable. No agent was launched or messaged."));
+        post(fail(requestId, "EXTERNAL_OBSERVER_UNAVAILABLE", request.type === "externalAgents.send"
+          ? "Message delivery could not be confirmed. Inspect the target conversation; no automatic retry was sent."
+          : "External observation or existing-window identity is unavailable. No agent was launched or messaged."));
       }
       return;
     }

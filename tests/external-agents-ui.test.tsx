@@ -115,7 +115,7 @@ describe("external observer presentation and lifecycle", () => {
     await screen.findByText("Synthetic example — not a real agent run");
     expect(onSelect).toHaveBeenCalledTimes(1);
     expect(request.mock.calls.map(([r]) => r.type)).toEqual(["externalAgents.snapshot", "externalAgents.read"]);
-    expect(screen.getByText("Read-only observation. This view observes existing sessions; launching runs is a separate action.")).toBeTruthy();
+    expect(screen.getByText("Observe an existing session or deliberately send it an instruction. Launching new runs is separate.")).toBeTruthy();
     const log = screen.getByRole("list", { name: "Recorded agent worklog" });
     expect(within(log).getAllByRole("listitem").map((item) => item.querySelector("p")?.textContent)).toEqual(detail(1).entries.map((entry) => entry.text));
     expect(within(log).queryByRole("button")).toBeNull(); expect(within(log).queryByRole("link")).toBeNull();

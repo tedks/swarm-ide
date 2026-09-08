@@ -1,0 +1,9 @@
+.session-steering { margin: 14px 0; padding: 10px; border: 1px solid #3b5b51; border-radius: 5px; font-size: 12px; }
+.session-steering h3 { margin: 0 0 8px; font-size: 13px; }
+.session-steering p { line-height: 1.5; overflow-wrap: anywhere; }
+.session-steering code { overflow-wrap: anywhere; }
+.session-steering label { display: block; margin-bottom: 5px; }
+.session-steering textarea { box-sizing: border-box; display: block; width: 100%; resize: vertical; color: #dce8e3; background: #14201e; border: 1px solid #567b73; border-radius: 4px; padding: 7px; font: inherit; }
+.session-steering textarea:focus-visible { outline: 2px solid #77c9bb; outline-offset: 2px; }
+.session-steering textarea:disabled { opacity: .6; }
+.session-steering [data-delivery-status="delivery-unknown"], .session-steering [data-delivery-status="rejected"] { color: #eac28e; }
