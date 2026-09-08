@@ -1,5 +1,5 @@
 id: demo-polish-task-density-20260907
-title: Expose task titles above sidebar provenance chrome
+title: Show task titles before source details in the sidebar
 desc: ""
 type: task
 component: default
@@ -33,3 +33,11 @@ log_events:
     caution and exact interactions preserved. Native convergence, quality1643/focused47
     and actual owned packaged CLI-Ditz search/filter/disclosure/compact keyboard proof
     accepted. No inherited resize-fix or live-agent claim.
+- time: 2026-09-08T04:29:09-00:00
+  who: Ted Smith
+  what: changed title
+  comment: ""
+- time: 2026-09-08T04:29:09-00:00
+  who: Ted Smith
+  what: updated description
+  comment: ""
