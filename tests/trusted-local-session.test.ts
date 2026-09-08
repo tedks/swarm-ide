@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { TrustedLocalSession } from "../core/agents/trusted-local-session";
+import { TrustedSnapshotSchema } from "../protocol/trusted-local";
 import type { CodexTransportSink } from "../core/agents/codex-app-server";
 
 const flush = async () => { for (let i = 0; i < 12; i++) await Promise.resolve(); };
@@ -42,6 +43,90 @@ function fixture(cleanup: "confirmed" | "unknown" = "confirmed") {
 }
 
 describe("trusted-local app-server conversation", () => {
+  it("publishes readable activity without changing snapshot shape or leaking provider payloads", async () => {
+    const f = fixture(); await f.running();
+    const beforeKeys = Object.keys(f.session.snapshot()); f.changed.mockClear();
+    const params = { threadId: "thread", turnId: "turn-1" };
+    const command = { type: "commandExecution", id: "cmd", status: "inProgress", command: "TOKEN=private-secret command", commandActions: [{ type: "read", path: "secret" }], aggregatedOutput: "private-secret" };
+    f.notify("item/started", { ...params, item: command });
+    const running = f.session.activity().find((entry) => entry.kind === "command")!;
+    expect(running).toMatchObject({ status: "running", turnId: "turn-1", summary: "Reading files (shell command)" });
+    expect(f.changed).toHaveBeenCalled();
+    f.notify("item/completed", { ...params, item: { ...command, status: "completed", exitCode: 0 } });
+    expect(f.session.activity().find((entry) => entry.id === running.id)).toMatchObject({ at: running.at, status: "completed", summary: "Reading files (shell command) — completed (exit 0)" });
+    f.notify("item/completed", { ...params, item: { type: "fileChange", id: "patch", status: "completed", changes: [{ path: "/repo/private-secret", diff: "+private-secret" }] } });
+    f.notify("item/completed", { ...params, item: { type: "mcpToolCall", id: "mcp", status: "failed", tool: "private-secret", arguments: "private-secret", error: { message: "private-secret" } } });
+    expect(f.session.activity().map((entry) => entry.summary)).toContain("File changes (1 file) — completed");
+    expect(f.session.activity().map((entry) => entry.summary)).toContain("MCP tool — failed");
+    expect(JSON.stringify(f.session.activity())).not.toContain("private-secret");
+    expect(f.session.snapshot().status).toBe("running");
+    expect(Object.keys(f.session.snapshot())).toEqual(beforeKeys);
+    const copy = f.session.activity(); copy[0]!.summary = "mutated"; copy.splice(1);
+    expect(f.session.activity()[0]!.summary).not.toBe("mutated"); f.complete();
+  });
+  it("fences early and stale activities and never regresses a completed item or turn", async () => {
+    const f = fixture(); await f.setup();
+    const item = { type: "commandExecution", id: "same", status: "completed", exitCode: 7 };
+    const params = { threadId: "thread", turnId: "turn-1", item };
+    f.notify("item/completed", { ...params, threadId: "elsewhere" });
+    f.notify("item/completed", params); f.complete();
+    await f.reply("turn/start", { turn: { id: "turn-1" } }); await f.started;
+    expect(f.session.activity().filter((entry) => entry.kind === "command")).toHaveLength(1);
+    expect(f.session.activity().find((entry) => entry.kind === "command")).toMatchObject({ status: "failed", summary: "Shell command — failed (exit 7)" });
+    const before = f.session.activity();
+    f.notify("item/started", { ...params, item: { ...item, status: "inProgress" } });
+    expect(f.session.activity()).toEqual(before);
+    const next = f.session.send("next");
+    f.notify("item/completed", params);
+    await f.reply("turn/start", { turn: { id: "turn-2" } }); await next;
+    f.notify("item/started", { ...params, turnId: "turn-2", item: { ...item, status: "inProgress" } });
+    const commands = f.session.activity().filter((entry) => entry.kind === "command");
+    expect(commands).toHaveLength(2); expect(commands[0]!.id).not.toBe(commands[1]!.id);
+    f.complete("turn-2", "interrupted");
+    expect(f.session.activity().filter((entry) => entry.status === "running")).toEqual([]);
+    expect(f.session.activity().at(-1)!.summary).toContain("outcome unconfirmed");
+  });
+  it("uses tool lifecycle evidence, not result bodies or arbitrary tool names", async () => {
+    const f = fixture(); await f.running();
+    const emit = (method: string, item: Record<string, unknown>) => f.notify(method, { threadId: "thread", turnId: "turn-1", item });
+    emit("item/started", { type: "webSearch", id: "web", query: "private" });
+    expect(f.session.activity().at(-1)).toMatchObject({ kind: "tool", status: "running", summary: "Web search" });
+    emit("item/completed", { type: "webSearch", id: "web", query: "private" });
+    emit("item/completed", { type: "dynamicToolCall", id: "dynamic", status: "completed", success: false, arguments: "private" });
+    emit("item/completed", { type: "collabAgentToolCall", id: "child", tool: "spawnAgent", status: "completed", agentsStates: { child: { status: "running" } } });
+    expect(f.session.activity().at(-2)).toMatchObject({ status: "failed", summary: "Dynamic tool — failed" });
+    expect(f.session.activity().at(-1)).toMatchObject({ status: "completed", summary: "Spawn agent request — completed" });
+    expect(f.session.snapshot().status).toBe("running");
+    emit("item/started", { type: "commandExecution", id: "pending", status: "inProgress" });
+    f.sink.error(); await flush();
+    expect(f.session.activity().some((entry) => entry.status === "running")).toBe(false);
+    expect(f.session.activity().at(-1)!.summary).toContain("outcome unconfirmed");
+  });
+  it("bounds activity count and encoded bytes while preserving sticky terminal evidence", async () => {
+    const f = fixture(); await f.running();
+    for (let i = 0; i < 300; i++) f.notify("item/completed", { threadId: "thread", turnId: "turn-1", item: {
+      type: "mcpToolCall", id: `tool-${i}`, status: "completed", tool: "é".repeat(1000), arguments: { secret: "private" },
+    } });
+    expect(TrustedSnapshotSchema.shape.activities.safeParse(f.session.activity()).success).toBe(true);
+    expect(f.session.activity().length).toBeLessThanOrEqual(100);
+    expect(Buffer.byteLength(JSON.stringify(f.session.activity()))).toBeLessThanOrEqual(64 * 1024);
+    expect(JSON.stringify(f.session.activity())).not.toContain("\ufffd");
+    const before = f.session.activity();
+    f.notify("item/started", { threadId: "thread", turnId: "turn-1", item: { type: "mcpToolCall", id: "tool-0", status: "inProgress" } });
+    expect(f.session.activity()).toEqual(before); f.complete();
+  });
+  it("does not use inherited command-action labels and bounds terminal growth for long identities", async () => {
+    const f = fixture(); await f.setup(); const turnId = "\\".repeat(256);
+    await f.reply("turn/start", { turn: { id: turnId } }); await f.started;
+    f.notify("item/started", { threadId: "thread", turnId, item: { type: "commandExecution", id: "prototype", status: "inProgress", commandActions: [{ type: "toString" }] } });
+    expect(f.session.activity().at(-1)!.summary).toBe("Shell command");
+    for (let i = 0; i < 180; i++) f.notify("item/started", { threadId: "thread", turnId, item: { type: "mcpToolCall", id: `tool-${i}`, status: "inProgress" } });
+    f.sink.error(); await flush();
+    expect(f.session.snapshot().status).toBe("failed");
+    expect(f.session.activity().length).toBeGreaterThan(0);
+    expect(f.session.activity().every((entry) => entry.status === "failed" && entry.summary.includes("outcome unconfirmed"))).toBe(true);
+    expect(Buffer.byteLength(JSON.stringify(f.session.activity()))).toBeLessThanOrEqual(64 * 1024);
+  });
   it("inherits thread settings exactly and preserves explicit model only at turn start", async () => {
     const f = fixture(); await f.setup("chosen-model");
     expect(f.sent.map((message) => message.method)).toEqual(["initialize", "initialized", "thread/start", "turn/start"]);
