@@ -1,0 +1,113 @@
+# Native child conversations from a completed trusted run
+
+This living ExecPlan follows `.planning/PLANS.md`.
+
+## Purpose / Big Picture
+
+An operator can fork a ready IDE-owned Codex conversation at its last successful
+completed turn. The new conversation inherits actual Codex history but has its
+own run identity, input, Stop control and retained lineage. Both conversations
+share the displayed directory; this is not a Git worktree or filesystem sandbox.
+The initial deliverable is the typed backend plus a small independent UI control;
+mounting that control requires ROOT to release W6's renderer ownership.
+
+## Progress
+
+- [x] (2026-09-08 01:40Z) Read current runtime, storage and wire contracts; inspect
+  installed Codex 0.153.4 generated thread/fork schemas.
+- [ ] Add compatible typed fork request, completed-boundary capability and lineage.
+- [ ] Prove lifecycle, correlation, duplicate and legacy boundaries locally.
+- [ ] Run one explicitly bounded real parent/child proof and native review.
+- [ ] Push reviewed result, report exact visible join and leave ROOT to land.
+
+## Surprises & Discoveries
+
+Installed ThreadForkParams has inclusive lastTurnId, excludeTurns and
+deferGoalContinuation. Thread reports forkedFromId; parentThreadId instead names
+native subagent ancestry and must not be confused with a fork parent. There is
+no persistExtendedHistory parameter in this installed schema.
+
+## Decision Log
+
+Use only an observed successful completed boundary, never an active or recovered
+history-only session. The provider pins lastTurnId, so later parent activity need
+not mutate the selected boundary. The child receives a new explicit instruction
+once after the returned distinct thread ID and forkedFromId are validated.
+Deferring inherited goal continuation prevents an automatic turn before that
+instruction. No runtime permissions, tool or approval overrides are introduced.
+
+The renderer supplies a one-use childToken for correlation and recovery after a
+lost acknowledgement. Persist requested lineage before creating a provider;
+mark it confirmed only after the provider has acknowledged actual ancestry.
+Parent task metadata is inherited context, not the child's assigned task: the
+child's taskReference stays null. Existing preparations remain untouched.
+
+## Outcomes & Retrospective
+
+Implementation and proof pending. ROOT owns merge, final Ditz closure and app
+adoption. No claim of isolated worktrees, external ROOT transcript cloning or
+automatic ticket completion belongs to this slice.
+
+## Context and Orientation
+
+`core/agents/trusted-local.ts` routes a bounded fleet of eight live and twenty
+retained conversations. `trusted-local-session.ts` owns each Codex app-server
+connection and its JSON-RPC requests. `trusted-local-store.ts` retains private
+observations without recreating providers on restart. `protocol/trusted-local.ts`
+defines validated renderer requests; `protocol/schema.ts` correlates their
+responses and reports uncertain mutations on bridge loss.
+
+## Plan of Work
+
+Add a `trusted.fork` request with explicit parent token/thread/turn, child token,
+instruction and optional normal model. Add optional fork lineage on run summaries
+and a nullable selected-run fork point. The service admits the child durably and
+reserves capacity before asynchronous setup. Session start chooses thread/fork
+instead of thread/start, validates actual response ancestry and shared directory,
+then sends the instruction once. Existing Stop, shutdown and history restoration
+continue to apply independently to each owned session. Add an isolated renderer
+form only after the backend seam is known; W6 files remain untouched until cleared.
+
+## Concrete Steps
+
+Work only in `/home/tedks/Projects/swarm-ide/trusted-child-forks`.
+Materialize with `nix develop --command pnpm install --frozen-lockfile`.
+Run `nix develop --command bazel test //tools/trusted-forks:unit --jobs=3`
+and `nix develop --command bazel build //:desktop-bundle --jobs=3`.
+The manual live target requires explicit environment authorization and an owned
+private evidence directory; ordinary tests never start a model.
+
+## Validation and Acceptance
+
+Controlled tests must reject stale/busy/unknown parents and duplicate child
+tokens, preserve capacity through pending setup, distinguish ancestry mismatch
+from confirmed forks, handle late acknowledgements and cancellation without
+replay, retain lineage through storage/restart and preserve legacy records.
+The real proof may create at most two conversations and send at most three model
+turns in its own initially empty Git repository. A benign sentinel known only to
+the parent must appear in the child's answer, with distinct thread IDs and exact
+ancestry. Stopping the child must not stop the parent. Both owners must close.
+This is provider/backend evidence, not full GUI evidence. Any UI proof uses an
+owned virtual desktop (:157/55237), never ROOT's managed display.
+
+## Idempotence and Recovery
+
+An admitted child token is never replayable, even when setup fails or its reply
+is lost. Restart loads observations only. A manual proof uses an exclusive
+consumed marker to prevent accidental repeat; uncertain cleanup preserves the
+owned directory for diagnosis. No user worktree or external agent is touched.
+
+## Artifacts and Notes
+
+Step evidence lives in `/tmp/swarm-ide-self-hosting.wkSErV/child-forks`.
+Installed schemas were generated read-only into
+`/tmp/swarm-ide-codex-fork-schema.V8xa9U/typescript/v2`.
+
+## Interfaces and Dependencies
+
+Reuse TrustedLocalService, TrustedLocalSession, existing owned transport and
+normal installed Codex. Optional fields preserve old consumers and storage.
+No new package dependency, harness, config override or global agent skill edit.
+
+Initial plan recorded before implementation; update with actual evidence and
+review findings, not inferred success.
