@@ -102,6 +102,11 @@ ExecPlans for non-trivial work follow the format in
 
 ## Repo specifics
 
+- Keep the living system design in `docs/design/` and `.swarm/plans.json` aligned
+  with touched components: update the corresponding document, graph links and
+  actual Bazel target/input mappings in the same PR. Implementation and reviewer
+  prompts must check that scoped invariant; mark unimplemented designs planned.
+
 - The repository is licensed under GNU AGPLv3.
 - The renderer is unprivileged. Filesystem, process, PTY, Git, Bazel, agent,
   deployment, and metrics capabilities belong behind the typed local-core bridge.
