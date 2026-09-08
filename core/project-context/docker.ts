@@ -25,16 +25,19 @@ function contains(root: string, path: string): boolean {
 }
 function cancelled(signal: AbortSignal): void { if (signal.aborted) throw new Error("Cancelled"); }
 
-/** Filesystem metadata can block on NFS/FUSE. Stop awaiting it on cancellation;
- * unlike a spawned CLI, the underlying read grants no process lifetime to own. */
+let nativeMetadataPending = false;
+/** A cancelled NFS/FUSE read may still occupy a native filesystem worker. Keep
+ * admission closed until that read settles, so refreshes cannot accumulate it. */
 export function readDockerFilesystem<T>(read: () => Promise<T>, signal: AbortSignal): Promise<T> {
   return new Promise((resolve, reject) => {
     if (signal.aborted) { reject(new Error("Cancelled")); return; }
+    if (nativeMetadataPending) { reject(new Error("Previous Docker metadata read is still pending")); return; }
+    nativeMetadataPending = true;
     const clean = () => signal.removeEventListener("abort", abort);
     const abort = () => { clean(); reject(new Error("Cancelled")); };
     signal.addEventListener("abort", abort, { once: true });
-    try { read().then((value) => { clean(); resolve(value); }, (error) => { clean(); reject(error); }); }
-    catch (error) { clean(); reject(error); }
+    try { read().then((value) => { nativeMetadataPending = false; clean(); resolve(value); }, (error) => { nativeMetadataPending = false; clean(); reject(error); }); }
+    catch (error) { nativeMetadataPending = false; clean(); reject(error); }
   });
 }
 

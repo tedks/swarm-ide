@@ -170,15 +170,19 @@ describe("read-only project Docker observation", () => {
     expect(await discoverDockerContainers(root, controller.signal, execute)).toMatchObject({ scan: { status: "unavailable", message: "Container scan cancelled" }, containers: [] });
   });
 
-  it("releases never-resolving filesystem reads on abort and does not start reads after cancellation", async () => {
+  it("bounds unresolved native metadata across aborts and admits reads again only after it settles", async () => {
     const controller = new AbortController();
-    const read = vi.fn(() => new Promise<string>(() => {}));
+    let settle!: (value: string) => void;
+    const read = vi.fn(() => new Promise<string>((resolve) => { settle = resolve; }));
     const waiting = readDockerFilesystem(read, controller.signal);
     const rejected = expect(waiting).rejects.toThrow("Cancelled");
     controller.abort(); await rejected;
     expect(read).toHaveBeenCalledTimes(1);
     await expect(readDockerFilesystem(read, controller.signal)).rejects.toThrow("Cancelled");
+    for (let refresh = 0; refresh < 10; refresh++) await expect(readDockerFilesystem(read, new AbortController().signal)).rejects.toThrow("still pending");
     expect(read).toHaveBeenCalledTimes(1);
+    settle("finished"); await Promise.resolve();
+    await expect(readDockerFilesystem(async () => "new read", new AbortController().signal)).resolves.toBe("new read");
   });
 
   it("does not interpret no verified ownership as stopped services", async () => {
