@@ -86,14 +86,16 @@ test its exact pinned version. Unsupported metadata fails visibly, not by
 silently skipping an issue. Unused fields, including people/logs, are never sent
 to the renderer; bounded ordinary values can be ignored after syntax checks.
 
-Prototype ceilings: 256 issue blobs plus project metadata; 64 KiB per blob;
+Reader ceilings (updated after implementation): no fixed issue-count cap; 64 KiB per blob;
 16 MiB total input; depth 16 and 8,192 syntax nodes per blob; 256-byte ID and
 component; 512-byte title; 16 KiB description; 32 entries in each dependency
 direction and 32 file references; 1,024-byte link path and 512-byte note. Count
 UTF-8 bytes. Publish at most 512 KiB of summaries and 64 KiB for one detail.
 An exceeded ceiling is `limited`, not “all tasks loaded.” Do not silently shorten
-the description or drop refs to fit. A future indexed reader can lift the roster
-ceiling; this prototype is not yet a Google-scale task index.
+the description or drop refs to fit. Git commit/tree objects remain bounded to
+128 KiB each; batch header allowances are derived from the selected entries,
+not a count-sized constant. Large backlogs can still exceed byte or time budgets;
+this prototype is not yet a Google-scale task index.
 
 One scan at a time, no queued refresh backlog, owned Git subprocesses with a
 5-second command / 10-second whole-observation deadline and bounded output.

@@ -13,9 +13,12 @@ independent repair and adopts it; no shared app or user metadata test writes.
 
 - [x] (2026-09-08) Selected authorized new `fix/task-reader-count` in the existing worktree, based on current origin/master `f9df9b8`; old branch preserved.
 - [x] (2026-09-08) Located count gates in Git reader, YAML batch parser and task snapshot schema, plus fixed Git batch framing allowances.
-- [ ] Add >256 direct regression and capture its old-code failure.
-- [ ] Remove count gates and derive bounded Git batch framing from selected tree entries.
-- [ ] Run focused reader/provider/contract/types and read-only current-repo proof, native review to clean, push PR and Ditz handoff.
+- [x] (2026-09-08 15:00Z) Four count regressions RED with134 existing passes before implementation.
+- [x] (2026-09-08) Removed count gates and derived Git batch framing bounds from selected tree entries.
+- [x] (2026-09-08 15:02Z) First actual read-only Swarm observation:265 issues/497336 bytes/all265 rows,131 closed,330ms;139 initial focused tests/types passed.
+- [x] (2026-09-08 15:06Z) Fixed native-review reachability-cache finding; deterministic projection deadline1RED/56PASS, then238 focused tests/seven files plus both types PASS17.061s. Native fix-delta CLEAN.
+- [x] (2026-09-08 15:08Z) Corrected-code actual observation:266 issues/498786 bytes/all266 rows,131 closed,230ms; no malformed field violation.
+- [ ] Push PR116 ready, sync Ditz accomplishment note, clean owned resources and hand off to ROOT.
 
 ## Context and Orientation
 
@@ -63,20 +66,42 @@ An old-code >256 rejection must become a complete successful snapshot, while
 oversized/invalid data still fails. No hosted or full legacy suite, physical GUI
 or provider/model turn.
 
+Final reproducible focused command:
+
+    nix develop --command bazel test //tools/demo-syntax:editor-tests --jobs=3 --test_arg=tests/task-reader-git.test.ts --test_arg=tests/task-metadata.test.ts --test_arg=tests/task-provider.test.ts --test_arg=tests/task-contract.test.ts --test_arg=tests/task-cache-budget.test.ts --test_arg=tests/task-client.test.ts --test_arg=tests/task-attachment-eligibility.test.ts --test_output=errors
+
+It passed238 tests/seven files and both TypeScript boundaries in17.061s. The
+separate one-off current-repository proof ran through the same Bazel target with
+`--test_arg=artifacts/task-count-current-proof.test.ts`; its source/output are
+preserved under the step directory, not installed as a metadata-dependent test.
+
 ## Decision Log
 
 Remove the count condition, not raise it. Capacity remains honestly byte/time
 bounded. Derive Git framing bytes from actual selected headers, because a fixed
 32-KiB allowance would merely replace one invisible count ceiling with another.
+Native review found an old quadratic all-pairs dependency-reachability cache
+outside published-cache byte accounting. Keep just one source traversal result
+and check the existing deadline in projection and traversal. This bounds retained
+state and computation without a new count cap or a graph-platform rewrite.
 
 ## Surprises & Discoveries
 
-Pending direct evidence. ROOT measured 263 issue files / 494312 bytes before
-filing the repair; those are not yet this worker's current-repo measurements.
+The actual backlog advanced during independent work: first265 issues/497336 bytes,
+later266/498786. Both direct provider reads succeeded with matching pinned revision
+and complete row counts. No additional malformed-data limit appeared. The original
+four count failures, later deterministic projection timeout failure and corrected
+passes are retained separately; no unchanged failure was retried as a fix.
 
 ## Outcomes & Retrospective
 
-Pending implementation. The list, attachment and UI APIs remain unchanged.
+The reader, parser and schema have no fixed issue-count cap. A700-issue Git/provider
+fixture proves batch framing beyond32KiB and retained data on malformed updates;
+a300-issue parser case retains150 closed tasks; a400-node cyclic/cross-linked
+graph preserves diagnostics. Byte/timeout/shape/path/revision controls remain.
+Native initial review found the reachability issue above; scoped correction
+converged CLEAN. No GUI/model proof, hosted check or whole legacy suite claimed.
+Automatic list refresh and pinned attachment APIs remain unchanged and tested.
 
 ## Idempotence, Recovery and Artifacts
 
@@ -91,3 +116,5 @@ No new dependency, protocol version, provider authority, queue or scheduler.
 Existing summary arrays remain validated and whole-response byte bounded.
 
 Initial narrow count-repair plan, 2026-09-08.
+Updated after count regressions, actual repository reads and the native-review
+projection correction. ROOT remains responsible for normal landing/adoption.

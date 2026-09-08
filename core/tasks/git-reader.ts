@@ -182,10 +182,14 @@ export class TaskGitReader {
         selected.push({ id: match[1]!, blob: entry.oid });
       }
     }
-    if (selected.length > TASK_LIMITS.issues + 1) throw limited();
     selected.sort((a, b) => a.id === null ? -1 : b.id === null ? 1 : a.id < b.id ? -1 : a.id > b.id ? 1 : 0);
     const input = selected.map((entry) => `${entry.blob.hex}\n`).join("");
-    const sizes = await this.command(["cat-file", "--batch-check"], signal, deadline, 32 * 1024, input);
+    // The selected entries are already bounded by the tree byte budget. Allow
+    // their framing, not a fixed allowance that imposes another issue-count cap.
+    // Safe integer width also admits an oversized blob header for preflight.
+    const headerBudget = selected.reduce((sum, entry) =>
+      sum + `${entry.blob.hex} blob ${Number.MAX_SAFE_INTEGER}\n`.length, 0);
+    const sizes = await this.command(["cat-file", "--batch-check"], signal, deadline, headerBudget, input);
     if (sizes.code !== 0) throw unavailable();
     const lines = text(sizes.stdout).split("\n");
     if (lines.pop() !== "" || lines.length !== selected.length) throw malformed();
@@ -199,7 +203,9 @@ export class TaskGitReader {
       if (total > TASK_LIMITS.inputBytes) throw limited();
       return length;
     });
-    const data = await this.command(["cat-file", "--batch"], signal, deadline, total + 32 * 1024, input);
+    const framingBytes = selected.reduce((sum, entry, index) =>
+      sum + `${entry.blob.hex} blob ${lengths[index]}\n`.length + 1, 0);
+    const data = await this.command(["cat-file", "--batch"], signal, deadline, total + framingBytes, input);
     if (data.code !== 0) throw unavailable();
     let offset = 0;
     const result = selected.map((entry, index) => {

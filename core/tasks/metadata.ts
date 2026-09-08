@@ -89,8 +89,10 @@ export async function parseTaskMetadata(input: TaskMetadataInput[], signal: Abor
 }
 
 export async function parseTaskMetadataBatch(input: TaskMetadataInput[], signal: AbortSignal, deadline: number) {
-  if (signal.aborted || !Number.isFinite(deadline) || deadline <= Date.now()) fail("TASK_OBSERVATION_FAILED");
-  if (input.length > TASK_LIMITS.issues + 1) limited();
+  const checkDeadline = () => {
+    if (signal.aborted || !Number.isFinite(deadline) || deadline <= Date.now()) fail("TASK_OBSERVATION_FAILED");
+  };
+  checkDeadline();
   let total = 0;
   const seen = new Set<string>();
   for (const entry of input) {
@@ -129,6 +131,7 @@ export async function parseTaskMetadataBatch(input: TaskMetadataInput[], signal:
   if (new Set(releaseNames).size !== releaseNames.length) malformed();
   const raw = input.flatMap((entry, index) => {
     if (entry.id === null) return [];
+    checkDeadline();
     const doc = record(documents[index]);
     if (id(doc.id) !== entry.id) malformed();
     const blocks = ids(doc.blocks);
@@ -161,20 +164,24 @@ export async function parseTaskMetadataBatch(input: TaskMetadataInput[], signal:
   // Never add the reciprocal record to a returned task; diagnostics only.
   const outgoing = new Map(raw.map((item) => [item.detail.id, new Set(item.blocks.filter((target) => byId.has(target)))]));
   for (const item of raw) for (const source of item.blockedBy) outgoing.get(source)?.add(item.detail.id);
-  const reachability = new Map<string, Set<string>>();
+  // One traversal cache, not an all-pairs table that grows quadratically with
+  // the issue count. Byte-bounded input may still have many connected issues.
+  let reachability: { from: string; visited: Set<string> } | null = null;
   const reaches = (from: string, target: string): boolean => {
-    const retained = reachability.get(from);
-    if (retained) return retained.has(target);
+    if (reachability?.from === from) return reachability.visited.has(target);
     const pending = [from];
     const visited = new Set<string>();
     while (pending.length) {
+      // Abort timers cannot interrupt this synchronous phase, so also check time.
+      checkDeadline();
       const next = pending.pop()!;
       if (!visited.has(next)) { visited.add(next); pending.push(...outgoing.get(next) ?? []); }
     }
-    reachability.set(from, visited);
+    reachability = { from, visited };
     return visited.has(target);
   };
   const details = raw.map((item) => {
+    checkDeadline();
     const dependencies = (values: string[], direction: "blocks" | "blockedBy") => values.map((taskId) => {
       const target = byId.get(taskId);
       const diagnostics: ("missing" | "cyclic" | "asymmetric")[] = [];
@@ -192,6 +199,6 @@ export async function parseTaskMetadataBatch(input: TaskMetadataInput[], signal:
     return TaskDetailSchema.parse(detail);
   }).sort((a, b) => a.id < b.id ? -1 : a.id > b.id ? 1 : 0);
   if (encodedBytes(details) > TASK_LIMITS.cacheBytes) limited();
-  if (signal.aborted || Date.now() >= deadline) fail("TASK_OBSERVATION_FAILED");
+  checkDeadline();
   return { details, activities: new Map(raw.map((item) => [item.detail.id, item.activity])) };
 }

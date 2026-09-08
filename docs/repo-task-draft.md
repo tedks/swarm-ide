@@ -265,7 +265,7 @@ bounded implementation, one explicit prepare/revalidate may scan the existing
 bounded metadata set rather than add a second selective parser/index. Resolve
 the local ref, require equality to M, scan M, parse all supported metadata,
 locate exact full ID, check blob B and resolve the ref again. Preserve current
-256-issue/64-KiB-blob/16-MiB-input/10-second observation/5-second command limits
+64-KiB-blob/16-MiB-input/10-second observation/5-second command limits (no fixed issue-count cap)
 and owned cancellation/disposal. This operation does not replace the task UI
 cache, publish a new selection, install a timer, fetch, run Ditz or read refs'
 target files. No per-keystroke or attention-triggered scan.
