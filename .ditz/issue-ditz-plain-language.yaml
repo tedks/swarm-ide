@@ -23,3 +23,13 @@ log_events:
   who: Ted Smith
   what: started
   comment: ""
+- time: 2026-09-08T04:33:10-00:00
+  who: Ted Smith
+  what: commented
+  comment: Reviewed 211 issue titles/descriptions in four batches and applied 179
+    plain-language updates through ditz set; left 32 unchanged, including ambiguous
+    titles that could not safely be simplified. Blank descriptions stayed blank. Checked
+    every update preserved IDs, status/type, references, dependency links and all
+    previous log events. No concurrent wording changes were overwritten. The tiny
+    tour follow-up is PR90; stable task links are unchanged. Original exports, proposals
+    and before/after checks are in the H7 private step directory.
