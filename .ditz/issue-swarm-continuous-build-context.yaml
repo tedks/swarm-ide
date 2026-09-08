@@ -14,3 +14,9 @@ log_events:
   who: Ted Smith
   what: created
   comment: ""
+- time: 2026-09-08T13:28:44-00:00
+  who: Ted Smith
+  what: blocks swarm-usability-join
+  comment: ""
+blocks:
+- swarm-usability-join
