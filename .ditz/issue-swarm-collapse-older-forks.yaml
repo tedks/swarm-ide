@@ -1,0 +1,20 @@
+id: swarm-collapse-older-forks
+title: Collapse older agent forks in the sidebar
+desc: Make the live agent hierarchy easier to scan by collapsing older fork branches/groups
+  while retaining newest-first ordering, selected-agent ancestry, manual disclosure
+  and deep connectors. Prefer historical/noninteractive older sessions for default
+  collapse, but do not equate silence, disconnection or read-only access with completed
+  work. No activity-stream or message-authority changes.
+type: feature
+component: default
+release:
+reporter: Ted Smith <tedks@riseup.net>
+status: unstarted
+disposition:
+creation_time: 2026-09-08T05:30:17-00:00
+references: []
+log_events:
+- time: 2026-09-08T05:30:17-00:00
+  who: Ted Smith
+  what: created
+  comment: ""
