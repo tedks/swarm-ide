@@ -3,45 +3,101 @@ import { PROTOCOL_VERSION, parseCoreResponseForRequest } from "../../../protocol
 import type { BuildGraphObservation } from "../../../protocol/build-graph";
 import type { BuildLinkSnapshot } from "./layers";
 
-/** A single demand timer for coordinated consumers, never tied to camera/focus motion. */
-export function useBuildGraph(repositoryId: string | undefined, worldId: string | undefined, realm: string, enabled: boolean) {
+export interface AutomaticBuildContextOptions {
+  /** Existing working-source revision, never a render/camera counter. */
+  changeToken?: string;
+}
+
+export const BUILD_CONTEXT_TIMING = { changeMs: 2000, pendingMs: 500, cycleMs: 40_000 } as const;
+
+/** One opened-project observation chain. Only pending work is polled. */
+export function useBuildGraph(repositoryId: string | undefined, worldId: string | undefined, realm: string, enabled: boolean,
+  { changeToken }: AutomaticBuildContextOptions = {}) {
   const [observation, setObservation] = useState<BuildGraphObservation>();
   const current = useRef({ repositoryId, worldId, realm, enabled });
   current.current = { repositoryId, worldId, realm, enabled };
-  const serial = useRef(0), pending = useRef(false), queued = useRef(false);
-  const refresh = useCallback(async (force = true) => {
-    if (!repositoryId || !worldId || !window.swarm || !current.current.enabled) return;
-    if (pending.current) { if (force) queued.current = true; return; }
-    const identity = current.current, generation = ++serial.current;
-    pending.current = true;
-    try {
-      const request = { protocolVersion: PROTOCOL_VERSION, requestId: `build-graph:${crypto.randomUUID()}`, type: "buildGraph.observe" as const, repositoryId, worldId, refresh: force };
-      const response = parseCoreResponseForRequest(await window.swarm.request(request), request);
-      if (current.current.repositoryId !== identity.repositoryId || current.current.worldId !== identity.worldId || current.current.realm !== identity.realm || serial.current !== generation) return;
-      if (response.ok && response.buildGraph) setObservation((old) => {
-        const next = response.buildGraph!;
-        if (old?.repositoryId === next.repositoryId && old.worldId === next.worldId && old.generation === next.generation &&
-            old.status === next.status && old.message === next.message && old.graph?.observedAt === next.graph?.observedAt && old.graph?.inputDigest === next.graph?.inputDigest) return old;
-        return next;
-      });
-      else if (!response.ok) setObservation((old) => ({ repositoryId, worldId, generation: old?.generation ?? 0, graph: old?.repositoryId === repositoryId && old?.worldId === worldId ? old.graph : undefined, status: "error", message: response.error.message.slice(0, 512) }));
-    } catch {
-      if (serial.current === generation) setObservation((old) => ({ repositoryId, worldId, generation: old?.generation ?? 0, graph: old?.repositoryId === repositoryId && old?.worldId === worldId ? old.graph : undefined, status: "error", message: "Build graph response unavailable; retained data is not current." }));
-    } finally {
-      if (serial.current === generation) {
-        pending.current = false;
-        if (queued.current) { queued.current = false; void refresh(true); }
+  const controls = useRef<{ refresh(force: boolean): Promise<void>; changed(): void } | undefined>(undefined);
+  const refresh = useCallback(async (force = true) => { await controls.current?.refresh(force); }, []);
+  useEffect(() => {
+    setObservation((old) => old && old.repositoryId === repositoryId && old.worldId === worldId ? { ...old, status: "stale", message: "Core/view lifetime changed; observation requires revalidation." } : undefined);
+    if (!enabled || !repositoryId || !worldId || !window.swarm) return;
+    let disposed = false, foreground = document.hasFocus(), pending = false, queued = false, forceQueued = false;
+    let timer: ReturnType<typeof setTimeout> | undefined, deadline = 0;
+    const valid = () => !disposed && current.current.enabled && current.current.repositoryId === repositoryId &&
+      current.current.worldId === worldId && current.current.realm === realm;
+    const active = () => valid() && foreground && document.visibilityState !== "hidden";
+    const clear = () => { clearTimeout(timer); timer = undefined; };
+    const retain = (status: "error" | "stale", message: string) => {
+      if (valid()) setObservation((old) => ({ repositoryId, worldId, generation: old?.generation ?? 0,
+        graph: old?.repositoryId === repositoryId && old.worldId === worldId ? old.graph : undefined, status, message }));
+    };
+    const schedule = (milliseconds: number) => {
+      clear();
+      if (active()) timer = setTimeout(() => { timer = undefined; void run(false); }, milliseconds);
+    };
+    const begin = (milliseconds: number) => {
+      if (!active()) return;
+      deadline = Date.now() + BUILD_CONTEXT_TIMING.cycleMs;
+      if (pending) { queued = true; return; }
+      schedule(milliseconds);
+    };
+    async function run(force: boolean): Promise<void> {
+      if (!active()) return;
+      if (pending) { queued = true; forceQueued ||= force; return; }
+      clear(); pending = true;
+      let follow = false;
+      try {
+        const request = { protocolVersion: PROTOCOL_VERSION, requestId: `build-graph:${crypto.randomUUID()}`, type: "buildGraph.observe" as const, repositoryId: repositoryId!, worldId: worldId!, refresh: force };
+        const response = parseCoreResponseForRequest(await window.swarm!.request(request), request);
+        if (!valid()) return;
+        if (response.ok && response.buildGraph) {
+          const next = response.buildGraph;
+          follow = next.status === "refreshing" || next.status === "stale";
+          setObservation((old) => old?.repositoryId === next.repositoryId && old.worldId === next.worldId &&
+            old.generation === next.generation && old.status === next.status && old.message === next.message &&
+            old.graph?.observedAt === next.graph?.observedAt && old.graph?.inputDigest === next.graph?.inputDigest ? old : next);
+        } else retain("error", response.ok ? "Build graph response unavailable." : response.error.message.slice(0, 512));
+      } catch { retain("error", "Build graph response unavailable; retained data is not current."); }
+      finally {
+        pending = false;
+        if (active()) {
+          if (queued) {
+            const forceNext = forceQueued; queued = false; forceQueued = false;
+            if (forceNext) { deadline = Date.now() + BUILD_CONTEXT_TIMING.cycleMs; void run(true); }
+            else begin(BUILD_CONTEXT_TIMING.changeMs);
+          } else if (follow) {
+            if (Date.now() >= deadline) retain("stale", "Build context is still updating. Refresh to check again.");
+            else schedule(BUILD_CONTEXT_TIMING.pendingMs);
+          }
+        }
       }
     }
-  }, [repositoryId, worldId, realm]);
+    const controller = { async refresh(force: boolean) { deadline = Date.now() + BUILD_CONTEXT_TIMING.cycleMs; await run(force); },
+      changed() { begin(BUILD_CONTEXT_TIMING.changeMs); } };
+    controls.current = controller;
+    const blur = () => { foreground = false; clear(); queued = false; forceQueued = false; };
+    const focus = () => { foreground = true; begin(BUILD_CONTEXT_TIMING.changeMs); };
+    const visibility = () => {
+      if (document.visibilityState === "hidden") { clear(); queued = false; forceQueued = false; }
+      else begin(BUILD_CONTEXT_TIMING.changeMs);
+    };
+    window.addEventListener("blur", blur); window.addEventListener("focus", focus);
+    document.addEventListener("visibilitychange", visibility);
+    deadline = Date.now() + BUILD_CONTEXT_TIMING.cycleMs;
+    void run(false);
+    return () => {
+      disposed = true; clear();
+      if (controls.current === controller) controls.current = undefined;
+      window.removeEventListener("blur", blur); window.removeEventListener("focus", focus);
+      document.removeEventListener("visibilitychange", visibility);
+    };
+  }, [repositoryId, worldId, realm, enabled]);
+  const previousToken = useRef(changeToken);
   useEffect(() => {
-    ++serial.current; pending.current = false; queued.current = false;
-    setObservation((old) => old && old.repositoryId === repositoryId && old.worldId === worldId ? { ...old, status: "stale", message: "Core/view lifetime changed; observation requires revalidation." } : undefined);
-    if (!enabled) return;
-    void refresh(false);
-    const timer = setInterval(() => { void refresh(false); }, 500);
-    return () => { clearInterval(timer); ++serial.current; pending.current = false; };
-  }, [repositoryId, worldId, realm, enabled, refresh]);
+    if (previousToken.current === changeToken) return;
+    previousToken.current = changeToken;
+    controls.current?.changed();
+  }, [changeToken]);
   return { observation: observation && observation.repositoryId === repositoryId && observation.worldId === worldId ? observation : undefined, refresh };
 }
 
