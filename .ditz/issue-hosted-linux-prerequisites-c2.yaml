@@ -1,5 +1,5 @@
 id: hosted-linux-prerequisites-c2
-title: Land bounded hosted Linux prerequisite diagnostics and operator boundary
+title: Add limited hosted Linux prerequisite checks and document operator limits
 desc: ""
 type: task
 component: testing
@@ -45,5 +45,13 @@ log_events:
   who: Ted Smith
   what: 'closed: fixed'
   comment: fixed
+- time: 2026-09-08T04:30:02-00:00
+  who: Ted Smith
+  what: changed title
+  comment: ""
+- time: 2026-09-08T04:30:02-00:00
+  who: Ted Smith
+  what: updated description
+  comment: ""
 blocks:
 - agent-policy-boundary-hosted-seed-pipe
