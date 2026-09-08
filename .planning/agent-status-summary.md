@@ -14,10 +14,12 @@ current liveness, and the open outcome document must follow refreshed data.
 
 - [x] Created fix/agent-status-summary from reviewed6e652e19, preserving the old branch.
 - [x] Read ROOT findings: H7's saved outcome is already completed; App retains a stale object copy.
-- [ ] Reproduce actual typed lifecycle publication before changing any classifier.
-- [ ] Share the existing single Work Log controller and add current-status/summary rail behavior.
-- [ ] Prove selected outcome refresh, exact session matching and no duplicated request lane.
-- [ ] Complete focused native review/checks, PR push and ROOT handoff.
+- [x] Read-only typed publication from the existing bundle reports ROOT working and H7 completed; no classifier change justified.
+- [x] Share the existing single Work Log controller and add current-status/summary rail behavior.
+- [x] Prove selected outcome refresh, exact session matching and no duplicated request lane.
+- [x] Focused observer/Work Log/cockpit checks pass; native implementation review is CLEAN.
+- [x] Fresh packaged real-registry/saved-outcome proof passes on owned virtual X11, with no model turn or renderer error.
+- [ ] Push final implementation, record accomplishments and hand off for ROOT normal landing/adoption.
 
 ## Surprises & Discoveries
 
@@ -25,6 +27,17 @@ The old panel uses historical entry.state as a RunStatus badge and App stores th
 whole selected entry. Both can display stale history as if it were current work.
 ROOT's read-only investigation found valid current lifecycle events and intact
 wire fields, but did not localize the reported all-unknown behavior.
+
+A fresh ExternalAgentService instantiated from the managed worker bundle returned
+ROOT working and H7 completed through its typed response. A fresh packaged desktop
+also showed those states, including H7's summary and conversation selection. Neither
+probe intercepted the existing core process's IPC or inspected the user's exact
+window; the original all-unknown observation remains unlocalized.
+
+The optional living-design check confirmed the new mappings, but an unchanged
+repository-source-list test expects a hardcoded 20 links while the reviewed base
+already contains 22. That run is 80 PASS / 1 FAIL, not an all-green design suite.
+This change does not touch the repository node's source list or that test.
 
 ## Decision Log
 
@@ -36,7 +49,22 @@ Only the rail portion of ExternalAgents.tsx and narrow App Work Log joins are ow
 
 ## Outcomes & Retrospective
 
-Pending implementation and direct evidence. ROOT owns normal merge and adoption.
+Implemented a single shared Work Log observation, exact-session latest summaries
+and refreshed outcome documents selected by ID. Historical rows now describe past
+turns instead of showing a current-work badge. No parser, protocol, core producer,
+historical text or Ditz-recording semantics changed. ROOT owns normal merge and
+adoption, including checking the existing window after adopting the reviewed build.
+
+Two new summary cases first failed while 141 observer checks passed (one existing
+real-send test stayed skipped). The final focused run passed 143 observer tests,
+28 Work Log tests and 30 cockpit tests with both TypeScript boundaries. These
+counts overlap and are not a full-suite claim. The packaged scenario passed in
+914 ms (1.729 s harness), zero renderer errors, cleanup complete on :90/55422.
+The selected-detail refresh regression was added with implementation; it was not
+independently recorded as a pre-correction RED.
+The later proof-only evidence-label correction names before/after summary
+equality and driver model actions precisely; the original evidence JSON is kept
+unchanged, and that naming-only delta did not repeat the GUI journey.
 
 ## Context and Orientation
 
