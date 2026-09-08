@@ -1,196 +1,205 @@
 // @vitest-environment node
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import type { WorkspaceSnapshot } from "../protocol/schema";
-import { RealWorkspaceProvider, SERVICE_TOPOLOGY_TARGET, type ProviderDependencies } from "../core/provider";
-import { ServiceTopologyArtifactSchema, type ServiceTopologyArtifact } from "../core/service-topology";
+import { RealWorkspaceProvider, type ProviderDependencies } from "../core/provider";
+import type { ServiceDiscovery } from "../core/service-discovery";
 
-const artifact: ServiceTopologyArtifact = {
-  schemaVersion: 1,
-  service: { id: "service:fraud-check", displayName: "FraudCheck" },
-  providedInterfaces: [{ id: "interface:fraud-check.assess", name: "Assess", requestType: "checkout.fraud.v1.FraudAssessmentRequest", responseType: "checkout.fraud.v1.FraudAssessmentDecision" }],
-  requiredInterfaces: [{ id: "interface:payments.authorize", name: "Payments.Authorize", serviceId: "service:payments", requestType: "checkout.payments.v1.PaymentAuthorizationRequest", responseType: "checkout.payments.v1.PaymentAuthorizationDecision" }],
-  owningTarget: "//examples/checkout-world/services/fraudcheck:fraudcheck_sources",
-  implementationPaths: [
-    "examples/checkout-world/services/fraudcheck/fraudcheck.proto",
-    "examples/checkout-world/services/fraudcheck/fraudcheck.ts",
-  ],
-  interfaceDeclarationPaths: [
-    { interfaceId: "interface:fraud-check.assess", path: "examples/checkout-world/services/fraudcheck/fraudcheck.proto" },
-    { interfaceId: "interface:payments.authorize", path: "examples/checkout-world/services/payments/payments.proto" },
-  ],
-  inputDigest: "d".repeat(64),
+const a = "a".repeat(64), b = "b".repeat(64);
+const declaration: ServiceDiscovery = {
+  services: [{ id: "service:alpha", displayName: "Alpha", declarationPath: "services/alpha/service.swarm.json",
+    implementationPaths: ["services/alpha/main.ts"], owningTarget: "//services/alpha:sources",
+    interfaces: [{ id: "interface:alpha.read", name: "Read", role: "provided", path: "services/alpha/api.proto", requestType: "alpha.Request", responseType: "alpha.Response" }] }],
+  dependencies: [], paths: ["services/alpha/service.swarm.json"], issues: [],
 };
-
-function dependencies(
-  fingerprints: string[],
-  build: () => Promise<void> = async () => undefined,
-  readArtifact: ProviderDependencies["readArtifact"] = async () => ({ bytes: Buffer.from(JSON.stringify(artifact)), artifact }),
-): ProviderDependencies {
-  return {
-    register: async (root) => ({ root, id: `repository:${"0".repeat(64)}`, name: "Provider fixture" }),
-    fingerprint: async () => fingerprints.shift() ?? (() => { throw new Error("unexpected fingerprint request"); })(),
-    build: async () => { await build(); return { artifactPath: "/unused/service-topology.json" }; },
-    readArtifact,
-    now: () => "2026-09-05T12:00:00.000Z",
-  };
+const providers: RealWorkspaceProvider[] = [];
+afterEach(() => { providers.splice(0).forEach((provider) => provider.dispose()); vi.useRealTimers(); });
+function dependencies(overrides: Partial<ProviderDependencies> = {}): ProviderDependencies {
+  return { register: async (root) => ({ root, id: "repository:" + "0".repeat(64), name: "Provider fixture" }),
+    fingerprint: async () => a, discover: async () => declaration,
+    now: () => "2026-09-08T12:00:00.000Z", ...overrides };
 }
+async function provider(overrides: Partial<ProviderDependencies> = {}) {
+  const result = await RealWorkspaceProvider.create("/unused", dependencies(overrides)); providers.push(result); return result;
+}
+function deferred<T>() {
+  let resolve!: (value: T) => void;
+  const promise = new Promise<T>((done) => { resolve = done; }); return { promise, resolve };
+}
+const graph = (subject: RealWorkspaceProvider) => subject.snapshot().graphs.find((value) => value.topologyId === "service")!;
 
-describe("real workspace provider", () => {
-  it.each(["core/files.ts", "examples/checkout-world/services/payments/payments.proto"])("does not leak FraudCheck ownership onto %s", async (path) => {
-    const provider = await RealWorkspaceProvider.create("/unused", dependencies(["a".repeat(64), "a".repeat(64)]));
-    await provider.startReconciliation(() => undefined);
-    const snapshot = provider.selectFocus({ ...provider.snapshot().focus, domain: "repo", key: `file:${path}`, path });
-    expect(snapshot.widgets.find((widget) => widget.id === "owning-target")).toBeUndefined();
-    provider.dispose();
-  });
-  it("starts with an honest gray graph and publishes exact yellow then green", async () => {
-    const initialFingerprint = "a".repeat(64);
-    const buildFingerprint = "b".repeat(64);
-    const provider = await RealWorkspaceProvider.create("/unused", dependencies([initialFingerprint, buildFingerprint, buildFingerprint]));
-    const initial = provider.snapshot();
-    expect(initial.reconciliation.status).toBe("gray");
-    expect(initial.graphs.find((graph) => graph.topologyId === "service")?.nodes).toEqual([]);
-    expect(initial.jobs).toEqual([]);
-    expect(JSON.stringify(initial)).not.toMatch(/Gateway|Checkout hardening|deploy:|agent-07|sourceKind":"mock|sourceKind":"runtime/);
+describe("declaration-backed workspace provider", () => {
+  it("registers with honest unavailable evidence without awaiting discovery or fingerprinting", async () => {
+    const fingerprint = vi.fn(async () => a), discover = vi.fn(async () => declaration);
+    const subject = await provider({ fingerprint, discover }), initial = subject.snapshot();
+    expect(fingerprint).not.toHaveBeenCalled(); expect(discover).not.toHaveBeenCalled();
+    expect(initial.reconciliation.status).toBe("gray"); expect(graph(subject).nodes).toEqual([]);
+    expect(initial.jobs).toEqual([]); expect(initial.mappings).toEqual([]);
     expect(initial.revisions.working).toMatchObject({ fingerprint: "", evidence: "unavailable" });
-    await provider.observeWorkingWorld(() => undefined);
-    expect(provider.snapshot().revisions.working).toMatchObject({ fingerprint: initialFingerprint, evidence: "observed" });
+    expect(initial.revisions.built).toEqual({ id: "", sourceFingerprint: "" });
+    expect(initial.serviceContext).toBeUndefined(); expect(initial.serviceDeclarations).toBeUndefined();
+    expect(JSON.stringify(initial)).not.toMatch(/sourceKind":"(?:mock|runtime|build)/);
+  });
 
+  it("publishes yellow then exact source declarations without claiming a build or deployment", async () => {
+    const subject = await provider(), published: WorkspaceSnapshot[] = [];
+    await subject.startReconciliation((_type, snapshot) => published.push(snapshot));
+    expect(published.map((snapshot) => snapshot.reconciliation.status)).toEqual(["yellow", "green"]);
+    const current = subject.snapshot();
+    expect(graph(subject).nodes.map((node) => node.label)).toEqual(["Alpha", "Read"]);
+    expect(graph(subject).edges.map((edge) => edge.kind)).toEqual(["provides"]);
+    expect(graph(subject).provenance.every((item) => item.sourceKind === "repo" && item.version === a)).toBe(true);
+    expect(current.serviceDeclarations).toMatchObject({ status: "current", sourceFingerprint: a, services: declaration.services });
+    expect(current.serviceContext).toBeUndefined(); expect(current.jobs).toEqual([]);
+    expect(current.revisions.built).toEqual({ id: "", sourceFingerprint: "" });
+    expect(current.revisions.deployed).toEqual({ id: "", buildId: "", environment: "not configured" });
+    expect(current.mappings.flatMap((mapping) => mapping.candidates).filter((candidate) => candidate.focus.domain === "repo")
+      .map((candidate) => candidate.revealPath)).toEqual(["services/alpha/service.swarm.json", "services/alpha/main.ts", "services/alpha/api.proto"]);
+  });
+
+  it.each(["core/files.ts", "services/beta/api.proto"])("does not leak declared ownership onto unrelated file %s", async (path) => {
+    const subject = await provider(); await subject.startReconciliation(() => {});
+    const snapshot = subject.selectFocus({ ...subject.snapshot().focus, domain: "repo", key: "file:" + path, path });
+    expect(snapshot.widgets.map((widget) => widget.id)).toEqual(["selected-source"]);
+    expect(snapshot.widgets[0]?.value).toBe(path);
+  });
+
+  it("automatically discovers after a working-world observation and coalesces source changes", async () => {
+    vi.useFakeTimers();
+    const discover = vi.fn(async () => declaration), subject = await provider({ discover, fingerprint: async () => b });
+    await subject.observeWorkingWorld(() => {});
+    subject.markWorkingWorldChanged(a, () => {}); subject.markWorkingWorldChanged(b, () => {});
+    expect(discover).not.toHaveBeenCalled();
+    await vi.advanceTimersByTimeAsync(100);
+    expect(discover).toHaveBeenCalledOnce(); expect(subject.snapshot().reconciliation.status).toBe("green");
+    expect(subject.snapshot().serviceDeclarations?.sourceFingerprint).toBe(b);
+  });
+
+  it("publishes a useful empty current state when no declaration exists", async () => {
+    const subject = await provider({ discover: async () => ({ services: [], dependencies: [], paths: [], issues: [] }) });
+    await subject.startReconciliation(() => {});
+    expect(graph(subject).nodes).toEqual([]); expect(graph(subject).edges).toEqual([]); expect(subject.snapshot().mappings).toEqual([]);
+    expect(subject.snapshot().reconciliation).toMatchObject({ status: "green", message: "No service declarations found" });
+    expect(subject.snapshot().serviceDeclarations).toMatchObject({ status: "current", services: [], issues: [] });
+    expect(subject.snapshot().jobs).toEqual([]);
+  });
+
+  it.each([true, false])("reports a partial first observation with usable services present=%s", async (usable) => {
+    const subject = await provider({ discover: async () => ({ ...declaration, services: usable ? declaration.services : [], issues: ["compose.yaml: invalid declaration"], invalid: true }) });
+    await subject.startReconciliation(() => {});
+    expect(subject.snapshot().reconciliation).toMatchObject({ status: "yellow", lastConsistentFingerprint: "unobserved" });
+    expect(subject.snapshot().reconciliation.message).toContain("compose.yaml");
+    expect(subject.snapshot().serviceDeclarations?.status).toBe("partial");
+    expect(graph(subject).nodes.length).toBe(usable ? 2 : 0);
+  });
+
+  it("retains the last graph, source selection and positions throughout refresh and later failure", async () => {
+    const pending = deferred<ServiceDiscovery>(); let refresh = false;
+    const subject = await provider({ discover: () => refresh ? pending.promise : Promise.resolve(declaration) });
+    await subject.startReconciliation(() => {});
+    const path = "services/alpha/main.ts";
+    subject.selectFocus({ ...subject.snapshot().focus, domain: "repo", key: "file:" + path, path });
+    const previous = structuredClone(graph(subject)); refresh = true;
+    const running = subject.startReconciliation(() => {});
+    await vi.waitFor(() => expect(subject.snapshot().reconciliation.status).toBe("yellow"));
+    expect(graph(subject).nodes).toEqual(previous.nodes); expect(subject.snapshot().focus.path).toBe(path);
+    pending.resolve({ services: [], dependencies: [], paths: [], issues: ["compose.yaml: invalid declaration"], invalid: true }); await running;
+    expect(subject.snapshot().reconciliation.status).toBe("red"); expect(graph(subject).nodes).toEqual(previous.nodes);
+    expect(subject.snapshot().focus.path).toBe(path); expect(subject.snapshot().serviceDeclarations?.services).toEqual(declaration.services);
+  });
+
+  it("retains a usable partial graph when source changes before any completely supported observation", async () => {
+    const subject = await provider({ discover: async () => ({ ...declaration, issues: ["nested/compose.yaml: unsupported include"] }) });
+    await subject.startReconciliation(() => {});
+    expect(subject.snapshot().reconciliation.lastConsistentFingerprint).toBe("unobserved");
+    const previous = graph(subject).nodes.map(({ id, position }) => ({ id, position }));
+    subject.markWorkingWorldChanged(b, () => {});
+    expect(graph(subject).nodes.map(({ id, position }) => ({ id, position }))).toEqual(previous);
+    expect(subject.snapshot().serviceDeclarations?.sourceFingerprint).toBe(a);
+    expect(graph(subject).reconciliation).toBe("yellow");
+  });
+
+  it("publishes usable authored updates with unsupported fields instead of treating partial coverage as invalid data", async () => {
+    let partial = false;
+    const subject = await provider({ discover: async () => partial ? { ...declaration,
+      services: [...declaration.services, { id: "service:beta", displayName: "Beta", declarationPath: "compose.yaml", implementationPaths: [], interfaces: [] }],
+      paths: [...declaration.paths, "compose.yaml"], issues: ["compose.yaml: inherited fields are not shown"] } : declaration });
+    await subject.startReconciliation(() => {}); partial = true;
+    await subject.startReconciliation(() => {});
+    expect(subject.snapshot().reconciliation.status).toBe("yellow");
+    expect(subject.snapshot().serviceDeclarations?.status).toBe("partial");
+    expect(graph(subject).nodes.map((node) => node.label)).toEqual(["Alpha", "Read", "Beta"]);
+  });
+
+  it("reports a first discovery failure without fabricating topology or build jobs", async () => {
+    const subject = await provider({ discover: async () => { throw new Error("Service declaration scan failed"); } });
     const published: WorkspaceSnapshot[] = [];
-    await provider.startReconciliation((_type, snapshot) => published.push(snapshot));
-    expect(published[0]?.reconciliation.status).toBe("yellow");
-    expect(published[0]?.reconciliation.inputFingerprint).toBe(buildFingerprint);
-    expect(published[0]?.jobs[0]?.label).toBe(`bazel build ${SERVICE_TOPOLOGY_TARGET}`);
-    const green = published.at(-1)!;
-    expect(green.reconciliation.status).toBe("green");
-    expect(green.graphs.find((graph) => graph.topologyId === "service")?.nodes.map((node) => node.label)).toEqual(["FraudCheck", "Assess", "Payments.Authorize"]);
-    const serviceGraph = green.graphs.find((graph) => graph.topologyId === "service")!;
-    expect(serviceGraph.nodes.map((node) => [node.label, node.position.x])).toEqual([
-      ["FraudCheck", 310],
-      ["Assess", 20],
-      ["Payments.Authorize", 600],
-    ]);
-    expect(serviceGraph.edges.map((edge) => [edge.source, edge.target, edge.label])).toEqual([
-      ["interface:fraud-check.assess", "service:fraud-check", "handled by"],
-      ["service:fraud-check", "interface:payments.authorize", "calls"],
-    ]);
-    expect(green.widgets.find((widget) => widget.id === "deployment")?.value).toBe("not configured");
-    expect(green.revisions.built.sourceFingerprint).toBe(buildFingerprint);
+    await subject.startReconciliation((_type, snapshot) => published.push(snapshot));
+    expect(published.map((snapshot) => snapshot.reconciliation.status)).toEqual(["yellow", "red"]);
+    expect(subject.snapshot().reconciliation).toMatchObject({ message: "Service declaration scan failed", lastConsistentFingerprint: "unobserved" });
+    expect(graph(subject).nodes).toEqual([]); expect(subject.snapshot().jobs).toEqual([]);
   });
 
-  it("rejects source mutation and retains a prior green graph after later failure", async () => {
-    const a = "a".repeat(64);
-    const b = "b".repeat(64);
-    const c = "c".repeat(64);
-    let shouldFail = false;
-    const deps = dependencies([a, b, b, c], async () => { if (shouldFail) throw new Error("bazel failed"); });
-    const provider = await RealWorkspaceProvider.create("/unused", deps);
-    await provider.observeWorkingWorld(() => undefined);
-    await provider.startReconciliation(() => undefined);
-    expect(provider.snapshot().reconciliation.status).toBe("green");
-    shouldFail = true;
+  it("never publishes declarations for inputs that changed while reading, then automatically retries current inputs", async () => {
+    vi.useFakeTimers(); let samples = 0;
+    const discover = vi.fn(async () => declaration), subject = await provider({ discover, fingerprint: async () => ++samples === 1 ? a : b });
     const published: WorkspaceSnapshot[] = [];
-    await provider.startReconciliation((_type, snapshot) => published.push(snapshot));
-    const red = published.at(-1)!;
-    expect(red.reconciliation.status).toBe("red");
-    expect(red.graphs.find((graph) => graph.topologyId === "service")?.nodes.some((node) => node.label === "FraudCheck")).toBe(true);
-    expect(red.mappings.every((mapping) => mapping.from.revisionId === c)).toBe(true);
+    await subject.startReconciliation((_type, snapshot) => published.push(snapshot));
+    expect(published.some((snapshot) => snapshot.reconciliation.status === "green")).toBe(false);
+    expect(graph(subject).nodes).toEqual([]); expect(subject.snapshot().revisions.working.fingerprint).toBe(b);
+    await vi.advanceTimersByTimeAsync(100);
+    expect(discover).toHaveBeenCalledTimes(2); expect(subject.snapshot().serviceDeclarations?.sourceFingerprint).toBe(b);
+    expect(subject.snapshot().reconciliation.status).toBe("green");
   });
 
-  it("turns a first build or artifact failure red without fabricating a topology", async () => {
-    for (const deps of [
-      dependencies(["a".repeat(64), "b".repeat(64)], async () => { throw new Error("bazel failed"); }),
-      dependencies(["a".repeat(64), "b".repeat(64)], undefined, async () => { throw new Error("artifact is malformed"); }),
-    ]) {
-      const provider = await RealWorkspaceProvider.create("/unused", deps);
-      await provider.observeWorkingWorld(() => undefined);
-      const published: WorkspaceSnapshot[] = [];
-      await provider.startReconciliation((_type, snapshot) => published.push(snapshot));
-      expect(published.map((snapshot) => snapshot.reconciliation.status)).toEqual(["yellow", "red"]);
-      expect(provider.snapshot().reconciliation.lastConsistentFingerprint).toBe("unobserved");
-      expect(provider.snapshot().graphs.find((graph) => graph.topologyId === "service")?.nodes).toEqual([]);
-    }
+  it("revokes green immediately on source change without relabeling old declaration evidence as current", async () => {
+    const subject = await provider(); await subject.startReconciliation(() => {});
+    const nodes = structuredClone(graph(subject).nodes);
+    const published = vi.fn(); subject.markWorkingWorldChanged(b, published);
+    expect(published).toHaveBeenCalledOnce(); expect(published.mock.calls[0]?.[0]).toBe("workspace.changed");
+    expect(subject.snapshot().reconciliation.status).toBe("yellow"); expect(graph(subject).reconciliation).toBe("yellow");
+    expect(graph(subject).inputFingerprint).toBe(a); expect(subject.snapshot().serviceDeclarations?.sourceFingerprint).toBe(a);
+    expect(graph(subject).nodes.map((node) => node.position)).toEqual(nodes.map((node) => node.position));
+    expect(subject.snapshot().mappings.every((mapping) => mapping.from.revisionId === b)).toBe(true);
+    expect(subject.snapshot().revisions.built.sourceFingerprint).toBe("");
   });
 
-  it("turns red instead of green when the workspace changes during a successful build", async () => {
-    const provider = await RealWorkspaceProvider.create("/unused", dependencies(["a".repeat(64), "b".repeat(64), "c".repeat(64)]));
-    await provider.observeWorkingWorld(() => undefined);
-    await provider.startReconciliation(() => undefined);
-    expect(provider.snapshot().reconciliation.status).toBe("red");
-    expect(provider.snapshot().reconciliation.message).toContain("changed during the build");
-  });
-
-  it("revokes green immediately when a saved or observed source fingerprint changes", async () => {
-    const a = "a".repeat(64);
-    const b = "b".repeat(64);
-    const c = "c".repeat(64);
-    const provider = await RealWorkspaceProvider.create("/unused", dependencies([a, b, b]));
-    await provider.observeWorkingWorld(() => undefined);
-    await provider.startReconciliation(() => undefined);
-    const events: Array<{ type: string; snapshot: WorkspaceSnapshot }> = [];
-    provider.markWorkingWorldChanged(c, (type, snapshot) => events.push({ type, snapshot }));
-    expect(events.map((event) => event.type)).toEqual(["workspace.changed"]);
-    expect(provider.snapshot().reconciliation.status).toBe("yellow");
-    expect(provider.snapshot().revisions.working.fingerprint).toBe(c);
-    expect(provider.snapshot().revisions.built.sourceFingerprint).toBe(b);
-    expect(provider.snapshot().graphs.find((graph) => graph.topologyId === "service")?.nodes.some((node) => node.label === "FraudCheck")).toBe(true);
-    expect(provider.snapshot().graphs.find((graph) => graph.topologyId === "service")?.reconciliation).toBe("yellow");
-    expect(provider.snapshot().mappings.every((mapping) => mapping.from.revisionId === c)).toBe(true);
-  });
-
-  it("recovers an observer-caused red state even when the fingerprint is unchanged", async () => {
-    const fingerprint = "a".repeat(64);
-    const provider = await RealWorkspaceProvider.create("/unused", dependencies([fingerprint]));
-    await provider.observeWorkingWorld(() => undefined);
+  it("recovers unavailable observer evidence even when its fingerprint is unchanged", async () => {
+    const subject = await provider(); await subject.observeWorkingWorld(() => {});
     const events: WorkspaceSnapshot[] = [];
-    provider.markWorkingWorldUnknown("git briefly unavailable", (_type, snapshot) => events.push(snapshot));
-    provider.markWorkingWorldChanged(fingerprint, (_type, snapshot) => events.push(snapshot));
+    subject.markWorkingWorldUnknown("git briefly unavailable", (_type, snapshot) => events.push(snapshot));
+    subject.markWorkingWorldChanged(a, (_type, snapshot) => events.push(snapshot));
     expect(events.map((snapshot) => snapshot.reconciliation.status)).toEqual(["red", "yellow"]);
-    expect(provider.snapshot().reconciliation.message).toContain("build to observe");
+    expect(subject.snapshot().revisions.working.evidence).toBe("observed");
+    expect(subject.snapshot().reconciliation.message).toContain("service declarations");
   });
 
-  it("publishes a bounded red state when fingerprint preflight fails", async () => {
-    const provider = await RealWorkspaceProvider.create("/unused", dependencies(["a".repeat(64)]));
-    await provider.observeWorkingWorld(() => undefined);
+  it("bounds a fingerprint preflight failure and never attempts discovery", async () => {
+    const discover = vi.fn(async () => declaration), subject = await provider({ discover, fingerprint: async () => { throw new Error("x".repeat(1000)); } });
     const published: WorkspaceSnapshot[] = [];
-    await expect(provider.startReconciliation((_type, snapshot) => published.push(snapshot))).resolves.toBeUndefined();
-    expect(published.map((snapshot) => snapshot.reconciliation.status)).toEqual(["red"]);
-    expect(provider.snapshot().jobs[0]?.label).toBe(`bazel build ${SERVICE_TOPOLOGY_TARGET}`);
-    expect(provider.snapshot().graphs.find((graph) => graph.topologyId === "service")?.nodes).toEqual([]);
+    await expect(subject.startReconciliation((_type, snapshot) => published.push(snapshot))).resolves.toBeUndefined();
+    expect(published.map((snapshot) => snapshot.reconciliation.status)).toEqual(["red"]); expect(discover).not.toHaveBeenCalled();
+    expect(subject.snapshot().revisions.working.evidence).toBe("unavailable");
+    expect(subject.snapshot().reconciliation.message.length).toBeLessThanOrEqual(460); expect(subject.snapshot().jobs).toEqual([]);
   });
 
-  it("never publishes an older overlapping build after a newer attempt completes", async () => {
-    let releaseFirst!: () => void;
-    let markFirstStarted!: () => void;
-    const firstBuild = new Promise<void>((resolve) => { releaseFirst = resolve; });
-    const firstStarted = new Promise<void>((resolve) => { markFirstStarted = resolve; });
-    let buildNumber = 0;
-    const provider = await RealWorkspaceProvider.create("/unused", dependencies(
-      ["a".repeat(64), "b".repeat(64), "c".repeat(64), "c".repeat(64)],
-      async () => {
-        buildNumber += 1;
-        if (buildNumber === 1) { markFirstStarted(); await firstBuild; }
-      },
-    ));
-    await provider.observeWorkingWorld(() => undefined);
-    const published: WorkspaceSnapshot[] = [];
-    const first = provider.startReconciliation((_type, snapshot) => published.push(snapshot));
-    await firstStarted;
-    await provider.startReconciliation((_type, snapshot) => published.push(snapshot));
-    releaseFirst();
-    await first;
-    expect(provider.snapshot().reconciliation.status).toBe("green");
-    expect(provider.snapshot().reconciliation.epoch).toBe(3);
-    expect(provider.snapshot().reconciliation.inputFingerprint).toBe("c".repeat(64));
-    expect(published.filter((snapshot) => snapshot.reconciliation.status === "green")).toHaveLength(1);
+  it.each(["source-change", "disposed"] as const)("aborts and rejects late discovery publication after %s", async (mode) => {
+    const pending = deferred<ServiceDiscovery>(); let signal!: AbortSignal;
+    const subject = await provider({ discover: async (_root, value) => { signal = value!; return pending.promise; } }), publish = vi.fn();
+    const running = subject.startReconciliation(publish); await vi.waitFor(() => expect(signal).toBeDefined());
+    if (mode === "source-change") subject.markWorkingWorldChanged(b, publish); else subject.dispose();
+    expect(signal.aborted).toBe(true); const before = subject.snapshot(), publications = publish.mock.calls.length;
+    pending.resolve(declaration); await running;
+    expect(subject.snapshot()).toBe(before); expect(publish).toHaveBeenCalledTimes(publications);
+    expect(graph(subject).nodes).toEqual([]);
   });
 
-  it("rejects malformed versions, duplicate ids, escaping paths, and missing provided interfaces", () => {
-    expect(() => ServiceTopologyArtifactSchema.parse({ ...artifact, schemaVersion: 2 })).toThrow();
-    expect(() => ServiceTopologyArtifactSchema.parse({ ...artifact, requiredInterfaces: [{ ...artifact.requiredInterfaces[0]!, id: artifact.providedInterfaces[0]!.id }] })).toThrow("unique");
-    expect(() => ServiceTopologyArtifactSchema.parse({ ...artifact, implementationPaths: ["../escape.ts"] })).toThrow("canonical");
-    expect(() => ServiceTopologyArtifactSchema.parse({ ...artifact, providedInterfaces: [] })).toThrow();
-    expect(() => ServiceTopologyArtifactSchema.parse({ ...artifact, providedInterfaces: [{ ...artifact.providedInterfaces[0]!, id: "service:not-an-interface" }] })).toThrow();
-    expect(() => ServiceTopologyArtifactSchema.parse({ ...artifact, requiredInterfaces: [{ ...artifact.requiredInterfaces[0]!, serviceId: "service:orders" }] })).toThrow("disagree");
+  it("coalesces overlapping manual refreshes into one owned discovery without stranding its result", async () => {
+    const pending = deferred<ServiceDiscovery>(), discover = vi.fn(() => pending.promise), subject = await provider({ discover });
+    const first = subject.startReconciliation(() => {}), second = subject.startReconciliation(() => {});
+    expect(second).toBe(first); await vi.waitFor(() => expect(discover).toHaveBeenCalledOnce());
+    pending.resolve({ ...declaration, issues: ["compose.yaml: unsupported include"] }); await first;
+    expect(subject.snapshot().reconciliation.status).toBe("yellow");
+    expect(subject.snapshot().serviceDeclarations?.issues).toEqual(["compose.yaml: unsupported include"]);
+    expect(subject.snapshot().jobs).toEqual([]);
   });
 });

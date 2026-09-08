@@ -13,19 +13,19 @@ import type { LiveAgentState } from "../app/renderer/agents/live-state";
 import { emptyAgentWorkbench } from "../app/renderer/agents/state";
 import type { TaskAttachmentCandidate } from "../app/renderer/tasks/client";
 import { fixtureV2Draft } from "../fixtures/agent-context-v2";
-import { checkoutFileFocus, initialSnapshot, paymentsFileFocus } from "../fixtures/world";
+import { readerFileFocus, initialSnapshot, writerFileFocus } from "../fixtures/world";
 import { AGENT_LIMITS, type PreparedAgentContext } from "../protocol/agents";
 import { agentTaskBytes, formatRepositoryTask, taskUtf8Bytes, type AgentTaskReference } from "../protocol/agent-task";
 import { CoreResponseSchema, PROTOCOL_VERSION, type CoreRequest, type CoreResponse, type FocusRef } from "../protocol/schema";
 
 type Candidate = TaskAttachmentCandidate;
 type SourceChoice = { focus: FocusRef; isCurrent(): boolean } | null;
-const reference = (commit = "a"): AgentTaskReference => ({ version: 1, worldId: paymentsFileFocus.worldId,
+const reference = (commit = "a"): AgentTaskReference => ({ version: 1, worldId: writerFileFocus.worldId,
   repositoryId: "fixture-only", provider: "ditz", taskId: "task-one", metadataCommit: { algorithm: "sha1", hex: commit.repeat(40) },
   issueBlob: { algorithm: "sha1", hex: "b".repeat(40) } });
 const candidate = (patch: Partial<Candidate> = {}): Candidate => ({ reference: reference(), title: "Pinned fixture task",
   description: "Untrusted fixture prose — no provider contacted.", isCurrent: () => true, ...patch });
-const source = (focus = paymentsFileFocus): Exclude<SourceChoice, null> => ({ focus, isCurrent: () => true });
+const source = (focus = writerFileFocus): Exclude<SourceChoice, null> => ({ focus, isCurrent: () => true });
 const deferred = <T,>() => { let resolve!: (value: T) => void; const promise = new Promise<T>((done) => { resolve = done; }); return { promise, resolve }; };
 const drain = async () => { for (let i = 0; i < 8; i++) await Promise.resolve(); };
 type Pending = ReturnType<typeof deferred<CoreResponse>> & { input: CoreRequest };
@@ -43,7 +43,7 @@ async function connected(checkpoint?: LiveAgentState) {
   const latest = (type: CoreRequest["type"]) => { const call = calls.filter((entry) => entry.input.type === type).at(-1);
     if (!call) throw new Error(`No ${type} request`); return call; };
   const success = (call: Pending, agent: NonNullable<Extract<CoreResponse, { ok: true }>["agent"]>) => call.resolve(CoreResponseSchema.parse({
-    protocolVersion: PROTOCOL_VERSION, requestId: call.input.requestId, ok: true, snapshot: initialSnapshot(paymentsFileFocus), sequence: 1, agent,
+    protocolVersion: PROTOCOL_VERSION, requestId: call.input.requestId, ok: true, snapshot: initialSnapshot(writerFileFocus), sequence: 1, agent,
   }));
   success(latest("agent.snapshot"), { kind: "snapshot", snapshot: { ...emptyAgentWorkbench().snapshot, capabilities } });
   await drain();
@@ -71,48 +71,48 @@ async function prepareFixture(h: Awaited<ReturnType<typeof connected>>, task?: C
 }
 function Draft({ client }: { client: AgentBridgeClient }) {
   const state = useSyncExternalStore(client.subscribe, client.getSnapshot, client.getSnapshot);
-  return <PreparedLaunchDraft client={client} state={state} dirtyPaths={[paymentsFileFocus.path!]} />;
+  return <PreparedLaunchDraft client={client} state={state} dirtyPaths={[writerFileFocus.path!]} />;
 }
 afterEach(() => { cleanup(); vi.restoreAllMocks(); });
 
 describe("deliberate one-slot task attachment client (injected transport, no provider)", () => {
   it("reviews without drafting or requesting, then creates empty instructions at independent explicit source", async () => {
     const h = await connected(); const task = candidate(); const calls = h.calls.length;
-    expect(h.client.proposeTaskAttachment(task, source(checkoutFileFocus))).toBe("review");
+    expect(h.client.proposeTaskAttachment(task, source(readerFileFocus))).toBe("review");
     expect(h.client.getSnapshot().draft).toBeNull();
-    expect(h.client.getSnapshot().taskProposal).toMatchObject({ focus: checkoutFileFocus, reference: task.reference, instructions: "", hasDraft: false });
+    expect(h.client.getSnapshot().taskProposal).toMatchObject({ focus: readerFileFocus, reference: task.reference, instructions: "", hasDraft: false });
     h.client.acceptTaskAttachment("append");
-    expect(h.client.getSnapshot().draft).toMatchObject({ focus: checkoutFileFocus, task: "", model: "", taskReference: task.reference,
+    expect(h.client.getSnapshot().draft).toMatchObject({ focus: readerFileFocus, task: "", model: "", taskReference: task.reference,
       taskPreview: { title: task.title, description: task.description }, prepared: null, confirmed: false, preparing: false });
     expect(h.calls).toHaveLength(calls);
   });
 
   it("uses an existing fixed source over unrelated current navigation and preserves every instruction character", async () => {
-    const { client } = await connected(); client.openDraft(paymentsFileFocus);
+    const { client } = await connected(); client.openDraft(writerFileFocus);
     const exact = "\ufeff  e\u0301\r\n\t\"quoted\" 🧪  "; client.editDraft({ task: exact, model: "requested-model" });
-    client.proposeTaskAttachment(candidate(), source(checkoutFileFocus));
-    expect(client.getSnapshot().taskProposal).toMatchObject({ focus: paymentsFileFocus, instructions: exact, hasDraft: true });
+    client.proposeTaskAttachment(candidate(), source(readerFileFocus));
+    expect(client.getSnapshot().taskProposal).toMatchObject({ focus: writerFileFocus, instructions: exact, hasDraft: true });
     client.acceptTaskAttachment("append");
-    expect(client.getSnapshot().draft).toMatchObject({ focus: paymentsFileFocus, task: exact, model: "requested-model", taskReference: reference() });
+    expect(client.getSnapshot().draft).toMatchObject({ focus: writerFileFocus, task: exact, model: "requested-model", taskReference: reference() });
   });
 
   it("keeps the generated starter or whitespace under Append and clears it only under explicit Replace", async () => {
-    const { client } = await connected(); client.openDraft(paymentsFileFocus);
+    const { client } = await connected(); client.openDraft(writerFileFocus);
     const starter = client.getSnapshot().draft!.task;
     client.proposeTaskAttachment(candidate(), null); client.acceptTaskAttachment("append");
     expect(client.getSnapshot().draft?.task).toBe(starter);
     client.editDraft({ task: " \r\n\t " }); client.proposeTaskAttachment(candidate({ reference: reference("c") }), null);
     client.acceptTaskAttachment("replace");
-    expect(client.getSnapshot().draft).toMatchObject({ task: "", focus: paymentsFileFocus, taskReference: reference("c") });
+    expect(client.getSnapshot().draft).toMatchObject({ task: "", focus: writerFileFocus, taskReference: reference("c") });
   });
 
   it.each([
     ["missing source", null],
-    ["directory", source({ ...paymentsFileFocus, key: "directory:services", path: "services" })],
-    ["service", source({ ...paymentsFileFocus, domain: "service", key: "service:payments" })],
-    ["noncanonical path", source({ ...paymentsFileFocus, key: "file:services/../secret", path: "services/../secret" })],
-    ["unmatched key", source({ ...paymentsFileFocus, key: "file:other.ts" })],
-    ["built revision", source({ ...paymentsFileFocus, revisionKind: "built" })],
+    ["directory", source({ ...writerFileFocus, key: "directory:services", path: "services" })],
+    ["service", source({ ...writerFileFocus, domain: "service", key: "service:writer" })],
+    ["noncanonical path", source({ ...writerFileFocus, key: "file:services/../secret", path: "services/../secret" })],
+    ["unmatched key", source({ ...writerFileFocus, key: "file:other.ts" })],
+    ["built revision", source({ ...writerFileFocus, revisionKind: "built" })],
   ] as const)("refuses %s without manufacturing a source or draft", async (_name, choice) => {
     const h = await connected(); expect(h.client.proposeTaskAttachment(candidate(), choice)).toBe("unavailable");
     expect(h.client.getSnapshot().draft).toBeNull(); expect(h.client.getSnapshot().taskProposal ?? null).toBeNull();
@@ -120,7 +120,7 @@ describe("deliberate one-slot task attachment client (injected transport, no pro
   });
 
   it("does not retarget an unsupported existing draft to a supported selected source", async () => {
-    const { client } = await connected(); client.openDraft({ ...paymentsFileFocus, domain: "service", key: "service:payments" });
+    const { client } = await connected(); client.openDraft({ ...writerFileFocus, domain: "service", key: "service:writer" });
     const draft = client.getSnapshot().draft;
     expect(client.proposeTaskAttachment(candidate(), source())).toBe("unavailable"); expect(client.getSnapshot().draft).toBe(draft);
   });
@@ -135,8 +135,8 @@ describe("deliberate one-slot task attachment client (injected transport, no pro
   it.each(["text", "model", "close", "task observation", "source choice", "disconnect"] as const)(
     "refuses stale proposal after %s without applying old intent", async (reason) => {
       const h = await connected(); let taskCurrent = true; let sourceCurrent = true;
-      if (reason !== "source choice") { h.client.openDraft(paymentsFileFocus); h.client.editDraft({ task: "original" }); }
-      h.client.proposeTaskAttachment(candidate({ isCurrent: () => taskCurrent }), { focus: paymentsFileFocus, isCurrent: () => sourceCurrent });
+      if (reason !== "source choice") { h.client.openDraft(writerFileFocus); h.client.editDraft({ task: "original" }); }
+      h.client.proposeTaskAttachment(candidate({ isCurrent: () => taskCurrent }), { focus: writerFileFocus, isCurrent: () => sourceCurrent });
       if (reason === "text") h.client.editDraft({ task: "NEWER" });
       if (reason === "model") h.client.editDraft({ model: "NEWER" });
       if (reason === "close") h.client.closeDraft();
@@ -149,14 +149,14 @@ describe("deliberate one-slot task attachment client (injected transport, no pro
     });
 
   it("an existing draft's source does not become stale merely because unrelated navigation changes", async () => {
-    const { client } = await connected(); client.openDraft(paymentsFileFocus); let otherCurrent = true;
-    client.proposeTaskAttachment(candidate(), { focus: checkoutFileFocus, isCurrent: () => otherCurrent }); otherCurrent = false;
+    const { client } = await connected(); client.openDraft(writerFileFocus); let otherCurrent = true;
+    client.proposeTaskAttachment(candidate(), { focus: readerFileFocus, isCurrent: () => otherCurrent }); otherCurrent = false;
     client.acceptTaskAttachment("append"); expect(client.getSnapshot().draft?.taskReference).toEqual(reference());
-    expect(client.getSnapshot().draft?.focus).toEqual(paymentsFileFocus);
+    expect(client.getSnapshot().draft?.focus).toEqual(writerFileFocus);
   });
 
   it("rejects captured accept and cancel handlers for a superseded proposal without altering the new one", async () => {
-    const { client } = await connected(); client.openDraft(paymentsFileFocus); client.editDraft({ task: "Keep this exact intent" });
+    const { client } = await connected(); client.openDraft(writerFileFocus); client.editDraft({ task: "Keep this exact intent" });
     client.proposeTaskAttachment(candidate(), null); const oldId = client.getSnapshot().taskProposal!.id;
     const oldAccept = () => client.acceptTaskAttachment("replace", oldId);
     const oldCancel = () => client.cancelTaskAttachment(oldId);
@@ -172,7 +172,7 @@ describe("deliberate one-slot task attachment client (injected transport, no pro
     const h = await connected(); const task = candidate(); h.client.proposeTaskAttachment(task, source()); h.client.acceptTaskAttachment("append");
     await prepareFixture(h, task); h.client.confirmDraft(true); const before = h.client.getSnapshot();
     const listener = vi.fn(); const unsubscribe = h.client.subscribe(listener);
-    expect(h.client.proposeTaskAttachment(candidate(), source(checkoutFileFocus))).toBe("already-attached");
+    expect(h.client.proposeTaskAttachment(candidate(), source(readerFileFocus))).toBe("already-attached");
     expect(h.client.getSnapshot()).toBe(before); expect(listener).not.toHaveBeenCalled(); unsubscribe();
     expect(h.client.proposeTaskAttachment(candidate({ reference: reference("c") }), null)).toBe("review");
     expect(h.client.getSnapshot().taskProposal?.replacing).toBe(true);
@@ -181,7 +181,7 @@ describe("deliberate one-slot task attachment client (injected transport, no pro
   });
 
   it("Cancel leaves pending preparation alive and later schema-valid reply can still complete it", async () => {
-    const h = await connected(); h.client.openDraft(paymentsFileFocus);
+    const h = await connected(); h.client.openDraft(writerFileFocus);
     const pending = h.client.prepare(); const call = h.latest("agent.prepare");
     const draft = h.client.getSnapshot().draft;
     h.client.proposeTaskAttachment(candidate(), null); h.client.cancelTaskAttachment(); expect(h.client.getSnapshot().draft).toBe(draft);
@@ -190,13 +190,13 @@ describe("deliberate one-slot task attachment client (injected transport, no pro
   });
 
   it("Cancel preserves already prepared confirmation and does not clear its ticket", async () => {
-    const h = await connected(); h.client.openDraft(paymentsFileFocus); await prepareFixture(h); h.client.confirmDraft(true);
+    const h = await connected(); h.client.openDraft(writerFileFocus); await prepareFixture(h); h.client.confirmDraft(true);
     const draft = h.client.getSnapshot().draft; h.client.proposeTaskAttachment(candidate(), null); h.client.cancelTaskAttachment();
     expect(h.client.getSnapshot().draft).toBe(draft); expect(h.client.getSnapshot().draft?.confirmed).toBe(true);
   });
 
   it("retires a proposal with its admitted draft so a held launch acknowledgement cannot let it resurrect", async () => {
-    const h = await connected(); h.client.openDraft(paymentsFileFocus);
+    const h = await connected(); h.client.openDraft(writerFileFocus);
     h.client.editDraft({ task: "Original admitted instructions", model: "original-requested-model" });
     const prepared = await prepareFixture(h); h.client.confirmDraft(true);
     const launching = h.client.launch(); const call = h.latest("agent.launch");
@@ -219,7 +219,7 @@ describe("deliberate one-slot task attachment client (injected transport, no pro
   });
 
   it("accepted attachment and removal invalidate held Prepare replies without replay", async () => {
-    const h = await connected(); h.client.openDraft(paymentsFileFocus); const first = h.client.prepare(); const firstCall = h.latest("agent.prepare");
+    const h = await connected(); h.client.openDraft(writerFileFocus); const first = h.client.prepare(); const firstCall = h.latest("agent.prepare");
     h.client.proposeTaskAttachment(candidate(), null); h.client.acceptTaskAttachment("append");
     h.success(firstCall, { kind: "prepare", draft: preparedFixture(firstCall) }); await first;
     expect(h.client.getSnapshot().draft).toMatchObject({ taskReference: reference(), prepared: null, preparing: false, confirmed: false });
@@ -233,7 +233,7 @@ describe("deliberate one-slot task attachment client (injected transport, no pro
   it("sends only the pinned reference with empty free instructions and preserves intent on unavailable response", async () => {
     const h = await connected(); const task = candidate({ title: "PRIVATE PREVIEW TITLE", description: "PRIVATE PREVIEW BODY" });
     h.client.proposeTaskAttachment(task, source()); h.client.acceptTaskAttachment("append"); const preparing = h.client.prepare(); const call = h.latest("agent.prepare");
-    expect(call.input).toMatchObject({ type: "agent.prepare", taskText: "", taskReference: task.reference, focus: paymentsFileFocus });
+    expect(call.input).toMatchObject({ type: "agent.prepare", taskText: "", taskReference: task.reference, focus: writerFileFocus });
     expect(JSON.stringify(call.input)).not.toMatch(/PRIVATE PREVIEW|repositoryTask|digest/);
     call.resolve({ protocolVersion: PROTOCOL_VERSION, requestId: call.input.requestId, ok: false,
       error: { code: "UNSUPPORTED_CONTROL", message: "Repository-task context is unavailable" } }); await preparing;
@@ -245,7 +245,7 @@ describe("deliberate one-slot task attachment client (injected transport, no pro
   it("counts the exact escaped full 16 KiB envelope and refuses max+one without mutation", async () => {
     const { client } = await connected(); const task = candidate({ description: "\ufeffe\u0301\r\n\t\" 🧪" });
     const budget = AGENT_LIMITS.taskBytes - agentTaskBytes("", materialization(task));
-    client.openDraft(paymentsFileFocus); client.editDraft({ task: "x".repeat(budget) });
+    client.openDraft(writerFileFocus); client.editDraft({ task: "x".repeat(budget) });
     client.proposeTaskAttachment(task, null); client.acceptTaskAttachment("append");
     expect(client.getSnapshot().draft?.taskReference).toEqual(task.reference);
     client.removeTaskAttachment(); client.editDraft({ task: "x".repeat(budget + 1) }); const before = client.getSnapshot().draft;
@@ -267,7 +267,7 @@ describe("deliberate one-slot task attachment client (injected transport, no pro
 
 describe("task attachment mounted review and immutable history (schema fixtures only)", () => {
   it("a new proposal reveals Agents without recreating an existing draft, run output or mock conversation", async () => {
-    const h = await connected(); h.client.openDraft(paymentsFileFocus); h.client.editDraft({ task: "Existing draft bytes" });
+    const h = await connected(); h.client.openDraft(writerFileFocus); h.client.editDraft({ task: "Existing draft bytes" });
     const firstId = "11111111-1111-4111-8111-111111111111";
     const select = vi.spyOn(h.client, "select").mockImplementation(() => undefined);
     const selectMock = vi.fn();
@@ -312,7 +312,7 @@ describe("task attachment mounted review and immutable history (schema fixtures 
   });
 
   it("a stale mounted review button cannot accept or cancel the newer proposal it did not show", async () => {
-    const { client } = await connected(); client.openDraft(paymentsFileFocus); client.editDraft({ task: "Protected draft" });
+    const { client } = await connected(); client.openDraft(writerFileFocus); client.editDraft({ task: "Protected draft" });
     client.proposeTaskAttachment(candidate(), null); const captured = client.getSnapshot();
     // A deliberately stale view models an event dispatched before its render
     // consumes the latest external store update. The actual handler must carry
@@ -340,7 +340,7 @@ describe("task attachment mounted review and immutable history (schema fixtures 
   });
 
   it("preserves instructions under labelled Append and shows the attached preview as readonly, not editable prose", async () => {
-    const { client } = await connected(); client.openDraft(paymentsFileFocus); client.editDraft({ task: "Keep my exact instructions" });
+    const { client } = await connected(); client.openDraft(writerFileFocus); client.editDraft({ task: "Keep my exact instructions" });
     render(<Draft client={client} />); const task = candidate(); act(() => { client.proposeTaskAttachment(task, null); });
     const review = screen.getByRole("region", { name: "Review task attachment" });
     fireEvent.click(within(review).getByRole("button", { name: "Append — keep instructions" }));
@@ -371,7 +371,7 @@ describe("task attachment mounted review and immutable history (schema fixtures 
     const view = render(<LaunchContextView context={prepared.launchContext} />);
     expect(screen.getAllByText(new RegExp(task.title)).length).toBeGreaterThan(0);
     expect(screen.getAllByText(new RegExp(task.reference.metadataCommit.hex)).length).toBeGreaterThan(0);
-    const legacy = fixtureLaunchContext(paymentsFileFocus, "Original legacy task", "", "");
+    const legacy = fixtureLaunchContext(writerFileFocus, "Original legacy task", "", "");
     view.rerender(<LaunchContextView context={legacy} />);
     expect(screen.getByText(/No repository-task details were saved for this older run/i)).toBeTruthy();
     expect(h.calls.map((entry) => entry.input.type)).toEqual(["agent.snapshot", "agent.prepare"]);

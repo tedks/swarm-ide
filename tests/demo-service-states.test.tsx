@@ -2,7 +2,7 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { GraphSlice } from "../protocol/schema";
-import { initialSnapshot, paymentsFileFocus } from "../fixtures/world";
+import { initialSnapshot, writerFileFocus } from "../fixtures/world";
 
 vi.mock("@xyflow/react", async () => {
   const React = await import("react");
@@ -23,7 +23,7 @@ vi.mock("@xyflow/react", async () => {
 import { GraphPane } from "../app/renderer/GraphPane";
 
 afterEach(cleanup);
-const snapshot = initialSnapshot(paymentsFileFocus);
+const snapshot = initialSnapshot(writerFileFocus);
 const populated = snapshot.graphs.find((graph) => graph.topologyId === "service")!;
 const empty = (reconciliation: GraphSlice["reconciliation"], sourceKind: GraphSlice["provenance"][number]["sourceKind"] = "repo"): GraphSlice => ({
   ...populated, nodes: [], edges: [], reconciliation, provenance: populated.provenance.map((item) => ({ ...item, sourceKind })),
@@ -35,43 +35,43 @@ function pane(graph: GraphSlice, running = false, onReconcile = vi.fn(), onFocus
 
 describe("Service graph explains absent observations without inferring services", () => {
   it.each([
-    ["gray", false, "Service topology not observed"],
-    ["yellow", false, "Service topology needs a build"],
-    ["yellow", true, "Building service topology"],
-    ["red", false, "Service observation failed"],
+    ["gray", false, "Looking for services"],
+    ["yellow", false, "Updating services"],
+    ["yellow", true, "Updating services"],
+    ["red", false, "Could not read services"],
   ] as const)("explains %s / running=%s without starting a build", (status, running, title) => {
     const onReconcile = vi.fn(); render(pane(empty(status), running, onReconcile));
     expect(screen.getByRole("status", { name: "Service graph availability" }).textContent).toContain(title);
-    expect(screen.queryByText("No services in this observation")).toBeNull();
+    expect(screen.queryByText("No declared services")).toBeNull();
     expect(onReconcile).not.toHaveBeenCalled();
   });
 
-  it("describes a green build-backed empty observation, not absence across the repository", () => {
+  it("shows an empty declaration observation without claiming a deployment", () => {
     render(pane(empty("green", "build")));
     const status = screen.getByRole("status", { name: "Service graph availability" });
-    expect(status.textContent).toContain("No services in this observation");
-    expect(status.textContent).toContain("not the entire repository");
+    expect(status.textContent).toContain("No declared services");
+    expect(status.textContent).toContain("Compose files or service.swarm.json");
   });
 
   it("does not infer that a build ran when red can mean working-state observation failure", () => {
     render(pane(empty("red")));
     const status = screen.getByRole("status", { name: "Service graph availability" });
-    expect(status.textContent).toContain("Service observation failed");
+    expect(status.textContent).toContain("Could not read services");
     expect(status.textContent).not.toMatch(/build failed|Build output/);
   });
 
   it.each(["repo", "runtime", "mock"] as const)("does not promote %s provenance into an empty build observation", (kind) => {
     render(pane(empty("green", kind)));
-    expect(screen.getByRole("status", { name: "Service graph availability" }).textContent).toContain("Service topology unavailable");
-    expect(screen.queryByText("No services in this observation")).toBeNull();
+    expect(screen.getByRole("status", { name: "Service graph availability" }).textContent).toContain("No declared services");
+    expect(screen.getByRole("status", { name: "Service graph availability" }).textContent).not.toMatch(/build contains|build-backed|deployed/);
   });
 
-  it("leaves the existing deliberate Build control as the only reconciliation action", () => {
+  it("keeps manual refresh available alongside automatic observation", () => {
     const onReconcile = vi.fn(); const view = render(pane(empty("yellow"), false, onReconcile));
-    fireEvent.click(screen.getByRole("button", { name: "Build repository service topology" }));
+    fireEvent.click(screen.getByRole("button", { name: "Refresh service declarations" }));
     expect(onReconcile).toHaveBeenCalledOnce();
     view.rerender(pane(empty("yellow"), true, onReconcile));
-    expect((screen.getByRole("button", { name: "Topology build in progress" }) as HTMLButtonElement).disabled).toBe(true);
+    expect((screen.getByRole("button", { name: "Refresh service declarations" }) as HTMLButtonElement).disabled).toBe(true);
     expect(onReconcile).toHaveBeenCalledOnce();
   });
 

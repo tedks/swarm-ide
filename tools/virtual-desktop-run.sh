@@ -603,8 +603,7 @@ const read = (name, limit, tail = false) => {
     return text;
   } finally { fs.closeSync(fd); }
 };
-const target = '//examples/checkout-world/services/fraudcheck:service_topology';
-console.log(`observed_at=${new Date().toISOString()} expected_target=${target}`);
+console.log(`observed_at=${new Date().toISOString()} build_scope=selected-worktree-only`);
 // /proc gives a session-local process observation, not authority to kill it.
 let count = 0;
 for (const entry of fs.readdirSync('/proc')) {
@@ -672,9 +671,8 @@ NODE
 }
 
 default_scenario_timeout_seconds=120
-# Only topology verification includes a measured cold compiler bootstrap plus
-# a separate incremental build. Other scenarios keep their existing deadline.
-if [[ "$scenario_name" == desktop-smoke ]]; then default_scenario_timeout_seconds=420; fi
+# Discovery does not compile a fixed target. Scenarios may request a longer
+# explicit deadline when their own documented work requires one.
 scenario_timeout_seconds="${SWARM_SCENARIO_TIMEOUT_SECONDS:-$default_scenario_timeout_seconds}"
 [[ "$scenario_timeout_seconds" =~ ^[1-9][0-9]*$ ]] || { fail "scenario timeout must be positive seconds"; exit 2; }
 scenario_started_ms=$(now_ms)

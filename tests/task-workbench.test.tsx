@@ -3,7 +3,7 @@ import { openContextPath } from "./context-navigation";
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { EditorView } from "@codemirror/view";
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
-import { initialSnapshot, paymentsFileFocus } from "../fixtures/world";
+import { initialSnapshot, writerFileFocus } from "../fixtures/world";
 import { taskDetailFixture, taskObservationFixture, taskReadFixture } from "../fixtures/tasks";
 import { emptyAgentWorkbench } from "../app/renderer/agents/state";
 import { PROTOCOL_VERSION, type CoreEvent, type FileEvent, type CoreRequest, type CoreResponse, type GraphSlice } from "../protocol/schema";
@@ -29,10 +29,10 @@ afterEach(() => {
   delete window.swarm; delete window.swarmView; delete window.swarmLifecycle;
 });
 
-const source = paymentsFileFocus.path!;
+const source = writerFileFocus.path!;
 const doc = "docs/architecture.md";
 function setup(refs: TaskFileRef[] = [{ path: source, line: 2, note: "Explicit source", navigation: "candidate" }], failure?: string, brokerRoot?: string) {
-  const snapshot = initialSnapshot(paymentsFileFocus);
+  const snapshot = initialSnapshot(writerFileFocus);
   const observation = taskObservationFixture();
   const detail = { ...taskDetailFixture(), fileRefs: refs, counts: { ...taskDetailFixture().counts, fileRefs: refs.length } };
   observation.snapshot!.summaries[0]!.counts.fileRefs = refs.length;

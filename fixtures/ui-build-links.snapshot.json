@@ -239,18 +239,6 @@
       "toPath": "tools/x11-driver.test.sh"
     },
     {
-      "from": "//examples/checkout-world/services/fraudcheck:fraudcheck_sources",
-      "to": "//examples/checkout-world/services/fraudcheck:fraudcheck.proto",
-      "fromPath": "examples/checkout-world/services/fraudcheck",
-      "toPath": "examples/checkout-world/services/fraudcheck/fraudcheck.proto"
-    },
-    {
-      "from": "//examples/checkout-world/services/fraudcheck:fraudcheck_sources",
-      "to": "//examples/checkout-world/services/fraudcheck:fraudcheck.ts",
-      "fromPath": "examples/checkout-world/services/fraudcheck",
-      "toPath": "examples/checkout-world/services/fraudcheck/fraudcheck.ts"
-    },
-    {
       "from": "//tools/policy:runtime-pinning-test",
       "to": "//tools/policy:sources",
       "fromPath": "tools/policy",
@@ -491,54 +479,6 @@
       "toPath": "tools/policy/boundary.test.sh"
     },
     {
-      "from": "//examples/checkout-world/services/fraudcheck:service_topology",
-      "to": "//examples/checkout-world/services/fraudcheck:fraudcheck_proto",
-      "fromPath": "examples/checkout-world/services/fraudcheck",
-      "toPath": "examples/checkout-world/services/fraudcheck"
-    },
-    {
-      "from": "//examples/checkout-world/services/fraudcheck:service_topology",
-      "to": "//examples/checkout-world/services/payments:payments_proto",
-      "fromPath": "examples/checkout-world/services/fraudcheck",
-      "toPath": "examples/checkout-world/services/payments"
-    },
-    {
-      "from": "//examples/checkout-world/services/fraudcheck:service_topology",
-      "to": "//examples/checkout-world/services/fraudcheck:fraudcheck.proto",
-      "fromPath": "examples/checkout-world/services/fraudcheck",
-      "toPath": "examples/checkout-world/services/fraudcheck/fraudcheck.proto"
-    },
-    {
-      "from": "//examples/checkout-world/services/fraudcheck:service_topology",
-      "to": "//examples/checkout-world/services/fraudcheck:fraudcheck.ts",
-      "fromPath": "examples/checkout-world/services/fraudcheck",
-      "toPath": "examples/checkout-world/services/fraudcheck/fraudcheck.ts"
-    },
-    {
-      "from": "//examples/checkout-world/services/fraudcheck:service_topology",
-      "to": "//examples/checkout-world/services/fraudcheck:service.swarm.json",
-      "fromPath": "examples/checkout-world/services/fraudcheck",
-      "toPath": "examples/checkout-world/services/fraudcheck/service.swarm.json"
-    },
-    {
-      "from": "//examples/checkout-world/services/fraudcheck:service_topology",
-      "to": "//examples/checkout-world/services/payments:payments.proto",
-      "fromPath": "examples/checkout-world/services/fraudcheck",
-      "toPath": "examples/checkout-world/services/payments/payments.proto"
-    },
-    {
-      "from": "//examples/checkout-world/services/payments:payments_proto",
-      "to": "//examples/checkout-world/services/payments:payments.proto",
-      "fromPath": "examples/checkout-world/services/payments",
-      "toPath": "examples/checkout-world/services/payments/payments.proto"
-    },
-    {
-      "from": "//examples/checkout-world/services/fraudcheck:fraudcheck_proto",
-      "to": "//examples/checkout-world/services/fraudcheck:fraudcheck.proto",
-      "fromPath": "examples/checkout-world/services/fraudcheck",
-      "toPath": "examples/checkout-world/services/fraudcheck/fraudcheck.proto"
-    },
-    {
       "from": "//tools:desktop-agent-smoke",
       "to": "//tools:agent-journey-sources",
       "fromPath": "tools",
@@ -673,12 +613,6 @@
     {
       "from": "//:quality_sources",
       "to": "//tools:electron-runtime-source",
-      "fromPath": "",
-      "toPath": "tools"
-    },
-    {
-      "from": "//:quality_sources",
-      "to": "//tools:extract-service-topology",
       "fromPath": "",
       "toPath": "tools"
     },
@@ -2133,12 +2067,6 @@
       "to": "//:flake.lock",
       "fromPath": "tools/policy",
       "toPath": "flake.lock"
-    },
-    {
-      "from": "//tools:extract-service-topology",
-      "to": "//tools:extract-service-topology.mjs",
-      "fromPath": "tools",
-      "toPath": "tools/extract-service-topology.mjs"
     },
     {
       "from": "//tools:electron-runtime-source",

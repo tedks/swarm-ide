@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { act, cleanup, fireEvent, render, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { initialSnapshot, paymentsFileFocus } from "../fixtures/world";
+import { initialSnapshot, writerFileFocus } from "../fixtures/world";
 
 // This is an orchestration seam, not a ReactFlow implementation test. The
 // library owns camera state, initial fit and controls. A mounted fake retains a
@@ -53,7 +53,7 @@ beforeEach(() => {
 });
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
 
-const snapshot = initialSnapshot(paymentsFileFocus);
+const snapshot = initialSnapshot(writerFileFocus);
 const onFocus = vi.fn();
 function Pair({ zoom, hidden = false, width = 800, source = false, focus = snapshot.focus }: {
   zoom: number | null; hidden?: boolean; width?: number; source?: boolean; focus?: typeof snapshot.focus;

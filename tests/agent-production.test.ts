@@ -15,16 +15,17 @@ import type { AgentRequest } from "../protocol/agents";
 import { formatRepositoryTask, type AgentTaskReference } from "../protocol/agent-task";
 import { createTaskFixture } from "../tools/task-integration/fixture.mjs";
 
-const roots: string[] = [], services: ProductionAgentService[] = [];
+const roots: string[] = [], services: ProductionAgentService[] = [], providers: RealWorkspaceProvider[] = [];
 afterEach(async () => {
   await Promise.all(services.splice(0).map((service) => service.shutdown()));
+  providers.splice(0).forEach((provider) => provider.dispose());
   await Promise.all(roots.splice(0).map((root) => rm(root, { recursive: true, force: true })));
 });
 async function fixture(observeWorking = true) {
   const directory = await mkdtemp(join(tmpdir(), "swarm-agent-production-")); roots.push(directory);
   const root = join(directory, "repo"), storeRoot = join(directory, "app-data");
-  const path = "examples/checkout-world/services/fraudcheck/fraudcheck.ts";
-  await mkdir(join(root, "examples/checkout-world/services/fraudcheck"), { recursive: true });
+  const path = "services/alpha/main.ts";
+  await mkdir(join(root, "services/alpha"), { recursive: true });
   await writeFile(join(root, path), "export const evaluate = () => 'disk';\n");
   const git = (...args: string[]) => execFileSync("git", args, { cwd: root, stdio: "pipe", env: {
     ...process.env, GIT_CONFIG_GLOBAL: "/dev/null", GIT_CONFIG_SYSTEM: "/dev/null",
@@ -32,6 +33,7 @@ async function fixture(observeWorking = true) {
   git("init", "-q"); git("config", "user.name", "Fixture"); git("config", "user.email", "fixture@example.invalid");
   git("add", "."); git("commit", "-qm", "fixture");
   const provider = await RealWorkspaceProvider.create(root);
+  providers.push(provider);
   if (observeWorking) await provider.observeWorkingWorld(() => undefined);
   await provider.listRepository({ protocolVersion: PROTOCOL_VERSION, requestId: "fixture-directory", type: "repo.list",
     directory: path.split("/").slice(0, -1).join("/"), page: 0, filter: "", refresh: true }, () => undefined);
@@ -50,6 +52,7 @@ describe("real production context, no execution authority", () => {
     const git = (...args: string[]) => execFileSync("git", args, { cwd: f.root, encoding: "utf8" });
     const refs = git("show-ref"), status = git("status", "--porcelain"), config = await readFile(join(f.root, ".git/config"));
     const provider = await RealWorkspaceProvider.create(f.root);
+    providers.push(provider);
     await provider.observeWorkingWorld(() => undefined);
     await provider.listRepository({ protocolVersion: PROTOCOL_VERSION, requestId: "task-source", type: "repo.list",
       directory: "src", page: 0, filter: "", refresh: true }, () => undefined);

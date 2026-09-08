@@ -135,14 +135,16 @@ sh_binary(
     srcs = ["build-app.sh"],
 )
 
-sh_binary(
-    name = "extract-service-topology",
-    srcs = ["extract-service-topology.mjs"],
-)
-
 sh_test(
     name = "quality",
     srcs = ["quality.sh"],
+    data = ["//:quality_sources"],
+    tags = ["local"],
+)
+
+sh_test(
+    name = "service-fixture-test",
+    srcs = ["service-fixture.test.sh"],
     data = ["//:quality_sources"],
     tags = ["local"],
 )
@@ -165,10 +167,8 @@ sh_binary(
     name = "desktop-smoke",
     srcs = ["desktop-smoke.sh"],
     data = [
-        ":desktop-topology-scenario.sh",
-        ":dev",
-        ":virtual-desktop-run.sh",
-        ":x11-driver-source",
+        "//tools/services:sources",
+        "//:desktop-bundle",
     ],
     tags = ["manual"],
 )

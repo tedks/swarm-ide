@@ -18,6 +18,7 @@ import { RepositorySearchRequestSchema, RepositorySearchResultSchema, parseRepos
 import { BuildGraphRequestSchema, BuildGraphObservationSchema } from "./build-graph";
 import { BuildJobRequestSchema, BuildJobsObservationSchema } from "./build-jobs";
 import { ServiceContextObservationSchema } from "./context";
+import { ServiceDeclarationsSchema } from "./service-declarations";
 import { ExternalRequestSchema, ExternalResultSchema, parseExternalResult, type ExternalRequest } from "./external-agents";
 export { PROTOCOL_VERSION, FocusRefSchema, RevisionKindSchema, type FocusRef, type RevisionKind } from "./common";
 
@@ -155,6 +156,7 @@ export const WorkspaceSnapshotSchema = z.object({
   mappings: z.array(NavigationMappingSchema).max(2_000),
   widgets: z.array(WidgetSchema).max(64),
   serviceContext: ServiceContextObservationSchema.optional(),
+  serviceDeclarations: ServiceDeclarationsSchema.optional(),
   jobs: z.array(JobSchema).max(128),
   activity: z.array(ActivitySchema).max(256),
   reconciliation: z.object({
@@ -166,6 +168,17 @@ export const WorkspaceSnapshotSchema = z.object({
   }),
 }).superRefine((snapshot, context) => {
   const service = snapshot.serviceContext;
+  const declarations = snapshot.serviceDeclarations;
+  if (declarations && (declarations.repositoryId !== snapshot.project.id || declarations.worldId !== snapshot.world.id ||
+      !snapshot.graphs.some((graph) => graph.topologyId === "service" && graph.inputFingerprint === declarations.sourceFingerprint &&
+        graph.provenance.some((entry) => entry.sourceKind === "repo" && entry.version === declarations.sourceFingerprint))))
+    context.addIssue({ code: "custom", path: ["serviceDeclarations"], message: "Declarations must belong to this repository and its published source graph" });
+  if (declarations) {
+    const graph = snapshot.graphs.find((entry) => entry.topologyId === "service");
+    const declaredIds = declarations.services.flatMap((entry) => [entry.id, ...entry.interfaces.map((item) => item.id)]);
+    if (new Set(declaredIds).size !== declaredIds.length || graph?.nodes.length !== declaredIds.length || declaredIds.some((id) => !graph?.nodes.some((node) => node.id === id && node.focus.key === id)))
+      context.addIssue({ code: "custom", path: ["serviceDeclarations"], message: "Declared services must match the source graph identities" });
+  }
   if (service && (service.repositoryId !== snapshot.project.id || service.worldId !== snapshot.world.id))
     context.addIssue({ code: "custom", path: ["serviceContext"], message: "Context must identify this repository and world" });
   if (service?.status === "observed" && (service.buildId !== snapshot.revisions.built.id || service.sourceFingerprint !== snapshot.revisions.built.sourceFingerprint ||
@@ -231,7 +244,7 @@ export const WorkspaceSnapshotSchema = z.object({
     const fingerprint = snapshot.revisions.working.fingerprint;
     if (
       snapshot.reconciliation.inputFingerprint !== fingerprint ||
-      snapshot.revisions.built.sourceFingerprint !== fingerprint
+      (declarations ? declarations.sourceFingerprint !== fingerprint || declarations.status !== "current" : snapshot.revisions.built.sourceFingerprint !== fingerprint)
     ) {
       context.addIssue({ code: "custom", path: ["reconciliation"], message: "green publication must match its exact working fingerprint" });
     }

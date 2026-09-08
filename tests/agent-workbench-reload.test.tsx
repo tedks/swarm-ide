@@ -8,7 +8,7 @@ import type { AgentClientMemory } from "../app/renderer/agents/client-memory";
 import { emptyLiveAgentState } from "../app/renderer/agents/live-state";
 import { emptyAgentWorkbench } from "../app/renderer/agents/state";
 import type { Lifecycle } from "../app/lifecycle";
-import { initialSnapshot, paymentsFileFocus } from "../fixtures/world";
+import { initialSnapshot, writerFileFocus } from "../fixtures/world";
 import { PROTOCOL_VERSION, type CoreRequest, type CoreResponse, type GraphSlice } from "../protocol/schema";
 const harness = vi.hoisted(() => ({ memory: {} as AgentClientMemory, client: null as AgentBridgeClient | null }));
 vi.mock("../app/renderer/agents/use-agent-workbench", async (original) => {
@@ -30,7 +30,7 @@ function shell() {
   const reload = vi.fn(async (_revision: number) => state);
   window.swarmLifecycle = { status: async () => state, onStatus: (listener) => { listeners.add(listener); return () => { listeners.delete(listener); }; }, reload };
   const update = (patch: Partial<Lifecycle>) => act(() => { state = { ...state, ...patch, revision: state.revision + 1 }; for (const listener of listeners) listener(state); });
-  const snapshot = initialSnapshot(paymentsFileFocus);
+  const snapshot = initialSnapshot(writerFileFocus);
   const request = vi.fn(async (input: CoreRequest): Promise<CoreResponse> => {
     if (input.type.startsWith("agent.") && input.type !== "agent.snapshot") return { protocolVersion: PROTOCOL_VERSION, requestId: input.requestId, ok: false, error: { code: "ADAPTER_POLICY_UNAVAILABLE", message: "Fixture test: effective policy is unavailable" } };
     return { protocolVersion: PROTOCOL_VERSION, requestId: input.requestId, ok: true, snapshot, sequence: 1,
@@ -61,7 +61,7 @@ function discard() { options(); fireEvent.click(screen.getByRole("button", { nam
 
 describe("agent intent at the actual document/preload refresh boundary", () => {
   it("keeps local recovery actions available even before a workspace snapshot can be loaded", async () => {
-    harness.memory.state = { ...emptyLiveAgentState(), draft: { focus: paymentsFileFocus, task: "Preserved during remount", model: "", prepared: null, confirmed: false, preparing: false } };
+    harness.memory.state = { ...emptyLiveAgentState(), draft: { focus: writerFileFocus, task: "Preserved during remount", model: "", prepared: null, confirmed: false, preparing: false } };
     shell(); delete window.swarm;
     render(<StrictMode><App /></StrictMode>);
     expect(screen.getByText(/Opening the working world/)).toBeTruthy();
@@ -88,7 +88,7 @@ describe("agent intent at the actual document/preload refresh boundary", () => {
 
   it("discarding agent text never discards a dirty source buffer or bypasses its refresh guard", async () => {
     const h = shell(); await openApp();
-    await openContextPath(paymentsFileFocus.path!);
+    await openContextPath(writerFileFocus.path!);
     const source = await screen.findByLabelText("Source buffer");
     fireEvent.change(source, { target: { value: "PRIVATE SOURCE BUFFER" } });
     draft(); h.update({ reload: "pending" }); discard();
@@ -117,7 +117,7 @@ describe("agent intent at the actual document/preload refresh boundary", () => {
     let prevented: boolean | undefined;
     h.reload.mockImplementationOnce(async () => {
       // No React render/effect is allowed between the client mutation and unload.
-      harness.client!.openDraft(paymentsFileFocus);
+      harness.client!.openDraft(writerFileFocus);
       harness.client!.editDraft({ task: "Arrived after preload preflight" });
       const event = new Event("beforeunload", { cancelable: true }); window.dispatchEvent(event);
       prevented = event.defaultPrevented;

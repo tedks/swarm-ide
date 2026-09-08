@@ -5,6 +5,7 @@ import { initialSnapshot } from "../fixtures/world";
 import { composeContext, indexCapture, indexService, type ContextObservations } from "../app/renderer/context/compose";
 import { ContextPane } from "../app/renderer/context/ContextPane";
 import { GlobalContext } from "../app/renderer/context/GlobalContext";
+import { illustrativeLatency } from "../app/renderer/context/latency";
 import type { BuildLinkSnapshot } from "../app/renderer/repository/layers";
 import type { ContextSubject } from "../protocol/context";
 
@@ -32,12 +33,18 @@ function input() {
   snapshot.revisions.built = { id: "b".repeat(64), sourceFingerprint: "a".repeat(64) };
   snapshot.revisions.deployed = { id: "", buildId: "", environment: "not configured" };
   const subject: ContextSubject = { kind: "file", path: "src/entry.ts", repositoryId: "test", worldId: snapshot.world.id };
-  const observations: ContextObservations = { snapshot, files: [{ path: subject.path, content: "// @swarm-demo-latency checkout.assess\n", savedContent: "// @swarm-demo-latency checkout.assess\n", revision: "c".repeat(64), status: "saved", message: "Ready",
+  const observations: ContextObservations = { snapshot, files: [{ path: subject.path, content: "// @swarm-demo-latency operations\n", savedContent: "// @swarm-demo-latency operations\n", revision: "c".repeat(64), status: "saved", message: "Ready",
     contextRead: { revision: "c".repeat(64), receivedAt: "2026-09-07T12:00:00Z", realm: "realm", session: "session" } }],
     service: indexService(undefined), capture: indexCapture(graph(), snapshot.world.id), realm: "realm", session: "session", ready: true };
   return { observations, subject };
 }
 describe("bounded Context instruments", () => {
+  it("does not infer illustrative latency from a source path or build target", () => {
+    const { observations, subject } = input();
+    const file = { ...observations.files[0]!, savedContent: "export const operation = () => undefined;" };
+    expect(illustrativeLatency(subject, file, ["//src:operations"])).toBeUndefined();
+    expect(illustrativeLatency({ ...subject, kind: "directory", path: "src" }, observations.files[0], [])).toBeUndefined();
+  });
   it("hides only the Repository reader disclosure while retaining directory facts, notices and other evidence", () => {
     const { observations, subject } = input();
     const source = composeContext(subject, observations).find((section) => section.id === "source")!;

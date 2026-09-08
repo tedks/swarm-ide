@@ -55,7 +55,7 @@ describe("reconciliation event ordering", () => {
 
     expect(secondDirty.reconciliation.epoch).toBe(3);
     expect(secondDirty.revisions.working.fingerprint).toBe("work:c3");
-    expect(secondDirty.graphs.find((graph) => graph.topologyId === "service")?.nodes.some((node) => node.id === "service-fraud")).toBe(true);
+    expect(secondDirty.graphs.find((graph) => graph.topologyId === "service")?.nodes.some((node) => node.id === "service-validator")).toBe(true);
     expect(secondGreen.revisions.built).toEqual({ id: "build:c3", sourceFingerprint: "work:c3" });
   });
 

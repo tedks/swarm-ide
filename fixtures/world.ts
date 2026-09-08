@@ -1,3 +1,7 @@
+/** Explicit synthetic TEST DATA. No production provider imports this world.
+ * Reader/writer and the optional validator exercise graph identity, ambiguity,
+ * delayed publication and retained failures; they describe no real project.
+ */
 import {
   PROTOCOL_VERSION,
   type Activity,
@@ -16,16 +20,16 @@ function observedAtOffset(seconds: number): string {
 }
 
 function repoProvenance(version: string): Provenance {
-  return { sourceKind: "repo", uri: "repo://swarm-ide/BUILD.bazel", version, observedAt };
+  return { sourceKind: "repo", uri: "fixture://source/BUILD.bazel", version, observedAt };
 }
 
 function buildProvenance(version: string): Provenance {
-  return { sourceKind: "build", uri: "bazel://reports/service-topology.json", version, observedAt };
+  return { sourceKind: "build", uri: "fixture://build/service-topology.json", version, observedAt };
 }
 
 const runtimeProvenance: Provenance = {
   sourceKind: "runtime",
-  uri: "deploy://local/checkouts/v0.8.4",
+  uri: "fixture://deployment/test-version",
   version: "deploy:local-084",
   observedAt,
 };
@@ -52,24 +56,24 @@ function revisionId(kind: "work" | "build", epoch: number): string {
   return `${kind}:${generation}${epoch}`;
 }
 
-export const checkoutServiceFocus = focus("service", "service:checkout");
-export const paymentsServiceFocus = focus("service", "service:payments");
-export const fraudServiceFocus = focus("service", "service:fraud-check");
-export const checkoutFileFocus = focus(
+export const readerServiceFocus = focus("service", "service:reader");
+export const writerServiceFocus = focus("service", "service:writer");
+export const validatorServiceFocus = focus("service", "service:validator");
+export const readerFileFocus = focus(
   "repo",
-  "file:services/checkout/checkout.ts",
-  "services/checkout/checkout.ts",
+  "file:services/reader/reader.ts",
+  "services/reader/reader.ts",
 );
-export const paymentsFileFocus = focus(
+export const writerFileFocus = focus(
   "repo",
-  "file:services/payments/payments.ts",
-  "services/payments/payments.ts",
+  "file:services/writer/writer.ts",
+  "services/writer/writer.ts",
 );
-export const authorizeFocus = focus(
+export const writeFocus = focus(
   "symbol",
-  "symbol:payments.authorize",
-  "services/payments/payments.ts",
-  "authorize",
+  "symbol:writer.write",
+  "services/writer/writer.ts",
+  "write",
 );
 
 function repoGraph(
@@ -90,12 +94,12 @@ function repoGraph(
     nodes: [
       {
         id: "repo-root",
-        label: "swarm-ide",
+        label: "Test fixture",
         kind: "repository",
         status: "green",
         position: { x: 0, y: 90 },
-        focus: focus("repo", "repo:swarm-ide", "."),
-        detail: "one coherent working world",
+        focus: focus("repo", "repo:test-fixture", "."),
+        detail: "synthetic repository; test data only",
       },
       {
         id: "repo-services",
@@ -106,28 +110,28 @@ function repoGraph(
         focus: focus("repo", "dir:services", "services"),
       },
       {
-        id: "repo-checkout",
-        label: "checkout.ts",
+        id: "repo-reader",
+        label: "reader.ts",
         kind: "file",
         status,
         position: { x: 470, y: 5 },
-        focus: checkoutFileFocus,
+        focus: readerFileFocus,
         detail: "+18 −3 · agent-07",
       },
       {
-        id: "repo-payments",
-        label: "payments.ts",
+        id: "repo-writer",
+        label: "writer.ts",
         kind: "file",
         status: "green",
         position: { x: 470, y: 175 },
-        focus: paymentsFileFocus,
-        detail: "p99 84ms",
+        focus: writerFileFocus,
+        detail: "synthetic unchanged source",
       },
     ],
     edges: [
       { id: "repo-e1", source: "repo-root", target: "repo-services", kind: "contains", status: "green" },
-      { id: "repo-e2", source: "repo-services", target: "repo-checkout", kind: "contains", status },
-      { id: "repo-e3", source: "repo-services", target: "repo-payments", kind: "contains", status: "green" },
+      { id: "repo-e2", source: "repo-services", target: "repo-reader", kind: "contains", status },
+      { id: "repo-e3", source: "repo-services", target: "repo-writer", kind: "contains", status: "green" },
     ],
   };
 }
@@ -135,94 +139,58 @@ function repoGraph(
 function serviceGraph(
   status: GraphSlice["reconciliation"],
   epoch: number,
-  includeFraud: boolean,
+  includeValidator: boolean,
   inputFingerprint: string,
   buildId: string,
 ): GraphSlice {
   const nodes: GraphSlice["nodes"] = [
     {
-      id: "service-gateway",
-      label: "Gateway",
-      kind: "service",
-      status: "green",
-      position: { x: 0, y: 100 },
-      focus: focus("service", "service:gateway"),
-      detail: "12.4k rpm",
-    },
-    {
-      id: "service-checkout",
-      label: "Checkout",
+      id: "service-reader",
+      label: "Reader",
       kind: "service",
       status,
       position: { x: 250, y: 100 },
-      focus: checkoutServiceFocus,
-      detail: status === "yellow" ? "reconciling source changes" : "v0.9.1 working",
+      focus: readerServiceFocus,
+      detail: status === "yellow" ? "synthetic pending source changes" : "synthetic test service",
     },
     {
-      id: "service-payments",
-      label: "Payments",
+      id: "service-writer",
+      label: "Writer",
       kind: "service",
       status: "green",
       position: { x: 520, y: 100 },
-      focus: paymentsServiceFocus,
-      detail: "v0.8.4 deployed",
+      focus: writerServiceFocus,
+      detail: "synthetic test service",
     },
   ];
   const edges: GraphSlice["edges"] = [
     {
       id: "service-e1",
-      source: "service-gateway",
-      target: "service-checkout",
+      source: "service-reader",
+      target: "service-writer",
       kind: "rpc",
-      label: "CreateOrder",
+      label: "Write (test relationship)",
       status: "green",
     },
   ];
 
-  if (includeFraud) {
+  if (includeValidator) {
     nodes.push({
-      id: "service-fraud",
-      label: "FraudCheck",
+      id: "service-validator",
+      label: "Validator",
       kind: "service",
       status: "green",
       position: { x: 390, y: 5 },
-      focus: fraudServiceFocus,
+      focus: validatorServiceFocus,
       detail: `new · ${buildId}`,
-    });
-    edges.push(
-      {
-        id: "service-e2",
-        source: "service-checkout",
-        target: "service-fraud",
-        kind: "rpc",
-        label: "Assess",
-        status: "green",
-      },
-      {
-        id: "service-e3",
-        source: "service-fraud",
-        target: "service-payments",
-        kind: "rpc",
-        label: "Authorize",
-        status: "green",
-      },
-    );
-  } else {
-    edges.push({
-      id: "service-e2",
-      source: "service-checkout",
-      target: "service-payments",
-      kind: "rpc",
-      label: "Authorize",
-      status,
     });
   }
 
   return {
     schemaVersion: PROTOCOL_VERSION,
     topologyId: "service",
-    title: "Service calls",
-    scope: "checkout path",
+    title: "Synthetic service graph",
+    scope: "test fixture only",
     zoomBand: "service",
     epoch,
     reconciliation: status,
@@ -235,58 +203,58 @@ function serviceGraph(
 
 export const mappings: NavigationMapping[] = [
   {
-    from: checkoutFileFocus,
+    from: readerFileFocus,
     targetTopology: "service",
     ambiguous: false,
     candidates: [
       {
-        focus: checkoutServiceFocus,
-        nodeId: "service-checkout",
+        focus: readerServiceFocus,
+        nodeId: "service-reader",
         confidence: 1,
         reason: "declared implementation path",
       },
     ],
   },
   {
-    from: paymentsFileFocus,
+    from: writerFileFocus,
     targetTopology: "service",
     ambiguous: true,
     candidates: [
       {
-        focus: paymentsServiceFocus,
-        nodeId: "service-payments",
+        focus: writerServiceFocus,
+        nodeId: "service-writer",
         confidence: 0.9,
         reason: "primary owning target",
       },
       {
-        focus: checkoutServiceFocus,
-        nodeId: "service-checkout",
+        focus: readerServiceFocus,
+        nodeId: "service-reader",
         confidence: 0.62,
-        reason: "generated client is compiled into checkout",
+        reason: "generated client is compiled into reader",
       },
     ],
   },
   {
-    from: checkoutServiceFocus,
+    from: readerServiceFocus,
     targetTopology: "repo",
     ambiguous: false,
     candidates: [
       {
-        focus: checkoutFileFocus,
-        nodeId: "repo-checkout",
+        focus: readerFileFocus,
+        nodeId: "repo-reader",
         confidence: 1,
         reason: "service implementation glob",
       },
     ],
   },
   {
-    from: paymentsServiceFocus,
+    from: writerServiceFocus,
     targetTopology: "repo",
     ambiguous: false,
     candidates: [
       {
-        focus: paymentsFileFocus,
-        nodeId: "repo-payments",
+        focus: writerFileFocus,
+        nodeId: "repo-writer",
         confidence: 1,
         reason: "service implementation glob",
       },
@@ -299,18 +267,18 @@ function widgetsFor(selected: FocusRef): Widget[] {
     priority: 10,
     provenance: repoProvenance(selected.revisionId),
   };
-  if (selected.key.includes("payments") || selected.key.includes("authorize")) {
+  if (selected.key.includes("writer") || selected.key.includes("write")) {
     return [
-      { ...common, id: "latency", title: "Production latency", kind: "metric", value: "18 / 24 / 52 / 84", unit: "ms · mean / p50 / p90 / p99", provenance: runtimeProvenance },
-      { ...common, id: "callers", title: "Call sites", kind: "list", value: ["Checkout.submit", "RetryWorker.run", "Admin.capture"] },
-      { ...common, id: "contract", title: "Interface", kind: "code", value: "Authorize(Payment) → Decision" },
+      { ...common, id: "fixture-metric", title: "Synthetic test metric", kind: "metric", value: "4", unit: "test units", provenance: runtimeProvenance },
+      { ...common, id: "callers", title: "Synthetic test caller", kind: "list", value: ["Reader.run"] },
+      { ...common, id: "contract", title: "Test interface", kind: "code", value: "Write(Value) → Result" },
     ];
   }
   return [
-    { ...common, id: "diff", title: "Working change", kind: "status", value: "+18 −3 · checkout.ts" },
-    { ...common, id: "contracts", title: "Contracts", kind: "list", value: ["CreateOrder", "Authorize", "OrderEvents"] },
-    { ...common, id: "bugs", title: "Relevant bugs", kind: "list", value: ["checkout-timeout", "retry-budget"] },
-    { ...common, id: "deploy", title: "Latest deployment", kind: "status", value: "local · v0.8.4 · 17m ago", provenance: runtimeProvenance },
+    { ...common, id: "diff", title: "Working change", kind: "status", value: "+18 −3 · reader.ts" },
+    { ...common, id: "contracts", title: "Test contracts", kind: "list", value: ["Read", "Write"] },
+    { ...common, id: "bugs", title: "Synthetic test issues", kind: "list", value: ["fixture-timeout", "fixture-retry"] },
+    { ...common, id: "deploy", title: "Synthetic test deployment", kind: "status", value: "fixture only · no process started", provenance: runtimeProvenance },
   ];
 }
 
@@ -338,8 +306,8 @@ function retagWorkingReferences(snapshot: WorkspaceSnapshot, revisionId: string)
 }
 
 function markGraphsPending(graphs: GraphSlice[], epoch: number): GraphSlice[] {
-  const affectedNodes = new Set(["repo-services", "repo-checkout", "service-checkout"]);
-  const affectedEdges = new Set(["repo-e2", "service-e2"]);
+  const affectedNodes = new Set(["repo-services", "repo-reader", "service-reader"]);
+  const affectedEdges = new Set(["repo-e2", "service-e1"]);
   return graphs.map((graph) => ({
     ...graph,
     epoch,
@@ -347,7 +315,7 @@ function markGraphsPending(graphs: GraphSlice[], epoch: number): GraphSlice[] {
     nodes: graph.nodes.map((node) => ({
       ...node,
       status: affectedNodes.has(node.id) ? "yellow" : node.status === "red" ? "green" : node.status,
-      detail: node.id === "service-checkout" ? "reconciling source changes" : node.detail,
+      detail: node.id === "service-reader" ? "reconciling source changes" : node.detail,
     })),
     edges: graph.edges.map((edge) => ({
       ...edge,
@@ -357,16 +325,16 @@ function markGraphsPending(graphs: GraphSlice[], epoch: number): GraphSlice[] {
 }
 
 const baseActivity: Activity[] = [
-  { id: "a1", at: observedAt, kind: "agent", summary: "agent-07 opened checkout.ts", status: "yellow" },
-  { id: "a2", at: observedAt, kind: "diff", summary: "+18 −3 across checkout", status: "yellow" },
-  { id: "a3", at: observedAt, kind: "build", summary: "//services/payments:all green", status: "green" },
+  { id: "a1", at: observedAt, kind: "agent", summary: "agent-07 opened reader.ts", status: "yellow" },
+  { id: "a2", at: observedAt, kind: "diff", summary: "+18 −3 across reader", status: "yellow" },
+  { id: "a3", at: observedAt, kind: "build", summary: "//services/writer:all green", status: "green" },
 ];
 
-export function initialSnapshot(selected: FocusRef = checkoutServiceFocus): WorkspaceSnapshot {
+export function initialSnapshot(selected: FocusRef = readerServiceFocus): WorkspaceSnapshot {
   return {
     protocolVersion: PROTOCOL_VERSION,
-    project: { id: "project:swarm-ide", name: "swarm-ide" },
-    world: { id: "world:working", label: "working tree" },
+    project: { id: "project:test-fixture", name: "Test fixture" },
+    world: { id: "world:working", label: "synthetic working tree" },
     revisions: {
       working: { id: "work:a1", fingerprint: "work:a1", evidence: "observed" },
       built: { id: "build:a1", sourceFingerprint: "work:a1" },
@@ -440,8 +408,8 @@ export function successfulSnapshot(previous: WorkspaceSnapshot): WorkspaceSnapsh
   const epoch = previous.reconciliation.epoch;
   const workingId = previous.revisions.working.fingerprint;
   const buildId = revisionId("build", epoch);
-  const fraudAlreadyVisible = previous.graphs.some((graph) =>
-    graph.nodes.some((node) => node.id === "service-fraud"),
+  const validatorAlreadyVisible = previous.graphs.some((graph) =>
+    graph.nodes.some((node) => node.id === "service-validator"),
   );
   return retagWorkingReferences({
     ...previous,
@@ -453,7 +421,7 @@ export function successfulSnapshot(previous: WorkspaceSnapshot): WorkspaceSnapsh
     mappings: [
       ...mappings,
       {
-        from: fraudServiceFocus,
+        from: validatorServiceFocus,
         targetTopology: "repo",
         ambiguous: false,
         candidates: [],
@@ -467,7 +435,7 @@ export function successfulSnapshot(previous: WorkspaceSnapshot): WorkspaceSnapsh
       message: "Topology and documentation published atomically",
     })),
     activity: [
-      { id: `activity:${epoch}:published`, at: observedAtOffset(epoch + 1), kind: "system" as const, summary: fraudAlreadyVisible ? `Topology published for ${buildId}` : "FraudCheck appeared in the service graph", status: "green" as const },
+      { id: `activity:${epoch}:published`, at: observedAtOffset(epoch + 1), kind: "system" as const, summary: validatorAlreadyVisible ? `Topology published for ${buildId}` : "Validator appeared in the service graph", status: "green" as const },
       ...previous.activity,
     ].slice(0, 32),
     reconciliation: {
@@ -488,7 +456,7 @@ export function failedSnapshot(previous: WorkspaceSnapshot): WorkspaceSnapshot {
       ...job,
       status: "failed",
       resources: { cpuPercent: 0, memoryMiB: 0 },
-      message: "Service topology extractor failed at checkout.ts:84",
+      message: "Service topology extractor failed at reader.ts:84",
     })),
     activity: [
       { id: `activity:${previous.reconciliation.epoch}:failed`, at: observedAtOffset(previous.reconciliation.epoch + 2), kind: "build" as const, summary: "Extraction failed; last green graph retained", status: "red" as const },

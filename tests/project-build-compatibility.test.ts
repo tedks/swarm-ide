@@ -1,10 +1,12 @@
 // @vitest-environment node
 import { afterEach, expect, it, vi } from "vitest";
-import { mkdtemp, mkdir, writeFile, rm } from "node:fs/promises";
+import { mkdtemp, writeFile, rm } from "node:fs/promises";
+import { execFileSync } from "node:child_process";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { BuildGraphProvider, buildQueryArgs, collectBuildQuery, type BuildQueryOptions } from "../core/build-graph";
-import { RealWorkspaceProvider, hasDeclaredServiceTopology, SERVICE_TOPOLOGY_TARGET } from "../core/provider";
+import { RealWorkspaceProvider } from "../core/provider";
+import { discoverServices } from "../core/service-discovery";
 import { BuildGraphRequestSchema } from "../protocol/build-graph";
 import type { CodexTransportSink } from "../core/agents/codex-app-server";
 
@@ -13,25 +15,21 @@ afterEach(async () => { await Promise.all(paths.splice(0).map((path) => rm(path,
 const output = Buffer.from(JSON.stringify({ type: "RULE", rule: { name: "//:own", ruleClass: "filegroup", location: "BUILD.bazel:1:1" } }) + "\n");
 const flush = async () => { for (let i = 0; i < 20; i++) await Promise.resolve(); };
 
-it("requires the exact declared demo mapping and manifest; another Bazel project never invokes the fixed build", async () => {
-  const root = await mkdtemp(join(tmpdir(), "swarm-topology-applicability-")); paths.push(root);
+it("observes an unrelated Bazel project with no service declarations without producing build evidence", async () => {
+  const root = await mkdtemp(join(tmpdir(), "swarm-service-compatibility-")); paths.push(root);
+  execFileSync("git", ["init", "-q"], { cwd: root });
   await writeFile(join(root, "MODULE.bazel"), 'module(name="other")');
-  const build = vi.fn(async () => ({ artifactPath: "/unused" }));
   const fingerprint = vi.fn(async () => "a".repeat(64));
+  const discover = vi.fn(discoverServices);
   const provider = await RealWorkspaceProvider.create(root, { register: async () => ({ root, id: `repository:${"a".repeat(64)}`, name: "Other" }),
-    topologyApplicable: hasDeclaredServiceTopology, build, fingerprint, now: () => new Date().toISOString(), readArtifact: async () => { throw new Error("not reached"); } });
-  await provider.startReconciliation(() => {});
-  expect(build).not.toHaveBeenCalled(); expect(fingerprint).not.toHaveBeenCalled(); expect(provider.snapshot().jobs).toEqual([]);
-  expect(provider.snapshot().reconciliation.message).toContain("No service topology adapter declared");
-  await mkdir(join(root, ".swarm"));
-  await writeFile(join(root, ".swarm/service-topology.json"), JSON.stringify({ schemaVersion: 1, target: SERVICE_TOPOLOGY_TARGET }));
-  expect(await hasDeclaredServiceTopology(root)).toBe(false);
-  await mkdir(join(root, "examples/checkout-world/services/fraudcheck"), { recursive: true });
-  await writeFile(join(root, "examples/checkout-world/services/fraudcheck/service.swarm.json"), JSON.stringify({ schemaVersion: 1, service: { id: "service:fraud-check" } }));
-  expect(await hasDeclaredServiceTopology(root)).toBe(true);
-  await writeFile(join(root, ".swarm/service-topology.json"), JSON.stringify({ schemaVersion: 1, target: "//:other" }));
-  expect(await hasDeclaredServiceTopology(root)).toBe(false);
-  provider.dispose();
+    discover, fingerprint, now: () => new Date().toISOString() });
+  try {
+    await provider.startReconciliation(() => {});
+    expect(discover).toHaveBeenCalledExactlyOnceWith(root, expect.any(AbortSignal)); expect(fingerprint).toHaveBeenCalledTimes(2);
+    expect(provider.snapshot().jobs).toEqual([]); expect(provider.snapshot().revisions.built).toEqual({ id: "", sourceFingerprint: "" });
+    expect(provider.snapshot().reconciliation.message).toBe("No service declarations found");
+    expect(provider.snapshot().graphs.find((graph) => graph.topologyId === "service")?.nodes).toEqual([]);
+  } finally { provider.dispose(); }
 });
 
 it("keeps passive queries offline; only deliberate refresh authorizes declared dependency loading", async () => {
@@ -89,16 +87,17 @@ it("does not publish current when cancelled during the final input read", async 
   expect(provider.observe().graph).toBeUndefined(); await provider.dispose();
 });
 
-it("rejecting an undeclared second start does not strand an already admitted build", async () => {
-  let applicable = true, rejectBuild!: (error: Error) => void;
+it("a coalesced second observation does not strand the owned discovery failure", async () => {
+  let rejectDiscovery!: (error: Error) => void;
   const provider = await RealWorkspaceProvider.create("/unused", { register: async (root) => ({ root, id: `repository:${"a".repeat(64)}`, name: "Controlled" }),
-    topologyApplicable: async () => applicable, fingerprint: async () => "a".repeat(64), now: () => new Date().toISOString(),
-    build: () => new Promise((_resolve, reject) => { rejectBuild = reject; }), readArtifact: async () => { throw new Error("not reached"); } });
+    fingerprint: async () => "a".repeat(64), now: () => new Date().toISOString(),
+    discover: () => new Promise((_resolve, reject) => { rejectDiscovery = reject; }) });
   const admitted = provider.startReconciliation(() => {}); await flush();
-  expect(provider.snapshot().jobs[0]?.status).toBe("running");
-  applicable = false; await provider.startReconciliation(() => {});
-  rejectBuild(new Error("actual admitted build failed")); await admitted;
-  expect(provider.snapshot().jobs[0]).toMatchObject({ status: "failed", message: "actual admitted build failed" }); provider.dispose();
+  expect(provider.snapshot().reconciliation.status).toBe("yellow");
+  const coalesced = provider.startReconciliation(() => {}); expect(coalesced).toBe(admitted);
+  rejectDiscovery(new Error("actual declaration scan failed")); await admitted;
+  expect(provider.snapshot().reconciliation).toMatchObject({ status: "red", message: "actual declaration scan failed" });
+  expect(provider.snapshot().jobs).toEqual([]); provider.dispose();
 });
 
 it("keeps refresh and cancel mutually exclusive under the typed repository/world request", () => {

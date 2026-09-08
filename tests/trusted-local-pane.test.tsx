@@ -2,7 +2,7 @@
 import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { TrustedLocalPane } from "../app/renderer/agents/TrustedLocalPane";
-import { initialSnapshot, paymentsFileFocus } from "../fixtures/world";
+import { initialSnapshot, writerFileFocus } from "../fixtures/world";
 import type { SwarmBridge } from "../app/electron/preload";
 import type { TrustedSnapshot } from "../protocol/trusted-local";
 import { PROTOCOL_VERSION, type CoreRequest, type CoreResponse } from "../protocol/schema";
@@ -11,7 +11,7 @@ import type { LiveAgentState } from "../app/renderer/agents/live-state";
 const token = "11111111-1111-4111-8111-111111111111";
 const fresh = (): TrustedSnapshot => ({ instanceId: "22222222-2222-4222-8222-222222222222", profile: "trusted-local", workspace: "/fixed/repository",
   preparation: null, runToken: null, status: "idle", output: "", threadId: null, turnId: null, approvals: [], message: "No turn started" });
-const draft = (): LiveAgentState["draft"] => ({ focus: { ...paymentsFileFocus, key: "file:services/payments/src/service.ts" }, task: "Inspect fixed source", model: "", prepared: null, confirmed: false, preparing: false });
+const draft = (): LiveAgentState["draft"] => ({ focus: { ...writerFileFocus, key: "file:services/writer/src/service.ts" }, task: "Inspect fixed source", model: "", prepared: null, confirmed: false, preparing: false });
 afterEach(() => { cleanup(); vi.useRealTimers(); });
 function harness() {
   let state = fresh(), seq = 0;

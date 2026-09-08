@@ -4,8 +4,6 @@ import { appendFile, mkdtemp, open, rename, rm, symlink, writeFile } from "node:
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { BUILD_PROGRESS_LIMITS, BuildProgressDecoder, buildMilestone, watchBuildProgress } from "../core/build-progress";
-import { RealWorkspaceProvider, type ProviderDependencies } from "../core/provider";
-import { contextDependencies } from "./context-fixture";
 
 const roots: string[] = [];
 const readers: ReturnType<typeof watchBuildProgress>[] = [];
@@ -95,40 +93,5 @@ describe("one private live BEP file", () => {
     await reader.stop();
     expect(published).toHaveBeenCalledWith("Build progress is unavailable; waiting for the build result");
     expect(published).not.toHaveBeenCalledWith("Configured //:replacement");
-  });
-});
-
-describe("current build job publication", () => {
-  it("publishes real callback messages as running-zero until final artifact checks finish", async () => {
-    let progress!: (message: string) => void, complete!: () => void;
-    const deps: ProviderDependencies = { ...contextDependencies, build: async (_root, callback) => {
-      progress = callback!; await new Promise<void>((resolve) => { complete = resolve; }); return { artifactPath: "/unused" };
-    } };
-    const provider = await RealWorkspaceProvider.create("/unused", deps), publish = vi.fn();
-    const running = provider.startReconciliation(publish);
-    await vi.waitFor(() => expect(progress).toBeTypeOf("function"));
-    progress("Configured //:target"); progress("Configured //:target");
-    expect(publish.mock.calls.filter(([type]) => type === "job.changed")).toHaveLength(1);
-    expect(provider.snapshot().jobs[0]).toMatchObject({ status: "running", progress: 0, message: "Configured //:target" });
-    expect(provider.snapshot().reconciliation.status).toBe("yellow");
-    complete(); await running; expect(provider.snapshot().reconciliation.status).toBe("green");
-    const count = publish.mock.calls.length; progress("late callback");
-    expect(publish).toHaveBeenCalledTimes(count); provider.dispose();
-  });
-  it.each(["source-change", "superseded", "disposed"])("rejects callbacks after %s", async (mode) => {
-    const callbacks: Array<(message: string) => void> = [], releases: Array<() => void> = [];
-    const deps: ProviderDependencies = { ...contextDependencies, build: async (_root, callback) => {
-      callbacks.push(callback!); await new Promise<void>((resolve) => { releases.push(resolve); }); return { artifactPath: "/unused" };
-    } };
-    const provider = await RealWorkspaceProvider.create("/unused", deps), publish = vi.fn();
-    const first = provider.startReconciliation(publish);
-    await vi.waitFor(() => expect(callbacks).toHaveLength(1));
-    let second: Promise<void> | undefined;
-    if (mode === "source-change") provider.markWorkingWorldChanged("b".repeat(64), publish);
-    if (mode === "disposed") provider.dispose();
-    if (mode === "superseded") { second = provider.startReconciliation(publish); await vi.waitFor(() => expect(callbacks).toHaveLength(2)); }
-    const count = publish.mock.calls.length; callbacks[0]!("obsolete milestone");
-    expect(publish).toHaveBeenCalledTimes(count);
-    for (const release of releases) release(); await Promise.all([first, second]); provider.dispose();
   });
 });

@@ -126,7 +126,7 @@ describe("registered disk-only launch context", () => {
   it("supports reference-only service/directory context without reading linked sources", async () => {
     const f = await fixture();
     const p = await RegisteredAgentContextProvider.create({ ...f.options, resolveFocus: async () => [{ attachmentPath: null, sourcePaths: ["docs/missing.md"] }] });
-    const draft = value(await p.prepare({ ...f.input(), focus: { ...f.input().focus, domain: "service", key: "service:fraudcheck" } }));
+    const draft = value(await p.prepare({ ...f.input(), focus: { ...f.input().focus, domain: "service", key: "service:alpha" } }));
     expect(draft.launchContext.attachments).toEqual([]);
     expect(draft.launchContext.submittedPrompt).toContain("docs/missing.md");
     expect((await p.prepare({ ...f.input(), focus: { ...f.input().focus, range: { startLine: 1, endLine: 1 } } })).ok).toBe(false);

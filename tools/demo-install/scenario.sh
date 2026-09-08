@@ -28,10 +28,8 @@ swarm_window_key Return
 swarm_window_wait_title 'Palette open' absent
 swarm_window_wait_title "Source ${source_path##*/}" present 15000
 swarm_window_capture "$SWARM_ARTIFACT_DIR/source.png"
-title=$(swarm_window_title)
-if [[ "$SWARM_INSTALL_CASE" != checkout && "$title" == *'FraudCheck visible'* ]]; then
-  echo 'Wrong-repository service data leaked'; exit 1
-fi
+# Cross-repository declared-service identities are covered by tools/services:smoke
+# and its direct two-repository checks; no built-in service appears in the title.
 if [[ "$SWARM_INSTALL_CASE" == bazel-target ]]; then
   # The source-open title proves live core registration and observation. Wait
   # through its startup effects, then positively exercise the deliberate action.

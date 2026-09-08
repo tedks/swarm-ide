@@ -34,14 +34,15 @@ export function staleSnapshot(snapshot: WorkspaceSnapshot, message: string): Wor
 // A restarted provider has not observed the old derived topology yet. Keep the
 // coherent old slice explicitly stale until the new core actually builds one.
 export function retainDerived(previous: WorkspaceSnapshot | null, incoming: WorkspaceSnapshot): WorkspaceSnapshot {
-  if (!previous || previous.project.id !== incoming.project.id || previous.world.id !== incoming.world.id || incoming.reconciliation.lastConsistentFingerprint !== "unobserved" ||
-      (previous.reconciliation.lastConsistentFingerprint === "unobserved" && !previous.revisions.built.id)) return incoming;
-  const old = staleSnapshot(previous, "Core replaced; last observed topology retained as stale. Build to reconcile.");
+  if (!previous || previous.project.id !== incoming.project.id || previous.world.id !== incoming.world.id || incoming.serviceDeclarations || incoming.reconciliation.lastConsistentFingerprint !== "unobserved" ||
+      (previous.reconciliation.lastConsistentFingerprint === "unobserved" && !previous.revisions.built.id && !previous.serviceDeclarations)) return incoming;
+  const old = staleSnapshot(previous, "Reconnecting; showing the last service graph.");
   const retag = (focus: FocusRef): FocusRef => focus.revisionKind === "working" ? { ...focus, revisionId: incoming.revisions.working.id } : focus;
   return {
     ...incoming,
     revisions: { ...incoming.revisions, built: old.revisions.built },
     serviceContext: old.serviceContext,
+    serviceDeclarations: old.serviceDeclarations,
     graphs: incoming.graphs.map((graph) => graph.directory ? graph : {
       ...(old.graphs.find((previousGraph) => previousGraph.topologyId === graph.topologyId) ?? graph),
       nodes: (old.graphs.find((previousGraph) => previousGraph.topologyId === graph.topologyId) ?? graph).nodes.map((node) => ({ ...node, focus: retag(node.focus) })),

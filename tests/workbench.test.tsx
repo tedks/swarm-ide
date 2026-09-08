@@ -12,7 +12,7 @@ import {
 } from "../app/view-shell";
 import { INTERFACE_ZOOM_STORAGE_KEY } from "../app/renderer/zoom";
 import type { Lifecycle, LifecycleBridge } from "../app/lifecycle";
-import { dirtySnapshot, initialSnapshot, paymentsFileFocus } from "../fixtures/world";
+import { dirtySnapshot, initialSnapshot, writerFileFocus } from "../fixtures/world";
 const testHotMemory = vi.hoisted(() => ({ workbench: undefined as unknown }));
 vi.mock("../app/renderer/hot-memory", async (importOriginal) => ({ ...await importOriginal<typeof import("../app/renderer/hot-memory")>(), hotMemory: testHotMemory }));
 
@@ -45,13 +45,13 @@ describe("selective live recovery", () => {
   it("exposes the observed topology epoch and status as persistent title evidence", async () => {
     shell(); const source = files();
     render(<App />); await open(source.path);
-    const expected = initialSnapshot(paymentsFileFocus).reconciliation;
+    const expected = initialSnapshot(writerFileFocus).reconciliation;
     await waitFor(() => expect(document.title).toContain(` — Topology ${expected.epoch}:${expected.status}`));
   });
 it("waits for a fresh generation snapshot before restoring pathless service focus", async () => {
     const lifecycle = shell();
     const old = initialSnapshot();
-    const selected = { worldId: old.world.id, revisionKind: "working" as const, revisionId: old.revisions.working.id, domain: "service" as const, key: "service:checkout" };
+    const selected = { worldId: old.world.id, revisionKind: "working" as const, revisionId: old.revisions.working.id, domain: "service" as const, key: "service:reader" };
     window.sessionStorage.setItem("swarm:document-navigation:v1", JSON.stringify({ paths: [], activeSurface: "graphs", lens: "System", focus: selected, snapshot: initialSnapshot(selected) }));
     const fresh = dirtySnapshot(old);
     let resolveSnapshot!: (response: CoreResponse) => void;
@@ -113,8 +113,8 @@ it("preserves an outstanding save as unknown across a structural component remou
     return { bridge, update: (patch: Partial<Lifecycle>) => act(() => { state = { ...state, ...patch, revision: state.revision + 1 }; listener?.(state); }) };
   }
   function files(writeResult?: (input: CoreRequest) => Promise<CoreResponse>) {
-    const path = "services/payments/payments.ts";
-    const base = initialSnapshot(paymentsFileFocus);
+    const path = "services/writer/writer.ts";
+    const base = initialSnapshot(writerFileFocus);
     let snapshot: WorkspaceSnapshot = { ...base, widgets: [{ id: "source-paths", title: "Implementation sources", kind: "list", priority: 0, value: [path], provenance: base.widgets[0]!.provenance }] };
     let listener: ((event: CoreEvent | FileEvent) => void) | undefined;
     let disk = "base\n";
@@ -235,7 +235,7 @@ describe("workbench shell", () => {
     render(<App />);
     expect(await screen.findByText("swarm-ide")).toBeTruthy();
     expect(screen.getByText("Repository topology")).toBeTruthy();
-    expect(screen.getByText("Service calls")).toBeTruthy();
+    expect(screen.getByText("Synthetic service graph")).toBeTruthy();
     expect(screen.getByText("Changes entering the world")).toBeTruthy();
     expect(screen.queryByText("Relevant bugs")).toBeNull();
     expect(screen.getByRole("heading", { name: "Nothing selected" })).toBeTruthy();
@@ -408,8 +408,8 @@ describe("workbench shell", () => {
 
   it("opens real source responses in multiple tabs and visualizes an external replacement", async () => {
     let listener: ((event: CoreEvent | FileEvent) => void) | undefined;
-    const base = initialSnapshot(paymentsFileFocus);
-    const paths = ["services/payments/payments.ts", "services/payments/contract.ts"];
+    const base = initialSnapshot(writerFileFocus);
+    const paths = ["services/writer/writer.ts", "services/writer/contract.ts"];
     const snapshot: WorkspaceSnapshot = {
       ...base,
       widgets: [{
@@ -447,19 +447,19 @@ describe("workbench shell", () => {
     await waitFor(() => expect(document.querySelectorAll(".surface-tab-main")).toHaveLength(2)); // Documents only; graphs have their own surface.
     expect(request.mock.calls.some(([input]) => input.type === "focus.select" && input.focus.path === paths[1])).toBe(true);
     const surfaceTabs = [...document.querySelectorAll<HTMLButtonElement>(".surface-tabs > button, .surface-tab-main")];
-    expect(surfaceTabs.some((tab) => tab.textContent?.includes("payments.ts"))).toBe(true);
+    expect(surfaceTabs.some((tab) => tab.textContent?.includes("writer.ts"))).toBe(true);
     expect(surfaceTabs.some((tab) => tab.textContent?.includes("contract.ts"))).toBe(true);
-    fireEvent.click(surfaceTabs.find((tab) => tab.textContent?.includes("payments.ts"))!);
+    fireEvent.click(surfaceTabs.find((tab) => tab.textContent?.includes("writer.ts"))!);
     await waitFor(() => expect(request.mock.calls.filter(([input]) => input.type === "focus.select").at(-1)?.[0]).toMatchObject({ type: "focus.select", focus: { path: paths[0] } }));
-    const paymentsEditor = EditorView.findFromDOM(document.querySelector(".cm-editor")!);
-    if (!paymentsEditor) throw new Error("CodeMirror editor was not mounted");
-    act(() => paymentsEditor.dispatch({ selection: { anchor: 1 } }));
+    const writerEditor = EditorView.findFromDOM(document.querySelector(".cm-editor")!);
+    if (!writerEditor) throw new Error("CodeMirror editor was not mounted");
+    act(() => writerEditor.dispatch({ selection: { anchor: 1 } }));
 
     disk = new Map(disk).set(paths[0]!, { content: "one\nnew\n", revision: "c".repeat(64) });
     act(() => listener?.({ protocolVersion: PROTOCOL_VERSION, type: "file.changed", sequence: 1, emittedAt: "2026-09-05T12:01:00.000Z", path: paths[0]!, revision: "c".repeat(64), change: "modified" }));
     await waitFor(() => expect(document.querySelector(".cm-added-flash")?.textContent).toContain("new"));
     expect(document.querySelector(".cm-removed-ghost")?.textContent).toContain("old");
-    expect(paymentsEditor.state.selection.main.anchor).toBe(1);
+    expect(writerEditor.state.selection.main.anchor).toBe(1);
     const closeShortcut = new KeyboardEvent("keydown", { key: "w", ctrlKey: true, cancelable: true });
     const focusRequestsBeforeClose = request.mock.calls.filter(([input]) => input.type === "focus.select").length;
     window.dispatchEvent(closeShortcut);
@@ -472,8 +472,8 @@ describe("workbench shell", () => {
   });
 
   it("closes multiple clean tabs in one interaction batch without resurrecting either", async () => {
-    const paths = ["services/payments/payments.ts", "services/payments/contract.ts"];
-    const base = initialSnapshot(paymentsFileFocus);
+    const paths = ["services/writer/writer.ts", "services/writer/contract.ts"];
+    const base = initialSnapshot(writerFileFocus);
     const snapshot: WorkspaceSnapshot = {
       ...base,
       widgets: [{ id: "source-paths", title: "Implementation sources", kind: "list", priority: 0, value: paths, provenance: base.widgets[0]!.provenance }],
@@ -502,8 +502,8 @@ describe("workbench shell", () => {
 
   it("saves with the expected revision and preserves a dirty buffer on external conflict", async () => {
     let listener: ((event: CoreEvent | FileEvent) => void) | undefined;
-    const path = "services/payments/payments.ts";
-    const base = initialSnapshot(paymentsFileFocus);
+    const path = "services/writer/writer.ts";
+    const base = initialSnapshot(writerFileFocus);
     const snapshot: WorkspaceSnapshot = {
       ...base,
       widgets: [{ id: "source-paths", title: "Implementation sources", kind: "list", priority: 0, value: [path], provenance: base.widgets[0]!.provenance }],
@@ -574,8 +574,8 @@ describe("workbench shell", () => {
 
   it("keeps a conflict raised during save and leaves transient failures dirty and retryable", async () => {
     let listener: ((event: CoreEvent | FileEvent) => void) | undefined;
-    const path = "services/payments/payments.ts";
-    const base = initialSnapshot(paymentsFileFocus);
+    const path = "services/writer/writer.ts";
+    const base = initialSnapshot(writerFileFocus);
     const snapshot: WorkspaceSnapshot = { ...base, widgets: [{ id: "source-paths", title: "Implementation sources", kind: "list", priority: 0, value: [path], provenance: base.widgets[0]!.provenance }] };
     let saveNumber = 0;
     let finishSave!: (response: CoreResponse) => void;
@@ -615,8 +615,8 @@ describe("workbench shell", () => {
 
   it("registers observation before reading and rejects an older external read that completes last", async () => {
     let listener: ((event: CoreEvent | FileEvent) => void) | undefined;
-    const path = "services/fraudcheck/fraudcheck.ts";
-    const base = initialSnapshot(paymentsFileFocus);
+    const path = "services/validator/validator.ts";
+    const base = initialSnapshot(writerFileFocus);
     const snapshot: WorkspaceSnapshot = {
       ...base,
       widgets: [{ id: "source-paths", title: "Implementation sources", kind: "list", priority: 0, value: [path], provenance: base.widgets[0]!.provenance }],
@@ -665,8 +665,8 @@ describe("workbench shell", () => {
 
   it("lets initial open consume a newer watcher event without duplicate competing reads", async () => {
     let listener: ((event: CoreEvent | FileEvent) => void) | undefined;
-    const path = "services/fraudcheck/fraudcheck.ts";
-    const base = initialSnapshot(paymentsFileFocus);
+    const path = "services/validator/validator.ts";
+    const base = initialSnapshot(writerFileFocus);
     const snapshot: WorkspaceSnapshot = {
       ...base,
       widgets: [{ id: "source-paths", title: "Implementation sources", kind: "list", priority: 0, value: [path], provenance: base.widgets[0]!.provenance }],
@@ -704,8 +704,8 @@ describe("workbench shell", () => {
 
   it("hands initial observation off before a post-read event can be dropped", async () => {
     let listener: ((event: CoreEvent | FileEvent) => void) | undefined;
-    const path = "services/fraudcheck/fraudcheck.ts";
-    const base = initialSnapshot(paymentsFileFocus);
+    const path = "services/validator/validator.ts";
+    const base = initialSnapshot(writerFileFocus);
     const snapshot: WorkspaceSnapshot = {
       ...base,
       widgets: [{ id: "source-paths", title: "Implementation sources", kind: "list", priority: 0, value: [path], provenance: base.widgets[0]!.provenance }],
@@ -746,8 +746,8 @@ describe("workbench shell", () => {
 
   it("does not let an observed read from a closed tab overwrite its reopened lifecycle", async () => {
     let listener: ((event: CoreEvent | FileEvent) => void) | undefined;
-    const path = "services/fraudcheck/fraudcheck.ts";
-    const base = initialSnapshot(paymentsFileFocus);
+    const path = "services/validator/validator.ts";
+    const base = initialSnapshot(writerFileFocus);
     const snapshot: WorkspaceSnapshot = {
       ...base,
       widgets: [{ id: "source-paths", title: "Implementation sources", kind: "list", priority: 0, value: [path], provenance: base.widgets[0]!.provenance }],
