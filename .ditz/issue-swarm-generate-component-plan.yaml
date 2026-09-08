@@ -70,5 +70,14 @@ log_events:
     New-agent composer/launchWorkspace and generation effort/purpose/registration
     recovery preserved. No new model/GUI/test cycle or shared adoption. Prior proof
     attribution and two open follow-ups unchanged; recovery branch retained.
+- time: 2026-09-08T20:37:15-00:00
+  who: Ted Smith
+  what: commented
+  comment: ROOT verified normal PR133 merge eedf2f89 and adopted it into the managed
+    local IDE. Generate component plan uses saved Codex sol/xhigh settings and the
+    normal visible agent. 123 generation plus 32 joined UI checks, types/package/native
+    and controlled UI passed. Actual model produced three valid documents but hit
+    the proof deadline; model-finish and separate camera-test follow-ups remain open.
+    No additional model or full-suite run. Separate project windows untouched.
 blocks:
 - swarm-close-working-loop
