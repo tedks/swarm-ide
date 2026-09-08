@@ -1,0 +1,20 @@
+id: swarm-container-owned-processes
+title: Enable build queries and agent processes in the container demo
+desc: Current nonroot namespace preflight passes with scoped Chromium seccomp, but
+  actual owned helper unshare --mount-proc fails because mount remains denied with
+  cap_drop ALL. Decide and verify a bounded container-owned mount policy or process
+  adapter; do not silently add SYS_ADMIN/privileged/no-sandbox. Current browser demo
+  documents query/run limitation; native Linux supports full workflow.
+type: feature
+component: default
+release:
+reporter: Ted Smith <tedks@riseup.net>
+status: unstarted
+disposition:
+creation_time: 2026-09-08T13:57:27-00:00
+references: []
+log_events:
+- time: 2026-09-08T13:57:27-00:00
+  who: Ted Smith
+  what: created
+  comment: ""
