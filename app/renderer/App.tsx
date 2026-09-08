@@ -136,7 +136,7 @@ export function App() {
   const [selectedActivity, setSelectedActivity] = useState<SelectedActivity | null>(null);
   const [workLogEntry, setWorkLogEntry] = useState<WorkLogEntry | null>(null);
   const demo = useUiDemo();
-  const [contextWidth, setContextWidth] = useState(24), [graphShare, setGraphShare] = useState(43);
+  const [contextWidth, setContextWidth] = useState(23), [graphShare, setGraphShare] = useState(43);
   const [dockShare, setDockShare] = useState<number | null>(null);
   const [graphReframe, setGraphReframe] = useState(0);
   const [showBuildVersion, setShowBuildVersion] = useState(0);
@@ -1316,7 +1316,7 @@ export function App() {
 
   if (!snapshot) return <main className="loading-screen"><div className="loading-mark hmr-probe" />Opening the working world…{error ? <strong>{error}</strong> : null}<small>{lifecycleNotice}</small><AgentReloadGuard state={liveAgents} client={agentClient} /></main>;
   return (
-    <main className="workbench" onPointerDownCapture={interruptPendingReveal} onFocusCapture={interruptPendingReveal} onKeyDownCapture={(event) => { if (event.key === "Escape" && definitionRef.current) { event.preventDefault(); event.stopPropagation(); cancelDefinition(); } }} data-compact-panel={compactPanel ?? "none"} style={{ "--context-width": `${contextWidth}%`, ...(dockShare !== null ? { gridTemplateRows: `var(--topbar-height) minmax(0, 1fr) ${dockShare}vh` } : agents.selected || liveAgents.paneOpen ? { gridTemplateRows: `var(--topbar-height) minmax(0, 1fr) calc(160px + (clamp(180px, 40vh, 448px) - 160px) * ${Math.min(1, Math.max(0, ((liveAgents.paneOpen ? liveAgents.height : agentPaneHeight) - 230) / 190))})` } : {}) } as CSSProperties}>
+    <main className="workbench" onPointerDownCapture={interruptPendingReveal} onFocusCapture={interruptPendingReveal} onKeyDownCapture={(event) => { if (event.key === "Escape" && definitionRef.current) { event.preventDefault(); event.stopPropagation(); cancelDefinition(); } }} data-compact-panel={compactPanel ?? "none"} style={{ "--context-width": `${contextWidth}%`, ...(dockShare !== null ? { gridTemplateRows: `var(--topbar-height) minmax(0, 1fr) ${dockShare}%` } : agents.selected || liveAgents.paneOpen ? { gridTemplateRows: `var(--topbar-height) minmax(0, 1fr) calc(160px + (clamp(180px, 40vh, 448px) - 160px) * ${Math.min(1, Math.max(0, ((liveAgents.paneOpen ? liveAgents.height : agentPaneHeight) - 230) / 190))})` } : {}) } as CSSProperties}>
       <header className="topbar">
         <div className="product-mark"><span className="hmr-probe" />swarm</div>
         <OverflowStrip className="lens-tabs-strip" label="workspace lenses" activeKey={activeLens}><nav className="lens-tabs" aria-label="Workspace lenses">{lensTabs.map((lens) => <button key={lens} aria-pressed={activeLens === lens} className={activeLens === lens ? "active" : ""} onClick={() => lens === "Plan" ? showDesign() : chooseLens(lens)}>{lens}</button>)}</nav></OverflowStrip>
@@ -1400,7 +1400,7 @@ export function App() {
         {taskDocumentOpen ? <div className="task-editor-surface" hidden={!textDocumentVisible} onPointerDownCapture={(event) => { if (!(event.target as Element).closest(".task-attach")) inspectTask(tasks.selectedTaskId); }} onFocusCapture={(event) => { if (!(event.target as Element).closest(".task-attach")) inspectTask(tasks.selectedTaskId); }}><TaskDetail surface="editor" selectedTaskId={tasks.selectedTaskId} snapshot={tasks.observation?.snapshot ?? null} detail={tasks.detail} detailRevision={tasks.detailRevision} detailStale={tasks.detailStale || tasks.observation?.status !== "observed" || Boolean(tasks.notice)} reading={tasks.reading} notice={tasks.detailNotice} attachment={taskAttachment(tasks.selectedTaskId)} onRefresh={() => { void taskClient.refresh(); }} onSelect={(id) => openTaskDocument(id)} onReveal={(ref) => { void revealTaskReference(ref); }} onReturnToSource={() => { setTaskDocumentVisible(false); if (!activeFile) setTaskDocumentOpen(false); returnToSourceInformation(); }} /></div> : null}
       </section>
 
-      <ResizeDivider label="Resize Context" className="context-divider" container=".workbench" value={contextWidth} minimum={23} maximum={44} initial={24} reverse onChange={setContextWidth} />
+      <ResizeDivider label="Resize Context" className="context-divider" container=".workbench" value={contextWidth} minimum={23} maximum={44} initial={23} reverse onChange={setContextWidth} />
       <aside id="information-panel" aria-label="Information panel" className="instrument-panel panel">
         <GlobalContext snapshot={snapshot} ready={observedCoreGeneration === coreGenerationRef.current && (!window.swarmLifecycle || lifecycle?.core.phase === "ready")} />
         <ProjectContextPanel repositoryId={snapshot.project.id} worldId={snapshot.world.id} generation={coreGenerationRef.current} ready={observedCoreGeneration === coreGenerationRef.current && (!window.swarmLifecycle || lifecycle?.core.phase === "ready")} />

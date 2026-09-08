@@ -56,7 +56,7 @@ it("pins an authored target to the current build graph and never guesses a missi
   const request = bridge(true); render(<App />);
   await screen.findByText("Build graph current");
   fireEvent.click(screen.getByRole("button", { name: "Open plan build target" }));
-  await waitFor(() => expect((screen.getByRole("textbox", { name: "Bazel target" }) as HTMLInputElement).value).toBe("//tools/policy:activation-test"));
+  await waitFor(() => expect((screen.getByRole("combobox", { name: "Bazel target" }) as HTMLInputElement).value).toBe("//tools/policy:activation-test"));
   expect(within(screen.getByRole("navigation", { name: "Workspace lenses" })).getByRole("button", { name: "Code" }).getAttribute("aria-pressed")).toBe("true");
   fireEvent.click(within(screen.getByRole("navigation", { name: "Workspace lenses" })).getByRole("button", { name: "Plan" }));
   fireEvent.click(screen.getByRole("button", { name: "Open missing target" }));
@@ -74,11 +74,23 @@ it("resizes the outer dock by keyboard without replacing source or moving its cu
   expect(divider.getAttribute("aria-orientation")).toBe("horizontal");
   fireEvent.keyDown(divider, { key: "ArrowUp" });
   expect(divider.getAttribute("aria-valuenow")).toBe("33");
-  expect((document.querySelector(".workbench") as HTMLElement).style.gridTemplateRows).toContain("33vh");
+  expect((document.querySelector(".workbench") as HTMLElement).style.gridTemplateRows).toContain("33%");
   for (let i = 0; i < 40; i++) fireEvent.keyDown(divider, { key: "ArrowDown" });
   expect(divider.getAttribute("aria-valuenow")).toBe("22");
   fireEvent.keyDown(divider, { key: "Home" });
   expect(divider.getAttribute("aria-valuenow")).toBe("32");
+  // At interface zoom the workbench's minimum height may exceed the viewport.
+  // Pointer math and the assigned grid track must use that same container.
+  const workbench = document.querySelector<HTMLElement>(".workbench")!;
+  vi.spyOn(workbench, "getBoundingClientRect").mockReturnValue(new DOMRect(0, 0, 800, 500));
+  vi.spyOn(window, "innerHeight", "get").mockReturnValue(400);
+  divider.setPointerCapture = vi.fn(); divider.releasePointerCapture = vi.fn();
+  for (const [type, clientY] of [["pointerdown", 340], ["pointermove", 250], ["pointerup", 250]] as const) {
+    const event = new MouseEvent(type, { bubbles: true, button: 0, clientY });
+    Object.defineProperty(event, "pointerId", { value: 1 }); fireEvent(divider, event);
+  }
+  expect(divider.getAttribute("aria-valuenow")).toBe("50");
+  expect(workbench.style.gridTemplateRows).toBe("var(--topbar-height) minmax(0, 1fr) 50%");
   expect(document.querySelector(".cm-editor")).toBe(element);
   expect(editor.state.doc.toString()).toBe("dirty source\n");
   expect(editor.state.selection.main.anchor).toBe(4);

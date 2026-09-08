@@ -79,13 +79,14 @@ async function main() {
       edges: document.querySelectorAll('.design-graph .react-flow__edge').length,
       planHeight: document.querySelector('.planning-field').getBoundingClientRect().height,
       navigationHeight: document.querySelector('.navigation-field').getBoundingClientRect().height,
-      columns: getComputedStyle(document.querySelector('.design-quadrants')).gridTemplateColumns.split(' ').length,
+      twoColumns: getComputedStyle(document.querySelector('.design-quadrants')).display === 'grid' &&
+        document.querySelector('.design-document').getBoundingClientRect().right <= document.querySelector('.design-components').getBoundingClientRect().left + 1,
       duplicateShell: Boolean(document.querySelector('.activity-dock > .dock-header')),
     }));
     assert.equal(planStartup.lens, 'Plan'); assert.deepEqual(planStartup.lenses, ['Plan', 'Code']);
     assert(planStartup.graphs >= 2 && planStartup.edges >= 1);
     assert(planStartup.planHeight > planStartup.navigationHeight * .6, 'Retained hidden Code graphs must not consume an extra layout row');
-    assert.equal(planStartup.columns, 2, 'Normal desktop has two columns of plan instruments');
+    assert.equal(planStartup.twoColumns, true, 'Normal desktop has two columns of plan instruments');
     assert.equal(planStartup.duplicateShell, false);
     await fs.writeFile(path.join(evidence, 'plan-startup.png'), (await wc.capturePage()).toPNG());
   }
@@ -120,7 +121,10 @@ async function main() {
       return { width: e.getBoundingClientRect().width, dockWidth: dock.getBoundingClientRect().width, cursor: getComputedStyle(e).cursor };
     });
     assert(dockHandle.width >= dockHandle.dockWidth - 2); assert.equal(dockHandle.cursor, 'row-resize');
-    await click('.dock-divider');
+    // Pointer dragging deliberately preserves editor focus. Reach the separate
+    // keyboard control using real Tab navigation rather than assuming a click.
+    for (let index = 0; index < 100 && !await run(() => document.activeElement?.matches('.dock-divider')); index++) await key('Tab');
+    assert(await run(() => document.activeElement?.matches('.dock-divider')));
     await key('Up');
     assert.equal(await run(() => document.querySelector('.dock-divider').getAttribute('aria-valuenow')), '33');
     await key('Home');

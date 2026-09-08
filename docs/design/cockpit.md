@@ -14,6 +14,7 @@ document should not throw away a draft, dirty file or graph camera.
 | Contextual instruments | [ContextPane.tsx](../../app/renderer/context/ContextPane.tsx) | Facts and links for the current attention target |
 | Side instruments | [WorkbenchSidebar.tsx](../../app/renderer/WorkbenchSidebar.tsx) | Agent/task/activity surfaces beside the central work |
 | Persistent dock | [AgentDock.tsx](../../app/renderer/agents/AgentDock.tsx) | Build resources, agent messages, Work Log and Activity in independently scrolling columns |
+| Layout adjustment | [ResizeDivider.tsx](../../app/renderer/ResizeDivider.tsx) | Pointer and keyboard dividers resize Context/source horizontally and the conversation dock vertically |
 | File authority | [core/files.ts](../../core/files.ts) | Reads and conditional writes behind the typed bridge |
 | Agent worktree inspection | [WorktreeInspection.tsx](../../app/renderer/WorktreeInspection.tsx), [core/worktree-inspection.ts](../../core/worktree-inspection.ts) | Registered session selects the actual read-only worktree source and current diff |
 | Raw fleet activity | [FleetActivityView.tsx](../../app/renderer/FleetActivityView.tsx) | Timestamped session events open in the center, distinct from Work Log outcomes |
@@ -81,8 +82,13 @@ remounts. Native trusted execution/history and New/Fork remain in a secondary
 tab; old stored runs retain their own tabs rather than a competing sidebar list.
 `//tools/conversation-cockpit:unit` and its owned-virtual `:smoke` cover this
 composition. Actual transcript reads are separate from controlled Send evidence.
-With a registered-conversation surface, the default dock takes about 42% of the
-viewport (340–460px), leaving room for both readable messages and the composer.
+With a registered-conversation surface, the default dock takes about 32% of the
+viewport (220–400px). Context starts at23% width so a normal desktop leaves room
+for a two-column Plan overview; smaller windows stack readable plan sections.
+Context and the outer dock can be resized. The horizontal dock divider supports
+dragging, Up/Down and Home; a deliberate adjustment takes22–55% of the workbench
+height, consistently using that container even when interface zoom makes it
+taller than the viewport. Pointer dragging preserves the editor's focus.
 Conversation also takes a larger horizontal share than either log, with useful
 minimum widths and independent scrolling retained for all instruments. A single
 Activity heading and divider replace the nested activity/jobs shell. The top
@@ -118,5 +124,9 @@ with a slim dark theme. These renderer inputs use the same root build targets.
 
 `//tools/operator-cockpit:plan-first` checks startup, old-navigation migration,
 real CodeMirror text/cursor retention and mounted graph identities through Plan
-and Code. Domain graph correctness belongs to the corresponding provider checks;
-the mounted tests do not claim actual browser geometry.
+and Code, target activation, dock keyboard/pointer bounds and task-consumer
+compatibility. Domain graph correctness belongs to the corresponding provider
+checks; the mounted tests do not claim actual browser geometry. The owned
+`SWARM_COCKPIT_PLAN_ONLY=1` operator smoke mode opens the actual packaged app
+against a disposable repository containing the authored design, and checks the
+desktop/compact Plan layout, native source editing and retained cameras.
