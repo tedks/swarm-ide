@@ -1,12 +1,13 @@
 import { constants } from "node:fs";
 import { open, realpath, lstat, type FileHandle } from "node:fs/promises";
 import { isAbsolute, relative } from "node:path";
-import { createHash } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { z } from "zod";
 import { isRepositoryPath } from "../protocol/repository";
-import { ExternalSessionId, ExternalResultSchema, type ExternalRequest, type ExternalResult,
+import { ExternalSessionId, ExternalRequestSchema, ExternalResultSchema, type ExternalRequest, type ExternalResult,
   type ExternalAgentSummary, type ExternalDetail, type ExternalEntry, type ExternalSnapshot } from "../protocol/external-agents";
 import { TmuxTargetSchema, validateHandoff, openHandoff } from "./external-agents-handoff";
+import { queueExternalMessage, resolveExternalCodex, type QueueMessage, type ExternalSendReceipt } from "./external-agents-send";
 
 const HEADER = 65536, TAIL = 262144, MAX_ENTRIES = 120;
 const Registration = z.object({ id: ExternalSessionId, label: z.string().min(1).max(120),
@@ -26,14 +27,17 @@ const safe = (text: string, size = 4096) => (text.length > size ? text.slice(0, 
   (c) => c === "\n" || c === "\t" ? c : "�");
 const within = (root: string, path: string) => { const r = relative(root, path); return r === "" || r !== ".." && !r.startsWith("../") && !isAbsolute(r); };
 
-/** No watches, polling or external process ownership. Each read uses a bounded
+/** No watches, polling or observed process ownership. Each read uses a bounded
  * descriptor and closes it before publishing. Registry is re-read on demand. */
 export class ExternalAgentService {
   private disposed = false;
   private controller = new AbortController();
   private pending = 0;
   private drained: (() => void)[] = [];
-  constructor(private readonly root: string, private readonly registryPath: string | undefined) {}
+  private sending = new Set<string>();
+  private sentRequests = new Set<string>();
+  constructor(private readonly root: string, private readonly registryPath: string | undefined,
+    private readonly sender: { queue: QueueMessage; executable(): Promise<string> } = { queue: queueExternalMessage, executable: resolveExternalCodex }) {}
   dispose(): Promise<void> {
     this.disposed = true; this.controller.abort();
     return this.pending ? new Promise((resolve) => this.drained.push(resolve)) : Promise.resolve();
@@ -135,11 +139,50 @@ export class ExternalAgentService {
         coverage: { tailBytes: 0, partial: true, omittedRecords: 0, message: "Missing, changed, invalid or unsafe registered transcript; no transcript authority retained." } };
     } finally { await file?.close(); }
   }
-  async request(request: ExternalRequest): Promise<ExternalResult> {
+  private async send(request: Extract<ExternalRequest, { type: "externalAgents.send" }>): Promise<ExternalSendReceipt> {
+    const reject = (message: string): ExternalSendReceipt => ({ kind: "send", sessionId: request.sessionId, receiptId: randomUUID(), status: "rejected", message });
+    if (this.sentRequests.has(request.requestId)) return { ...reject("This Send was already attempted; inspect the session. No retry was sent."), status: "delivery-unknown" };
+    if (this.sending.has(request.sessionId) || this.sentRequests.size >= 256) return reject("A Send is pending or this core's send limit was reached. Nothing new was queued.");
+    this.sentRequests.add(request.requestId); this.sending.add(request.sessionId);
+    let dispatched = false;
+    try {
+      // Executable resolution may await disk. It must precede the final authority
+      // checks, not open a stale-target interval after them.
+      const executable = await this.sender.executable(); this.check();
+      const row = (await this.registrations()).find((candidate) => candidate.id === request.sessionId); this.check();
+      if (!row || row.evidence !== "local" || !row.tmux) return reject("Only a registered local session with a checked current tmux target can receive messages. Nothing was queued.");
+      const detail = await this.read(row, false); this.check();
+      if (detail.session.status !== "observed" || detail.session.observationId !== request.observationId)
+        return reject("The observed session changed or is unavailable. Refresh before sending; nothing was queued.");
+      if (!await validateHandoff(row.tmux, row.rollout, this.controller.signal)) return reject("The exact session process, pane or open rollout is no longer current. Nothing was queued.");
+      this.check();
+      // Last registry check prevents a concurrent operator removal/retarget from
+      // granting authority through a previously read row. Revalidate the target
+      // once more after that await, immediately before spawning the queue CLI.
+      const current = (await this.registrations()).find((candidate) => candidate.id === row.id); this.check();
+      if (!current || current.evidence !== "local" || current.rollout !== row.rollout || JSON.stringify(current.tmux) !== JSON.stringify(row.tmux))
+        return reject("The operator registration changed. Refresh before sending; nothing was queued.");
+      if (!await validateHandoff(row.tmux, row.rollout, this.controller.signal)) return reject("The target closed during verification. Nothing was queued.");
+      // Handoff checks bind process/open descriptor but not the header accepted
+      // by the renderer. Catch same-inode rewrites or a newly opened replacement
+      // during those awaits before the final synchronous queue dispatch.
+      const final = await this.read(current, false); this.check();
+      if (final.session.status !== "observed" || final.session.observationId !== request.observationId)
+        return reject("The transcript changed during verification. Refresh before sending; nothing was queued.");
+      this.check(); dispatched = true;
+      return await this.sender.queue(executable, row.id, request.text, this.controller.signal);
+    } catch {
+      return dispatched ? { ...reject("Delivery is unknown. Inspect the target conversation; no automatic retry was sent."), status: "delivery-unknown" }
+        : reject("Sending could not be authorized before dispatch. Nothing was queued.");
+    } finally { this.sending.delete(request.sessionId); }
+  }
+  async request(raw: ExternalRequest): Promise<ExternalResult> {
+    const request = ExternalRequestSchema.parse(raw);
     this.check();
     if (this.pending >= 2) throw new Error("External observer busy; retry deliberately");
     this.pending++;
     try {
+      if (request.type === "externalAgents.send") return await this.send(request);
       let rows: Registered[];
       try { rows = await this.registrations(); } catch {
         this.check();

@@ -1,0 +1,17 @@
+package(default_visibility = ["//visibility:public"])
+
+filegroup(name = "sources", srcs = glob(["*.sh", "*.mjs", "*.cjs"]))
+
+sh_binary(
+    name = "self-queue",
+    srcs = ["self-queue.sh"],
+    data = ["//:quality_sources"],
+    tags = ["manual"],
+)
+
+sh_binary(
+    name = "smoke",
+    srcs = ["smoke.sh"],
+    data = [":sources", "//:desktop-bundle", "//tools:desktop-automation-sources", "//tools:x11-driver-source"],
+    tags = ["manual"],
+)
