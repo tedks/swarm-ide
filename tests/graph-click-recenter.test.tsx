@@ -48,6 +48,13 @@ const capture: BuildLinkSnapshot = { repositoryId: "repo", revision: "rev", capt
 ], links: [{ from: "//a:app", to: "//b:lib", fromPath: "a", toPath: "b" }] };
 const buildProps = { capture, mockAgents: false, mockVersion: 0, onOpenBuild: vi.fn() };
 
+it("keeps service sprites controls in the header so the canvas remains the flexible second grid row", () => {
+  const { container } = render(<GraphPane {...serviceProps} />);
+  const pane = container.querySelector('[data-topology="service"]')!;
+  expect(pane.children[1]?.classList.contains("graph-canvas")).toBe(true);
+  expect(screen.getByRole("button", { name: "♧ Agents" }).closest(".graph-header")).not.toBeNull();
+});
+
 it("reveals only the clicked service, including a repeated click, while status and zoom retain the camera", () => {
   const view = render(<GraphPane {...serviceProps} />); settle(); fits.mockClear();
   const id = service.nodes[0]!.id;
@@ -100,6 +107,27 @@ it("does not rearm a consumed task selection on metadata/size changes or an unma
   view.rerender(<ProjectionCanvas {...props} nodes={[{ ...props.nodes[0]!, subtitle: "complete" }]} />);
   act(() => flows[0]!.props.onNodesChange([{ type: "dimensions", id: "a" }])); settle(); expect(targets).not.toHaveBeenCalled();
   view.rerender(<ProjectionCanvas {...props} selected="missing" />); settle(); expect(targets).not.toHaveBeenCalled();
+});
+
+it("retires a pending local task gesture on snapshot replacement without restoring another camera", () => {
+  const props = { label: "Task snapshot", nodes: [{ id: "a", title: "A", subtitle: "task" }], edges: [], selected: "a", onSelect: vi.fn(), cameraScope: "same-repo" };
+  dimensions.measured = false;
+  const view = render(<ProjectionCanvas {...props} revealIdentity="revision1" />); settle();
+  fireEvent.click(screen.getByRole("button", { name: "a" })); settle();
+  dimensions.measured = true;
+  view.rerender(<ProjectionCanvas {...props} revealIdentity="revision2" />);
+  act(() => flows[0]!.props.onNodesChange([{ type: "dimensions", id: "a" }])); settle();
+  expect(targets).not.toHaveBeenCalled(); expect(moves).not.toHaveBeenCalled();
+});
+
+it("does not replay a sidebar gesture when the same task reader recovers from an unavailable observation", () => {
+  const props = { label: "Task recovery", nodes: [{ id: "a", title: "A", subtitle: "task" }], edges: [], selected: "a", onSelect: vi.fn(), cameraScope: "same-repo", revealSelection: true, selectionIntent: "sidebar-a" };
+  const view = render(<ProjectionCanvas {...props} revealIdentity="current" />); settle();
+  expect(targets).toHaveBeenCalledOnce();
+  fireEvent.click(screen.getByRole("button", { name: "Manual pan" })); targets.mockClear(); moves.mockClear();
+  view.rerender(<ProjectionCanvas {...props} selected={null} revealIdentity="unavailable" />); settle();
+  view.rerender(<ProjectionCanvas {...props} revealIdentity="current" />); settle();
+  expect(targets).not.toHaveBeenCalled(); expect(moves).not.toHaveBeenCalled();
 });
 
 it("fences a pending service reveal when its graph publication changes", () => {

@@ -145,6 +145,7 @@ const GraphPaneContent = memo(function GraphPaneContent({ workspaceId, graph, fo
         <div className="graph-meta"><span>{graph.scope}</span><span>{graph.zoomBand}</span>{graph.directory ? <span aria-label="Directory observation, not build evidence">◷</span> : graph.reconciliation === "yellow"
           ? <button className="truth-dot status-yellow" aria-label="Refresh service declarations" title="Service declarations updating" disabled={reconciliationRunning} onClick={onReconcile} />
           : <span className={`truth-dot status-${graph.reconciliation}`} role="status" aria-label={`Topology ${graph.reconciliation === "green" ? "consistent" : graph.reconciliation === "gray" ? "unobserved" : "failed"}`} title={graph.reconciliation === "green" ? "Declarations current" : graph.reconciliation === "gray" ? "Looking for declarations" : "Could not read declarations"} />}</div>
+        {!graph.directory ? <GraphAgentsToggle /> : null}
       </header>
       {graph.directory ? <div className="directory-layers" aria-label="Directory map layers">
         <button aria-pressed={buildLinksVisible} disabled={!buildLinkSnapshot && !onBuildLinksVisibility} title={buildLinkSnapshot?.observation ? `Bazel observation ${buildGraphStatus}; not a binary build` : "Show repository-scoped Bazel dependency observations"} onClick={() => { setBuildLinksVisible((shown) => !shown); setSelectedBuildLink(null); }}>{buildLinksVisible ? "☑" : "☐"} Build links</button>
@@ -153,7 +154,6 @@ const GraphPaneContent = memo(function GraphPaneContent({ workspaceId, graph, fo
         <span>{!buildLinkSnapshot ? `Build graph ${buildGraphStatus ?? "not requested"}` : buildLinksVisible ? `${buildLinkSnapshot.observation ? `Observation ${buildGraphStatus}` : "CAPTURE"} · ${buildEdges.length} visible links · not binary build truth` : "Build links off · click to show dependencies"}</span>
       </div> : null}
       {repositoryNavigation ? <div className="repository-browser-surface" hidden={explorer && repositoryView !== "tree"}>{repositoryNavigation}</div> : null}
-      {!graph.directory ? <div className="directory-layers"><GraphAgentsToggle /></div> : null}
       <GraphAgentLayer locations={agentLocations} nearest={graph.topologyId === "repo"}><div className="graph-canvas" ref={canvas} onPointerDownCapture={reveal.onControlGesture} onKeyDownCapture={reveal.onControlGesture}>
         <ReactFlow
           nodes={displayNodes}

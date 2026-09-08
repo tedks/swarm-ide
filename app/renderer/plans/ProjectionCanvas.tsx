@@ -48,14 +48,14 @@ export function contractCurveOffset(edge: ProjectionEdge, links: ProjectionEdge[
 
 /** Each mounted projection owns its camera. Only deliberate gestures and
  * opt-in selected-ID changes reveal nodes; metadata never requests fit. */
-export function ProjectionCanvas({ label, nodes: input, edges: links, selected, onSelect, onSelectEdge, taskScopeVersion, cameraScope, revealSelection = false, visible = true }: {
+export function ProjectionCanvas({ label, nodes: input, edges: links, selected, onSelect, onSelectEdge, taskScopeVersion, cameraScope, revealSelection = false, revealIdentity, selectionIntent, visible = true }: {
   label: string; nodes: ProjectionNode[]; edges: ProjectionEdge[]; selected: string | null; onSelect: (id: string) => void; onSelectEdge?: (id: string) => void; taskScopeVersion?: number; cameraScope?: string;
-  revealSelection?: boolean; visible?: boolean;
+  revealSelection?: boolean; revealIdentity?: string; selectionIntent?: number | string; visible?: boolean;
 }) {
   const flow = useRef<ReactFlowInstance | null>(null);
   const canvas = useRef<HTMLDivElement>(null);
   const revealScope = `${label}:${cameraScope ?? ""}`;
-  const reveal = useGraphReveal(revealScope, canvas, revealSelection ? { scope: revealScope, nonce: selected ?? "", nodeIds: selected ? [selected] : [] } : null, visible);
+  const reveal = useGraphReveal(revealScope, canvas, revealSelection ? { scope: revealScope, nonce: selectionIntent ?? selected ?? "", nodeIds: selected ? [selected] : [] } : null, visible, revealIdentity);
   const select = (id: string) => { reveal.reveal([id]); onSelect(id); };
   const cameras = useRef(new Map<string, Viewport>());
   const scope = useRef(cameraScope);

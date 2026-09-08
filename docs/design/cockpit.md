@@ -17,8 +17,12 @@ Bazel file membership; shared source may reveal multiple actual nodes. It does
 not infer unique ownership from directory names or invent task/service edges.
 Completing a service's asynchronous declaration open retains the original service
 camera gesture rather than issuing a second file-follow jump. The shared
-ProjectionCanvas offers optional selected-task following; TaskGraph adoption of
-that prop is a separately coordinated follow-up to the complete-task-graph repair.
+ProjectionCanvas offers optional selected-task following. TaskGraph follows the
+current task sidebar selection, retaining an outline-only choice for missing
+references until another task is chosen. Hidden selections wait for measured
+nodes; replacing the task reader or snapshot retires pending camera requests
+without resetting the retained viewport. Dependency reads and scope controls
+keep their existing scheduling and selection authority.
 
 `//tools/graph-recenter:checks` consumes `//:quality_sources` and exercises click,
 measurement, hidden-panel, manual-move and publication fences plus the ordinary
