@@ -68,6 +68,25 @@ async function main() {
   const cameras = () => run(() => [...document.querySelectorAll('.graphs-grid .react-flow__viewport')].map((e) => e.style.transform));
   win.focus(); wc.focus();
   await until(() => run(() => Boolean(document.querySelector('.command-trigger'))), 'workbench ready');
+  let planStartup;
+  if (repository.planOnly) {
+    stage = 'Plan startup';
+    await until(() => run(() => document.querySelector('.design-prose')?.textContent.includes('engineering organization')), 'captured authored system design through real core');
+    planStartup = await run(() => ({
+      lens: document.querySelector('.lens-tabs .active')?.textContent,
+      lenses: [...document.querySelectorAll('.lens-tabs button')].map((e) => e.textContent),
+      graphs: document.querySelectorAll('.design-graph .react-flow__node').length,
+      edges: document.querySelectorAll('.design-graph .react-flow__edge').length,
+      planHeight: document.querySelector('.planning-field').getBoundingClientRect().height,
+      navigationHeight: document.querySelector('.navigation-field').getBoundingClientRect().height,
+      duplicateShell: Boolean(document.querySelector('.activity-dock > .dock-header')),
+    }));
+    assert.equal(planStartup.lens, 'Plan'); assert.deepEqual(planStartup.lenses, ['Plan', 'Code']);
+    assert(planStartup.graphs >= 2 && planStartup.edges >= 1);
+    assert(planStartup.planHeight > planStartup.navigationHeight * .6, 'Retained hidden Code graphs must not consume an extra layout row');
+    assert.equal(planStartup.duplicateShell, false);
+    await fs.writeFile(path.join(evidence, 'plan-startup.png'), (await wc.capturePage()).toPNG());
+  }
   stage = 'dirty local source';
   await click('.command-trigger');
   await until(() => run(() => document.activeElement?.getAttribute('aria-label') === 'Workspace command'), 'palette focus');
@@ -86,6 +105,45 @@ async function main() {
     return Date.now() - stableAt >= 300; }, 'source navigation settled');
   const retainedCameras = await cameras(); assert(retainedCameras.length >= 2);
   await run(() => { globalThis.__cockpitGraphNodes = [...document.querySelectorAll('.graphs-grid > *')]; });
+  if (repository.planOnly) {
+    stage = 'native Plan and Code roundtrip';
+    await click('.lens-tabs button:first-child');
+    await until(() => run(() => document.querySelector('.lens-tabs .active')?.textContent === 'Plan' && document.querySelector('.design-prose')?.textContent.includes('engineering organization')), 'Plan reopened');
+    assert.deepEqual(await source(), retained);
+    await click('.lens-tabs button:nth-child(2)');
+    assert.deepEqual(await source(), retained); assert.deepEqual(await cameras(), retainedCameras);
+    assert(await run(() => globalThis.__cockpitGraphNodes.every((e) => e.isConnected)));
+    const measure = () => run(() => {
+      const width = (selector) => document.querySelector(selector).getBoundingClientRect().width;
+      return { conversation: width('.agent-interaction-dock'), workLog: width('.dock-work-log'), activity: width('.dock-activity'),
+        activityHeading: document.querySelector('.dock-activity > header').textContent,
+        divider: getComputedStyle(document.querySelector('.dock-activity > header')).borderBottomStyle,
+        health: document.querySelector('.global-truth').textContent };
+    });
+    const wide = await measure();
+    assert(wide.conversation > wide.workLog * 1.5 && wide.conversation > wide.activity * 1.5);
+    assert.equal(wide.activityHeading.trim(), 'Activity ↗'); assert.equal(wide.divider, 'solid');
+    assert(!/epoch|Reconciling/.test(wide.health));
+    await fs.writeFile(path.join(evidence, 'plan-code-conversation-wide.png'), (await wc.capturePage()).toPNG());
+    win.setSize(1080, 760); await paint();
+    await until(() => run(() => innerWidth <= 1100), 'compact native size');
+    const compact = await measure();
+    assert(compact.conversation >= 320 && compact.workLog >= 180 && compact.activity >= 155);
+    assert.deepEqual(await source(), retained);
+    await click('.lens-tabs button:first-child'); await paint();
+    await fs.writeFile(path.join(evidence, 'plan-compact.png'), (await wc.capturePage()).toPNG());
+    await click('.lens-tabs button:nth-child(2)');
+    assert.deepEqual(await source(), retained);
+    await click('.file-state button');
+    await until(() => run(() => document.querySelector('.file-state').classList.contains('file-saved')), 'owned source save');
+    assert.equal(await fs.readFile(path.join(repository.root, 'README.md'), 'utf8'), retained.text);
+    const agentWrites = requests.filter((r) => /^(?:externalAgents\.(?:send|handoff)|trusted\.(?:prepare|launch|send|fork|stop|decide)|agent\.(?:prepare|launch|steer|cancel)|workLog\.(?:start|stop|record))$/.test(r.type));
+    assert.deepEqual(agentWrites, []); assert.deepEqual(errors, []);
+    await fs.writeFile(path.join(evidence, 'proof.json'), JSON.stringify({ ok: true, planOnly: true, packagedCore: true, capturedDesign: true,
+      planStartup, planCodeRetention: true, widerConversation: true, wide, compact, noDuplicateShell: true,
+      ownedSourceSaved: true, agentWrites, blockingErrors: errors, elapsedMs: Date.now() - started }, null, 2));
+    return;
+  }
   if (repository.workLogOnly) {
     stage = 'independent Work Log dock';
     const outcomeSelector = `.dock-work-log [data-work-log-entry=${JSON.stringify(repository.controlledWorkLog.id)}] .work-log-outcome`;
@@ -352,7 +410,7 @@ async function main() {
   assert(await run(() => document.querySelector('.design-graph').textContent.includes('Cockpit')));
   assert.equal(await run(() => Boolean(document.querySelector('.work-log-center'))), false);
   await fs.writeFile(path.join(evidence, 'system-design.png'), (await wc.capturePage()).toPNG());
-  await click('[aria-label="Close system design"]');
+  await click('.lens-tabs button:nth-child(2)');
   assert.deepEqual(await source(), retained); assert.deepEqual(await cameras(), retainedCameras);
   assert(await run(() => globalThis.__cockpitGraphNodes.every((e) => e.isConnected)));
   // Only the disposable local source is saved, through its ordinary editor UI.

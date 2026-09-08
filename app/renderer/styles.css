@@ -295,6 +295,7 @@ button.truth-dot:disabled { cursor: wait; opacity: 0.72; }
 .navigation-field.plan-home { grid-template-columns: minmax(0, 1fr); grid-template-rows: 52px minmax(0, 1fr); }
 .navigation-field.plan-home:has(> .surface-tabs-strip) { grid-template-rows: 52px 32px minmax(0, 1fr); }
 .navigation-field.plan-home > .planning-field { grid-column: 1; grid-row: 2; }
+.navigation-field.plan-home > .graphs-grid { grid-column: 1; grid-row: 2; }
 .navigation-field.plan-home:has(> .surface-tabs-strip) > .planning-field { grid-row: 3; }
 .navigation-field.plan-home > .surface-tabs-strip { grid-column: 1; grid-row: 2; }
 .navigation-field.plan-home > .graphs-grid.is-sidebar { width: var(--graph-share, 43%); grid-row: 2 / span 2; }

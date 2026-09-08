@@ -185,8 +185,10 @@ export function App() {
     !window.swarmLifecycle || lifecycle?.core.phase === "ready" ? lifecycle?.core.generation ?? 0 : null);
   const [error, setError] = useState<string | null>(null);
   const [activeLens, setActiveLens] = useState<(typeof lensTabs)[number]>(() => navigationLens(hotCheckpoint?.lens ?? restoredNavigation?.lens, Boolean(hotCheckpoint?.files.length || restoredNavigation?.paths.length)));
+  const lensChosen = useRef(false);
+  const chooseLens = (lens: (typeof lensTabs)[number]) => { lensChosen.current = true; setActiveLens(lens); };
   const designVisible = activeLens === "Plan";
-  const setDesignVisible = (visible: boolean) => setActiveLens(visible ? "Plan" : "Code");
+  const setDesignVisible = (visible: boolean) => chooseLens(visible ? "Plan" : "Code");
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [palettePathMode, setPalettePathMode] = useState(false);
   const [compactPanel, setCompactPanel] = useState<"work" | "info" | null>(null);
@@ -210,7 +212,7 @@ export function App() {
   const [commandQuery, setCommandQuery] = useState("");
   const [hmr, setHmr] = useState({ generation: 0, milliseconds: 0 });
   const [fileTabs, setFileTabs] = useState<FileTab[]>(hotCheckpoint?.files ?? []);
-  const [activeSurface, setActiveSurface] = useState<string>(hotCheckpoint?.activeSurface ?? "graphs");
+  const [activeSurface, setActiveSurface] = useState<string>(hotCheckpoint?.activeSurface ?? restoredNavigation?.activeSurface ?? "graphs");
   const [taskDocumentOpen, setTaskDocumentOpen] = useState(false);
   const [taskDocumentVisible, setTaskDocumentVisible] = useState(false);
   const [taskSidebarVisible, setTaskSidebarVisible] = useState(true);
@@ -1001,10 +1003,14 @@ export function App() {
     if (!workspace.snapshot || navigationRestoredRef.current) return;
     navigationRestoredRef.current = true;
     if (!restoredNavigation || hotCheckpoint) return;
-    for (const path of restoredNavigation.paths) void openFile(path, false);
-    showSurface(restoredNavigation.activeSurface);
-    setActiveLens(restoredNavigation.lens);
-    if (restoredNavigation.focus) void invoke({ type: "focus.select", requestId: requestId(), protocolVersion: PROTOCOL_VERSION, focus: { ...restoredNavigation.focus, revisionId: workspace.snapshot.revisions.working.id } });
+    for (const path of restoredNavigation.paths) void openFile(path, false, true);
+    // Restore the tabs in the background, but a choice made while the core was
+    // reconnecting outranks the older saved selection.
+    if (!lensChosen.current) {
+      showSurface(restoredNavigation.activeSurface);
+      setActiveLens(restoredNavigation.lens);
+      if (restoredNavigation.focus) void invoke({ type: "focus.select", requestId: requestId(), protocolVersion: PROTOCOL_VERSION, focus: { ...restoredNavigation.focus, revisionId: workspace.snapshot.revisions.working.id } });
+    }
   }, [workspace.snapshot, restoredNavigation, openFile, showSurface, invoke, hotCheckpoint, lifecycle?.core.phase, lifecycle?.core.generation, observedCoreGeneration]);
 
   const checkpointDocument = useCallback(() => {
@@ -1108,7 +1114,7 @@ export function App() {
       contextSubject?.repositoryId !== current.project.id || contextSubject.worldId !== current.world.id ||
       buildLinks.repositoryId !== current.project.id || buildGraph.observation?.worldId !== current.world.id) return;
     setBuildTargetSelection({ id: target.id, repositoryId: buildLinks.repositoryId, revision: buildLinks.revision, nonce: ++navigationIntent.current });
-    setActiveLens("Code");
+    chooseLens("Code");
     setCompactPanel(null);
   };
   const openEditorReference = (path: string, reference: string): boolean => {
@@ -1168,7 +1174,8 @@ export function App() {
   };
   const textDocumentVisible = !workLogEntry && !journalVisible && !worktreeVisible && !designVisible && (taskDocumentVisible || (taskDocumentOpen && !activeFile));
   const textOpen = Boolean(activeFile || textDocumentVisible || journalVisible || worktreeVisible || workLogEntry);
-  useEffect(() => { if (textOpen && !textWasOpen.current) setGraphReframe((n) => n + 1); textWasOpen.current = textOpen; }, [textOpen]);
+  const hasOpenDocument = Boolean(activeFile || taskDocumentOpen || journalOpen || worktreeSelection || worktreeBrowserSession || workLogEntry);
+  useEffect(() => { if (hasOpenDocument && !textWasOpen.current) setGraphReframe((n) => n + 1); textWasOpen.current = hasOpenDocument; }, [hasOpenDocument]);
   const reconciliationRunning = snapshot?.jobs.some((job) => job.kind === "build" && job.status === "running") ?? false;
   const title = snapshot ? statusLabel(snapshot.reconciliation.status) : "Loading";
   const coreUnavailable = Boolean(window.swarmLifecycle && lifecycle?.core.phase !== "ready");
@@ -1294,8 +1301,8 @@ export function App() {
     { label: "Show task details", detail: "retained task selection in Information", run: () => { setPaletteOpen(false); showTaskDetails(); } },
     { label: "Ask an agent about this focus", detail: "inspect disk context before explicit read-only launch", run: () => { setPaletteOpen(false); setCompactPanel("work"); if (workspaceRef.current.snapshot) agentClient.openDraft(workspaceRef.current.snapshot.focus); } },
     { label: "Build repository service topology", detail: "exact fingerprint → Bazel artifact → green", run: reconcile },
-    { label: "Show system graphs", detail: "Repository, services and build dependencies", run: () => { setPaletteOpen(false); setActiveLens("Code"); setCompactPanel(null); inspectGraph(); requestAnimationFrame(() => document.querySelector<HTMLElement>(".graphs-grid")?.focus()); } },
-    { label: "Show build graph", detail: "Explore Bazel targets and dependencies", run: () => { setPaletteOpen(false); setActiveLens("Code"); setCompactPanel(null); setShowBuildVersion((n) => n + 1); } },
+    { label: "Show system graphs", detail: "Repository, services and build dependencies", run: () => { setPaletteOpen(false); chooseLens("Code"); setCompactPanel(null); inspectGraph(); requestAnimationFrame(() => document.querySelector<HTMLElement>(".graphs-grid")?.focus()); } },
+    { label: "Show build graph", detail: "Explore Bazel targets and dependencies", run: () => { setPaletteOpen(false); chooseLens("Code"); setCompactPanel(null); setShowBuildVersion((n) => n + 1); } },
     ...(!repositoryObservation ? [
       { label: "Open FraudCheck implementation", detail: FRAUDCHECK_IMPLEMENTATION, run: () => { setPaletteOpen(false); void openFile(FRAUDCHECK_IMPLEMENTATION); } },
       { label: "Open FraudCheck protobuf contract", detail: FRAUDCHECK_CONTRACT, run: () => { setPaletteOpen(false); void openFile(FRAUDCHECK_CONTRACT); } },
@@ -1308,7 +1315,7 @@ export function App() {
     <main className="workbench" onPointerDownCapture={interruptPendingReveal} onFocusCapture={interruptPendingReveal} onKeyDownCapture={(event) => { if (event.key === "Escape" && definitionRef.current) { event.preventDefault(); event.stopPropagation(); cancelDefinition(); } }} data-compact-panel={compactPanel ?? "none"} style={{ "--context-width": `${contextWidth}%`, ...(agents.selected || liveAgents.paneOpen ? { gridTemplateRows: `var(--topbar-height) minmax(0, 1fr) calc(160px + (clamp(180px, 40vh, 448px) - 160px) * ${Math.min(1, Math.max(0, ((liveAgents.paneOpen ? liveAgents.height : agentPaneHeight) - 230) / 190))})` } : {}) } as CSSProperties}>
       <header className="topbar">
         <div className="product-mark"><span className="hmr-probe" />swarm</div>
-        <OverflowStrip className="lens-tabs-strip" label="workspace lenses" activeKey={activeLens}><nav className="lens-tabs" aria-label="Workspace lenses">{lensTabs.map((lens) => <button key={lens} aria-pressed={activeLens === lens} className={activeLens === lens ? "active" : ""} onClick={() => lens === "Plan" ? showDesign() : setActiveLens(lens)}>{lens}</button>)}</nav></OverflowStrip>
+        <OverflowStrip className="lens-tabs-strip" label="workspace lenses" activeKey={activeLens}><nav className="lens-tabs" aria-label="Workspace lenses">{lensTabs.map((lens) => <button key={lens} aria-pressed={activeLens === lens} className={activeLens === lens ? "active" : ""} onClick={() => lens === "Plan" ? showDesign() : chooseLens(lens)}>{lens}</button>)}</nav></OverflowStrip>
         <button className="command-trigger" onClick={openPalette}><span>Search, navigate, direct…</span><kbd>Ctrl K</kbd></button>
         <div className="zoom-control" role="group" aria-label="Interface zoom" aria-busy={zoomPending}>
           <button aria-label="Zoom out" title="Zoom out (Ctrl+-)" aria-disabled={zoomPercent === INTERFACE_ZOOM_LEVELS[0]} onClick={() => { if (zoomPercent !== INTERFACE_ZOOM_LEVELS[0]) void zoomOut(); }}>−</button>
