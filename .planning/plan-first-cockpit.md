@@ -9,10 +9,10 @@ A fresh Swarm IDE should explain the system being built instead of opening an em
 ## Progress
 
 - [x] (2026-09-08) Read wave ownership, inspected existing cockpit/design/dock and started `swarm-plan-first-cockpit`.
-- [ ] Implement focused startup/migration/layout regressions and cockpit changes.
-- [ ] Join the plan owner's reviewed hierarchy and automatic-build owner's reviewed hook without changing their logic.
-- [ ] Run focused native review and local tests, then one owned virtual normal-workflow proof.
-- [ ] Update design, Ditz, pushed draft PR and final handoff.
+- [x] (2026-09-08) Implemented Plan/Code startup/migration and retained-buffer/camera regressions, wider dock and plain Activity/build chrome.
+- [x] (2026-09-08) Normally joined reviewed plan8b4c486, automatic-buildc4dbd42 and activity902669f components; App owns only their composition.
+- [x] (2026-09-08) Native review converged after delayed-restoration/task-camera and divider fixes.61 focused tests plus both TypeScript boundaries passed; changed-layout owned package workflow passed3.843s with zero renderer errors and cleanup1.
+- [x] (2026-09-08) Updated scoped design and Ditz accomplishment notes; PR107 pushed. ROOT owns normal landing and managed adoption.
 
 ## Assumptions and boundaries
 
@@ -21,6 +21,8 @@ The opened repository is the scope of the plan, while registered agent worktrees
 ## Surprises & Discoveries
 
 The current Plan workspace has three independent sub-tabs, and System design is a second standalone central surface. That duplicates entry points and selection. Its schema/data failure is assigned to the plans owner, not a reason to fork another plan reader. The message dock currently gives conversation 1.6 of 4.4 fractional columns, alongside large minimum log widths.
+
+Mounted regressions found that restoring source with openFile(path,false) still navigated; background is the third argument. Restore now preserves an explicit lens choice. Task-only lens switching used to count as opening a new text surface and reframe graphs; it now tests the retained document instead. Screenshot review found the empty conversation consumed42vh and cramped Plan. A32vh default, resizable outer dock, and Plan-only760px two-column threshold make the overview useful without changing standalone design layout. Divider review caught import-order specificity and viewport-versus-container percentage errors; both were corrected, including a short-viewport pointer regression.
 
 ## Decision Log
 
@@ -56,4 +58,8 @@ No new layout framework or provider capability. Reuse `ResizeDivider`, `Overflow
 
 ## Outcomes & Retrospective
 
-Implementation underway. The first step established ownership so the outer layout is changed once while domain owners remain independent.
+Implemented in PR107. The single Plan home uses the shared hierarchy and authored documents/component links, with implementation/task instruments in the same scrollable grid; Code retains repository/service/build projections and existing inspections. Narrow windows stack sections rather than making four tiny graphs. Not every instrument is simultaneously visible on a short window; the plan scrolls and the user can resize the dock.
+
+Final evidence is under /tmp/swarm-ide-usability.BirZCk/cockpit-layout/gui-wide/run.BZVlIn. Earlier artifacts are retained: the first UI journey passed but its summary print assumed an optional field; subsequent explicit normal-width grid assertions exposed the narrow-layout threshold. These were concrete reporting/layout corrections, not silent retries. No real agent messages, hosted CI, full legacy sweep or physical desktop automation was run.
+
+The later request for registered-conversation tabs and scoped Ctrl-Tab is deliberately separate (Ditz swarm-registered-conversation-tabs); it must preserve existing per-session drafts and outbox identity and is not claimed here. The core layout issue remains in progress until ROOT lands PR107; human accomplishment notes are synced.
