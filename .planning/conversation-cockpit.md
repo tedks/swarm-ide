@@ -13,10 +13,12 @@ task, graphs and worktree inspection remain in the central work area.
 
 - [x] Inspected existing observer, dock and messaging state; claimed Ditz
   `swarm-conversation-cockpit`.
-- [ ] Add conservative initial/root selection and restore deliberate choices.
-- [ ] Mount one conversation/message owner in the dock; leave facts in Context.
-- [ ] Preserve native runs, drafts and errors in secondary controls.
-- [ ] Focused native/local checks and owned virtual proof; push and hand off.
+- [x] Add conservative initial/root selection and restore deliberate choices.
+- [x] Mount one conversation/message owner in the dock; leave facts in Context.
+- [x] Preserve native runs, drafts and errors in secondary controls.
+- [x] Join reviewed navigation and worktree producer APIs with separate App mounts.
+- [x] Focused native/local checks and functional owned virtual proof.
+- [ ] Final readable-layout proof, documentation/push and handoff.
 
 ## Surprises & Discoveries
 
@@ -25,6 +27,12 @@ new-run preparation and the left rail repeats an older run list. The observer
 already serializes reads and fences stale results; no new harness is needed.
 The existing transcript projection deliberately excludes user text, so a small
 explicit user-message projection is needed for a two-sided conversation.
+Actual packaged inspection caught two things DOM-only assertions missed: this
+ROOT is itself a fork outside the registry, and the initial dock gave its message
+list only 11px (then zero after a receipt). The root predicate and dock space were
+corrected directly; old failures remain in the step evidence. Test-support defects
+(too-small metadata-header read and an incomplete controlled response envelope)
+were separate from production defects and fixed with corresponding direct checks.
 
 ## Decision Log
 
@@ -55,8 +63,10 @@ conversation in a dock panel without a second SessionSteering mount. Remove only
 the redundant LiveRunRail mount; retain run tabs, native fleet/history and error
 notices. Keep agent facts and registered worktree links in Context. Update
 `docs/design/agents.md`, `cockpit.md` and the component build mappings.
-Independent navigation/worktree owners can later supply reviewed additive mount
-callbacks; they do not block this first usable increment.
+Reviewed navigation2ce9dbb and worktree9583246 were normally merged. App now
+deliberately selects observed build targets, opens resolvable Alt-click sources
+through the existing broker, and opens the selected agent's worktree browser.
+Only the shared repository design document conflicted; both sections were retained.
 
 ## Concrete Steps
 
@@ -92,9 +102,19 @@ global configuration changes belong to this stream.
 
 ## Outcomes & Retrospective
 
-Implementation in progress. No merged or live Send result claimed.
+PR103 contains the conversation implementation and reviewed narrow peer mounts.
+The real registered ROOT/child packaged journey passed reading, target drafts,
+unknown-receipt retention, worktree open/return and source/cameras. Send was
+intercepted before core, not delivered to an agent. Native review found and
+verified fixes for automatic-selection theft and transcript collapse. Final
+proof adds visible message-height and composer bounds, not only DOM presence.
+No ROOT merge or managed-app adoption is performed by this implementation owner.
 
 ## Artifacts and Notes
 
 Concise coordination and verification live in
 `/tmp/swarm-ide-finish-loop.0vkfJQ/conversation`.
+
+Updated September8 after implementation and native/real UI feedback; the plan
+now reflects actual registered ancestry and visible-layout acceptance rather
+than the initial assumptions.
