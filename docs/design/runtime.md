@@ -73,7 +73,10 @@ to route installed desktop execution through a development server.
 An explicit `--tmux-server`/`--tmux-socket` and `--tmux-session` association uses
 `//tools/cli:registration-bundle`, which packages the existing exact-pane discovery
 and registry writer from `tools/session-registration`. Only that chosen session's
-panes are inspected. Each verified process supplies its own canonical Git worktree;
+panes are inspected. A unique rollout, or one explicit CLI header alongside only
+its same-process direct native children, selects a candidate; unknown/mixed
+identities remain ambiguous. Header linkage never substitutes for the existing
+pane/PID/start/open-file validation. Each verified process supplies its own canonical Git worktree;
 the opened project never substitutes for an unavailable agent context. A fresh
 private bounded registry generation feeds the unchanged observer. Older private
 generations remain available explicitly, not merged automatically into new scope.

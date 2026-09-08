@@ -61,15 +61,16 @@ swarm --workspace ./project --tmux-socket /absolute/path/to/socket --tmux-sessio
 This performs one bounded scan of that session (at most 64 panes), reusing Swarm's
 exact process/rollout registration checks. It does not scan every tmux server or
 the account's conversation history. It currently recognizes Codex owners with
-one discoverable open rollout; shells, ambiguous owners and unavailable worktree
+one discoverable open rollout, or one CLI with directly linked native helpers
+in the same process; shells, ambiguous owners and unavailable worktree
 roots are skipped. If nothing can be registered, the command explains that before
 opening a window; remove the tmux flags to open the project by itself.
 
-Current limitation: a Codex process with native helpers can keep several rollouts
-open, so automatic discovery currently skips it as ambiguous. Use its existing
-checked registry with `--agent-registry` until the registration helper learns to
-distinguish the interactive owner from its native children. The installed
-existing-registry path has been exercised with this project's actual agents.
+Discovery is deliberately bounded and can skip busy or ambiguous panes. Direct
+native children are recognized from their headers; deeper or missing-parent
+lineage is not guessed. If an expected agent is absent, use its existing checked
+registry with `--agent-registry`. Both paths have been exercised with actual
+agents, but automatic discovery is not a promise to find every pane.
 
 The command prints the private registry path and an exact tmux attach command.
 In the IDE, selecting a checked agent exposes the existing per-agent terminal

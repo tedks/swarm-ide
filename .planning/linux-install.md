@@ -15,8 +15,9 @@ An operator should be able to install Swarm IDE once, then run `swarm --workspac
 - [x] (2026-09-08 14:07Z) Added the user's targeted tmux association request using existing checked registration and explicit server/session selection; direct tests and package pass.
 - [x] (2026-09-08 14:22Z) Installed existing-registry launch showed actual ROOT/worker activity from a separate chosen repository; original owner survived IDE cleanup.
 - [x] (2026-09-08 14:25Z) Native selector/proof/mapping deltas CLEAN; exact approved runtime mappings match queried Bazel dependencies.
-- [ ] Automatic discovery of CLI processes holding native helper rollouts needs a small shared-registration correction; ownership request sent to ROOT, existing-registry path is usable.
-- [x] (2026-09-08 14:28Z) Final documentation, follow-up issues and the useful installed-package handoff are committed/pushed; ROOT decides the separately requested shared discovery correction.
+- [x] (2026-09-08 14:34Z) ROOT-approved shared discovery now recognizes one CLI and same-process direct native children; 68 registration and 19 CLI tests pass, native review CLEAN.
+- [x] (2026-09-08 14:34Z) Actual installed selected-session proof found five agents, verified the plans worker's independent worktree and survival after IDE cleanup. Two panes remain skipped; no all-pane claim.
+- [x] (2026-09-08 14:35Z) Final documentation, follow-up issues and bounded handoff prepared for ROOT's normal merge/adoption.
 
 ## Surprises & Discoveries
 
@@ -26,7 +27,7 @@ The first offline package attempt showed that Nix's Bazel dependency archive doe
 
 The first installed GUI proof opened the correct source but did not check profile state. A stronger file-existence check failed because `Local State` was absent during the run; that failure alone does not establish why. The installed entry now explicitly sets Electron's userData before launching the fixed main and reports `app.getPath`, allowing the final proof to verify the actual chosen profile without assuming a Chromium flag or file-flush timing.
 
-The actual tmux run found two distinct problems. A bare `display-message -t =session` yielded no session identity; an explicit trailing colon and a real disposable-tmux regression establish its fix. The next run reached registration but the existing helper rejected every native-helper-bearing CLI process because multiple JSONL files were open. Bounded first-line metadata distinguishes the CLI and native children; a narrowly scoped shared-helper correction is requested, not guessed from filenames. The explicit existing-registry launch independently works and preserves the original agent owner.
+The actual tmux run found two distinct problems. A bare `display-message -t =session` yielded no session identity; an explicit trailing colon and a real disposable-tmux regression establish its fix. The next run reached registration but the existing helper rejected native-helper-bearing CLI processes because multiple JSONL files were open. ROOT approved the bounded same-process direct-native-header correction, preserving actual process/FD checks. Its controlled real-pane test was1RED/67PASS before correction and68PASS afterward. Actual installed association then found five of seven panes; the first proof's specifically expected verifier was absent, so that failure remains recorded without attributing why it was skipped. A separately named plans worker with an independently known worktree passes the exact owner/survival proof. No universal discovery or historical skipped-pane fix is claimed. The explicit existing-registry path independently shows ROOT activity and preserves its original owner.
 
 ## Decision Log
 
@@ -38,7 +39,7 @@ The targeted launch addition in `/tmp/swarm-ide-usability.BirZCk/project-tmux-fe
 
 ## Outcomes & Retrospective
 
-Implementation is pushed in PR111. The x86_64-linux production package launches from its Nix store output; `nix run` and disposable `nix profile install` work. Installed source/profile proof took2.032s including startup. The later actual existing-registry proof took2.372s, showed ROOT/worker activity and confirmed the original exact agent owner survived IDE cleanup. The chosen source stayed unchanged and userData matched the requested relative profile. Automatic discovery with native helpers remains a separate narrow limitation. aarch64-linux evaluates but has not been built/run here; follow-up swarm-install-aarch64-proof records that gap. This work makes no macOS claim. The source tar and development entrypoints remain unchanged.
+Implementation is pushed in PR111. The x86_64-linux production package launches from its Nix store output; `nix run` and disposable `nix profile install` work. Installed source/profile proof took2.032s, existing-registry proof2.372s and final selected-session proof2.535s. The latter two show actual swarm activity and preserve the named original owner after IDE cleanup. Source remained unchanged and userData matched the relative profile. Automatic association is bounded: five agents found, two panes skipped, explicit registry fallback available. aarch64-linux evaluates but has not been built/run here; follow-up swarm-install-aarch64-proof records that gap. This work makes no macOS claim. The source tar and development entrypoints remain unchanged.
 
 ## Context and Orientation
 

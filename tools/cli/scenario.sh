@@ -31,8 +31,10 @@ node --input-type=module -e '
     const line=log.split("\n").find(line=>line.startsWith("swarm: registry "));
     if(!line && !info.existingRegistry) throw new Error("No selected tmux association");
     const registry=JSON.parse(fs.readFileSync(info.existingRegistry || line.slice("swarm: registry ".length),"utf8"));
+    fs.writeFileSync(path.join(process.env.SWARM_ARTIFACT_DIR,"associated-owners.json"),JSON.stringify(registry.sessions.map(row=>({id:row.id,contextRoot:row.contextRoot,tmux:row.tmux}))),{mode:0o600});
     const owner=registry.sessions.find(row=>row.id===process.env.SWARM_CLI_TEST_EXPECTED_SESSION);
-    if(!owner?.tmux || owner.contextRoot!==process.env.SWARM_SOURCE_WORKSPACE) throw new Error("Known worker/worktree missing from actual association");
+    const expectedRoot=process.env.SWARM_CLI_TEST_EXPECTED_WORKTREE || process.env.SWARM_SOURCE_WORKSPACE;
+    if(!owner?.tmux || owner.contextRoot!==expectedRoot) throw new Error("Known worker/worktree missing from actual association");
     association={mode:info.existingRegistry ? "existing-registry" : "selected-tmux",count:registry.sessions.length,owner:{session:owner.id,root:owner.contextRoot,pid:owner.tmux.processPid,start:owner.tmux.processStart}};
   }
   fs.writeFileSync(path.join(process.env.SWARM_ARTIFACT_DIR,"proof.json"),JSON.stringify({...info,openedRealSource:true,sourceUnchanged:true,actualProfile,association}));
