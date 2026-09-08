@@ -17,7 +17,8 @@ export function readNativeOutbox(storage: OutboxStorage | null = browserOutboxSt
   const raw = storage.getItem(NATIVE_OUTBOX_KEY);
   if (raw === null) return [];
   if (utf8Bytes(raw) > 2 * 1024 * 1024) throw new Error("Saved messages are full. Your existing text has been kept.");
-  return Saved.parse(JSON.parse(raw)).messages;
+  try { return Saved.parse(JSON.parse(raw)).messages; }
+  catch { throw new Error("Saved messages could not be read. Your existing text has been kept; copy your new message before closing this window."); }
 }
 
 /** Save before dispatch. Never evict uncertain submissions to make room. */

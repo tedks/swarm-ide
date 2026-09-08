@@ -18,11 +18,14 @@ function harness() {
   let sequence = 0;
   const calls: CoreRequest[] = [];
   const deferred: Array<() => void> = [];
-  let held = false, reject = false;
+  let held = false, reject = false, early = false;
   const bridge: SwarmBridge = { onEvent: () => () => {}, request: vi.fn(async (request): Promise<CoreResponse> => {
     calls.push(request);
     if (request.type === "trusted.start") {
       expect(readNativeOutbox().some((message) => message.token === request.token && message.text === request.text)).toBe(true);
+      if (early) state = { ...state, runToken: request.token, status: "starting", workspace: "/project/selected", initialText: request.text,
+        runs: [{ runToken: request.token, title: request.text, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
+          status: "starting", archived: false, approvalCount: 0, taskReference: null, message: "Starting" }] };
       if (held) await new Promise<void>((resolve) => deferred.push(resolve));
       if (reject) throw new Error("Disconnected");
       state = { ...state, runToken: request.token, status: "ready", workspace: "/project/selected", initialText: request.text,
@@ -32,7 +35,7 @@ function harness() {
     }
     return { protocolVersion: PROTOCOL_VERSION, requestId: request.requestId, ok: true, sequence: ++sequence, snapshot: initialSnapshot(), trusted: { kind: "trusted", snapshot: structuredClone(state) } };
   }) };
-  return { bridge, calls, deferred, set held(value: boolean) { held = value; }, set reject(value: boolean) { reject = value; } };
+  return { bridge, calls, deferred, set held(value: boolean) { held = value; }, set reject(value: boolean) { reject = value; }, set early(value: boolean) { early = value; } };
 }
 
 it("shows a real New agent button and immediately useful no-source composer", async () => {
@@ -88,6 +91,7 @@ it("retains failed startup text after reload without replaying; explicit new sel
 it("does not send if local message storage cannot save", async () => {
   const h = harness(); localStorage.setItem("swarm.native-outbox.v1", "broken");
   render(<TrustedLocalPane bridge={h.bridge} draft={null} connected />);
+  await screen.findByText("Workspace: /project/primary");
   fireEvent.change(screen.getByRole("textbox", { name: "New agent message" }), { target: { value: "Keep me" } });
   fireEvent.click(screen.getByRole("button", { name: "Start agent" }));
   await waitFor(() => expect(screen.getByRole("button", { name: "Start agent" })).not.toHaveProperty("disabled", true));
@@ -123,6 +127,21 @@ it("labels a new run with launch workspace, never an archived run's worktree; fo
   await waitFor(() => expect(document.activeElement).toBe(screen.getByRole("textbox", { name: "New agent message" })));
   expect(screen.getByText("Workspace: /project/primary")).toBeTruthy();
   expect(screen.queryByText("Workspace: /project/previous-worktree")).toBeNull();
+});
+
+it("keeps one draft when background observation finds the run before the start acknowledgement", async () => {
+  const h = harness(); h.held = true; h.early = true;
+  render(<TrustedLocalPane bridge={h.bridge} draft={null} connected workspaceRoot="/project/selected" />);
+  const box = screen.getByRole("textbox", { name: "New agent message" }); box.focus();
+  fireEvent.change(box, { target: { value: "First instruction" } }); fireEvent.keyDown(box, { key: "Enter" });
+  fireEvent.change(box, { target: { value: "Second draft" } });
+  await waitFor(() => expect(h.calls.filter((r) => r.type === "trusted.snapshot").length).toBeGreaterThan(1), { timeout: 1500 });
+  expect(screen.getByRole("textbox", { name: "New agent message" })).toBe(box);
+  expect(box).toHaveProperty("value", "Second draft");
+  fireEvent.change(box, { target: { value: "Latest draft" } });
+  await act(async () => h.deferred[0]!());
+  expect(screen.getByRole("textbox", { name: "Message Codex" })).toHaveProperty("value", "Latest draft");
+  expect(h.calls.filter((r) => r.type === "trusted.start")).toHaveLength(1);
 });
 
 it("does not overwrite unresolved outgoing rows when full", () => {

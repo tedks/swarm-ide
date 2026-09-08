@@ -158,6 +158,10 @@ export function useTrustedFleet({ bridge, connected, generation, selection, onSn
   };
   const start = async (text: string, model: string | null, root: string, continuation?: () => string) => {
     const command = safeRequest({ type: "trusted.start", token: crypto.randomUUID(), text, model }, PREPARE);
+    // A catalogue read may discover the reserved run before its start reply.
+    // Keep one composer until that reply, so later typing never moves between
+    // two independently editable drafts during admission.
+    if (command) setNewConversation(true);
     return command ? dispatch(command, { workspace: root, continuation }) : false;
   };
   const selected = fleet.selected ? fleet.details[fleet.selected]?.snapshot ?? null : null;

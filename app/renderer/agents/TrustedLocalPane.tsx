@@ -23,6 +23,7 @@ export function TrustedLocalPane({ draft, bridge, generation = 0, connected, sel
   const [focusIntent, setFocusIntent] = useState(0);
   const focusedIntent = useRef(0);
   const newRoot = workspaceRoot ?? cockpit.workspace ?? "Opened project";
+  const startRootKnown = Boolean(workspaceRoot ?? cockpit.workspace);
   const input = draft ? { worldId: draft.focus.worldId, focus: draft.focus, taskText: draft.task,
     model: draft.model.trim() || null, effort: null, links: { parentRunId: null, task: null, spec: null },
     ...(draft.taskReference ? { taskReference: draft.taskReference } : {}) } : null;
@@ -44,7 +45,7 @@ export function TrustedLocalPane({ draft, bridge, generation = 0, connected, sel
   const submit = async () => {
     if (showPreparation) {
       const submitted = textRef.current;
-      if (!submitted.trim() || !connected || cockpit.preparationPending) return;
+      if (!submitted.trim() || !connected || !startRootKnown || cockpit.preparationPending) return;
       if (await cockpit.start(submitted, model.trim() || null, newRoot, () => {
         const continuation = textRef.current === submitted ? "" : textRef.current;
         setText(""); return continuation;
@@ -110,7 +111,7 @@ export function TrustedLocalPane({ draft, bridge, generation = 0, connected, sel
           rows={3} value={showPreparation ? text : composer.text} maxLength={16384}
           onChange={(event) => { if (showPreparation) setText(event.target.value); else if (state?.runToken) cockpit.edit(state.runToken, event.target.value); }} />
         <button type="submit" className="trusted-send" aria-label={showPreparation ? "Start agent" : "Send message"} title="Send · Enter"
-          onMouseDown={(event) => event.preventDefault()} disabled={!connected || (showPreparation ? cockpit.preparationPending || !text.trim() : runPending || !composer.text.trim() || !state || !["ready", "running"].includes(state.status) || state.status === "running" && !state.turnId)}>
+          onMouseDown={(event) => event.preventDefault()} disabled={!connected || (showPreparation ? !startRootKnown || cockpit.preparationPending || !text.trim() : runPending || !composer.text.trim() || !state || !["ready", "running"].includes(state.status) || state.status === "running" && !state.turnId)}>
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V5m-6 6 6-6 6 6" /></svg>
         </button>
       </div>
