@@ -1,5 +1,5 @@
 id: agent-run-policy-activation-p3
-title: Prove bounded offline auxiliary activation controls
+title: Test selected offline hook and plugin activation controls
 desc: ""
 type: task
 component: default
@@ -34,5 +34,13 @@ log_events:
     plus fixed canary, not independent syscall exclusion, hooks, executor/plugin/persistedstate/telemetry
     or production equivalence. NOmodel/credentials/availability/adoption; broadparent
     remains open.'
+- time: 2026-09-08T04:27:40-00:00
+  who: Ted Smith
+  what: changed title
+  comment: ""
+- time: 2026-09-08T04:27:40-00:00
+  who: Ted Smith
+  what: updated description
+  comment: ""
 blocks:
 - agent-run-offline-activation-proof
