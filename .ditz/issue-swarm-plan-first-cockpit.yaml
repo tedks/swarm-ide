@@ -55,5 +55,13 @@ log_events:
     check in PR107 a2b4e3c. All existing design entries preserved. PR115 was aligned
     above it; only those eight documentation lines changed, with no runtime change
     or repeated checks. Both ready for ROOT ordered landing.
+- time: 2026-09-08T14:58:07-00:00
+  who: Ted Smith
+  what: commented
+  comment: Joined final reviewed Activity and the landed keyboard/outbox/automatic-task
+    base in PR10738ed049. Two targeted mounted checks confirm Activity opens without
+    agent action and the settings gear retains its draft/editor context; both typechecks
+    pass. No layout rewrites, broad Context tests or new GUI. PR115 aligned above
+    it without changing tab behavior; ROOT owns landing/adoption.
 blocks:
 - swarm-usability-join
