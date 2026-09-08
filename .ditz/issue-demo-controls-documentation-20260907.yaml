@@ -18,3 +18,10 @@ log_events:
   who: Ted Smith
   what: started
   comment: ""
+- time: 2026-09-08T00:12:57-00:00
+  who: Ted Smith
+  what: commented
+  comment: PR70 ready/pushed35b5547 from reviewed3d13a57. Only README/demo/evaluator-install
+    docs; one light native factual/link/control review CLEAN and diff-check passed.
+    No tests/build/GUI/model work. Kept open for ROOT normal merge; private sharing
+    choice unchanged.
