@@ -1,0 +1,17 @@
+id: swarm-repository-worktree-overview
+title: Browse repository worktrees, linked agents, open PRs and changes landed in
+  master
+desc: ""
+type: feature
+component: default
+release:
+reporter: Ted Smith <tedks@riseup.net>
+status: unstarted
+disposition:
+creation_time: 2026-09-08T13:39:20-00:00
+references: []
+log_events:
+- time: 2026-09-08T13:39:20-00:00
+  who: Ted Smith
+  what: created
+  comment: ""
