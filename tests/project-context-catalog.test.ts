@@ -141,8 +141,8 @@ describe("inert project manifest catalog", () => {
     const result = await scan(); expect(result.scan.status).toBe("partial"); expect(result.relationships).toEqual([]);
   });
 
-  it("requires a common declared workspace, not merely a unique package name elsewhere in the checkout", async () => {
-    await put("first/package.json", { name: "first-workspace", workspaces: ["packages/*"] });
+  it.each(["packages/*", "**"])("requires a common declared %s workspace, not a sibling package name", async (pattern) => {
+    await put("first/package.json", { name: "first-workspace", workspaces: [pattern] });
     await put("first/packages/app/package.json", { name: "app", dependencies: { unrelated: "workspace:*", local: "workspace:*" } });
     await put("first/packages/local/package.json", { name: "local" });
     await put("second/package.json", { name: "second-workspace", workspaces: ["packages/*"] });
@@ -151,6 +151,7 @@ describe("inert project manifest catalog", () => {
     expect(result.relationships.filter((edge) => edge.kind === "depends-on")).toEqual([
       { from: "first/packages/app/package.json", to: "first/packages/local/package.json", kind: "depends-on", evidence: "first/packages/app/package.json" },
     ]);
+    expect(result.relationships.filter((edge) => edge.from === "first/package.json").some((edge) => edge.to.startsWith("second/"))).toBe(false);
   });
 
   it("bounds multiline TOML logical statements before repeated prefix scans become quadratic", async () => {

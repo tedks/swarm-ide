@@ -105,6 +105,7 @@ function pathToManifest(source: string, value: string, file: string): string | u
   return target !== ".." && !target.startsWith("../") ? target : undefined;
 }
 function workspaceMatch(pattern: string, path: string): boolean {
+  if (!path || path === ".." || path.startsWith("../") || path.startsWith("/") || path.split("/").includes("..")) return false;
   if (!safe(pattern) || pattern.startsWith("/") || /[!{}()[\]\\?]/.test(pattern)) return false;
   const parts = pattern.replace(/^\.\//, "").replace(/\/$/, "").split("/"), target = path.split("/");
   if (parts.some((part) => !part || part === ".." || (part.includes("*") && part !== "*" && part !== "**"))) return false;
