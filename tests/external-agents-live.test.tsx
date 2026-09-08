@@ -1,8 +1,13 @@
 // @vitest-environment jsdom
 import { act, cleanup, renderHook } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { appendFile, mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { waitFor } from "@testing-library/react";
 import type { SwarmBridge } from "../app/electron/preload";
 import { useExternalAgents } from "../app/renderer/external-agents/client";
+import { ExternalAgentService } from "../core/external-agents";
 import { initialSnapshot } from "../fixtures/world";
 import type { ExternalAgentSummary, ExternalDetail, ExternalResult } from "../protocol/external-agents";
 import { PROTOCOL_VERSION, type CoreRequest, type CoreResponse } from "../protocol/schema";
@@ -51,6 +56,107 @@ describe("live external observation", () => {
     expect(f.request.mock.calls.filter(([r]) => r.type === "externalAgents.read")).toHaveLength(4);
     expect(f.max()).toBe(1); expect(vi.getTimerCount()).toBe(1);
     expect(hook.result.current.detail?.entries).toHaveLength(1);
+  });
+
+  it("publishes the due selected conversation before a fleet read at the same deadline", async () => {
+    const f = setup(), hook = await start(f), held = deferred<CoreResponse>(); let input!: CoreRequest;
+    await act(async () => { await vi.advanceTimersByTimeAsync(2_000); });
+    f.setTail(detail(1, "Reply already in the selected transcript"));
+    f.hold((r) => { if (r.type === "externalAgents.snapshot") { input = r; return held.promise; } });
+    await act(async () => { await vi.advanceTimersByTimeAsync(1_000); });
+    expect(hook.result.current.detail?.entries[0]?.text).toBe("Reply already in the selected transcript");
+    expect(f.request.mock.calls.slice(-2).map(([r]) => r.type)).toEqual(["externalAgents.read", "externalAgents.snapshot"]);
+    expect(input.type).toBe("externalAgents.snapshot");
+    expect(hook.result.current.selected).toBe(id(1));
+    expect(hook.result.current.busy).toBe(false);
+    expect(f.max()).toBe(1); expect(vi.getTimerCount()).toBe(0);
+    hook.unmount();
+    await act(async () => { held.resolve(success(input, { kind: "snapshot", snapshot: { status: "observed", observedAt: at, message: "Finished fleet", sessions: [row(1), row(2)] } })); });
+  });
+
+  it("does not add another full interval after a slow selected read finishes", async () => {
+    const f = setup(), hook = await start(f), held = deferred<CoreResponse>(); let input!: CoreRequest;
+    f.hold((r) => { if (r.type === "externalAgents.read" && !input) { input = r; return held.promise; } });
+    await act(async () => { await vi.advanceTimersByTimeAsync(1_000); });
+    await act(async () => { await vi.advanceTimersByTimeAsync(700); held.resolve(success(input, { kind: "read", detail: detail(1, "Slow read result") })); });
+    expect(hook.result.current.detail?.entries[0]?.text).toBe("Slow read result");
+    f.setTail(detail(1, "Next available reply"));
+    await act(async () => { await vi.advanceTimersByTimeAsync(299); });
+    expect(f.request.mock.calls.filter(([r]) => r.type === "externalAgents.read")).toHaveLength(2);
+    await act(async () => { await vi.advanceTimersByTimeAsync(1); });
+    expect(hook.result.current.detail?.entries[0]?.text).toBe("Next available reply");
+    expect(f.request.mock.calls.filter(([r]) => r.type === "externalAgents.read")).toHaveLength(3);
+    expect(f.max()).toBe(1); expect(vi.getTimerCount()).toBe(1);
+  });
+
+  it("gives overdue fleet reads a turn under sustained slow conversation reads without catch-up bursts", async () => {
+    const f = setup(); await start(f); const origin = Date.now();
+    const starts: { type: string; at: number }[] = [];
+    f.hold((r) => {
+      starts.push({ type: r.type, at: Date.now() - origin });
+      if (r.type === "externalAgents.read") return new Promise((resolve) => {
+        setTimeout(() => resolve(success(r, { kind: "read", detail: detail(1, "Slow live tail") })), 1_500);
+      });
+    });
+    await act(async () => { await vi.advanceTimersByTimeAsync(10_000); });
+    // At 7s the selected read's 6.5s deadline is older than the fleet's 7s
+    // deadline. It gets one turn, then the overdue fleet runs immediately.
+    expect(starts.filter((r) => r.type === "externalAgents.snapshot").map((r) => r.at)).toEqual([4_000, 8_500]);
+    expect(starts.filter((r) => r.type === "externalAgents.read").map((r) => r.at)).toEqual([1_000, 2_500, 4_000, 5_500, 7_000, 8_500, 10_000]);
+    expect(f.max()).toBe(1);
+    // Only the controlled bridge's slow read is timed while a request is active.
+    expect(vi.getTimerCount()).toBe(1);
+  });
+
+  it("observes a real appended transcript through the core reader and selected hook without manual refresh", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "swarm-selected-observation-"));
+    const root = join(dir, "repo"), registry = join(dir, "registry.json"), rollout = join(dir, "session.jsonl");
+    const record = (text: string) => JSON.stringify({ timestamp: at, type: "response_item", payload: {
+      type: "message", role: "assistant", content: [{ type: "output_text", text }],
+    } }) + "\n";
+    let service: ExternalAgentService | undefined, unmount: (() => void) | undefined;
+    const calls: CoreRequest["type"][] = [];
+    try {
+      await mkdir(root);
+      await writeFile(rollout, JSON.stringify({ type: "session_meta", payload: { id: id(1) } }) + "\n" + record("Recorded opening message"));
+      await writeFile(registry, JSON.stringify({ version: 1, sessions: [{ id: id(1), label: "Owned transcript example", rollout, evidence: "synthetic" }] }), { mode: 0o600 });
+      const reader = service = new ExternalAgentService(root, registry);
+      const bridge: SwarmBridge = { onEvent: () => () => {}, request: async (request) => {
+        calls.push(request.type);
+        if (request.type !== "externalAgents.snapshot" && request.type !== "externalAgents.read") throw new Error("Observation must not send or hand off");
+        return success(request, await reader.request(request));
+      } };
+      const hook = renderHook(() => useExternalAgents(bridge, true, 1)); unmount = hook.unmount;
+      await waitFor(() => expect(hook.result.current.snapshot?.sessions[0]?.id).toBe(id(1)));
+      await act(async () => { await hook.result.current.read(id(1)); });
+      const originalEntry = hook.result.current.detail?.entries[0]?.id;
+      expect(hook.result.current.detail?.entries[0]?.text).toBe("Recorded opening message");
+      await appendFile(rollout, record("Reply appended to the actual owned JSONL file"));
+      await waitFor(() => expect(hook.result.current.detail?.entries.at(-1)?.text).toBe("Reply appended to the actual owned JSONL file"), { timeout: 3_000 });
+      expect(hook.result.current.detail?.entries).toHaveLength(2);
+      expect(hook.result.current.detail?.entries[0]?.id).toBe(originalEntry);
+      expect(hook.result.current.selected).toBe(id(1));
+      expect(hook.result.current.detail?.session.evidence).toBe("synthetic");
+      expect(calls.every((type) => type === "externalAgents.snapshot" || type === "externalAgents.read")).toBe(true);
+    } finally {
+      unmount?.(); await service?.dispose(); await rm(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("drains an in-flight fleet read, then immediately reads only the latest explicit selection", async () => {
+    const f = setup(), hook = await start(f), held = deferred<CoreResponse>(); let input!: CoreRequest;
+    f.hold((r) => { if (r.type === "externalAgents.snapshot" && !input) { input = r; return held.promise; } });
+    await act(async () => { await vi.advanceTimersByTimeAsync(3_000); });
+    let earlier!: Promise<void>, latest!: Promise<void>;
+    act(() => { earlier = hook.result.current.read(id(1)); latest = hook.result.current.read(id(2)); });
+    const count = f.request.mock.calls.length;
+    await act(async () => { await earlier; await vi.advanceTimersByTimeAsync(5_000); });
+    expect(f.request).toHaveBeenCalledTimes(count);
+    expect(hook.result.current.selected).toBe(id(2)); expect(hook.result.current.detail).toBeNull();
+    // The old snapshot cannot remove a newer selection; its own read validates it.
+    await act(async () => { held.resolve(success(input, { kind: "snapshot", snapshot: { status: "observed", observedAt: at, message: "Older registry", sessions: [row(1)] } })); await latest; });
+    expect(f.request.mock.calls[count]?.[0]).toMatchObject({ type: "externalAgents.read", sessionId: id(2) });
+    expect(hook.result.current.detail?.session.id).toBe(id(2)); expect(f.max()).toBe(1);
   });
 
   it("retains detail without explicit busy during slow refresh and coalesces newer selections", async () => {
