@@ -5,8 +5,8 @@ type: bugfix
 component: default
 release:
 reporter: Ted Smith <tedks@riseup.net>
-status: in_progress
-disposition:
+status: closed
+disposition: fixed
 creation_time: 2026-09-08T13:39:24-00:00
 references: []
 log_events:
@@ -47,3 +47,10 @@ log_events:
     No GUI/model turn or shared app changes. PR ready for ROOT normal merge; keep
     issue in progress until landed. First-read failure before any usable list remains
     follow-up swarm-task-first-read-recovery.'
+- time: 2026-09-08T14:09:13-00:00
+  who: Ted Smith
+  what: 'closed: fixed'
+  comment: PR113 normally merged after ROOT intake. Changed metadata refs automatically
+    adopt a new task list with last-good retention, bounded reads, rollback recovery
+    and preserved pinned contexts;124focused checks/types/native CLEAN. Awaiting shared
+    app restart with outbox, no new packaged UI claim.
