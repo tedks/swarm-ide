@@ -11,7 +11,7 @@ Root and other registered agents should be the conversation header, not tabs abo
 - [x] 2026-09-08: Started the designated clean branch from reviewed master 3ee62d6, preserving the completed branches.
 - [x] 2026-09-08 15:43Z: Implemented the header and explicit native-tools access in 979e1f9; opened/pushed PR120.
 - [x] 2026-09-08 15:49Z: Focused mounted checks, native fix-delta review and bounded owned visual check complete. Corrected the review-found missing-tab focus fallback in b9fa7da.
-- [ ] Push final outcome notes, close/sync Ditz and hand off to ROOT for landing.
+- [x] 2026-09-08 15:52Z: PR120 ready/pushed, review recorded, Ditz closed/synced. Owned GUI cleaned and Bazel stopped; ROOT receives the landing handoff.
 
 ## Context and Orientation
 
