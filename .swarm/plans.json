@@ -229,6 +229,7 @@
       "core/tasks/draft-context.ts",
       "app/renderer/plans/DesignWorkspace.tsx",
       "app/renderer/plans/navigation.ts",
+      "app/renderer/plans/ProjectionCanvas.tsx",
       "app/renderer/plans/PlanWorkspace.tsx",
       "app/renderer/plans/PlanHierarchy.tsx",
       "protocol/plans.ts",

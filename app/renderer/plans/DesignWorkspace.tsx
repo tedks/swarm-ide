@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { Position } from "@xyflow/react";
 import { parseCoreResponseForRequest, PROTOCOL_VERSION } from "../../../protocol/schema";
 import type { PlanIndex, PlanNode } from "../../../protocol/plans";
 import { ProjectionCanvas, type ProjectionEdge, type ProjectionNode } from "./ProjectionCanvas";
@@ -24,12 +25,23 @@ export function designProjection(index: PlanIndex, selected: PlanNode) {
   }
   const shown = [selected, ...children, ...index.nodes.filter((node) => connected.has(node.id) && !primary.has(node.id))];
   const ids = new Set(shown.map((node) => node.id));
-  const nodes: ProjectionNode[] = shown.map((node, i) => ({ id: node.id, title: node.title,
+  const nodes: ProjectionNode[] = shown.map((node, i) => {
+    const angle = (i - 1) * Math.PI * 2 / Math.max(1, shown.length - 1) - Math.PI / 2;
+    const radius = Math.max(280, shown.length * 34);
+    return { id: node.id, title: node.title,
     subtitle: node.design?.state === "planned" ? "Planned component" : node.id === selected.id ? "Current component" : primary.has(node.id) ? "Open component" : "Connected component",
-    position: i === 0 ? { x: 110, y: 0 } : { x: ((i - 1) % 2) * 240, y: 110 + Math.floor((i - 1) / 2) * 110 } }));
-  const edges: ProjectionEdge[] = children.map((node) => ({ id: `contains:${node.id}`, source: selected.id, target: node.id, label: "contains" }));
-  for (const node of shown) for (const [i, link] of (node.design?.connections ?? []).entries()) {
-    if (ids.has(link.targetId)) edges.push({ id: `connection:${node.id}:${i}`, source: node.id, target: link.targetId, label: link.label });
+    position: i === 0 ? { x: radius, y: radius } : { x: radius + Math.cos(angle) * radius, y: radius + Math.sin(angle) * radius },
+    port: i === 0 ? Position.Bottom : Math.abs(Math.cos(angle)) > .6 ? Math.cos(angle) > 0 ? Position.Left : Position.Right : Math.sin(angle) > 0 ? Position.Top : Position.Bottom,
+  }; });
+  const edges: ProjectionEdge[] = children.map((node) => ({ id: `contains:${node.id}`, source: selected.id, target: node.id, label: "contains", kind: "containment" }));
+  const occurrences = new Map<string, number>();
+  for (const node of shown) for (const link of node.design?.connections ?? []) {
+    // Neighbour-to-neighbour relationships are available when that component is
+    // selected, not presented as dependencies of the currently inspected node.
+    if (!ids.has(link.targetId) || (!primary.has(node.id) && !primary.has(link.targetId))) continue;
+    const identity = JSON.stringify([node.id, link.targetId, link.label]);
+    const occurrence = occurrences.get(identity) ?? 0; occurrences.set(identity, occurrence + 1);
+    edges.push({ id: `connection:${identity}:${occurrence}`, source: node.id, target: link.targetId, label: link.label, kind: "interface" });
   }
   return { nodes, edges };
 }
@@ -122,8 +134,11 @@ export function DesignWorkspace(props: DesignWorkspaceProps) {
     }).catch(() => { if (!cancelled && live.current === origin) setDocNotice("Document unavailable. Refresh or open its source."); });
     return () => { cancelled = true; };
   }, [visible, props.taskOnly, current, docPath, lifetime, refresh, repositoryId, worldId]);
-  const graph = index && node ? designProjection(index, node) : null;
-  const implementation = node ? implementationProjection(node) : null;
+  const graph = useMemo(() => index && node ? designProjection(index, node) : null, [index, node]);
+  const implementation = useMemo(() => node ? implementationProjection(node) : null, [node]);
+  const interfaces = useMemo(() => index && node ? index.nodes.flatMap((source) => (source.design?.connections ?? [])
+    .filter((link) => source.id === node.id || link.targetId === node.id)
+    .map((link) => ({ source, link, target: index.nodes.find((item) => item.id === link.targetId)! }))) : [], [index, node]);
   const openBuild = (label: string) => {
     if (!current) return;
     if (onOpenBuild) onOpenBuild(label);
@@ -147,15 +162,16 @@ export function DesignWorkspace(props: DesignWorkspaceProps) {
           }} /> : null}
         </article>
         <section className="design-components" aria-label="Component connections"><h3>Components & connections</h3>
-          <div className="design-graph"><ProjectionCanvas key={`${repositoryId}:${node.id}`} label="Component design canvas" {...graph} selected={selected} onSelect={select} /></div>
+          <p className="design-legend">Dashed: contains · arrows: interfaces. Focus a component or edge to inspect its connections.</p>
+          <div className="design-graph"><ProjectionCanvas key={`${worldId}:${repositoryId}`} cameraScope={node.id} label="Component design canvas" {...graph} selected={selected} onSelect={select} /></div>
           <div className="design-details"><aside aria-label="Design links">
             <PlanLinkList key={`${node.id}:components`} label="Components" items={index!.nodes.filter((item) => item.parentId === node.id).map((item) => <button key={item.id} disabled={!current} onClick={() => select(item.id)}>{item.title}</button>)} />
             {node.parentId && <button disabled={!current} onClick={() => select(node.parentId!)}>Up one level</button>}
-            <PlanLinkList key={`${node.id}:connections`} label="Connections" items={(node.design?.connections ?? []).map((link) => <button key={`${link.targetId}:${link.label}`} disabled={!current} onClick={() => select(link.targetId)}>{link.label} → {index!.nodes.find((item) => item.id === link.targetId)?.title}</button>)} />
+            <PlanLinkList key={`${node.id}:connections`} label="Connections" items={interfaces.map(({ source, link, target }, i) => <button key={`${source.id}:${target.id}:${link.label}:${i}`} disabled={!current} onClick={() => select(source.id === node.id ? target.id : source.id)}>{source.title} → {target.title}: {link.label}</button>)} />
           </aside></div>
         </section>
         <section className="design-implementation" aria-label="Design implementation"><h3>Implementation</h3>
-          {implementation?.nodes.length ? <div className="design-implementation-graph"><ProjectionCanvas key={`${repositoryId}:${node.id}`} label="Component build mappings" {...implementation} selected={null} onSelect={openBuild} /></div> : <p className="design-empty">Select a component to explore its build connections.</p>}
+          {implementation?.nodes.length ? <div className="design-implementation-graph"><ProjectionCanvas key={`${worldId}:${repositoryId}`} cameraScope={node.id} label="Component build mappings" {...implementation} selected={null} onSelect={openBuild} /></div> : <p className="design-empty">Select a component to explore its build connections.</p>}
           {linkNotice ? <p role="status">{linkNotice}</p> : null}
           <PlanLinkList key={`${node.id}:source`} label="Source files" items={node.sourcePaths.map((path) => <button key={path} disabled={!current} onClick={() => onOpenFile(path)}>{path}</button>)} />
           <PlanLinkList key={`${node.id}:build`} label="Build targets" items={(node.design?.buildTargets ?? []).map((target) => <button key={target.label} disabled={!current} title={target.role} onClick={() => openBuild(target.label)}>{target.label}</button>)} />

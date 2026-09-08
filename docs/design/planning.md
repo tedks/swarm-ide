@@ -31,6 +31,15 @@ with implementation mappings and task dependencies below. Selecting a component
 shows its incoming and outgoing connections; build rules stay in their separate
 mapping graph. Short authored constraints are displayed beside the design prose.
 Long reference lists are expandable; the index does not discard their contents.
+Component containment is dashed and muted; authored interfaces retain their
+directions, with reciprocal links in separate lanes. Labels appear on focused
+interfaces or hovered/keyboard-focused edges, with exact incoming/outgoing
+connections also available in the inspector. A selected component shows its
+incident relationships, not unrelated links among its neighbours. Selecting
+another component keeps the canvas mounted and remembers visited cameras;
+unchanged index reads retain projection identity rather than remeasuring labels.
+This fixes the selection-remount mechanism, not a claim that an independent
+periodic idle-flashing cause has been reproduced.
 `DesignWorkspace` can accept that shared controller through `navigation` and a
 `taskPane` slot; `PlanWorkspace` provides the existing task graph once, preserving
 its camera when switching between the overview and task-only view.

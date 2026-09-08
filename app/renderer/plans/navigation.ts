@@ -40,7 +40,11 @@ export function usePlanNavigation({ visible, worldId, repositoryId, generation, 
       const reply = parseCoreResponseForRequest(await window.swarm.request(request), request);
       if (!valid()) return;
       if (!reply.ok || !reply.plans) throw new Error("Unavailable plan response");
-      setObservation({ lifetime: origin, scopeKey, result: reply.plans });
+      const next = reply.plans;
+      setObservation((prior) => ({ lifetime: origin, scopeKey, result:
+        prior?.scopeKey === scopeKey && prior.result.status === "observed" && next.status === "observed" &&
+        JSON.stringify(prior.result.index) === JSON.stringify(next.index)
+          ? { ...next, index: prior.result.index } : next }));
     } catch {
       if (valid()) {
         setObservation(null);

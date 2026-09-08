@@ -104,7 +104,7 @@ describe("living system design", () => {
     fireEvent.click(screen.getByRole("button", { name: "design:repository" }));
     await screen.findByText("docs/design/repository.md");
     expect(screen.queryByRole("button", { name: "BUILD.bazel" })).toBeNull();
-    fireEvent.click(screen.getByRole("button", { name: "Show all 20 source files" }));
+    fireEvent.click(screen.getByRole("button", { name: `Show all ${index.nodes.find(node => node.id === "design:repository")!.sourcePaths.length} source files` }));
     fireEvent.click(screen.getByRole("button", { name: "BUILD.bazel" }));
     expect(onOpenFile).toHaveBeenCalledExactlyOnceWith("BUILD.bazel");
     fireEvent.click(screen.getByRole("button", { name: "Show fewer source files" }));
