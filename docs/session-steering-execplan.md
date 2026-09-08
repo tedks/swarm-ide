@@ -9,10 +9,12 @@ An operator can select a registered external Codex session, type an instruction 
 ## Progress
 
 - [x] (2026-09-08 00:36Z) Read designated worktree instructions and current registry, transcript, tmux and protocol boundaries; inspected installed Codex 0.153.4 queue help.
-- [ ] Implement typed request, fixed queue sender and execution-time identity check.
-- [ ] Implement explicit target UI and negative/ambiguity tests.
-- [ ] Run relevant local, native convergence and owned virtual packaged proof; one real message to this implementation session only.
-- [ ] Push ready PR and synchronize Ditz for ROOT landing.
+- [x] (2026-09-08 00:48Z) Implement typed request, fixed queue sender and execution-time identity check; native review findings corrected with negative tests.
+- [x] (2026-09-08 00:48Z) Implement explicit target UI and navigation-retained drafts/receipts; mounted negative/ambiguity tests pass.
+- [x] (2026-09-08 00:53Z) Corrected local quality1830 tests and focused70 pass, each with one deliberately skipped opt-in self proof; all72 build targets pass. Final owned packaged proof passes with zero renderer errors and cleanup.
+- [x] (2026-09-08 00:49Z) One authorized actual Codex0.153.4 queue message to this implementation session returned a correlated receipt. Consumption is not attested by that receipt.
+- [x] (2026-09-08 00:54Z) Implementation pushed through89faa42 on PR76; code and fix deltas native CLEAN. Final docs/status handoff prepared for ready PR and Ditz synchronization.
+- [ ] ROOT normal landing and shared app adoption (outside this child increment).
 
 ## Assumptions and Failure Modes
 
@@ -50,16 +52,28 @@ Use the existing operator `SWARM_CODEX_BIN` or normal PATH resolution, fixed in 
 
 Installed Codex 0.153.4 exposes `queue --thread <THREAD> --message <TEXT>`. Official CLI documentation fetched on 2026-09-08 describes interactive queuing but does not establish this installed command's receipt format; local help/binary strings and the bounded real queue proof are the authority for this version.
 
+The attempted initial RED was a typecheck failure while the UI and protocol were being authored in parallel, not a claimed isolated behavioral regression. Native review then found two concrete classes with actual behavioral RED: metadata rewritten during either target check (two failures), and hidden information navigation losing drafts/receipts (three failures). Their corrected tests pass.
+
+The first full suite caught14 task-bridge failures: eager import of the trusted resolver loaded task Git executable discovery during ordinary worker imports (123 `realpathSync(PATH/git)` attempts). The smallest correction defers that import until an explicit Send, before all target checks. The unchanged task no-filesystem/no-process assertions now pass. No failing test was weakened and no unchanged-head retry was counted as a fix.
+
 ## Outcomes & Retrospective
 
-Implementation and evidence pending. No real provider completion or consumption has been claimed.
+PR76 implements explicit queue steering in the existing information panel without changing the observer client, task context, isolated profile or other departments. Queue status is strictly correlated to the original session; wrong or changing targets are rejected, post-spawn ambiguity is unknown, and only the queue CLI is drained. Source buffers/cameras and unsent session instructions survive ordinary navigation.
+
+Corrected implementation89faa42 passed all72 build targets, quality1830/137 files and focused70/6 files (each also skips the separately opt-in self test). The corrected packaged proof on owned display154/port55234 finished in2.084s including setup; native explicit Send, literal argv, stale/closed target rejection, navigation-retained drafts/receipt, source/camera retention, zero renderer errors, observed-process survival and cleanup all passed. Earlier successful proof was on the prior implementation; the final one uses the corrected code.
+
+The actual single self-queue proof ran on3a18f25 before the import-timing-only correction and passed in536ms. It proves installed Codex queue acceptance, not provider work or consumption. It is deliberately not repeated. Ordinary GUI transport uses a disclosed controlled fixture with zero model turns. Native code review and both fix deltas converged CLEAN; foreign seats were not used under explicit Codex-only authority. Hosted CI was not a gate.
+
+Non-durable external receipts/drafts across application reloads remain a scoped follow-up, Ditz `external-steering-durable-receipts`. The UI and docs disclose this limitation. No automatic replay, external stop/kill, transcript publication or ROOT app adoption was added.
 
 ## Artifacts and Notes
 
-Short control handoff lives in `/tmp/swarm-ide-real-swarms.Djy75P/session-steering/seam.md`; owned proof output will live beside it. No private transcript or operator registry is checked into Git.
+Short control handoff lives in `/tmp/swarm-ide-real-swarms.Djy75P/session-steering/seam.md`; final evidence is `packaged-corrected/run.VvH0up` beside it. `corrected-local.log`, `corrected-build.log`, `corrected-packaged.log` and the private self-send attempt/receipt preserve exact attribution. No private transcript or operator registry is checked into Git.
 
 ## Interfaces and Dependencies
 
 `externalAgents.send` result is `{kind: 'send', sessionId, receiptId, status: 'queued' | 'rejected' | 'delivery-unknown', message}`. Node child-process APIs own the short-lived sender; existing tmux validation owns target identity checks. No added package or provider credentials are required.
 
 Initial plan authored before product implementation, after stating the input, environment and failure assumptions.
+
+2026-09-08 completion update: recorded review repairs, precise RED/green attribution, actual versus controlled proof and deliberate remaining lifecycle limitations. No product scope was expanded.

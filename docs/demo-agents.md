@@ -95,7 +95,43 @@ visual-only race remains between the final validation and selection; successful
 selection is not acknowledgement from an agent. An uncertain handoff must be
 checked visually, not replayed as an agent command. Closing Swarm never kills
 observed agents. The only subprocesses the observer owns are short-lived tmux
-query/selection CLI invocations.
+query/selection CLI invocations (and the queue CLI described below).
+
+## Deliberate session steering
+
+For a registered `evidence: local` session with a valid `tmux` target, the
+information panel also offers **Message existing session**. Check the displayed
+label and session ID, type an instruction, then press **Send message**. Viewing
+or refreshing a session never sends it anything. Unsent text and receipts survive
+returning to source information and reopening the panel within this UI session.
+
+The core resolves the operator's normal `codex` installation, or the absolute
+`SWARM_CODEX_BIN` configured when launching Swarm, then executes only
+`queue --thread <exact UUID> --message <text>` as arguments, never a shell command.
+No renderer-controlled executable, working directory, profile or autonomy override
+is accepted. Normal Codex account/configuration applies; no credentials are read
+or copied by the IDE. This path was verified against installed Codex 0.153.4.
+An installation without this command leaves checked tmux handoff available.
+
+Messages must be nonblank, contain no NUL and fit in 4000 UTF-8 bytes. The private
+registration, current process and observed transcript are checked again before
+dispatch. A stale or closed target is rejected before queueing. There is no
+atomic operation spanning tmux identity, filesystem observation and the Codex
+queue: the exact UUID addresses the session, while the final checks minimize the
+remaining interval in which that session can close. Nothing is inferred about
+when an agent consumes the message.
+
+**Queued** means Codex returned a receipt for the exact session, not consumed or
+completed. **Rejected** means this attempt did not dispatch. **Delivery unknown**
+means the CLI may have queued the message before an error, timeout or disconnect;
+inspect the conversation before deciding to send again. Swarm does not retry or
+replay messages automatically. A single target has at most one pending Send;
+the core retains up to 256 attempted request IDs to reject duplicate requests.
+Receipts/drafts here are not durable history across application reloads.
+
+Closing Swarm cancels and drains its own short-lived queue CLI, never the external
+session. There is deliberately no Stop or Kill action for observed agents.
+Only the separately managed trusted-local runs are owned by the IDE.
 
 ## Local verification
 
