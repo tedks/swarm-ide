@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { PlanHierarchy } from "./PlanHierarchy";
 import { TaskGraph } from "../tasks/TaskGraph";
 import type { TaskBridgeClient, TaskClientState } from "../tasks/client";
@@ -8,7 +8,7 @@ import "./workspace.css";
 import { DesignWorkspace, type DesignWorkspaceParts } from "./DesignWorkspace";
 import { usePlanNavigation } from "./navigation";
 
-export function PlanWorkspace({ visible, worldId, repositoryId, generation, connected, tasks, client, onOpenFile, onOpenTask, onOpenBuild, initialView = "design", renderWorkspace, documentVisible, onOpenDesign }: {
+export function PlanWorkspace({ visible, worldId, repositoryId, generation, connected, tasks, client, onOpenFile, onOpenTask, onOpenBuild, initialView = "design", renderWorkspace, documentVisible, onOpenDesign, restoreSelection, onSelectComponent }: {
   visible: boolean; worldId: string; repositoryId: string; generation: number; connected: boolean; tasks: TaskClientState;
   client: TaskBridgeClient; onOpenFile: (path: string) => void; onOpenTask: (snapshot: TaskSnapshot, id: string) => Promise<boolean>;
   onOpenBuild?: (label: string) => void;
@@ -16,9 +16,18 @@ export function PlanWorkspace({ visible, worldId, repositoryId, generation, conn
   renderWorkspace?: (parts: DesignWorkspaceParts) => ReactNode;
   documentVisible?: boolean;
   onOpenDesign?: () => void;
+  restoreSelection?: { id: string; serial: number };
+  onSelectComponent?: (id: string) => void;
 }) {
   const [view, setView] = useState(initialView);
-  const navigation = usePlanNavigation({ visible: visible && view !== "tasks", worldId, repositoryId, generation, connected });
+  const baseNavigation = usePlanNavigation({ visible: visible && view !== "tasks", worldId, repositoryId, generation, connected });
+  const restored = useRef<number | undefined>(undefined);
+  useEffect(() => {
+    if (restoreSelection && baseNavigation.current && restored.current !== restoreSelection.serial) {
+      restored.current = restoreSelection.serial; baseNavigation.select(restoreSelection.id);
+    }
+  }, [restoreSelection, baseNavigation]);
+  const navigation = { ...baseNavigation, select: (id: string) => { baseNavigation.select(id); if (baseNavigation.current) onSelectComponent?.(id); } };
   if (renderWorkspace) return <DesignWorkspace visible={visible} worldId={worldId} repositoryId={repositoryId} generation={generation} connected={connected}
     navigation={navigation} documentVisible={documentVisible} onOpenDesign={onOpenDesign} renderWorkspace={renderWorkspace}
     onOpenFile={onOpenFile} onOpenBuild={onOpenBuild} taskPane={<TaskGraph client={client} state={tasks} visible={visible} onOpen={onOpenTask} />}

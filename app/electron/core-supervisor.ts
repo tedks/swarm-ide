@@ -196,6 +196,7 @@ export class CoreSupervisor {
       // and bridge margin. Launch still becomes uncertain at 5s; task reads
       // retain their 12s allowance for a bounded 10s provider observation.
       const timeoutMs = request.type === "trusted.prepare" || request.type === "agent.prepare" && request.taskReference !== undefined ? 40_000
+        : request.type === "workspace.open" ? 15_000
         : request.type === "tasks.snapshot" || request.type === "tasks.read" ? 12_000 : 5_000;
       const timer = request.type === "file.write" ? null : setTimeout(() => {
         this.settle(request.requestId, failure(request.requestId,

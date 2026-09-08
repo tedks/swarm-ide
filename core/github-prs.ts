@@ -37,13 +37,14 @@ export async function githubPrCommand(root: string, repository: string, signal: 
   if (signal.aborted) throw new Error("Cancelled");
   const config = await options(root);
   const bytes = await collectBuildQuery((sink) => createOwnedCodexTransport({ ...config, args: ["pr", "list", "--repo", `github.com/${repository}`, "--state", "all", "--limit", String(GITHUB_PR_LIMIT),
-    "--json", "number,title,state,isDraft,author,updatedAt,url,changedFiles,files"] }, sink), signal);
+    "--json", "number,title,state,isDraft,author,updatedAt,url,changedFiles,files,headRefName"] }, sink), signal);
   if (bytes.byteLength > MAX_BYTES) throw new Error("GitHub response exceeds bound");
   return new TextDecoder("utf8", { fatal: true }).decode(bytes);
 }
 
 const RawPullRequests = z.array(z.object({
   number: z.number(), title: z.string(), state: z.string(), isDraft: z.boolean(),
+  headRefName: z.string().optional(),
   author: z.object({ login: z.string() }).passthrough().nullable(), updatedAt: z.string(), url: z.string(),
   changedFiles: z.number(), files: z.array(z.object({ path: z.string() }).passthrough()).max(GITHUB_PR_PATH_LIMIT),
 }).strict()).max(GITHUB_PR_LIMIT);

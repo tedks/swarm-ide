@@ -18,7 +18,7 @@ const inside = (root: string, path: string) => {
 
 /** Read-only inspection of the operator's registered worktree, never a renderer-selected root.
  * The diff is current HEAD-to-worktree state, not attribution to a particular agent turn. */
-async function registeredWorktree(
+export async function registeredWorktree(
   workspaceRoot: string,
   registryPath: string | undefined,
   sessionId: string,

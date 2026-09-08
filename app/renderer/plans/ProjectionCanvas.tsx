@@ -25,6 +25,13 @@ function DesignEdge(props: EdgeProps) {
   </g>;
 }
 const edgeTypes = { design: DesignEdge };
+// Camera coordinates only, scoped by canonical workspace/component identity;
+// retained when a temporary unavailable plan unmounts its canvas.
+const retainedCameras = new Map<string, Viewport>();
+function retainCamera(key: string, viewport: Viewport) {
+  retainedCameras.delete(key); retainedCameras.set(key, { ...viewport });
+  if (retainedCameras.size > 128) retainedCameras.delete(retainedCameras.keys().next().value!);
+}
 
 /** Separate contracts with identical endpoints as well as reciprocal pairs.
  * Stable IDs keep the lanes fixed when an authored list is reordered. */
@@ -45,14 +52,22 @@ export function ProjectionCanvas({ label, nodes: input, edges: links, selected, 
   const flow = useRef<ReactFlowInstance | null>(null);
   const cameras = useRef(new Map<string, Viewport>());
   const scope = useRef(cameraScope);
+  const cameraKey = cameraScope ? `${label}:${cameraScope}` : undefined;
   useLayoutEffect(() => {
-    if (scope.current === cameraScope) return;
-    if (scope.current && flow.current) cameras.current.set(scope.current, flow.current.getViewport());
     scope.current = cameraScope;
-    const saved = cameraScope ? cameras.current.get(cameraScope) : undefined;
+    const saved = cameraScope ? cameras.current.get(cameraScope) ?? retainedCameras.get(`${label}:${cameraScope}`) : undefined;
     if (saved) void flow.current?.setViewport(saved);
     // A first visit keeps the current camera; Fit remains an explicit gesture.
-  }, [cameraScope]);
+    // Layout cleanup captures the outgoing viewport BEFORE the incoming scope
+    // installs its camera. Passive cleanup would save B's viewport under A.
+    return () => {
+      if (cameraScope && flow.current) {
+        const viewport = flow.current.getViewport();
+        cameras.current.set(cameraScope, viewport);
+        retainCamera(`${label}:${cameraScope}`, viewport);
+      }
+    };
+  }, [cameraScope, label]);
   useEffect(() => {
     if (taskScopeVersion === undefined) return;
     const frame = requestAnimationFrame(() => { void flow.current?.fitView({ padding: .2, maxZoom: 1 }); });
@@ -89,7 +104,7 @@ export function ProjectionCanvas({ label, nodes: input, edges: links, selected, 
     if (!id || !event.currentTarget.contains(target) || !input.some((node) => node.id === id)) return;
     event.preventDefault(); event.stopPropagation(); onSelect(id);
   }}>
-    <ReactFlow nodes={graph.nodes} edges={graph.edges} edgeTypes={edgeTypes} onInit={(instance) => { flow.current = instance; }} fitView fitViewOptions={{ padding: cameraScope ? .07 : .2, maxZoom: 1 }}
+    <ReactFlow nodes={graph.nodes} edges={graph.edges} edgeTypes={edgeTypes} onInit={(instance) => { flow.current = instance; const saved = cameraKey ? retainedCameras.get(cameraKey) : undefined; if (saved) requestAnimationFrame(() => requestAnimationFrame(() => { if (flow.current === instance && scope.current === cameraScope) void instance.setViewport(saved); })); }} onMoveEnd={(_event, viewport) => { if (cameraKey) retainCamera(cameraKey, viewport); }} fitView fitViewOptions={{ padding: cameraScope ? .07 : .2, maxZoom: 1 }}
       minZoom={.08} maxZoom={2} nodesConnectable={false} nodesDraggable={false} elementsSelectable
       onNodeClick={(_event, node) => onSelect(node.id)}
       onEdgeClick={(_event, edge) => { if (edge.data?.kind !== "containment") onSelectEdge?.(edge.id); }}

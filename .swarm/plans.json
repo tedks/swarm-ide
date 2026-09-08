@@ -46,6 +46,8 @@
       "app/renderer/agents/AgentDock.tsx",
       "app/renderer/agents/conversation-tabs.ts",
       "app/renderer/WorkbenchSidebar.tsx",
+      "app/renderer/navigation-history.ts",
+      "app/renderer/workspace-bridge.ts",
       "BUILD.bazel"
     ],
     "taskIds": [],
@@ -125,6 +127,9 @@
       "core/repository.ts",
       "core/worktree-inspection.ts",
       "protocol/worktree-inspection.ts",
+      "core/workspace-context.ts",
+      "protocol/workspace.ts",
+      "tools/workspace-navigation/BUILD.bazel",
       "app/renderer/AgentWorktreeBrowser.tsx",
       "tools/worktree-browser/BUILD.bazel",
       "core/build-graph.ts",
@@ -169,6 +174,21 @@
         }
       ],
       "buildTargets": [
+        {
+          "label": "//tools/workspace-navigation:checks",
+          "role": "Checks root-scoped editor retention, deliberate history, cameras and stale async results",
+          "dependencies": [{ "label": "//:quality_sources", "relation": "data" }]
+        },
+        {
+          "label": "//tools/workspace-navigation:core-checks",
+          "role": "Checks checked registrations and real same-path reads and writes in independent Git worktrees",
+          "dependencies": [{ "label": "//:quality_sources", "relation": "data" }]
+        },
+        {
+          "label": "//tools/workspace-navigation:smoke",
+          "role": "Ordinary packaged worktree selection and retained dirty source through Back and Forward",
+          "dependencies": [{ "label": "//:desktop-bundle", "relation": "data" }, { "label": "//tools:virtual-desktop-run.sh", "relation": "data" }]
+        },
         {
           "label": "//tools/build-graph:checks",
           "role": "Checks automatic repository build observation, invalidation and retained graph context",

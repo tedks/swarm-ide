@@ -137,7 +137,7 @@ export function DesignWorkspace(props: DesignWorkspaceProps) {
     if (!visible || props.taskOnly || props.documentVisible === false || !current || !docPath || !window.swarm) return;
     let cancelled = false;
     const origin = lifetime;
-    const request = { protocolVersion: PROTOCOL_VERSION, type: "file.read" as const, requestId: `design-doc:${crypto.randomUUID()}`, path: docPath };
+    const request = { protocolVersion: PROTOCOL_VERSION, type: "file.read" as const, requestId: `design-doc:${crypto.randomUUID()}`, path: docPath, workspaceId: repositoryId };
     setDocNotice("Loading document…");
     void window.swarm.request(request).then((reply) => {
       if (cancelled || live.current !== origin) return;
@@ -181,7 +181,7 @@ export function DesignWorkspace(props: DesignWorkspaceProps) {
             <option value="">All {interfaces.length} contracts</option>
             {interfaces.map(({ id, link }) => <option key={id} value={id}>{link.kind ?? "contract"} · {link.label}</option>)}
           </select></label> : null}
-          <div className="design-graph"><ProjectionCanvas key={`${worldId}:${repositoryId}`} cameraScope={node.id} label="Component design canvas" {...graph} selected={selected} onSelect={select} onSelectEdge={inspectContract} /></div>
+          <div className="design-graph"><ProjectionCanvas cameraScope={`${worldId}:${repositoryId}:${node.id}`} label="Component design canvas" {...graph} selected={selected} onSelect={select} onSelectEdge={inspectContract} /></div>
           {selectedContract ? <aside className="design-contract-detail" aria-label="Selected architectural contract">
             <strong>{selectedContract.link.kind ?? "Contract"} · {selectedContract.link.label}</strong>
             <p>{selectedContract.source.title} → {selectedContract.target.title}</p>
@@ -199,7 +199,7 @@ export function DesignWorkspace(props: DesignWorkspaceProps) {
     <button onClick={() => onOpenFile(".swarm/plans.json")}>Open plan index</button>
   </div>;
   const implementationPane = node && graph ? (<section className="design-implementation" aria-label="Design implementation"><h3>Implementation</h3>
-          {!props.renderWorkspace && (implementation?.nodes.length ? <div className="design-implementation-graph"><ProjectionCanvas key={`${worldId}:${repositoryId}`} cameraScope={node.id} label="Component build mappings" {...implementation} selected={null} onSelect={openBuild} /></div> : <p className="design-empty">Select a component to explore its build connections.</p>)}
+          {!props.renderWorkspace && (implementation?.nodes.length ? <div className="design-implementation-graph"><ProjectionCanvas cameraScope={`${worldId}:${repositoryId}:${node.id}`} label="Component build mappings" {...implementation} selected={null} onSelect={openBuild} /></div> : <p className="design-empty">Select a component to explore its build connections.</p>)}
           {linkNotice ? <p role="status">{linkNotice}</p> : null}
           <PlanLinkList key={`${node.id}:source`} label="Source files" items={node.sourcePaths.map((path) => <button key={path} disabled={!current} onClick={() => onOpenFile(path)}>{path}</button>)} />
           <PlanLinkList key={`${node.id}:build`} label="Build targets" items={(node.design?.buildTargets ?? []).map((target) => <button key={target.label} disabled={!current} title={target.role} onClick={() => openBuild(target.label)}>{target.label}</button>)} />

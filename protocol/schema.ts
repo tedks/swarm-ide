@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { WorkspaceIdSchema, WorkspaceOpenRequestSchema, WorkspaceSelectionSchema, isSharedWorkspaceRequest } from "./workspace";
 import { ProjectContextRequestSchema, ProjectContextObservationSchema } from "./project-context";
 import { WorktreeInspectionRequestSchema, WorktreeInspectionResultSchema, WorktreeBrowseRequestSchema, WorktreeBrowseResultSchema } from "./worktree-inspection";
 import { WorkLogRequestSchema, WorkLogSnapshotSchema } from "./work-log";
@@ -297,8 +298,18 @@ const WorkspaceRequestSchema = z.discriminatedUnion("type", [
     path: z.string().min(1).max(4_096),
   }),
 ]);
-export const CoreRequestSchema = z.union([WorkspaceRequestSchema, AgentRequestSchema, TaskRequestSchema, RepositoryRequestSchema, RepositorySearchRequestSchema, ChangelogRequestSchema, PlanReadRequestSchema, ExternalRequestSchema, BuildGraphRequestSchema, BuildJobRequestSchema, TaskActivityRequestSchema, TrustedRequestSchema, GithubPrRequestSchema, WorktreeInspectionRequestSchema, WorktreeBrowseRequestSchema, WorkLogRequestSchema, ProjectContextRequestSchema]);
-export type CoreRequest = z.infer<typeof CoreRequestSchema>;
+const DomainCoreRequestSchema = z.union([WorkspaceRequestSchema, WorkspaceOpenRequestSchema, AgentRequestSchema, TaskRequestSchema, RepositoryRequestSchema, RepositorySearchRequestSchema, ChangelogRequestSchema, PlanReadRequestSchema, ExternalRequestSchema, BuildGraphRequestSchema, BuildJobRequestSchema, TaskActivityRequestSchema, TrustedRequestSchema, GithubPrRequestSchema, WorktreeInspectionRequestSchema, WorktreeBrowseRequestSchema, WorkLogRequestSchema, ProjectContextRequestSchema]);
+export type CoreRequest = z.infer<typeof DomainCoreRequestSchema> & { workspaceId?: string };
+// The routing envelope is removed before strict domain validation. It cannot
+// loosen an individual command's schema or smuggle fields into its provider.
+export const CoreRequestSchema: z.ZodType<CoreRequest> = z.unknown().transform((input, context) => {
+  const envelope = z.object({ workspaceId: WorkspaceIdSchema.optional() }).passthrough().safeParse(input);
+  if (!envelope.success) { for (const issue of envelope.error.issues) context.addIssue({ ...issue }); return z.NEVER; }
+  const { workspaceId, ...command } = envelope.data;
+  const parsed = DomainCoreRequestSchema.safeParse(command);
+  if (!parsed.success) { for (const issue of parsed.error.issues) context.addIssue({ ...issue }); return z.NEVER; }
+  return { ...parsed.data, ...(workspaceId !== undefined ? { workspaceId } : {}) };
+});
 
 export const FileResultSchema = z.discriminatedUnion("kind", [
   z.object({
@@ -327,6 +338,8 @@ export const CoreResponseSchema = z.discriminatedUnion("ok", [
     protocolVersion: z.literal(PROTOCOL_VERSION),
     requestId: z.string().min(1),
     ok: z.literal(true),
+    workspaceId: WorkspaceIdSchema.optional(),
+    workspace: WorkspaceSelectionSchema.optional(),
     sequence: z.number().int().nonnegative(),
     snapshot: WorkspaceSnapshotSchema,
     file: FileResultSchema.optional(),
@@ -351,6 +364,7 @@ export const CoreResponseSchema = z.discriminatedUnion("ok", [
     protocolVersion: z.literal(PROTOCOL_VERSION),
     requestId: z.string().min(1),
     ok: z.literal(false),
+    workspaceId: WorkspaceIdSchema.optional(),
     // Do not strip invalid fields before request-specific agent validation.
     error: z.object({ code: z.string().min(1), message: z.string().min(1) }).strict(),
   }).strict(),
@@ -358,6 +372,7 @@ export const CoreResponseSchema = z.discriminatedUnion("ok", [
 export type CoreResponse = z.infer<typeof CoreResponseSchema>;
 
 export const CoreEventSchema = z.object({
+  workspaceId: WorkspaceIdSchema.optional(),
   protocolVersion: z.literal(PROTOCOL_VERSION),
   type: z.enum([
     "workspace.changed",
@@ -378,6 +393,7 @@ export const CoreEventSchema = z.object({
 export type CoreEvent = z.infer<typeof CoreEventSchema>;
 
 export const FileEventSchema = z.object({
+  workspaceId: WorkspaceIdSchema.optional(),
   protocolVersion: z.literal(PROTOCOL_VERSION),
   type: z.literal("file.changed"),
   sequence: z.number().int().positive(),
@@ -405,10 +421,23 @@ const agentResultKind = {
 export function parseCoreResponseForRequest(input: unknown, request: CoreRequest): CoreResponse {
   const response = parseCoreResponse(input);
   if (response.requestId !== request.requestId) throw new Error("Response request ID mismatch");
+  if (response.ok && response.workspaceId !== undefined && response.snapshot.project.id !== response.workspaceId)
+    throw new Error("Workspace snapshot identity mismatch");
+  if (request.type === "workspace.open") {
+    if (response.ok && (!response.workspace || response.workspace.sessionId !== request.sessionId ||
+      response.workspace.id !== response.snapshot.project.id || response.workspaceId !== response.workspace.id ||
+      response.file || response.repo || response.search || response.agent || response.task || response.taskActivity || response.external ||
+      response.workLog || response.trusted || response.projectContext || response.githubPrs || response.buildGraph || response.buildJobs || response.plans ||
+      response.changelog || response.worktreeInspection || response.worktreeBrowse))
+      throw new Error("Workspace selection response mismatch");
+    return response;
+  } else if (response.ok && response.workspace) throw new Error("Workspace selection supplied for a different command");
+  if (request.workspaceId !== undefined && !isSharedWorkspaceRequest(request) && response.workspaceId !== request.workspaceId)
+    throw new Error("Workspace response identity mismatch");
   if (request.type === "build.start" || request.type === "build.observe" || request.type === "build.cancel") {
     if (response.ok && (!response.buildJobs || response.snapshot.project.id !== request.repositoryId || response.snapshot.world.id !== request.worldId ||
         response.buildJobs.repositoryId !== request.repositoryId || response.buildJobs.worldId !== request.worldId ||
-        Object.keys(response).some((key) => !["protocolVersion", "requestId", "ok", "sequence", "snapshot", "buildJobs"].includes(key))))
+        Object.keys(response).some((key) => !["protocolVersion", "requestId", "ok", "sequence", "snapshot", "workspaceId", "buildJobs"].includes(key))))
       throw new Error("Build jobs response workspace mismatch");
     return response;
   } else if (response.ok && response.buildJobs) throw new Error("Build jobs supplied for a different command");

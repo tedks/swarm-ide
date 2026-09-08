@@ -24,7 +24,7 @@ from file co-location or shared Bazel inputs.
 | Automatic build context | [use-build-graph.ts](../../app/renderer/repository/use-build-graph.ts) | Shares startup/source-change/return observations across graph and Context consumers |
 | Local servers and containers | [project-context/provider.ts](../../core/project-context/provider.ts) | [ProjectContextPanel](../../app/renderer/project-context/ProjectContextPanel.tsx), automatic worktree-scoped runtime instruments |
 | Declared project components and sites | [project-context/catalog.ts](../../core/project-context/catalog.ts) | [ProjectCatalogPanel](../../app/renderer/project-context/ProjectCatalogPanel.tsx), manifest relationships and configured destinations |
-| Registered agent worktrees | [worktree-inspection.ts](../../core/worktree-inspection.ts) | [AgentWorktreeBrowser](../../app/renderer/AgentWorktreeBrowser.tsx), read-only directories, changed paths and master comparison |
+| Registered agent worktrees | [workspace-context.ts](../../core/workspace-context.ts), [worktree-inspection.ts](../../core/worktree-inspection.ts) | Ordinary directory/editor workspace selection, master comparison and deliberate Back/Forward |
 
 The Bazel graph uses an actual per-repository query rather than a hardcoded demo
 directory. Its shared hook supports automatic opened-project startup, debounced
@@ -51,10 +51,31 @@ adapters remain planned.
 
 ## Agent worktree exploration
 
-The standalone agent worktree browser reads the selected session's canonical
-`contextRoot` from the private registry. It does not replace the ordinary editor
-or rebind the graph cameras. Its App mount belongs to the conversation cockpit;
-the original editable workspace must stay mounted while the browser is visible.
+The agent Worktree action and the ordinary directory pane's Worktree selector
+open the registered session's canonical `contextRoot` as an ordinary workspace.
+This first implementation accepts worktrees sharing the launch repository's Git
+common directory. The privileged core validates registration and creates immutable
+rooted provider contexts; renderer paths never select arbitrary filesystem roots.
+
+The directory graph, source editor, tasks, plans, build observations and Context
+use that selected identity. Worktree-global Context shows owner, branch, available
+master comparison and matching PRs when a GitHub observation supplies the exact
+branch. A missing comparison is not called clean. Existing conversations and
+steering stay shared; preparing a new native run in a nonlaunch workspace remains
+unavailable rather than silently using the original root.
+
+Dirty buffers, cursors and workspace navigation are retained independently even
+when two worktrees contain the same relative filename. Switching waits for an
+accepted save; saving is disabled during selection. Reads, events and accepted
+writes keep their original context. Failed selection leaves the old view usable.
+Clean reload restores and revalidates the active registered selection before
+reopening source. Any inactive dirty buffer blocks a full document reload.
+
+Back/Forward stores deliberate file, directory, component, task, agent and
+worktree locations, not observer updates or commands. Toolbar buttons,
+Alt-Left/Right and native mouse side buttons use the same bounded 64-entry history;
+Alt-Up still means parent directory. New user navigation cancels a held restore.
+History never sends a message, builds, launches, or attaches task context.
 
 `worktree.browse` reuses the bounded directory reader and lists tracked changes
 against the first available local reference in this order: `origin/master`,
@@ -71,8 +92,9 @@ The existing `worktree.inspect` request retains HEAD comparison by default;
 the browser explicitly requests master comparison. Files are read through the
 same source broker as ordinary inspection. Deleted files show their diff;
 binary or oversized files have no source preview. Directory links, nested
-repositories, and Git administration are not traversed. This is a read-only
-explorer, not a second editable workspace or a whole-graph repository switch.
+repositories, and Git administration are not traversed. This standalone diff
+inspector remains read-only; ordinary source editing belongs to the selected
+workspace context, not to a second-class agent-file viewer.
 
 ## Build connections
 
@@ -125,7 +147,10 @@ actual two-worktree Git broker plus mounted browser and original-buffer retentio
 App and browser in a labelled controlled renderer wrapper on owned virtual X11.
 That wrapper proves retention before the independent conversation-owner App mount;
 it is not a live-agent or normal-entry-point claim.
-The conversation cockpit now supplies the normal selected-agent Worktree action
-and a persistent hidden browser surface. Its mounted App regression separately
-checks selected session identity, master comparison and original buffer/camera
-retention; the earlier wrapper proof is not relabelled as normal-entry evidence.
+The newer `//tools/workspace-navigation:checks` and `:core-checks` consume
+`//:quality_sources` for immutable-root routing, actual Git read/write separation,
+mounted editor retention and history races. `:smoke` consumes the production
+desktop bundle and owned X11 driver: ordinary Worktree selection opens distinct
+bytes in real disposable Git worktrees, and Back/Forward preserves dirty source,
+cursor and graph coordinates. Its registry transcripts are labelled test inputs,
+not live agent execution. The older wrapper evidence remains separately attributed.

@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { FocusRefSchema, WorkspaceSnapshotSchema, type FocusRef, type WorkspaceSnapshot } from "../../protocol/schema";
+import { WorkspaceSelectionSchema } from "../../protocol/workspace";
 
 export function navigationLens(_lens: string | undefined, _hasDocuments = false): "Workspace" {
   return "Workspace";
@@ -11,6 +12,7 @@ export const NavigationSchema = z.object({
   lens: z.enum(["Workspace", "Code", "System", "Plan", "Performance", "Refactor"]),
   focus: FocusRefSchema.nullable(),
   snapshot: WorkspaceSnapshotSchema.optional(),
+  selectedWorktree: WorkspaceSelectionSchema.optional(),
 }).transform((saved) => ({ ...saved, lens: navigationLens(saved.lens, saved.paths.length > 0) }));
 export const NAVIGATION_KEY = "swarm:document-navigation:v1";
 export function readNavigation() {
