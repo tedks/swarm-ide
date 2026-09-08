@@ -3,11 +3,11 @@ import { compactTaskPositions, dependencyPositions, scopeTaskGraph, type TaskGra
 const graph: TaskGraphProjection = {
   nodes: Array.from({ length: 40 }, (_, i) => ({ id: String(i), title: `Task ${i}`, status: "unstarted", detailLoaded: i < 20, missing: false })),
   edges: [{ id: "a", source: "0", target: "1", diagnostics: [] }, { id: "b", source: "1", target: "2", diagnostics: ["cyclic"] }, { id: "c", source: "2", target: "1", diagnostics: ["cyclic"] }],
-  total: 50, unread: 30, loaded: 20, attempted: 20, omittedEdges: 0, omittedEndpoints: 0,
+  total: 50, unread: 30, loaded: 20, attempted: 20,
 };
-it("bounds the default view without claiming unread or hidden tasks absent", () => {
+it("shows the whole available default view without claiming unread relations absent", () => {
   const scope = scopeTaskGraph(graph, null, false);
-  expect(scope.nodes).toHaveLength(16); expect(scope.hidden).toBe(24);
+  expect(scope.nodes).toHaveLength(40); expect(scope.hidden).toBe(0);
   expect(graph.nodes).toHaveLength(40); expect(graph.unread).toBe(30);
 });
 it("shows direct blocker and blocked neighbors with cycles and edge direction intact", () => {
