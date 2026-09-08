@@ -1,6 +1,13 @@
 package(default_visibility = ["//visibility:public"])
 
 sh_test(
+    name = "graph-checks",
+    srcs = ["graph-checks.sh"],
+    data = ["//:quality_sources"],
+    tags = ["local"],
+)
+
+sh_test(
     name = "regressions",
     srcs = ["regressions.sh"],
     data = ["//:quality_sources"],
