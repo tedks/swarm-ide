@@ -19,6 +19,8 @@ const text = (maximum: number, minimum = 0) => z.string().min(minimum).max(maxim
 const id = z.string().min(1).max(PLAN_LIMITS.idBytes).regex(/^[A-Za-z0-9_-]+(?::[A-Za-z0-9_-]+)*$/);
 const path = text(PLAN_LIMITS.pathBytes, 1).refine(isTaskSourcePath, "A canonical repository-relative path is required");
 const paths = z.array(path).max(PLAN_LIMITS.pathsPerNode);
+export const PlanBuildLabelSchema = z.string().max(256).regex(/^\/\/(?:[A-Za-z0-9_.+-]+\/)*[A-Za-z0-9_.+-]*:[A-Za-z0-9_.+/-]+$/)
+  .refine((value) => !value.split(/[/:]/).some((part) => part === "." || part === ".."), "Canonical local Bazel label required");
 const PlanNodeSchema = z.object({
   id, kind: z.enum(["plan", "component"]),
   title: text(PLAN_LIMITS.titleBytes, 1).refine((value) => value.trim().length > 0 && !/[\p{Cc}\p{Cf}]/u.test(value), "Invalid plan title"),
@@ -28,6 +30,14 @@ const PlanNodeSchema = z.object({
     kind: z.enum(["doctrine", "contract", "lesson"]), path,
     note: text(PLAN_LIMITS.noteBytes).nullable(),
   }).strict()).max(PLAN_LIMITS.contextRefsPerNode),
+  design: z.object({
+    summary: text(2048, 1), state: z.enum(["implemented", "planned"]),
+    connections: z.array(z.object({ targetId: id, label: text(128, 1) }).strict()).max(16),
+    buildTargets: z.array(z.object({
+      label: PlanBuildLabelSchema, role: text(256, 1),
+      dependencies: z.array(z.object({ label: PlanBuildLabelSchema, relation: z.enum(["srcs", "data", "tools", "actual", "tests"]) }).strict()).max(32),
+    }).strict()).max(16),
+  }).strict().optional(),
 }).strict();
 export type PlanNode = z.infer<typeof PlanNodeSchema>;
 
@@ -40,6 +50,12 @@ export const PlanIndexSchema = z.object({
   if (nodes.size !== index.nodes.length) { fail("Plan identities must be unique"); return; }
   for (const node of index.nodes) {
     if (node.parentId !== null && !nodes.has(node.parentId)) { fail("Plan parent must exist in the index"); return; }
+    if (node.design?.connections.some((edge) => edge.targetId === node.id || !nodes.has(edge.targetId))) {
+      fail("Design connections must reference another existing component"); return;
+    }
+    if (node.design && new Set(node.design.buildTargets.map((target) => target.label)).size !== node.design.buildTargets.length) {
+      fail("Design build targets must be unique per component"); return;
+    }
   }
   // Bounded iterative ancestor walks avoid recursion, including at the maximum depth.
   for (const node of index.nodes) {

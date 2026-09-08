@@ -1,0 +1,7 @@
+package(default_visibility = ["//visibility:public"])
+sh_test(
+    name = "checks",
+    srcs = ["checks.sh"],
+    data = ["//:quality_sources", "//docs/design:sources"],
+    tags = ["local"],
+)

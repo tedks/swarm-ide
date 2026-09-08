@@ -1,6 +1,376 @@
 {
   "version": 1,
   "nodes": [
+  {
+    "id": "design:system",
+    "kind": "plan",
+    "title": "Swarm IDE · system design",
+    "parentId": null,
+    "docs": [
+      "docs/design/system.md"
+    ],
+    "sourcePaths": [
+      "BUILD.bazel"
+    ],
+    "taskIds": [
+      "swarm-living-design"
+    ],
+    "contextRefs": [],
+    "design": {
+      "summary": "An engineering organization in a box: navigate the system, understand actual work, and steer its agents from one repo-grounded cockpit.",
+      "state": "implemented",
+      "connections": [],
+      "buildTargets": []
+    }
+  },
+  {
+    "id": "design:cockpit",
+    "kind": "component",
+    "title": "Cockpit, focus & source",
+    "parentId": "design:system",
+    "docs": [
+      "docs/design/cockpit.md"
+    ],
+    "sourcePaths": [
+      "app/renderer/App.tsx",
+      "app/renderer/EditorPane.tsx",
+      "app/renderer/GraphPane.tsx",
+      "BUILD.bazel"
+    ],
+    "taskIds": [],
+    "contextRefs": [],
+    "design": {
+      "summary": "Keep the operator oriented while switching graphs, tasks, source and agent work.",
+      "state": "implemented",
+      "connections": [
+        {
+          "targetId": "design:repository",
+          "label": "navigates"
+        },
+        {
+          "targetId": "design:planning",
+          "label": "navigates"
+        },
+        {
+          "targetId": "design:agents",
+          "label": "navigates"
+        }
+      ],
+      "buildTargets": [
+        {
+          "label": "//:desktop-bundle",
+          "role": "Packages renderer and local core",
+          "dependencies": [
+            {
+              "label": "//:quality_sources",
+              "relation": "srcs"
+            },
+            {
+              "label": "//tools:build-app",
+              "relation": "tools"
+            }
+          ]
+        },
+        {
+          "label": "//tools:quality",
+          "role": "Component checks or authoring entry",
+          "dependencies": [
+            {
+              "label": "//:quality_sources",
+              "relation": "data"
+            }
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "id": "design:repository",
+    "kind": "component",
+    "title": "Repository, build & context",
+    "parentId": "design:system",
+    "docs": [
+      "docs/design/repository.md"
+    ],
+    "sourcePaths": [
+      "core/repository.ts",
+      "core/build-graph.ts",
+      "app/renderer/context/ContextPane.tsx",
+      "BUILD.bazel"
+    ],
+    "taskIds": [],
+    "contextRefs": [],
+    "design": {
+      "summary": "Observe the working repository and Bazel inputs; connect exact file membership to contextual instruments.",
+      "state": "implemented",
+      "connections": [
+        {
+          "targetId": "design:runtime",
+          "label": "uses"
+        },
+        {
+          "targetId": "design:cockpit",
+          "label": "uses"
+        }
+      ],
+      "buildTargets": [
+        {
+          "label": "//:desktop-bundle",
+          "role": "Packages renderer and local core",
+          "dependencies": [
+            {
+              "label": "//:quality_sources",
+              "relation": "srcs"
+            },
+            {
+              "label": "//tools:build-app",
+              "relation": "tools"
+            }
+          ]
+        },
+        {
+          "label": "//tools:quality",
+          "role": "Component checks or authoring entry",
+          "dependencies": [
+            {
+              "label": "//:quality_sources",
+              "relation": "data"
+            }
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "id": "design:planning",
+    "kind": "component",
+    "title": "Designs, tasks & context",
+    "parentId": "design:system",
+    "docs": [
+      "docs/design/planning.md"
+    ],
+    "sourcePaths": [
+      "core/plans.ts",
+      "core/tasks/draft-context.ts",
+      "app/renderer/plans/DesignWorkspace.tsx",
+      "BUILD.bazel"
+    ],
+    "taskIds": [
+      "swarm-living-design"
+    ],
+    "contextRefs": [],
+    "design": {
+      "summary": "Version the design hierarchy and Ditz dependency graph; deliberately attach task context to a fixed draft.",
+      "state": "implemented",
+      "connections": [
+        {
+          "targetId": "design:runtime",
+          "label": "uses"
+        },
+        {
+          "targetId": "design:agents",
+          "label": "uses"
+        }
+      ],
+      "buildTargets": [
+        {
+          "label": "//:desktop-bundle",
+          "role": "Packages renderer and local core",
+          "dependencies": [
+            {
+              "label": "//:quality_sources",
+              "relation": "srcs"
+            },
+            {
+              "label": "//tools:build-app",
+              "relation": "tools"
+            }
+          ]
+        },
+        {
+          "label": "//tools/demo-plans:regressions",
+          "role": "Component checks or authoring entry",
+          "dependencies": [
+            {
+              "label": "//:quality_sources",
+              "relation": "data"
+            }
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "id": "design:agents",
+    "kind": "component",
+    "title": "Agent owners & steering",
+    "parentId": "design:system",
+    "docs": [
+      "docs/design/agents.md"
+    ],
+    "sourcePaths": [
+      "core/agents/trusted-local-session.ts",
+      "core/external-agents.ts",
+      "core/external-agents-send.ts",
+      "BUILD.bazel"
+    ],
+    "taskIds": [],
+    "contextRefs": [],
+    "design": {
+      "summary": "Own native agent sessions or observe registered terminal sessions, preserving the real parent and execution owner.",
+      "state": "implemented",
+      "connections": [
+        {
+          "targetId": "design:runtime",
+          "label": "uses"
+        },
+        {
+          "targetId": "design:activity",
+          "label": "uses"
+        }
+      ],
+      "buildTargets": [
+        {
+          "label": "//:desktop-bundle",
+          "role": "Packages renderer and local core",
+          "dependencies": [
+            {
+              "label": "//:quality_sources",
+              "relation": "srcs"
+            },
+            {
+              "label": "//tools:build-app",
+              "relation": "tools"
+            }
+          ]
+        },
+        {
+          "label": "//tools/fleet-cockpit:unit",
+          "role": "Component checks or authoring entry",
+          "dependencies": [
+            {
+              "label": "//:quality_sources",
+              "relation": "data"
+            }
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "id": "design:activity",
+    "kind": "component",
+    "title": "Activity & Work Log",
+    "parentId": "design:system",
+    "docs": [
+      "docs/design/activity.md"
+    ],
+    "sourcePaths": [
+      "core/changelog.ts",
+      "core/changelog-authoring.ts",
+      "app/renderer/changelog/JournalPanel.tsx",
+      "BUILD.bazel"
+    ],
+    "taskIds": [],
+    "contextRefs": [],
+    "design": {
+      "summary": "Read timestamped commands and edits separately from concrete accomplishments retained in repo task history.",
+      "state": "implemented",
+      "connections": [
+        {
+          "targetId": "design:agents",
+          "label": "summarizes / links"
+        },
+        {
+          "targetId": "design:planning",
+          "label": "summarizes / links"
+        }
+      ],
+      "buildTargets": [
+        {
+          "label": "//:desktop-bundle",
+          "role": "Packages renderer and local core",
+          "dependencies": [
+            {
+              "label": "//:quality_sources",
+              "relation": "srcs"
+            },
+            {
+              "label": "//tools:build-app",
+              "relation": "tools"
+            }
+          ]
+        },
+        {
+          "label": "//tools/demo-journal:author",
+          "role": "Component checks or authoring entry",
+          "dependencies": [
+            {
+              "label": "//:quality_sources",
+              "relation": "data"
+            }
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "id": "design:runtime",
+    "kind": "component",
+    "title": "Typed local core & configuration",
+    "parentId": "design:system",
+    "docs": [
+      "docs/design/runtime.md"
+    ],
+    "sourcePaths": [
+      "protocol/schema.ts",
+      "core/worker-runtime.ts",
+      "app/electron/main.ts",
+      "BUILD.bazel"
+    ],
+    "taskIds": [],
+    "contextRefs": [],
+    "design": {
+      "summary": "Route validated requests from the sandboxed renderer to registered local capabilities and preserve recoverable state.",
+      "state": "implemented",
+      "connections": [
+        {
+          "targetId": "design:repository",
+          "label": "hosts"
+        },
+        {
+          "targetId": "design:agents",
+          "label": "hosts"
+        }
+      ],
+      "buildTargets": [
+        {
+          "label": "//:desktop-bundle",
+          "role": "Packages renderer and local core",
+          "dependencies": [
+            {
+              "label": "//:quality_sources",
+              "relation": "srcs"
+            },
+            {
+              "label": "//tools:build-app",
+              "relation": "tools"
+            }
+          ]
+        },
+        {
+          "label": "//tools:quality",
+          "role": "Component checks or authoring entry",
+          "dependencies": [
+            {
+              "label": "//:quality_sources",
+              "relation": "data"
+            }
+          ]
+        }
+      ]
+    }
+  },
     {
       "id": "plan:swarm",
       "kind": "plan",
