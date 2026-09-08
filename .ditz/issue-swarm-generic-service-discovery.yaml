@@ -32,5 +32,16 @@ log_events:
     PureSky3 services/two startup edges with unchanged Git status. Focused124 tests/types
     and neutral43 checks pass. Native review convergence and final docs/harness cleanup
     underway; ROOT owns landing.
+- time: 2026-09-08T20:07:39-00:00
+  who: Ted Smith
+  what: commented
+  comment: PR130 replaces the fixed example pipeline with automatic read-only Compose/native
+    declarations. Latest local checks:124 focused tests plus both TypeScript boundaries
+    and43 neutral fixture/harness tests passed; final desktop bundle built. Native
+    review code converged clean after targeted regressions. Real Swarm/Pure Sky metadata
+    and owned :183/55443 discovery/edit/source/camera proof passed without starting
+    services. Current design and graph mappings updated; only effective Compose merging/extended
+    coverage remains a separate follow-up. Ready for ROOT normal landing; shared app/master
+    unchanged.
 blocks:
 - swarm-close-working-loop
