@@ -1,0 +1,21 @@
+id: swarm-language-grammar-followups
+title: Improve syntax coverage for Move and remaining project formats
+desc: Project-language PR102 adds generic local-inventory-based colors. Move currently
+  uses an explicitly approximate Rust-like mode, Starlark Python lexical coloring,
+  and Dune/opam, JSONC, MDX, Vue/Svelte, SCSS and extensionless shebang scripts remain
+  plain text. Follow up with actual project demand and dedicated parsers where available;
+  preserve single CodeMirror state, parser-only behavior and source/cursor retention.
+  This is not a blocker for the useful bounded coverage increment.
+type: task
+component: editor
+release:
+reporter: Ted Smith <tedks@riseup.net>
+status: unstarted
+disposition:
+creation_time: 2026-09-08T06:15:03-00:00
+references: []
+log_events:
+- time: 2026-09-08T06:15:03-00:00
+  who: Ted Smith
+  what: created
+  comment: ""
