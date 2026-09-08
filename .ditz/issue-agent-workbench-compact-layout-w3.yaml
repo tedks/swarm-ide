@@ -1,8 +1,9 @@
 id: agent-workbench-compact-layout-w3
-title: Make compact cockpit source and agent controls reachable
-desc: 'Bounded W3: measured compact/high-zoom/max-dock presentation, source and graph
-  identity, bounded scrolling, accessible peripheral panels. No policy/runtime change.
-  Shared display-bound constants remain in parent.'
+title: Keep source and agent controls reachable in a compact cockpit
+desc: 'W3: measure the layout in compact windows, at high interface zoom and with
+  the dock at maximum size. Keep source and graph instances intact, constrain scrolling
+  and make peripheral panels accessible. Do not change policy or runtime behavior.
+  Shared display-limit constants remain in the parent task.'
 type: task
 component: default
 release:
@@ -41,5 +42,13 @@ log_events:
     CLEAN, Anthropic session-limit missing. Production unavailable; watched master/app
     untouched. Shared display bounds and broader scope remain in parent; UI-zoom camera
     and touch nits filed separately.
+- time: 2026-09-08T04:28:21-00:00
+  who: Ted Smith
+  what: changed title
+  comment: ""
+- time: 2026-09-08T04:28:21-00:00
+  who: Ted Smith
+  what: updated description
+  comment: ""
 blocks:
 - agent-workbench-compact-layout
