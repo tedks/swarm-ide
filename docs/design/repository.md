@@ -45,3 +45,27 @@ The current service examples have their own declarations under
 [checkout-world](../../examples/checkout-world/services/payments/BUILD.bazel).
 Their labels describe example services, not Swarm's TypeScript component
 boundaries. See [dynamic build graph](../dynamic-build-graph.md) for query limits.
+
+## Target and file links
+
+Context's direct and indirect target rows carry exact build-graph identities.
+An explicit click supplies the observation's repository and revision to
+`BuildGraphPane`; this switches out of file-follow mode and reveals the selected
+target. Unrelated service and repository graph instances stay mounted. The
+declaration action uses the target's recorded `buildFile`, whether `BUILD` or
+`BUILD.bazel`; old captures without declaration paths cannot invent one.
+
+[The reference resolver](../../app/renderer/bazel-reference.ts) handles simple
+literal strings on Alt-click in Bazel sources. BUILD files accept observed
+absolute labels, `:target`, and package-relative source names. Starlark macros
+may interpret relative strings in their caller's package, so `.bzl` files accept
+only absolute `//package:target` labels for now. Generated/external targets,
+computed strings, ambiguous records and absent observations are not followed.
+The normal source broker still controls opening and dirty-buffer handoff; the
+resolver does not read the filesystem or choose another agent's worktree.
+
+`//tools/context-source-links:unit` consumes `//:quality_sources` and checks the
+literal resolver, editor gesture, both Context categories and explicit graph
+selection. App's small callback mounts are coordinated with the conversation
+owner; until that joined mount lands, the additive component APIs alone do not
+make these gestures available in the running application.
