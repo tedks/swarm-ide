@@ -26,8 +26,12 @@ const registration = inputRegistry.sessions.find((session) => session.id === roo
 if (!registration) throw new Error("Actual registered ROOT with terminal identity required");
 const readMeta = async (session) => {
   const file = await open(session.rollout, "r");
-  try { const buffer = Buffer.alloc(16384); const { bytesRead } = await file.read(buffer, 0, buffer.length, 0);
-    return JSON.parse(buffer.subarray(0, bytesRead).toString("utf8").split("\n")[0]);
+  // Match the production observer's 64 KiB metadata cap. Codex embeds its
+  // instructions in this record, so a valid header can exceed 16 KiB.
+  try { const buffer = Buffer.alloc(65536); const { bytesRead } = await file.read(buffer, 0, buffer.length, 0);
+    const newline = buffer.subarray(0, bytesRead).indexOf(10);
+    if (newline < 0) throw new Error("Missing or oversized session metadata");
+    return JSON.parse(buffer.subarray(0, newline).toString("utf8"));
   } finally { await file.close(); }
 };
 let child;
