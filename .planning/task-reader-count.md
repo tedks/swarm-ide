@@ -18,7 +18,7 @@ independent repair and adopts it; no shared app or user metadata test writes.
 - [x] (2026-09-08 15:02Z) First actual read-only Swarm observation:265 issues/497336 bytes/all265 rows,131 closed,330ms;139 initial focused tests/types passed.
 - [x] (2026-09-08 15:06Z) Fixed native-review reachability-cache finding; deterministic projection deadline1RED/56PASS, then238 focused tests/seven files plus both types PASS17.061s. Native fix-delta CLEAN.
 - [x] (2026-09-08 15:08Z) Corrected-code actual observation:266 issues/498786 bytes/all266 rows,131 closed,230ms; no malformed field violation.
-- [ ] Push PR116 ready, sync Ditz accomplishment note, clean owned resources and hand off to ROOT.
+- [x] (2026-09-08) PR116 pushed ready; Ditz accomplishment note synced, proof scratch removed with source/logs preserved in the step directory; ROOT owns normal landing/adoption.
 
 ## Context and Orientation
 
