@@ -1,0 +1,22 @@
+id: swarm-project-context-workloads
+title: Show safe application workload summaries beside local runtimes
+desc: 'Add bounded read-only aggregate application indicators where an explicit safe
+  contract exists: discord-agents gateway/session/queue counters and media rendering
+  job/resource/aggregate-storage status. Existing Discord health handler invokes disk
+  preflight and includes payload/errors; do not blindly poll it. Prefer an allowlisted
+  side-effect-free summary interface, verify runtime/project identity, and do not
+  collect chats, media, request logs or customer records. PR96 supplies runtime/component
+  groundwork but does not connect these metrics.'
+type: feature
+component: default
+release:
+reporter: Ted Smith <tedks@riseup.net>
+status: unstarted
+disposition:
+creation_time: 2026-09-08T05:49:48-00:00
+references: []
+log_events:
+- time: 2026-09-08T05:49:48-00:00
+  who: Ted Smith
+  what: created
+  comment: ""
