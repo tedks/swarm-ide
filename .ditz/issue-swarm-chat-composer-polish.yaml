@@ -9,8 +9,8 @@ type: bugfix
 component: default
 release:
 reporter: Ted Smith <tedks@riseup.net>
-status: in_progress
-disposition:
+status: closed
+disposition: fixed
 creation_time: 2026-09-08T15:01:32-00:00
 references: []
 log_events:
@@ -41,3 +41,11 @@ log_events:
     clean; actual Chromium keyboard selection and exact clipboard copying passed for
     both commands, with composer focus/arrow proof still green. ROOT landing remains
     pending.'
+- time: 2026-09-08T15:28:38-00:00
+  who: Ted Smith
+  what: 'closed: fixed'
+  comment: Chat keeps focus while a message is queued and uses a compact inline send
+    arrow. Open in terminal now shows complete selectable, copyable checked commands
+    without raw location IDs. Normally merged PR117; focused native/type checks and
+    owned-browser composer, reload and terminal-selection proofs passed. No transport
+    or model change.
