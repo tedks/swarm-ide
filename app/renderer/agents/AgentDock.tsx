@@ -25,9 +25,11 @@ export interface AgentDockProps {
   /** Explicit sidebar activation, including a re-click of the selected run. */
   selectionVersion?: number;
   fixtureSelectionVersion?: number;
+  /** A new explicit trusted-run activation, never a background observation. */
+  trustedSelectionVersion?: string;
 }
 
-export function AgentDock({ state, client, onDraft, runContent, draftContent, trustedContent, jobsContent, activityContent, onOpenActivity, fixtureContent, mockConversation, selectionVersion = 0, fixtureSelectionVersion = 0 }: AgentDockProps) {
+export function AgentDock({ state, client, onDraft, runContent, draftContent, trustedContent, jobsContent, activityContent, onOpenActivity, fixtureContent, mockConversation, selectionVersion = 0, fixtureSelectionVersion = 0, trustedSelectionVersion }: AgentDockProps) {
   const id = useId();
   const runs = state.snapshot?.runs ?? [];
   const hasSelection = state.selectedRunId !== null;
@@ -49,6 +51,7 @@ export function AgentDock({ state, client, onDraft, runContent, draftContent, tr
   const mockSelected = mockConversation?.selected;
   const mockSelectionVersion = mockConversation?.selectionVersion;
   useEffect(() => { if (mockSelected) setActive(`mock:${mockSelected}`); }, [mockSelected, mockSelectionVersion]);
+  useEffect(() => { if (trustedSelectionVersion) setActive("agents"); }, [trustedSelectionVersion]);
 
   const tabs: Array<{ key: DockTab; label: string; detail?: string }> = [
     { key: "agents", label: draftOpen ? "Agents · draft" : "Agents" },

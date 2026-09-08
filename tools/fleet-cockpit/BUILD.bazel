@@ -1,0 +1,27 @@
+package(default_visibility = ["//visibility:public"])
+
+sh_binary(
+    name = "joined-smoke",
+    srcs = ["joined-smoke.sh"],
+    data = [":sources", "//:desktop-bundle", "//:quality_sources", "//tools/task-integration:sources", "//tools:virtual-desktop-run.sh", "//tools:x11-driver-source", "//tools:electron-runtime-source"],
+    tags = ["manual"],
+)
+
+filegroup(
+    name = "sources",
+    srcs = glob(["*.cjs", "*.mjs", "*.sh"]),
+)
+
+sh_binary(
+    name = "smoke",
+    srcs = ["smoke.sh"],
+    data = [":sources", "//:desktop-bundle", "//:quality_sources", "//tools/task-integration:sources", "//tools:virtual-desktop-run.sh", "//tools:x11-driver-source", "//tools:electron-runtime-source"],
+    tags = ["manual"],
+)
+
+sh_test(
+    name = "unit",
+    srcs = ["unit.sh"],
+    data = ["//:quality_sources"],
+    tags = ["local"],
+)
