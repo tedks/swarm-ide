@@ -40,6 +40,10 @@ async function main() {
   await until(() => text(".design-prose").then((s) => s.includes("engineering organization")), "return to system");
   assert.deepEqual(errors, []);
   await click(".planning-tabs button", "Plans & components");
+  await until(() => run(() => {
+    const button = document.querySelector('button[aria-label="Inspect plan design:repository"]');
+    return button && !button.disabled && button.closest(".planning-projection")?.hidden === false;
+  }), "plan outline visible and ready");
   // The keyboard outline is deliberately available inside its own scroll area.
   // Focus that ordinary button, verify it, then use the native Enter gesture.
   await run(() => {
