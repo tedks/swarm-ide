@@ -56,3 +56,13 @@ it("does not label a synthetic fleet as live work", () => {
   expect(screen.queryByText("Live")).toBeNull();
   expect(screen.getByRole("button", { name: "Worker 1 · example" })).toBeTruthy();
 });
+
+it("keeps Activity a raw operation stream without duplicate heading or Live chrome", () => {
+  const source = fleet[0]!;
+  const extra = { ...source.entries[0]!, id: "assistant", kind: "assistant" as const, text: "Long logical recap belongs in Work Log", attribution: "assistant-reported" as const };
+  render(<ObservedActivity client={{ ...client(), fleet: [{ ...source, entries: [...source.entries, extra, { ...extra, id: "result", kind: "tool-result", attribution: "recorded-tool-event", text: "Build finished: exit 0" }] }] }} onOpen={() => {}} />);
+  expect(screen.queryByText(extra.text)).toBeNull();
+  expect(screen.getByText("Build finished: exit 0")).toBeTruthy();
+  expect(screen.queryByText("Activity")).toBeNull();
+  expect(screen.queryByText("Live")).toBeNull();
+});

@@ -15,9 +15,17 @@ function GraphSpaceShortcut() {
 }
 
 describe("Builds & resources instrument", () => {
+  it("counts actual jobs, prioritizes active work and does not call zero placeholder progress measured", () => {
+    const h = render(<BuildResources jobs={[{ ...job, id: "done", status: "succeeded", progress: 1 }, { ...job, id: "failed", status: "failed" }, { ...job, id: "active", progress: 0 }]} />);
+    expect(screen.getByLabelText("Build job counts").textContent).toBe("1 running · 1 failed · 1 complete");
+    expect([...h.container.querySelectorAll("[data-job-id]")].map((node) => node.getAttribute("data-job-id"))).toEqual(["active", "failed", "done"]);
+    expect(h.container.querySelector('[data-job-id="active"] progress')?.hasAttribute("value")).toBe(false);
+    expect(screen.getByText("Progress unavailable")).toBeTruthy();
+    expect(screen.queryByText("0%")).toBeNull();
+  });
   it("is compact when idle and makes the example discoverable without pretending it is live", () => {
     render(<BuildResources jobs={[]} />);
-    expect(screen.getByText("No derived work running")).toBeTruthy();
+    expect(screen.getByText("No build jobs")).toBeTruthy();
     expect(screen.getByRole("button", { name: /Example profile/ }).getAttribute("aria-expanded")).toBe("false");
     expect(screen.queryByRole("region", { name: "Illustrative Bazel profile" })).toBeNull();
     expect(screen.queryByRole("img")).toBeNull();
@@ -62,7 +70,7 @@ describe("Builds & resources instrument", () => {
     const h = render(<BuildResources jobs={[job]} />);
     expect(h.container.querySelector("[data-job-id='build:1']")).not.toBeNull();
     expect(screen.getByText(job.label)).toBeTruthy();
-    expect(screen.getByText("running")).toBeTruthy();
+    expect(screen.getByText("Running")).toBeTruthy();
     expect(screen.getByText("43%")).toBeTruthy();
     expect(screen.getByRole("progressbar").getAttribute("value")).toBe("0.43");
     expect(screen.getByText("Compiling source")).toBeTruthy();
@@ -70,10 +78,10 @@ describe("Builds & resources instrument", () => {
     expect(screen.queryByText("CPU 0%")).toBeNull();
     const message = "Failed: missing dependency\n//lib:core must include //lib:types";
     h.rerender(<BuildResources jobs={[{ ...job, status: "failed", message }]} />);
-    expect(screen.getByText("failed")).toBeTruthy();
+    expect(screen.getByText("Failed")).toBeTruthy();
     expect(h.container.querySelector(".resource-job-message")?.textContent).toBe(message);
     h.rerender(<BuildResources jobs={[{ ...job, status: "succeeded", progress: 1 }]} />);
-    expect(screen.getByText("succeeded")).toBeTruthy();
+    expect(screen.getByText("Complete")).toBeTruthy();
     expect(screen.getByRole("progressbar").getAttribute("value")).toBe("1");
   });
 
@@ -101,7 +109,7 @@ describe("Builds & resources instrument", () => {
     expect(example.textContent).toBe(before);
     h.rerender(<BuildResources jobs={[]} />);
     expect(example.textContent).toBe(before);
-    expect(screen.getByText("No derived work running")).toBeTruthy();
+    expect(screen.getByText("No build jobs")).toBeTruthy();
   });
 
   it("keeps native summary Space activation out of React Flow's window pan shortcut", async () => {

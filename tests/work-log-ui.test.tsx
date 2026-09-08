@@ -15,6 +15,19 @@ const bridge = (request = vi.fn(async (input: CoreRequest) => reply(input))) => 
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); vi.useRealTimers(); });
 
 describe("online Work Log panel", () => {
+  it("offers a compact accessible settings gear without starting or stopping the summarizer", async () => {
+    const request = bridge(); render(<WorkLogPanel />);
+    await screen.findByText("Added a live fleet feed.");
+    const gear = screen.getByRole("button", { name: "Summary settings" });
+    expect(gear.textContent).not.toContain("Summary settings");
+    expect(gear.getAttribute("aria-expanded")).toBe("false");
+    fireEvent.click(gear);
+    expect(gear.getAttribute("aria-expanded")).toBe("true");
+    expect(screen.getByLabelText("Model")).toBeTruthy();
+    fireEvent.click(gear);
+    expect(gear.getAttribute("aria-expanded")).toBe("false");
+    expect(request.mock.calls.map(([input]) => input.type)).toEqual(["workLog.read"]);
+  });
   it("opens the exact outcome and accepts the cockpit callback names without double delivery", async () => {
     const request = bridge(), onOpen = vi.fn(), onAgent = vi.fn(), onTask = vi.fn(), legacy = vi.fn();
     render(<WorkLogPanel onOpen={onOpen} onAgent={onAgent} onTask={onTask} onOpenAgent={legacy} onOpenTask={legacy} />);
@@ -46,7 +59,7 @@ describe("online Work Log panel", () => {
   it("starts explicitly with edited settings, locks running settings, and stops explicitly", async () => {
     const request = bridge(vi.fn(async (input: CoreRequest) => reply(input, { ...observation(), running: input.type === "workLog.start" })));
     render(<WorkLogPanel />); await screen.findByText("Added a live fleet feed.");
-    (document.querySelector(".work-log-settings") as HTMLDetailsElement).open = true;
+    fireEvent.click(screen.getByRole("button", { name: "Summary settings" }));
     fireEvent.change(screen.getByLabelText("Model"), { target: { value: "gpt-5.6-luna" } });
     fireEvent.change(screen.getByLabelText("Batch delay (seconds)"), { target: { value: "45" } });
     fireEvent.click(screen.getByRole("button", { name: "Start" }));
@@ -118,7 +131,7 @@ describe("online Work Log panel", () => {
     expect([...document.querySelectorAll("[data-work-log-entry]")].map((entry) => entry.getAttribute("data-work-log-entry")))
       .toEqual(["outcome-1", "outcome-2"]);
     expect(screen.getByText("Recorded in Ditz")).toBeTruthy();
-    (document.querySelector(".work-log-settings") as HTMLDetailsElement).open = true;
+    fireEvent.click(screen.getByRole("button", { name: "Summary settings" }));
     fireEvent.change(screen.getByLabelText("Model"), { target: { value: "bad model --exec" } });
     expect((screen.getByRole("button", { name: "Start" }) as HTMLButtonElement).disabled).toBe(true);
     fireEvent.click(screen.getByRole("button", { name: "Start" }));
