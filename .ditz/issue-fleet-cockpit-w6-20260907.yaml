@@ -44,3 +44,13 @@ log_events:
     E3a2a8036 plus final T5/A2 preserved, no conflicts. Fresh focused fleet+observer/typechecks
     PASS15.372s. No new model/GUI/fullsuite/adoption. Existing App join complete;
     awaiting ROOT normal landing.'
+- time: 2026-09-08T01:33:50-00:00
+  who: Ted Smith
+  what: commented
+  comment: 'W6 runtime join ready PR73: exact F1 normally composed, actual packaged
+    service/store with two deterministic provider processes and three protocol turns
+    passed 4.864s; zero model turns/errors, retained source/cursor/draft/cameras and
+    cleanup1. Then ROOT-cleared final F1/S3 base composed f9fc558 with native CLEAN
+    and three focused targets plus package build PASS. Original proof attribution
+    retained; ROOT owns merge/adoption. Renderer-retention and failed-capacity follow-ups
+    remain open.'
