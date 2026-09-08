@@ -43,6 +43,7 @@ export const TrustedRunSummarySchema = z.object({
 export type TrustedRunSummary = z.infer<typeof TrustedRunSummarySchema>;
 export const TrustedSnapshotSchema = z.object({
   instanceId: id, profile: z.literal("trusted-local"), workspace: text(4096),
+  launchWorkspace: text(4096).optional(),
   preparation: z.object({ token: id, prompt: text(131072), expiresAt: z.string().datetime(), model: text(256).nullable() }).strict().nullable(),
   runToken: id.nullable(),
   status: TrustedStatusSchema,

@@ -6,7 +6,9 @@ The IDE has a separate **Codex · trusted local** profile. It runs the operator'
 
 Install Codex (tested with 0.153.4) in the PATH used to start Swarm. Optionally select an absolute executable with `SWARM_CODEX_BIN=/absolute/path/to/codex` in the IDE launch environment. This is privileged local configuration, not a renderer command or a copied account profile. Start the IDE through its documented Nix/Bazel development or evaluator launch path.
 
-Open a repository source file, then choose **Prepare an agent draft**. Edit the instructions and, optionally, attach one repository task through the existing Tasks UI. In the dock's **Codex · trusted local** section, choose **Prepare trusted-local context**. The workspace and expandable exact prompt let you review the selected disk bytes and pinned task. Check the explicit permission confirmation and click **Launch trusted-local Codex**.
+Choose **New agent**, type what you want Codex to do, and press **Enter**. **Shift-Enter** adds a newline. The visible worktree is captured for that run; browsing elsewhere afterward does not redirect its messages or Stop control. No source file or task is required. Settings optionally selects a model; leaving it empty uses normal Codex configuration. Submitted text is saved before dispatch and remains copyable if startup fails.
+
+Source/task context remains optional: open an explicit task draft and use **Use attached source or task** to review that materialized context before launch. That older attachment flow remains scoped to the original workspace; it is not required for an ordinary new agent.
 
 The conversation appears in that section. **Send next turn** continues the same thread; **Steer current turn** targets its current active turn. Command/file approvals show the proposed action, including execution directory for a command, and require **Allow once** or **Decline**. The IDE never accepts these automatically or offers session-wide approval escalation. A proposal without complete inspectable details cannot be allowed.
 

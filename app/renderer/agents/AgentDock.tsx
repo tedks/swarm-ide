@@ -13,6 +13,7 @@ export interface AgentDockProps {
   state: LiveAgentState;
   client: AgentBridgeClient;
   onDraft: () => void;
+  onNewAgent?: () => void;
   runContent: ReactNode;
   draftContent: ReactNode;
   trustedContent?: ReactNode;
@@ -38,7 +39,7 @@ export interface AgentDockProps {
   trustedSelectionVersion?: string;
 }
 
-export function AgentDock({ state, client, onDraft, runContent, draftContent, trustedContent, jobsContent, workLogContent, activityContent, onOpenActivity, conversation, shortcutsBlocked = false, fixtureContent, mockConversation, selectionVersion = 0, fixtureSelectionVersion = 0, trustedSelectionVersion }: AgentDockProps) {
+export function AgentDock({ state, client, onDraft, onNewAgent, runContent, draftContent, trustedContent, jobsContent, workLogContent, activityContent, onOpenActivity, conversation, shortcutsBlocked = false, fixtureContent, mockConversation, selectionVersion = 0, fixtureSelectionVersion = 0, trustedSelectionVersion }: AgentDockProps) {
   const id = useId();
   const runs = state.snapshot?.runs ?? [];
   const notice = cockpitAgentNotice(state, Boolean(trustedContent));
@@ -152,17 +153,17 @@ export function AgentDock({ state, client, onDraft, runContent, draftContent, tr
     </div></OverflowStrip>
     <div className="agent-header-actions">
       {showingConversation ? conversation?.actions : null}
-      {conversation ? <button ref={toolsButton} type="button" aria-label="Agent tools" title="New agent and saved native conversations" aria-pressed={current === "agents"}
-        onClick={() => setActive("agents")}><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 5v14M5 12h14" /></svg></button> : null}
+      {conversation ? <button ref={toolsButton} type="button" className="agent-new-button" title="Start a new Codex conversation" aria-pressed={current === "agents"}
+        onClick={() => { setActive("agents"); onNewAgent?.(); }}><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 5v14M5 12h14" /></svg>New agent</button> : null}
     </div>
     </header>
-    {registered && current === "conversation" ? <div className="agent-dock-empty" role="status">Select an agent from the fork list, or open Agent tools to start one.</div> : null}
+    {registered && current === "conversation" && !trustedContent ? <div className="agent-dock-empty" role="status">Select an agent or click New agent to start one.</div> : null}
     {conversation ? <div id={panelId("conversation")} role="tabpanel" aria-labelledby={current.startsWith("registered:") || !registered ? tabId(current.startsWith("registered:") ? current : "conversation") : undefined}
       aria-label={!showingConversation ? "Agent conversation" : undefined} hidden={!showingConversation} className="agent-dock-panel agent-dock-conversation">{conversation.content}</div> : null}
     {conversation && notice ? <p className="agent-dock-operation-notice" role="status">{displayAgentText(notice)}</p> : null}
     <div id={panelId("agents")} role="tabpanel" aria-labelledby={tabs.some((tab) => tab.key === "agents") ? tabId("agents") : undefined}
-      aria-label={tabs.some((tab) => tab.key === "agents") ? undefined : "Agent tools"} hidden={current !== "agents"} className="agent-dock-panel agent-dock-home">
-      {!draftOpen && !proposalId ? <div className="agent-dock-welcome"><strong>{runs.length ? "Select an agent run" : "Agent interaction"}</strong>
+      aria-label={tabs.some((tab) => tab.key === "agents") ? undefined : "New agent"} hidden={current !== "agents" && !(registered && current === "conversation" && trustedContent)} className="agent-dock-panel agent-dock-home">
+      {!draftOpen && !proposalId && !trustedContent ? <div className="agent-dock-welcome"><strong>{runs.length ? "Select an agent run" : "Agent interaction"}</strong>
         <p>{runs.length ? "Open a run from the sidebar or its tab to inspect output and send instructions when available."
           : trustedContent ? "Prepare a focused draft to start Codex, or select a running agent to continue."
             : !state.snapshot ? "Agent availability has not been observed yet."
@@ -172,6 +173,7 @@ export function AgentDock({ state, client, onDraft, runContent, draftContent, tr
         <button className="agent-primary" onClick={onDraft}>Prepare an agent draft</button>
       </div> : null}
       {draftContent}
+      {!conversation && trustedContent && notice ? <p className="agent-dock-notice" role="status">{displayAgentText(notice)}</p> : null}
       {trustedContent}
     </div>
     <div id={panelId("run:current")} role="tabpanel" aria-labelledby={state.selectedRunId ? tabId(`run:${state.selectedRunId}`) : undefined}

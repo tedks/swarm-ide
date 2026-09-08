@@ -4,8 +4,9 @@ import { TrustedRequestSchema, type TrustedRequest, type TrustedSnapshot } from 
 import type { SwarmBridge } from "../../electron/preload";
 import { acknowledgeFleetComposer, editFleetComposer, emptyComposer, emptyFleet, observeFleet,
   resetFleetAuthority, selectFleetRun, type FleetState, type FleetSnapshot } from "./fleet-state";
+import { readNativeOutbox, saveNativeOutgoing, type NativeOutgoing } from "./native-outbox";
 
-export interface TrustedSelection { id: string; runToken: string }
+export interface TrustedSelection { id: string; runToken: string | null }
 const PREPARE = "@prepare", OBSERVATION = "@observation";
 const request = (value: unknown): TrustedRequest => TrustedRequestSchema.parse({ protocolVersion: PROTOCOL_VERSION,
   requestId: `trusted-ui:${crypto.randomUUID()}`, ...(typeof value === "object" && value !== null ? value : {}) });
@@ -25,6 +26,7 @@ export function useTrustedFleet({ bridge, connected, generation, selection, onSn
   const [newConversation, setNewConversation] = useState(false);
   const [prepared, setPrepared] = useState<{ value: NonNullable<TrustedSnapshot["preparation"]>; inputKey: string } | null>(null);
   const [confirmed, setConfirmed] = useState(false);
+  const [outgoing, setOutgoing] = useState<NativeOutgoing[]>(() => { try { return readNativeOutbox(); } catch { return []; } });
   const epoch = useRef(0), selectionVersion = useRef(0), pendingRef = useRef(new Map<string, string>());
   const refreshRef = useRef<((catalog?: boolean) => void) | null>(null), callback = useRef(onSnapshot), callbackSequence = useRef(-1);
   callback.current = onSnapshot;
@@ -32,7 +34,7 @@ export function useTrustedFleet({ bridge, connected, generation, selection, onSn
   const accept = useCallback((next: FleetSnapshot, sequence: number) => {
     update((state) => observeFleet(state, next, sequence));
     if (sequence >= callbackSequence.current) {
-      callbackSequence.current = sequence; setWorkspace(next.workspace); callback.current?.(next);
+      callbackSequence.current = sequence; setWorkspace(next.launchWorkspace ?? (!next.runToken ? next.workspace : null)); callback.current?.(next);
     }
   }, [update]);
   useLayoutEffect(() => {
@@ -83,37 +85,59 @@ export function useTrustedFleet({ bridge, connected, generation, selection, onSn
     ++selectionVersion.current; update((state) => selectFleetRun(state, token)); setNewConversation(false);
     refreshRef.current?.();
   }, [update]);
-  useEffect(() => { if (selection) select(selection.runToken); }, [selection?.id, select]);
-  const begin = () => { ++selectionVersion.current; setNewConversation(true); setConfirmed(false); };
-  const dispatch = async (command: TrustedRequest, options: { inputKey?: string; composerRevision?: number } = {}): Promise<boolean> => {
-    const key = command.type === "trusted.prepare" || command.type === "trusted.launch" ? PREPARE
+  const begin = useCallback(() => { ++selectionVersion.current; setNewConversation(true); setConfirmed(false); }, []);
+  useEffect(() => { if (selection) { if (selection.runToken) select(selection.runToken); else begin(); } }, [selection?.id, select, begin]);
+  const dispatch = async (command: TrustedRequest, options: { inputKey?: string; composerRevision?: number; workspace?: string; continuation?: () => string } = {}): Promise<boolean> => {
+    const key = command.type === "trusted.prepare" || command.type === "trusted.launch" || command.type === "trusted.start" ? PREPARE
       : "token" in command ? command.token ?? OBSERVATION : OBSERVATION;
     if (!bridge || !connected || pendingRef.current.has(key)) return false;
     const current = epoch.current, selectedAtDispatch = selectionVersion.current;
     pendingRef.current.set(key, command.requestId); setPending((old) => ({ ...old, [key]: true })); notice(key, "");
+    let saved: NativeOutgoing | undefined;
+    let dispatched = false;
+    const settle = (status: NativeOutgoing["status"]) => {
+      if (!saved) return;
+      try { setOutgoing(saveNativeOutgoing({ ...saved, status })); }
+      catch { notice(key, "The result could not be saved. Your submitted message is still available below."); }
+    };
     try {
+      if (command.type === "trusted.start" || command.type === "trusted.send") {
+        saved = { id: crypto.randomUUID(), token: command.token, workspace: options.workspace ?? workspace ?? "Opened project", text: command.text,
+          at: new Date().toISOString(), status: "sending", kind: command.type === "trusted.start" ? "start" : "send" };
+        setOutgoing(saveNativeOutgoing(saved));
+      }
+      dispatched = true;
       const response = parseCoreResponseForRequest(await bridge.request(command), command);
+      settle(response.ok ? "sent" : "unknown");
       if (current !== epoch.current) return false;
       if (!response.ok) { notice(key, response.error.message); return false; }
       if (!response.trusted) return false;
       accept(response.trusted.snapshot, response.sequence);
       if (command.type === "trusted.prepare" && response.trusted.snapshot.preparation && options.inputKey !== undefined)
         setPrepared({ value: response.trusted.snapshot.preparation, inputKey: options.inputKey });
-      if (command.type === "trusted.launch") {
+      if (command.type === "trusted.launch" || command.type === "trusted.start") {
         setPrepared(null);
-        if (selectedAtDispatch === selectionVersion.current && response.trusted.snapshot.runToken) select(response.trusted.snapshot.runToken);
+        if (selectedAtDispatch === selectionVersion.current && response.trusted.snapshot.runToken) {
+          if (command.type === "trusted.start" && options.continuation) {
+            const nextText = options.continuation();
+            if (nextText) update((state) => editFleetComposer(state, command.token, nextText));
+          }
+          select(response.trusted.snapshot.runToken);
+        }
       }
       if (command.type === "trusted.fork" && selectedAtDispatch === selectionVersion.current)
         select(command.childToken);
       if (command.type === "trusted.send" && options.composerRevision !== undefined)
         update((state) => acknowledgeFleetComposer(state, command.token, options.composerRevision!));
       return true;
-    } catch {
-      if (current === epoch.current) notice(key, "Outcome unconfirmed. Observe this conversation; the command will not be repeated automatically.");
+    } catch (error) {
+      if (dispatched) settle("unknown");
+      if (current === epoch.current) notice(key, dispatched ? "Connection interrupted. Your message is saved below; check the conversation before sending again."
+        : error instanceof Error ? error.message : "Could not save this message. Nothing was sent.");
       return false;
     } finally {
       if (current === epoch.current && pendingRef.current.get(key) === command.requestId) {
-        pendingRef.current.delete(key); setPending((old) => ({ ...old, [key]: false })); refreshRef.current?.(command.type === "trusted.launch" || command.type === "trusted.fork");
+        pendingRef.current.delete(key); setPending((old) => ({ ...old, [key]: false })); refreshRef.current?.(command.type === "trusted.launch" || command.type === "trusted.start" || command.type === "trusted.fork");
       }
     }
   };
@@ -131,6 +155,10 @@ export function useTrustedFleet({ bridge, connected, generation, selection, onSn
     const token = prepared.value.token;
     setConfirmed(false); setPrepared(null); // One-shot UI authority, including uncertain outcomes.
     void dispatch(request({ type: "trusted.launch", token }));
+  };
+  const start = async (text: string, model: string | null, root: string, continuation?: () => string) => {
+    const command = safeRequest({ type: "trusted.start", token: crypto.randomUUID(), text, model }, PREPARE);
+    return command ? dispatch(command, { workspace: root, continuation }) : false;
   };
   const selected = fleet.selected ? fleet.details[fleet.selected]?.snapshot ?? null : null;
   const fork = async (fields: Omit<Extract<TrustedRequest, { type: "trusted.fork" }>, "type" | "protocolVersion" | "requestId">) => {
@@ -159,8 +187,8 @@ export function useTrustedFleet({ bridge, connected, generation, selection, onSn
     else if (snapshot.approvals.some((approval) => approval.id === approvalId && approval.choices.includes(choice ?? "")))
       void dispatch(request({ type: "trusted.decide", token, approvalId, choice }));
   };
-  return { fleet, selected, workspace, pending, newConversation, prepared, confirmed, setConfirmed,
-    select, begin, prepare, launch, fork, control, refresh: () => refreshRef.current?.(true),
+  return { fleet, selected, workspace, pending, newConversation, prepared, confirmed, setConfirmed, outgoing,
+    select, begin, prepare, launch, start, fork, control, refresh: () => refreshRef.current?.(true),
     preparationPending: pending[PREPARE] ?? false,
     preparationNotice: notices[PREPARE] ?? "", observationNotice: notices[OBSERVATION] ?? "",
     selectedNotice: fleet.selected ? notices[fleet.selected] || notices[`@read:${fleet.selected}`] || "" : "",

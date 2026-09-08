@@ -158,7 +158,7 @@ export class TrustedLocalService {
     if (token && !run) throw new Error("This request does not target a retained conversation.");
     if (run) this.refresh(run);
     const p = this.preparation;
-    return TrustedSnapshotSchema.parse({ instanceId: this.instanceId, profile: "trusted-local", workspace: run?.saved.summary.workspace ?? this.options.root,
+    return TrustedSnapshotSchema.parse({ instanceId: this.instanceId, profile: "trusted-local", workspace: run?.saved.summary.workspace ?? this.options.root, launchWorkspace: this.options.root,
       preparation: p ? { token: p.token, prompt: p.prompt, expiresAt: p.materialized.expiresAt, model: p.input.model } : null,
       runToken: run?.saved.summary.runToken ?? null,
       status: run?.saved.summary.status ?? (this.closed ? "closed" : this.preparing ? "preparing" : "idle"),

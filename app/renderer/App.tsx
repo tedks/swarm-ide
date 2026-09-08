@@ -1615,8 +1615,9 @@ export function App() {
             content: <AgentConversation embeddedHeader client={externalAgents} bridge={window.swarm} memory={steeringMemory} onContext={() => { setExternalInformation(true); setCompactPanel("info"); }} /> }}
           mockConversation={demo.conversation ? { tabs: MOCK_AGENTS, selected: demo.selected, onSelect: demo.select, selectionVersion: demo.selectionVersion, content: <MockConversation selected={demo.selected} /> } : undefined}
           onDraft={() => { if (selectedWorktreeRef.current?.sessionId) setWorkspaceNotice("New native runs use the launch workspace. Switch back to prepare a run; existing agents remain steerable."); else agentClient.openDraft(snapshot.focus); }}
+          onNewAgent={() => setTrustedSelection({ id: crypto.randomUUID(), runToken: null })}
           draftContent={<PreparedLaunchDraft state={liveAgents} client={agentClient} previewCurrent={taskAttachment(tasks.selectedTaskId).alreadyAttached} dirtyPaths={fileTabs.filter((tab) => protectsBuffer(tab)).map((tab) => tab.path)} />}
-          trustedContent={<TrustedLocalPane draft={liveAgents.draft} bridge={scopedBridge} connected={liveAgents.connected} generation={lifecycle?.core.generation ?? 0} selection={trustedSelection} onSnapshot={setTrustedObservation} />}
+          trustedContent={<TrustedLocalPane draft={liveAgents.draft} bridge={scopedBridge} connected={liveAgents.connected && !workspacePending} generation={lifecycle?.core.generation ?? 0} selection={trustedSelection} workspaceRoot={selectedWorktree?.root} onSnapshot={setTrustedObservation} />}
           runContent={<LiveRunPane state={liveAgents} onInstruction={(text) => agentClient.instruction(text)} onSteer={() => { void agentClient.steer(); }}
           onStop={() => { void agentClient.stop(); }} onRead={(fromStart) => { void agentClient.read(fromStart); }} onFollow={() => agentClient.follow()} onClose={() => agentClient.closePane()}
           onHeight={(height) => agentClient.resize(height)} currentWorldId={snapshot.world.id} currentFingerprint={snapshot.revisions.working.fingerprint}
