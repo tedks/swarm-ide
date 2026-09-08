@@ -22,5 +22,12 @@ log_events:
   who: Ted Smith
   what: started
   comment: ""
+- time: 2026-09-08T13:45:33-00:00
+  who: Ted Smith
+  what: commented
+  comment: "Additional small user cleanup: remove unhelpful Evidence \xB7 Repository
+    reader disclosure in Context, retaining directory information and actual errors/staleness.
+    Exact display-only hunk assigned to activity-ui; no backend/schema/provenance
+    removal or general Context redesign."
 blocks:
 - swarm-usability-join
