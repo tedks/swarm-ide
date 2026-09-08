@@ -3,6 +3,7 @@ import { PROTOCOL_VERSION, parseCoreResponseForRequest } from "../../../protocol
 import { ChangelogRequestSchema, entryEvidence, type ChangelogResult } from "../../../protocol/changelog";
 import "./journal.css";
 import { GithubPullRequests, type GithubPrState } from "./GithubPullRequests";
+import { ActivityTime } from "../ActivityTime";
 
 const kinds = { "git-observation": "Git observation", "agent-report": "Agent reported", "recorded-check": "Recorded check · not rerun",
   "recorded-artifact": "Recorded artifact", synthetic: "Synthetic evidence" };
@@ -39,10 +40,26 @@ export function useJournal(repositoryId: string | null, coreGeneration: number |
 }
 export type JournalState = ReturnType<typeof useJournal>;
 
+function EvidenceTime({ entry, observation }: { entry: ChangelogResult["document"]["entries"][number]; observation: ChangelogResult }) {
+  const times = entryEvidence(entry, observation.bundle).map((item) => Date.parse(item.at)).filter(Number.isFinite);
+  if (!times.length) return <span className="journal-entry-time">Evidence time not recorded</span>;
+  const first = Math.min(...times), last = Math.max(...times);
+  return <span className="journal-entry-time">Evidence <ActivityTime at={new Date(first).toISOString()} />{last !== first ? <> – <ActivityTime at={new Date(last).toISOString()} /></> : null}</span>;
+}
+
+function JournalFreshness({ observation }: { observation: ChangelogResult }) {
+  return <div className="journal-freshness">
+    <span>Generated <ActivityTime at={observation.document.generatedAt} /></span>
+    <span>Last read <ActivityTime at={observation.observedAt} /></span>
+    <span>Saved report · not live · Refresh reads the report</span>
+  </div>;
+}
+
 export function JournalActivity({ state, onOpen }: { state: JournalState; onOpen(entryId?: string): void }) {
   return <div className="journal-activity">
     {state.notice ? <p>{state.observation ? "Retained account · refresh needed" : "No recorded summary available"}</p> : null}
-    {state.observation?.document.entries.slice(0, 5).map((entry) => <button className="journal-activity-entry" key={entry.id} onClick={() => onOpen(entry.id)}><span>{entry.headline}</span><small>Recorded · {entry.state}</small></button>)}
+    {state.observation ? <JournalFreshness observation={state.observation} /> : null}
+    {state.observation?.document.entries.slice(0, 5).map((entry) => <button className="journal-activity-entry" key={entry.id} onClick={() => onOpen(entry.id)}><span>{entry.headline}</span><small>Recorded · {entry.state}</small><EvidenceTime entry={entry} observation={state.observation!} /></button>)}
     {state.busy ? <p>Reading recorded changes…</p> : null}
   </div>;
 }
@@ -83,16 +100,17 @@ export function JournalPanel({ open, state, selectedEntry, selectionVersion = 0,
       {!observation && !busy ? <p className="journal-empty">No recorded activity summary. <code>docs/logical-changelog.md</code> describes how to add one.</p> : null}
       {observation ? <>
         <div className="journal-coverage"><span className="journal-badge">Recorded activity · {observation.state === "recorded-head" ? "through observed HEAD" : "earlier repository history"}</span><p>Summarized by {observation.document.generator.name}. Working edits are not included.</p></div>
+        <JournalFreshness observation={observation} />
         <label className="journal-filter">Affected file <select value={filter} onChange={(event) => setFilter(event.target.value)}><option value="">All evidence</option>{paths.map((path) => <option key={path} value={path}>{path}</option>)}</select></label>
         {!entries.length ? <p>No logical changes cite this exact path in the current bundle.</p> : null}
         <ol className="journal-cards">{entries.map((entry) => {
           const evidence = entryEvidence(entry, observation.bundle);
           return <li key={`${observation.document.inputDigest}:${entry.id}`}><details className="journal-card" data-change-id={entry.id}>
-            <summary><span className="journal-card-top"><span className="journal-state">{entry.state}</span><span>{entry.reasoning === "reconstructed" ? "Reconstructed · not causal proof" : "Reported account"}</span></span><strong>{entry.headline}</strong><p>{entry.outcome.text}</p><span className="journal-expand">{evidence.length} sources · inspect change ↗</span></summary>
+            <summary><span className="journal-card-top"><span className="journal-state">{entry.state}</span><span>{entry.reasoning === "reconstructed" ? "Reconstructed · not causal proof" : "Reported account"}</span></span><strong>{entry.headline}</strong><EvidenceTime entry={entry} observation={observation} /><p>{entry.outcome.text}</p><span className="journal-expand">{evidence.length} sources · inspect change ↗</span></summary>
             <div className="journal-details"><h4>Who / on what task</h4><p>Agents: {[...new Set(evidence.flatMap((item) => item.agentIds))].join(", ") || "No agent association in the supplied evidence"}</p><p>Tasks: {[...new Set(evidence.flatMap((item) => item.taskIds))].join(", ") || "No task association in the supplied evidence"}</p><p className="journal-fine">Associations are explicitly recorded, not inferred from file edits.</p><h4>Intent / rationale</h4><p>{entry.intent.text}</p><h4>Actions / observed outcome</h4><p>{entry.outcome.text}</p><h4>Suggested operator decision</h4><p>{entry.decision.text}</p>
               {entry.caveats.length ? <ul className="journal-caveats">{entry.caveats.map((caveat, index) => <li key={index}>{caveat}</li>)}</ul> : null}
               <h4>Evidence, not authority</h4><p className="journal-fine">Citations validate source membership, not the truth of generated prose. Imported checks are recorded, not rerun.</p>
-              {evidence.map((item) => <details className="journal-evidence" key={item.id}><summary><span>{kinds[item.kind]}</span> {item.title}</summary><div><code>{item.id}</code><p>{item.detail}</p><p className="journal-fine">{item.source} · {item.at} · revision {item.revision}</p>
+              {evidence.map((item) => <details className="journal-evidence" key={item.id}><summary><span>{kinds[item.kind]}</span> {item.title}</summary><div><code>{item.id}</code><p>{item.detail}</p><p className="journal-fine">{item.source} · <ActivityTime at={item.at} /> · revision {item.revision}</p>
                 <p className="journal-fine">Cited by {[['intent', entry.intent], ['outcome', entry.outcome], ['decision', entry.decision]].filter(([, claim]) => typeof claim !== "string" && claim.evidenceIds.includes(item.id)).map(([name]) => String(name)).join(", ")}</p>
                 {item.paths.length ? <div className="journal-paths">{item.paths.map((path) => <button key={path} onClick={() => onOpenSource(path)} title="Open current working file; recorded bytes may differ">Open working file · {path}</button>)}</div> : null}
                 {item.omittedPaths ? <p>{item.omittedPaths} paths outside this bounded record.</p> : null}
