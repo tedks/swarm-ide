@@ -45,5 +45,16 @@ log_events:
     now reaches existing registration but native helper rollouts make current discovery
     ambiguous; coordinating a small shared-helper correction, keeping all existing
     agents untouched.
+- time: 2026-09-08T14:26:05-00:00
+  who: Ted Smith
+  what: commented
+  comment: Delivered the installable x86_64 Linux production command, invocation-relative
+    workspace and writable profile, Nix app/package/profile path, and actual live
+    existing-registry launch from another repository. Actual source/profile checks
+    and original-owner survival passed on owned X11; 19 focused tests and native review
+    are clean. Automatic native-helper-bearing tmux discovery remains the narrowly
+    scoped follow-up swarm-registration-native-helpers; ROOT has the shared-helper
+    ownership request. aarch64 execution is separately untested/tracked. PR111 is
+    pushed; ROOT owns landing.
 blocks:
 - swarm-usability-pass
