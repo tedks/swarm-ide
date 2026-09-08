@@ -37,7 +37,7 @@ async function main() {
   const run = (fn, ...args) => wc.executeJavaScript(`(${fn.toString()})(...${JSON.stringify(args)})`, true);
   const click = async (selector) => {
     const point = await run((s) => {
-      const e = document.querySelector(s); if (!e || e.disabled) throw new Error(`Missing ${s}`);
+      const e = document.querySelector(s); if (!e || e.disabled) throw new Error(`Unavailable ${s}: present=${!!e}, disabled=${e?.disabled}`);
       e.scrollIntoView({ block: "nearest" }); const r = e.getBoundingClientRect(), x = r.x + r.width / 2, y = r.y + r.height / 2;
       if (!e.contains(document.elementFromPoint(x, y))) throw new Error(`Occluded ${s}`);
       return { x: Math.round(x), y: Math.round(y) };
@@ -53,7 +53,13 @@ async function main() {
   });
   await until(() => run((s) => !!document.querySelector(s) && !document.querySelector(s).disabled, input), "real registered composer");
   win.focus(); wc.focus(); stage = "saved before controlled dispatch";
-  await click(input); await wc.insertText(text);
+  await click(input);
+  await until(() => run((s) => document.activeElement === document.querySelector(s), input), "native composer click focus");
+  await wc.insertText(text);
+  // Native input and React rendering are asynchronous. Observe the exact draft
+  // and enabled control before performing the separate click submission.
+  await until(() => run((s, b, expected) => document.querySelector(s)?.value === expected &&
+    document.querySelector(b)?.disabled === false, input, send, text), "native draft and enabled send");
   await run((s) => { globalThis.__outboxComposer = document.querySelector(s); }, input);
   const arrow = await run((s, b) => {
     const e = document.querySelector(s), button = document.querySelector(b);
