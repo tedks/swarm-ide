@@ -1,5 +1,6 @@
 id: live-agent-admission-contract-p6
-title: Design exact first live read-only agent profile and finite admission gates
+title: Define the first live read-only agent profile precisely, with a fixed set of
+  required checks
 desc: ""
 type: task
 component: default
@@ -51,6 +52,14 @@ log_events:
   comment: Reviewed blocked proposal published via PR34 normalb78625f, exact approvedT2
     base and identical tested docs tree44c2024. Local documentation gates pass; OpenAI/Google
     CLEAN, Anthropic missing. No product activation or successor authorized.
+- time: 2026-09-08T04:30:08-00:00
+  who: Ted Smith
+  what: changed title
+  comment: ""
+- time: 2026-09-08T04:30:08-00:00
+  who: Ted Smith
+  what: updated description
+  comment: ""
 blocks:
 - agent-run-effective-policy
 - first-real-agent-run-surface
