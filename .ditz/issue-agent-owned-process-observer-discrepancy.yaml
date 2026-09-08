@@ -1,16 +1,18 @@
 id: agent-owned-process-observer-discrepancy
-title: Investigate confirmed cleanup versus namespace member observation discrepancy
-desc: 'N2 unchanged agent ownership code at topic8355521: full local quality1193/1194
-  failed tests/agent-owned-process.test.ts:152, liveMembers(namespace) reported PID3335140
-  immediately after confirmed cleanup; no afterEach cleanup timeout occurred, PID
-  absent on later readonly check. Saved failure log in N2 control verified-tests.log
-  and stable artifacts. liveMembers compares reusable pid namespace inode and separately
-  reads stat without holding namespace/process-start identity; namespace/PID reuse
-  is plausible but unproved. Owner confirmation already waits namespace wrapper and
-  guardian close, so terminal witness timing alone is not an explanation. Do not weaken
-  assertion or call this fixed; capture inode + PID start/state/command + repeated
-  identity checks in a separately authorized diagnostic slice. Search changes do not
-  alter owner lifecycle; real policy remains unavailable.'
+title: Investigate why a process was briefly listed after cleanup was confirmed
+desc: On N2 topic 8355521, the unchanged process-ownership code passed 1193 of 1194
+  quality tests. tests/agent-owned-process.test.ts:152 failed because liveMembers(namespace)
+  reported PID 3335140 immediately after cleanup was confirmed. afterEach did not
+  time out, and a later read-only check found no such PID. The failure is saved in
+  N2's verified-tests.log and stable artifacts. liveMembers compares a reusable PID-namespace
+  inode and reads stat separately, without holding the namespace or process-start
+  identity. Namespace/PID reuse is a possible explanation, not an established cause.
+  Cleanup already waits for the namespace wrapper and guardian to close, so terminal-witness
+  timing alone does not explain the failure. Request a separate diagnostic step that
+  records the inode, PID start time, state and command, and checks those identities
+  repeatedly. Keep the assertion unchanged and leave the issue open until explained.
+  N2's search changes did not alter the process lifecycle; the real-policy profile
+  remains unavailable.
 type: bugfix
 component: default
 release:
@@ -23,4 +25,12 @@ log_events:
 - time: 2026-09-07T01:56:46-00:00
   who: Ted Smith
   what: created
+  comment: ""
+- time: 2026-09-08T04:26:57-00:00
+  who: Ted Smith
+  what: changed title
+  comment: ""
+- time: 2026-09-08T04:26:57-00:00
+  who: Ted Smith
+  what: updated description
   comment: ""
