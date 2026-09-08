@@ -1,0 +1,22 @@
+id: swarm-supervisor-task-newline
+title: Avoid false worker startup failures from a trailing newline
+desc: 'The supervisor strips trailing newlines from task-prompt but compares the unmodified
+  observed Codex user_message, falsely timing out a correctly consumed assignment.
+  Reproduced by actual project-context fork on Sep 8; all 6193 original task bytes
+  were consumed. Fix consistent newline handling and add direct regression; do not
+  weaken ancestry/model/fresh-compaction checks. Failed ledger and independent startup
+  proof: /tmp/swarm-ide-project-context.4Mi48a/tracking-recovery.md. Existing worker
+  is monitored through the structured recap fallback; no relaunch needed.'
+type: bugfix
+component: default
+release:
+reporter: Ted Smith <tedks@riseup.net>
+status: unstarted
+disposition:
+creation_time: 2026-09-08T05:04:35-00:00
+references: []
+log_events:
+- time: 2026-09-08T05:04:35-00:00
+  who: Ted Smith
+  what: created
+  comment: ""
