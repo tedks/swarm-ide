@@ -75,7 +75,9 @@ production telemetry; no deployed-file mapping is invented. See
 [associations and scope](context-metrics-demo.md).
 
 If the task document is still in the center, choose its **Return to source**
-button to reveal `core/tasks/draft-context.ts`. Choose **Ctrl-K → Ask an agent about
+button. Select the `core/tasks/draft-context.ts` source tab again, or use
+**Ctrl-K → Open repository path** to open that exact file after the metrics detour.
+Choose **Ctrl-K → Ask an agent about
 this focus** and enter:
 
 > Explain this module's task revision checks and identify the tests that defend
