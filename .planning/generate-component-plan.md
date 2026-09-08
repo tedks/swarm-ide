@@ -16,6 +16,7 @@ When a repository has no `.swarm/plans.json`, its Components view offers Generat
 - [x] (2026-09-08) Controlled packaged GUI passed3.203s/cleanup1/zero renderer errors; single real run produced three useful docs/nodes but was stopped at300s during validation, with originals unchanged and confirmed cleanup.
 - [x] (2026-09-08) Joined final reviewed PR132 a5ca4fbe, conflict-free. Generation123 and New-agent UI32 focused cases pass with both types. Living-design mapping checks pass; its separate camera case failed (90 pass/1 fail), preserved as a noncritical follow-up.
 - [x] (2026-09-08) Ready PR133, concrete Ditz accomplishment and two follow-ups, pushed source, final handoff and owned cleanup.
+- [x] (2026-09-08) ROOT-authorized stack update onto merged master c5563a6a (PR132 plus reviewed PR131): conflict-free rebase, all eight authored patches unchanged and key launch/generation files identical. Retarget PR133 to master; no new model or broad test cycle.
 
 ## Context and Orientation
 
@@ -67,6 +68,8 @@ Progress and proof attribution are recorded in `/tmp/swarm-ide-startup-simple.Wz
 
 ## Outcomes & Retrospective
 
-The explicit button now launches the normal agent in the selected worktree with saved editable settings and gpt-5.6-sol/xhigh defaults. Normal generated-file reading automatically populates the graph; existing plans remain protected, failures/Stop retain files and retries cannot duplicate an admitted run. Packaged controlled proof covers visible agent, graph loading, retained dirty source and closing a completed session. The real single run independently created three grounded docs and components, but did not complete its turn before the proof deadline. Follow-up swarm-plan-generation-finish-check records terminal proof on the lighter prompt. Separate swarm-component-camera-order-check records the existing camera test failure without changing graph behavior or claiming a cause. PR133 stacks on PR132; ROOT owns normal landing/adoption.
+The explicit button now launches the normal agent in the selected worktree with saved editable settings and gpt-5.6-sol/xhigh defaults. Normal generated-file reading automatically populates the graph; existing plans remain protected, failures/Stop retain files and retries cannot duplicate an admitted run. Packaged controlled proof covers visible agent, graph loading, retained dirty source and closing a completed session. The real single run independently created three grounded docs and components, but did not complete its turn before the proof deadline. Follow-up swarm-plan-generation-finish-check records terminal proof on the lighter prompt. Separate swarm-component-camera-order-check records the existing camera test failure without changing graph behavior or claiming a cause. PR133 now targets master after PR132 merged as c5563a6a; ROOT owns normal landing/adoption.
 
 Revision note: updated after final producer composition, native convergence and actual proof intake; validated real artifacts, interrupted model turn and controlled GUI completion remain separately attributed.
+
+Stack update note: ROOT cleared merged master c5563a6a. Recovery branch recovery/component-plan-pre-master-1a6fe4d preserves the prior topic; all generation patches replayed identically and the additional master changes are the reviewed automatic-graphs increment. Earlier behavioral proof stays attributed to its tested inputs, not a repeated joined GUI run.
