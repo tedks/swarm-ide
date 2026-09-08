@@ -73,5 +73,13 @@ log_events:
     sources and both actual CLI target mappings were already present; all 13 nodes
     and prior links remain unchanged. One-line mapping only, checked directly; earlier
     installation and agent-association evidence is unchanged. ROOT owns normal landing.
+- time: 2026-09-08T14:55:20-00:00
+  who: Ted Smith
+  what: commented
+  comment: Composed ROOT-reviewed master f9df9b8 into PR111 with a normal merge. Resolved
+    only runtime design/prose conflicts, preserving Linux installation, container
+    transport, automatic-build and live-progress mappings. Direct JSON/prose and automatic-merge
+    comparisons pass; no executable conflict correction or repeated build/GUI cycle.
+    Prior installed proofs remain parent-attributed; ROOT owns landing.
 blocks:
 - swarm-usability-pass
