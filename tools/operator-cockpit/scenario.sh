@@ -17,7 +17,9 @@ assert(p.ok && p.packagedCore && p.realRegisteredSession && p.crossWorktreeBytes
 assert(p.sourceRetained && p.camerasRetained && p.graphNodesRetained && p.ownedSourceSaved);
 assert.deepEqual(p.agentWrites, []);
 assert.deepEqual(p.blockingErrors, []);
-console.log('Actual registered-worktree source/diff inspection; native input; dirty local source and cameras retained.');
+console.log(p.scope === 'briefing-only'
+  ? 'Actual registered-worktree briefing source; native input; dirty local source and cameras retained.'
+  : 'Actual registered-worktree source/diff inspection; native input; dirty local source and cameras retained.');
 console.log('Accepted exact resize diagnostics:', p.acceptedResizeWarnings.length);
 JS
 swarm_window_capture "$SWARM_COCKPIT_EVIDENCE/window.png"
