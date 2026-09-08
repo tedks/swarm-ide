@@ -10,8 +10,8 @@ An operator viewing a Ditz task should see the trusted conversations actually la
 
 - [x] (2026-09-08 00:39Z) Read assigned worktree, shared wave contract and current task/dock interfaces.
 - [x] (2026-09-08 00:44Z) Implement pure task-run projection and contextual view; native first pass and copy-fix convergence CLEAN. New identity/excerpt/retention tests authored.
-- [ ] Join only ROOT-cleared typed producer and W6 conversation selection seam.
-- [ ] Run relevant local gates, native convergence and owned virtual proof; push handoff.
+- [ ] ROOT integration gate: consume only cleared F1 producer and W6 observation/selection App join. Independent consumer is ready; no peer consumed.
+- [x] (2026-09-08 00:49Z) Corrected full quality1804/135 and focused8/8 passed; native source/fix/tooling review CLEAN. Owned standalone virtual proof passed1308ms, cleanup1. Push bounded handoff.
 
 ## Surprises & Discoveries
 
@@ -23,7 +23,7 @@ Use a pure presentation subset of the agreed run shapes before the producer is a
 
 ## Outcomes & Retrospective
 
-PR74 now contains the bounded implementation. Native code and copy-fix reviews are CLEAN. Full local correction gate and owned controlled view proof are in progress; no live model turn or integrated trusted history is claimed.
+PR74 contains the bounded read-only consumer. Native code, copy-fix and proof-tooling reviews are CLEAN. Corrected quality passed1,804 tests/135files plus node/renderer builds; focused8/8 and syntax checks passed. Owned :155/55235 standalone visual proof passed1308ms with zero renderer errors and cleanup confirmed. Actual CodeMirror text/cursor/DOM and draft were retained; graph was a stand-in. No production App, actual Ditz admission or provider/model turn is claimed. F1/W6 integration is intentionally left to ROOT-cleared composition, avoiding duplicate pollers or unreviewed producer copies.
 
 ## Context and Orientation
 
@@ -39,7 +39,7 @@ Work in `/home/tedks/Projects/swarm-ide/trusted-task-linkage`. Materialize depen
 
 ## Validation and Acceptance
 
-Tests must show only exact admitted world/repository/task matches, retain original metadata revision, reject mismatched selected transcript references, and never transform ready/closed into task completion. An operator click emits only the exact conversation token; late updates or a task switch cannot show the previous task's output. A joined controlled UI proof should preserve source text/cursor, draft, task focus and graph cameras while selecting a conversation. Controlled activity is not real model delivery.
+Tests show only exact admitted world/repository/task matches, retain original metadata revision, reject mismatched selected transcript references, and never transform ready/closed into task completion. An operator click emits only the exact conversation token; late updates or a task switch cannot show the previous task's output. Run `nix develop --command bazel run //tools/task-runs:smoke --jobs=3` for the standalone controlled actual component/CodeMirror proof. It has no production bridge, model, actual admission or production graph; the graph is a stand-in. W6's later joined controlled UI proof must cover actual App/cameras and validated fleet observation. Controlled activity is not real model delivery.
 
 ## Idempotence and Recovery
 
@@ -47,7 +47,7 @@ This read-only view adds no storage or process authority. Missing producer suppo
 
 ## Artifacts and Notes
 
-Coordination and evidence live under `/tmp/swarm-ide-real-swarms.Djy75P/task-runs/`. The independently testable presentation may be pushed before the producer join; that is an explicit held boundary, not a completed live feature.
+Coordination and verification live under `/tmp/swarm-ide-real-swarms.Djy75P/task-runs/`. Local visual evidence is `artifacts/task-runs/run.Bk1NYJ/proof.json` with two PNGs. The independently testable presentation is pushed before the producer join; that is an explicit held boundary, not a completed live feature. `tools/task-runs/README.md` explains reproducible evidence boundaries.
 
 ## Interfaces and Dependencies
 
@@ -56,3 +56,5 @@ Coordination and evidence live under `/tmp/swarm-ide-real-swarms.Djy75P/task-run
 Initial plan records bounded parallel implementation and the explicit producer gate.
 
 2026-09-08: Recorded first native-clean presentation increment, exact test-data correction and separate proof/join limits.
+
+2026-09-08: Recorded completed local/owned proof and the intentionally held ROOT-only runtime join; no whole legacy suite or real model was repeated for this consumer.
