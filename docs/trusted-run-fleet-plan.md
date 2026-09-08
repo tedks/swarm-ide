@@ -13,7 +13,9 @@ The operator can keep several real local conversations running, address each by 
 - [x] Publish reviewed shared contract a6e7c8c in PR75; 1798 local tests passed.
 - [x] Implement bounded per-token service and separate atomic trusted history store.
 - [x] Verify routing, capacity races, cancellation, persistence failure and restart without replay in controlled tests.
-- [ ] Run relevant local checks and native review; push PR and synchronize Ditz.
+- [x] Run relevant local checks and native review; push PR and synchronize Ditz.
+- [x] Complete the authorized real two-conversation/three-turn proof with confirmed cleanup and no replay.
+- [ ] ROOT normal landing and independent cockpit/activity/task consumer joins (not owned by this child).
 
 ## Surprises & Discoveries
 
@@ -29,7 +31,11 @@ Persist a UTF-8 output tail of at most 128KiB and the last fifty activities with
 
 ## Outcomes & Retrospective
 
-Controlled multi-run, task materialization, restart-without-replay and lifetime writer tests are implemented. Real provider proof is separately manual and not claimed until its one-shot evidence completes. Crash-left temporary file garbage collection is tracked by Ditz issue `trusted-history-crash-temp-cleanup-20260907`; ordinary errors clean their owned temporary file.
+Controlled multi-run, task materialization, restart-without-replay and lifetime writer tests passed: focused 74 tests across five files, full local quality 1847 across 137 files, with typecheck and renderer/core builds. Native full review found two Important defects, both corrected with clean convergence. The exact old pump reproduced one RED/72 PASS before correction; no broader baseline-red claim is made.
+
+Actual manual proof completed at 2026-09-08 00:54 UTC: two real Codex 0.153.4 starts, three model turns, exact distinct initial replies, Stop A retaining B, a targeted follow-up only to B, both owned cleanups confirmed, and closed history reopened without replay. It attached no files, used normal provider settings, and answered no approval. It is not a UI proof, not a task-bearing model turn, and not independent attestation of zero read-only tools. The disposable Git workspace was removed only after confirmed cleanup; private evidence remains outside Git. Interrupted restart semantics are controlled tests, not an actual core-crash model experiment.
+
+Crash-left temporary file garbage collection is tracked by Ditz issue `trusted-history-crash-temp-cleanup-20260907`; ordinary errors clean their owned temporary file. UI, optional provider activity, and task-linked presentation join independently under ROOT control.
 
 ## Context and Orientation
 
