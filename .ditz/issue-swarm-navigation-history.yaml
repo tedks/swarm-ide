@@ -23,3 +23,12 @@ log_events:
     agents. Current Alt-Left directory-parent binding needs explicit resolution (retain
     Alt-Up). Bounded read-only helper maps existing seams; App integration belongs
     current cockpit-layout owner. No implementation or compatibility claim yet.
+- time: 2026-09-08T15:41:57-00:00
+  who: Ted Smith
+  what: commented
+  comment: 'CTO accepted the bounded proposal: deliberate file/component/task/agent/worktree
+    visit history, Alt-Left/Right and native mouse side buttons; Alt-Up remains directory
+    parent. Preserve unsaved work and replay navigation only. Schedule a separate
+    implementation PR after current PR119 Activity refresh and PR120 unified header
+    land to avoid overlapping App ownership. Normal observation refresh must not invalidate
+    still-valid visits. No implementation started by this decision.'
