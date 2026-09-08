@@ -70,6 +70,7 @@ import { useGithubPullRequests } from "./changelog/GithubPullRequests";
 import { useExternalAgents } from "./external-agents/client";
 import { ExternalAgentRail, ExternalAgentInformation } from "./external-agents/ExternalAgents";
 import { ObservedActivity } from "./external-agents/ObservedActivity";
+import { WorktreeInspection, type WorktreeSelection } from "./WorktreeInspection";
 import { ActivityTime } from "./ActivityTime";
 
 const lensTabs = ["System", "Plan", "Performance", "Refactor"] as const;
@@ -127,6 +128,8 @@ export function App() {
   const [journalVisible, setJournalVisible] = useState(false);
   const [journalEntry, setJournalEntry] = useState<string | null>(null);
   const [journalSelection, setJournalSelection] = useState(0);
+  const [worktreeSelection, setWorktreeSelection] = useState<WorktreeSelection | null>(null);
+  const [worktreeVisible, setWorktreeVisible] = useState(false);
   const demo = useUiDemo();
   const [contextWidth, setContextWidth] = useState(30), [graphShare, setGraphShare] = useState(43);
   const [graphReframe, setGraphReframe] = useState(0);
@@ -188,8 +191,13 @@ export function App() {
   const [taskDocumentVisible, setTaskDocumentVisible] = useState(false);
   const [taskSidebarVisible, setTaskSidebarVisible] = useState(true);
   const journal = useJournal(workspace.snapshot?.project.id ?? null, lifecycle?.core.phase === "ready" ? lifecycle.core.generation : null);
-  const showJournal = (entry?: string) => { setJournalOpen(true); setJournalVisible(true); setTaskDocumentVisible(false); setJournalEntry(entry ?? null); setJournalSelection((value) => value + 1); };
-  useEffect(() => { if (taskDocumentVisible) setJournalVisible(false); }, [taskDocumentVisible]);
+  const showJournal = (entry?: string) => { setWorktreeVisible(false); setJournalOpen(true); setJournalVisible(true); setTaskDocumentVisible(false); setJournalEntry(entry ?? null); setJournalSelection((value) => value + 1); };
+  const inspectWorktree = (sessionId: string, path: string, patch?: string) => {
+    ++navigationIntent.current;
+    setWorktreeSelection({ sessionId, path, ...(patch ? { patch } : {}) }); setWorktreeVisible(true);
+    setJournalVisible(false); setTaskDocumentVisible(false);
+  };
+  useEffect(() => { if (taskDocumentVisible) { setJournalVisible(false); setWorktreeVisible(false); } }, [taskDocumentVisible]);
   const pendingBacklinkIntent = useRef<number | null>(null);
   const [selectedConnection, setSelectedConnection] = useState<GraphConnectionFocus | null>(null);
   const workspaceRef = useRef<WorkspaceState>(workspace);
@@ -527,6 +535,7 @@ export function App() {
   }, [invoke]);
 
   const showSurface = useCallback((surface: string) => {
+    setWorktreeVisible(false);
     setJournalVisible(false);
     setTaskDocumentVisible(false);
     ++navigationIntent.current;
@@ -1102,8 +1111,8 @@ export function App() {
       notice: taskAttachmentNotice?.taskId === id ? taskAttachmentNotice.text : null,
       onAttach: (origin: HTMLButtonElement) => attachInspectedTask(id, origin) };
   };
-  const textDocumentVisible = !journalVisible && (taskDocumentVisible || (taskDocumentOpen && !activeFile));
-  const textOpen = Boolean(activeFile || textDocumentVisible || journalVisible);
+  const textDocumentVisible = !journalVisible && !worktreeVisible && (taskDocumentVisible || (taskDocumentOpen && !activeFile));
+  const textOpen = Boolean(activeFile || textDocumentVisible || journalVisible || worktreeVisible);
   useEffect(() => { if (textOpen && !textWasOpen.current) setGraphReframe((n) => n + 1); textWasOpen.current = textOpen; }, [textOpen]);
   const reconciliationRunning = snapshot?.jobs.some((job) => job.kind === "build" && job.status === "running") ?? false;
   const title = snapshot ? statusLabel(snapshot.reconciliation.status) : "Loading";
@@ -1275,10 +1284,11 @@ export function App() {
 
       <section className={`navigation-field ${textOpen ? "source-open" : ""}`} style={{ "--graph-share": `${graphShare}%` } as CSSProperties}>
         <div className="field-toolbar">
-          <div><span className="eyebrow">central navigation</span><strong>{journalVisible ? "Activity log" : textDocumentVisible ? tasks.detail?.title ?? "Task document" : activeFile?.path ?? focusLabel(snapshot.focus)}</strong><small tabIndex={0}>{activeFile ? `${activeFile.status} · ${activeFile.message}` : `${snapshot.focus.domain} · ${snapshot.focus.revisionId.slice(0, 12)}`}</small></div>
+          <div><span className="eyebrow">central navigation</span><strong>{worktreeVisible ? worktreeSelection?.path : journalVisible ? "Activity log" : textDocumentVisible ? tasks.detail?.title ?? "Task document" : activeFile?.path ?? focusLabel(snapshot.focus)}</strong><small tabIndex={0}>{worktreeVisible ? "Agent worktree · read-only" : activeFile ? `${activeFile.status} · ${activeFile.message}` : snapshot.focus.domain}</small></div>
           <button id="reconcile-success" className="build-button" onClick={() => void reconcile()} disabled={reconciliationRunning || coreUnavailable}>▶ Build topology</button>
         </div>
         {textOpen ? <nav className="surface-tabs" aria-label="Document tabs">
+          {worktreeSelection ? <div className={`surface-tab ${worktreeVisible ? "active" : ""}`}><button className="surface-tab-main" onClick={() => { setWorktreeVisible(true); setJournalVisible(false); setTaskDocumentVisible(false); }}>Worktree · {worktreeSelection.path.split("/").at(-1)}</button><button className="surface-tab-close" aria-label="Close worktree inspection" onClick={() => { setWorktreeVisible(false); setWorktreeSelection(null); }}>×</button></div> : null}
           {journalOpen ? <div className={`surface-tab ${journalVisible ? "active" : ""}`}><button className="surface-tab-main" onClick={() => showJournal()}>Activity log</button><button className="surface-tab-close" aria-label="Close activity document" onClick={() => { setJournalOpen(false); setJournalVisible(false); }}>×</button></div> : null}
           {fileTabs.map((tab) => <div key={tab.path} className={`surface-tab ${activeFile?.path === tab.path && !textDocumentVisible && !journalVisible ? "active" : ""}`}><button className="surface-tab-main" onClick={() => activateFile(tab.path)} title={tab.path}><span className={`tab-state status-${tab.status}`}>{tab.status === "dirty" ? "●" : tab.status === "saving" ? "◌" : tab.status === "conflict" || tab.status === "error" ? "!" : "◇"}</span>{tab.path.split("/").at(-1)}</button><button className="surface-tab-close" aria-label={`Close ${tab.path}`} onClick={() => closeFile(tab.path)}>×</button></div>)}
           {taskDocumentOpen ? <div className={`surface-tab ${textDocumentVisible ? "active" : ""}`}><button className="surface-tab-main" onClick={() => { setTaskDocumentVisible(true); inspectTask(tasks.selectedTaskId); }} title={tasks.selectedTaskId ?? "Task"}>▤ {tasks.detail?.title ?? "Task document"}</button><button className="surface-tab-close" aria-label="Close task document" onClick={closeTaskDocument}>×</button></div> : null}
@@ -1291,7 +1301,7 @@ export function App() {
           generation={coreGenerationRef.current} connected={!coreUnavailable && Boolean(window.swarm)} tasks={tasks} client={taskClient}
           onOpenFile={openLinkedFile} onOpenTask={openPlanningTask} />
         {textOpen ? <ResizeDivider label="Resize graphs and text" className="text-divider" container=".navigation-field" value={graphShare} minimum={25} maximum={70} initial={43} onChange={setGraphShare} /> : null}
-        {activeFile ? <section hidden={textDocumentVisible || journalVisible} onPointerDown={sourceInformation} onFocusCapture={sourceInformation} className={`source-surface ${["conflict", "unknown", "error"].includes(activeFile.status) ? "has-banner" : ""}`}>
+        {activeFile ? <section hidden={textDocumentVisible || journalVisible || worktreeVisible} onPointerDown={sourceInformation} onFocusCapture={sourceInformation} className={`source-surface ${["conflict", "unknown", "error"].includes(activeFile.status) ? "has-banner" : ""}`}>
           <header><div><span className="eyebrow">source observatory</span><strong>{activeFile.path}</strong></div><div className={`file-state file-${activeFile.status}`}><i />{activeFile.status}<button onClick={() => void saveFile(activeFile.path)} disabled={activeFile.status !== "dirty" || coreUnavailable}>Save <kbd>Ctrl S</kbd></button></div></header>
           {activeFile.status === "loading" ? <div className="source-message">Loading the canonical working file…</div> : <>
             {["conflict", "unknown", "error"].includes(activeFile.status) ? <div className="source-message source-error source-banner"><span>{activeFile.message}</span><button disabled={coreUnavailable || savesInFlightRef.current.has(activeFile.path)} onClick={() => void reloadFile(activeFile.path)}>{activeFile.status === "unknown" ? "Check disk" : "Reload disk"}</button></div> : null}
@@ -1310,6 +1320,7 @@ export function App() {
             }} onSave={() => void saveFile(activeFile.path)} /> : <div className="source-message source-error">{activeFile.message}</div>}
           </>}
         </section> : null}
+        {worktreeVisible && worktreeSelection ? <WorktreeInspection key={`${worktreeSelection.sessionId}:${worktreeSelection.path}`} selection={worktreeSelection} bridge={window.swarm} generation={coreGenerationRef.current} onReturn={() => setWorktreeVisible(false)} /> : null}
         <JournalPanel key={snapshot.project.id} open={journalVisible} state={journal} selectedEntry={journalEntry} selectionVersion={journalSelection} pullRequests={githubPrs}
           onClose={() => setJournalVisible(false)} onOpenSource={openLinkedFile} />
         {taskDocumentOpen ? <div className="task-editor-surface" hidden={!textDocumentVisible} onPointerDownCapture={(event) => { if (!(event.target as Element).closest(".task-attach")) inspectTask(tasks.selectedTaskId); }} onFocusCapture={(event) => { if (!(event.target as Element).closest(".task-attach")) inspectTask(tasks.selectedTaskId); }}><TaskDetail surface="editor" selectedTaskId={tasks.selectedTaskId} snapshot={tasks.observation?.snapshot ?? null} detail={tasks.detail} detailRevision={tasks.detailRevision} detailStale={tasks.detailStale || tasks.observation?.status !== "observed" || Boolean(tasks.notice)} reading={tasks.reading} notice={tasks.detailNotice} attachment={taskAttachment(tasks.selectedTaskId)} onRefresh={() => { void taskClient.refresh(); }} onSelect={(id) => openTaskDocument(id)} onReveal={(ref) => { void revealTaskReference(ref); }} onReturnToSource={() => { setTaskDocumentVisible(false); if (!activeFile) setTaskDocumentOpen(false); returnToSourceInformation(); }} /></div> : null}
@@ -1318,7 +1329,7 @@ export function App() {
       <ResizeDivider label="Resize Context" className="context-divider" container=".workbench" value={contextWidth} minimum={23} maximum={44} initial={30} reverse onChange={setContextWidth} />
       <aside id="information-panel" aria-label="Information panel" className="instrument-panel panel">
         <GlobalContext snapshot={snapshot} ready={observedCoreGeneration === coreGenerationRef.current && (!window.swarmLifecycle || lifecycle?.core.phase === "ready")} />
-        <ExternalAgentInformation client={externalAgents} bridge={window.swarm} visible={externalInformation} onReturn={() => { setExternalInformation(false); returnToSourceInformation(); }} onOpen={(path) => { setExternalInformation(false); openLinkedFile(path); }} />
+        <ExternalAgentInformation client={externalAgents} bridge={window.swarm} visible={externalInformation} onReturn={() => { setExternalInformation(false); returnToSourceInformation(); }} onOpen={(path) => { if (externalAgents.selected) inspectWorktree(externalAgents.selected, path); }} />
         {!externalInformation ? <>
         {revealNotice ? <p ref={revealNoticeElement} className="tasks-reveal-notice" role="status" tabIndex={0}>{revealNotice}</p> : null}
         {contextSubject?.kind === "task" ? <div className="artifact-context" data-context-kind="task" data-context-subject={contextSubject.id}><TaskContext returnButtonRef={taskReturnButton} selectedTaskId={contextSubject.id} snapshot={tasks.observation?.snapshot ?? null} detail={tasks.detail?.id === contextSubject.id ? tasks.detail : null} detailRevision={tasks.detailRevision} detailStale={tasks.detailStale || tasks.refreshing || tasks.observation?.status !== "observed" || Boolean(tasks.notice)} reading={tasks.reading} notice={tasks.detailNotice} attachment={taskAttachment(contextSubject.id)} onSelect={openTaskDocument} onReveal={(ref) => { void revealTaskReference(ref); }} onReturnToSource={returnToSourceInformation} onShowDocument={showPinnedTaskDocument} onRefresh={() => { void taskClient.refresh(); }} connected={tasks.connected} generation={coreGenerationRef.current} journal={journal.observation} journalRetained={Boolean(journal.notice) || journal.busy} run={liveAgents.run} runRecords={liveAgents.records} runRetained={liveAgents.detailStale || !liveAgents.connected} onJournal={showJournal} trustedObservation={{ snapshot: trustedObservation, retained: !liveAgents.connected }} onOpenTrustedRun={openTrustedRun} /></div> : <>
@@ -1330,7 +1341,7 @@ export function App() {
       </aside>
 
       <section className="activity-dock panel">
-        <div className="dock-header"><div><span className="eyebrow">activity / jobs</span><strong>Changes entering the world</strong></div><span className="ignored-events">{workspace.ignoredEvents} stale events rejected</span></div>
+        <div className="dock-header"><div><span className="eyebrow">activity / jobs</span><strong>Live workspace</strong></div></div>
         <AgentDock state={liveAgents} client={agentClient} selectionVersion={agentDockSelection} fixtureSelectionVersion={fixtureDockSelection} trustedSelectionVersion={trustedSelection?.id} onOpenActivity={() => showJournal()}
           mockConversation={demo.conversation ? { tabs: MOCK_AGENTS, selected: demo.selected, onSelect: demo.select, selectionVersion: demo.selectionVersion, content: <MockConversation selected={demo.selected} /> } : undefined}
           onDraft={() => agentClient.openDraft(snapshot.focus)}

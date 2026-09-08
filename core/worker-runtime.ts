@@ -39,6 +39,7 @@ import type { BuildGraphObservation } from "../protocol/build-graph";
 import { GithubPrProvider, GithubPrReadError } from "./github-prs";
 import type { TrustedLocalService } from "./agents/trusted-local";
 import { TrustedRequestSchema } from "../protocol/trusted-local";
+import { inspectRegisteredWorktree } from "./worktree-inspection";
 
 export interface WorkerDependencies {
   createAgents?: typeof createProductionAgentService;
@@ -60,6 +61,7 @@ const githubPrsPromise = providerPromise.then((provider) => new GithubPrProvider
 let workingWorldObserver: WorkingWorldObserver | null = null;
 let shuttingDown = false;
 const journalLifetime = new AbortController();
+const worktreeInspections = new Set<ReturnType<typeof inspectRegisteredWorktree>>();
 let journalPending: ReturnType<typeof readChangelog> | null = null;
 const taskProviderPromise: Promise<TaskProvider> = providerPromise.then(async (provider) => {
   const snapshot = provider.snapshot();
@@ -177,6 +179,7 @@ process.parentPort?.on("message", async (event) => {
           agentServicePromise.then((service) => service?.shutdown()),
           taskProviderPromise.then((tasks) => tasks.dispose()),
           journalPending?.catch(() => {}),
+          ...[...worktreeInspections].map((pending) => pending.catch(() => {})),
           buildGraphPromise.then((graph) => graph.dispose()),
           githubPrsPromise.then((prs) => prs.dispose()),
         ]);
@@ -195,6 +198,19 @@ process.parentPort?.on("message", async (event) => {
       return;
     }
     const provider = await providerPromise;
+    if (request.type === "worktree.inspect") {
+      const pending = inspectRegisteredWorktree(workspaceRoot, process.env.SWARM_EXTERNAL_AGENTS_REGISTRY, request, journalLifetime.signal);
+      worktreeInspections.add(pending);
+      try {
+        const worktreeInspection = await pending;
+        if (shuttingDown) throw new Error("Worktree inspection stopped.");
+        const response = ok(requestId, provider.snapshot());
+        post(parseCoreResponseForRequest({ ...response, worktreeInspection }, request));
+      } catch (error) {
+        post(fail(requestId, "WORKTREE_INSPECTION_UNAVAILABLE", error instanceof Error ? error.message.slice(0, 512) : "This worktree file could not be opened."));
+      } finally { worktreeInspections.delete(pending); }
+      return;
+    }
     if (request.type.startsWith("trusted.")) {
       try {
         trustedPromise ??= import("./agents/trusted-local").then(({ createTrustedLocalService }) =>

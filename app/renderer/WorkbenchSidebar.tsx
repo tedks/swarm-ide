@@ -4,7 +4,7 @@ import "./sidebar.css";
 const names = ["Directory", "Agent runs", "Tasks"] as const;
 
 /** Folding and resizing never unmount drafts or navigation. */
-export function WorkbenchSidebar({ directory, agents, tasks, repositoryName, onTasksVisibility }: { directory: ReactNode; agents: ReactNode; tasks: ReactNode; repositoryName: string; onTasksVisibility?: (visible: boolean) => void }) {
+export function WorkbenchSidebar({ directory, agents, tasks, workLog, repositoryName, onTasksVisibility }: { directory: ReactNode; agents: ReactNode; tasks: ReactNode; workLog?: ReactNode; repositoryName: string; onTasksVisibility?: (visible: boolean) => void }) {
   const [collapsed, setCollapsed] = useState([false, false, false]);
   useEffect(() => { onTasksVisibility?.(!collapsed[2]); }, [collapsed[2], onTasksVisibility]);
   const [sizes, setSizes] = useState([1, 1, 1]);
@@ -20,7 +20,7 @@ export function WorkbenchSidebar({ directory, agents, tasks, repositoryName, onT
         <button className="sidebar-section-heading" aria-label={names[index]} aria-expanded={!collapsed[index]} aria-controls={`sidebar-content-${index}`} onClick={() => setCollapsed((prior) => prior.map((value, item) => item === index ? !value : value))}>
           <span aria-hidden="true">{collapsed[index] ? "›" : "⌄"}</span>{names[index]}{index === 0 ? <small title={repositoryName}>{repositoryName}</small> : null}
         </button>
-        <div id={`sidebar-content-${index}`} className="sidebar-section-content" hidden={collapsed[index]}>{content}</div>
+        <div id={`sidebar-content-${index}`} className="sidebar-section-content" hidden={collapsed[index]}>{content}{index === 1 && workLog ? <section className="sidebar-work-log" aria-label="Work Log">{workLog}</section> : null}</div>
       </section>
       {index < 2 ? <div className="sidebar-divider" role="separator" aria-label={`Resize ${names[index]} and ${names[index + 1]}`} aria-orientation="horizontal" aria-valuemin={12} aria-valuemax={88} aria-valuenow={Math.round(sizes[index]! / (sizes[index]! + sizes[index + 1]!) * 100)} aria-disabled={collapsed[index] || collapsed[index + 1]} tabIndex={collapsed[index] || collapsed[index + 1] ? -1 : 0}
         onPointerDown={(event) => {
