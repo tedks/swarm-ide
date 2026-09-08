@@ -23,6 +23,11 @@ references until another task is chosen. Hidden selections wait for measured
 nodes; replacing the task reader or snapshot retires pending camera requests
 without resetting the retained viewport. Dependency reads and scope controls
 keep their existing scheduling and selection authority.
+Canvas and outline re-clicks create new requests; same-ID task-sidebar re-clicks
+still need a client gesture token (`swarm-task-repeat-sidebar-reveal`). A delayed
+task-detail acknowledgement retains the original token, so it cannot overwrite a
+pan made while the detail was loading. The service Agents toggle lives in the
+existing header, leaving the canvas in its flexible grid row.
 
 `//tools/graph-recenter:checks` consumes `//:quality_sources` and exercises click,
 measurement, hidden-panel, manual-move and publication fences plus the ordinary

@@ -11,8 +11,9 @@ Clicking a task, service, interface or build target should bring the relevant ex
 - [x] (2026-09-08 21:18Z) Read current selection, camera and task ownership paths.
 - [x] (2026-09-08 21:16Z) Three click-camera tests RED, nineteen retained tests PASS; task owner agreed a post-PR138 additive seam.
 - [x] (2026-09-08 21:35Z) One-shot measured-node viewport requests implemented; 33 focused tests and both typechecks pass.
-- [ ] Run focused tests, native review, and an inexpensive owned desktop check if practical.
-- [ ] Push a ready PR, document exact evidence, sync Ditz and hand off to ROOT.
+- [x] (2026-09-08 21:55Z) Joined focused camera/task/sprite targets and both type boundaries pass; final native convergence CLEAN.
+- [x] (2026-09-08 21:55Z) Actual packaged source/service/build gestures and independently verified manual-pan retention PASS in 5.090s, owned cleanup complete.
+- [x] (2026-09-08 21:56Z) Coherent code pushed in PR139; final documentation and ROOT handoff prepared.
 
 ## Surprises & Discoveries
 
@@ -22,13 +23,17 @@ Native review found that raw controlled ReactFlow nodes do not receive measured 
 
 The first owned GUI run failed before source opening: its click helper did not scroll the requested file into the visible tree. The screenshot shows no opened editor. The corrected helper scrolls and checks the actual pointer hit target first; the original failure remains recorded, not attributed to a product camera defect.
 
+Normal composition with the reviewed sprites exposed a separate concrete grid mismatch: the new service Agents toolbar added a third child to a two-row grid. A new direct regression was RED; moving the toggle into the existing header restores the canvas row. The corrected joined package passes. The earlier proof had not independently confirmed pan movement; the final driver requires a hit-tested visible pane and a changed camera before testing refresh retention.
+
+Task selection review caught stale local fallback resurrection, freshness recovery masquerading as navigation, and delayed detail acknowledgement issuing a second camera move. Separate gesture tokens and acknowledgement-preserving retirement now cover those sequences. The sidebar currently exposes only the selected ID, so same-ID sidebar reclick after pan is a filed follow-up; canvas and outline repeats work now.
+
 ## Decision Log
 
-Use explicit request identities rather than watching all snapshot changes. Resolve only actual loaded nodes and explicit declared service/file membership; never infer task-to-service connections. Preserve existing Fit controls and library-owned camera state. The concurrent complete-task-graph worker owns `TaskGraph.tsx`, so coordinate a small prop seam rather than editing that file concurrently. These decisions were made on 2026-09-08 to keep passive updates harmless.
+Use explicit request identities rather than watching all snapshot changes. Resolve only actual loaded nodes and explicit declared service/file membership; never infer task-to-service connections. Preserve existing Fit controls and library-owned camera state. TaskGraph was initially independently owned; ROOT later cleared normally merged master 174b262 and explicitly transferred the tiny selection seam after that worker retired. The normal integration preserves complete-task scheduling, plan repair and live sprites.
 
 ## Outcomes & Retrospective
 
-Focused implementation checks pass. Final native convergence and one bounded corrected desktop execution are underway. The plan index target-count failure and task graph truncation are independently owned and are not part of this repair; TaskGraph's sidebar-selection seam will join after its owner's reviewed count repair lands.
+PR139 code e7cdfc4 passes 51 camera checks, 38 task-completeness checks and the existing sprite checks (52 plus one selected mapping case; seven other mapping cases are excluded by that pre-existing target filter). These targets overlap, so counts are not additive. Both TypeScript boundaries pass; native convergence is CLEAN. Actual packaged source/service/build and pan-retention proof passes in 5.090s with zero renderer errors and owned cleanup. No full-suite sweep, hosted gate or model turn was performed. ROOT owns normal landing and managed adoption. Same-ID sidebar reclick is tracked as swarm-task-repeat-sidebar-reveal.
 
 ## Context and Orientation
 
