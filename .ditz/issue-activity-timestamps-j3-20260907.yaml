@@ -37,3 +37,11 @@ log_events:
   comment: ROOT cleared PR79/80 base2d6a9342; existing e265990 composition confirmed.
     PR81 finalff0134e ready for ROOT normal merge/adoption. No new code or repeated
     suite/GUI; pause after handoff.
+- time: 2026-09-08T03:15:02-00:00
+  who: Ted Smith
+  what: commented
+  comment: 'PR81 final0102861 incorporates direct user review: time-only today, short
+    older dates, readable single full hover; Generated/Last read off main surfaces,
+    provenance retained. Final J3 expanded67focused/typechecks PASS, bundlePASS5.636s,
+    nativeCLEAN. Not ROOT earlier narrower test run; no new GUI/model. Ready ROOT
+    normal merge/adoption; pause.'
