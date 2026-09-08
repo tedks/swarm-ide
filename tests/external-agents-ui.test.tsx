@@ -45,6 +45,36 @@ function setup(handle?: (request: CoreRequest) => Promise<CoreResponse> | undefi
 }
 
 describe("external observer presentation and lifecycle", () => {
+  it("orders sibling forks by creation, keeps deep descendants below their parents and preserves connector geometry", () => {
+    const born = (n: number, parent: number | undefined, day: number) => ({ ...session(n, parent), createdAt: `2026-09-${String(day).padStart(2, "0")}T00:00:00.000Z` });
+    const siblings = Array.from({ length: 7 }, (_, i) => born(i + 2, 1, i + 2));
+    const deep = Array.from({ length: 20 }, (_, i) => born(i + 9, i ? i + 8 : 8, 20));
+    const input = [born(1, undefined, 1), ...siblings, ...deep];
+    const rows = lineageRows(input);
+    expect(rows.map((row) => row.session.id)).toEqual([id(1), id(8), ...deep.map((row) => row.id), ...[7, 6, 5, 4, 3, 2].map(id)]);
+    expect(rows.filter((row) => row.depth === 1)).toHaveLength(7);
+    expect(rows[1]).toMatchObject({ depth: 1, lastSibling: false, hasChildren: true });
+    expect(rows[21]).toMatchObject({ depth: 21, ancestorTrunks: [true, ...Array(19).fill(false)], lastSibling: true });
+    expect(rows.at(-1)).toMatchObject({ session: { id: id(2) }, depth: 1, lastSibling: true });
+    const client = { snapshot: { status: "observed" as const, observedAt: at, message: "Test", sessions: input }, detail: null, selected: id(8),
+      busy: false, notice: "", read: vi.fn(async () => {}), refresh: vi.fn(async () => {}), handoff: vi.fn(async () => {}) };
+    const view = render(<ExternalAgentRail client={client} onSelect={() => {}} />);
+    const selected = screen.getByRole("button", { name: "Inspect external agent Agent 8" }); selected.focus();
+    const changedActivity = [...input].reverse().map((row) => ({ ...row, observedAt: "2030-01-01T00:00:00Z", lastActivityAt: row.id === id(2) ? "2031-01-01T00:00:00Z" : at }));
+    view.rerender(<ExternalAgentRail client={{ ...client, snapshot: { ...client.snapshot, sessions: changedActivity } }} onSelect={() => {}} />);
+    expect(document.activeElement).toBe(selected);
+    expect([...view.container.querySelectorAll("li[data-session]")].map((row) => row.getAttribute("data-session"))).toEqual(rows.map((row) => row.session.id));
+    expect(view.container.querySelectorAll(".external-lineage-branch")).toHaveLength(27);
+    expect(client.read).not.toHaveBeenCalled();
+  });
+
+  it("uses stable session IDs for missing or tied creation dates, never activity or registration order", () => {
+    const sameDate = { createdAt: at };
+    const rows = [session(1), session(4, 1), { ...session(3, 1), ...sameDate }, { ...session(2, 1), ...sameDate }, session(5, 1)];
+    expect(lineageRows(rows).map((row) => row.session.id)).toEqual([1, 2, 3, 4, 5].map(id));
+    expect(lineageRows([...rows].reverse()).map((row) => row.session.id)).toEqual([1, 2, 3, 4, 5].map(id));
+  });
+
   it("connects real branches with continuing ancestor trunks and last-child elbows, never across roots", () => {
     const rows = lineageRows([session(1), session(2, 1), session(3, 2), session(4, 2), session(5, 1), session(6, 5), session(7), session(8, 7)]);
     expect(rows.map(({ session: item, ...geometry }) => ({ id: item.id, ...geometry }))).toEqual([

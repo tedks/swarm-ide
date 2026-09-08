@@ -215,6 +215,8 @@
       "core/agents/trusted-local-session.ts",
       "core/external-agents.ts",
       "core/external-agents-send.ts",
+      "protocol/external-agents.ts",
+      "app/renderer/external-agents/ExternalAgents.tsx",
       "BUILD.bazel"
     ],
     "taskIds": [],
@@ -255,6 +257,14 @@
               "label": "//:quality_sources",
               "relation": "data"
             }
+          ]
+        },
+        {
+          "label": "//tools/demo-agents:unit",
+          "role": "Registered fleet creation ordering, deep lineage and observer checks",
+          "dependencies": [
+            { "label": "//:quality_sources", "relation": "data" },
+            { "label": "//tools/demo-agents:sources", "relation": "data" }
           ]
         }
       ]

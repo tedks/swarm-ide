@@ -14,6 +14,7 @@ const HEADER = 65536, TAIL = 262144, MAX_ENTRIES = 120;
 const HISTORY_ENTRIES = 16;
 const fileVersion = (stat: Stats) => `${stat.dev}:${stat.ino}:${stat.size}:${stat.mtimeMs}:${stat.ctimeMs}:${stat.mode}:${stat.uid}`;
 const Meta = z.object({ type: z.literal("session_meta"), payload: z.object({ id: ExternalSessionId,
+  timestamp: z.string().datetime({ offset: true }).optional().catch(undefined),
   forked_from_id: ExternalSessionId.nullable().optional() }) });
 const safe = (text: string, size = 4096) => (text.length > size ? text.slice(0, size - 16) + " … [truncated]" : text).replace(/[\p{Cf}\p{Cc}]/gu,
   (c) => c === "\n" || c === "\t" ? c : "�");
@@ -94,6 +95,7 @@ export class ExternalAgentService {
       const meta = Meta.parse(JSON.parse(header.subarray(0, newline).toString("utf8")));
       if (meta.payload.id !== row.id) throw new Error("Wrong registered session");
       summary.parentId = meta.payload.forked_from_id ?? null;
+      summary.createdAt = meta.payload.timestamp;
       summary.status = "observed"; summary.ancestry = summary.parentId ? "unknown-parent" : "root";
       summary.observationId = createHash("sha256").update(`${stat.dev}:${stat.ino}:${header.subarray(0, newline).toString("utf8")}`).digest("hex");
       summary.message = "Registered session";
