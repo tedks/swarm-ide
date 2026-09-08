@@ -104,11 +104,33 @@ async function main() {
   assert.equal((await row()).text, text); assert.equal(sends.length, 1);
   await click(".conversation-outgoing button[aria-label='Copy message']");
   await until(() => clipboard.readText() === text, "exact native clipboard text");
+  stage = "checked terminal disclosure";
+  await click(".conversation-heading button:last-child");
+  await until(() => run(() => !!document.querySelector(".external-terminal summary")), "checked terminal commands");
+  await click(".external-terminal summary");
+  await until(() => run(() => document.querySelector(".external-terminal")?.open === true), "native disclosure opening");
+  assert.equal(await run(() => document.querySelector(".external-terminal summary").textContent), "Open in terminal");
+  const terminal = [];
+  for (const kind of ["attach", "switch"]) {
+    const block = `[aria-label='${kind === "attach" ? "Attach" : "Switch"} terminal command']`;
+    const value = await run((s) => {
+      const e = document.querySelector(s), style = getComputedStyle(e);
+      return { text: e.textContent, wraps: style.whiteSpace === "pre-wrap", fits: e.clientWidth > 0 && e.scrollWidth <= e.clientWidth + 1 };
+    }, block);
+    assert(value.text && value.wraps && value.fits);
+    await click(`[aria-label='Copy ${kind} command']`);
+    await until(() => clipboard.readText() === value.text, `exact checked ${kind} clipboard`);
+    wc.sendInputEvent({ type: "keyDown", keyCode: "Tab" });
+    wc.sendInputEvent({ type: "keyUp", keyCode: "Tab" });
+    await until(() => run((s, expected) => document.activeElement === document.querySelector(s) &&
+      window.getSelection()?.toString() === expected, block, value.text), `native ${kind} command selection`);
+    terminal.push({ kind, wraps: value.wraps, fits: value.fits, exactClipboard: true, keyboardSelected: true });
+  }
   assert.deepEqual(errors, []);
   await fs.writeFile(path.join(evidence, "saved-after-reload.json"), JSON.stringify(await run(() => JSON.parse(localStorage.getItem("swarm.message-outbox.v1"))), null, 2));
   await fs.writeFile(path.join(evidence, "proof.json"), JSON.stringify({ elapsedMs: Date.now() - started, sends: sends.length,
     controlledTransport: true, realModelTurns: 0, savedBeforeReceipt: true, pendingFocus, arrow,
-    typedNextWithoutClick: true, reloaded: true, exactClipboard: true, errors }, null, 2));
+    typedNextWithoutClick: true, reloaded: true, exactClipboard: true, terminal, errors }, null, 2));
   await until(() => fs.access(path.join(evidence, "close-request")).then(() => true, () => false), "close request"); win.close();
 }
 main().catch(async (error) => { await fs.writeFile(path.join(evidence, "failure.json"), JSON.stringify({ stage, message: error.stack, errors, sends: sends.length }, null, 2)); app.exit(1); });

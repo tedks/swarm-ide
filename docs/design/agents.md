@@ -62,6 +62,11 @@ launches nothing. Official app-server `turn/steer` requires the running owner an
 its active turn ID. The inspected installation has no running default app-server
 control socket; creating another server/resume is not a supported shortcut for
 steering that existing TUI. The checked tmux command is the immediate manual route.
+Agent Context shows those exact attach/switch commands in wrapping, selectable
+blocks with individual Copy buttons. The heading omits raw tmux window/pane IDs;
+commands are neither reconstructed nor renamed. The existing checked-available
+target gate still controls their visibility, and clipboard failure leaves the
+full command available for manual copying.
 
 Both registered-session and native Codex message boxes use `use-chat-submit.ts`:
 Enter submits their existing form, Shift-Enter inserts a newline, and composition
