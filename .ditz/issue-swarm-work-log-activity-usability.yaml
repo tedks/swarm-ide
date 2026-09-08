@@ -50,5 +50,13 @@ log_events:
   comment: Cockpit-requested one-line test continuation3afbf38 updates Activity button
     name; no production change. Requires joined PR107 outer heading, prior UI/native
     evidence unchanged.
+- time: 2026-09-08T14:01:14-00:00
+  who: Ted Smith
+  what: commented
+  comment: Direct-user narrow continuation e76f0fa removes only Directory Context
+    Evidence/Repository reader disclosure. Counts, current/retained status, notices,
+    other evidence and backend provenance preserved.8 focused Context cases and Back
+    assertion pass; unrelated5 draft-entrypoint setup failures recorded separately.
+    No App/provider/schema edit or GUI sweep.
 blocks:
 - swarm-usability-join
