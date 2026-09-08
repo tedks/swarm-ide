@@ -1,0 +1,20 @@
+id: swarm-selected-worktree-agent-launch
+title: Prepare new native agent runs in the selected worktree
+desc: PR128 makes registered same-repository worktrees ordinary editable workspaces
+  while keeping existing agent observation and steering shared. Fresh agent preparation
+  outside the launch context is deliberately unavailable, not silently routed to the
+  wrong root. Follow up with explicit run ownership/store/context for the selected
+  worktree; preserve original runs and draft authority.
+type: feature
+component: default
+release:
+reporter: Ted Smith <tedks@riseup.net>
+status: unstarted
+disposition:
+creation_time: 2026-09-08T18:58:20-00:00
+references: []
+log_events:
+- time: 2026-09-08T18:58:20-00:00
+  who: Ted Smith
+  what: created
+  comment: ""
