@@ -15,6 +15,8 @@ const archive = join(scratch, "app"), root = join(scratch, "repo"), profile = jo
 await mkdir(archive); await mkdir(root); await mkdir(profile);
 await writeFile(join(root, "README.md"), "# Read-only real swarm observation\n");
 execFileSync("git", ["init", "-q", root]);
+execFileSync("git", ["-C", root, "add", "README.md"]);
+execFileSync("git", ["-C", root, "-c", "user.name=Fleet proof", "-c", "user.email=proof@example.invalid", "commit", "-qm", "Owned fleet viewer workspace"]);
 const runfiles = process.env.TEST_SRCDIR || process.env.RUNFILES_DIR;
 const bundle = runfiles ? join(runfiles, "_main/swarm-ide-foundation.tar.gz") : join(process.cwd(), "bazel-bin/swarm-ide-foundation.tar.gz");
 execFileSync("tar", ["-xzf", bundle, "-C", archive], { timeout: 30000 });

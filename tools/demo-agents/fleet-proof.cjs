@@ -27,8 +27,13 @@ async function main() {
   const shown = await run(() => [...document.querySelectorAll(".observed-activity [data-event]")].map((row) => ({ sessionId: row.dataset.session, eventId: row.dataset.event, text: row.textContent })));
   assert(shown.every((row) => fleet.find((d) => d.session.id === row.sessionId)), "UI rows belong to real registered sessions");
   assert.deepEqual(errors, []);
+  await run(() => document.querySelector(".observed-activity").scrollIntoView({ block: "nearest" }));
   await fs.writeFile(path.join(evidence, "fleet-proof.json"), JSON.stringify({ real: true, modelTurns: 0, root: root.session.id, workers: children.map((d) => ({ id: d.session.id, worktree: d.session.worktree, entries: d.entries.length })), visibleEvents: shown, rendererErrors: errors }));
   await until(() => fs.access(path.join(evidence, "close-request")).then(() => true, () => false), "capture");
   app.quit();
 }
-main().catch(async (error) => { await fs.writeFile(path.join(evidence, "failure.json"), JSON.stringify({ message: error.stack, errors })); app.exit(1); });
+main().catch(async (error) => {
+  const win = BrowserWindow.getAllWindows()[0];
+  if (win && !win.isDestroyed()) await fs.writeFile(path.join(evidence, "failure.png"), (await win.capturePage()).toPNG());
+  await fs.writeFile(path.join(evidence, "failure.json"), JSON.stringify({ message: error.stack, errors })); app.exit(1);
+});
