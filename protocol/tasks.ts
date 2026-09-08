@@ -3,7 +3,7 @@ import { PROTOCOL_VERSION } from "./common";
 
 /** Prototype ceilings, not a claim to index arbitrarily large repositories. */
 export const TASK_LIMITS = {
-  issues: 256, blobBytes: 64 * 1024, inputBytes: 16 * 1024 * 1024,
+  blobBytes: 64 * 1024, inputBytes: 16 * 1024 * 1024,
   cacheBytes: 16 * 1024 * 1024, depth: 16, nodes: 8192,
   idBytes: 256, componentBytes: 256, titleBytes: 512, descriptionBytes: 16 * 1024,
   dependencies: 32, fileRefs: 32, pathBytes: 1024, noteBytes: 512,
@@ -105,7 +105,7 @@ export const TaskBacklinkTargetSchema = z.object({ ...world, metadataCommit: Git
 export type TaskBacklinkTarget = z.infer<typeof TaskBacklinkTargetSchema>;
 export const TaskSnapshotSchema = z.object({
   ...world, metadataCommit: GitObjectIdSchema, observedAt: date,
-  summaries: z.array(TaskSummarySchema).max(TASK_LIMITS.issues),
+  summaries: z.array(TaskSummarySchema),
   backlinks: TaskBacklinksSchema.optional(),
 }).strict().superRefine((snapshot, ctx) => {
   if (new Set(snapshot.summaries.map((item) => item.id)).size !== snapshot.summaries.length)

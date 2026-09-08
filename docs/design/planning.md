@@ -49,6 +49,13 @@ can start at most one full read; a further change catches up on the next check.
 An unchanged failed revision is not repeatedly scanned. Manual Refresh remains
 recovery, including when the initial read never produced a usable list.
 
+The complete task list has no arbitrary issue-count cap. Reader and response
+capacity is bounded by bytes, deadlines and validated data shape instead;
+closed issues are not discarded to fit. Git batch framing scales with the
+entries in the byte-bounded metadata tree. Oversized or malformed updates still
+retain the last good revision. Task graphs and backlink projections keep their
+separate, explicitly reported display/projection bounds.
+
 Missing relationships and partial coverage must not turn into fabricated “ready”
 tasks. Updating the list does not silently retarget a revision-pinned detail or
 draft: the operator deliberately selects, reattaches and prepares again to use

@@ -117,13 +117,19 @@ describe("read-only pinned local Git task transport", () => {
     }
   });
 
-  it("rejects oversize blobs and issue rosters without partial output", async () => {
+  it("rejects oversize blobs without partial output", async () => {
     const f = await fixture();
     await writeFile(join(f.root, ".ditz/issue-whole-id.yaml"), Buffer.alloc(TASK_LIMITS.blobBytes + 1));
     await expect(f.reader.scan(f.commit(), signal(), deadline())).rejects.toMatchObject({ code: "TASK_LIMIT_EXCEEDED" });
-    await writeFile(join(f.root, ".ditz/issue-whole-id.yaml"), "id: whole-id\n");
-    for (let i = 0; i < TASK_LIMITS.issues; i++) await writeFile(join(f.root, `.ditz/issue-${i}.yaml`), `id: '${i}'\n`);
-    await expect(f.reader.scan(f.commit(), signal(), deadline())).rejects.toMatchObject({ code: "TASK_LIMIT_EXCEEDED" });
+  });
+
+  it("reads more than 256 issues even when Git batch headers exceed the old 32-KiB allowance", async () => {
+    const f = await fixture();
+    for (let i = 0; i < 700; i++) await writeFile(join(f.root, `.ditz/issue-${i}.yaml`), `id: '${i}'\n`);
+    const rows = await f.reader.scan(f.commit(), signal(), deadline());
+    expect(rows).toHaveLength(702); // 700 new issues, the original issue and project.
+    expect(rows.reduce((sum, row) => sum + Buffer.byteLength(`${row.blob.hex} blob ${row.bytes.length}\n`), 0)).toBeGreaterThan(32 * 1024);
+    expect(rows.find((row) => row.id === "699")?.bytes.toString()).toBe("id: '699'\n");
   });
 
   it("detects corrupted object bytes rather than trusting the object filename", async () => {

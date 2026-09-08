@@ -93,10 +93,10 @@ describe("task read contract base", () => {
     expect(() => TaskFileRefSchema.parse({ path: "valid", line: null, note: "é".repeat(257), navigation: "candidate" })).toThrow();
     expect(TaskDetailSchema.parse({ ...detail, title: "é".repeat(256) }).title).toHaveLength(256);
   });
-  it("enforces count and whole JSON response limits without shortening content", () => {
+  it("accepts more than 256 summaries while enforcing field and whole JSON response limits", () => {
     const observation = taskObservationFixture();
-    observation.snapshot!.summaries = Array.from({ length: TASK_LIMITS.issues + 1 }, (_, i) => ({ ...observation.snapshot!.summaries[0]!, id: `task-${i}` }));
-    expect(() => TaskObservationSchema.parse(observation)).toThrow();
+    observation.snapshot!.summaries = Array.from({ length: 700 }, (_, i) => ({ ...observation.snapshot!.summaries[0]!, id: `task-${i}` }));
+    expect(TaskObservationSchema.parse(observation).snapshot!.summaries).toHaveLength(700);
     const detail = taskDetailFixture();
     expect(() => TaskDetailSchema.parse({ ...detail, counts: { ...detail.counts, blocks: 0 } })).toThrow();
     expect(() => TaskDetailSchema.parse({ ...detail, fileRefs: Array(33).fill(detail.fileRefs[0]) })).toThrow();

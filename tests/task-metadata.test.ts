@@ -32,6 +32,13 @@ afterEach(() => {
 });
 
 describe("bounded real YAML task metadata worker", () => {
+  it("parses more than 256 small issues without dropping closed tasks", async () => {
+    const rows = [entry(null, stringify(project)), ...Array.from({ length: 300 }, (_, i) =>
+      entry(`task-${i}`, stringify(issue(`task-${i}`, { status: i % 2 ? "closed" : "unstarted" }))))];
+    const details = await parse(rows);
+    expect(details).toHaveLength(300);
+    expect(details.filter((detail) => detail.status === "closed")).toHaveLength(150);
+  });
   it("projects the actual fields only, treats absent arrays as empty, and awaits the single worker exit", async () => {
     const details = await parse(input(stringify(issue("alpha", { references: ["src/secret.ts"], people: ["ignored"], log_events: [] }))));
     expect(details).toHaveLength(1);
@@ -92,6 +99,33 @@ describe("bounded real YAML task metadata worker", () => {
   it("marks a self dependency cyclic without inferring task readiness", async () => {
     const [detail] = await parse(input(stringify(issue("alpha", { blocked_by: ["alpha"] }))));
     expect(detail!.blockedBy[0]).toEqual({ taskId: "alpha", status: "unstarted", diagnostics: ["cyclic", "asymmetric"] });
+  });
+
+  it("preserves cycle diagnostics across a large ring with cross-edges and both recorded directions", async () => {
+    const count = 400, name = (i: number) => `task-${(i + count) % count}`;
+    const values = [entry(null, stringify(project)), ...Array.from({ length: count }, (_, i) =>
+      entry(name(i), stringify(issue(name(i), { blocks: [name(i + 1), name(i + 7)],
+        blocked_by: [name(i - 1), name(i - 7)] }))))];
+    const details = await parse(values);
+    expect(details).toHaveLength(count);
+    expect(details.every((detail) => [...detail.blocks, ...detail.blockedBy].every((dependency) =>
+      dependency.diagnostics.length === 1 && dependency.diagnostics[0] === "cyclic"))).toBe(true);
+  });
+
+  it("checks the deadline during post-worker projection rather than only after the whole graph", async () => {
+    const values = [entry(null, stringify(project)), ...Array.from({ length: 40 }, (_, i) =>
+      entry(`task-${i}`, stringify(issue(`task-${i}`, { blocks: [`task-${(i + 1) % 40}`] }))))];
+    const limit = Date.now() + 10_000;
+    const task = parseTaskMetadata(values, new AbortController().signal, limit);
+    let checks = 0;
+    workerEvidence.workers.at(-1)!.once("exit", () => {
+      // Real YAML worker already exited; deterministically expire during the
+      // remaining synchronous validation/graph phase, not worker scheduling.
+      vi.spyOn(Date, "now").mockImplementation(() => ++checks >= 10 ? limit : limit - 1);
+    });
+    try { await expect(task).rejects.toMatchObject({ code: "TASK_OBSERVATION_FAILED" }); }
+    finally { vi.restoreAllMocks(); }
+    expect(checks).toBe(10);
   });
   it.each([
     "title: replacement\n", "extra: &a {hello: world}\nother: *a\n", "extra: !!str value\n",

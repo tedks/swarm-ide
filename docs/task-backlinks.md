@@ -68,7 +68,7 @@ text/path limits remain raw UTF-8 string-byte limits, not character counts.
 
 | Boundary | Q4 decision |
 | --- | --- |
-| Existing reader/detail capacity | Unchanged: 256 issues, 32 refs each, 1,024-byte paths, 64 KiB detail-result envelope, 16 MiB normalized base cache. No truncation. |
+| Existing reader/detail capacity | No fixed issue-count cap; 32 refs each, 1,024-byte paths, 64 KiB detail-result envelope, 16 MiB normalized base cache. No truncation. The bounded backlink projection may be unavailable without discarding task summaries. |
 | Projection | At most 8,192 entries and **256 KiB** for the entire `backlinks` value. The byte limit will normally bind first. |
 | Original task payload | Strip only `snapshot.backlinks` and enforce the existing **512 KiB** snapshot/observation/result budget, including worst-case retained failure reason and sequence. Do not take backlink bytes out of existing task capacity. |
 | Augmented payload | Snapshot, observation and **whole `TaskResult`** each at most **784 KiB**: 512 KiB base + 256 KiB projection + 16 KiB explicit structural reserve. Provider preflights the full retained-failure envelope with maximum sequence width, 512-byte reason, dates and registered identities. Receiver independently validates actual bytes. |

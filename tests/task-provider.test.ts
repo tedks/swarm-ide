@@ -41,6 +41,20 @@ afterEach(async () => {
 });
 
 describe("real pinned Ditz provider", () => {
+  it("publishes a complete byte-bounded backlog beyond 256 issues and retains it on malformed replacement", async () => {
+    const root = await repo();
+    const files = Object.fromEntries(Array.from({ length: 700 }, (_, i) =>
+      [`issue-task-${i}.yaml`, issue(`task-${i}`, `Task ${i}`)]));
+    const first = await commit(root, files), item = await provider(root);
+    const observed = await item.snapshot({ refresh: true });
+    expect(observed).toMatchObject({ status: "observed", snapshot: { metadataCommit: first } });
+    expect(observed.snapshot!.summaries).toHaveLength(700);
+    expect(await item.read({ metadataCommit: first, taskId: "task-699" })).toMatchObject({ result: { ok: true, detail: { title: "Task 699" } } });
+    await commit(root, { "issue-task-699.yaml": "id: duplicate\nid: malformed\n" });
+    const failed = await item.snapshot({ refresh: true });
+    expect(failed).toMatchObject({ status: "malformed", snapshot: { metadataCommit: first } });
+    expect(failed.snapshot!.summaries).toHaveLength(700);
+  });
   it("publishes never-read explicit references with duplicate ordinals in the full observation", async () => {
     const root = await repo();
     await commit(root, { "issue-first.yaml": issue() + "file_refs:\n- {path: core/files.ts, line: null, note: null}\n- {path: core/files.ts, line: null, note: null}\n- {path: ../unsupported.ts, line: null, note: null}\n" });

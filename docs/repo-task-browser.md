@@ -23,8 +23,9 @@ the failure reason. The same failed revision is not repeatedly parsed: a differe
 ref or **Refresh tasks** can try again. If the initial read fails before any usable
 list exists, manual Refresh (or core reconnection) remains the recovery path.
 No metadata
-branch means unavailable, not an empty backlog. This prototype supports at most
-256 issues and the bounds in `docs/repo-task-surface.md`.
+branch means unavailable, not an empty backlog. There is no fixed issue-count
+cap: the complete list must fit the byte, time and data-shape bounds in
+`docs/repo-task-surface.md`. Closed tasks remain part of that complete observation.
 
 Automatic list updates do not rewrite a task opened from a revision-pinned graph
 or file backlink, or a task already attached to an agent draft. Those keep the
