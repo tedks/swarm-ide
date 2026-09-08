@@ -13,7 +13,7 @@ The whole index remains limited to 64 KiB and structurally validated.
 ## Progress
 
 - [x] (2026-09-08) Confirm designated clean branch and exact schema cap.
-- [ ] Run actual-index and larger-component regressions against the old cap.
+- [x] (2026-09-08 21:06Z) Baseline: actual-index and 100-target regressions fail; 58 other tests and both type boundaries pass.
 - [ ] Remove only that cap; run focused reader and generation checks.
 - [ ] Obtain native review, push ready PR, update Ditz and hand off to ROOT.
 
@@ -32,7 +32,9 @@ Do not regenerate the plan or alter App, graphs, reader behavior or model contro
 
 ## Outcomes & Retrospective
 
-Pending reproduction and repair. ROOT owns normal PR merge and app adoption.
+The old cap is reproduced through the actual repository reader and synthetic
+schema input: 2 failures / 58 passes. Repair and final review pending. ROOT owns
+normal PR merge and app adoption.
 
 ## Context and Orientation
 
@@ -90,4 +92,5 @@ No new interface or dependency. `PlanIndexSchema` and `readPlanIndex` retain the
 existing types and result states. Existing Bazel data already includes the actual
 plan; no extra build graph mapping is required unless validation disproves that.
 
-Plan created before implementation to capture the narrow repair and red/green gate.
+Plan created before implementation; updated after the recorded two-failure
+baseline to distinguish actual reproduction from the still-pending correction.

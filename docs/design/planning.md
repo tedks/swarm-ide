@@ -19,11 +19,15 @@ Plan relationships are authored in-repo. The core reads a bounded canonical
 index and validates its structure; a reference remains a candidate until its
 target can actually be opened. The accompanying component graph descends to the
 actual source and Bazel boundaries instead of manufacturing a function inventory.
-Component document and implementation lists are bounded by the overall 64 KiB
-index, not an arbitrary per-component reference count. The UI collapses long
-lists and lets the operator expand them. `//tools/living-design:checks`
+Component document, source and build-target lists are bounded by the overall
+64 KiB index, not an arbitrary per-component reference count. Build mappings still
+require strict canonical local labels and unique targets per component. The UI
+collapses long lists and lets the operator expand them. `//tools/living-design:checks`
 reads the actual committed index through the core reader, preserving every source
-link; design edits must pass that inexpensive check before landing.
+and build mapping. For an isolated index edit, run
+`//tools/demo-syntax:editor-tests --test_arg=tests/plans-reader.test.ts` through
+Bazel; both targets track the index through `//:quality_sources`. Design edits
+must pass the actual-index reader regression before landing.
 
 When the core verifies that the index is absent, Components offers **Generate
 component plan**. A missing index is distinct from unreadable, malformed,
