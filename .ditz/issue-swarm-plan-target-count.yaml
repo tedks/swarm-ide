@@ -5,8 +5,8 @@ type: bugfix
 component: default
 release:
 reporter: Ted Smith <tedks@riseup.net>
-status: in_progress
-disposition:
+status: closed
+disposition: fixed
 creation_time: 2026-09-08T20:58:02-00:00
 references: []
 log_events:
@@ -26,3 +26,11 @@ log_events:
     only buildTargets.max(16), retaining current17 mappings and whole64KiB/strict/unique/forest
     guards. PR137 code627f29d pushed; focused reader+generation checks and native
     review underway. No plan content, renderer or app changes.
+- time: 2026-09-08T21:09:02-00:00
+  who: Ted Smith
+  what: 'closed: fixed'
+  comment: 'Implemented PR137: removed only per-component build-target count cap,
+    preserving all current17 mappings. Actual-index and100-target baseline2RED/58PASS,
+    corrected83reader/generation tests+both types PASS; native review CLEAN. Existing
+    plan replacement,64KiB,local label/path/unique/forest controls preserved. ROOT
+    owns normal merge/adoption.'
