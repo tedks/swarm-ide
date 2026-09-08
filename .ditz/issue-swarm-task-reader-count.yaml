@@ -22,3 +22,15 @@ log_events:
   who: Ted Smith
   what: started
   comment: ""
+- time: 2026-09-08T15:10:09-00:00
+  who: Ted Smith
+  what: commented
+  comment: 'Implemented PR116: removed the arbitrary256-issue rejection from Git reader,
+    YAML parser and snapshot schema. Git batch framing now derives from byte-bounded
+    selected tree entries; byte/time/shape/path and retained revision controls remain.
+    Corrected old all-pairs dependency cache to one traversal with deadline checks.
+    Direct current-repo proof on corrected code loaded all266 issues totaling498786
+    bytes, including131 closed, status observed/no error in230ms.700-issue reader/provider/schema
+    and300-issue parser regressions pass; final238 focused tests/seven files plus
+    both types PASS17.061s, native fix-delta CLEAN. No further malformed field limit
+    found, GUI/model/shared app changes. Keep in progress until ROOT normal merge/adoption.'
