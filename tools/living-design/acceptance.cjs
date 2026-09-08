@@ -51,7 +51,10 @@ async function main() {
     button.focus();
     if (document.activeElement !== button || button.disabled) throw new Error("Repository outline button did not receive focus");
   });
-  wc.sendInputEvent({ type: "keyDown", keyCode: "Return" }); wc.sendInputEvent({ type: "keyUp", keyCode: "Return" });
+  wc.sendInputEvent({ type: "keyDown", keyCode: "Enter" });
+  wc.sendInputEvent({ type: "char", keyCode: "\r" });
+  wc.sendInputEvent({ type: "keyUp", keyCode: "Enter" });
+  await until(() => text(".plan-selection-title strong").then((s) => s === "Repository, build & context"), "repository selected by keyboard");
   await click(".planning-tabs button", "System design");
   await until(() => text(".design-prose").then((s) => s.includes("Bazel graph uses an actual per-repository query")), "shared repository component selection");
   await click(".design-implementation button", "Show all 20 source files");
