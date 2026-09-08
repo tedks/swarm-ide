@@ -31,6 +31,9 @@ The renderer owns presentation and gestures, not filesystem or process access.
 See [runtime](runtime.md) for the bridge and [repository](repository.md) for
 the data supplying graphs and context.
 
+See [agent locations on graphs](graph-agent-locations.md) for observed-path coverage,
+execution versus last-touch semantics and the current native-run location limit.
+
 ## Build connections
 
 All files above are inputs to `//:quality_sources` in

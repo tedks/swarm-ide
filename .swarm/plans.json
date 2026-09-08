@@ -33,7 +33,8 @@
     "title": "Cockpit, focus & source",
     "parentId": "design:system",
     "docs": [
-      "docs/design/cockpit.md"
+      "docs/design/cockpit.md",
+      "docs/design/graph-agent-locations.md"
     ],
     "sourcePaths": [
       "app/renderer/App.tsx",
@@ -113,6 +114,14 @@
           "dependencies": [
             { "label": "//:quality_sources", "relation": "data" },
             { "label": "//tools/operator-cockpit:sources", "relation": "data" }
+          ]
+        },
+        {
+          "label": "//tools/live-sprites:checks",
+          "role": "Checks exact-worktree agent locations, gestures and stable graph overlays",
+          "dependencies": [
+            { "label": "//:quality_sources", "relation": "data" },
+            { "label": "//tools/live-sprites:sources", "relation": "data" }
           ]
         }
       ]

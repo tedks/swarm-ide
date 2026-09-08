@@ -11,8 +11,11 @@ An operator looking at a repository, build target, service or component should s
 - [x] (2026-09-08) Inspected existing observations and graph consumers; dependencies materialized.
 - [x] Add exact-worktree observation and membership mapping, independent clickable overlay.
 - [x] Connect repository, build, service and component consumers without new polling.
-- [ ] Focused local tests/types, native review and one owned GUI proof.
-- [ ] Update living design, push ready PR and Ditz accomplishment handoff.
+- [x] Focused local tests/types: 33 direct/existing tests plus one fresh-window mounted test passed; native runtime convergence clean.
+- [x] One owned GUI execution displayed real registered locations and selected the exact conversation while retaining the local editor and graph cameras, with zero renderer errors. Scenario did not pass: the intentionally dirty editor vetoed normal quit. Cleanup confirmed.
+- [ ] Corrected visible-pointer/undo-before-close driver is reviewed and syntax-checked but requires separately authorized GUI execution; issue swarm-live-sprite-pointer-proof tracks this.
+- [x] Living design and actual source/Bazel mapping updated; PR136 implementation pushed.
+- [ ] Final ready push, Ditz sync and executive handoff.
 
 ## Surprises & Discoveries
 
@@ -28,7 +31,9 @@ Use a React context overlay inside graph nodes so transcript changes do not alte
 
 ## Outcomes & Retrospective
 
-Implementation and proof pending. Native runs whose observations contain no file location are deliberately unplaced, not assigned guessed nodes.
+The real registered fleet is connected to repository, build, declared service and authored component graph overlays. Native runs whose observations contain no file location are deliberately unplaced, not assigned guessed nodes; issue `swarm-native-graph-locations` tracks the necessary structured producer addition.
+
+Direct tests cover the requested negative worktree/status and interaction boundaries. The one actual packaged run rendered this session's real `docs/design/graph-agent-locations.md` event on the cockpit component and docs directory, then opened the exact conversation while retaining a deliberately dirty README buffer and graph cameras. It recorded zero renderer errors and owned cleanup, but not a green scenario: ordinary quit was vetoed by the dirty buffer. The driver now undoes only its own edit before close and requires a visible unobscured native pointer hit. Those corrections have not had a second GUI run because the assignment allowed at most one. ROOT receives this explicit boundary, not a clean-close or native-pointer overclaim.
 
 ## Context and Orientation
 
@@ -41,6 +46,8 @@ First implement pure observation/path and membership helpers plus accessible rob
 ## Concrete Steps
 
 In `/home/tedks/Projects/swarm-ide/live-graph-agents`, use `nix develop --command bazel test --jobs=3 //tools/live-sprites:checks`, then `nix develop --command bazel build --jobs=3 //:desktop-bundle`. Test scripts are Bazel-owned and run the relevant Vitest files and both TypeScript boundaries. Add the owned GUI target in that package after the direct behavior is stable.
+
+Actual final direct gate: `nix develop --command bazel --output_base=/tmp/swarm-ide-live-sprites.UQXd9n/bazel test --jobs=3 //tools/live-sprites:checks` passed in 16.0 seconds. The second Vitest invocation intentionally selects only the new startup case (seven unrelated workspace cases unselected), not a full navigation-suite claim. Desktop bundle passed. The single `//tools/live-sprites:smoke` execution and original negative close result remain under the step's `gui/` directory.
 
 ## Validation and Acceptance
 
