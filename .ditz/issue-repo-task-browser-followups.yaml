@@ -1,9 +1,11 @@
 id: repo-task-browser-followups
 title: Tidy post-integration task browser documentation
-desc: 'Native T3 council nit: core/tasks/provider.ts constructor comment still describes
-  unavailable-era default although T3 now composes real tasks. Comment-only cleanup
-  deferred because reader implementation file outside this narrow lease; product composition
-  and tests explicit. No parser/limits/agent changes implied.'
+desc: 'The native T3 council found a documentation nit: the constructor comment in
+  core/tasks/provider.ts still describes the old default where tasks were unavailable,
+  although T3 now connects real tasks. The comment-only cleanup was deferred because
+  the reader implementation file was outside this task''s narrow edit scope. The product
+  composition and tests already make the behavior explicit. This does not call for
+  parser, limits, or agent changes.'
 type: task
 component: default
 release:
@@ -20,6 +22,10 @@ log_events:
 - time: 2026-09-06T15:30:08-00:00
   who: Ted Smith
   what: blocks repo-task-surface
+  comment: ""
+- time: 2026-09-08T04:30:41-00:00
+  who: Ted Smith
+  what: updated description
   comment: ""
 blocks:
 - repo-task-surface
