@@ -3,8 +3,10 @@
 This is the supported **Linux/Nix source-checkout path**, not a standalone
 downloadable application. Start with Swarm's own repository to see its checked-in
 plans, tasks, service example and recorded logical-change story. Then follow the
-[connected walkthrough](demo.md). No model account is needed for that tour;
-managed agent launch is not enabled.
+[connected walkthrough](demo.md). No model account is needed for its browsing,
+preparation and recorded-Activity path. Optional **Codex · trusted local** launch
+uses an existing installed account; the isolated read-only profile remains
+unavailable.
 
 ## Before you start
 
@@ -58,6 +60,25 @@ Follow the [tour](demo.md) for plans, graph relationships, task context and
 Activity. External agent observations are optional and require deliberate private
 registration; an empty observer is not a broken installation.
 
+### Optional accounts: execution and GitHub PRs
+
+Neither account is installed by the quick start. To run an agent, make your
+normally configured/authenticated Codex available in the IDE launch PATH (or set
+the documented `SWARM_CODEX_BIN` executable path). Open a source-file agent draft,
+optionally attach a task, and use **Prepare trusted-local context → review exact
+prompt → permission confirmation → Launch trusted-local Codex**. It inherits
+normal configuration, tools and approvals; no account is copied or additional
+autonomy enabled. One conversation per core, without IDE restoration across core
+restart. See [execution and limitations](trusted-local-execution.md).
+
+To inspect PRs, make ordinary `gh` available in the same launch environment and
+authenticate normally with `gh auth login`. In **Recent Activity → Activity log →
+Pull requests**, choose **Refresh PRs**. The opened checkout needs a supported
+github.com origin; this is a bounded explicit read, not a background GitHub or CI
+sync. See [PR scope and custom-XDG configuration](logical-changelog.md#github-pull-requests).
+Do not paste account files or tokens into the IDE. Recorded summaries do not
+require GitHub authentication and are not generated live when you open them.
+
 `55173` is an example free loopback port, not a reserved service. Set another
 unused decimal integer in `1..65535` if necessary. The default when omitted is
 `5173`. Swarm fails on an occupied port instead of killing its owner or quietly
@@ -87,8 +108,9 @@ Bazel declaration query with its own supported-root and runtime limits.
 
 Use repositories whose tooling you trust. Opening an external target does not
 automatically run its topology build. **Build** explicitly executes build tooling;
-opening **Build graph** or enabling **Build links** requests a query that evaluates
-repository-controlled Bazel definitions. Those operations are not an untrusted
+opening **Build graph**, enabling **Build links**, or inspecting a file's Context
+build targets requests an observation that can query repository-controlled Bazel
+definitions. Those operations are not an untrusted
 code sandbox. A successful query is not evidence of successful compilation.
 
 ## Tasks and metadata
@@ -137,7 +159,10 @@ Do not kill all Electron/Bazel processes or delete global caches to stop one dem
 | No display / sandbox or namespace denial | Run on the supported logged-in Linux/X11 host; report the exact host error instead of disabling safety controls. Headless verification below needs no physical desktop. |
 | Empty or unavailable Tasks | Check the local metadata branch in the selected repo, then Refresh tasks. Do not infer that there is no work. |
 | Build/service evidence unavailable or retained | Check its scope and diagnostic; use deliberate refresh/build only for trusted repos. Swarm's service example is not a universal detector. |
-| No external agents / managed launch unavailable | Expected without explicit observer registration / effective provider policy. See [external observations](demo-agents.md); no credential setup is needed for the basic tour. |
+| No external agents | Register known sessions deliberately; [external observations](demo-agents.md) are read-only, not managed launches. |
+| Trusted-local launch unavailable | Check installed Codex in the launch PATH, its normal account/configuration and the reported ownership-tool error. Prepare from a source-file draft, review and explicitly confirm. See [execution](trusted-local-execution.md); do not bypass host controls. |
+| Launch read-only run disabled | This is the separate isolated profile's unverified policy gate, not trusted-local availability. |
+| GitHub PRs unavailable | Check the opened checkout's github.com origin and normal `gh` login/configuration, then explicitly Refresh PRs. See [PR limits](logical-changelog.md#github-pull-requests). |
 
 When reporting an installation failure, include the command, short `git rev-parse
 --short HEAD`, host architecture and relevant terminal error, with private paths

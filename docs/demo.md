@@ -35,9 +35,17 @@ Expand **Tasks** and **Refresh tasks** if needed. From the component, activate
 show design, common contract, core, UI and integration as separate records.
 To find them in the rail, select **All** and search the full ID.
 
-**Show task document** reads the task in the main area. **Plan → Task blockage →
+Clicking a task title or task-graph node opens its document in the main area;
+**Show task document** also returns to it from Context. Context shows actual issue
+metadata, recorded updates, **Blocked by** / **Blocking**, explicit source links
+and only explicitly associated agent evidence. It does not include the separate
+trusted-local conversation. See [task workspace](task-workspace.md).
+
+**Plan → Task blockage →
 Load dependency graph** shows recorded dependencies, separately from plan
-containment. Read its coverage counter: it loads at most 64 details, and
+containment. The initial overview shows 16 tasks; **Focus selected task** narrows
+to direct neighbors and **Whole projection** shows the loaded projection.
+Read its coverage counter: it loads at most 64 details, and
 missing/unread edges are not inferred. The rail's search does not filter the
 graph. This is recorded work, not a scheduler or readiness score.
 
@@ -54,6 +62,15 @@ on demand; **Refresh build graph** deliberately resamples. Directory **Build
 links** connects observed source membership to targets. A fresh declaration
 query is not a successful binary build. Missing or retained evidence stays
 labelled; see [coverage and limits](dynamic-build-graph.md).
+
+File Context also observes direct and indirect target membership on demand,
+without forcing a fresh query every time. **Context · Global** separates working,
+built and deployed observations. For the metrics demo, open
+`examples/checkout-world/services/fraudcheck/fraudcheck.ts`: its declared target
+can associate an **Illustrative** latency table. **Builds & resources → Example
+profile** shows example CPU/memory distributions. These are authored values, not
+production telemetry; no deployed-file mapping is invented. See
+[associations and scope](context-metrics-demo.md).
 
 Return to `core/tasks/draft-context.ts`. Choose **Ctrl-K → Ask an agent about
 this focus** and enter:
@@ -77,14 +94,32 @@ Git/YAML materialization and disk reads. Task metadata and working source remain
 separate. A blank historical description remains blank; no agent report is
 silently substituted for it.
 
-Preparation does **not** run a model. **Launch read-only run** remains disabled
-under the current unverified effective-policy gate. Linked designs are not
+Preparation does **not** run a model. **Launch read-only run** belongs to the
+isolated profile and remains disabled under its unverified effective-policy gate.
+Linked designs are not
 automatically included: inspect the exact submitted prompt. If source or task
 metadata changes, refresh, explicitly reattach when needed, and prepare again.
 
+### Optional: actually run Codex
+
+With your normally configured and authenticated Codex installed in the IDE's
+launch PATH, use the separate **Codex · trusted local** section in the dock.
+Choose **Prepare trusted-local context** for the same fixed-source draft and
+attached task, inspect its exact prompt, check **Launch in this workspace with
+normal Codex permissions**, then **Launch trusted-local Codex**. This deliberately
+runs a model using normal configuration, tools and approvals—not extra autonomy
+or a copied account. **Send next turn**, **Steer current turn** and **Stop
+conversation** operate on that conversation.
+
+One trusted conversation is active per core. Renderer refresh can observe it;
+app/core shutdown stops it, and the IDE does not restore it across core restarts
+or add it to task history. Save first to include editor changes. The
+[trusted-local guide](trusted-local-execution.md) covers supported approvals and
+unsupported interactions. Skip this segment to keep the tour model-free.
+
 ## 5. Work → logical outcome, not another wall of logs
 
-In **Recent activity**, open **Logical changes** or one of its entries. The
+Click **Recent Activity** to open **Activity log**, or select one of its entries. The
 expanded entry lives in the main text area: intent, outcome, decision and
 supporting evidence. Swarm includes supervised-agent-generated, **recorded**
 summaries of this same task-context work. They combine Git observations with
@@ -96,6 +131,13 @@ The update loop is currently **export evidence → supervised summarizer →
 validate → Refresh**, not an in-app scheduler.
 [Logical changelog](logical-changelog.md) documents the authoring path.
 
+For actual GitHub state, choose **Pull requests → Refresh PRs** in Activity log.
+This requires installed `gh` with normal authentication and the opened checkout's
+validated github.com origin. It explicitly reads up to 20 PRs across all states;
+file links open current working files, not PR revisions. Failures retain prior
+results as stale. No CI polling, GitHub mutation or guessed task/agent links is
+performed. Skip it if GitHub access is unavailable; recorded Changes still work.
+
 Optional, on an operator-configured installation: **Agent runs → External
 sessions → Refresh external sessions** shows fork ancestry, **Conversation ·
 read-only** and **Worklog**. **Open conversation in tmux** requires a checked live target.
@@ -105,6 +147,7 @@ known registration manually or skip this segment. See
 [external observations](demo-agents.md).
 
 The result is one inspectable story across distinct views—not one universal
-graph. Useful local browsing and preparation work without credentials. Live
-managed execution, automatic task-to-session linking and autonomous
-summarization are not part of this demo.
+graph. Local browsing and preparation need no model account. Trusted-local
+execution is an optional real operation with your installed account; external
+session observation stays read-only. Automatic task-to-session linking and
+autonomous summarization are not implemented.
