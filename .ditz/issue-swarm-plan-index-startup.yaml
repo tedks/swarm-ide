@@ -22,5 +22,13 @@ log_events:
   who: Ted Smith
   what: started
   comment: ""
+- time: 2026-09-08T13:41:07-00:00
+  who: Ted Smith
+  what: commented
+  comment: The actual Swarm plan loads again without dropping any source links. Removed
+    per-component document/source caps in response to user feedback; kept the total
+    file bound. Added real committed-index regression, 300-reference coverage and
+    corrected source-label mapping check. Focused plan checks pass, native scoped
+    review clean. Shared navigation and expandable presentation remain in progress.
 blocks:
 - swarm-usability-join
