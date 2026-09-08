@@ -44,6 +44,12 @@ log_events:
     errors and cleanup complete. PR84 pushed; awaiting ROOT integration/landing. Worktree
     event activation is C7-owned; unsupported wrapper syntax remains a generic tool
     event.
+- time: 2026-09-08T04:07:40-00:00
+  who: Ted Smith
+  what: commented
+  comment: 'Added the C7-requested exact-origin Activity callback seam: onOpen(sessionId),
+    onOpenFile(sessionId,path,patch?), with richer onEntry fallback preserved. Focused
+    97 tests/typechecks and native delta CLEAN; PR84 updated for cockpit integration.'
 blocks:
 - swarm-owner-steering
 - swarm-operator-demo
