@@ -46,6 +46,10 @@ log_events:
   who: Ted Smith
   what: blocks swarm-usability-pass
   comment: ""
+- time: 2026-09-08T13:28:51-00:00
+  who: Ted Smith
+  what: blocked by swarm-message-outbox
+  comment: ""
 blocks:
 - swarm-usability-pass
 blocked_by:
@@ -56,3 +60,4 @@ blocked_by:
 - swarm-plan-index-startup
 - swarm-plan-first-cockpit
 - swarm-continuous-build-context
+- swarm-message-outbox
