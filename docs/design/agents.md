@@ -50,7 +50,8 @@ the agent's message body as marker or bookkeeping data.
 Queue acceptance displays **Sent to queue** with a static submission arrow, not
 an ongoing waiting clock or a delivered checkmark. This is a completed submission,
 not a claim that the message remains queued: the queue receipt identifies a queue
-item, not the separate client ID in a consumed user-message event. A matching text,
+item, while the inspected consumed user-message event exposes a client ID without
+a supported link to that queue receipt. A matching text,
 a later reply, or a missing queue item does not establish receipt. The hover explains
 that the IDE cannot yet confirm when the agent receives it; no permanent warning or
 extra controls are added. A consumed message can therefore appear in the transcript

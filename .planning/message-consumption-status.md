@@ -14,13 +14,14 @@ An operator should not see a permanent waiting indicator after their message has
 - [x] (2026-09-08) Confirm the bounded stopping boundary: the queue receipt exposes a queue item UUID; the user-message event exposes a client UUID and no queue-item link.
 - [x] (2026-09-08 18:10Z) Added regression coverage; baseline has four expected presentation failures and 74 passing checks, both TypeScript boundaries passed.
 - [x] (2026-09-08 18:12Z) Changed only shared outgoing presentation and its design explanation.
-- [ ] Run corrected focused Bazel checks and native review.
+- [x] (2026-09-08 18:14Z) Native review found two old accessible-name expectations; corrected only their labels, retaining exact status/receipt/session/no-replay assertions. Qualified the receipt-boundary explanation to avoid claiming correlation is universally impossible.
+- [ ] Run final frozen focused Bazel checks and native convergence.
 - [ ] Push the reviewed PR, sync accomplishment/follow-up notes and hand back without app adoption.
 
 ## Surprises & Discoveries
 
 
-The existing design already distinguishes queue item IDs from input client IDs. The real supplied user-message record has `client_id` and message/media fields, but no queue item, receipt, submission or session field. Session identity comes from the separately validated rollout header. The current queue command's public help exposes submission, not receipt inspection. A user message at 17:25:19.576Z confirms the reported input reached ROOT, but does not identify which saved queue receipt to update.
+The existing design distinguishes queue item IDs from input client IDs. The real supplied user-message record has `client_id` and message/media fields, but no queue item, receipt, submission or session field. This does not prove the two IDs can never be correlated; it means no supported relationship was found in the inspected records. Session identity comes from the separately validated rollout header. The current queue command's public help exposes submission, not receipt inspection. A user message at 17:25:19.576Z confirms the reported input reached ROOT, but does not identify which saved queue receipt to update.
 
 ## Decision Log
 
