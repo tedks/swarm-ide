@@ -6,6 +6,7 @@ import {
 } from "../../../protocol/work-log";
 import { ActivityTime } from "../ActivityTime";
 import "./work-log.css";
+export type { WorkLogEntry } from "../../../protocol/work-log";
 
 type Action = { type: "workLog.read" | "workLog.stop" }
   | { type: "workLog.start"; settings: WorkLogSettings }
@@ -59,8 +60,9 @@ function useWorkLog(coreGeneration: number) {
   return { snapshot, notice, pending, send: (action: Action) => send.current(action) };
 }
 
-function Outcome({ entry, pending, onRecord, onOpenAgent, onOpenTask }: {
+function Outcome({ entry, pending, onRecord, onOpen, onOpenAgent, onOpenTask }: {
   entry: WorkLogEntry; pending: boolean; onRecord(taskId: string): void;
+  onOpen?(entry: WorkLogEntry): void;
   onOpenAgent?(sessionId: string): void; onOpenTask?(taskId: string): void;
 }) {
   const [taskId, setTaskId] = useState(entry.taskId ?? "");
@@ -72,7 +74,8 @@ function Outcome({ entry, pending, onRecord, onOpenAgent, onOpenTask }: {
       <span className={`work-log-state is-${entry.state}`}>{entry.state === "working" ? "In progress" : "Completed"}</span>
       <ActivityTime at={entry.at} />
     </div>
-    <p className="work-log-outcome">{entry.outcome}</p>
+    {onOpen ? <button className="work-log-outcome work-log-link" onClick={() => onOpen(entry)}>{entry.outcome}</button>
+      : <p className="work-log-outcome">{entry.outcome}</p>}
     {entry.taskId ? onOpenTask
       ? <button className="work-log-link" onClick={() => onOpenTask(entry.taskId!)}>Task · {entry.taskId}</button>
       : <small>Task · {entry.taskId}</small> : null}
@@ -88,7 +91,8 @@ function Outcome({ entry, pending, onRecord, onOpenAgent, onOpenTask }: {
   </li>;
 }
 
-export function WorkLogPanel({ onOpenAgent, onOpenTask, coreGeneration = 0 }: {
+export function WorkLogPanel({ onOpen, onAgent, onTask, onOpenAgent, onOpenTask, coreGeneration = 0 }: {
+  onOpen?(entry: WorkLogEntry): void; onAgent?(sessionId: string): void; onTask?(taskId: string): void;
   onOpenAgent?(sessionId: string): void; onOpenTask?(taskId: string): void; coreGeneration?: number;
 }) {
   const { snapshot, notice, pending, send } = useWorkLog(coreGeneration);
@@ -125,6 +129,25 @@ export function WorkLogPanel({ onOpenAgent, onOpenTask, coreGeneration = 0 }: {
     {snapshot?.notice && !notice ? <p className="work-log-notice" role="status">{snapshot.notice}</p> : null}
     {!entries.length ? <p className="work-log-empty">{snapshot ? "Start to collect what your agents have accomplished." : "Reading Work Log…"}</p> : null}
     <ol className="work-log-entries">{entries.map((entry) => <Outcome key={entry.id} entry={entry} pending={pending}
-      onOpenAgent={onOpenAgent} onOpenTask={onOpenTask} onRecord={(taskId) => send({ type: "workLog.record", entryId: entry.id, taskId })} />)}</ol>
+      onOpen={onOpen} onOpenAgent={onAgent ?? onOpenAgent} onOpenTask={onTask ?? onOpenTask} onRecord={(taskId) => send({ type: "workLog.record", entryId: entry.id, taskId })} />)}</ol>
+  </section>;
+}
+
+/** Pure selected-entry surface for the center pane. It owns no polling or
+ * mutation route; the sidebar remains the one summary/control surface. */
+export function WorkLogEntryDetail({ entry, onAgent, onTask, onClose }: {
+  entry: WorkLogEntry; onAgent?(sessionId: string): void; onTask?(taskId: string): void; onClose?(): void;
+}) {
+  return <section className="work-log-panel work-log-entry-detail" aria-label="Work Log outcome">
+    <header className="work-log-heading"><h2>Work Log</h2>{onClose ? <button onClick={onClose}>Close</button> : null}</header>
+    <div className="work-log-entry-heading">
+      {onAgent ? <button className="work-log-link" onClick={() => onAgent(entry.sessionId)}>{entry.agent}</button> : <strong>{entry.agent}</strong>}
+      <span>{entry.state === "completed" ? "Completed" : "In progress"}</span><ActivityTime at={entry.at} />
+    </div>
+    <p className="work-log-outcome">{entry.outcome}</p>
+    {entry.taskId ? onTask ? <button className="work-log-link" onClick={() => onTask(entry.taskId!)}>Task · {entry.taskId}</button> : <p>Task · {entry.taskId}</p> : null}
+    {([ ["Changed areas", entry.areas], ["Checks", entry.checks], ["Follow-ups", entry.followUps] ] as const).map(([label, items]) =>
+      items.length ? <section key={label}><h3>{label}</h3><ul>{items.map((item, index) => <li key={index}>{item}</li>)}</ul></section> : null)}
+    {entry.recorded ? <p className="work-log-recorded">Recorded in Ditz</p> : null}
   </section>;
 }
