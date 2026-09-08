@@ -11,8 +11,8 @@ Opening Pure Sky must not build Swarm's FraudCheck example. A deliberate Refresh
 - [x] (2026-09-08) Confirmed PR124 merged and no owned work running; preserved its branch and evidence.
 - [x] (2026-09-08) Implemented explicit topology applicability and opt-in query loading/cancellation in PR129.
 - [x] (2026-09-08) Actual Pure Sky query completed in 7338ms, retaining 2000 targets/6385 edges; passive result reused, Git status unchanged, cleanup confirmed. Native convergence CLEAN after two race corrections.
-- [ ] Final corrected focused gate and completion bookkeeping.
-- [ ] Push separate PR, update design and Ditz, clean owned resources.
+- [x] (2026-09-08) Final corrected gate passed 63 tests/6 files and both types in 14.914s. Normal reviewed worktree-navigation join passed the same 63 plus 29 workspace-core tests and both types in 15.310s; native join CLEAN.
+- [x] (2026-09-08) Ditz compatibility issue closed/synced with concrete outcomes; large-graph follow-up filed. Own Bazel server and real query owner cleaned. Final documentation/PR handoff prepared for ROOT landing; managed app untouched.
 
 ## Surprises & Discoveries
 
@@ -26,7 +26,7 @@ Use `.swarm/service-topology.json` to explicitly opt into the fixed example mapp
 
 ## Outcomes & Retrospective
 
-PR129 now makes the declared dependency query usable in actual Pure Sky without source edits or target compilation, while the legacy example requires an explicit declaration. The query retains a bounded target view; it does not establish complete project coverage, a successful Pure Sky compilation, or cross-restart cache persistence. No claim from PR124 is reused as evidence for this follow-up.
+PR129 now makes the declared dependency query usable in actual Pure Sky without source edits or target compilation, while the legacy example requires an explicit declaration. The query retains a bounded target view; it does not establish complete project coverage, a successful Pure Sky compilation, or cross-restart cache persistence. Large-graph coverage follow-up is recorded as `swarm-build-graph-large-query-coverage`. No claim from PR124 is reused as evidence for this follow-up.
 
 ## Context and Orientation
 

@@ -37,9 +37,10 @@ Starlark. Use repositories you intend to load with Bazel.
 seconds. Hidden or blurred documents stop scheduling, and returning to the app
 revalidates after two seconds. A settled observation has no polling timer. While
 an input sample or query is running, one request chain checks its result every
-500 ms, for at most 40 seconds per update cycle. The core samples inputs at most
+500 ms, for at most 40 seconds per passive update cycle (a 125-second observation
+window for deliberate loading, including cleanup margin). The core samples inputs at most
 once per 1.5 seconds and coalesces requests. Queries occur only on first demand,
-explicit **Refresh build graph**, or changed build inputs—not every source edit.
+explicit **Refresh dependencies**, or changed build inputs—not every source edit.
 
 The cockpit App owner mounts this shared hook with live-core readiness independent
 of pane visibility, and passes `snapshot.revisions.working.id` as `changeToken`.
