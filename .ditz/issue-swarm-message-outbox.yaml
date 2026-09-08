@@ -35,5 +35,12 @@ log_events:
   who: Ted Smith
   what: started
   comment: ""
+- time: 2026-09-08T13:42:24-00:00
+  who: Ted Smith
+  what: commented
+  comment: Implemented bounded saved outgoing text, compact queue states and copy
+    recovery. Native review found recovered-state reversion and chronological row
+    ordering; both corrected with regressions. Queue remains distinct from consumed;
+    actual pending ROOT messages untouched. PR110, focused checks in progress.
 blocks:
 - swarm-usability-join
