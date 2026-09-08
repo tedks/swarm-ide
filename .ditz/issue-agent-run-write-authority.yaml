@@ -1,9 +1,9 @@
 id: agent-run-write-authority
-title: Gate write-enabled agent runs on explicit worktree authority
-desc: Deferred after first read-only vertical journey. Define user-approved registered
-  worktree write policy, concrete scope/approvals, isolation, edit observation and
-  recovery before allowing implementation agents. Do not imply read-only model analysis
-  implements write authority.
+title: Define permissions for agents that write to a worktree
+desc: Deferred until after the first read-only end-to-end workflow. Before enabling
+  implementation agents, define a user-approved write policy for registered worktrees,
+  including the allowed scope, approvals, isolation, edit observation and recovery.
+  Read-only model analysis does not establish permission to write.
 type: task
 component: default
 release:
@@ -20,6 +20,14 @@ log_events:
 - time: 2026-09-06T01:31:48-00:00
   who: Ted Smith
   what: blocked by agent-run-vertical-proof
+  comment: ""
+- time: 2026-09-08T04:28:16-00:00
+  who: Ted Smith
+  what: changed title
+  comment: ""
+- time: 2026-09-08T04:28:16-00:00
+  who: Ted Smith
+  what: updated description
   comment: ""
 blocked_by:
 - agent-run-vertical-proof
