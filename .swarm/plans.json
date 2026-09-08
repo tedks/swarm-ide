@@ -44,6 +44,7 @@
       "app/renderer/FleetActivityView.tsx",
       "app/renderer/OverflowStrip.tsx",
       "app/renderer/agents/AgentDock.tsx",
+      "app/renderer/agents/conversation-tabs.ts",
       "app/renderer/WorkbenchSidebar.tsx",
       "BUILD.bazel"
     ],
@@ -305,6 +306,7 @@
       "app/renderer/external-agents/ExternalAgents.tsx",
       "app/renderer/external-agents/AgentConversation.tsx",
       "app/renderer/external-agents/conversation-selection.ts",
+      "app/renderer/external-agents/conversation-scroll.ts",
       "app/renderer/external-agents/steering-memory.ts",
       "app/renderer/external-agents/SessionSteering.tsx",
       "BUILD.bazel"
@@ -406,6 +408,14 @@
         {
           "targetId": "design:agents",
           "label": "Events → responsible agent"
+        },
+        {
+          "label": "//tools/operator-cockpit:conversation-tabs",
+          "role": "Registered conversation tabs, keyboard selection, retained drafts and reading positions",
+          "dependencies": [
+            { "label": "//:quality_sources", "relation": "data" },
+            { "label": "//tools/operator-cockpit:sources", "relation": "data" }
+          ]
         },
         {
           "targetId": "design:planning",

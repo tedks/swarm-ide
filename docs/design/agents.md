@@ -128,6 +128,27 @@ registration; it does not convert terminal-owned agents into IDE-owned runs.
 
 ## Build connections
 
+Registered working/waiting sessions appear as named conversation tabs in the
+agent dock. Explicit sidebar or Activity selection also opens historical sessions;
+an opened tab remains when its agent completes. Closing a tab only dismisses that
+view until explicitly reopened. It never stops an agent, clears its outgoing
+messages, or sends an instruction. Temporary core recovery retains the open and
+dismissed sets; only an observed registry can remove a registration. Status badges
+use the core's shared lifecycle, not another renderer classifier.
+
+Ctrl-Tab / Ctrl-Shift-Tab cycles the dock's visible conversations and native-run
+tabs while focus is inside the agent pane. The selection lands on the chosen tab;
+Tab then enters its controls. Arrow keys move tab focus without selecting until
+Enter/Space. Palette, modal and IME input are excluded; desktop Alt-Tab and source
+editor shortcuts stay unchanged. One mounted `AgentConversation`/`SessionSteering`
+keeps its existing per-session `SteeringMemory` and sender. `conversation-scroll.ts`
+retains up to 64 session reading positions across target changes; it follows new
+messages only when that conversation was left at the bottom. Positions and tab
+dismissals are local to this cockpit mount, not persisted across full app restarts.
+`//tools/operator-cockpit:conversation-tabs` checks the mounted selection, recovery,
+draft/outgoing retention and scroll behavior alongside existing keyboard/outbox
+regressions. No model turn or real message is used by these tests.
+
 The conversation/client/message-state files remain shared application inputs to
 `//:quality_sources` and `//:desktop-bundle`. `//tools/conversation-cockpit:unit`
 checks initial selection, per-target drafts, remount/unknown-delivery behavior,
