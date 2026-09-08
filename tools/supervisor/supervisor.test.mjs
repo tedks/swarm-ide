@@ -5,7 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { configure, Records, startupProof, finalMessage, supervise } from './supervisor.mjs';
+import { configure, Records, startupProof, finalMessage, supervise, acknowledgeStatus } from './supervisor.mjs';
 
 const script = fileURLToPath(new URL('./supervisor.mjs', import.meta.url));
 const pause = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -217,10 +217,94 @@ test('failed queue is durable unconfirmed, never success or replayed after resta
 test('five-line status request goes to verified child then root, stops after completion', async (t) => {
   const f = await fixture(t, { config: { statusSeconds: 0.08, statusGraceSeconds: 0.03 } });
   const run = supervise(f.config);
-  await waitUntil(async () => (await f.messages()).some((call) => call[2] === 'parent' && call[4].includes('Collect role/status')));
+  await waitUntil(async () => (await f.messages()).some((call) => call[2] === 'parent' && call[4].startsWith('CTO CHECKPOINT')));
   const status = (await f.messages()).find((call) => call[2] === 'child');
   assert.equal(status[4].split('\n').filter((row) => /^[1-5]\. /.test(row)).length, 5);
   await complete(f); assert.equal(await run, 0);
+});
+
+const stateOf = (f) => readFile(path.join(f.config.stateDirectory, 'state.json'), 'utf8').then(JSON.parse).catch((e) => { if (e.code === 'ENOENT') return {}; throw e; });
+const currentOf = (f) => readFile(path.join(f.config.stateDirectory, 'current.json'), 'utf8').then(JSON.parse);
+const childRequests = async (f) => (await f.messages()).filter((call) => call[2] === 'child');
+const rootChecks = async (f) => (await f.messages()).filter((call) => call[2] === 'parent' && call[4].startsWith('CTO CHECKPOINT'));
+
+test('backlogged child request and unacknowledged ROOT wake do not accumulate each tick', async (t) => {
+  const f = await fixture(t, { config: { statusSeconds: 0.04, statusGraceSeconds: 0.01 } });
+  const run = supervise(f.config);
+  await waitUntil(async () => (await rootChecks(f)).length === 1);
+  await pause(220);
+  assert.equal((await childRequests(f)).length, 1);
+  assert.equal((await rootChecks(f)).length, 1);
+  assert.ok((await stateOf(f)).tick >= 3);
+  await complete(f); assert.equal(await run, 0);
+  assert.equal((await currentOf(f)).roles[0].outcome, 'complete');
+  assert.equal((await f.messages()).filter((call) => call[4].includes('worker completed.')).length, 1);
+});
+
+test('response frees only child slot; explicit current receipt frees ROOT checkpoint slot', async (t) => {
+  const f = await fixture(t, { config: { statusSeconds: 0.06, statusGraceSeconds: 0.01 } });
+  const run = supervise(f.config);
+  await waitUntil(async () => (await rootChecks(f)).length === 1);
+  const old = await currentOf(f);
+  await writeFile(old.roles[0].status.responsePath, 'Done\nNext\nBlocker\nScope\nPR\n');
+  await waitUntil(async () => (await childRequests(f)).length === 2);
+  assert.equal((await rootChecks(f)).length, 1);
+  await acknowledgeStatus(f.config.stateDirectory, old.pendingCheckpoint.token);
+  await waitUntil(async () => (await rootChecks(f)).length === 2);
+  await assert.rejects(acknowledgeStatus(f.config.stateDirectory, old.pendingCheckpoint.token), /not current/);
+  assert.equal((await childRequests(f)).length, 2);
+  await complete(f); assert.equal(await run, 0);
+});
+
+test('completion overtakes status grace period without stale routine ROOT checkpoint', async (t) => {
+  const f = await fixture(t, { config: { statusSeconds: 0.04, statusGraceSeconds: 0.4 } });
+  const run = supervise(f.config);
+  await waitUntil(async () => (await childRequests(f)).length === 1);
+  await complete(f); assert.equal(await run, 0);
+  assert.equal((await rootChecks(f)).length, 0);
+  assert.equal((await childRequests(f)).length, 1);
+  assert.equal((await stateOf(f)).checkpointDue, null);
+});
+
+test('restart retains pending status and ROOT wake, without re-enqueue or consumed claim', async (t) => {
+  const f = await fixture(t, { config: { statusSeconds: 0.05, statusGraceSeconds: 0.01 } });
+  const stop = new AbortController(); const first = supervise(f.config, stop.signal);
+  await waitUntil(async () => (await stateOf(f)).checkpointWake?.queuedAt);
+  stop.abort(); assert.equal(await first, 130);
+  const before = (await f.messages()).length;
+  const second = supervise(f.config);
+  await pause(180);
+  assert.equal((await f.messages()).length, before);
+  const state = await stateOf(f);
+  assert.ok(Object.values(state.notifications).every((value) => value === 'queued'));
+  assert.ok(Object.values(state.delivery).every((value) => value.attemptedAt && value.queuedAt && !('consumedAt' in value)));
+  await complete(f); assert.equal(await second, 0);
+});
+
+test('continuation generation cannot reuse ledger and never loses its own true completion', async (t) => {
+  const f = await fixture(t);
+  await complete(f); assert.equal(await supervise(f.config), 0);
+  const changed = { ...f.config, generation: 'second-step' };
+  await assert.rejects(supervise(changed), /different config\/generation/);
+  const old = await currentOf(f);
+  const secondStep = path.join(f.directory, 'continuation'); await mkdir(secondStep);
+  const oldBytes = Buffer.byteLength(await readFile(f.rollout, 'utf8'));
+  const newMarker = 'SECOND-STEP COMPLETE';
+  await writeFile(path.join(secondStep, 'rollout-path'), f.rollout);
+  await writeFile(path.join(secondStep, 'startup-cursor'), '0');
+  await writeFile(path.join(secondStep, 'recap-cursor'), String(oldBytes));
+  await writeFile(path.join(secondStep, 'task-prompt'), 'do second task');
+  await appendFile(f.rollout, line('event_msg', { type: 'task_started', turn_id: 'second-turn' }) +
+    line('turn_context', { model: 'gpt-6-astra', turn_id: 'second-turn' }) +
+    line('event_msg', { type: 'user_message', message: 'do second task' }) +
+    JSON.stringify(message(newMarker)) + '\n');
+  const second = { ...changed, stateDirectory: path.join(f.directory, 'second-state'), roles: [{ ...f.config.roles[0], marker: newMarker, stepDirectory: secondStep }] };
+  assert.equal(await supervise(second), 0);
+  const current = JSON.parse(await readFile(path.join(second.stateDirectory, 'current.json'), 'utf8'));
+  assert.notEqual(current.instance, old.instance);
+  assert.equal(current.generation, 'second-step');
+  assert.equal((await f.messages()).filter((call) => call[4].includes('worker completed.')).length, 2);
+  assert.match(await readFile(path.join(secondStep, 'final-recap'), 'utf8'), /SECOND-STEP/);
 });
 
 test('exclusive supervisor lock and stopping observer leave rollout intact', async (t) => {

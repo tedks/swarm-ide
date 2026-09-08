@@ -35,6 +35,7 @@ Use absolute executable paths when not intentionally relying on the Nix PATH.
 ```json
 {
   "parentSession": "YOUR-PARENT-SESSION-ID",
+  "generation": "implementation-v1",
   "model": "gpt-6-astra",
   "codexCommand": ["/absolute/path/to/codex"],
   "stateDirectory": "./supervision-state",
@@ -117,7 +118,8 @@ gone before removing **that lock file only**. Preserve state and recaps.
 
 The queue CLI does not offer transactional delivery receipts. `state.json`
 records each notification as pending before submission and sent only after exit
-zero. An interrupted/failed submission is unconfirmed, not success, and is never
+zero (`queued`, not consumed; legacy `sent` has the same enqueue-only meaning).
+An interrupted/failed submission is unconfirmed, not success, and is never
 blindly retried. Check the parent's actual queue/session and reconcile manually;
 do not delete the ledger to force another message. Successful completion wakes
 are not resent on restart. A tracking deadline writes `push-status`, wakes ROOT
@@ -142,6 +144,66 @@ steering, watcher failure followed by recap, ambiguous delivery without replay,
 status routing and TERM-resistant owned-helper cleanup. The catch-up regression
 was first reproduced as one failing test alongside 16 passes; latching the
 verified assignment turn made all 17 pass. Native fix-delta review is clean.
+
+## Bounded status delivery and continuations
+
+The supervisor now leaves **one unanswered automated status request per child**.
+Further ten-minute ticks refresh `current.json` but do not enqueue another request
+until the assigned status file contains five newline-terminated lines. A response
+file is a report receipt, not a claim that a task is complete. Files include a
+persisted supervisor-instance identifier so old files cannot answer a new request.
+
+ROOT also has only one outstanding **routine checkpoint wake**. Its short message
+points at `stateDirectory/current.json`, whose role outcomes and response paths
+continue to update. After reading it, explicitly acknowledge its current token:
+
+```sh
+nix develop --command bazel run --jobs=3 //tools/supervisor:run -- \
+  ack-status /absolute/path/supervision-state TOKEN-FROM-CURRENT-JSON
+```
+
+This writes a local receipt for this tool's routine checkpoint, not a Codex queue
+acknowledgement. An old token cannot acknowledge a newer checkpoint. After ROOT's
+receipt, the next ten-minute checkpoint can wake ROOT again even if a child still
+has one unanswered request. Without that receipt, current state continues updating
+and true completion/error wakes remain enabled. This preserves the cadence without
+building an ever-growing queue of identical pending requests.
+
+Completion during the checkpoint grace period cancels an **unqueued** routine
+wake when no participating assignment remains active. It does not delete an
+already-enqueued message. Startup, completion and error messages identify their
+generation and point to current state/evidence, not old embedded landing orders.
+No human steering, real assignment or completion/error is discarded by text or age.
+
+Use a new descriptive `generation`, fresh state directory and fresh step directory
+for an authorized continuation, with a unique marker and a recap cursor captured
+before that assignment. Preserve the old ledger and final recap. A resumed child
+can reuse its validated original startup cursor/lineage; the new exact assignment
+must still appear after that compaction with the configured model. Changing the
+generation in an existing ledger is rejected, preventing old done flags or
+acknowledgements from suppressing a new completion.
+
+For an old ledger, completed roles remain completed; legacy `sent` notifications
+are not replayed. Previously queued status requests are conservatively treated as
+outstanding until their recorded response files exist or the role completes.
+Legacy checkpoint receipts need explicit ROOT acknowledgement, because enqueue
+success alone cannot establish whether ROOT read them. Never delete history or
+clear a Codex queue to make this migration look clean.
+
+The delivery ledger records new `attemptedAt`/`queuedAt` times, never a fabricated
+`consumedAt`. Local diagnosis found two direct worker milestone messages with
+successful queue receipts roughly 49 minutes before ROOT recorded them, after
+their PRs had already merged. Those were not duplicate supervisor recap sends.
+The upstream scheduling cause is not established, and this repair cannot retract
+existing messages or fix Codex delivery latency. The installed CLI offers enqueue,
+not a supported coalescing/cancellation API; the
+[official app-server documentation](https://learn.chatgpt.com/docs/app-server)
+does not establish the CLI queue scheduling observed here.
+
+Operational recommendation: routine worker milestones belong in the current seam
+file; direct ROOT messages should be reserved for necessary decisions/blockers or
+otherwise-unwatched handoffs. This is guidance for future assignments, not authority
+to broadcast, replace live supervisors or suppress already queued worker messages.
 
 Task-text regressions additionally cover final LF, repeated LF, CRLF and
 surrounding whitespace, plus rejection when the observed text differs. Reading
