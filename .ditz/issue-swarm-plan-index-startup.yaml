@@ -5,8 +5,8 @@ type: bugfix
 component: default
 release:
 reporter: Ted Smith <tedks@riseup.net>
-status: in_progress
-disposition:
+status: closed
+disposition: fixed
 creation_time: 2026-09-08T13:28:42-00:00
 references: []
 log_events:
@@ -50,5 +50,13 @@ log_events:
     mappings preserved; light doc/JSON checks passed. Existing 141 focused/native/owned
     GUI results remain attributed to prior reviewed input; no new GUI/full test/model
     run. ROOT owns normal PR merge and app adoption.'
+- time: 2026-09-08T14:52:37-00:00
+  who: Ted Smith
+  what: 'closed: fixed'
+  comment: 'Merged PR104: real design index now accepts long source/document lists,
+    expands references compactly, and exposes one navigable component/document hierarchy
+    down to exact source and Bazel targets. 141 focused checks/types, native review
+    and actual owned GUI proof passed. Plan-first App composition is PR107; this issue
+    does not claim that pending managed-window adoption.'
 blocks:
 - swarm-usability-join
