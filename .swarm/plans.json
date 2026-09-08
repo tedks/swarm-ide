@@ -412,6 +412,13 @@
               "relation": "data"
             }
           ]
+        },
+        {
+          "label": "//tools/demo-plans:graph-checks",
+          "role": "Complete task graph, cancellation, scope and mounted state checks",
+          "dependencies": [
+            { "label": "//:quality_sources", "relation": "data" }
+          ]
         }
       ]
     }
