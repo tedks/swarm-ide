@@ -1,0 +1,24 @@
+id: swarm-registered-conversation-tabs
+title: Switch registered agent conversations with tabs and keyboard
+desc: Show current live registered sessions and deliberately opened historical sessions
+  as tabs in the conversation pane. Use the existing registered-session selection/send
+  path and shared lifecycle status; no second discovery or classifier. Add Ctrl-Tab/Ctrl-Shift-Tab
+  scoped to agent-pane focus, retain accessible arrow keys and visible shortcut hints,
+  preserve IME/editor/modal behavior and desktop Alt-Tab. New registrations must not
+  steal focus; switching must retain per-session drafts, pending messages, scroll
+  and source/cameras. Closing a tab must never send or terminate an agent. Follow
+  up after PR107 Plan-first layout; the bounded layout increment does not implement
+  this additional request.
+type: feature
+component: default
+release:
+reporter: Ted Smith <tedks@riseup.net>
+status: unstarted
+disposition:
+creation_time: 2026-09-08T14:16:22-00:00
+references: []
+log_events:
+- time: 2026-09-08T14:16:22-00:00
+  who: Ted Smith
+  what: created
+  comment: ""
