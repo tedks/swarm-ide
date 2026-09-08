@@ -14,3 +14,13 @@ log_events:
   who: Ted Smith
   what: created
   comment: ""
+- time: 2026-09-08T15:55:59-00:00
+  who: Ted Smith
+  what: commented
+  comment: 'Found during PR119 final design checks: //tools/living-design:checks 80
+    pass / 1 fail. tests/living-design.test.tsx:107 asks for Show all 20 source files
+    after choosing design:repository; actual button says Show all 22 source files.
+    This PR changes only Activity build-target mappings, not the repository node,
+    DesignWorkspace, or this test. Keep expansion/open-last-link assertions; derive
+    expected count from selected node or update reviewed mapping expectation. No retry
+    or unrelated fix included.'
