@@ -121,6 +121,8 @@
       "app/renderer/AgentWorktreeBrowser.tsx",
       "tools/worktree-browser/BUILD.bazel",
       "core/build-graph.ts",
+      "app/renderer/repository/use-build-graph.ts",
+      "tools/build-graph/BUILD.bazel",
       "app/renderer/context/ContextPane.tsx",
       "core/project-context/provider.ts",
       "app/renderer/bazel-reference.ts",
@@ -156,6 +158,11 @@
         }
       ],
       "buildTargets": [
+        {
+          "label": "//tools/build-graph:checks",
+          "role": "Checks automatic repository build observation, invalidation and retained graph context",
+          "dependencies": [{ "label": "//:quality_sources", "relation": "data" }]
+        },
         {
           "label": "//tools/project-context:checks",
           "role": "Checks automatic runtime ownership, bounded manifest discovery and Context rendering",
@@ -454,13 +461,20 @@
     "title": "Typed local core & configuration",
     "parentId": "design:system",
     "docs": [
-      "docs/design/runtime.md"
+      "docs/design/runtime.md",
+      "docs/container-demo.md"
     ],
     "sourcePaths": [
       "protocol/schema.ts",
       "core/worker-runtime.ts",
       "app/electron/main.ts",
-      "BUILD.bazel"
+      "Dockerfile",
+      "tools/container/runtime.nix",
+      "tools/container/entrypoint.sh",
+      "tools/container/BUILD.bazel",
+      "BUILD.bazel",
+      "core/build-progress.ts",
+      "core/provider.ts"
     ],
     "taskIds": [],
     "contextRefs": [],
@@ -504,6 +518,32 @@
               "label": "//:quality_sources",
               "relation": "data"
             }
+          ]
+        },
+        {
+          "label": "//tools/container:checks",
+          "role": "Checks the browser-display container transport",
+          "dependencies": [{ "label": "//tools/container:sources", "relation": "data" }]
+        },
+        {
+          "label": "//tools/container:smoke",
+          "role": "Exercises the Docker-packaged desktop through noVNC",
+          "dependencies": [{ "label": "//tools/container:sources", "relation": "data" }]
+        },
+        {
+          "label": "//tools/build-graph:progress-checks",
+          "role": "Checks explicit-build progress reading and late-event guards",
+          "dependencies": [
+            { "label": "//:quality_sources", "relation": "data" }
+          ]
+        },
+        {
+          "label": "//tools/build-graph:progress-probe",
+          "role": "Exercises real build milestones and owned process cleanup",
+          "dependencies": [
+            { "label": "//tools/build-graph:sources", "relation": "data" },
+            { "label": "//tools/build-graph:progress-probe-module", "relation": "data" },
+            { "label": "//:desktop-bundle", "relation": "data" }
           ]
         }
       ]

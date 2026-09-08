@@ -52,8 +52,8 @@ recovery, including when the initial read never produced a usable list.
 Missing relationships and partial coverage must not turn into fabricated “ready”
 tasks. Updating the list does not silently retarget a revision-pinned detail or
 draft: the operator deliberately selects, reattaches and prepares again to use
-newer task text. The core materializes the selected task text rather than trusting arbitrary
-renderer-supplied task bytes. Admitted run history keeps the task actually used.
+newer task text. The core materializes the selected task text rather than trusting
+arbitrary renderer-supplied task bytes. Admitted run history keeps the task actually used.
 
 ## Build connections
 

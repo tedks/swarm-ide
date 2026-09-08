@@ -1,0 +1,92 @@
+{
+  "version": 1,
+  "nodes": [
+    {
+      "id": "market",
+      "kind": "plan",
+      "title": "Market Pulse",
+      "parentId": null,
+      "docs": [
+        "design.md"
+      ],
+      "sourcePaths": [
+        "BUILD.bazel"
+      ],
+      "taskIds": [],
+      "contextRefs": [],
+      "design": {
+        "summary": "Market Pulse",
+        "state": "implemented",
+        "connections": [],
+        "buildTargets": []
+      }
+    },
+    {
+      "id": "quotes",
+      "kind": "component",
+      "title": "Quote adapter",
+      "parentId": "market",
+      "docs": [
+        "design.md"
+      ],
+      "sourcePaths": [
+        "src/quote.ts"
+      ],
+      "taskIds": [],
+      "contextRefs": [],
+      "design": {
+        "summary": "Quote adapter",
+        "state": "implemented",
+        "connections": [
+          {
+            "targetId": "spread",
+            "label": "Quote: symbol, bid, ask, observedAt"
+          }
+        ],
+        "buildTargets": [
+          {
+            "label": "//:quotes",
+            "role": "Normalized quote interface",
+            "dependencies": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "spread",
+      "kind": "component",
+      "title": "Spread engine",
+      "parentId": "market",
+      "docs": [
+        "design.md"
+      ],
+      "sourcePaths": [
+        "src/spread.ts"
+      ],
+      "taskIds": [],
+      "contextRefs": [],
+      "design": {
+        "summary": "Spread engine",
+        "state": "implemented",
+        "connections": [
+          {
+            "targetId": "quotes",
+            "label": "Requires finite, uncrossed quotes"
+          }
+        ],
+        "buildTargets": [
+          {
+            "label": "//:spread",
+            "role": "Spread computation",
+            "dependencies": [
+              {
+                "label": "//:quotes",
+                "relation": "srcs"
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}
