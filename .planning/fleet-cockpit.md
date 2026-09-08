@@ -12,8 +12,9 @@ The operator can select independent real Codex conversations, retain an unsent m
 - [x] Implement independently testable fleet selection, composer and response freshness state; eight mounted delayed-response cases passed with the legacy pane/reducer cases.
 - [x] Normally compose exactly ROOT-cleared F1 contract a6e7c8c and T5 consumer ca1fd9a; mount explicit TaskContext-to-cockpit selection with approved AgentDock visibility effect.
 - [x] Initial packaged one-run protocol peer proof passed3.5s; initial controlled fleet IPC proof passed1.979s, both owned:152/55232 cleanup1 and no model turn.
-- [ ] Finish review-discovered missing-selection recovery red/green, stronger existing-draft virtual proof, native convergence and final relevant quality/build gates.
-- [ ] Push ready PR, synchronize Ditz, and report exact integration boundary to ROOT.
+- [x] Finish review-discovered missing-selection recovery red/green: focused18 tests GREEN; stronger existing-draft virtual proof passed2.127s; native correction/App/proof convergence CLEAN.
+- [x] Final code e1c600a: local quality1820 tests/139files plus typecheck/node/renderer builds PASS46.1s; focused18 PASS (cached in final aggregate, fresh earlier).
+- [x] Push ready PR73, synchronize Ditz and record exact ROOT join request. ROOT-owned normal landing and F1 runtime join remain pending.
 
 ## Surprises & Discoveries
 
@@ -29,9 +30,11 @@ Keep the existing trusted-local profile and preparation confirmation. Do not cre
 
 ## Outcomes & Retrospective
 
-Implementation and verification pending. This lane does not prove a live model turn; controlled provider/UI evidence will be labelled, and F1 owns the bounded real multi-conversation proof.
+The bounded renderer implementation and verification are complete, ready in PR73. This lane does not prove a live model turn; controlled provider/UI evidence is labelled, and F1 owns the bounded real multi-conversation proof.
 
 The visible list/select/output/approval/Stop implementation and minimal task-linked opening are present. Multi-run core/store implementation is not consumed or proved by this lane. The owned fleet proof uses synthetic trusted IPC through the actual packaged renderer/preload and real core file operations; its disposable repository has no build/task metadata, so populated service/build behavior is not claimed.
+
+Final strengthened proof run.fk599z preserved full source and logical cursor, existing agent-draft DOM/value, per-run messages and graph DOM/cameras with zero renderer exceptions and confirmed cleanup. Long-session cache/orphaned-draft handling is a proportional follow-up in `fleet-renderer-retention-bounds-20260907`; no unlimited or refresh-persistent composer claim is made. Hosted checks were not used, and foreign review seats were intentionally unfilled under the Codex-only directive.
 
 ## Context and Orientation
 
@@ -66,3 +69,5 @@ Use React and existing protocol types only, with no new dependencies. F1 optiona
 Initial plan records scope, assumptions and evidence requirements before code changes.
 
 Updated after contract/consumer clearance, mounted/owned evidence and native-review recovery finding to preserve precise implementation-versus-proof attribution.
+
+Updated after final local quality, actual strengthened virtual evidence and native convergence; remaining work is ROOT integration rather than an unfinished local proof.
