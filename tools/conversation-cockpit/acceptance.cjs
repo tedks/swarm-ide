@@ -139,6 +139,14 @@ async function main() {
   await select(child); assert.equal(await draft(), childDraft);
   await select(root); assert.equal(await draft(), rootDraft);
   assert.equal(await run(() => document.querySelector("[data-delivery-status='delivery-unknown']")?.textContent.includes("30000000-0000-4000-8000-000000000001")), true);
+  stage = "registered worktree open and return";
+  assert.equal(await run(() => document.querySelector("[aria-label='Agent conversation'] .conversation-heading button")?.textContent), "Worktree");
+  await click("[aria-label='Agent conversation'] .conversation-heading button");
+  await until(() => run((worktree) => document.querySelector(".agent-worktree-heading small")?.textContent === worktree, root.contextRoot), "actual registered ROOT worktree");
+  await fs.writeFile(path.join(evidence, "registered-worktree.png"), (await wc.capturePage()).toPNG());
+  await click(".agent-worktree-heading > button");
+  await until(() => run(() => document.querySelector(".worktree-browser-center")?.hidden === true), "return to original workspace");
+  assert.equal(await current(), root.id); assert.equal(await draft(), rootDraft);
   await refresh(); await paint();
   assert.equal(sends.length, 1); assert.deepEqual(await source(), retained);
   assert.equal(await run(() => globalThis.__conversationGraphs.every((e) => e.isConnected)), true);
@@ -152,7 +160,7 @@ async function main() {
   await fs.writeFile(path.join(evidence, "proof.json"), JSON.stringify({ ok: true, elapsedMs: Date.now() - started,
     actualRegisteredRead: true, root: root.id, child: child.id, controlledSend: true, actualMessagesSent: 0, modelTurns: 0,
     autoRoot: true, perAgentDrafts: true, explicitChoiceSurvivesRefresh: true, uncertainReceiptRetained: true,
-    interceptedSendRequests: sends.length, sourceSelectionAndCamerasRetained: true, rendererErrors: errors }));
+    interceptedSendRequests: sends.length, registeredWorktreeOpenAndReturn: true, sourceSelectionAndCamerasRetained: true, rendererErrors: errors }));
   await until(() => fs.access(path.join(evidence, "close-request")).then(() => true, () => false), "capture complete");
   app.quit();
 }
