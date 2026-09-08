@@ -1,0 +1,30 @@
+.work-log-panel { color: var(--text, #deded7); min-width: 0; font-size: 12px; }
+.work-log-heading { display: flex; align-items: center; gap: 8px; }
+.work-log-heading h3 { margin: 0; flex: 1; font-size: 13px; }
+.work-log-heading > span, .work-log-entry-heading time { color: var(--muted, #a3a69f); font-size: 10px; }
+.work-log-panel button, .work-log-panel input, .work-log-panel select { color: var(--text, #deded7); background: #202723; border: 1px solid #4c5952; border-radius: 4px; font: inherit; min-height: 25px; padding: 3px 7px; }
+.work-log-panel button { cursor: pointer; }
+.work-log-panel button:hover:not(:disabled) { background: #344237; }
+.work-log-panel :disabled { cursor: default; opacity: .55; }
+.work-log-panel :focus-visible { outline: 2px solid #b9d69b; outline-offset: 2px; }
+.work-log-settings { margin-top: 7px; color: var(--muted, #a3a69f); }
+.work-log-settings summary, .work-log-details summary { cursor: pointer; padding: 4px 0; }
+.work-log-settings > div { display: grid; grid-template-columns: minmax(75px, 1fr) minmax(0, 1.4fr); gap: 6px; align-items: center; margin: 5px 0; }
+.work-log-settings input, .work-log-settings select { min-width: 0; width: 100%; box-sizing: border-box; }
+.work-log-settings p, .work-log-notice, .work-log-empty { color: var(--muted, #a3a69f); font-size: 11px; margin: 7px 0; }
+.work-log-entries { list-style: none; padding: 0; margin: 8px 0 0; }
+.work-log-entry { padding: 10px 0; border-top: 1px solid #344039; overflow-wrap: anywhere; }
+.work-log-entry-heading { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; }
+.work-log-entry-heading time { margin-left: auto; }
+.work-log-panel .work-log-link { border: 0; background: transparent; color: #c6ddad; padding: 0; min-height: 20px; text-align: left; }
+.work-log-state { color: #a9b5aa; font-size: 10px; }
+.work-log-state.is-working { color: #d5c98d; }
+.work-log-outcome { margin: 5px 0; line-height: 1.5; white-space: pre-wrap; }
+.work-log-details { font-size: 11px; color: var(--muted, #a3a69f); }
+.work-log-details h4 { font-size: 11px; margin: 8px 0 3px; }
+.work-log-details ul { padding-left: 18px; margin: 3px 0 7px; }
+.work-log-details li { margin: 3px 0; }
+.work-log-details form { margin-top: 8px; }
+.work-log-record-controls { display: flex; gap: 5px; margin-top: 4px; flex-wrap: wrap; }
+.work-log-record-controls input { min-width: 70px; width: 100px; flex: 1; }
+.work-log-recorded { color: #b9d69b; }

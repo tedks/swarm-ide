@@ -40,6 +40,8 @@ import { GithubPrProvider, GithubPrReadError } from "./github-prs";
 import type { TrustedLocalService } from "./agents/trusted-local";
 import { TrustedRequestSchema } from "../protocol/trusted-local";
 import { inspectRegisteredWorktree } from "./worktree-inspection";
+import { WorkLogService } from "./work-log/service";
+import { WorkLogRequestSchema } from "../protocol/work-log";
 
 export interface WorkerDependencies {
   createAgents?: typeof createProductionAgentService;
@@ -51,6 +53,7 @@ export interface WorkerDependencies {
 export function startCoreWorker(dependencies: WorkerDependencies = {}): void {
 const workspaceRoot = process.env.SWARM_WORKSPACE_ROOT ?? process.cwd();
 const externalAgents = new ExternalAgentService(workspaceRoot, process.env.SWARM_EXTERNAL_AGENTS_REGISTRY);
+const workLog = new WorkLogService(workspaceRoot, process.env.SWARM_EXTERNAL_AGENTS_REGISTRY);
 let sequence = 0;
 const requestIds = new BoundedRequestIds(512);
 const fileReadGenerations = new Map<string, number>();
@@ -175,6 +178,7 @@ process.parentPort?.on("message", async (event) => {
       try {
         await Promise.all([
           externalAgents.dispose(),
+          workLog.dispose(),
           trustedPromise?.then((service) => service?.shutdown()),
           agentServicePromise.then((service) => service?.shutdown()),
           taskProviderPromise.then((tasks) => tasks.dispose()),
@@ -209,6 +213,13 @@ process.parentPort?.on("message", async (event) => {
       } catch (error) {
         post(fail(requestId, "WORKTREE_INSPECTION_UNAVAILABLE", error instanceof Error ? error.message.slice(0, 512) : "This worktree file could not be opened."));
       } finally { worktreeInspections.delete(pending); }
+      return;
+    }
+    if (request.type.startsWith("workLog.")) {
+      try {
+        const result = await workLog.request(WorkLogRequestSchema.parse(request));
+        post(parseCoreResponseForRequest({ ...ok(requestId, provider.snapshot()), workLog: result }, request));
+      } catch (error) { post(fail(requestId, "WORK_LOG_UNAVAILABLE", error instanceof Error && error.message.length < 512 ? error.message : "Work Log unavailable")); }
       return;
     }
     if (request.type.startsWith("trusted.")) {
