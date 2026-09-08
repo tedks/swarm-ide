@@ -1,0 +1,25 @@
+.design-workspace { height: 100%; min-height: 0; min-width: 0; display: flex; flex-direction: column; overflow: auto; background: #091719; color: #d3ebe2; }
+.design-workspace[hidden] { display: none; }
+.design-workspace > header { display: flex; justify-content: space-between; padding: 10px 14px; border-bottom: 1px solid #34554e; }
+.design-workspace button { color: #d2eee2; background: #17332c; border: 1px solid #527f70; border-radius: 4px; padding: 5px 8px; font: 11px system-ui; cursor: pointer; text-align: left; overflow-wrap: anywhere; }
+.design-workspace button:disabled { opacity: .5; cursor: default; }
+.design-workspace button:focus-visible { outline: 2px solid #a5f4cf; outline-offset: 2px; }
+.design-workspace nav { display: flex; gap: 5px; flex-wrap: wrap; padding: 8px 14px; }
+.design-workspace nav button[aria-current] { border-color: #9bf0ce; }
+.design-graph { height: 280px; min-height: 220px; flex: 0 0 auto; border-block: 1px solid #34554e; }
+.design-details { display: grid; grid-template-columns: minmax(0, 2fr) minmax(180px, 1fr); gap: 18px; padding: 14px; }
+.design-details article { min-width: 0; font-size: 13px; line-height: 1.6; }
+.design-details h2 { margin-top: 0; font-size: 20px; }
+.design-details h3 { font-size: 13px; margin: 12px 0 6px; }
+.design-details aside { min-width: 0; }
+.design-details aside button { display: block; width: 100%; margin-bottom: 5px; }
+.design-prose p { white-space: pre-wrap; overflow-wrap: anywhere; }
+.design-prose table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.design-prose th, .design-prose td { text-align: left; vertical-align: top; padding: 7px; border: 1px solid #34554e; overflow-wrap: anywhere; }
+.design-prose .design-text-link { padding: 0; border: 0; background: transparent; color: #a5f4cf; font: inherit; text-decoration: underline; display: inline; }
+.design-planned { display: inline-block; color: #e4c889; font-size: 11px; }
+.design-workspace .react-flow__controls-button { color: #d2eee2; background: #17332c; border-color: #527f70; }
+.design-workspace .react-flow__controls-button svg { fill: currentColor; }
+.design-workspace .react-flow__attribution { background: #17332c; }
+.design-workspace .react-flow__attribution a { color: #bbd9cd; }
+@media (max-width: 900px) { .design-details { grid-template-columns: 1fr; } }
