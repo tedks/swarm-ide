@@ -5,8 +5,8 @@ type: feature
 component: default
 release:
 reporter: Ted Smith <tedks@riseup.net>
-status: in_progress
-disposition:
+status: closed
+disposition: fixed
 creation_time: 2026-09-08T13:28:42-00:00
 references: []
 log_events:
@@ -78,5 +78,14 @@ log_events:
     unchanged. ROOT joined checks remain attributed with the known nonblocking stale
     label assertion. PR115 deliberately untouched until107 lands; no new test or feature
     cycle.
+- time: 2026-09-08T15:15:44-00:00
+  who: Ted Smith
+  what: 'closed: fixed'
+  comment: 'Normally merged PR107: shared Plan-first hierarchy and Code lens, wider
+    resizable conversation, one Activity header and automatic build observation. Original61
+    focused checks/types/native and owned3.843s GUI; current joined33 cockpit checks/types
+    and Activity activation passed. Old Saved summaries selector remains tracked separately.
+    Managed frontend hot-loaded; native bundle restart still pending, not claiming
+    full runtime adoption.'
 blocks:
 - swarm-usability-join
