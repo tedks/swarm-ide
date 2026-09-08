@@ -1,0 +1,16 @@
+id: swarm-outbox-archive
+title: Archive saved outgoing messages without losing recovery text
+desc: ""
+type: feature
+component: swarm-ide
+release:
+reporter: Ted Smith <tedks@riseup.net>
+status: unstarted
+disposition:
+creation_time: 2026-09-08T13:42:20-00:00
+references: []
+log_events:
+- time: 2026-09-08T13:42:20-00:00
+  who: Ted Smith
+  what: created
+  comment: ""
