@@ -1,0 +1,20 @@
+id: swarm-worktree-landed-timeline
+title: Extend worktree overview with master landing history and refreshed comparisons
+desc: PR128 implements ordinary registered worktree selection, owner/branch, bounded
+  master comparison captured at selection and exact branch-matched observed PRs. A
+  repository-wide master landing timeline, unregistered worktree discovery, automatic
+  comparison refresh and cross-repository selection remain outside this useful increment.
+  Launch-worktree comparison currently shows not loaded rather than pretending clean.
+type: feature
+component: default
+release:
+reporter: Ted Smith <tedks@riseup.net>
+status: unstarted
+disposition:
+creation_time: 2026-09-08T18:58:20-00:00
+references: []
+log_events:
+- time: 2026-09-08T18:58:20-00:00
+  who: Ted Smith
+  what: created
+  comment: ""
