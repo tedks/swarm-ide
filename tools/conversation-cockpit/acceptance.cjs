@@ -5,7 +5,7 @@ const { app, BrowserWindow, ipcMain } = require("electron");
 const fs = require("node:fs/promises"), path = require("node:path"), assert = require("node:assert/strict");
 const evidence = process.env.SWARM_ARTIFACT_DIR, errors = [], sends = [], observedMessages = new Map();
 const receipt = "30000000-0000-4000-8000-000000000001";
-let stage = "startup", sentTarget = null;
+let stage = "startup", sentTarget = null, snapshotResponses = 0;
 app.on("web-contents-created", (_event, wc) => {
   wc.on("console-message", (event) => { if (event.level === "error") errors.push({ stage, message: event.message }); });
   wc.on("render-process-gone", (_event, info) => errors.push({ stage, message: `Renderer gone: ${info.reason}` }));
@@ -25,6 +25,7 @@ ipcMain.handle = (channel, listener) => handle(channel, async (event, input) => 
   }
   if (input.type === "externalAgents.handoff" || /^(?:trusted|agent)\./.test(input.type) && !/\.(?:snapshot|read)$/.test(input.type)) throw new Error("Agent control is prohibited in this proof");
   const response = await listener(event, input);
+  if (input.type === "externalAgents.snapshot") snapshotResponses++;
   if (input.type === "externalAgents.read" && response.response?.ok && response.response.external?.kind === "read") {
     const detail = response.response.external.detail;
     observedMessages.set(detail.session.id, detail.entries.filter((entry) => entry.kind === "assistant" || entry.kind === "user").map((entry) => entry.text));
@@ -72,6 +73,12 @@ async function main() {
     await until(async () => await current() === session.id, "selected exact conversation");
     await until(() => run((s) => !!document.querySelector(s) && !document.querySelector(s).disabled, textarea), "available selected composer");
   };
+  const refresh = async () => {
+    const before = snapshotResponses;
+    await click("[aria-label='Refresh external sessions']");
+    await until(() => snapshotResponses > before, "refresh snapshot completed");
+    await until(() => run(() => !document.querySelector("[aria-label='Refresh external sessions']")?.disabled), "refresh UI settled");
+  };
   win.focus(); wc.focus();
   await run(() => {
     addEventListener("error", (event) => console.error(event.error?.stack ?? event.message));
@@ -107,7 +114,7 @@ async function main() {
   const rootDraft = "Controlled ROOT draft, never delivered", childDraft = "Controlled child draft, never delivered";
   await select(root); await click(textarea); await wc.insertText(rootDraft);
   await select(child); await click(textarea); await wc.insertText(childDraft);
-  await click("[aria-label='Refresh external sessions']");
+  await refresh();
   await until(async () => await current() === child.id && await draft() === childDraft, "refresh preserves explicit child and draft");
   await select(root); assert.equal(await draft(), rootDraft);
   stage = "controlled uncertain Send";
@@ -119,7 +126,7 @@ async function main() {
   await select(child); assert.equal(await draft(), childDraft);
   await select(root); assert.equal(await draft(), rootDraft);
   assert.equal(await run(() => document.querySelector("[data-delivery-status='delivery-unknown']")?.textContent.includes("30000000-0000-4000-8000-000000000001")), true);
-  await click("[aria-label='Refresh external sessions']"); await paint();
+  await refresh(); await paint();
   assert.equal(sends.length, 1); assert.deepEqual(await source(), retained);
   assert.equal(await run(() => globalThis.__conversationGraphs.every((e) => e.isConnected)), true);
   assert.equal(await fs.readFile(path.join(fixture.root, "README.md"), "utf8"), fixture.source);
