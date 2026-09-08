@@ -64,7 +64,7 @@ export class WorkspaceContextRouter {
   private open(selection: WorkspaceSelection, primary: boolean): Promise<RootedRuntime> {
     if (this.stopping) throw new Error("Core is shutting down.");
     const existing = this.contexts.get(selection.id);
-    if (existing) return existing;
+    if (existing) { this.selections.set(selection.id, structuredClone(selection)); return existing; }
     this.selections.set(selection.id, structuredClone(selection));
     const runtime = this.options.create(selection, primary);
     const pending = runtime.ready.then(() => runtime).catch((error) => { runtime.close(); this.contexts.delete(selection.id); this.selections.delete(selection.id); throw error; });

@@ -9,6 +9,10 @@ import type { PlanNavigation } from "../app/renderer/plans/navigation";
 import { PlanGenerationUnconfirmedError, usePlanGeneration } from "../app/renderer/plans/use-plan-generation";
 import { PlanGenerationSettingsSchema } from "../protocol/plan-generation";
 import { TrustedSnapshotSchema } from "../protocol/trusted-local";
+import { startComponentPlan } from "../app/renderer/plans/start-generation";
+import { workspaceBridge } from "../app/renderer/workspace-bridge";
+import { initialSnapshot } from "../fixtures/world";
+import { PROTOCOL_VERSION, type CoreRequest } from "../protocol/schema";
 
 vi.mock("@xyflow/react", () => ({ Position: { Right: "right", Left: "left" } }));
 afterEach(() => { cleanup(); localStorage.clear(); sessionStorage.clear(); });
@@ -16,6 +20,21 @@ describe("explicit plan generation", () => {
   const snapshot = (token: string, status: "ready" | "running" | "failed" | "closed") => TrustedSnapshotSchema.parse({
     instanceId: crypto.randomUUID(), profile: "trusted-local", workspace: "/repo", preparation: null,
     runToken: token, status, threadId: "thread", turnId: "turn", output: "", message: "", approvals: [],
+  });
+  it("dispatches one schema-valid start through the captured selected-worktree bridge", async () => {
+    const token = crypto.randomUUID();
+    const request = vi.fn(async (input: CoreRequest) => ({ protocolVersion: PROTOCOL_VERSION, requestId: input.requestId, ok: true as const, sequence: 1,
+      snapshot: initialSnapshot(), workspaceId: input.workspaceId, trusted: { kind: "trusted" as const, snapshot: snapshot(token, "running") } }));
+    const bridge = workspaceBridge({ request, onEvent: () => () => {} }, "repo:selected")!;
+    await startComponentPlan(bridge, token, PlanGenerationSettingsSchema.parse({ model: "custom-model", effort: "high", prompt: "Explain the scheduler." }));
+    expect(request).toHaveBeenCalledTimes(1);
+    expect(request.mock.calls[0]![0]).toMatchObject({ type: "trusted.start", token, workspaceId: "repo:selected", purpose: "component-plan", model: "custom-model", effort: "high" });
+    expect(request.mock.calls[0]![0]).not.toHaveProperty("input");
+  });
+  it("keeps lost acknowledgements unconfirmed instead of resubmitting", async () => {
+    const request = vi.fn(async () => { throw new Error("Connection reset"); });
+    await expect(startComponentPlan({ request, onEvent: () => () => {} }, crypto.randomUUID(), PlanGenerationSettingsSchema.parse({}))).rejects.toBeInstanceOf(PlanGenerationUnconfirmedError);
+    expect(request).toHaveBeenCalledTimes(1);
   });
   it("launches once, selects the admitted agent and refreshes the normal reader on completion", async () => {
     let finish!: () => void;

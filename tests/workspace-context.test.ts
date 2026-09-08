@@ -101,6 +101,25 @@ describe("workspace routing", () => {
     expect(f.outputs.at(-1)).toMatchObject({ ok: false, error: { message: expect.stringContaining("registration changed") } });
     await f.router.shutdown();
   });
+  it("refreshes the registration when another agent reopens the same cached worktree", async () => {
+    const second = "20000000-0000-4000-8000-000000000002";
+    let oldLive = true;
+    const calls: unknown[] = [];
+    const router = new WorkspaceContextRouter({
+      resolve: async id => {
+        if (id === null) return selection("primary");
+        if (id === SESSION && !oldLive) throw new Error("Old registration removed");
+        return selection("other", id);
+      },
+      create: selected => ({ ready: Promise.resolve(snapshot(selected.id)), snapshot: async () => snapshot(selected.id),
+        request: async (input, context) => { calls.push({ input, context }); }, shutdown: async () => {}, close() {} }), post() {},
+    });
+    await router.request(command("workspace.open", { sessionId: SESSION })); oldLive = false;
+    await router.request(command("workspace.open", { sessionId: second }));
+    await router.request(command("trusted.start", { workspaceId: "other", token: crypto.randomUUID(), text: "Use the reopened worktree" }));
+    expect(calls).toHaveLength(1); expect(calls[0]).toMatchObject({ context: { trustedStartRoot: "/work/other" } });
+    await router.shutdown();
+  });
   it("rejects unopened/mixed roots and nonlaunch preparation while observation remains shared", async () => {
     const { router, calls, outputs } = fixture();
     await router.request(command("file.read", { workspaceId: "unopened", path: "same.txt" }));

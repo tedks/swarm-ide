@@ -8,7 +8,7 @@ export const PlanGenerationSettingsSchema = z.object({
   harness: z.literal("codex").default("codex"),
   model: z.string().regex(/^[a-zA-Z0-9._-]{1,80}$/).default("gpt-5.6-sol"),
   effort: z.enum(["low", "medium", "high", "xhigh"]).default("xhigh"),
-  prompt: z.string().min(1).max(8000).refine((value) => Boolean(value.trim()) && !value.includes("\0")).default(DEFAULT_PLAN_PROMPT),
+  prompt: z.string().min(1).max(8000).refine((value) => Boolean(value.trim()) && !value.includes("\0") && new TextEncoder().encode(value).byteLength <= 8000).default(DEFAULT_PLAN_PROMPT),
 }).strict();
 export type PlanGenerationSettings = z.infer<typeof PlanGenerationSettingsSchema>;
 

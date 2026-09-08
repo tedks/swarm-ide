@@ -7,11 +7,41 @@ import { componentPlanMissing, prepareComponentPlan } from "../core/plan-generat
 import { componentPlanPrompt, PlanGenerationSettingsSchema } from "../protocol/plan-generation";
 import { readPlanIndex } from "../core/plans";
 import { PlanReadResultSchema } from "../protocol/plans";
+import { TrustedLocalService } from "../core/agents/trusted-local";
+import { TrustedRequestSchema } from "../protocol/trusted-local";
+import { PROTOCOL_VERSION } from "../protocol/schema";
+import { randomUUID } from "node:crypto";
+import { vi } from "vitest";
 
 const roots: string[] = [];
 const root = async () => { const path = await mkdtemp(join(tmpdir(), "swarm-plan-generation-")); roots.push(path); return path; };
 afterEach(async () => { await Promise.all(roots.splice(0).map(path => rm(path, { recursive: true, force: true }))); });
 describe("component-plan generation admission", () => {
+  it("uses the ordinary owner with requested effort and refuses a second active generator", async () => {
+    const path = await root();
+    const session = { snapshot: () => ({ status: "running" as const, threadId: "thread", turnId: "turn", output: "", message: "", approvals: [] }),
+      start: vi.fn(async () => {}), stop: vi.fn(async () => {}), send: vi.fn(), decide: vi.fn() };
+    const createSession = vi.fn(async () => session);
+    const service = new TrustedLocalService({ root: path, context: { prepare: vi.fn(), dispose: vi.fn() }, createSession });
+    const request = () => TrustedRequestSchema.parse({ protocolVersion: PROTOCOL_VERSION, requestId: randomUUID(), type: "trusted.start", purpose: "component-plan",
+      token: randomUUID(), text: "Plan this project", model: "gpt-5.6-sol", effort: "xhigh" });
+    try {
+      await service.request(request(), path);
+      expect(session.start).toHaveBeenCalledWith("Plan this project", "gpt-5.6-sol", undefined, "xhigh");
+      await expect(service.request(request(), path)).rejects.toThrow("already working");
+      expect(createSession).toHaveBeenCalledTimes(1);
+    } finally { await service.shutdown(); }
+  });
+  it("rechecks the selected root at admission and never starts for an existing index", async () => {
+    const path = await root(), selected = await root(); await mkdir(join(selected, ".swarm")); await writeFile(join(selected, ".swarm/plans.json"), "malformed but owned");
+    const createSession = vi.fn();
+    const service = new TrustedLocalService({ root: path, context: { prepare: vi.fn(), dispose: vi.fn() }, createSession });
+    try {
+      await expect(service.request(TrustedRequestSchema.parse({ protocolVersion: PROTOCOL_VERSION, requestId: randomUUID(), type: "trusted.start", purpose: "component-plan",
+        token: randomUUID(), text: "Generate", model: "gpt-5.6-sol", effort: "xhigh" }), selected)).rejects.toThrow("already exists");
+      expect(createSession).not.toHaveBeenCalled();
+    } finally { await service.shutdown(); }
+  });
   it("starts only when the canonical index is genuinely absent", async () => {
     const path = await root();
     expect(await componentPlanMissing(path)).toBe(true);

@@ -113,6 +113,7 @@ export class TrustedLocalSession {
   private exitTimer?: ReturnType<typeof setTimeout>;
   private stdoutEnded = false;
   private model: string | null = null;
+  private effort: "low" | "medium" | "high" | "xhigh" | null = null;
   private successfulTurn: string | null = null;
 
   constructor(private options: TrustedLocalSessionOptions, private onChange: () => void) {
@@ -212,9 +213,10 @@ export class TrustedLocalSession {
     });
   }
 
-  async start(prompt: string, model: string | null, fork?: TrustedForkPoint): Promise<void> {
+  async start(prompt: string, model: string | null, fork?: TrustedForkPoint, effort?: "low" | "medium" | "high" | "xhigh" | null): Promise<void> {
     if (this.started || !this.active()) throw new Error("This session cannot be started again.");
     this.started = true; this.busy = true; this.model = model;
+    this.effort = effort ?? null;
     try {
       input(prompt, 128 * 1024);
       if (model !== null) identity(model);
@@ -292,7 +294,7 @@ export class TrustedLocalSession {
     this.append(`\nYou: ${text}\n\n`);
     if (!this.active()) throw new Error("Session stopped before dispatch.");
     const response = object(await this.request("turn/start", { threadId: this.state.threadId, input: content,
-      ...(this.model === null ? {} : { model: this.model }) }));
+      ...(this.model === null ? {} : { model: this.model }), ...(this.effort === null ? {} : { effort: this.effort }) }));
     this.confirm(identity(object(response.turn).id));
   }
   private confirm(id: string): void {

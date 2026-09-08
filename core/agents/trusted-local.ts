@@ -11,6 +11,7 @@ import { createAgentTaskResolver } from "../tasks/draft-context";
 import { createOwnedCodexTransport } from "./owner";
 import { TrustedLocalSession, type TrustedForkPoint } from "./trusted-local-session";
 import { FileTrustedLocalStore, MemoryTrustedLocalStore, type TrustedLocalStore, type TrustedStoredRun } from "./trusted-local-store";
+import { componentPlanMissing } from "../plan-generation";
 
 export function trustedPrompt(prepared: PreparedAgentContext): string {
   const c = prepared.launchContext;
@@ -254,23 +255,35 @@ export class TrustedLocalService {
     if (!isAbsolute(root)) throw new Error("Select a working directory before starting an agent.");
     if (this.admittedTokens.has(request.token) || this.preparation?.token === request.token)
       throw new Error("This conversation was already submitted. Open it instead of starting it again.");
+    if (request.purpose === "component-plan") {
+      for (const run of this.runs.values()) {
+        this.refresh(run);
+        if (run.saved.summary.purpose === "component-plan" && run.saved.summary.workspace === root &&
+          (run.launching || ["starting", "running", "stopping"].includes(run.saved.summary.status)))
+          throw new Error("A design agent is already working in this worktree. Open that conversation before starting another.");
+      }
+    }
     this.reserveCapacity();
     const at = this.timestamp();
     const run: Run = { session: null, stopped: false, launching: true, saved: {
       summary: { runToken: request.token, title: tail(request.text.trim(), 256), createdAt: at, updatedAt: at,
         status: "starting", archived: false, approvalCount: 0, taskReference: null, workspace: root,
-        initialText: request.text, message: "Starting Codex…" },
+        initialText: request.text, message: "Starting Codex…", ...(request.purpose ? { purpose: request.purpose } : {}) },
       threadId: null, turnId: null, output: "", activities: [],
     } };
     // Permanently consume the client identity before awaiting storage or opening
     // a process. A lost acknowledgement must not create another conversation.
     this.admittedTokens.add(request.token); this.runs.set(request.token, run); this.selected = request.token;
     try {
+      if (request.purpose === "component-plan" && !await componentPlanMissing(root))
+        throw new Error("A plan already exists or cannot be checked. Open .swarm/plans.json before changing it.");
       await this.persist();
       if (this.closed || run.stopped) throw new Error("Start cancelled before Codex opened.");
       run.session = await this.options.createSession(() => this.changed(run), root);
       if (this.closed || run.stopped) { await run.session.stop(); throw new Error("Start cancelled before Codex opened."); }
-      void run.session.start(request.text, request.model ?? null).catch(() => { /* session exposes startup failure; no replay */ }).finally(() => this.changed(run));
+      const starting = request.effort === undefined ? run.session.start(request.text, request.model ?? null)
+        : run.session.start(request.text, request.model ?? null, undefined, request.effort);
+      void starting.catch(() => { /* session exposes startup failure; no replay */ }).finally(() => this.changed(run));
       this.refresh(run); await this.persist();
     } catch (error) {
       if (!run.session) run.saved.summary = { ...run.saved.summary, status: run.stopped ? "closed" : "failed", archived: true,
