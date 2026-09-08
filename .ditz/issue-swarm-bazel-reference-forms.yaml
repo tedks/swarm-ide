@@ -1,0 +1,21 @@
+id: swarm-bazel-reference-forms
+title: Follow shorthand Bazel labels and relative Starlark load references
+desc: The first Alt-click navigation increment follows exact observed //package:target
+  labels and BUILD-local source names. Add //package shorthand and statically recognizable
+  relative load() references in .bzl without guessing the caller package of macro
+  argument strings. Preserve bounded parsing, observed declaration/source membership,
+  generated/external exclusions and existing source-opening authority. Current implementation
+  intentionally declines these forms.
+type: feature
+component: default
+release:
+reporter: Ted Smith <tedks@riseup.net>
+status: unstarted
+disposition:
+creation_time: 2026-09-08T06:21:28-00:00
+references: []
+log_events:
+- time: 2026-09-08T06:21:28-00:00
+  who: Ted Smith
+  what: created
+  comment: ""
