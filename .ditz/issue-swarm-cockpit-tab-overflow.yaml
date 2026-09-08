@@ -9,8 +9,8 @@ type: task
 component: default
 release:
 reporter: Ted Smith <tedks@riseup.net>
-status: in_progress
-disposition:
+status: closed
+disposition: fixed
 creation_time: 2026-09-08T04:53:34-00:00
 references: []
 log_events:
@@ -45,3 +45,10 @@ log_events:
     targets passed on joined tree (15.711s total), inline conflict review clean. No
     repeated GUI/model/full suite; original proof remains attributed to pre-join implementation.
     PR95 pushed for ROOT normal landing/adoption.'
+- time: 2026-09-08T05:30:20-00:00
+  who: Ted Smith
+  what: 'closed: fixed'
+  comment: PR95 normally merged after a narrow proof-driver reporting join. Slim dark
+    scrollbars and overflow arrows cover document/lens/agent tab strips while preserving
+    input behavior and editor/diff scrollbars. Owned document proof passed with ten
+    tabs, source retention and cleanup; focused joined local checks passed.
