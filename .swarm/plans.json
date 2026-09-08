@@ -290,6 +290,8 @@
     ],
     "sourcePaths": [
       "core/agents/trusted-local-session.ts",
+      "core/agent-lifecycle.ts",
+      "protocol/agent-lifecycle.ts",
       "core/external-agents.ts",
       "core/external-agents-send.ts",
       "protocol/external-agents.ts",
@@ -346,7 +348,7 @@
         },
         {
           "label": "//tools/demo-agents:unit",
-          "role": "Registered fleet creation ordering, deep lineage disclosures and observer checks",
+          "role": "Agent lifecycle evidence, registered fleet creation ordering, deep lineage disclosures and observer checks",
           "dependencies": [
             { "label": "//:quality_sources", "relation": "data" },
             { "label": "//tools/demo-agents:sources", "relation": "data" }
