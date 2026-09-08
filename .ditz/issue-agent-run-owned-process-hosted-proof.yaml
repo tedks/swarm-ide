@@ -1,5 +1,6 @@
 id: agent-run-owned-process-hosted-proof
-title: Accept required external owned-process proof on supported hosted runner
+title: Test startup and cleanup of managed external processes on a supported hosted
+  runner
 desc: ""
 type: task
 component: default
@@ -47,5 +48,13 @@ log_events:
     Merge207637c run34020396207 also FAILED. Exact local aggregate all10 including
     external process proof4tests and owned X11 rehearsal passed; no test skips/host-security
     changes. Remains open; sanitized logs master/artifacts/overnight-wave/policy-p5.
+- time: 2026-09-08T04:27:34-00:00
+  who: Ted Smith
+  what: changed title
+  comment: ""
+- time: 2026-09-08T04:27:34-00:00
+  who: Ted Smith
+  what: updated description
+  comment: ""
 blocked_by:
 - agent-policy-boundary-hosted-seed-pipe
