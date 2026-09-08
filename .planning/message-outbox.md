@@ -11,7 +11,7 @@ An operator can submit an instruction, switch agents or reload the renderer, and
 - [x] (2026-09-08) Read the current sender, shared assignment and UI ownership; started `swarm-message-outbox`.
 - [x] (2026-09-08 13:42Z) Implement bounded saved outgoing messages and mounted conversation rows;57 focused tests and both TypeScript boundaries pass.
 - [x] (2026-09-08 13:47Z) Agreed narrow SessionSteering hook ownership with chat-input; actual form/save-before-dispatch unit proof and packaged held receipt/full document reload/native clipboard proof pass.
-- [ ] Final narrow native review, pushed ready PR and handoff; ROOT owns normal merge/adoption.
+- [x] (2026-09-08 13:50Z) Final native delta CLEAN; PR110 ready and implementation pushed, Ditz outcome recorded; ROOT owns normal merge/adoption.
 
 ## Assumptions and boundaries
 
