@@ -1,0 +1,16 @@
+id: swarm-usability-pass
+title: Make the operator cockpit comfortable for daily use and easy to install
+desc: ""
+type: feature
+component: default
+release:
+reporter: Ted Smith <tedks@riseup.net>
+status: unstarted
+disposition:
+creation_time: 2026-09-08T13:28:38-00:00
+references: []
+log_events:
+- time: 2026-09-08T13:28:38-00:00
+  who: Ted Smith
+  what: created
+  comment: ""
