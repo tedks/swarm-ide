@@ -18,3 +18,11 @@ log_events:
   who: Ted Smith
   what: started
   comment: ""
+- time: 2026-09-08T00:56:40-00:00
+  who: Ted Smith
+  what: commented
+  comment: PR76 ready; implementation89faa42/full72 build targets+quality1830/137+focused70/6+owned
+    packaged2084ms/zeroerrors/cleanup1. Native fix deltas CLEAN. Actual Codex0.153.4
+    one self-queue receipt confirmed, consumption not claimed. Final docs3139af9.
+    Awaiting ROOT normal merge/adoption; no peer consumed. Follow-up external-steering-durable-receipts
+    records app-reload persistence limitation.
