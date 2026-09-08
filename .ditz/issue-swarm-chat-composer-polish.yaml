@@ -31,3 +31,13 @@ log_events:
     another agent or source. PR117: 76 focused tests/types, clean native review, and
     actual virtual Chromium focus/arrow/reload/copy proof passed. No live instruction
     was sent. ROOT owns landing and app adoption.'
+- time: 2026-09-08T15:21:11-00:00
+  who: Ted Smith
+  what: commented
+  comment: 'Added the requested terminal Context cleanup in the same PR117: full wrapping
+    attach/switch commands, no raw location IDs in the heading, and separate Copy
+    controls with selectable-text recovery. Exact commands and checked availability
+    stay unchanged. 31 focused composer/terminal tests and types passed; native review
+    clean; actual Chromium keyboard selection and exact clipboard copying passed for
+    both commands, with composer focus/arrow proof still green. ROOT landing remains
+    pending.'
