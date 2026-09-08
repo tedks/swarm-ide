@@ -35,3 +35,13 @@ log_events:
     not exercised by this GUI; shared wrapper and existing dock tests cover input
     behavior. PR95 is stacked on PR93, pushed for ROOT normal merge/adoption; not
     closing before landing.
+- time: 2026-09-08T05:21:41-00:00
+  who: Ted Smith
+  what: commented
+  comment: 'Completed narrow ROOT-authorized PR95 landing join f96e2f1: normally merged
+    cleared master b2771f3 with reviewed98ccab8. Only manual conflict was tools/operator-cockpit/scenario.sh;
+    kept tabs-only and briefing-only reporting/assertions. Inspected automatically
+    merged acceptance paths; no production correction. Both focused cockpit and tab-overflow
+    targets passed on joined tree (15.711s total), inline conflict review clean. No
+    repeated GUI/model/full suite; original proof remains attributed to pre-join implementation.
+    PR95 pushed for ROOT normal landing/adoption.'
