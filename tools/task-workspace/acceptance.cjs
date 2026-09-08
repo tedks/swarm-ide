@@ -75,7 +75,7 @@ async function main() {
   await until(() => has(".task-update-log li"), "actual pinned Ditz history");
   assert((await text(".task-context")).includes("created"));
   assert((await text(".task-context")).includes("Implement the first independent part"));
-  assert((await text(".task-context")).includes("No agent activity in this scope."));
+  assert((await text(".task-context")).includes("No isolated run or recorded activity in this scope."));
   assert.deepEqual(await sourceState(), dirty);
   await shot("01-task-document-context.png");
   stage = "attachment";

@@ -9,13 +9,13 @@ An operator viewing a Ditz task should see the trusted conversations actually la
 ## Progress
 
 - [x] (2026-09-08 00:39Z) Read assigned worktree, shared wave contract and current task/dock interfaces.
-- [ ] Implement and test a pure task-run projection and contextual view.
+- [x] (2026-09-08 00:44Z) Implement pure task-run projection and contextual view; native first pass and copy-fix convergence CLEAN. New identity/excerpt/retention tests authored.
 - [ ] Join only ROOT-cleared typed producer and W6 conversation selection seam.
 - [ ] Run relevant local gates, native convergence and owned virtual proof; push handoff.
 
 ## Surprises & Discoveries
 
-The current strict trusted snapshot has no admitted task reference or run list. The task context already has a separate isolated/rehearsal run log; it must remain separate. The trusted dock stays mounted when another dock tab is selected, so its retained observation can feed task context without a second poller.
+The current strict trusted snapshot has no admitted task reference or run list. The task context already has a separate isolated/rehearsal run log; it must remain separate. The trusted dock stays mounted when another dock tab is selected, so its retained observation can feed task context without a second poller. Initial quality executed 1,804 tests: 1,802 passed and two new tests failed because their purported alternate revisions accidentally equalled the fixture's original revisions. Corrected the test data; this is not claimed as a production RED/fix.
 
 ## Decision Log
 
@@ -23,7 +23,7 @@ Use a pure presentation subset of the agreed run shapes before the producer is a
 
 ## Outcomes & Retrospective
 
-Implementation in progress. No live model turn or integrated trusted history is claimed.
+PR74 now contains the bounded implementation. Native code and copy-fix reviews are CLEAN. Full local correction gate and owned controlled view proof are in progress; no live model turn or integrated trusted history is claimed.
 
 ## Context and Orientation
 
@@ -54,3 +54,5 @@ Coordination and evidence live under `/tmp/swarm-ide-real-swarms.Djy75P/task-run
 `TaskContext` gains optional `trustedObservation` and `onOpenTrustedRun(token)` props. The observation contains a validated snapshot subset and a retained flag. `TaskTrustedRuns` filters by the task snapshot's world/repository and selected task ID; it has no bridge, timer, source navigation or write callbacks. W6 owns the observation source and exact conversation selection. F1 owns runtime declarations and core-admitted references.
 
 Initial plan records bounded parallel implementation and the explicit producer gate.
+
+2026-09-08: Recorded first native-clean presentation increment, exact test-data correction and separate proof/join limits.

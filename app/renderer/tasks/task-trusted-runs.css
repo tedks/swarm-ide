@@ -1,0 +1,10 @@
+.task-trusted-runs { min-width: 0; }
+.task-trusted-count { color: var(--muted, #919aa9); font-size: .85em; font-weight: normal; }
+.task-trusted-list { display: grid; gap: 10px; margin: 10px 0 0; padding: 0; list-style: none; }
+.task-trusted-list > li { min-width: 0; padding: 10px; border: 1px solid var(--border, #303644); border-radius: 6px; }
+.task-trusted-run-heading { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 5px 12px; overflow-wrap: anywhere; }
+.task-trusted-run-heading > span { font-size: 11px; color: var(--muted, #919aa9); }
+.task-trusted-list small { display: block; margin: 5px 0; overflow-wrap: anywhere; }
+.task-trusted-message { margin: 7px 0; font-size: 12px; overflow-wrap: anywhere; white-space: pre-wrap; }
+.task-trusted-excerpt { margin: 8px 0; }
+.task-trusted-excerpt pre { max-height: 170px; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; font-size: 11px; }
