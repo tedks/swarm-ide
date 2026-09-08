@@ -35,3 +35,10 @@ log_events:
     owned cleanup confirmed, closed history reopen zero replay. Private evidence fleet-core/live.g3dlVQ;
     no UI/real task-bearing turn or interrupted crash overclaim. No peer consumption
     or app adoption. Followup crash-temp cleanup remains open.'
+- time: 2026-09-08T01:04:26-00:00
+  who: Ted Smith
+  what: commented
+  comment: "PR75 joined ROOT-cleared A2 PR77/71 as6191047. Actual parser/callback\u2192service/store
+    controlled proof, last100 boundary and retention tests passed81/5; packagebuild
+    PASS, native delta CLEAN. No new product turn, prior real3turn proof attribution
+    unchanged. Ready ROOT landing and W6/T5 joins."
