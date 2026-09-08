@@ -20,7 +20,8 @@ the graph, and containment must not look like an architectural interface.
 - [x] Compose one four-pane workspace and central document layout without duplicate readers or graph instances; focused mounted checks pass.
 - [x] Focused checks: 86 design/projection tests and 62 cockpit/recovery/task tests, both TypeScript boundaries; native fix-delta review CLEAN.
 - [x] Owned virtual 1440px overview/design/source journey passed with actual loaded Ditz graph, retained cameras/editor and zero renderer errors (2.536s; cleanup complete).
-- [ ] ROOT composition/landing: newly merged PR121 changes Work Log selection in four overlapping App hunks. Exact request is in the step handoff; no shared app adoption by this department.
+- [x] ROOT-cleared PR121 c44e876 normally composed as 793e7bc; four App intersections preserve its shared reader/ID selection. Joined cockpit and Work Log checks and native merge-delta review passed.
+- [ ] ROOT normal PR landing/adoption; no shared app changes by this department.
 
 ## Surprises & Discoveries
 
@@ -53,8 +54,10 @@ CSS row/order rules; direct pane hit-testing caught and verified their correctio
 The final owned proof loads actual Ditz relationships and retains that graph too.
 An independent periodic idle-flash cause has not been established. Existing
 task loading, service availability and build-query semantics are unchanged.
-PR121 landed meanwhile; this branch intentionally does not silently consume its
-overlapping Work Log state. ROOT owns that small composition and normal landing.
+PR121 landed meanwhile. After explicit ROOT clearance, the same branch normally
+composed its shared Work Log reader and ID-based selection as 793e7bc. Both scoped
+cockpit/Work Log targets pass and native merge-delta review is CLEAN; no broad
+test or new GUI/model cycle was requested. ROOT owns normal landing/adoption.
 
 ## Context and Orientation
 
