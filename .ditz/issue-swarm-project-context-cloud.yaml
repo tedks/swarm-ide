@@ -1,0 +1,21 @@
+id: swarm-project-context-cloud
+title: Show observed deployment versions and aggregate cloud metrics
+desc: Add generic read-only Firebase Hosting, Cloud Run and GitHub deployment adapters
+  inferred from existing committed metadata. Scan found Goals hostname goalsapp.org
+  and Cloud Run goals-api, plus Pure Sky SHORT_SHA image conventions. Resolve actual
+  account/project/resource identity before API calls; no credentials/customer records
+  or mutations. Distinguish configured targets from observed deployed versions; no
+  per-personal-project whitelist.
+type: feature
+component: default
+release:
+reporter: Ted Smith <tedks@riseup.net>
+status: unstarted
+disposition:
+creation_time: 2026-09-08T05:05:32-00:00
+references: []
+log_events:
+- time: 2026-09-08T05:05:32-00:00
+  who: Ted Smith
+  what: created
+  comment: ""
