@@ -5,8 +5,8 @@ type: feature
 component: default
 release:
 reporter: Ted Smith <tedks@riseup.net>
-status: in_progress
-disposition:
+status: closed
+disposition: fixed
 creation_time: 2026-09-08T19:36:33-00:00
 references: []
 log_events:
@@ -46,5 +46,13 @@ log_events:
     and confirmed cleanup but stopped at300s during validation, not a completed turn.
     Lighter prompt and camera-test boundary tracked in two follow-ups. ROOT owns stacked
     PR132\u2192133 merge/adoption."
+- time: 2026-09-08T20:22:48-00:00
+  who: Ted Smith
+  what: 'closed: fixed'
+  comment: 'Implemented ready PR133 on reviewed New-agent base: explicit saved-config
+    generation, normal selected-worktree launch, protected existing plans, validated
+    graph loading and safe recovery/cleanup. Focused/native/controlled packaged checks
+    complete; actual generated artifacts retained with interrupted-turn and camera-test
+    follow-ups explicitly open. ROOT owns merge/adoption.'
 blocks:
 - swarm-close-working-loop
