@@ -73,6 +73,10 @@ remounts. Native trusted execution/history and New/Fork remain in a secondary
 tab; old stored runs retain their own tabs rather than a competing sidebar list.
 `//tools/conversation-cockpit:unit` and its owned-virtual `:smoke` cover this
 composition. Actual transcript reads are separate from controlled Send evidence.
+With a registered-conversation surface, the default dock takes about 42% of the
+viewport (340–460px), leaving room for both readable messages and the composer.
+The message list retains at least 80px after a delivery receipt; timestamps and
+message/receipt controls remain visible instead of squeezing chat to zero height.
 
 The selected agent's **Worktree** action opens `AgentWorktreeBrowser` in the
 center, carrying the registered session ID into the typed broker. Its directory

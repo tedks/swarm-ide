@@ -1108,6 +1108,7 @@ export function App() {
       buildLinks.repositoryId !== current.project.id || buildGraph.observation?.worldId !== current.world.id) return;
     setBuildTargetSelection({ id: target.id, repositoryId: buildLinks.repositoryId, revision: buildLinks.revision, nonce: ++navigationIntent.current });
     setActiveLens("System");
+    setCompactPanel(null);
   };
   const openEditorReference = (path: string, reference: string): boolean => {
     const current = workspaceRef.current.snapshot;

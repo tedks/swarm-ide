@@ -65,6 +65,8 @@ it("Ctrl+W closes the agent inspection, not the underlying editor or file watch"
   await screen.findByText("C7 / Worktree");
   expect(request.mock.calls.find(([input]) => input.type === "worktree.browse")?.[0]).toMatchObject({ sessionId: "00000000-0000-4000-8000-000000000007", directory: "" });
   fireEvent.click(screen.getByRole("button", { name: "modified app/file.ts" }));
+  await screen.findByText("Changes against origin/master, including committed and local edits.");
+  fireEvent.click(screen.getByRole("button", { name: "Source" }));
   await screen.findByText("child source");
   expect(request.mock.calls.find(([input]) => input.type === "worktree.inspect" && input.comparison === "master")?.[0]).toMatchObject({ sessionId: "00000000-0000-4000-8000-000000000007", comparison: "master" });
   fireEvent.click(screen.getByRole("button", { name: "Return to workspace" }));
