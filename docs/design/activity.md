@@ -67,6 +67,12 @@ Only paused or disconnected observation needs a status note; example sessions
 remain labelled. Tool results are operations too, while assistant recaps are not.
 Summary settings lives behind a keyboard-accessible gear next to explicit
 Start/Stop. A running empty Work Log says it is watching for completed turns.
+The shared `RunStatus.tsx` presents the core lifecycle with visible text and
+different shapes: a yellow square for working, paused bars for waiting on input,
+a red hollow slashed circle for failure, and a filled green circle for completion.
+Missing evidence is neutral and never invents progress. The rail and agent
+information use the current session lifecycle; each Work Log row/detail uses
+that outcome's own historical state. Recording in Ditz stays a separate fact.
 
 The neighboring `BuildResources.tsx` instrument counts actual provided build
 jobs, puts running/queued work before failed/completed rows, and preserves full
