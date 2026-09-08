@@ -25,3 +25,14 @@ log_events:
     code123PASS; two native findings reproduced and corrected127PASS, native convergence
     CLEAN. One actual bounded provider proof next, W6 renderer ownership still held.
     No merge/adoption.
+- time: 2026-09-08T02:26:00-00:00
+  who: Ted Smith
+  what: commented
+  comment: 'PR79 pushed cfba31b; native backend and W6 visible Fork/View-parent join
+    reviewed CLEAN. Actual Codex proof2conversations/3turns PASS23.5s; owned packaged
+    deterministic-peer UI PASS5.221s/cleanup1/zeroerrors with independent Stops and
+    retained source/draft/cameras/lineage. Focused134+W6 tests PASS, package PASS.
+    Joined quality1977PASS/1FAIL/1existing skip: legacy task request array includes
+    background read-only trusted.snapshot; ROOT exact test ownership requested. No
+    shared edit or merge/adoption. Existing failed-capacity untouched; editor Undo
+    gap separately filed. ROOT owns final landing and closure.'
