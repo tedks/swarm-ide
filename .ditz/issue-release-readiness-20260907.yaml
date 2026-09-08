@@ -20,3 +20,11 @@ log_events:
   who: Ted Smith
   what: started
   comment: ""
+- time: 2026-09-08T02:15:55-00:00
+  who: Ted Smith
+  what: commented
+  comment: PR80 docs e5a8803 native light CLEAN; install rehearsal PASS all three
+    actual repository dev launches with fresh dependencies/warm download caches, rejection/sentinel
+    checks and owned cleanup1. Original connected tour stopped at missing Return-to-source
+    native driver gesture after deliberate task opening. Evidence preserved; narrow
+    tooling authority requested, no unchanged retry or product/model/app changes.
