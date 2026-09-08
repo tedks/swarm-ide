@@ -71,3 +71,10 @@ and completed registrations remain browsable; control mode states the registered
 owner type, not a claim that a process is currently doing work. Cross-worktree
 source activation and the separate accomplishment Work Log are cockpit/Work Log
 consumer responsibilities. This observer does not infer task completion.
+
+Registered context links retain `contextPaths` alongside `session.worktree` even
+when that worktree differs from the opened repository. Missing, relative or
+symlink-aliased roots expose neither worktree identity nor navigation links.
+The cockpit must activate these paths using the selected session's
+`worktree.inspect` route; never substitute its currently opened repository.
+Deploy this cross-worktree link change with the C7 identity-routed consumer.

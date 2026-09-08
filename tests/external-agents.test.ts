@@ -117,6 +117,22 @@ describe("operator-registered external observation", () => {
     const result = await service.request(request("externalAgents.read", { sessionId: A }));
     expect(result.kind === "read" && result.detail.entries[0]?.text).toContain("[truncated]");
   });
+  it("retains context links for the explicitly registered other worktree, never for a missing or aliased root", async () => {
+    const { service, registry, rollout, dir } = await setup();
+    const other = join(dir, "other-worktree"), alias = join(dir, "other-alias");
+    await mkdir(other); await symlink(other, alias);
+    const row = { id: A, label: "other worker", rollout, contextPaths: ["docs/guide.md"] };
+    await writeFile(registry, JSON.stringify({ version: 1, sessions: [{ ...row, contextRoot: other }] }));
+    const observed = await service.request(request("externalAgents.read", { sessionId: A }));
+    expect(observed).toMatchObject({ detail: { session: { contextPaths: ["docs/guide.md"], worktree: other } } });
+    for (const contextRoot of [alias, join(dir, "missing"), "relative-worktree"]) {
+      await writeFile(registry, JSON.stringify({ version: 1, sessions: [{ ...row, contextRoot }] }));
+      const result = await service.request(request("externalAgents.read", { sessionId: A }));
+      expect(result.kind).toBe("read"); if (result.kind !== "read") throw new Error("Unexpected result");
+      expect(result.detail.session.contextPaths).toEqual([]);
+      expect(result.detail.session.worktree).toBeUndefined();
+    }
+  });
   it("rejects a same-inode same-size session rewrite between metadata and tail reads", async () => {
     const { service, rollout } = await setup(meta(A) + message("alpha text"));
     const originalOpen = (await vi.importActual<typeof import("node:fs/promises")>("node:fs/promises")).open;

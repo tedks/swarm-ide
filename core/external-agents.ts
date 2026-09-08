@@ -61,9 +61,16 @@ export class ExternalAgentService {
       const registry = Registry.parse(JSON.parse(bytes.subarray(0, bytesRead).toString("utf8")));
       for (const session of registry.sessions) {
         if (!session.rollout.endsWith(".jsonl")) throw new Error("Not a rollout");
-        // Authored path links have authority only in their explicitly named
-        // registered repository, never merely because another repo has the path.
-        if (session.contextRoot !== root) session.contextPaths = [];
+        // Links belong to this explicitly registered canonical worktree, not
+        // whichever repository happens to be open in the cockpit. Consumers
+        // activate them with session identity through worktree.inspect.
+        let canonicalContext = false;
+        try {
+          canonicalContext = Boolean(session.contextRoot && isAbsolute(session.contextRoot) &&
+            await realpath(session.contextRoot) === session.contextRoot && (await lstat(session.contextRoot)).isDirectory());
+        } catch { /* Missing/noncanonical worktree has no navigation links. */ }
+        this.check();
+        if (!canonicalContext) { session.contextPaths = []; delete session.contextRoot; }
       }
       return registry.sessions;
     } finally { await file.close(); }
