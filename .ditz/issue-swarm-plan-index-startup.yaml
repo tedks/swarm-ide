@@ -30,5 +30,16 @@ log_events:
     file bound. Added real committed-index regression, 300-reference coverage and
     corrected source-label mapping check. Focused plan checks pass, native scoped
     review clean. Shared navigation and expandable presentation remain in progress.
+- time: 2026-09-08T14:01:50-00:00
+  who: Ted Smith
+  what: commented
+  comment: Implemented the living-plan repair and unified overview in PR104. Every
+    source/document reference is retained with expandable lists; one selection links
+    architecture graph, document, outline and breadcrumbs. Named connections/constraints
+    explain components, and build activation resolves observed targets instead of
+    guessing BUILD files. 81 plan and60 navigation/context tests plus both types pass;
+    actual packaged keyboard/document/source journey passes with zero errors and cleanup.
+    Ready for normal ROOT landing and cockpit startup integration; source and managed
+    app untouched by browsing.
 blocks:
 - swarm-usability-join
