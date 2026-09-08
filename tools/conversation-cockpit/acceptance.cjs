@@ -51,14 +51,33 @@ async function main() {
       const element = document.querySelector(selector);
       if (!element) return null;
       const r = element.getBoundingClientRect();
-      return { x: r.x, y: r.y, width: r.width, height: r.height, bottom: r.bottom, scrollHeight: element.scrollHeight,
+      let left = Math.max(0, r.left), right = Math.min(innerWidth, r.right), top = Math.max(0, r.top), bottom = Math.min(innerHeight, r.bottom);
+      for (let parent = element.parentElement; parent; parent = parent.parentElement) {
+        const style = getComputedStyle(parent), box = parent.getBoundingClientRect();
+        if (style.overflowX !== "visible") { left = Math.max(left, box.left); right = Math.min(right, box.right); }
+        if (style.overflowY !== "visible") { top = Math.max(top, box.top); bottom = Math.min(bottom, box.bottom); }
+      }
+      return { x: r.x, y: r.y, width: r.width, height: r.height, right: r.right, bottom: r.bottom, scrollHeight: element.scrollHeight,
+        visible: { x: left, y: top, width: Math.max(0, right - left), height: Math.max(0, bottom - top) },
         clientHeight: element.clientHeight, overflowY: getComputedStyle(element).overflowY };
     };
-    return { viewport: { width: innerWidth, height: innerHeight }, dock: measure(".agent-dock"),
+    return { viewport: { width: innerWidth, height: innerHeight }, dock: measure(".agent-interaction-dock"),
       conversation: measure("[aria-label='Agent conversation']"), messages: measure(".conversation-messages"),
       form: measure("[aria-label='Agent conversation'] form"), textarea: measure("[aria-label='Agent conversation'] textarea"),
       send: measure("[aria-label='Agent conversation'] button[type='submit']") };
   });
+  const assertReadable = (measurement) => {
+    assert(measurement.messages?.visible.height >= 72, "At least 72 pixels of transcript must remain actually visible");
+    const box = measurement.conversation;
+    for (const name of ["textarea", "send"]) {
+      const element = measurement[name];
+      assert(element?.width > 0 && element.height > 0, `${name} has visible dimensions`);
+      assert(element.visible.width >= element.width - 0.75 && element.visible.height >= element.height - 0.75,
+        `${name} is fully visible through viewport and ancestor clipping`);
+      assert(element.x >= box.x - 0.75 && element.y >= box.y - 0.75 && element.right <= box.right + 0.75 && element.bottom <= box.bottom + 0.75,
+        `${name} fits inside the conversation box`);
+    }
+  };
   const click = async (selector) => {
     await run((s) => { const e = document.querySelector(s); if (!e || e.disabled) throw new Error(`Missing/disabled ${s}`); e.scrollIntoView({ block: "nearest", inline: "nearest" }); }, selector);
     await paint();
@@ -104,7 +123,9 @@ async function main() {
   assert(displayedMessages.length > 0 && displayedMessages.every((message) => observedMessages.get(root.id)?.includes(message)), "ROOT messages match actual core transcript reads");
   await until(() => run((s) => !!document.querySelector(s) && !document.querySelector(s).disabled, textarea), "ROOT composer available");
   assert.equal(sends.length, 0);
-  await fs.writeFile(path.join(evidence, "layout-before.json"), JSON.stringify(await layout(), null, 2));
+  const layoutBefore = await layout();
+  await fs.writeFile(path.join(evidence, "layout-before.json"), JSON.stringify(layoutBefore, null, 2));
+  assertReadable(layoutBefore);
   await fs.writeFile(path.join(evidence, "root-default.png"), (await wc.capturePage()).toPNG());
   stage = "retained real source";
   await click("[aria-label='Open file README.md']");
@@ -152,7 +173,9 @@ async function main() {
   assert.equal(await run(() => globalThis.__conversationGraphs.every((e) => e.isConnected)), true);
   assert.equal(await fs.readFile(path.join(fixture.root, "README.md"), "utf8"), fixture.source);
   assert.deepEqual(errors, []);
-  await fs.writeFile(path.join(evidence, "layout-after.json"), JSON.stringify(await layout(), null, 2));
+  const layoutAfter = await layout();
+  await fs.writeFile(path.join(evidence, "layout-after.json"), JSON.stringify(layoutAfter, null, 2));
+  assertReadable(layoutAfter);
   await fs.writeFile(path.join(evidence, "retained-drafts.png"), (await wc.capturePage()).toPNG());
   // Save only the disposable source, after proving no background source writes.
   await click(".file-state button");
@@ -160,7 +183,8 @@ async function main() {
   await fs.writeFile(path.join(evidence, "proof.json"), JSON.stringify({ ok: true, elapsedMs: Date.now() - started,
     actualRegisteredRead: true, root: root.id, child: child.id, controlledSend: true, actualMessagesSent: 0, modelTurns: 0,
     autoRoot: true, perAgentDrafts: true, explicitChoiceSurvivesRefresh: true, uncertainReceiptRetained: true,
-    interceptedSendRequests: sends.length, registeredWorktreeOpenAndReturn: true, sourceSelectionAndCamerasRetained: true, rendererErrors: errors }));
+    interceptedSendRequests: sends.length, registeredWorktreeOpenAndReturn: true, sourceSelectionAndCamerasRetained: true,
+    readableTranscriptAndVisibleComposer: true, visibleTranscriptPixels: { before: layoutBefore.messages.visible.height, after: layoutAfter.messages.visible.height }, rendererErrors: errors }));
   await until(() => fs.access(path.join(evidence, "close-request")).then(() => true, () => false), "capture complete");
   app.quit();
 }
