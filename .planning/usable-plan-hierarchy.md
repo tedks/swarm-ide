@@ -14,7 +14,7 @@ targets. The file grid remains a different perspective, not an architecture map.
 - [x] (2026-09-08) Confirmed designated branch and inspected actual parser/UI.
 - [x] (2026-09-08 13:40Z) Pushed actual-plan correction a82034d; 73 focused tests/types pass, native review clean.
 - [x] (2026-09-08 13:55Z) Unified navigation/overview and observed-target resolver; focused tests pass. Native review's reconnect finding corrected with completed/pending regressions.
-- [ ] Run focused checks, native review and one owned virtual proof; push handoff.
+- [x] (2026-09-08 14:01Z) 81 plan and 60 navigation/context tests plus both TypeScript boundaries passed. Native review converged clean. Final owned real packaged keyboard/document/component/source journey passed in 1.102 seconds with no renderer errors and complete cleanup.
 
 ## Surprises & Discoveries
 
@@ -41,7 +41,12 @@ The actual plan loads without arbitrary reference counts. A shared controller
 keeps document, outline and breadcrumbs aligned. The overview has document,
 component connections, build mappings and task dependencies; named edges and
 constraints explain the system rather than the directory layout. Larger App
-startup adoption belongs to the cockpit owner. Final package proof is underway.
+startup adoption belongs to the cockpit owner. Final packaged proof passed on
+owned display :194 and port 55414; no shared preview changed. The first GUI
+marker mismatch and later outline-driver readiness/key-sequence failures remain
+in the step evidence, not attributed to a product renderer fix. The final driver
+uses the existing native Enter/character/keyup pattern and checks visible focus
+and selected component before changing tabs.
 
 ## Context and Orientation
 
@@ -103,3 +108,8 @@ to prevent same-generation reconnects from reviving old read authority. The firs
 packaged test's final phrase was absent from the actual document; that assertion
 now looks for an existing repository-design sentence, without weakening the
 shared-selection, real-file or renderer-error checks.
+
+Completion note: application code is 4d6561b and final proof driver is 2d5817e.
+PR104 remains for ROOT's normal merge/adoption. Overall larger-index scaling is
+tracked separately as swarm-plan-incremental-index; this increment removes the
+per-component document/source caps without claiming the entire index is unbounded.
