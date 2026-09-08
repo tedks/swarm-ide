@@ -24,6 +24,12 @@ async function until(check, label, ms = 15000) {
   while (Date.now() < deadline) { if (await check()) return; await delay(50); }
   throw new Error(`Timed out: ${label}`);
 }
+async function saveAttachmentTrace(outcome) {
+  if (!currentWindow || currentWindow.isDestroyed()) return;
+  const trace = await currentWindow.webContents.executeJavaScript(
+    `globalThis.__swarmTourAttachmentTrace?.finish(${JSON.stringify(outcome)}) ?? null`);
+  if (trace) await fs.writeFile(path.join(evidence, "attachment-trace.json"), JSON.stringify(trace, null, 2));
+}
 async function main() {
   const started = Date.now(), repository = JSON.parse(await fs.readFile(path.join(evidence, "repository.json"), "utf8"));
   await app.whenReady();
@@ -39,6 +45,8 @@ async function main() {
   const click = async (selector, exactText = null) => {
     await run((s, t) => {
       const e = [...document.querySelectorAll(s)].find((node) => t === null || node.textContent.trim() === t);
+      const trace = globalThis.__swarmTourAttachmentTrace;
+      trace?.record("lookup", { selector: s, exactText: t, selected: trace.describe(e) });
       if (!e || e.disabled) throw new Error(`Missing/disabled ${s}: ${t}`);
       e.scrollIntoView({ block: "nearest", inline: "nearest" });
     }, selector, exactText);
@@ -56,6 +64,9 @@ async function main() {
         if (style.overflowY !== "visible") { top = Math.max(top, box.top); bottom = Math.min(bottom, box.bottom); }
       }
       const x = (left + right) / 2, y = (top + bottom) / 2;
+      const trace = globalThis.__swarmTourAttachmentTrace;
+      trace?.record("hit-test", { selector: s, exactText: t, x, y,
+        selected: trace.describe(e), hit: trace.describe(document.elementFromPoint(x, y)) });
       if (right <= left || bottom <= top || !e.contains(document.elementFromPoint(x, y))) throw new Error(`Occluded ${s}: ${t}`);
       return { x, y };
     }, selector, exactText);
@@ -141,8 +152,47 @@ async function main() {
   await click(".lens-tabs button", "Plan"); await click(".planning-tabs button", "Plans & components");
   await click(`${plan} button`, `Inspect task · ${taskId}`);
   await until(() => has(".task-detail:not(.task-document) .task-attach button:not(:disabled)"), "current explicit attachment");
+  // Bounded passive input/DOM evidence only: no handler wrapping, state writes,
+  // synthetic events, timing changes or relaxed outcome assertions.
+  await run(() => {
+    const rows = [], listeners = [];
+    let omitted = 0;
+    const describe = (node) => node instanceof Element ? {
+      tag: node.tagName, id: node.id.slice(0, 120), classes: String(node.className).slice(0, 180),
+      label: node.getAttribute("aria-label")?.slice(0, 160) ?? null,
+      text: node.matches("button, a") ? node.textContent.trim().slice(0, 160) : null,
+      connected: node.isConnected, disabled: Boolean(node.disabled),
+    } : { tag: node === window ? "window" : node === document ? "document" : "other" };
+    const visible = (node) => !node.closest("[hidden]") && node.getClientRects().length > 0;
+    const snapshot = () => ({ active: describe(document.activeElement),
+      proposal: [...document.querySelectorAll(".agent-task-proposal")].slice(0, 2).map((node) => ({
+        visible: visible(node), title: node.querySelector("h3")?.textContent ?? null,
+        append: Boolean(node.querySelector('[data-task-attachment="append"]')),
+      })),
+      notices: [...document.querySelectorAll(".task-detail .task-warning, .agent-draft-notice")]
+        .filter(visible).slice(0, 8).map((node) => node.textContent.trim().slice(0, 240)),
+    });
+    const record = (kind, detail = {}) => {
+      if (rows.length >= 48) { omitted++; return; }
+      rows.push({ kind, at: performance.now(), ...detail, state: snapshot() });
+    };
+    for (const name of ["pointerdown", "mousedown", "mouseup", "click"]) {
+      const listener = (event) => record(name, { trusted: event.isTrusted, x: event.clientX, y: event.clientY,
+        target: describe(event.target), path: event.composedPath().slice(0, 8).map(describe) });
+      window.addEventListener(name, listener, { capture: true, passive: true });
+      listeners.push([name, listener]);
+    }
+    globalThis.__swarmTourAttachmentTrace = { describe, record, finish: (outcome) => {
+      record("finish", { outcome });
+      for (const [name, listener] of listeners) window.removeEventListener(name, listener, true);
+      globalThis.__swarmTourAttachmentTrace = null;
+      return { outcome, rows, omitted };
+    } };
+    record("before-attach");
+  });
   await click(".task-detail:not(.task-document) .task-attach button", "Attach this task to draft");
   await click('[data-task-attachment="append"]');
+  await saveAttachmentTrace("after-append");
   await until(() => has(".agent-task-slot"), "one actual task slot");
   assert.equal(await run(() => document.querySelector(".agent-draft textarea").value), instruction);
   assert((await text(".agent-draft .agent-context-path")).includes(sourcePath));
@@ -207,6 +257,7 @@ async function main() {
     ...diagnostics, milliseconds: Date.now() - started }, null, 2));
 }
 main().catch(async (error) => {
+  await saveAttachmentTrace("failed").catch(() => {});
   if (currentWindow && !currentWindow.isDestroyed()) {
     await fs.writeFile(path.join(evidence, "failure.png"), (await currentWindow.webContents.capturePage()).toPNG());
     const body = await currentWindow.webContents.executeJavaScript("document.body.innerText").catch(() => "");
