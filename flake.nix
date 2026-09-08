@@ -1,5 +1,5 @@
 {
-  description = "Linux development environment for swarm-ide";
+  description = "Swarm IDE: installable Linux cockpit and development environment";
 
   inputs.nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
 
@@ -8,6 +8,16 @@
       systems = [ "x86_64-linux" "aarch64-linux" ];
       forAllSystems = nixpkgs.lib.genAttrs systems;
     in {
+      packages = forAllSystems (system:
+        let
+          pkgs = import nixpkgs { inherit system; };
+          swarm-ide = pkgs.callPackage ./nix/package.nix { src = self; };
+        in { inherit swarm-ide; default = swarm-ide; });
+
+      apps = forAllSystems (system:
+        let swarm = { type = "app"; program = "${self.packages.${system}.swarm-ide}/bin/swarm"; };
+        in { inherit swarm; default = swarm; });
+
       devShells = forAllSystems (system:
         let pkgs = import nixpkgs { inherit system; };
         in {
