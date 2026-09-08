@@ -19,6 +19,13 @@ authentication. The renderer still has no raw process authority. Interactive
 approvals remain explicit; stopping an IDE-owned run cleans up its owned processes.
 Reading saved history never resumes a model or replays commands.
 
+The normal cockpit leads with draft and trusted-local controls. When those
+controls are mounted, the rail/dock omit only the exact connected legacy
+`ADAPTER_POLICY_UNAVAILABLE` capability notice and its one-active-isolated-run
+caption. Real disconnect/send/run errors remain visible; legacy-only surfaces
+retain the notice. This is presentation in `LiveRunRail.tsx` and `AgentDock.tsx`,
+not a change to capabilities, approvals, run history or task/draft ownership.
+
 Native fork preserves conversation ancestry; current native children share the
 selected workspace rather than automatically allocating Git worktrees. Registered
 terminal agents may already occupy different worktrees. The current observer

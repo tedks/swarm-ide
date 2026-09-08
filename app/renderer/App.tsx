@@ -1289,7 +1289,7 @@ export function App() {
         agents={<>
         <ExternalAgentRail client={externalAgents} onSelect={() => { ++navigationIntent.current; inspect(null); setExternalInformation(true); setCompactPanel("info"); }} />
         {demo.runs ? <MockRunRail selected={demo.selected} onSelect={demo.select} /> : null}
-        <LiveRunRail state={liveAgents} client={agentClient} onSelect={(runId) => { agentClient.select(runId); setAgentDockSelection((value) => value + 1); }} onDraft={() => { setCompactPanel("work"); agentClient.openDraft(snapshot.focus); }} />
+        <LiveRunRail state={liveAgents} client={agentClient} trustedLocal onSelect={(runId) => { agentClient.select(runId); setAgentDockSelection((value) => value + 1); }} onDraft={() => { setCompactPanel("work"); agentClient.openDraft(snapshot.focus); }} />
         <AgentReloadGuard state={liveAgents} client={agentClient} />
         {agentFixtureEnabled ? <RunRail state={agents} fixtureEnabled={agentFixtureEnabled} onDraft={() => { setCompactPanel("work"); openAgentDraft(); }} onSelect={() => { agentClient.closePane(); setAgents((state) => ({ ...state, selected: true })); setFixtureDockSelection((value) => value + 1); }} /> : null}
         {agents.draftOpen && agentFixtureEnabled ? <LaunchDraft focus={snapshot.focus} onClose={() => setAgents((state) => ({ ...state, draftOpen: false }))} onLaunch={(context) => { agentClient.closePane(); setAgents((state) => fixtureReducer(state, { type: "launch", context })); }} /> : null}
