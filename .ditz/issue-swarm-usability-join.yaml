@@ -18,5 +18,10 @@ log_events:
   who: Ted Smith
   what: blocked by swarm-chat-enter-send
   comment: ""
+- time: 2026-09-08T13:28:40-00:00
+  who: Ted Smith
+  what: blocked by swarm-cursor-stability
+  comment: ""
 blocked_by:
 - swarm-chat-enter-send
+- swarm-cursor-stability
