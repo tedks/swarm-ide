@@ -16,6 +16,7 @@ collapsing these distinct questions into one graph.
 | Change observation | [working-world-observer.ts](../../core/working-world-observer.ts), [watchers.ts](../../core/watchers.ts) | Invalidates or refreshes derived observations |
 | Local servers and containers | [project-context/provider.ts](../../core/project-context/provider.ts) | [ProjectContextPanel](../../app/renderer/project-context/ProjectContextPanel.tsx), automatic worktree-scoped runtime instruments |
 | Declared project components and sites | [project-context/catalog.ts](../../core/project-context/catalog.ts) | [ProjectCatalogPanel](../../app/renderer/project-context/ProjectCatalogPanel.tsx), manifest relationships and configured destinations |
+| Registered agent worktrees | [worktree-inspection.ts](../../core/worktree-inspection.ts) | [AgentWorktreeBrowser](../../app/renderer/AgentWorktreeBrowser.tsx), read-only directories, changed paths and master comparison |
 
 The Bazel graph uses an actual per-repository query rather than a hardcoded demo
 directory. Explicit observation/refresh and working-world changes govern its
@@ -38,6 +39,31 @@ and configured sites. These are source facts rather than running-service or
 deployment assertions. Empty instruments disappear. Cloud deployment and telemetry
 adapters remain planned.
 
+## Agent worktree exploration
+
+The standalone agent worktree browser reads the selected session's canonical
+`contextRoot` from the private registry. It does not replace the ordinary editor
+or rebind the graph cameras. Its App mount belongs to the conversation cockpit;
+the original editable workspace must stay mounted while the browser is visible.
+
+`worktree.browse` reuses the bounded directory reader and lists tracked changes
+against the first available local reference in this order: `origin/master`,
+`master`, `origin/main`, `main`. The actual branch and chosen base are displayed.
+Each operation resolves that reference once before querying its comparison;
+there is no fetch, checkout, staging, or index update. Both committed agent work
+and current local changes appear. Untracked files are separate, renames retain
+their old path, and missing bases or partial results are not called clean.
+At most 400 changed paths are displayed; directory browsing remains available.
+The browse operation has one four-second cancellation budget, below the normal
+five-second bridge deadline. Rename inspection carries both literal paths.
+
+The existing `worktree.inspect` request retains HEAD comparison by default;
+the browser explicitly requests master comparison. Files are read through the
+same source broker as ordinary inspection. Deleted files show their diff;
+binary or oversized files have no source preview. Directory links, nested
+repositories, and Git administration are not traversed. This is a read-only
+explorer, not a second editable workspace or a whole-graph repository switch.
+
 ## Build connections
 
 The producer, protocol and renderer modules enter `//:quality_sources`, which
@@ -50,3 +76,10 @@ The current service examples have their own declarations under
 [checkout-world](../../examples/checkout-world/services/payments/BUILD.bazel).
 Their labels describe example services, not Swarm's TypeScript component
 boundaries. See [dynamic build graph](../dynamic-build-graph.md) for query limits.
+
+`//tools/worktree-browser:checks` consumes `//:quality_sources` and checks the
+actual two-worktree Git broker plus mounted browser and original-buffer retention.
+`//tools/worktree-browser:smoke` packages the production core and places the real
+App and browser in a labelled controlled renderer wrapper on owned virtual X11.
+That wrapper proves retention before the independent conversation-owner App mount;
+it is not a live-agent or normal-entry-point claim.
