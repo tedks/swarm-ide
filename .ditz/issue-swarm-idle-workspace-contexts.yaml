@@ -1,0 +1,20 @@
+id: swarm-idle-workspace-contexts
+title: Suspend idle worktree observers while preserving buffers and accepted operations
+desc: PR128 opens immutable provider contexts per selected canonical worktree and
+  closes them at core shutdown. Visited contexts remain resident so accepted writes/builds
+  and watchers keep their root. Measure larger fleets, then suspend or evict idle
+  read observers without discarding dirty renderer buffers, active builds or owned
+  process cleanup. No demonstrated resource incident in the bounded two-worktree proof.
+type: task
+component: default
+release:
+reporter: Ted Smith <tedks@riseup.net>
+status: unstarted
+disposition:
+creation_time: 2026-09-08T18:58:20-00:00
+references: []
+log_events:
+- time: 2026-09-08T18:58:20-00:00
+  who: Ted Smith
+  what: created
+  comment: ""
