@@ -41,12 +41,27 @@ swarm --workspace ../another-checkout
 swarm --help
 ```
 
-Choose an existing Git worktree for repository, task and source navigation.
+Choose an existing Git **working-tree root with a committed HEAD** for repository,
+task and source navigation. In a bare-repo layout, choose a child such as
+`~/Projects/project/master`, not the bare parent or a source subdirectory.
+Ordinary clones and linked worktrees both work on the Linux host; only the
+container needs a standalone clone inside its mount.
 The command rejects missing directories and unknown options instead of silently
 opening its installation directory. The IDE trusts your chosen local project and
 tools; deliberate build or agent actions may execute those tools normally.
 
 ## Connect an existing tmux swarm
+
+For a first look at another project, no agent setup is needed:
+
+```sh
+swarm --workspace "$HOME/Projects/puresky/master" \
+  --user-data-dir "$HOME/.config/swarm-ide-puresky"
+```
+
+Replace the project/profile names with yours. You can run this from any directory.
+Without installing first, use `nix run /path/to/swarm-checkout --` followed by
+the same flags. Continue with the [five-minute tour](demo.md).
 
 Choose the project and the exact tmux server/session independently. Agents can
 have sibling worktrees; their source links use each checked owner's actual Git
@@ -71,6 +86,10 @@ native children are recognized from their headers; deeper or missing-parent
 lineage is not guessed. If an expected agent is absent, use its existing checked
 registry with `--agent-registry`. Both paths have been exercised with actual
 agents, but automatic discovery is not a promise to find every pane.
+
+If that project already has Codex owners in `personal:puresky`, add
+`--tmux-server personal --tmux-session puresky` to the example above. A session
+containing only shells or another harness is not a Codex fleet.
 
 The command prints the private registry path and an exact tmux attach command.
 In the IDE, selecting a checked agent exposes the existing per-agent terminal
@@ -101,10 +120,10 @@ a Linux host feature, not a claim that the Mac container can see host tmux.
 Application files live in the immutable Nix store. Electron uses the application
 name `swarm-ide`, so its normal Linux profile/history lives under
 `${XDG_CONFIG_HOME:-$HOME/.config}/swarm-ide`, separate from installed files.
-To use a separate window/history profile:
+To use a separate window/history profile (recommended for simultaneous projects):
 
 ```sh
-swarm --workspace ./project --user-data-dir ./scratch/swarm-profile
+swarm --workspace ./project --user-data-dir "$HOME/.config/swarm-ide-my-project"
 ```
 
 This option does not move GitHub, Codex, tmux, Docker or other host configuration.
@@ -141,8 +160,9 @@ still load from the installed `file://` bundle.
 This increment was built and run on x86_64-linux, including a disposable Nix
 profile installation and real source opening on an owned virtual desktop. The
 flake's aarch64-linux output evaluates but has not been built or run here.
-macOS is not a native target of this package. The separate container demo
-work supplies an evaluator option, with its own host-integration limits.
+macOS is not a native target of this package. The separate [container demo](container-demo.md)
+is a design/source browsing option. Its current profile cannot run owned agent
+or live Bazel-query subprocesses, and it cannot observe Mac host agents.
 
 The Nix derivation builds through `//:desktop-bundle` and
 `//tools/cli:registration-bundle`. It fetches locked pnpm
