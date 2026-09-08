@@ -31,3 +31,12 @@ log_events:
     checks/native review/owned packaged proof underway. Scanned actual website, Pairmarket,
     PredictionBook, Speech, discord-agents, slowed and Pure Sky without modifying
     them. No live cloud or chain measurements claimed.
+- time: 2026-09-08T05:59:16-00:00
+  who: Ted Smith
+  what: commented
+  comment: PR96 ready at19ce3c6 (code03fd173). Final96 focused tests/types and desktop
+    package passed; native fix-delta review CLEAN. Actual packaged Node/Hugo/Move/hidden-empty
+    UI proof onfadd042 passed655ms/zero renderer errors/cleanup1; later metadata fixes
+    separately tested. Final actual probes show Pairmarket8 relationships, Speech13
+    withinpartialcoverage, both website destinations and Pure Sky Python+Node. Configured
+    sites are not live deployment metrics. ROOT owns normal merge/adoption and closure.
