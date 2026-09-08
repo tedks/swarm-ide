@@ -25,6 +25,11 @@ log_events:
   who: Ted Smith
   what: blocked by swarm-repository-worktree-overview
   comment: ""
+- time: 2026-09-08T18:01:09-00:00
+  who: Ted Smith
+  what: blocked by swarm-target-build-jobs
+  comment: ""
 blocked_by:
 - swarm-selected-conversation-latency
 - swarm-repository-worktree-overview
+- swarm-target-build-jobs
