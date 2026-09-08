@@ -15,6 +15,7 @@ import {
   type WorkspaceSnapshot,
 } from "../protocol/schema";
 import { computeWorkingWorldFingerprint } from "./fingerprint";
+import { watchBuildProgress } from "./build-progress";
 import { registerRepository } from "./repository-registration";
 import { RepositoryReader, RepositoryError } from "./repository";
 import { RepositoryFileSearch } from "./repository-search";
@@ -52,7 +53,7 @@ export interface ProviderDependencies {
   register?: typeof registerRepository;
   repository?: (root: string, repositoryId: string) => Pick<RepositoryReader, "list" | "markStale" | "dispose">;
   fingerprint(workspaceRoot: string): Promise<string>;
-  build(workspaceRoot: string): Promise<BazelBuildResult>;
+  build(workspaceRoot: string, onProgress?: (message: string) => void): Promise<BazelBuildResult>;
   readArtifact(workspaceRoot: string, build: BazelBuildResult): Promise<{ bytes: Buffer; artifact: ServiceTopologyArtifact }>;
   now(): string;
 }
@@ -131,9 +132,10 @@ export function topologyArtifactPathFromBuildEvents(bytes: Buffer): string {
   return artifactPath;
 }
 
-async function runBazel(workspaceRoot: string): Promise<BazelBuildResult> {
+async function runBazel(workspaceRoot: string, onProgress?: (message: string) => void): Promise<BazelBuildResult> {
   const eventDirectory = await mkdtemp(join(tmpdir(), "swarm-ide-build-events-"));
   const eventPath = join(eventDirectory, "topology.jsonl");
+  const progress = onProgress ? watchBuildProgress(eventPath, onProgress) : undefined;
   try {
     await bazel(workspaceRoot, [
       "build",
@@ -143,13 +145,15 @@ async function runBazel(workspaceRoot: string): Promise<BazelBuildResult> {
       "--curses=no",
       `--build_event_json_file=${eventPath}`,
     ]);
+    await progress?.stop();
     const events = await readBoundedRegularFile(eventPath, MAX_BUILD_EVENT_BYTES, "the Bazel build-event stream");
     // Preserve the exact reported pathname so readBoundedRegularFile can apply
     // O_NOFOLLOW to the declared output itself. Resolving it first would make
     // a symlink output indistinguishable from its target.
     return { artifactPath: topologyArtifactPathFromBuildEvents(events) };
   } finally {
-    await rm(eventDirectory, { recursive: true, force: true });
+    try { await progress?.stop(); }
+    finally { await rm(eventDirectory, { recursive: true, force: true }); }
   }
 }
 
@@ -545,7 +549,7 @@ export class RealWorkspaceProvider {
           status: "running",
           progress: 0,
           resources: { cpuPercent: 0, memoryMiB: 0 },
-          message: "Resource telemetry unavailable; building exact working fingerprint",
+          message: "Starting Bazel build",
         }],
         activity: [{ id: `activity:topology:${epoch}:start`, at: observedAt, kind: "build" as const, summary: `Building ${SERVICE_TOPOLOGY_TARGET}`, status: "yellow" as const }, ...this.snapshotValue.activity].slice(0, 32),
         reconciliation: {
@@ -559,7 +563,14 @@ export class RealWorkspaceProvider {
       started = true;
       publish("reconciliation.changed", this.snapshotValue);
 
-      const build = await this.dependencies.build(this.workspaceRoot);
+      const build = await this.dependencies.build(this.workspaceRoot, (message) => {
+        if (this.disposed || attempt !== this.currentAttempt || this.snapshotValue.reconciliation.epoch !== epoch) return;
+        const jobId = `job:service-topology:${epoch}`;
+        if (!this.snapshotValue.jobs.some((job) => job.id === jobId && job.status === "running" && job.message !== message)) return;
+        this.snapshotValue = WorkspaceSnapshotSchema.parse({ ...this.snapshotValue,
+          jobs: this.snapshotValue.jobs.map((job) => job.id === jobId && job.status === "running" ? { ...job, message: message.slice(0, 300) } : job) });
+        publish("job.changed", this.snapshotValue);
+      });
       if (attempt !== this.currentAttempt) return;
       const { bytes, artifact } = await this.dependencies.readArtifact(this.workspaceRoot, build);
       if (attempt !== this.currentAttempt) return;

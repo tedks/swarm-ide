@@ -14,8 +14,8 @@ fingerprints alone still decide success. There is no new event platform or UI.
 
 - [x] Confirmed current `runBazel` writes BEP but only reads it after process exit.
 - [x] Confirmed official BEP event shapes and coordinated BuildResources ownership.
-- [ ] Add a bounded incremental file reader and optional builder progress callback.
-- [ ] Prove chunk handling, live delivery, throttling, late-event fencing and cleanup.
+- [x] Add a bounded incremental file reader and optional builder progress callback.
+- [x] Prove chunk handling, live delivery, throttling, late-event fencing and cleanup.
 - [ ] Native review, focused local checks, pushed stacked PR and handoff.
 
 ## Context and Orientation
@@ -86,7 +86,23 @@ The versioned documentation URL returned 404, so event field spelling was checke
 against the pinned Bazel 7.6.0 protobuf source. BEP target completion does not mean
 the whole build or its tests succeeded. No progress denominator is promised.
 
+Native review found two concrete advisory-path problems: a rejecting descriptor
+close could fail an otherwise successful build, and an OSC-stripping regex could
+take quadratic time. The close now reports an advisory message, and terminal
+filtering uses a linear state machine; both have exact regressions.
+
+The first real-build fixture tried to load Bazel's default external platform and
+failed with downloads disabled. The corrected fixture declares and selects its
+own local platform; downloads remain disabled. This was a fixture-environment
+correction, not a production streaming fix. The corrected real build delivered a
+configured-target message at 3518 ms, before exit around 7277 ms, and confirmed
+owned process cleanup.
+
 ## Outcomes & Retrospective
 
-Implementation pending. Scope is one existing explicit build path, not external
-agent builds, generic test discovery or automatic binary builds.
+The implementation passes 27 focused tests and both TypeScript checks (13.1 s).
+The real owned Bazel probe independently proves pre-exit message delivery. The
+default-provider test uses a controlled process callback plus an actual event file;
+it is not relabelled as a real process test. Native convergence and final handoff
+are pending. Scope is one existing explicit build path, not external agent builds,
+generic test discovery or automatic binary builds.
