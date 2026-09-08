@@ -52,3 +52,11 @@ log_events:
     local targets and native convergence passed; actual registered reading with intercepted
     Send passed owned GUI with zero errors and complete cleanup. Managed app adoption
     remains ROOT responsibility.
+- time: 2026-09-08T06:45:57-00:00
+  who: Ted Smith
+  what: 'closed: fixed'
+  comment: 'PR103 merged: conversation-first cockpit selects the registered ROOT,
+    preserves per-agent drafts and receipts, keeps native runs available, and opens
+    assigned worktrees. Joined local checks and real registered-reading/controlled-Send
+    UI proof passed, including visible transcript and composer. No new live-delivery
+    claim.'
