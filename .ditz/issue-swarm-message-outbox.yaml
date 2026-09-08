@@ -50,5 +50,12 @@ log_events:
     states.57 focused checks and actual packaged reload/clipboard proof passed with
     native CLEAN. PR110 ready; ROOT owns merge/adoption. No actual pending message
     was resent; archive/correlation follow-up remains open.
+- time: 2026-09-08T14:00:57-00:00
+  who: Ted Smith
+  what: commented
+  comment: Normally joined landed keyboard PR109 with outbox in PR1108a599ea. Enter
+    now exercises existing save-before-dispatch and retained-message path; all IME/focus
+    attributes preserved.70 focused tests/types PASS and native join CLEAN. No additional
+    sender or model turn.
 blocks:
 - swarm-usability-join
