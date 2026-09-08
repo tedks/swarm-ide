@@ -5,9 +5,20 @@ import { fileURLToPath } from 'node:url';
 import { resolve } from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { disposeContainer } from './cleanup.mjs';
+import { parseStatus, isRenderer } from './sandbox-proof.cjs';
 const read = (name) => readFileSync(name.startsWith('../../')
   ? resolve(process.env.SWARM_CONTAINER_SOURCE_ROOT, name.slice(6))
   : new URL(name, import.meta.url), 'utf8');
+
+test('renderer sandbox status parses actual proc fields without nested escaping', () => {
+  assert.deepEqual(parseStatus('122', 'Name:\telectron\nNSpid:\t122\t7\nNoNewPrivs:\t1\nSeccomp:\t2\n'),
+    { pid: '122', nspid: ['122', '7'], seccomp: '2', noNewPrivs: '1' });
+  assert.deepEqual(parseStatus('1', ''), { pid: '1', nspid: undefined, seccomp: undefined, noNewPrivs: undefined });
+  assert(isRenderer('/electron\0--type=renderer\0--enable-sandbox\0'));
+  assert(isRenderer('/electron --type=renderer --enable-sandbox\0'));
+  assert(!isRenderer('/electron\0--type=utility\0'));
+  assert(!isRenderer('/electron\0--example=--type=renderer\0'));
+});
 
 test('localhost display transport, no host control mounts or added capabilities', () => {
   const compose = read('../../compose.yaml');
@@ -41,10 +52,10 @@ test('build context excludes local identity and generated reports', () => {
   assert(!ignore.split('\n').includes('**/bazel-*'), 'Source modules named bazel-reference.ts must remain included');
 });
 
-test('sandbox profile stays deny-by-default and permits only documented namespace adjustment', () => {
+test('sandbox profile stays deny-by-default with documented namespace and filesystem restriction calls', () => {
   const profile = JSON.parse(read('seccomp.json'));
   assert.equal(profile.defaultAction, 'SCMP_ACT_ERRNO');
-  assert.deepEqual(profile.syscalls[0].names, ['clone', 'setns', 'unshare']);
+  assert.deepEqual(profile.syscalls[0].names, ['clone', 'setns', 'unshare', 'chroot']);
   assert.equal(profile.syscalls[0].action, 'SCMP_ACT_ALLOW');
   for (const name of ['mount', 'bpf', 'keyctl']) {
     assert(!profile.syscalls.some((rule) => rule.names.includes(name) && rule.action === 'SCMP_ACT_ALLOW' && !rule.includes?.caps));

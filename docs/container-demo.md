@@ -85,7 +85,10 @@ renderer sandbox and context isolation intact.
 Chromium needs Linux user namespaces for its sandbox. Docker's default syscall
 profile may deny them. The included `tools/container/seccomp.json` is the Moby
 profile at commit `61eaf32614c7c71b60bd8927d3e6a4ffc8ff1f31`, with one explicit
-allow rule for `clone`, `setns` and `unshare`. It otherwise keeps the upstream
+allow rule for `clone`, `setns`, `unshare` and `chroot`. The last lets Chromium
+restrict its own filesystem after creating its user namespace; with all outer
+capabilities dropped, the upstream capability-conditional rule would deny it.
+No outer capability or mount permission is added. It otherwise keeps the upstream
 deny-by-default policy. This is a scoped permission expansion, not the unchanged
 Docker default. Compose also drops all capabilities and enables no-new-privileges.
 The launch checks namespace availability and stops if denied; it never retries

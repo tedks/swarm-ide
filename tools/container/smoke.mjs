@@ -45,29 +45,18 @@ try {
   const windows = docker('exec', '--env', 'XAUTHORITY=/tmp/swarm-runtime/Xauthority', name, 'xdotool', 'search', '--sync', '--onlyvisible', '--name', 'swarm-ide');
   assert(windows.trim(), 'Actual Electron window is visible on the container display');
   docker('cp', 'tools/container/browser-proof.cjs', `${name}:/tmp/browser-proof.cjs`);
-  docker('exec', '--env', 'XAUTHORITY=/tmp/swarm-runtime/Xauthority', name, 'electron', '/tmp/browser-proof.cjs');
+  docker('exec', '--env', 'XAUTHORITY=/tmp/swarm-runtime/Xauthority', name, 'bash', '-c',
+    'source /opt/runtime/etc/swarm/runtime.env; exec dbus-run-session --config-file=/opt/runtime/share/dbus-1/session.conf -- electron /tmp/browser-proof.cjs');
   docker('cp', `${name}:/tmp/container-browser.png`, join(evidence, 'browser.png'));
   docker('cp', `${name}:/tmp/container-browser.json`, join(evidence, 'browser.json'));
   const processes = docker('exec', name, 'ps', '-eo', 'pid,args');
   assert(processes.includes('--type=renderer'), 'Real renderer process exists');
   assert(!processes.includes('--no-sandbox'), 'No sandbox-disabling flags');
   writeFileSync(join(evidence, 'processes.txt'), processes);
-  const sandbox = JSON.parse(docker('exec', name, 'node', '-e', `
-    const fs = require('fs');
-    const results = [];
-    for (const pid of fs.readdirSync('/proc').filter(p => /^\\d+$/.test(p))) {
-      try {
-        const args = fs.readFileSync('/proc/' + pid + '/cmdline', 'utf8').split('\\0');
-        if (!args.includes('--type=renderer')) continue;
-        const status = fs.readFileSync('/proc/' + pid + '/status', 'utf8');
-        results.push({pid, nspid: status.match(/^NSpid:\\s+(.+)$/m)?.[1].trim().split(/\\s+/),
-          seccomp: status.match(/^Seccomp:\\s+(\\d+)/m)?.[1], noNewPrivs: status.match(/^NoNewPrivs:\\s+(\\d+)/m)?.[1]});
-      } catch {}
-    }
-    console.log(JSON.stringify(results));
-  `));
-  assert(sandbox.some((p) => p.nspid?.length >= 2 && p.seccomp === '2' && p.noNewPrivs === '1'), 'Actual renderer has a nested PID namespace and active seccomp/no-new-privileges');
+  docker('cp', 'tools/container/sandbox-proof.cjs', `${name}:/tmp/sandbox-proof.cjs`);
+  const sandbox = JSON.parse(docker('exec', name, 'node', '/tmp/sandbox-proof.cjs'));
   writeFileSync(join(evidence, 'renderer-sandbox.json'), JSON.stringify(sandbox, null, 2));
+  assert(sandbox.some((p) => p.nspid?.length >= 2 && p.seccomp === '2' && p.noNewPrivs === '1'), 'Actual renderer has a nested PID namespace and active seccomp/no-new-privileges');
   writeFileSync(join(evidence, 'proof.json'), JSON.stringify({ ok: true, dockerArchitecture: JSON.parse(docker('image', 'inspect', image))[0].Architecture,
     nativeMacTest: false, noHostMounts: true, loopbackOnly: true, nonroot: true, realElectron: true, browserTransport: true }, null, 2));
   console.log(`Actual container/browser proof passed: ${evidence}`);

@@ -31,7 +31,8 @@ starts its display/app children and stops them together.
 The only network surface published is localhost port 6080; raw VNC is private to
 the container. A fresh local desktop password prevents unauthenticated control.
 Compose drops capabilities, keeps no-new-privileges and uses a documented
-deny-by-default syscall policy with Chromium namespace calls enabled. Failure to
+deny-by-default syscall policy with Chromium namespace calls and its filesystem-
+restricting `chroot` enabled, without outer capabilities or mount permission. Failure to
 create the sandbox stops launch rather than changing Electron's sandbox setting.
 
 Actual target connections:

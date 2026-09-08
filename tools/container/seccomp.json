@@ -63,7 +63,8 @@
       "names": [
         "clone",
         "setns",
-        "unshare"
+        "unshare",
+        "chroot"
       ],
       "action": "SCMP_ACT_ALLOW",
       "comment": "Chromium user-namespace sandbox; container has no added capabilities."

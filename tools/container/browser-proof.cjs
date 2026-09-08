@@ -6,7 +6,7 @@ app.disableHardwareAcceleration();
 const deadline = setTimeout(() => { console.error('Browser connection timed out'); app.exit(1); }, 30000);
 app.whenReady().then(async () => {
   const window = new BrowserWindow({ show: false, width: 1640, height: 1100,
-    webPreferences: { sandbox: true, contextIsolation: true, nodeIntegration: false, backgroundThrottling: false } });
+    webPreferences: { sandbox: true, contextIsolation: true, nodeIntegration: false, backgroundThrottling: false, offscreen: true } });
   await window.loadURL('http://127.0.0.1:6080/vnc.html?autoconnect=1&resize=scale');
   let connected = false;
   for (let attempt = 0; attempt < 100; attempt++) {
