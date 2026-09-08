@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { TrustedLocalSession } from "../core/agents/trusted-local-session";
+import { TrustedSnapshotSchema } from "../protocol/trusted-local";
 import type { CodexTransportSink } from "../core/agents/codex-app-server";
 
 const flush = async () => { for (let i = 0; i < 12; i++) await Promise.resolve(); };
@@ -106,7 +107,8 @@ describe("trusted-local app-server conversation", () => {
     for (let i = 0; i < 300; i++) f.notify("item/completed", { threadId: "thread", turnId: "turn-1", item: {
       type: "mcpToolCall", id: `tool-${i}`, status: "completed", tool: "é".repeat(1000), arguments: { secret: "private" },
     } });
-    expect(f.session.activity().length).toBeLessThanOrEqual(128);
+    expect(TrustedSnapshotSchema.shape.activities.safeParse(f.session.activity()).success).toBe(true);
+    expect(f.session.activity().length).toBeLessThanOrEqual(100);
     expect(Buffer.byteLength(JSON.stringify(f.session.activity()))).toBeLessThanOrEqual(64 * 1024);
     expect(JSON.stringify(f.session.activity())).not.toContain("\ufffd");
     const before = f.session.activity();
