@@ -47,14 +47,14 @@ export function TaskDetail({ selectedTaskId, snapshot, detail, detailRevision, d
     {selectedDetail && attachment ? <div className="task-attach">
       <button type="button" disabled={!attachment.eligible || attachment.alreadyAttached} onClick={(event) => attachment.onAttach(event.currentTarget)}>
         {attachment.alreadyAttached ? "Already attached" : "Attach this task to draft"}</button>
-      {!attachment.eligible ? <p className="task-warning">Attachment unavailable: Refresh tasks and inspect a current complete detail. Retained previews are not attachment authority.</p> : null}
+      {!attachment.eligible ? <p className="task-warning">Refresh tasks and open this task's current details before attaching it.</p> : null}
       {attachment.notice ? <p role="status" className="task-warning">{attachment.notice}</p> : null}
     </div> : null}
     <div role="status" className="task-detail-status">
       {reading ? <p>Reading selected task…</p> : null}
       {notice ? <p className="task-warning">{displayTaskText(notice)}</p> : null}
-      {missing ? <p className="task-warning">Task not present in this revision. Selection is retained.</p> : null}
-      {selectedDetail && retained ? <p className="task-warning">Retained details from the labelled metadata revision; not confirmed current.</p> : null}
+      {missing ? <p className="task-warning">This task is missing from the current revision.</p> : null}
+      {selectedDetail && retained ? <p className="task-warning">Showing saved task details. Refresh to check for updates.</p> : null}
     </div>
     {selectedTaskId !== null && !selectedDetail && !reading ? <p className="task-empty">No details loaded for this selection.</p> : null}
     {selectedDetail && detailRevision ? <>
@@ -70,16 +70,16 @@ export function TaskDetail({ selectedTaskId, snapshot, detail, detailRevision, d
       </details>
       {afterMetadata}
       {!compact ? <section className="task-detail-section"><h3>Description</h3><p className="task-literal">{selectedDetail.description ? displayTaskText(selectedDetail.description) : "No description recorded."}</p></section> : null}
-      <p className="task-hint">Recorded dependencies describe metadata, not dispatch readiness.</p>
+      <p className="task-hint">Dependencies recorded in Ditz.</p>
       <Dependencies title="Blocking" rows={selectedDetail.blocks} onSelect={onSelect} snapshot={detailRevision && snapshot && sameGitObject(detailRevision, snapshot.metadataCommit) ? snapshot : null} />
       <Dependencies title="Blocked by" rows={selectedDetail.blockedBy} onSelect={onSelect} snapshot={detailRevision && snapshot && sameGitObject(detailRevision, snapshot.metadataCommit) ? snapshot : null} />
       <section className="task-detail-section"><h3>Explicit file references</h3>
-        <p className="task-hint">Opens current working file; link recorded at metadata <code>{taskRevisionLabel(detailRevision)}</code>. A candidate is not proof that the file exists.</p>
+        <p className="task-hint">Links open current working files, which may have moved or been deleted. Links recorded at <code>{taskRevisionLabel(detailRevision)}</code>.</p>
         {selectedDetail.fileRefs.length ? <ul className="task-file-refs">{selectedDetail.fileRefs.map((ref, index) => <li key={index}>
           <code>{ref.path ? displayTaskText(ref.path) : "(empty path)"}{ref.line === null ? "" : `:${ref.line}`}</code>
           {ref.note !== null ? <p className="task-literal">{displayTaskText(ref.note)}</p> : null}
           {canRevealTaskRef(ref) ? <button type="button" onClick={() => onReveal(ref)} aria-label={`Reveal working file ${ref.path}${ref.line === null ? "" : ` at line ${ref.line}`}`}>Reveal working file</button>
-            : <p className="task-warning">Unsupported source reference: expected a canonical repository-relative path and an optional positive line.</p>}
+            : <p className="task-warning">Cannot open this link. Use a repository-relative file path and, optionally, a line number starting at 1.</p>}
         </li>)}</ul> : <p className="task-empty">No explicit file references.</p>}
       </section>
     </> : null}

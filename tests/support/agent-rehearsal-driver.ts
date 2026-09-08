@@ -181,7 +181,7 @@ async function rendererAction(input: Action): Promise<unknown> {
     injectedElements: transcript?.querySelectorAll("img,script,iframe,svg").length ?? 0, cursor: cursor ? Number(cursor[1]) : null,
     banner: document.getElementById("test-only-rehearsal-label")?.textContent ?? "",
     dirty: Boolean(document.querySelector(".source-surface .file-dirty")),
-    guarded: document.querySelector("[aria-label='Local agent reload protection'] > strong")?.textContent === "Agent intent protects this document",
+    guarded: document.querySelector("[aria-label='Local agent reload protection'] > strong")?.textContent === "Refresh paused to protect your agent drafts and pending messages",
     userActivated: navigator.userActivation.hasBeenActive,
     dimensions: { width: innerWidth, height: innerHeight, scrollWidth: document.documentElement.scrollWidth,
       editorHeight: document.querySelector(".cm-editor")?.getBoundingClientRect().height ?? 0 },
@@ -261,7 +261,7 @@ export async function runRehearsalProof(options: {
   };
   const prepare = async (text: string) => {
     await evaluate({ action: "text", field: "task", value: text }); await click("Prepare disk context");
-    await ui("inspectable disk context", (value) => value.context.includes("Context hash:") && value.context.includes("not a frozen filesystem"));
+    await ui("inspectable disk context", (value) => value.context.includes("Context hash:") && value.context.includes("Files may have changed since preparation"));
     const inspection = await observe(); assert(inspection.context.includes("Instruction source observations"));
     assert(inspection.context.includes("Configuration source observations"));
     await evaluate({ action: "confirm" });
