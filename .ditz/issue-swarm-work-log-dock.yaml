@@ -1,0 +1,20 @@
+id: swarm-work-log-dock
+title: Place Work Log beside Activity
+desc: Move the existing Work Log out of the scrolling agent sidebar into a persistent
+  dock column immediately left of Recent Activity. Preserve a single mounted log,
+  summary Start/Stop/model settings, agent/task/outcome links and central detail.
+  Keep source drafts, graph cameras, agent-message controls and narrow-window usability;
+  no summarizer/backend changes.
+type: feature
+component: default
+release:
+reporter: Ted Smith <tedks@riseup.net>
+status: unstarted
+disposition:
+creation_time: 2026-09-08T05:30:18-00:00
+references: []
+log_events:
+- time: 2026-09-08T05:30:18-00:00
+  who: Ted Smith
+  what: created
+  comment: ""
