@@ -1,0 +1,20 @@
+id: swarm-trusted-cockpit-notice
+title: Lead normal agent cockpit with trusted-local controls
+desc: User requested removing obsolete isolated ADAPTER_POLICY_UNAVAILABLE notice/one-active-run
+  copy from ordinary rail/dock when trusted-local controls are mounted. Preserve exact
+  real disconnect/send/run errors, old isolated behavior without trusted controls,
+  drafts/task attachment/history, and all backend restrictions. C7 narrow presentation
+  follow-up, one focused regression.
+type: bugfix
+component: default
+release:
+reporter: Ted Smith <tedks@riseup.net>
+status: unstarted
+disposition:
+creation_time: 2026-09-08T04:43:47-00:00
+references: []
+log_events:
+- time: 2026-09-08T04:43:47-00:00
+  who: Ted Smith
+  what: created
+  comment: ""
