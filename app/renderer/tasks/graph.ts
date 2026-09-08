@@ -1,66 +1,73 @@
 import type { TaskDetail, TaskSnapshot, TaskSummary } from "../../../protocol/tasks";
 
-/** Bounded, directed metadata projection. None of these counts authorizes work. */
-export const TASK_GRAPH_LIMITS = { details: 64, concurrency: 4, edges: 512, endpoints: 128 } as const;
+/** Limit concurrent work, not graph completeness. This never authorizes work. */
+export const TASK_GRAPH_LIMITS = { concurrency: 4 } as const;
 export interface TaskGraphEdge { id: string; source: string; target: string; diagnostics: string[] }
 export interface TaskGraphNode { id: string; title: string; status: string; detailLoaded: boolean; missing: boolean }
 export interface TaskGraphProjection {
   nodes: TaskGraphNode[]; edges: TaskGraphEdge[]; loaded: number; attempted: number; total: number;
-  unread: number; omittedEdges: number; omittedEndpoints: number;
+  unread: number;
 }
 
-/** Scope changes presentation only; unread/omitted coverage remains on the full
+/** Scope changes presentation only; unread coverage remains on the full
  * projection. A missing anchor is not replaced by a different task. */
 export function scopeTaskGraph(graph: TaskGraphProjection, anchor: string | null, whole: boolean) {
-  if (whole) return { nodes: graph.nodes, edges: graph.edges, hidden: 0 };
-  const ids = anchor === null ? new Set(graph.nodes.slice(0, 16).map((node) => node.id)) : new Set([anchor]);
-  if (anchor !== null) for (const edge of graph.edges) {
+  if (whole || anchor === null) return { nodes: graph.nodes, edges: graph.edges, hidden: 0 };
+  const ids = new Set([anchor]);
+  for (const edge of graph.edges) {
     if (edge.source === anchor) ids.add(edge.target);
     if (edge.target === anchor) ids.add(edge.source);
   }
-  const candidates = graph.nodes.filter((node) => ids.has(node.id));
-  const capped = candidates.slice(0, 48);
-  const selected = anchor === null ? undefined : candidates.find((node) => node.id === anchor);
-  if (selected && !capped.includes(selected)) capped[capped.length - 1] = selected;
-  const shown = new Set(capped.map((node) => node.id));
-  const nodes = candidates.filter((node) => shown.has(node.id));
+  const nodes = graph.nodes.filter((node) => ids.has(node.id));
   const visible = new Set(nodes.map((node) => node.id));
   return { nodes, edges: graph.edges.filter((edge) => visible.has(edge.source) && visible.has(edge.target)), hidden: graph.nodes.length - nodes.length };
 }
 export function graphSummaries(snapshot: TaskSnapshot): TaskSummary[] {
   return [...snapshot.summaries].sort((a, b) => Number(a.status === "closed") - Number(b.status === "closed") ||
-    (a.id < b.id ? -1 : a.id > b.id ? 1 : 0)).slice(0, TASK_GRAPH_LIMITS.details);
+    (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
 }
 export async function loadTaskGraphDetails(snapshot: TaskSnapshot,
   read: (id: string, signal: AbortSignal) => Promise<TaskDetail | null>, signal: AbortSignal,
   progress: (details: ReadonlyMap<string, TaskDetail>, attempted: number) => void): Promise<void> {
   const summaries = graphSummaries(snapshot), details = new Map<string, TaskDetail>();
-  let next = 0, attempted = 0;
-  await Promise.all(Array.from({ length: Math.min(TASK_GRAPH_LIMITS.concurrency, summaries.length) }, async () => {
+  let next = 0, attempted = 0, published = 0;
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const clear = () => { if (timer !== undefined) clearTimeout(timer); timer = undefined; };
+  const publish = () => {
+    clear();
+    if (signal.aborted || published === attempted) return;
+    published = attempted;
+    progress(new Map(details), attempted);
+  };
+  // Cache hits may settle together. Copy and publish at most ten times a second,
+  // plus final completion, instead of reprojecting/layouting after every detail.
+  signal.addEventListener("abort", clear, { once: true });
+  try { await Promise.all(Array.from({ length: Math.min(TASK_GRAPH_LIMITS.concurrency, summaries.length) }, async () => {
     while (!signal.aborted && next < summaries.length) {
       const row = summaries[next++]!;
       let detail: TaskDetail | null = null;
       try { detail = await read(row.id, signal); } catch { /* Unavailable detail is coverage, not fabricated emptiness. */ }
       if (signal.aborted) return;
       if (detail?.id === row.id) details.set(row.id, detail);
-      progress(new Map(details), ++attempted);
+      attempted++;
+      if (timer === undefined) timer = setTimeout(publish, 100);
     }
-  }));
+  })); publish(); }
+  finally { clear(); signal.removeEventListener("abort", clear); }
 }
 
 export function projectTaskGraph(snapshot: TaskSnapshot, details: ReadonlyMap<string, TaskDetail>, attempted: number): TaskGraphProjection {
   const summaries = new Map(snapshot.summaries.map((row) => [row.id, row]));
   const nodes = new Map<string, TaskGraphNode>();
   const add = (id: string) => {
-    if (nodes.has(id)) return true;
+    if (nodes.has(id)) return;
     const row = summaries.get(id);
     nodes.set(id, { id, title: row?.title ?? id, status: row?.status ?? "missing endpoint", detailLoaded: details.has(id), missing: !row });
-    return true;
   };
-  graphSummaries(snapshot).forEach((row) => add(row.id));
+  const ordered = graphSummaries(snapshot);
+  ordered.forEach((row) => add(row.id));
   const edges = new Map<string, TaskGraphEdge>();
-  let endpoints = 0, omittedEdges = 0, omittedEndpoints = 0;
-  for (const summary of graphSummaries(snapshot)) {
+  for (const summary of ordered) {
     const detail = details.get(summary.id);
     if (!detail) continue;
     for (const [direction, rows] of [["blocks", detail.blocks], ["blockedBy", detail.blockedBy]] as const) for (const relation of rows) {
@@ -69,18 +76,14 @@ export function projectTaskGraph(snapshot: TaskSnapshot, details: ReadonlyMap<st
       const id = JSON.stringify([source, target]);
       const known = edges.get(id);
       if (known) { known.diagnostics = [...new Set([...known.diagnostics, ...relation.diagnostics])]; continue; }
-      if (edges.size >= TASK_GRAPH_LIMITS.edges) { omittedEdges++; continue; }
-      if (!nodes.has(relation.taskId)) {
-        if (endpoints >= TASK_GRAPH_LIMITS.endpoints) { omittedEndpoints++; continue; }
-        endpoints++; add(relation.taskId);
-      }
+      add(relation.taskId);
       const diagnostics: string[] = [...relation.diagnostics];
       if (!details.has(relation.taskId) && summaries.has(relation.taskId)) diagnostics.push("endpoint detail unread");
       edges.set(id, { id, source, target, diagnostics });
     }
   }
   return { nodes: [...nodes.values()], edges: [...edges.values()], loaded: details.size, attempted, total: snapshot.summaries.length,
-    unread: Math.max(0, snapshot.summaries.length - details.size), omittedEdges, omittedEndpoints };
+    unread: Math.max(0, snapshot.summaries.length - details.size) };
 }
 
 /** Stable breadth layers; remaining cyclic nodes share a visibly labelled graph

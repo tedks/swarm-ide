@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { dependencyPositions, graphSummaries, loadTaskGraphDetails, projectTaskGraph, scopeTaskGraph } from "../app/renderer/tasks/graph";
 import { taskDetailFixture, taskObservationFixture } from "../fixtures/tasks";
 import { TaskDetailSchema, TaskSnapshotSchema, type TaskDetail, type TaskSnapshot } from "../protocol/tasks";
@@ -15,6 +15,7 @@ function data(count = 5): { snapshot: TaskSnapshot; details: Map<string, TaskDet
   return { snapshot, details };
 }
 const drain = async () => { for (let i = 0; i < 16; i++) await Promise.resolve(); };
+afterEach(() => { vi.useRealTimers(); });
 function validate(snapshot: TaskSnapshot, details: Map<string, TaskDetail>) {
   for (const summary of snapshot.summaries) {
     const detail = details.get(summary.id);
@@ -93,6 +94,7 @@ describe("complete task blockage projection", () => {
     expect(focused.edges.every((edge) => edge.diagnostics.includes("asymmetric"))).toBe(true);
   });
   it("limits in-flight work to four and never reads past cancellation", async () => {
+    vi.useFakeTimers();
     const { snapshot } = data(100); const controller = new AbortController();
     const calls: string[] = [], release: ((detail: TaskDetail | null) => void)[] = [];
     const progress: number[] = [];
@@ -101,7 +103,8 @@ describe("complete task blockage projection", () => {
     expect(calls).toHaveLength(4);
     release[0]!(null); await drain(); expect(calls).toHaveLength(5);
     controller.abort(); release.slice(1).forEach((resolve) => resolve(null));
-    await promise; expect(calls).toHaveLength(5); expect(progress).toEqual([1]);
+    await promise; await vi.runAllTimersAsync();
+    expect(calls).toHaveLength(5); expect(progress).toEqual([]); expect(vi.getTimerCount()).toBe(0);
   });
   it("attempts every read and accounts for failures without manufacturing empty detail", async () => {
     const { snapshot, details } = data(100); let count = 0, last: ReadonlyMap<string, TaskDetail> = new Map(), attempted = 0;
@@ -109,5 +112,22 @@ describe("complete task blockage projection", () => {
       (result, read) => { last = result; attempted = read; });
     expect(count).toBe(100); expect(attempted).toBe(100); expect(last.size).toBe(50);
     expect(projectTaskGraph(snapshot, last, attempted).unread).toBe(50);
+  });
+  it("coalesces progress, retains immutable publications and flushes the final partial batch", async () => {
+    vi.useFakeTimers();
+    const { snapshot, details } = data(100);
+    const release: (() => void)[] = [], updates: [ReadonlyMap<string, TaskDetail>, number][] = [];
+    const loading = loadTaskGraphDetails(snapshot, (id) => new Promise((resolve) => release.push(() => resolve(details.get(id)!))),
+      new AbortController().signal, (rows, attempted) => updates.push([rows, attempted]));
+    release.splice(0).forEach((done) => done()); await drain();
+    release.splice(0).forEach((done) => done()); await drain();
+    expect(updates).toHaveLength(0);
+    await vi.advanceTimersByTimeAsync(100);
+    expect(updates.map(([, attempted]) => attempted)).toEqual([8]);
+    while (release.length) { release.splice(0).forEach((done) => done()); await drain(); }
+    await loading;
+    expect(updates.map(([, attempted]) => attempted)).toEqual([8, 100]);
+    expect(updates[0]![0].size).toBe(8); expect(updates[1]![0].size).toBe(100);
+    expect(vi.getTimerCount()).toBe(0);
   });
 });

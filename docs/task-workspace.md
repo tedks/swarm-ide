@@ -30,13 +30,19 @@ associations say “No agent activity in this scope.”
 These loaded-run excerpts belong to the existing isolated/rehearsal run model;
 the separate trusted-local conversation is not yet linked into task history.
 
-The task graph initially shows a 16-task overview from the bounded projection.
-**Focus selected task** shows the selected task and its direct recorded
-neighbors; **Whole projection** restores all nodes in that projection. The
-existing detail-read ceiling remains 64 tasks. Counts distinguish visible,
-outside-view, unread and graph-limit omissions; an unread relationship is not
-an absent relationship. Independent components are packed compactly, and
-dependencies flow top-to-bottom. Plan/component layout remains unchanged.
+The task graph overview shows every task in the available metadata snapshot,
+including isolated tasks and missing dependency endpoints. Loading attempts all
+task details, with four concurrent reads. There is no graph count cutoff for
+tasks, edges, extra endpoints or selected-task neighbors. **Focus selected task**
+shows that task and all its direct recorded neighbors; **Overview · all tasks**
+or **Whole projection** restores the complete available projection. Counts
+distinguish loaded detail, unavailable reads and work not yet attempted. An
+unread relationship is not an absent relationship. Progress updates are
+coalesced every 100 ms and on completion, so rapid cache reads do not force a
+layout for each detail. Hiding, disposal, or repository/revision changes cancel
+the read batch and prevent late updates. Core metadata byte/time/path validation
+is unchanged. Independent components are packed compactly, and dependencies flow
+top-to-bottom. Plan/component layout remains unchanged.
 Only an explicit graph-scope gesture requests a new fit; opening task documents
 does not reset an already displayed graph camera.
 
@@ -48,7 +54,10 @@ increment retains the current side-by-side graph and document arrangement.
 
 From a Nix-enabled checkout, materialize dependencies with
 `nix develop --command pnpm install --frozen-lockfile`, then run
-`nix develop --command bazel test //:quality //tools/task-workspace:regressions --jobs=3`.
+`nix develop --command bazel test //tools/demo-plans:graph-checks --jobs=2`
+for graph completeness, graph/client cancellation, scope/layout and mounted
+camera/selection checks plus both TypeScript boundaries. The broader task-document
+checks remain available at `//tools/task-workspace:regressions`.
 
 The actual packaged journey is
 `nix develop --command bazel run //tools/task-workspace:smoke --jobs=3`.

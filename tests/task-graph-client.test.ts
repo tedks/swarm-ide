@@ -16,8 +16,11 @@ async function harness() {
   const bridge = { request: (request: CoreRequest): Promise<CoreResponse> => new Promise((reply) => pending.push({ request, reply })), onEvent: vi.fn(() => () => {}) };
   client.connect(bridge);
   client.setVisible(true);
-  const answer = (task: unknown, index = pending.length - 1) => pending[index]!.reply({ protocolVersion: PROTOCOL_VERSION,
-    requestId: pending[index]!.request.requestId, ok: true, sequence: 1, snapshot: initialSnapshot(), task } as CoreResponse);
+  const answer = (task: unknown, index = pending.length - 1) => {
+    const snapshot = initialSnapshot(); snapshot.project.id = "project:swarm-ide";
+    pending[index]!.reply({ protocolVersion: PROTOCOL_VERSION,
+      requestId: pending[index]!.request.requestId, ok: true, sequence: 1, snapshot, task } as CoreResponse);
+  };
   answer({ kind: "snapshot", observation: taskObservationFixture() }); await drain();
   return { client, bridge, pending, answer, snapshot: client.getSnapshot().observation!.snapshot! };
 }
@@ -60,16 +63,31 @@ describe("graph reads share task authority without hijacking selection", () => {
     expect(await h.client.inspectGraphTask(old, "task-fixture")).toBe(false);
     expect(h.pending).toHaveLength(count);
   });
-  it("bounds actual pending requests across canceled graph batches", async () => {
+  it("waits for owned slots across canceled batches instead of skipping unread tasks", async () => {
     const h = await harness(); const controller = new AbortController();
     const first = Array.from({ length: 4 }, () => h.client.readGraphDetail(h.snapshot, "task-fixture", controller.signal));
     const pending = h.pending.slice(-4); controller.abort();
-    const second = h.client.readGraphDetail(h.snapshot, "task-fixture", new AbortController().signal);
+    let secondSettled = false;
+    const second = h.client.readGraphDetail(h.snapshot, "task-fixture", new AbortController().signal)
+      .then((value) => { secondSettled = true; return value; });
+    await drain();
     expect(h.pending.filter((call) => call.request.type === "tasks.read")).toHaveLength(4);
-    expect(await second).toBeNull();
+    expect(secondSettled).toBe(false);
     for (const call of pending) h.answer(taskReadFixture(), h.pending.indexOf(call));
-    expect(await Promise.all(first)).toEqual([null, null, null, null]);
+    expect(await Promise.all(first)).toEqual([null, null, null, null]); await drain();
+    expect(h.pending.filter((call) => call.request.type === "tasks.read")).toHaveLength(5);
+    h.answer(taskReadFixture()); expect((await second)?.id).toBe("task-fixture");
     const resumed = h.client.readGraphDetail(h.snapshot, "task-fixture", new AbortController().signal); h.answer(taskReadFixture());
     expect((await resumed)?.id).toBe("task-fixture");
+  });
+  it("cancels a waiting read without sending it when slots later become available", async () => {
+    const h = await harness(), occupied = new AbortController(), waiting = new AbortController();
+    const first = Array.from({ length: 4 }, () => h.client.readGraphDetail(h.snapshot, "task-fixture", occupied.signal));
+    const pending = h.pending.slice(-4);
+    const canceled = h.client.readGraphDetail(h.snapshot, "task-fixture", waiting.signal);
+    waiting.abort(); expect(await canceled).toBeNull();
+    for (const call of pending) h.answer(taskReadFixture(), h.pending.indexOf(call));
+    await Promise.all(first);
+    expect(h.pending.filter((call) => call.request.type === "tasks.read")).toHaveLength(4);
   });
 });
