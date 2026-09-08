@@ -47,11 +47,17 @@ renderer reload and application restart in that same profile/origin; unsent
 composer drafts still live only in memory. Outgoing text is never inserted into
 the agent's message body as marker or bookkeeping data.
 
-Queue acceptance remains **Queued**, not delivered: the queue receipt identifies
-a queue item, not the separate client ID in a consumed user-message event. A
-matching text, a later reply, or a missing queue item does not establish receipt.
-Consequently a consumed message may appear in the transcript alongside its saved
-queued copy until a future supported correlation path is added. Interrupted sends
+Queue acceptance displays **Sent to queue** with a static submission arrow, not
+an ongoing waiting clock or a delivered checkmark. This is a completed submission,
+not a claim that the message remains queued: the queue receipt identifies a queue
+item, while the inspected consumed user-message event exposes a client ID without
+a supported link to that queue receipt. A matching text,
+a later reply, or a missing queue item does not establish receipt. The hover explains
+that the IDE cannot yet confirm when the agent receives it; no permanent warning or
+extra controls are added. A consumed message can therefore appear in the transcript
+alongside its separately saved outgoing copy until an exact supported correlation
+path exists. Existing saved rows use the new presentation without a data migration;
+their internal `queued` status, text and receipt stay unchanged. Interrupted sends
 reload as **Unconfirmed**, never retry. The outbox holds at most 100 messages and
 512 KiB; capacity, invalid storage or write failure before dispatch stops sending
 and preserves the draft, rather than silently evicting unresolved messages. An

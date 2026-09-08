@@ -54,7 +54,7 @@ describe("session steering across source-information navigation", () => {
     await act(async () => { resolve({ protocolVersion: PROTOCOL_VERSION, requestId: request.mock.calls[0][0].requestId,
       ok: true, sequence: 1, snapshot: initialSnapshot(), external: { kind: "send", sessionId, receiptId, status, message: `Recorded outcome: ${status}` } }); });
     view.rerender(panel(true));
-    expect(screen.getByRole("status", { name: status === "delivery-unknown" ? "Unconfirmed" : "Queued" })).toBeTruthy();
+    expect(screen.getByRole("status", { name: status === "delivery-unknown" ? "Unconfirmed" : "Sent to queue" })).toBeTruthy();
     expect(view.container.querySelector("[data-delivery-status]")?.getAttribute("data-delivery-status")).toBe(status);
     expect(screen.queryByText(receiptId)).toBeNull();
     expect(localStorage.getItem("swarm.message-outbox.v1")).toContain(receiptId);
