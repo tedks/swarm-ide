@@ -32,3 +32,9 @@ log_events:
     implementation PR after current PR119 Activity refresh and PR120 unified header
     land to avoid overlapping App ownership. Normal observation refresh must not invalidate
     still-valid visits. No implementation started by this decision.'
+- time: 2026-09-08T18:01:13-00:00
+  who: Ted Smith
+  what: blocks swarm-close-working-loop
+  comment: ""
+blocks:
+- swarm-close-working-loop
