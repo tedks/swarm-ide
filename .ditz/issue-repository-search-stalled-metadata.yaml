@@ -1,11 +1,14 @@
 id: repository-search-stalled-metadata
-title: Isolate stalled filesystem metadata beyond bounded search responses
-desc: N2 bounds search responses and permits at most one actual metadata chain; timeout/supersession/disposal
-  cannot start follow-on lookups. Node cannot cancel a kernel lstat/realpath already
-  stalled on a mount. It remains owned by the local-core process until the OS returns
-  or the core exits. Consider a separately owned disposable metadata helper only if
-  this operational need arises; do not claim N2 cancels kernel calls or broaden renderer
-  authority. Current deadline/disposal/nonaccumulation tests cover the bounded behavior.
+title: Consider isolating stalled filesystem metadata calls beyond search-response
+  limits
+desc: N2 limits search responses and allows at most one active metadata lookup chain.
+  A timeout, superseding request, or disposal cannot start follow-on lookups. Node
+  cannot cancel a kernel lstat/realpath call that is already stalled on a mount. The
+  call remains with the local-core process until the OS returns or the core exits.
+  Consider a separate disposable metadata helper with clear lifecycle ownership only
+  if this operational need arises. Do not claim N2 cancels kernel calls or expand
+  renderer permissions. Existing deadline/disposal/nonaccumulation tests cover these
+  limits.
 type: task
 component: default
 release:
@@ -18,4 +21,12 @@ log_events:
 - time: 2026-09-07T01:35:59-00:00
   who: Ted Smith
   what: created
+  comment: ""
+- time: 2026-09-08T04:31:17-00:00
+  who: Ted Smith
+  what: changed title
+  comment: ""
+- time: 2026-09-08T04:31:17-00:00
+  who: Ted Smith
+  what: updated description
   comment: ""
