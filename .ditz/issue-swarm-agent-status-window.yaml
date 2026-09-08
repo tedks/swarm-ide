@@ -1,0 +1,21 @@
+id: swarm-agent-status-window
+title: Check the operator window agent statuses after reviewed adoption
+desc: PR121 read-only checks from the existing managed worker bundle and a fresh packaged
+  desktop both publish ROOT working and H7 completed. They do not intercept the old
+  core PID IPC or establish why the user saw all Status unavailable. ROOT should deliberately
+  adopt reviewed progress and inspect that window; if it persists, capture the actual
+  typed response and renderer state before changing the lifecycle parser. Never infer
+  current status from old outcomes, age or tmux availability.
+type: task
+component: default
+release:
+reporter: Ted Smith <tedks@riseup.net>
+status: unstarted
+disposition:
+creation_time: 2026-09-08T16:08:46-00:00
+references: []
+log_events:
+- time: 2026-09-08T16:08:46-00:00
+  who: Ted Smith
+  what: created
+  comment: ""
