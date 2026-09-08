@@ -9,13 +9,16 @@ Opening Pure Sky must not build Swarm's FraudCheck example. A deliberate Refresh
 ## Progress
 
 - [x] (2026-09-08) Confirmed PR124 merged and no owned work running; preserved its branch and evidence.
-- [ ] Implement explicit topology applicability and opt-in query loading/cancellation.
-- [ ] Run focused checks, native review, and one actual Pure Sky query.
+- [x] (2026-09-08) Implemented explicit topology applicability and opt-in query loading/cancellation in PR129.
+- [x] (2026-09-08) Actual Pure Sky query completed in 7338ms, retaining 2000 targets/6385 edges; passive result reused, Git status unchanged, cleanup confirmed. Native convergence CLEAN after two race corrections.
+- [ ] Final corrected focused gate and completion bookkeeping.
 - [ ] Push separate PR, update design and Ditz, clean owned resources.
 
 ## Surprises & Discoveries
 
 The observed Pure Sky failure is our download-disabled query flag in a fresh private output root: rules_python was missing. It is not evidence of broken Pure Sky definitions.
+
+Native review caught cancellation during the last filesystem digest read and rejection of a second topology start stranding an admitted job. Abort fencing and admission ordering now have exact tests. An added mounted test initially used an unavailable assertion matcher; corrected to inspect the same native button disabled property. No product correction was inferred from that test setup failure.
 
 ## Decision Log
 
@@ -23,7 +26,7 @@ Use `.swarm/service-topology.json` to explicitly opt into the fixed example mapp
 
 ## Outcomes & Retrospective
 
-Implementation and validation pending. No claim from PR124 is reused as evidence for this follow-up.
+PR129 now makes the declared dependency query usable in actual Pure Sky without source edits or target compilation, while the legacy example requires an explicit declaration. The query retains a bounded target view; it does not establish complete project coverage, a successful Pure Sky compilation, or cross-restart cache persistence. No claim from PR124 is reused as evidence for this follow-up.
 
 ## Context and Orientation
 
