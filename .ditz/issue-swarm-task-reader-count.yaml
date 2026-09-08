@@ -9,8 +9,8 @@ type: bugfix
 component: default
 release:
 reporter: Ted Smith <tedks@riseup.net>
-status: in_progress
-disposition:
+status: closed
+disposition: fixed
 creation_time: 2026-09-08T14:56:28-00:00
 references: []
 log_events:
@@ -34,3 +34,11 @@ log_events:
     and300-issue parser regressions pass; final238 focused tests/seven files plus
     both types PASS17.061s, native fix-delta CLEAN. No further malformed field limit
     found, GUI/model/shared app changes. Keep in progress until ROOT normal merge/adoption.'
+- time: 2026-09-08T15:15:47-00:00
+  who: Ted Smith
+  what: 'closed: fixed'
+  comment: 'Normally merged PR116: removed 256-issue rejection across schema/Git/YAML,
+    derived byte-bounded batch framing and bounded traversal retention/deadlines.
+    Actual read-only current repo loaded all266 issues including131 closed in230ms;238
+    focused tests/types and native convergence passed. Managed native restart pending;
+    no GUI or live-provider overclaim.'
