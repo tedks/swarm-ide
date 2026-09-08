@@ -1,5 +1,5 @@
 id: desktop-x11-driver
-title: Extract a shared exact-window X11 desktop driver
+title: Extract a shared X11 desktop driver that targets one exact window
 desc: ""
 type: task
 component: tooling
@@ -33,5 +33,13 @@ log_events:
   what: 'closed: fixed'
   comment: 'Merged PR #5: shared fail-closed X11 driver binds every operation to the
     owned display/Xauthority, exact renderer marker, X11 PID, and app session.'
+- time: 2026-09-08T04:29:15-00:00
+  who: Ted Smith
+  what: changed title
+  comment: ""
+- time: 2026-09-08T04:29:15-00:00
+  who: Ted Smith
+  what: updated description
+  comment: ""
 blocks:
 - virtual-x11-desktop-smoke
