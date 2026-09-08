@@ -61,7 +61,7 @@ it("the actual dock heading opens Activity without choosing or preparing a run",
   const state = emptyLiveAgentState(), client = new AgentBridgeClient(state), onOpen = vi.fn(), onDraft = vi.fn();
   const select = vi.spyOn(client, "select");
   render(<AgentDock state={state} client={client} onDraft={onDraft} onOpenActivity={onOpen} runContent={null} draftContent={null} jobsContent={null} activityContent={null} />);
-  fireEvent.click(screen.getByRole("button", { name: "Recent Activity" }));
+  fireEvent.click(screen.getByRole("button", { name: "Activity" }));
   expect(onOpen).toHaveBeenCalledTimes(1); expect(onDraft).not.toHaveBeenCalled(); expect(select).not.toHaveBeenCalled();
 });
 it("keeps PRs separate from recorded changes and reveals an explicitly selected entry", async () => {
