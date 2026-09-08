@@ -370,6 +370,14 @@
             { "label": "//:quality_sources", "relation": "data" },
             { "label": "//tools/conversation-cockpit:sources", "relation": "data" }
           ]
+        },
+        {
+          "label": "//tools/operator-cockpit:conversation-tabs",
+          "role": "Registered conversation tabs, keyboard selection, retained drafts and reading positions",
+          "dependencies": [
+            { "label": "//:quality_sources", "relation": "data" },
+            { "label": "//tools/operator-cockpit:sources", "relation": "data" }
+          ]
         }
       ]
     }
@@ -408,14 +416,6 @@
         {
           "targetId": "design:agents",
           "label": "Events → responsible agent"
-        },
-        {
-          "label": "//tools/operator-cockpit:conversation-tabs",
-          "role": "Registered conversation tabs, keyboard selection, retained drafts and reading positions",
-          "dependencies": [
-            { "label": "//:quality_sources", "relation": "data" },
-            { "label": "//tools/operator-cockpit:sources", "relation": "data" }
-          ]
         },
         {
           "targetId": "design:planning",
