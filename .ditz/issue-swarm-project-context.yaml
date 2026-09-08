@@ -18,3 +18,10 @@ log_events:
   who: Ted Smith
   what: started
   comment: ""
+- time: 2026-09-08T04:52:27-00:00
+  who: Ted Smith
+  what: commented
+  comment: Scanned goals, puresky, predictionbook, pairmarket, chaos/speech and discord-agents
+    read-only. Found real Goals feature-worktree containers and Bazel-launched Pure
+    Sky frontend; chose generic process/socket and Compose-ownership discovery, with
+    no project whitelist. PR94 is open; implementation underway.
