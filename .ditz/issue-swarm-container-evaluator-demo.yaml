@@ -53,5 +53,12 @@ log_events:
     Runtime documentation distinguishes Docker invoking desktop-bundle from declared
     Bazel dependencies. JSON/path inspection and light mapping review passed; no runtime
     changes or repeated container proof.'
+- time: 2026-09-08T14:35:46-00:00
+  who: Ted Smith
+  what: commented
+  comment: PR112 normally merged after ROOT intake. Real Linux/amd64 Docker/noVNC
+    keyboard-to-source proof, renderer sandbox, localhost password defaults and owned
+    cleanup verified. Actual Mac/ARM is untested and live agent/build execution inside
+    the container remains unavailable; no image publication occurred.
 blocks:
 - swarm-usability-pass
