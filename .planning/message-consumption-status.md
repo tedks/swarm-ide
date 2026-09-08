@@ -15,8 +15,8 @@ An operator should not see a permanent waiting indicator after their message has
 - [x] (2026-09-08 18:10Z) Added regression coverage; baseline has four expected presentation failures and 74 passing checks, both TypeScript boundaries passed.
 - [x] (2026-09-08 18:12Z) Changed only shared outgoing presentation and its design explanation.
 - [x] (2026-09-08 18:14Z) Native review found two old accessible-name expectations; corrected only their labels, retaining exact status/receipt/session/no-replay assertions. Qualified the receipt-boundary explanation to avoid claiming correlation is universally impossible.
-- [ ] Run final frozen focused Bazel checks and native convergence.
-- [ ] Push the reviewed PR, sync accomplishment/follow-up notes and hand back without app adoption.
+- [x] (2026-09-08 18:16Z) Final frozen cb23366 focused gate passed all78 tests/seven files and both TypeScript boundaries in13.8s; native convergence CLEAN.
+- [x] (2026-09-08 18:16Z) Pushed PR126 and filed exact receipt-correlation follow-up `swarm-message-receipt-correlation`; final accomplishment sync and handoff follow, without app adoption.
 
 ## Surprises & Discoveries
 
@@ -71,4 +71,6 @@ No new dependency, public protocol field or observer seam. `outgoingPresentation
 ## Outcomes & Retrospective
 
 
-Implementation and review pending. This is deliberately a truthful presentation repair, not a queue-latency or delivered-status implementation.
+PR126 implements the agreed fallback with one shared presentation change and focused regression coverage. Four expected baseline presentation failures became green; native review additionally caught two unchanged tests still requiring the old label, corrected without weakening their stored-status or no-replay assertions. Final frozen cb23366 passed78 tests across seven files plus both TypeScript boundaries; native convergence is CLEAN. No GUI, model turn, queue access or scheduling change was needed. Exact automatic received-state correlation remains open as `swarm-message-receipt-correlation`, not silently marked complete. This is a truthful presentation repair, not a queue-latency or delivered-status implementation.
+
+Revision note (2026-09-08): recorded the bounded public-record finding, intentional UI fallback, failed/passing direct checks and native review corrections so later work need not repeat the investigation.
