@@ -49,10 +49,13 @@ that TypeScript directories are independently deployable Bazel libraries.
 
 The merged baseline already edits real files, queries Bazel, reads Ditz, browses
 plans, owns native agent conversations/forks, and observes and queues messages
-to registered terminal sessions. The [operator increment](../swarm-operator-hour.md)
-is joining whole-fleet observation, correct cross-worktree inspection and an
-online accomplishment Work Log. Those additions remain planned until their
-implementation is integrated; the documents do not imply they already run.
+to registered terminal sessions. Whole-fleet observation, cross-worktree
+inspection and the online accomplishment Work Log are now implemented; their
+boundaries are described in the component documents linked above. The plan
+overview puts those components and their named connections beside the design
+text, implementation mappings and task dependencies. A component's short
+constraints are authored in the index alongside its links, not inferred from
+the directory layout.
 
 When a component changes, update its document, authored graph and build mapping
 in the same change. Review the touched component's relationships, not the entire

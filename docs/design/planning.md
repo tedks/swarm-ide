@@ -23,6 +23,24 @@ lists and lets the operator expand them. `//tools/living-design:checks`
 reads the actual committed index through the core reader, preserving every source
 link; design edits must pass that inexpensive check before landing.
 
+The Plan workspace opens the top-level design, using one `usePlanNavigation`
+observation and selected component for the outline, document and breadcrumbs.
+Its overview places the document beside authored component/interface connections,
+with implementation mappings and task dependencies below. Selecting a component
+shows its incoming and outgoing connections; build rules stay in their separate
+mapping graph. Short authored constraints are displayed beside the design prose.
+Long reference lists are expandable; the index does not discard their contents.
+`DesignWorkspace` can accept that shared controller through `navigation` and a
+`taskPane` slot; `PlanWorkspace` provides the existing task graph once, preserving
+its camera when switching between the overview and task-only view.
+
+Build activation exposes `onOpenBuild(label)` for the parallel cockpit integration.
+That caller must check the current repository/world; `resolveBazelTarget` resolves only the exact observed
+target and declaration. Missing, ambiguous or generated targets do not produce
+a guessed BUILD.bazel path. Missing plan files show authoring instructions, not
+a fixture system. A core/workspace replacement revokes old link activation;
+late plan and document responses cannot replace a newer selection.
+
 Ditz reads are pinned to metadata revisions. Missing relationships and partial
 coverage must not turn into fabricated “ready” tasks. Updating metadata does not
 silently retarget a draft: the operator explicitly refreshes, attaches and prepares
@@ -41,4 +59,5 @@ targets. The root source filegroup does not currently glob all `docs/**`.
 
 When code changes, update the corresponding document, graph links and build-label
 mapping together. Completion notes should record what was accomplished in Ditz;
-the online Work Log writer is a planned part of [this increment](../swarm-operator-hour.md).
+the online Work Log writer now records those notes through the implementation
+described in [Activity and Work Log](activity.md).

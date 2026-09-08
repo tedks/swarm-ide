@@ -30,11 +30,21 @@ async function main() {
   await fs.writeFile(path.join(evidence, "system.png"), (await wc.capturePage()).toPNG());
   await click(".design-details aside button", "Cockpit, focus & source");
   await until(() => text(".design-prose").then((s) => s.includes("EditorPane")), "actual cockpit doc");
-  const leaf = await text(".design-graph"); assert(leaf.includes("//:desktop-bundle") && leaf.includes("//:quality_sources"));
+  const leaf = await text(".design-implementation-graph"); assert(leaf.includes("//:desktop-bundle") && leaf.includes("//:quality_sources"));
+  assert((await text(".design-components")).includes("Files & target definitions"));
+  assert((await text(".design-constraints")).includes("dirty source"));
   await fs.writeFile(path.join(evidence, "component.png"), (await wc.capturePage()).toPNG());
   await click(".design-details aside button", "Up one level");
   await until(() => text(".design-prose").then((s) => s.includes("engineering organization")), "return to system");
   assert.deepEqual(errors, []);
-  await fs.writeFile(path.join(evidence, "proof.json"), JSON.stringify({ ok: true, actualRepo: process.cwd(), packaged: true, topNodes, componentBuildGraph: true, documentNavigation: true, rendererErrors: errors }));
+  await click(".planning-tabs button", "Plans & components");
+  await click(".plan-selection-support button", "Repository, build & context");
+  await click(".planning-tabs button", "System design");
+  await until(() => text(".design-prose").then((s) => s.includes("Bazel graph uses an actual per-repository query")), "shared repository component selection");
+  await click(".design-implementation button", "Show all 20 source files");
+  assert((await text(".design-implementation")).includes("core/project-context/catalog.ts"));
+  await fs.writeFile(path.join(evidence, "repository-expanded.png"), (await wc.capturePage()).toPNG());
+  assert.deepEqual(errors, []);
+  await fs.writeFile(path.join(evidence, "proof.json"), JSON.stringify({ ok: true, actualRepo: process.cwd(), packaged: true, topNodes, componentBuildGraph: true, documentNavigation: true, sharedOutlineSelection: true, expandableSources: true, componentConstraints: true, rendererErrors: errors }));
 }
 void main().catch(async (error) => { await fs.writeFile(path.join(evidence, "failure.json"), JSON.stringify({ message: error.stack, errors })); app.exit(1); });

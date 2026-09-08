@@ -12,8 +12,8 @@ targets. The file grid remains a different perspective, not an architecture map.
 ## Progress
 
 - [x] (2026-09-08) Confirmed designated branch and inspected actual parser/UI.
-- [ ] Publish bounded loading correction and actual-plan validation gate.
-- [ ] Unify design selection/document/graph navigation and build activation seam.
+- [x] (2026-09-08 13:40Z) Pushed actual-plan correction a82034d; 73 focused tests/types pass, native review clean.
+- [x] (2026-09-08 13:55Z) Unified navigation/overview and observed-target resolver; focused tests pass. Native review's reconnect finding corrected with completed/pending regressions.
 - [ ] Run focused checks, native review and one owned virtual proof; push handoff.
 
 ## Surprises & Discoveries
@@ -37,8 +37,11 @@ identity; absent observations are unavailable rather than guessed paths.
 
 ## Outcomes & Retrospective
 
-Implementation is in progress. The first independently useful outcome is a
-loadable actual plan; larger layout adoption belongs to the cockpit owner.
+The actual plan loads without arbitrary reference counts. A shared controller
+keeps document, outline and breadcrumbs aligned. The overview has document,
+component connections, build mappings and task dependencies; named edges and
+constraints explain the system rather than the directory layout. Larger App
+startup adoption belongs to the cockpit owner. Final package proof is underway.
 
 ## Context and Orientation
 
@@ -51,8 +54,8 @@ by the parallel cockpit-layout worker and will not be edited here.
 
 ## Plan of Work
 
-First add an explicit committed-index regression, separate source/document
-counts, document the bound and publish a small commit/PR. Then consolidate plan
+First add an explicit committed-index regression, remove source/document
+count caps, document the byte bound and publish a small commit/PR. Then consolidate plan
 reading and selection into a controller shared by the design/outline surfaces.
 Keep literal authored component connections visible, and let drill-down replace
 only the selected component view. Publish a typed callback for observed build
@@ -70,8 +73,8 @@ under /tmp/swarm-ide-usability.BirZCk/plans for the outer-layout owner.
 
 ## Validation and Acceptance
 
-The committed plan must parse with all real source paths retained. A node above
-the new finite source limit must still fail. Opening the plan must read the top
+The committed plan must parse with all real source paths retained. Large lists
+remain valid; the overall byte bound must still reject oversized files. Opening the plan must read the top
 document; component/outline/breadcrumb selection must agree. Stale repository or
 core results must not activate links. Build links never fabricate a source path.
 Repositories without a plan should see useful instructions, not a demo fallback.
@@ -93,3 +96,10 @@ Use the existing typed `plans.read` and `file.read` bridge, ProjectionCanvas and
 already installed React dependencies. Plan containment and component connections
 remain authored; observed build nodes stay a separate projection. No new provider
 or window manager is part of this increment.
+
+Update: direct user feedback replaced the initial count-increase proposal with
+expandable presentation. Native review required a monotonic connection boundary
+to prevent same-generation reconnects from reviving old read authority. The first
+packaged test's final phrase was absent from the actual document; that assertion
+now looks for an existing repository-design sentence, without weakening the
+shared-selection, real-file or renderer-error checks.

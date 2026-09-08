@@ -34,6 +34,7 @@ const PlanNodeSchema = z.object({
   }).strict()).max(PLAN_LIMITS.contextRefsPerNode),
   design: z.object({
     summary: text(2048, 1), state: z.enum(["implemented", "planned"]),
+    constraints: z.array(text(512, 1)).optional(),
     connections: z.array(z.object({ targetId: id, label: text(128, 1) }).strict()).max(16),
     buildTargets: z.array(z.object({
       label: PlanBuildLabelSchema, role: text(256, 1),
