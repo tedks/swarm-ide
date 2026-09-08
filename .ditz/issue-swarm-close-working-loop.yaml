@@ -61,6 +61,10 @@ log_events:
   who: Ted Smith
   what: blocked by swarm-generic-service-discovery
   comment: ""
+- time: 2026-09-08T19:36:41-00:00
+  who: Ted Smith
+  what: blocked by swarm-generate-component-plan
+  comment: ""
 blocked_by:
 - swarm-selected-conversation-latency
 - swarm-repository-worktree-overview
@@ -72,3 +76,4 @@ blocked_by:
 - swarm-first-agent-discoverability
 - swarm-startup-build-graphs
 - swarm-generic-service-discovery
+- swarm-generate-component-plan
