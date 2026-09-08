@@ -26,5 +26,14 @@ log_events:
   who: Ted Smith
   what: started
   comment: ""
+- time: 2026-09-08T18:15:58-00:00
+  who: Ted Smith
+  what: commented
+  comment: PR126 replaces the misleading permanent Queued waiting clock with a static
+    Sent to queue submission indicator in saved rows and composer receipts. Exact
+    text, Copy, storage, focus and no replay are retained. Local 78 checks and both
+    TypeScript boundaries passed; native review CLEAN. The inspected queue receipt
+    and transcript client ID have no established supported join; automatic received
+    status remains OPEN in swarm-message-receipt-correlation. ROOT owns merge/adoption.
 blocks:
 - swarm-close-working-loop
