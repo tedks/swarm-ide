@@ -56,12 +56,12 @@ export function TrustedLocalPane({ draft, bridge, generation = 0, connected, sel
       {!state.archived ? state.approvals.map((approval) => <article className="trusted-approval" key={approval.id}>
         <strong>Codex requests your approval</strong><pre>{approval.summary}</pre>
         {approval.choices.map((choice) => <button type="button" key={choice} disabled={runPending || !connected || !active}
-          onClick={() => cockpit.control(state.runToken!, "decide", approval.id, choice)}>{choice === "accept" ? "Allow once" : choice === "decline" ? "Decline" : choice}</button>)}
+          onClick={() => cockpit.control(state, "decide", approval.id, choice)}>{choice === "accept" ? "Allow once" : choice === "decline" ? "Decline" : choice}</button>)}
       </article>) : null}
-      {active ? <><form onSubmit={(event) => { event.preventDefault(); cockpit.control(state.runToken!, "send"); }}>
+      {active ? <><form onSubmit={(event) => { event.preventDefault(); cockpit.control(state, "send"); }}>
         <label>Message Codex<textarea rows={2} value={composer.text} maxLength={16384} onChange={(event) => cockpit.edit(state.runToken!, event.target.value)} /></label>
         <button disabled={runPending || !connected || !composer.text.trim() || !["ready", "running"].includes(state.status) || (state.status === "running" && !state.turnId)}>{state.status === "running" ? "Steer current turn" : "Send next turn"}</button>
-      </form><button type="button" disabled={!connected || runPending || state.status === "stopping"} onClick={() => cockpit.control(state.runToken!, "stop")}>Stop conversation</button></> : composer.text ? <details><summary>Unsent local draft · not delivered</summary><pre>{composer.text}</pre></details> : null}
+      </form><button type="button" disabled={!connected || runPending || state.status === "stopping"} onClick={() => cockpit.control(state, "stop")}>Stop conversation</button></> : composer.text ? <details><summary>Unsent local draft · not delivered</summary><pre>{composer.text}</pre></details> : null}
     </div> : null}
     <p role="status" className="trusted-notice">{cockpit.selectedNotice || cockpit.observationNotice || state?.message}</p>
     <small>Live conversations survive a renderer refresh while the core stays alive. App/core shutdown stops them; archived history is not a running or resumable conversation.</small>

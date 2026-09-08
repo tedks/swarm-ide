@@ -1,25 +1,11 @@
-import type { TrustedSnapshot } from "../../../protocol/trusted-local";
-import type { AgentTaskReference } from "../../../protocol/agent-task";
+import type { TrustedSnapshot, TrustedRunSummary } from "../../../protocol/trusted-local";
 
-/** Presentation seam only. Wire values must first pass the shared runtime parser. */
-export interface FleetRunSummary {
-  runToken: string; title: string; createdAt: string; updatedAt: string;
-  status: TrustedSnapshot["status"]; archived: boolean; approvalCount: number;
-  taskReference: AgentTaskReference | null; message: string;
-}
-export interface FleetActivity {
-  id: string; at: string; turnId: string | null;
-  kind: "command" | "fileChange" | "tool" | "turn";
-  status: "running" | "completed" | "failed"; summary: string;
-}
-export type FleetSnapshot = TrustedSnapshot & {
-  runs?: FleetRunSummary[]; activities?: FleetActivity[];
-  taskReference?: AgentTaskReference | null; archived?: boolean;
-};
+/** Presentation uses the ROOT-cleared shared contract; values are already validated. */
+export type FleetSnapshot = TrustedSnapshot;
 export interface FleetComposer { text: string; revision: number }
 export interface FleetState {
   selected: string | null;
-  summaries: FleetRunSummary[];
+  summaries: TrustedRunSummary[];
   catalogSequence: number;
   details: Readonly<Record<string, { snapshot: FleetSnapshot; sequence: number }>>;
   composers: Readonly<Record<string, FleetComposer>>;

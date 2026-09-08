@@ -26,16 +26,18 @@ export function useTrustedFleet({ bridge, connected, generation, selection, onSn
   const [prepared, setPrepared] = useState<{ value: NonNullable<TrustedSnapshot["preparation"]>; inputKey: string } | null>(null);
   const [confirmed, setConfirmed] = useState(false);
   const epoch = useRef(0), selectionVersion = useRef(0), pendingRef = useRef(new Map<string, string>());
-  const refreshRef = useRef<(() => void) | null>(null), callback = useRef(onSnapshot);
+  const refreshRef = useRef<(() => void) | null>(null), callback = useRef(onSnapshot), callbackSequence = useRef(-1);
   callback.current = onSnapshot;
   const notice = useCallback((key: string, value: string) => setNotices((old) => ({ ...old, [key]: value })), []);
   const accept = useCallback((next: FleetSnapshot, sequence: number) => {
     update((state) => observeFleet(state, next, sequence));
-    setWorkspace(next.workspace); callback.current?.(next);
+    if (sequence >= callbackSequence.current) {
+      callbackSequence.current = sequence; setWorkspace(next.workspace); callback.current?.(next);
+    }
   }, [update]);
   useLayoutEffect(() => {
     ++epoch.current; pendingRef.current.clear(); setPending({}); setPrepared(null); setConfirmed(false);
-    setWorkspace(null); setNotices({}); update(resetFleetAuthority); callback.current?.(null);
+    callbackSequence.current = -1; setWorkspace(null); setNotices({}); update(resetFleetAuthority); callback.current?.(null);
     return () => { ++epoch.current; };
   }, [bridge, connected, generation, update]);
 
@@ -55,13 +57,13 @@ export function useTrustedFleet({ bridge, connected, generation, selection, onSn
         const command = request({ type: "trusted.snapshot", ...(token ? { token } : {}) });
         const response = parseCoreResponseForRequest(await bridge.request(command), command);
         if (!alive || current !== epoch.current) return;
-        if (!response.ok) { notice(token ?? OBSERVATION, response.error.message); return; }
+        if (!response.ok) { notice(token ?? OBSERVATION, response.error.message); callback.current?.(null); return; }
         if (response.trusted) {
           accept(response.trusted.snapshot, response.sequence); notice(OBSERVATION, "");
           if (!fleetRef.current.selected && response.trusted.snapshot.runToken && selectionAtRead === selectionVersion.current)
             update((state) => selectFleetRun(state, response.trusted!.snapshot.runToken!));
         }
-      } catch { if (alive && current === epoch.current) notice(OBSERVATION, "Conversation observation unavailable; no command was replayed."); }
+      } catch { if (alive && current === epoch.current) { notice(OBSERVATION, "Conversation observation unavailable; no command was replayed."); callback.current?.(null); } }
       finally {
         reading = false;
         if (alive && current === epoch.current) timer = setTimeout(read, requested ? 0 : 800);
@@ -80,7 +82,7 @@ export function useTrustedFleet({ bridge, connected, generation, selection, onSn
   const begin = () => { ++selectionVersion.current; setNewConversation(true); setConfirmed(false); };
   const dispatch = async (command: TrustedRequest, options: { inputKey?: string; composerRevision?: number } = {}) => {
     const key = command.type === "trusted.prepare" || command.type === "trusted.launch" ? PREPARE
-      : "token" in command ? command.token : OBSERVATION;
+      : "token" in command ? command.token ?? OBSERVATION : OBSERVATION;
     if (!bridge || !connected || pendingRef.current.has(key)) return;
     const current = epoch.current, selectedAtDispatch = selectionVersion.current;
     pendingRef.current.set(key, command.requestId); setPending((old) => ({ ...old, [key]: true })); notice(key, "");
@@ -106,9 +108,14 @@ export function useTrustedFleet({ bridge, connected, generation, selection, onSn
       }
     }
   };
+  const safeRequest = (value: unknown, key: string): TrustedRequest | null => {
+    try { return request(value); }
+    catch { notice(key, "Instructions exceed the supported input bounds or the request is invalid. Nothing was sent."); return null; }
+  };
   const prepare = (input: unknown, inputKey: string) => {
     setConfirmed(false); setPrepared(null);
-    void dispatch(request({ type: "trusted.prepare", input }), { inputKey });
+    const command = safeRequest({ type: "trusted.prepare", input }, PREPARE);
+    if (command) void dispatch(command, { inputKey });
   };
   const launch = () => {
     if (!prepared || !confirmed) return;
@@ -117,14 +124,20 @@ export function useTrustedFleet({ bridge, connected, generation, selection, onSn
     void dispatch(request({ type: "trusted.launch", token }));
   };
   const selected = fleet.selected ? fleet.details[fleet.selected]?.snapshot ?? null : null;
-  const control = (token: string, kind: "send" | "stop" | "decide", approvalId?: string, choice?: string) => {
+  const control = (observed: TrustedSnapshot, kind: "send" | "stop" | "decide", approvalId?: string, choice?: string) => {
+    const token = observed.runToken;
+    if (!token) return;
     const snapshot = fleetRef.current.details[token]?.snapshot;
-    if (!snapshot || snapshot.archived || !["ready", "running", "starting"].includes(snapshot.status)) return;
+    if (!snapshot || snapshot.instanceId !== observed.instanceId || snapshot.archived || !["ready", "running", "starting"].includes(snapshot.status)) return;
     if (kind === "send") {
+      if (snapshot.status !== observed.status || snapshot.turnId !== observed.turnId) {
+        notice(token, "Conversation advanced. Review the current turn before sending; your draft is retained."); return;
+      }
       const composer = fleetRef.current.composers[token] ?? emptyComposer;
       if (!composer.text.trim() || !["running", "ready"].includes(snapshot.status) || (snapshot.status === "running" && !snapshot.turnId)) return;
-      void dispatch(request({ type: "trusted.send", token, text: composer.text,
-        expectedTurnId: snapshot.status === "running" ? snapshot.turnId : null }), { composerRevision: composer.revision });
+      const command = safeRequest({ type: "trusted.send", token, text: composer.text,
+        expectedTurnId: observed.status === "running" ? observed.turnId : null }, token);
+      if (command) void dispatch(command, { composerRevision: composer.revision });
     } else if (kind === "stop") void dispatch(request({ type: "trusted.stop", token }));
     else if (snapshot.approvals.some((approval) => approval.id === approvalId && approval.choices.includes(choice ?? "")))
       void dispatch(request({ type: "trusted.decide", token, approvalId, choice }));
