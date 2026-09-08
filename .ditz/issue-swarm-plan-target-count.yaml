@@ -1,0 +1,16 @@
+id: swarm-plan-target-count
+title: Accept valid component plans with more than sixteen build targets
+desc: ""
+type: bugfix
+component: default
+release:
+reporter: Ted Smith <tedks@riseup.net>
+status: unstarted
+disposition:
+creation_time: 2026-09-08T20:58:02-00:00
+references: []
+log_events:
+- time: 2026-09-08T20:58:02-00:00
+  who: Ted Smith
+  what: created
+  comment: ""
