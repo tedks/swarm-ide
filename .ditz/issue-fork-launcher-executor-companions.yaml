@@ -1,11 +1,11 @@
 id: fork-launcher-executor-companions
 title: Package Codex fork launcher companion executables with pinned CLI
-desc: 'First-agent-run design fork failed before commands: pinned codex-0.153.4 could
-  not find sibling codex-code-mode-host. Root restored byte-identical companion from
-  running matching package; actual command execution then passed. Follow up in launcher/dotfiles
-  workflow: copy or resolve the complete versioned executable bundle and smoke-test
-  command execution, not just CLI startup. No global tooling changes in this design
-  step.'
+desc: 'The first-agent-run design fork failed before it could run commands: pinned
+  codex-0.153.4 could not find its sibling codex-code-mode-host. Root restored a byte-identical
+  companion from the running matching package, and actual command execution then passed.
+  In the launcher/dotfiles workflow, copy or locate the complete versioned executable
+  bundle and smoke-test command execution, not just CLI startup. Do not change global
+  tooling during this design step.'
 type: bugfix
 component: default
 release:
@@ -18,4 +18,8 @@ log_events:
 - time: 2026-09-06T01:19:07-00:00
   who: Ted Smith
   what: created
+  comment: ""
+- time: 2026-09-08T04:29:47-00:00
+  who: Ted Smith
+  what: updated description
   comment: ""
