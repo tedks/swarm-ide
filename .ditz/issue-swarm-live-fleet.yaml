@@ -1,9 +1,11 @@
 id: swarm-live-fleet
-title: Read the active multi-worktree swarm in real time
-desc: 'F7: Register/watch this real ROOT and children across worktrees. Show actual
-  lineage, timestamped commands and file edits across all relevant sessions, stable
-  event identities and bounded reads. Preserve session ownership; expose task/worktree
-  identity. Direct two-session append check and focused tests. docs/swarm-operator-hour.md.'
+title: Show the active swarm across worktrees in real time
+desc: 'F7: Register and watch this real ROOT session and its children across worktrees.
+  Show their actual parent-child relationships, timestamped commands and file edits
+  across all relevant sessions. Keep event identities stable and limit how much data
+  each read can fetch. Preserve session ownership and show task/worktree identity.
+  Check that new output from two real sessions appears directly, and run focused tests.
+  See docs/swarm-operator-hour.md.'
 type: task
 component: default
 release:
@@ -82,6 +84,14 @@ log_events:
     context links and uses concise Activity/example/empty copy. Focused106 tests plus
     both TS boundaries pass; core link delta native CLEAN. Adopt links with C7 selected-session
     worktree.inspect only; no shared App adoption by F7.
+- time: 2026-09-08T04:31:43-00:00
+  who: Ted Smith
+  what: changed title
+  comment: ""
+- time: 2026-09-08T04:31:43-00:00
+  who: Ted Smith
+  what: updated description
+  comment: ""
 blocks:
 - swarm-owner-steering
 - swarm-operator-demo
