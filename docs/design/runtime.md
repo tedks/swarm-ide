@@ -21,7 +21,8 @@ and publishes bounded results. Registration/configuration selects actual provide
 renderer text does not grant new filesystem or execution authority.
 
 The `projectContext.observe` route validates the opened repository/world and
-coalesces bounded read-only Node/Docker discovery. Its provider cancels pending
+coalesces bounded read-only Node/Python/Hugo, Docker and manifest discovery. Each
+detector retains its own prior observation time if temporarily unavailable. Its provider cancels pending
 reads when the core closes. The renderer never supplies a process command, root
 path or container control operation; see [runtime context](../project-context.md).
 

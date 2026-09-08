@@ -18,7 +18,13 @@ const scratch = await mkdtemp(join(process.env.SWARM_X11_OWNERSHIP_DIR, "project
 const extracted = join(scratch, "app"), profile = join(scratch, "profile"), root = join(scratch, "project");
 await Promise.all([mkdir(extracted), mkdir(profile, { mode: 0o700 }), mkdir(root)]);
 execFileSync("tar", ["-xzf", bundle, "-C", extracted], { timeout: 30000 });
-await writeFile(join(root, "package.json"), JSON.stringify({ name: "automatic-context-proof", private: true }));
+await writeFile(join(root, "package.json"), JSON.stringify({ name: "automatic-context-proof", private: true, dependencies: { react: "1" }, scripts: { build: "not-executed", test: "not-executed" } }));
+await mkdir(join(root, "sites", "docs"), { recursive: true });
+await writeFile(join(root, "sites", "docs", "hugo.toml"), 'baseURL = "https://docs.example.org/"\ntitle = "Proof documentation"\n');
+await mkdir(join(root, "contracts", "library"), { recursive: true });
+await mkdir(join(root, "contracts", "consumer"), { recursive: true });
+await writeFile(join(root, "contracts", "library", "Move.toml"), '[package]\nname = "ProofLibrary"\n[addresses]\nProofLibrary = "0x0"\n');
+await writeFile(join(root, "contracts", "consumer", "Move.toml"), '[package]\nname = "ProofConsumer"\n[dependencies]\nProofLibrary = { local = "../library" }\n');
 await writeFile(join(root, "README.md"), "# Runtime context proof\n");
 for (const args of [["init"], ["add", "."], ["-c", "user.name=Swarm proof", "-c", "user.email=proof@example.invalid", "-c", "core.hooksPath=/dev/null", "commit", "-m", "Initial fixture"]]) execFileSync("git", args, { cwd: root, stdio: "pipe" });
 const testServer = spawn(process.execPath, ["-e", "require('node:http').createServer((q,s)=>s.end('project context')).listen(0,'127.0.0.1',function(){console.log(this.address().port)})"], { cwd: root, stdio: ["ignore", "pipe", "inherit"] });
