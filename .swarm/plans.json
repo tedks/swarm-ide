@@ -399,6 +399,8 @@
       "protocol/schema.ts",
       "core/worker-runtime.ts",
       "app/electron/main.ts",
+      "nix/package.nix",
+      "tools/cli/launcher.mjs",
       "BUILD.bazel"
     ],
     "taskIds": [],
@@ -417,6 +419,21 @@
         }
       ],
       "buildTargets": [
+        {
+          "label": "//tools/cli:checks",
+          "role": "Checks installed-launch arguments, profile handling and scoped tmux association",
+          "dependencies": [{ "label": "//tools/cli:sources", "relation": "data" }]
+        },
+        {
+          "label": "//tools/cli:smoke",
+          "role": "Opens real source with an installed command on an owned virtual desktop",
+          "dependencies": [
+            { "label": "//tools/cli:sources", "relation": "data" },
+            { "label": "//tools:virtual-desktop-run.sh", "relation": "data" },
+            { "label": "//tools:x11-driver-source", "relation": "data" },
+            { "label": "//tools/task-integration:sources", "relation": "data" }
+          ]
+        },
         {
           "label": "//:desktop-bundle",
           "role": "Packages renderer and local core",

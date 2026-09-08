@@ -65,6 +65,12 @@ one discoverable open rollout; shells, ambiguous owners and unavailable worktree
 roots are skipped. If nothing can be registered, the command explains that before
 opening a window; remove the tmux flags to open the project by itself.
 
+Current limitation: a Codex process with native helpers can keep several rollouts
+open, so automatic discovery currently skips it as ambiguous. Use its existing
+checked registry with `--agent-registry` until the registration helper learns to
+distinguish the interactive owner from its native children. The installed
+existing-registry path has been exercised with this project's actual agents.
+
 The command prints the private registry path and an exact tmux attach command.
 In the IDE, selecting a checked agent exposes the existing per-agent terminal
 navigation/copy action. The terminal and IDE refer to the same running owner.

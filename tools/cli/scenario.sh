@@ -27,13 +27,13 @@ node --input-type=module -e '
   const actualProfile=profileLine && JSON.parse(profileLine.slice("swarm: profile ".length));
   if(actualProfile!==info.profile || !fs.statSync(info.profile).isDirectory()) throw new Error("Electron did not use the requested profile");
   let association;
-  if(process.env.SWARM_CLI_TEST_TMUX_SESSION) {
+  if(process.env.SWARM_CLI_TEST_TMUX_SESSION || info.existingRegistry) {
     const line=log.split("\n").find(line=>line.startsWith("swarm: registry "));
-    if(!line) throw new Error("No selected tmux association");
-    const registry=JSON.parse(fs.readFileSync(line.slice("swarm: registry ".length),"utf8"));
+    if(!line && !info.existingRegistry) throw new Error("No selected tmux association");
+    const registry=JSON.parse(fs.readFileSync(info.existingRegistry || line.slice("swarm: registry ".length),"utf8"));
     const owner=registry.sessions.find(row=>row.id===process.env.SWARM_CLI_TEST_EXPECTED_SESSION);
     if(!owner?.tmux || owner.contextRoot!==process.env.SWARM_SOURCE_WORKSPACE) throw new Error("Known worker/worktree missing from actual association");
-    association={count:registry.sessions.length,owner:{session:owner.id,root:owner.contextRoot,pid:owner.tmux.processPid,start:owner.tmux.processStart}};
+    association={mode:info.existingRegistry ? "existing-registry" : "selected-tmux",count:registry.sessions.length,owner:{session:owner.id,root:owner.contextRoot,pid:owner.tmux.processPid,start:owner.tmux.processStart}};
   }
   fs.writeFileSync(path.join(process.env.SWARM_ARTIFACT_DIR,"proof.json"),JSON.stringify({...info,openedRealSource:true,sourceUnchanged:true,actualProfile,association}));
 '

@@ -13,7 +13,10 @@ An operator should be able to install Swarm IDE once, then run `swarm --workspac
 - [x] (2026-09-08 13:53Z) Built the real Nix package with actual fixed pnpm/Bazel dependency hashes; `nix run` help and disposable profile installation passed.
 - [x] (2026-09-08 13:53Z) Installed launch opened a real separate Git repository/source with development-tool PATH removed, confirmed the effective profile, and cleaned owned X11 resources.
 - [x] (2026-09-08 14:07Z) Added the user's targeted tmux association request using existing checked registration and explicit server/session selection; direct tests and package pass.
-- [ ] Complete final native delta review, coordinated plan mappings, final docs/Ditz and pushed handoff.
+- [x] (2026-09-08 14:22Z) Installed existing-registry launch showed actual ROOT/worker activity from a separate chosen repository; original owner survived IDE cleanup.
+- [x] (2026-09-08 14:25Z) Native selector/proof/mapping deltas CLEAN; exact approved runtime mappings match queried Bazel dependencies.
+- [ ] Automatic discovery of CLI processes holding native helper rollouts needs a small shared-registration correction; ownership request sent to ROOT, existing-registry path is usable.
+- [ ] Final docs/Ditz and pushed handoff.
 
 ## Surprises & Discoveries
 
@@ -22,6 +25,8 @@ The existing `//:desktop-bundle` already contains Electron main/preload, the loc
 The first offline package attempt showed that Nix's Bazel dependency archive does not include Bzlmod registry metadata. Legacy workspace mode inside this derivation captures the actual toolchain archives and then builds offline. No normal-development Bazel configuration changed. pnpm's Electron installer includes unused musl native modules, so only host GNU bindings are patched before Vite runs.
 
 The first installed GUI proof opened the correct source but did not check profile state. A stronger file-existence check failed because `Local State` was absent during the run; that failure alone does not establish why. The installed entry now explicitly sets Electron's userData before launching the fixed main and reports `app.getPath`, allowing the final proof to verify the actual chosen profile without assuming a Chromium flag or file-flush timing.
+
+The actual tmux run found two distinct problems. A bare `display-message -t =session` yielded no session identity; an explicit trailing colon and a real disposable-tmux regression establish its fix. The next run reached registration but the existing helper rejected every native-helper-bearing CLI process because multiple JSONL files were open. Bounded first-line metadata distinguishes the CLI and native children; a narrowly scoped shared-helper correction is requested, not guessed from filenames. The explicit existing-registry launch independently works and preserves the original agent owner.
 
 ## Decision Log
 
@@ -33,7 +38,7 @@ The targeted launch addition in `/tmp/swarm-ide-usability.BirZCk/project-tmux-fe
 
 ## Outcomes & Retrospective
 
-Implementation is pushed in PR111. The x86_64-linux production package launches from its Nix store output; `nix run` and disposable `nix profile install` work. Final owned GUI proof took2.032s including startup, with the chosen source unchanged and actual userData matching the requested relative profile. aarch64-linux output evaluates but has not been built/run here. This work makes no macOS claim. The source tar and development entrypoints remain unchanged.
+Implementation is pushed in PR111. The x86_64-linux production package launches from its Nix store output; `nix run` and disposable `nix profile install` work. Installed source/profile proof took2.032s including startup. The later actual existing-registry proof took2.372s, showed ROOT/worker activity and confirmed the original exact agent owner survived IDE cleanup. The chosen source stayed unchanged and userData matched the requested relative profile. Automatic discovery with native helpers remains a separate narrow limitation. aarch64-linux evaluates but has not been built/run here; follow-up swarm-install-aarch64-proof records that gap. This work makes no macOS claim. The source tar and development entrypoints remain unchanged.
 
 ## Context and Orientation
 
