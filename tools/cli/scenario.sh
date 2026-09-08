@@ -22,5 +22,6 @@ node --input-type=module -e '
   const file=path.join(process.env.SWARM_ARTIFACT_DIR,"launch.json");
   const info=JSON.parse(fs.readFileSync(file,"utf8"));
   if(fs.readFileSync(path.join(info.workspace,"install-proof.txt"),"utf8")!==info.sourceText) throw new Error("source changed");
-  fs.writeFileSync(path.join(process.env.SWARM_ARTIFACT_DIR,"proof.json"),JSON.stringify({...info,openedRealSource:true,sourceUnchanged:true}));
+  if(!fs.existsSync(path.join(info.profile,"Local State"))) throw new Error("Electron did not write the requested profile");
+  fs.writeFileSync(path.join(process.env.SWARM_ARTIFACT_DIR,"proof.json"),JSON.stringify({...info,openedRealSource:true,sourceUnchanged:true,requestedProfileWritten:true}));
 '

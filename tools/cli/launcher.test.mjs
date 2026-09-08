@@ -3,6 +3,8 @@ import assert from "node:assert/strict";
 import { mkdtempSync, mkdirSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { spawn } from "node:child_process";
+import { once } from "node:events";
 import { parseArguments, launchConfiguration, launch } from "./launcher.mjs";
 
 test("arguments accept explicit workspace/profile and help", () => {
@@ -61,3 +63,23 @@ test("foreground launch uses literal arguments and reports the owned child's exi
     await assert.rejects(launch([], { bundleRoot: script, electron: join(root, "missing") }), /ENOENT/);
   } finally { rmSync(root, { recursive: true, force: true }); }
 });
+for (const [signal, expected] of [["SIGINT", 130], ["SIGTERM", 143], ["SIGHUP", 129]]) {
+  test(`forwards ${signal} to its child and retains the signal exit status`, async () => {
+    const root = mkdtempSync(join(tmpdir(), "swarm-cli-signal-"));
+    let wrapper;
+    try {
+      const fake = join(root, "electron.mjs"), driver = join(root, "driver.mjs");
+      // The bounded fallback prevents an orphan even if signal forwarding regresses.
+      writeFileSync(fake, `console.log('READY'); setTimeout(() => process.exit(0), 1500);`);
+      writeFileSync(driver, `import { launch } from ${JSON.stringify(new URL("./launcher.mjs", import.meta.url).href)}; process.exitCode = await launch([], {bundleRoot: ${JSON.stringify(fake)}, electron: process.execPath});`);
+      wrapper = spawn(process.execPath, [driver], { cwd: root, stdio: ["ignore", "pipe", "inherit"] });
+      const closed = once(wrapper, "close");
+      await once(wrapper.stdout, "data");
+      wrapper.kill(signal);
+      assert.deepEqual(await closed, [expected, null]);
+    } finally {
+      if (wrapper?.exitCode === null && wrapper.signalCode === null) wrapper.kill("SIGKILL");
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+}

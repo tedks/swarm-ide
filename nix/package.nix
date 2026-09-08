@@ -29,7 +29,7 @@ in buildBazelPackage {
   # legacy workspace here so buildBazelPackage captures all downloads; its
   # external-repository archive does not carry Bzlmod's registry cache.
   bazelFlags = [ "--jobs=3" "--enable_bzlmod=false" "--enable_workspace=true" ];
-  fetchAttrs.hash = "";
+  fetchAttrs.hash = "sha256-RzX8Shr8It9EahXDd3KotcZ2CjFcuzZVyK5aQutLPA4=";
 
   buildAttrs = {
   inherit pnpmDeps;
@@ -68,7 +68,7 @@ in buildBazelPackage {
     })} "$out/share/swarm-ide/package.json"
     makeWrapper ${nodejs_22}/bin/node "$out/bin/swarm" \
       --add-flags "$out/share/swarm-ide/cli/main.mjs" \
-      --prefix PATH : ${lib.makeBinPath [ nodejs_22 git tmux util-linux ]} \
+      --prefix PATH : ${lib.makeBinPath [ nodejs_22 git tmux util-linux bazel_7 ]} \
       --set-default SWARM_BAZEL_BIN '${bazelBinary}' \
       --set-default SWARM_BAZEL_JAVA_HOME '${jdk21_headless}'
     runHook postInstall
