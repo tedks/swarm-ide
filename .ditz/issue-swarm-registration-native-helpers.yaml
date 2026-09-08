@@ -1,0 +1,22 @@
+id: swarm-registration-native-helpers
+title: Recognize interactive Codex owners that hold native helper transcripts
+desc: Automatic tmux discovery currently requires one open rollout. Actual installed
+  Swarm association skipped this wave because Codex keeps native helper rollouts in
+  the same process. Headers prove one CLI root and native descendant parent links.
+  Preserve exact PID/start/pane/open-file validation and ambiguity rejection; extend
+  the existing registration helper rather than adding another scanner. Existing explicit
+  private registries work and were proved in the installed UI. Exact ownership request
+  and actual failure evidence are under /tmp/swarm-ide-usability.BirZCk/linux-install.
+type: bugfix
+component: default
+release:
+reporter: Ted Smith <tedks@riseup.net>
+status: unstarted
+disposition:
+creation_time: 2026-09-08T14:24:48-00:00
+references: []
+log_events:
+- time: 2026-09-08T14:24:48-00:00
+  who: Ted Smith
+  what: created
+  comment: ""
