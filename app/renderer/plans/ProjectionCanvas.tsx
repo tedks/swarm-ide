@@ -10,10 +10,11 @@ export interface ProjectionEdge { id: string; source: string; target: string; la
 function DesignEdge(props: EdgeProps) {
   const { sourceX: sx, sourceY: sy, targetX: tx, targetY: ty } = props;
   let [path, x, y] = getBezierPath(props);
-  if (props.data?.reciprocal) {
+  if (props.data?.curveOffset) {
     const length = Math.hypot(tx - sx, ty - sy) || 1;
-    const cx = (sx + tx) / 2 - (ty - sy) / length * 64;
-    const cy = (sy + ty) / 2 + (tx - sx) / length * 64;
+    const offset = Number(props.data.curveOffset);
+    const cx = (sx + tx) / 2 - (ty - sy) / length * offset;
+    const cy = (sy + ty) / 2 + (tx - sx) / length * offset;
     path = `M ${sx},${sy} Q ${cx},${cy} ${tx},${ty}`;
     x = (sx + 2 * cx + tx) / 4; y = (sy + 2 * cy + ty) / 4;
   }
@@ -24,6 +25,17 @@ function DesignEdge(props: EdgeProps) {
   </g>;
 }
 const edgeTypes = { design: DesignEdge };
+
+/** Separate contracts with identical endpoints as well as reciprocal pairs.
+ * Stable IDs keep the lanes fixed when an authored list is reordered. */
+export function contractCurveOffset(edge: ProjectionEdge, links: ProjectionEdge[]): number {
+  if (!edge.kind || edge.kind === "containment") return 0;
+  const parallel = links.filter((item) => item.kind && item.kind !== "containment" && item.source === edge.source && item.target === edge.target)
+    .map((item) => item.id).sort();
+  const lane = parallel.indexOf(edge.id);
+  const reverse = links.some((item) => item.kind && item.kind !== "containment" && item.source === edge.target && item.target === edge.source);
+  return reverse ? 64 + lane * 64 : (lane - (parallel.length - 1) / 2) * 64;
+}
 
 /** Each mounted projection owns its own camera. Changing metadata or selection
  * never requests fit; Fit is an explicit control after the initial mount. */
@@ -57,6 +69,7 @@ export function ProjectionCanvas({ label, nodes: input, edges: links, selected, 
     const edges: Edge[] = links.map((edge) => ({ ...edge, ...(edge.kind ? { type: "design", data: {
       kind: edge.kind, emphasized: edge.kind !== "containment" && (edge.source === selected || edge.target === selected),
       reciprocal: edge.kind !== "containment" && links.some((other) => other.kind !== "containment" && other.source === edge.target && other.target === edge.source),
+      curveOffset: contractCurveOffset(edge, links),
       description: `${edge.source} → ${edge.target}: ${edge.label}`,
     }, ariaLabel: `${edge.source} → ${edge.target}: ${edge.label}` } : {}),
       markerEnd: edge.kind === "containment" ? undefined : { type: MarkerType.ArrowClosed },

@@ -6,6 +6,7 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { PlanIndexSchema } from "../protocol/plans";
 import { DesignWorkspace, designProjection, designContracts } from "../app/renderer/plans/DesignWorkspace";
+import { contractCurveOffset } from "../app/renderer/plans/ProjectionCanvas";
 import { initialSnapshot } from "../fixtures/world";
 import { PROTOCOL_VERSION, type CoreRequest, type CoreResponse } from "../protocol/schema";
 
@@ -80,6 +81,35 @@ describe("component graph remains stable and truthful", () => {
       expect(selected.edges[0]).toMatchObject({ id: contract.id, source: contract.source.id, target: contract.target.id, kind: contract.link.kind });
     }
   });
+  it("gives parallel navigation/data contracts separate stable lanes as well as reciprocal arrows", () => {
+    const graph = designProjection(index, index.nodes.find(n => n.id === "design:activity")!);
+    const outgoing = graph.edges.filter(e => e.source === "design:activity" && e.target === "design:agents");
+    expect(outgoing).toHaveLength(2);
+    const offsets = outgoing.map(e => contractCurveOffset(e, graph.edges));
+    expect(new Set(offsets).size).toBe(2);
+    expect(offsets.every(offset => offset > 0)).toBe(true);
+    expect(outgoing.map(e => contractCurveOffset(e, [...graph.edges].reverse()))).toEqual(offsets);
+    const reverse = graph.edges.find(e => e.source === "design:agents" && e.target === "design:activity")!;
+    expect(contractCurveOffset(reverse, graph.edges)).toBeGreaterThan(0); // reversed endpoints bend to the opposite physical side
+    expect(contractCurveOffset(outgoing[0]!, outgoing)).not.toBe(contractCurveOffset(outgoing[1]!, outgoing));
+  });
+  it("retains read-only contract detail during a held same-world refresh without permitting activation", async () => {
+    const request = bridge();
+    render(<DesignWorkspace {...options} onOpenFile={vi.fn()} />);
+    await screen.findByText("docs/design/system.md");
+    fireEvent.click(screen.getByRole("button", { name: "design:activity" }));
+    await screen.findByText("docs/design/activity.md");
+    const data = designContracts(index, index.nodes.find(n => n.id === "design:activity")!).find(c => c.link.label === "Latest saved summary")!;
+    fireEvent.change(screen.getByRole("combobox", { name: "Architectural contract" }), { target: { value: data.id } });
+    const edges = flow.props.get("component").edges;
+    request.mockImplementationOnce(() => new Promise(() => {}));
+    fireEvent.click(screen.getByRole("button", { name: "Refresh design" }));
+    expect(screen.getByRole("complementary", { name: "Selected architectural contract" }).textContent).toContain("Latest saved summary");
+    expect(flow.props.get("component").edges).toBe(edges);
+    expect((screen.getByRole("combobox", { name: "Architectural contract" }) as HTMLSelectElement).disabled).toBe(true);
+    act(() => flow.props.get("component").onEdgeClick({}, { id: "another", data: { kind: "request" } }));
+    expect((screen.getByRole("combobox", { name: "Architectural contract" }) as HTMLSelectElement).value).toBe(data.id);
+  });
   it("inspects one contract through the picker or edge without changing component, source or camera", async () => {
     const request = bridge(), onOpenFile = vi.fn();
     const view = render(<DesignWorkspace {...options} onOpenFile={onOpenFile} />);
@@ -108,6 +138,13 @@ describe("component graph remains stable and truthful", () => {
     act(() => flow.props.get("component").onEdgeClick({}, edge));
     expect(screen.getByRole("complementary", { name: "Selected architectural contract" }).textContent).toContain("already-closed");
     expect(flow.mounts).toBe(1);
+    view.rerender(<DesignWorkspace {...options} connected={false} onOpenFile={onOpenFile} />);
+    expect(screen.queryByRole("complementary", { name: "Selected architectural contract" })).toBeNull();
+    view.rerender(<DesignWorkspace {...options} onOpenFile={onOpenFile} />);
+    await screen.findByText("docs/design/activity.md");
+    expect(screen.queryByRole("complementary", { name: "Selected architectural contract" })).toBeNull();
+    fireEvent.change(screen.getByRole("combobox", { name: "Architectural contract" }), { target: { value: data.id } });
+    expect(screen.getByRole("complementary", { name: "Selected architectural contract" })).toBeTruthy();
     view.rerender(<DesignWorkspace {...options} generation={2} onOpenFile={onOpenFile} />);
     expect(screen.queryByRole("complementary", { name: "Selected architectural contract" })).toBeNull();
   });

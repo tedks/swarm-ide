@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Position } from "@xyflow/react";
 import { parseCoreResponseForRequest, PROTOCOL_VERSION } from "../../../protocol/schema";
 import type { PlanIndex, PlanNode } from "../../../protocol/plans";
@@ -45,8 +45,8 @@ export function designProjection(index: PlanIndex, selected: PlanNode, contractI
   const nodes: ProjectionNode[] = shown.map((node, i) => {
     return { id: node.id, title: node.title,
     subtitle: node.design?.state === "planned" ? "Planned component" : node.id === selected.id ? children.length ? "System overview" : "Selected component" : children.includes(node) ? "Responsibility area" : "Connected component",
-    position: focused ? { x: i * 420, y: 115 }
-      : i === 0 ? { x: 250, y: 0 } : { x: ((i - 1) % 3) * 250, y: 125 + Math.floor((i - 1) / 3) * 125 },
+    position: focused ? { x: i * 300, y: 65 }
+      : i === 0 ? { x: 200, y: 0 } : { x: ((i - 1) % 3) * 200, y: 65 + Math.floor((i - 1) / 3) * 65 },
     port: focused ? i === 0 ? Position.Right : Position.Left : i === 0 ? Position.Bottom : Position.Top,
   }; });
   const edges: ProjectionEdge[] = focused ? [] : children.map((node) => ({ id: `contains:${node.id}`, source: selected.id, target: node.id, label: "contains", kind: "containment" }));
@@ -126,6 +126,10 @@ export function DesignWorkspace(props: DesignWorkspaceProps) {
   const lifetime = `${worldId}\0${repositoryId}\0${generation}\0${connected}`;
   const [contractSelection, setContractSelection] = useState<{ scope: string; id: string } | null>(null);
   const contractScope = `${lifetime}\0${node?.id}`;
+  const componentBody = useRef<HTMLElement>(null), connectionDetails = useRef<HTMLDetailsElement>(null);
+  // Re-entering an old repository/connection string must not resurrect a choice
+  // whose authority was revoked in between, even before a new read completes.
+  useLayoutEffect(() => { setContractSelection(null); }, [lifetime]);
   const live = useRef(lifetime); live.current = lifetime;
   const docPath = node?.docs[0];
   useEffect(() => {
@@ -148,7 +152,12 @@ export function DesignWorkspace(props: DesignWorkspaceProps) {
   const selectedContract = contractSelection?.scope === contractScope ? interfaces.find((item) => item.id === contractSelection.id) : undefined;
   const graph = useMemo(() => index && node ? designProjection(index, node, selectedContract?.id) : null, [index, node, selectedContract?.id]);
   const implementation = useMemo(() => node ? implementationProjection(node) : null, [node]);
-  const inspectContract = (id: string) => { if (current) setContractSelection({ scope: contractScope, id }); };
+  const inspectContract = (id: string) => {
+    if (!current) return;
+    setContractSelection({ scope: contractScope, id });
+    if (props.renderWorkspace && connectionDetails.current) connectionDetails.current.open = false;
+    if (componentBody.current) componentBody.current.scrollTop = 0;
+  };
   const openBuild = (label: string) => {
     if (!current) return;
     if (onOpenBuild) onOpenBuild(label);
@@ -166,7 +175,7 @@ export function DesignWorkspace(props: DesignWorkspaceProps) {
             if (component) select(component.id); else onOpenFile(path);
           }} /> : null}
         </article>) : null;
-  const componentPane = node && graph ? (<section className="design-components" aria-label="Component connections"><h3>{interfaces.length ? "Component contracts" : "Responsibility map"}</h3>
+  const componentPane = node && graph ? (<section ref={componentBody} className="design-components" aria-label="Component connections"><h3>{interfaces.length ? "Component contracts" : "Responsibility map"}</h3>
           <p className="design-legend">{interfaces.length ? "Arrows show direction. Choose one contract to see what crosses this boundary." : "Select an area to explore its contracts. Dashed lines group responsibilities."}</p>
           {interfaces.length ? <label className="design-contract-picker">Contract <select aria-label="Architectural contract" disabled={!current} value={selectedContract?.id ?? ""} onChange={(event) => inspectContract(event.target.value)}>
             <option value="">All {interfaces.length} contracts</option>
@@ -179,7 +188,7 @@ export function DesignWorkspace(props: DesignWorkspaceProps) {
             {selectedContract.link.detail ? <p>{selectedContract.link.detail}</p> : null}
             <button disabled={!current} onClick={() => select(selectedContract.source.id === node.id ? selectedContract.target.id : selectedContract.source.id)}>Explore {selectedContract.source.id === node.id ? selectedContract.target.title : selectedContract.source.title}</button>
           </aside> : null}
-          <details className="design-details" open={!props.renderWorkspace}><summary>Connections & constraints</summary><aside aria-label="Design links">
+          <details ref={connectionDetails} className="design-details" open={!props.renderWorkspace}><summary>Connections & constraints</summary><aside aria-label="Design links">
             {props.renderWorkspace && node.design?.constraints?.map((constraint, i) => <p key={i}>{constraint}</p>)}
             <PlanLinkList key={`${node.id}:components`} label="Components" items={index!.nodes.filter((item) => item.parentId === node.id).map((item) => <button key={item.id} disabled={!current} onClick={() => select(item.id)}>{item.title}</button>)} />
             {node.parentId && <button disabled={!current} onClick={() => select(node.parentId!)}>Up one level</button>}

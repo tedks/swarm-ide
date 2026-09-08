@@ -238,7 +238,6 @@
       "core/plans.ts",
       "core/tasks/draft-context.ts",
       "app/renderer/plans/DesignWorkspace.tsx",
-      "app/renderer/plans/ProjectionCanvas.tsx",
       "app/renderer/plans/design.css",
       "app/renderer/plans/navigation.ts",
       "app/renderer/plans/ProjectionCanvas.tsx",
@@ -265,7 +264,7 @@
           "targetId": "design:runtime",
           "label": "Plans & pinned task reads",
           "kind": "request",
-          "detail": "The local core reads the authored plan index and Ditz metadata at a specified Git revision. Refresh can update the view but cannot silently retarget an attached draft."
+          "detail": "The local core reads the working plan index and identifies its contents; Ditz reads are pinned to a specified Git metadata revision. Refresh can update the view but cannot silently retarget an attached draft."
         },
         {
           "targetId": "design:agents",
@@ -322,6 +321,7 @@
       "core/external-agents-send.ts",
       "protocol/external-agents.ts",
       "app/renderer/external-agents/ExternalAgents.tsx",
+      "app/renderer/external-agents/client.ts",
       "app/renderer/external-agents/AgentConversation.tsx",
       "app/renderer/external-agents/conversation-selection.ts",
       "app/renderer/external-agents/conversation-scroll.ts",
