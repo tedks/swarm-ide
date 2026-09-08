@@ -4,7 +4,7 @@ import { readFile } from "node:fs/promises";
 import { watchFile, unwatchFile } from "node:fs";
 import { join } from "node:path";
 import { PROTOCOL_VERSION, type CoreResponse } from "../../protocol/schema";
-import { VIEW_SHELL_ZOOM_CHANNEL, applyInterfaceZoom, type ViewShellResult } from "../view-shell";
+import { VIEW_SHELL_ZOOM_CHANNEL, VIEW_SHELL_NAVIGATE_CHANNEL, applyInterfaceZoom, type ViewShellResult } from "../view-shell";
 import { DevUpdateSchema, LIFECYCLE_CHANNEL, LIFECYCLE_REQUEST_CHANNEL, LifecycleRequestSchema, type Lifecycle } from "../lifecycle";
 import { applicationMenuTemplate } from "./menu";
 import { CoreSupervisor } from "./core-supervisor";
@@ -56,6 +56,9 @@ function createWindow() {
     return { action: "deny" };
   });
   mainWindow.webContents.on("will-navigate", (event, url) => { if (!isAllowedRendererUrl(url)) event.preventDefault(); });
+  mainWindow.on("app-command", (_event, command) => {
+    if (command === "browser-backward" || command === "browser-forward") mainWindow?.webContents.send(VIEW_SHELL_NAVIGATE_CHANNEL, command === "browser-backward" ? "back" : "forward");
+  });
   // Electron cancels unload by default. Never override a dirty-buffer veto.
   mainWindow.webContents.on("will-prevent-unload", () => {
     publish({ reload: lifecycle.reload === "reloading" ? "pending" : lifecycle.reload, notice: "Document reload deferred: save or reconcile your buffers first." });

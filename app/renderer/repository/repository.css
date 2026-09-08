@@ -79,3 +79,10 @@
 .directory-build-detail li { padding: 4px 0; }
 @keyframes directory-agent-breathe { 50% { opacity: .65; transform: translateY(-2px); } }
 @media (prefers-reduced-motion: reduce) { .directory-agent { animation: none; } }
+.worktree-selector { display: grid; gap: 4px; padding: 6px 8px; color: #93aaa5; font-size: 11px; }
+.worktree-selector select { width: 100%; min-width: 0; color: #d5e8e3; background: #152b2a; border: 1px solid #31514a; border-radius: 4px; padding: 5px; }
+.worktree-notice { font-size: 11px; padding: 4px 8px; color: #e1c38f; }
+.worktree-global { border-bottom: 1px solid #28433c; padding: 10px 12px; font-size: 12px; }
+.worktree-global p { overflow-wrap: anywhere; color: #9cb5ad; margin: 4px 0; }
+.worktree-global h3 { font-size: 11px; text-transform: uppercase; color: #88a69a; }
+.worktree-global details button, .worktree-global a { display: block; overflow-wrap: anywhere; text-align: left; margin-top: 5px; font-size: 11px; }

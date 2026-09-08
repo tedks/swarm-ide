@@ -9,13 +9,16 @@ Selecting an agent's worktree should move the ordinary directory browser, editor
 ## Progress
 
 - [x] (2026-09-08) Confirmed designated branch and inspected root-bound providers and renderer identities.
-- [ ] Implement stable privileged workspace contexts and exact-root request/event routing.
-- [ ] Implement retained editor/worktree selection and deliberate history.
-- [ ] Verify two real worktrees, focused regressions, native review and one owned desktop journey; push and hand off.
+- [x] (2026-09-08) Implement immutable privileged contexts and exact-root request/event routing; actual two-Git-worktree read/write tests pass.
+- [x] (2026-09-08) Implement ordinary Worktree selection, retained dirty editors/cursors, scoped cameras and deliberate Back/Forward.
+- [x] (2026-09-08) Packaged production entry passed the ordinary two-worktree/different-bytes/dirty source/history journey on owned :172/55432, cleanup complete.
+- [ ] Finish exact review-delta regression, push reviewed implementation and hand off.
 
 ## Surprises & Discoveries
 
 `core/repository-registration.ts` already produces distinct project IDs from canonical worktree roots, but every world uses `world:working`. World alone is therefore not a worktree identity. File requests/events and renderer file maps are currently path-only. The existing central worktree browser is read-only and does not switch ordinary providers.
+
+Native review found and corrected late provider creation after close, held history overtaking a new user gesture, retained reads overtaking a newer Save/Reload, and camera cleanup reading the incoming scope. The first GUI driver used Electron's unsupported `ArrowDown` key name; no workspace.open request was sent. Using native `Down` corrected that driver boundary; no product failure or unchanged retry was called a fix.
 
 ## Decision Log
 
@@ -23,7 +26,7 @@ Use immutable core contexts per opened worktree, not a mutable root string. Each
 
 ## Outcomes & Retrospective
 
-Implementation underway; no completed behavior claimed yet.
+The implemented vertical reaches the actual ordinary browser and source editor, not just a contract or auxiliary viewer. The one packaged happy path passed in 2.509 seconds with real Git worktrees and labelled registry transcripts, zero renderer exceptions, unchanged on-disk source/indexes and owned cleanup. Direct mounted tests additionally cover failed selection, stale reads, pending Save exclusion, and newer-navigation cancellation. Native launch stays in the original workspace; steering existing sessions remains shared. Cross-repository selection and idle-context eviction remain explicit follow-ups.
 
 ## Context and Orientation
 

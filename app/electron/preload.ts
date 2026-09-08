@@ -12,6 +12,7 @@ import {
 import type { AgentEvent } from "../../protocol/agents";
 import {
   VIEW_SHELL_ZOOM_CHANNEL,
+  VIEW_SHELL_NAVIGATE_CHANNEL,
   parseViewShellResult,
   type ViewShellBridge,
 } from "../view-shell";
@@ -56,6 +57,11 @@ const bridge: SwarmBridge = {
 };
 
 const viewShellBridge: ViewShellBridge = {
+  onNavigate(listener) {
+    const handler = (_event: Electron.IpcRendererEvent, direction: unknown) => { if (direction === "back" || direction === "forward") listener(direction); };
+    ipcRenderer.on(VIEW_SHELL_NAVIGATE_CHANNEL, handler);
+    return () => ipcRenderer.removeListener(VIEW_SHELL_NAVIGATE_CHANNEL, handler);
+  },
   async setZoomPercent(percent) {
     const response: unknown = await ipcRenderer.invoke(VIEW_SHELL_ZOOM_CHANNEL, percent);
     return parseViewShellResult(response);

@@ -130,7 +130,7 @@ export function DesignWorkspace(props: DesignWorkspaceProps) {
     if (!visible || props.taskOnly || props.documentVisible === false || !current || !docPath || !window.swarm) return;
     let cancelled = false;
     const origin = lifetime;
-    const request = { protocolVersion: PROTOCOL_VERSION, type: "file.read" as const, requestId: `design-doc:${crypto.randomUUID()}`, path: docPath };
+    const request = { protocolVersion: PROTOCOL_VERSION, type: "file.read" as const, requestId: `design-doc:${crypto.randomUUID()}`, path: docPath, workspaceId: repositoryId };
     setDocNotice("Loading document…");
     void window.swarm.request(request).then((reply) => {
       if (cancelled || live.current !== origin) return;
@@ -165,7 +165,7 @@ export function DesignWorkspace(props: DesignWorkspaceProps) {
         </article>) : null;
   const componentPane = node && graph ? (<section className="design-components" aria-label="Component connections"><h3>Components & connections</h3>
           <p className="design-legend">Dashed: contains · arrows: interfaces. Focus a component or edge to inspect its connections.</p>
-          <div className="design-graph"><ProjectionCanvas key={`${worldId}:${repositoryId}`} cameraScope={node.id} label="Component design canvas" {...graph} selected={selected} onSelect={select} /></div>
+          <div className="design-graph"><ProjectionCanvas cameraScope={`${worldId}:${repositoryId}:${node.id}`} label="Component design canvas" {...graph} selected={selected} onSelect={select} /></div>
           <details className="design-details" open={!props.renderWorkspace}><summary>Connections & constraints</summary><aside aria-label="Design links">
             {props.renderWorkspace && node.design?.constraints?.map((constraint, i) => <p key={i}>{constraint}</p>)}
             <PlanLinkList key={`${node.id}:components`} label="Components" items={index!.nodes.filter((item) => item.parentId === node.id).map((item) => <button key={item.id} disabled={!current} onClick={() => select(item.id)}>{item.title}</button>)} />
