@@ -14,6 +14,7 @@ Clicking Recent Activity opens a readable central Activity log without disturbin
 - [x] (2026-09-07 23:26Z) Actual owned packaged GitHub20 PR/source/typed-draft/camera/stale-failure journey passed3.1s, zero errors and cleanup1. Malformed/foreign/late and hard owner-death tests passed; native final fixpoint CLEAN8608a47.
 - [x] (2026-09-07 23:34Z) Full60-target build passed; focused Activity gate64tests/5files passed2.7s. Final aggregate quality1693pass/1fail in unchanged agent-owned-process.test.ts:152 remains an explicit ROOT disposition gate, not a J2 fix or waiver.
 - [x] (2026-09-07 23:36Z) Pushed final handoff, marked PR64 ready, synced Ditz and stopped the owned Bazel server. ROOT retains the aggregate-test disposition/merge gate; no merge or app adoption by J2.
+- [x] (2026-09-08 00:01Z) ROOT accepted the exact historical PID690372 uncertainty as open/nonblocking. Normally composed ROOT-verified 1fa5005 as 2db8672, preserving all task/trusted/Context/UI seams. Native composition CLEAN; one joined quality1796/134 and focused65/5 passed, plus the actual packaged20-PR journey3.214s/zero renderer errors/cleanup1. ROOT still owns PR64 merge/adoption.
 
 ## Surprises & Discoveries
 
@@ -35,11 +36,15 @@ Reuse the already tested private PID process owner for hard parent death, not a 
 
 The current user mandate is Codex-only native council and local-only checks; foreign seats and hosted CI are intentionally omitted.
 
+ROOT's final integration authority requires normal composition of reviewed 1fa5005, mutually exclusive githubPrs/taskActivity/trusted results, one joined quality/focused run and one owned Activity journey. No historical full-suite rerun, shared test instrumentation or retry-to-green is authorized. The exact old PID690372 result stays open and is not fixed or waived by a later passing tree.
+
 ## Outcomes & Retrospective
 
 The vertical is usable: Recent Activity opens readable Changes; Pull requests is an explicit separate view with actual GitHub state and bounded file links. Recorded narrative remains explicitly recorded and is not used to invent PR/agent/task associations. Final handoff records exact gates and the deliberately limited github.com-origin-only scope.
 
 Final aggregate quality observed a transient namespace member after another unchanged agent test's confirmed cleanup. The test records an unpinned namespace-number string and separate PID state, so identity reuse is an ambiguity, not an established cause. ROOT was asked to dispose of this exact boundary or authorize narrow test-only identity instrumentation; no retry-to-green or assertion weakening occurred. The independently focused Activity gate and actual UI proof pass but do not waive that failure.
+
+The subsequent ROOT-authorized joined composition passed its one fresh local run and actual read-only GitHub UI journey. It preserves Context Global, task central documents/history, trusted-local controls, resource instruments, lineage and syntax highlighting. Three-way response regression covers positive responses, foreign/mixed results, repository/world identity and trusted token correlation. This new result does not explain the historical failure. The owned GUI ran on :142/55174: the launch supplied SWARM_DEV_PORT, but the harness selects SWARM_VIRTUAL_DESKTOP_PORT (default55174), checks collisions and sets the app port itself. Cleanup was confirmed; the passing journey was not repeated merely to change the port. Future explicit55222 runs should set SWARM_VIRTUAL_DESKTOP_PORT=55222.
 
 ## Context and Orientation
 
@@ -51,7 +56,7 @@ First remove duplicate/decorative headings and connect the dock heading to exist
 
 ## Concrete Steps
 
-Work only in `/home/tedks/Projects/swarm-ide/activity-pr-instruments`. Materialize with `nix develop --command pnpm install --frozen-lockfile`. Run `nix develop --command bazel test //tools:quality --jobs=3 --test_output=errors`, then `nix develop --command bazel build //:desktop-bundle --jobs=3`. Add an owned manual Bazel proof target under `tools/activity-prs` if the existing harness cannot express this actual UI journey; use Xvfb :142 and port 55222 only after collision checks. Never automate physical :0.
+Work only in `/home/tedks/Projects/swarm-ide/activity-pr-instruments`. Materialize with `nix develop --command pnpm install --frozen-lockfile`. Joined validation used `nix develop --command bazel test //:quality //tools/activity-prs:unit --jobs=3 --test_output=errors --nocache_test_results`, then the existing `//tools/activity-prs:smoke` Bazel entry, which builds the actual desktop bundle. For a future owned run set SWARM_VIRTUAL_DISPLAY=:142 and SWARM_VIRTUAL_DESKTOP_PORT=55222; the harness checks collisions. Never automate physical :0.
 
 ## Validation and Acceptance
 
@@ -70,3 +75,5 @@ Operational notes and raw evidence live at `/tmp/swarm-ide-demo-controls.q2i33c/
 Use existing Zod, React, Node child_process, Git and installed gh. `githubPrs.refresh` accepts only protocol/request/repository/world identifiers; it never accepts shell fragments, executable paths or raw URLs. `GithubPrObservation` identifies repository/world, GitHub owner/name, observed time, coverage and validated PR cards. GitHub links are selectable text unless an already checked external-opening mechanism applies.
 
 Revision note: initial bounded plan updated23:27Z with implemented behavior, native findings, diagnostic distinctions and actual packaged result.
+
+Revision note00:03Z: record ROOT's historical-risk disposition, final reviewed-base composition, exact joined validation and actual owned-port deviation; no broader retest or historical-fix claim.
