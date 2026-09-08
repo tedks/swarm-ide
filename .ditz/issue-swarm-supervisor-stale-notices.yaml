@@ -24,3 +24,12 @@ log_events:
   who: Ted Smith
   what: started
   comment: ""
+- time: 2026-09-08T15:29:17-00:00
+  who: Ted Smith
+  what: commented
+  comment: 'Completed owned reduction in PR118: one unanswered child status, one acknowledged
+    routine ROOT wake, current-state/generation pointers, enqueue-only timestamps,
+    and conservative legacy/shared-child slots.33 focused fake tests pass; native
+    convergence CLEAN. Two direct milestone queues were observed delayed about49 minutes,
+    not duplicate supervisor recaps. Upstream limit tracked separately; live services/queues
+    untouched. ROOT owns merge/adoption.'
