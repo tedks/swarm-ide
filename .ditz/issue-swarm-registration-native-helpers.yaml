@@ -11,8 +11,8 @@ type: bugfix
 component: default
 release:
 reporter: Ted Smith <tedks@riseup.net>
-status: unstarted
-disposition:
+status: closed
+disposition: fixed
 creation_time: 2026-09-08T14:24:48-00:00
 references: []
 log_events:
@@ -20,3 +20,12 @@ log_events:
   who: Ted Smith
   what: created
   comment: ""
+- time: 2026-09-08T14:36:24-00:00
+  who: Ted Smith
+  what: 'closed: fixed'
+  comment: ROOT-approved correction recognizes one interactive CLI and directly parent-linked
+    native helpers in the same process, keeping exact live owner validation. Controlled
+    actual-pane regression was RED then GREEN; 68 registration and 19 launcher tests
+    pass, native review clean. Installed selected-session association now finds five
+    actual workers. Remaining skipped-pane diagnostics are separately tracked, not
+    claimed fixed.
