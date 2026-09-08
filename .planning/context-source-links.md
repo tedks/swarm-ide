@@ -53,8 +53,9 @@ exact observed BUILD filenames, and follows an observed target/source with nativ
 Alt-click. The real packaged two-package journey retained original dirty text,
 logical cursor and independent graph instances, made no source writes or model
 calls, and had zero renderer errors. Remaining reference forms are tracked as a
-follow-up rather than guessed. Compact Context overlay dismissal is a small App
-owner follow-up; this proof exercised the wide operator cockpit.
+follow-up rather than guessed. Reviewed master now dismisses the compact Context
+overlay when selecting a target; the original packaged proof exercised the wide
+operator cockpit and is not compact-layout evidence.
 
 ## Artifacts and Notes
 
