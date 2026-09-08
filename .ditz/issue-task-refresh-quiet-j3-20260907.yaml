@@ -24,3 +24,9 @@ log_events:
   comment: 'PR81 executable0348e2b: quiet routine refresh UI; disabled/freshness and
     client polling unchanged. Baseline2RED/63PASS ->65focused/typechecksPASS, bundlePASS5.648s,
     nativeCLEAN. Ready ROOT intake/merge; timestamp changes preserved.'
+- time: 2026-09-08T03:00:37-00:00
+  who: Ted Smith
+  what: commented
+  comment: ROOT cleared composed base2d6a9342. PR81 finalff0134e presentation correction
+    ready; prior65focused/typechecks,bundle,nativeCLEAN unchanged. ROOT owns merge/adoption
+    and closure.
