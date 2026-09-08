@@ -1,0 +1,18 @@
+syntax = "proto3";
+
+package checkout.payments.v1;
+
+// Payments is a declared dependency of FraudCheck in this example architecture.
+service Payments {
+  rpc Authorize(PaymentAuthorizationRequest) returns (PaymentAuthorizationDecision);
+}
+
+message PaymentAuthorizationRequest {
+  string order_id = 1;
+  int64 amount_minor = 2;
+}
+
+message PaymentAuthorizationDecision {
+  bool authorized = 1;
+  string authorization_id = 2;
+}

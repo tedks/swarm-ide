@@ -1,0 +1,11 @@
+package(default_visibility = ["//visibility:public"])
+
+filegroup(
+    name = "payments_contract",
+    srcs = ["payments.proto"],
+)
+
+filegroup(
+    name = "payments_sources",
+    srcs = ["payments.ts", "service.swarm.json", ":payments_contract"],
+)

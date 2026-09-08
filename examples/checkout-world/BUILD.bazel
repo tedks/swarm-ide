@@ -1,0 +1,10 @@
+package(default_visibility = ["//visibility:public"])
+
+filegroup(
+    name = "all_sources",
+    srcs = [
+        "README.md",
+        "//examples/checkout-world/services/fraudcheck:fraudcheck_sources",
+        "//examples/checkout-world/services/payments:payments_sources",
+    ],
+)

@@ -1,0 +1,16 @@
+package(default_visibility = ["//visibility:public"])
+
+filegroup(
+    name = "fraudcheck_contract",
+    srcs = ["fraudcheck.proto"],
+)
+
+filegroup(
+    name = "fraudcheck_sources",
+    srcs = [
+        "fraudcheck.ts",
+        "service.swarm.json",
+        ":fraudcheck_contract",
+        "//examples/checkout-world/services/payments:payments_contract",
+    ],
+)
