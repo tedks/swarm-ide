@@ -45,8 +45,7 @@ export function ExternalAgentRail({ client, onSelect }: { client: ExternalClient
   const rows = lineageRows(client.snapshot?.sessions ?? []);
   const maxDepth = rows.reduce((max, row) => Math.max(max, row.depth), 0);
   return <section className="external-agents" aria-label="External supervised sessions">
-    <header><strong>External sessions</strong><button disabled={client.busy} onClick={() => { void client.refresh(); }} aria-label="Refresh external sessions">↻</button></header>
-    <p className="external-caption">Observed harnesses · not managed runs</p>
+    <header><strong>Agents</strong><button disabled={client.busy} onClick={() => { void client.refresh(); }} aria-label="Refresh external sessions">↻</button></header>
     {rows.length ? <div className="external-lineage-scroll"><ul aria-label="Fork lineage" style={{ minWidth: `${maxDepth * lineageStep + 190}px` }}>{rows.map(({ session, depth, ancestorTrunks, lastSibling, hasChildren }) =>
       <li key={session.id} style={{ "--lineage-indent": `${depth * lineageStep}px` } as CSSProperties} data-session={session.id} data-depth={depth}>
         <span className="external-lineage-lines" aria-hidden="true">
@@ -71,12 +70,11 @@ export function ExternalAgentInformation({ client, bridge, visible = true, onRet
   return <section className="external-information" aria-label="External agent information" data-external-session={client.selected} hidden={!visible} style={visible ? undefined : { display: "none" }}>
     <header><span className="eyebrow">external supervised session</span><h2>{session?.label ?? "Reading session…"}</h2>
       <button onClick={onReturn}>Return to source information</button></header>
-    <p className="external-boundary">Observe an existing session or deliberately send it an instruction. Launching new runs is separate.</p>
     <SessionSteering detail={detail} bridge={bridge} />
     {client.busy ? <p role="status">Observing…</p> : null}
     {client.notice ? <p role="status">{client.notice}</p> : null}
     {session ? <>
-      <p className="external-caption">{session.evidence === "synthetic" ? "Synthetic example — not a real agent run" : "Auto-refreshed local JSONL — observed transcript events, not generated summaries"}</p>
+      {session.evidence === "synthetic" ? <p className="external-caption">Example session</p> : null}
       <details className="external-provenance"><summary>Fork ancestry & provenance · {session.parentId ? `parent ${session.parentId.slice(0, 8)}…` : "no recorded parent"}</summary>
       <dl><dt>Evidence</dt><dd>{session.evidence}</dd>
         <dt>Session</dt><dd>{session.id}</dd><dt>Forked from</dt><dd>{session.parentId ?? (session.status === "observed" ? "No parent in metadata" : "Unavailable")}</dd>
@@ -86,15 +84,18 @@ export function ExternalAgentInformation({ client, bridge, visible = true, onRet
       <p className="external-caption">{session.message}</p>
       </details>
       <div className="external-actions"><button disabled={client.busy} onClick={() => { void client.refresh(); }}>Refresh observation</button>
-        <button disabled={client.busy || detail.handoff !== "available"} onClick={() => { void client.handoff(); }}>Open conversation in tmux</button></div>
-      <p className="external-caption">{detail.handoff === "available" ? "Existing target checked; checked again on Open. No keys, prompts or replacement launches." : "Interactive handoff unavailable; the recorded conversation below remains read-only."}</p>
+        <button disabled={client.busy || detail.handoff !== "available"} onClick={() => { void client.handoff(); }}>Select in tmux</button></div>
+      {detail.terminal && detail.handoff === "available" ? <details><summary>Open in terminal · {detail.terminal.location}</summary>
+        <label>Outside tmux<input aria-label="Attach terminal command" readOnly value={detail.terminal.attach} onFocus={(event) => event.currentTarget.select()} /></label>
+        <label>Inside tmux<input aria-label="Switch terminal command" readOnly value={detail.terminal.switch} onFocus={(event) => event.currentTarget.select()} /></label>
+      </details> : detail.handoff !== "available" ? <p className="external-caption">Terminal session unavailable.</p> : null}
       {session.contextPaths.length ? <details><summary>Why this context?</summary><p>Operator-associated briefing links, not a claim of all effective context.</p>{session.contextPaths.map((path) => <button key={path} onClick={() => onOpen(path)}>{path}</button>)}</details> : null}
-      <nav aria-label="External information views"><button aria-pressed={tab === "worklog"} onClick={() => setTab("worklog")}>Worklog</button><button aria-pressed={tab === "conversation"} onClick={() => setTab("conversation")}>Conversation · read-only</button></nav>
-      <p className="external-caption">{detail.coverage.partial ? "Partial tail. " : "Bounded transcript. "}{detail.coverage.message} {detail.coverage.tailBytes} bytes read; {detail.coverage.omittedRecords} records omitted.</p>
+      <nav aria-label="External information views"><button aria-pressed={tab === "worklog"} onClick={() => setTab("worklog")}>Activity</button><button aria-pressed={tab === "conversation"} onClick={() => setTab("conversation")}>Conversation</button></nav>
+      <details><summary>Observation details</summary><p>{detail.coverage.message} {detail.coverage.tailBytes} bytes read; {detail.coverage.omittedRecords} records omitted.</p></details>
       <ol className="external-worklog" aria-label={tab === "worklog" ? "Recorded agent worklog" : "Recorded assistant conversation"}>{entries.map((entry) => <li key={entry.id}>
         <header><time>{entry.at}</time><small>{entry.attribution}</small></header><p>{entry.text}</p>
       </li>)}</ol>
-      {!entries.length ? <p>No eligible messages in the bounded tail. This is not evidence of inactivity.</p> : null}
+      {!entries.length ? <p>No recent messages.</p> : null}
     </> : null}
   </section>;
 }

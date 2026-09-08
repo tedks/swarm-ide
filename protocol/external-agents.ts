@@ -20,26 +20,41 @@ export const ExternalAgentSummarySchema = z.object({
   role: z.string().max(120).optional(),
   task: z.string().max(200).optional(),
   contextPaths: z.array(z.string().min(1).max(512)).max(12),
+  worktree: z.string().min(1).max(4096).optional(),
+  control: z.enum(["tmux", "read-only"]).optional(),
+  lastActivityAt: z.string().max(64).optional(),
 }).strict();
 export type ExternalAgentSummary = z.infer<typeof ExternalAgentSummarySchema>;
 export const ExternalEntrySchema = z.object({
   id: z.string().max(100), at: z.string().max(64),
   kind: z.enum(["assistant", "tool-call", "tool-result", "turn-start", "turn-complete"]),
   text: Text, attribution: z.enum(["assistant-reported", "recorded-tool-event", "harness-event"]),
+  tool: z.string().max(160).optional(), command: Text.optional(),
+  cwd: Text.optional(), path: Text.optional(), patch: z.string().max(16384).optional(),
+  callId: z.string().max(160).optional(),
 }).strict();
 export type ExternalEntry = z.infer<typeof ExternalEntrySchema>;
-export const ExternalSnapshotSchema = z.object({
-  status: z.enum(["observed", "unavailable"]), message: Text, observedAt: z.string().datetime(),
-  sessions: z.array(ExternalAgentSummarySchema).max(64),
-}).strict();
-export type ExternalSnapshot = z.infer<typeof ExternalSnapshotSchema>;
+export const EXTERNAL_FLEET_MAX_ENTRIES = 240;
+export const EXTERNAL_FLEET_MAX_ENTRY_BYTES = 512 * 1024;
+export const externalEntryBytes = (entry: ExternalEntry) => new TextEncoder().encode(JSON.stringify(entry)).byteLength;
 export const ExternalDetailSchema = z.object({
   session: ExternalAgentSummarySchema,
   entries: z.array(ExternalEntrySchema).max(120),
   coverage: z.object({ tailBytes: z.number().int().min(0).max(262144), partial: z.boolean(), omittedRecords: z.number().int().nonnegative(), message: Text }).strict(),
   handoff: z.enum(["unconfigured", "available", "unavailable"]),
+  terminal: z.object({ attach: z.string().max(8192), switch: z.string().max(8192), location: Text }).strict().optional(),
 }).strict();
 export type ExternalDetail = z.infer<typeof ExternalDetailSchema>;
+export const ExternalSnapshotSchema = z.object({
+  status: z.enum(["observed", "unavailable"]), message: Text, observedAt: z.string().datetime(),
+  sessions: z.array(ExternalAgentSummarySchema).max(64),
+  // Same bounded detail contract, with handoff unavailable until explicitly read.
+  fleet: z.array(ExternalDetailSchema).max(64).optional(),
+}).strict().refine((snapshot) => {
+  const entries = snapshot.fleet?.flatMap((detail) => detail.entries) ?? [];
+  return entries.length <= EXTERNAL_FLEET_MAX_ENTRIES && entries.reduce((sum, entry) => sum + externalEntryBytes(entry), 0) <= EXTERNAL_FLEET_MAX_ENTRY_BYTES;
+}, "Fleet activity exceeds aggregate bound");
+export type ExternalSnapshot = z.infer<typeof ExternalSnapshotSchema>;
 const Base = z.object({ protocolVersion: z.literal(PROTOCOL_VERSION), requestId: z.string().min(1).max(160) });
 export const ExternalRequestSchema = z.discriminatedUnion("type", [
   Base.extend({ type: z.literal("externalAgents.snapshot") }).strict(),
