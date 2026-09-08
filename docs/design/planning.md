@@ -24,16 +24,32 @@ lists and lets the operator expand them. `//tools/living-design:checks`
 reads the actual committed index through the core reader, preserving every source
 link; design edits must pass that inexpensive check before landing.
 
-The Plan workspace opens the top-level design, using one `usePlanNavigation`
-observation and selected component for the outline, document and breadcrumbs.
-Its overview places the document beside authored component/interface connections,
-with implementation mappings and task dependencies below. Selecting a component
-shows its incoming and outgoing connections; build rules stay in their separate
-mapping graph. Short authored constraints are displayed beside the design prose.
+The unified workspace starts with component/interface connections, task
+dependencies, repository navigation and the existing build/services chooser.
+One `usePlanNavigation` observation and selection serve the component graph,
+document and breadcrumbs. `PlanWorkspace` exposes these as layout slots rather
+than duplicating readers. Read design opens full prose beside the same graph
+instances; implementation, task and guidance links remain in that reading area.
+The root selector keeps all authored design/plan forests reachable, including
+older plans with task, contract and lesson links.
+Selecting a component shows its incoming/outgoing interfaces and constraints.
+Build rules stay in their separate graph projection; component source and target
+lists link into it without guessing declarations.
 Long reference lists are expandable; the index does not discard their contents.
+Component containment is dashed and muted; authored interfaces retain their
+directions, with reciprocal links in separate lanes. Labels appear on focused
+interfaces or hovered/keyboard-focused edges, with exact incoming/outgoing
+connections also available in the inspector. A selected component shows its
+incident relationships, not unrelated links among its neighbours. Selecting
+another component keeps the canvas mounted and remembers visited cameras;
+unchanged index reads retain projection identity rather than remeasuring labels.
+This fixes the selection-remount mechanism, not a claim that an independent
+periodic idle-flashing cause has been reproduced.
 `DesignWorkspace` can accept that shared controller through `navigation` and a
-`taskPane` slot; `PlanWorkspace` provides the existing task graph once, preserving
-its camera when switching between the overview and task-only view.
+`taskPane` slot. Its `renderWorkspace` slots expose the existing component,
+document and task views; `PlanWorkspace` provides the task graph once, preserving
+its camera through overview/document resizing. `workspace.css` owns their compact
+arrangement, not another graph model or reader.
 
 Build activation exposes `onOpenBuild(label)` for the parallel cockpit integration.
 That caller must check the current repository/world; `resolveBazelTarget` resolves only the exact observed

@@ -9,11 +9,16 @@ import { emptyAgentWorkbench } from "../app/renderer/agents/state";
 import { PROTOCOL_VERSION, type CoreRequest, type CoreResponse, type GraphSlice } from "../protocol/schema";
 import { NAVIGATION_KEY, NavigationSchema } from "../app/renderer/recovery";
 import { fixtureBuildObservation } from "./support/build-graph-fixture";
+import type { ReactNode } from "react";
 
 // This suite checks composition and retained real CodeMirror state. The domain
 // owner separately proves real plan data/graphs; geometry is a packaged check.
 vi.mock("../app/renderer/GraphPane", () => ({ GraphPane: ({ graph, reframeVersion }: { graph: GraphSlice; reframeVersion: number }) => <section data-testid="retained-layout-graph" data-reframe={reframeVersion}><input aria-label={`Camera ${graph.topologyId}`} defaultValue="pan 30,60 zoom 2" /></section> }));
-vi.mock("../app/renderer/plans/PlanWorkspace", () => ({ PlanWorkspace: ({ visible, onOpenFile, onOpenBuild }: { visible: boolean; onOpenFile(path: string): void; onOpenBuild(label: string): void }) => <section className="planning-field" aria-label="Planning workspace" hidden={!visible}><button onClick={() => onOpenFile(paymentsFileFocus.path!)}>Open plan implementation</button><button onClick={() => onOpenBuild("//tools/policy:activation-test")}>Open plan build target</button><button onClick={() => onOpenBuild("//absent:unknown")}>Open missing target</button></section> }));
+vi.mock("../app/renderer/plans/PlanWorkspace", () => ({ PlanWorkspace: ({ renderWorkspace, onOpenDesign, onOpenFile, onOpenBuild }: { renderWorkspace(parts: { components: ReactNode; document: ReactNode; tasks: ReactNode }): ReactNode; onOpenDesign(): void; onOpenFile(path: string): void; onOpenBuild(label: string): void }) => renderWorkspace({
+  components: <section aria-label="Component design" data-testid="retained-layout-graph"><input aria-label="Camera components" defaultValue="component camera" /><button onClick={onOpenDesign}>Read design</button><button onClick={() => onOpenFile(paymentsFileFocus.path!)}>Open plan implementation</button><button onClick={() => onOpenBuild("//tools/policy:activation-test")}>Open plan build target</button><button onClick={() => onOpenBuild("//absent:unknown")}>Open missing target</button></section>,
+  document: <article>Full readable design document</article>,
+  tasks: <section data-testid="retained-layout-graph"><input aria-label="Camera tasks" defaultValue="task camera" /></section>,
+}) }));
 import { App } from "../app/renderer/App";
 
 beforeAll(() => {
@@ -38,12 +43,12 @@ function bridge(withBuild = false) {
   return request;
 }
 
-it("starts on one Plan home, retains Code access and removes empty/jargon chrome", async () => {
+it("starts on four coordinated graphs without a Plan/Code mode switch", async () => {
   bridge(); render(<App />);
-  const lenses = await screen.findByRole("navigation", { name: "Workspace lenses" });
-  expect(within(lenses).getAllByRole("button").map((node) => node.textContent)).toEqual(["Plan", "Code"]);
-  expect(within(lenses).getByRole("button", { name: "Plan" }).getAttribute("aria-pressed")).toBe("true");
-  expect(screen.getByRole("region", { name: "Planning workspace" })).toBeTruthy();
+  const lenses = await screen.findByRole("navigation", { name: "Workspace navigation" });
+  expect(within(lenses).getAllByRole("button").map((node) => node.textContent)).toEqual(["Workspace"]);
+  expect(screen.getAllByTestId("retained-layout-graph")).toHaveLength(4);
+  expect(document.querySelector(".graphs-grid")?.classList.contains("is-sidebar")).toBe(false);
   expect(screen.queryByText("Live workspace")).toBeNull();
   expect(document.querySelector(".global-truth")?.textContent).not.toMatch(/epoch|Reconciling/i);
   expect(screen.getByRole("region", { name: "Activity" })).toBeTruthy();
@@ -57,8 +62,7 @@ it("pins an authored target to the current build graph and never guesses a missi
   await screen.findByText("Build graph current");
   fireEvent.click(screen.getByRole("button", { name: "Open plan build target" }));
   await waitFor(() => expect((screen.getByRole("combobox", { name: "Bazel target" }) as HTMLInputElement).value).toBe("//tools/policy:activation-test"));
-  expect(within(screen.getByRole("navigation", { name: "Workspace lenses" })).getByRole("button", { name: "Code" }).getAttribute("aria-pressed")).toBe("true");
-  fireEvent.click(within(screen.getByRole("navigation", { name: "Workspace lenses" })).getByRole("button", { name: "Plan" }));
+  expect(screen.getByRole("region", { name: "Component design" })).toBeTruthy();
   fireEvent.click(screen.getByRole("button", { name: "Open missing target" }));
   await screen.findByText("This repository's current build graph does not contain //absent:unknown.");
   expect(request.mock.calls.some(([input]) => input.type === "file.read" || input.type === "file.write" || input.type === "reconciliation.start")).toBe(false);
@@ -96,16 +100,15 @@ it("resizes the outer dock by keyboard without replacing source or moving its cu
   expect(editor.state.selection.main.anchor).toBe(4);
 });
 
-it("observes build context on the ready Plan home without starting a service build or requiring a graph click", async () => {
+it("observes build context on the unified home without starting a service build or requiring a graph click", async () => {
   vi.spyOn(document, "hasFocus").mockReturnValue(true);
   vi.spyOn(document, "visibilityState", "get").mockReturnValue("visible");
   const request = bridge(); render(<App />);
   await waitFor(() => expect(request.mock.calls.some(([input]) => input.type === "buildGraph.observe" && !input.refresh)).toBe(true));
-  expect(screen.getByRole("region", { name: "Planning workspace" })).toBeTruthy();
+  expect(screen.getByRole("region", { name: "Component design" })).toBeTruthy();
   const before = request.mock.calls.filter(([input]) => input.type === "buildGraph.observe").length;
-  const lenses = screen.getByRole("navigation", { name: "Workspace lenses" });
-  fireEvent.click(within(lenses).getByRole("button", { name: "Code" }));
-  fireEvent.click(within(lenses).getByRole("button", { name: "Plan" }));
+  fireEvent.click(screen.getByRole("button", { name: "Read design" }));
+  fireEvent.click(screen.getByRole("button", { name: "Workspace" }));
   expect(request.mock.calls.filter(([input]) => input.type === "buildGraph.observe")).toHaveLength(before);
   expect(request.mock.calls.some(([input]) => input.type === "reconciliation.start")).toBe(false);
   expect(screen.queryByRole("button", { name: /Build topology/ })).toBeNull();
@@ -113,58 +116,82 @@ it("observes build context on the ready Plan home without starting a service bui
   expect(document.querySelector(".topology-actions button")?.textContent).toBe("Refresh build graph");
 });
 
-it("keeps dirty source, cursor, graph instances and watches through Plan/Code and a same-file plan link", async () => {
+it("keeps all four graphs, dirty source, cursor and watches through home, design and file navigation", async () => {
   const request = bridge(); render(<App />);
   fireEvent.click(await screen.findByRole("button", { name: "Open plan implementation" }));
   await waitFor(() => expect(document.querySelector(".cm-content")?.textContent).toBe("source"));
   const element = document.querySelector<HTMLElement>(".cm-editor")!, editor = EditorView.findFromDOM(element)!;
   const graphs = screen.getAllByTestId("retained-layout-graph");
+  expect(graphs).toHaveLength(4);
+  const camera = screen.getByRole("textbox", { name: "Camera components" }) as HTMLInputElement;
+  fireEvent.change(camera, { target: { value: "user pan" } });
   act(() => editor.dispatch({ changes: { from: 0, insert: "dirty " }, selection: { anchor: 4 } }));
   const before = request.mock.calls.length;
-  const lenses = screen.getByRole("navigation", { name: "Workspace lenses" });
-  fireEvent.click(within(lenses).getByRole("button", { name: "Plan" }));
+  fireEvent.click(screen.getByRole("button", { name: "Read design" }));
+  expect(screen.getByRole("region", { name: "Design reading area" }).textContent).toContain("Full readable design document");
+  expect(document.querySelector(".graphs-grid")?.classList.contains("is-sidebar")).toBe(true);
   expect(document.querySelector<HTMLElement>(".source-surface")?.hidden).toBe(true);
-  fireEvent.click(within(lenses).getByRole("button", { name: "Code" }));
+  fireEvent.click(document.querySelector('.surface-tab-main[title]')!);
   expect(document.querySelector<HTMLElement>(".source-surface")?.hidden).toBe(false);
-  fireEvent.click(within(lenses).getByRole("button", { name: "Plan" }));
+  fireEvent.click(screen.getByRole("button", { name: "Workspace" }));
+  expect(document.querySelector(".graphs-grid")?.classList.contains("is-sidebar")).toBe(false);
+  expect(document.querySelector<HTMLElement>(".source-surface")?.hidden).toBe(true);
+  fireEvent.keyDown(window, { key: "w", ctrlKey: true });
+  expect(document.querySelector(".cm-editor")).toBe(element);
   fireEvent.click(screen.getByRole("button", { name: "Open plan implementation" }));
   expect(document.querySelector(".cm-editor")).toBe(element);
   expect(editor.state.doc.toString()).toBe("dirty source\n");
   expect(editor.state.selection.main.anchor).toBe(4);
   expect(screen.getAllByTestId("retained-layout-graph")).toEqual(graphs);
+  expect(camera.value).toBe("user pan");
+  expect(graphs.map((node) => node.getAttribute("data-reframe"))).toEqual([null, null, "0", "0"]);
   expect(request.mock.calls.slice(before).some(([input]) => input.type === "file.unwatch" || input.type === "file.write")).toBe(false);
 });
 
-it("migrates retired lenses without discarding saved paths/focus and honors restored Plan", async () => {
+it("returns from a task to its retained source after visiting the overview", async () => {
+  bridge(); render(<App />);
+  fireEvent.click(await screen.findByRole("button", { name: "Open plan implementation" }));
+  await waitFor(() => expect(document.querySelector(".cm-content")?.textContent).toBe("source"));
+  const element = document.querySelector<HTMLElement>(".cm-editor")!, editor = EditorView.findFromDOM(element)!;
+  act(() => editor.dispatch({ changes: { from: 0, insert: "dirty " }, selection: { anchor: 4 } }));
+  fireEvent.click(screen.getByRole("button", { name: "Workspace" }));
+  fireEvent.click(screen.getByRole("button", { name: "Select task task-fixture" }));
+  await screen.findByRole("region", { name: "Task document" });
+  fireEvent.click(screen.getByRole("button", { name: "Return to source" }));
+  expect(document.querySelector<HTMLElement>(".source-surface")?.hidden).toBe(false);
+  expect(document.querySelector(".cm-editor")).toBe(element);
+  expect(editor.state.doc.toString()).toBe("dirty source\n");
+  expect(editor.state.selection.main.anchor).toBe(4);
+});
+
+it("migrates every old lens without discarding saved paths/focus or hiding graphs", async () => {
   const saved = { paths: [paymentsFileFocus.path!], activeSurface: paymentsFileFocus.path!, lens: "Refactor", focus: paymentsFileFocus };
-  expect(NavigationSchema.parse(saved)).toEqual({ ...saved, lens: "Plan" });
-  expect(NavigationSchema.parse({ ...saved, lens: "Performance" }).lens).toBe("Plan");
-  expect(NavigationSchema.parse({ ...saved, lens: "System" }).lens).toBe("Code");
+  expect(NavigationSchema.parse(saved)).toEqual({ ...saved, lens: "Workspace" });
+  for (const lens of ["Plan", "Code", "Performance", "System", "Refactor"]) expect(NavigationSchema.parse({ ...saved, lens }).lens).toBe("Workspace");
   window.sessionStorage.setItem(NAVIGATION_KEY, JSON.stringify(saved));
   bridge(); render(<App />);
   await waitFor(() => expect(document.querySelector(".cm-content")?.textContent).toBe("source"));
-  expect(screen.getByRole("region", { name: "Planning workspace" })).toBeTruthy();
-  fireEvent.click(within(screen.getByRole("navigation", { name: "Workspace lenses" })).getByRole("button", { name: "Code" }));
+  expect(screen.getAllByTestId("retained-layout-graph")).toHaveLength(4);
   expect(document.querySelector<HTMLElement>(".source-surface")?.hidden).toBe(false);
   expect(document.querySelector(".cm-content")?.textContent).toBe("source");
 });
 
-it("does not reframe a retained task-only Code view when returning from Plan", async () => {
+it("does not reframe retained graphs when returning to a task-only document", async () => {
   bridge(); render(<App />);
   fireEvent.click(await screen.findByRole("button", { name: "Select task task-fixture" }));
   await screen.findByRole("region", { name: "Task document" });
   expect(document.querySelector(".cm-editor")).toBeNull();
   const graphs = screen.getAllByTestId("retained-layout-graph");
   const reframe = graphs.map((node) => node.getAttribute("data-reframe"));
-  const lenses = screen.getByRole("navigation", { name: "Workspace lenses" });
-  fireEvent.click(within(lenses).getByRole("button", { name: "Plan" }));
-  fireEvent.click(within(lenses).getByRole("button", { name: "Code" }));
+  fireEvent.click(screen.getByRole("button", { name: "Workspace" }));
+  expect(screen.queryByRole("region", { name: "Task document" })).toBeNull();
+  fireEvent.click(document.querySelector('.surface-tab-main[title="task-fixture"]')!);
   expect(screen.getByRole("region", { name: "Task document" })).toBeTruthy();
   expect(screen.getAllByTestId("retained-layout-graph")).toEqual(graphs);
   expect(graphs.map((node) => node.getAttribute("data-reframe"))).toEqual(reframe);
 });
 
-it("restores files without overriding a Plan choice made while reconnecting", async () => {
+it("restores files without overriding a design-reading choice made while reconnecting", async () => {
   const saved = { paths: [paymentsFileFocus.path!], activeSurface: paymentsFileFocus.path!, lens: "System", focus: paymentsFileFocus, snapshot: initialSnapshot(paymentsFileFocus) };
   window.sessionStorage.setItem(NAVIGATION_KEY, JSON.stringify(saved));
   const request = bridge();
@@ -172,14 +199,13 @@ it("restores files without overriding a Plan choice made while reconnecting", as
   let status: Lifecycle = { revision: 1, core: { generation: 1, phase: "starting", message: "Starting" }, reload: "idle", notice: "" };
   window.swarmLifecycle = { status: async () => status, onStatus: (listener) => { receive = listener; return () => {}; }, reload: async () => status };
   render(<App />);
-  const lenses = await screen.findByRole("navigation", { name: "Workspace lenses" });
+  await screen.findByRole("navigation", { name: "Workspace navigation" });
   await waitFor(() => expect(receive).toBeTypeOf("function"));
-  fireEvent.click(within(lenses).getByRole("button", { name: "Plan" }));
+  fireEvent.click(screen.getByRole("button", { name: "Read design" }));
   await act(async () => { status = { ...status, revision: 2, core: { ...status.core, phase: "ready", message: "" } }; receive(status); });
   await waitFor(() => expect(request.mock.calls.some(([input]) => input.type === "file.read" && input.path === paymentsFileFocus.path)).toBe(true));
-  expect(within(lenses).getByRole("button", { name: "Plan" }).getAttribute("aria-pressed")).toBe("true");
-  expect(screen.getByRole("region", { name: "Planning workspace" })).toBeTruthy();
-  fireEvent.click(within(lenses).getByRole("button", { name: "Code" }));
+  expect(screen.getByRole("region", { name: "Design reading area" })).toBeTruthy();
+  fireEvent.click(document.querySelector('.surface-tab-main[title]')!);
   await waitFor(() => expect(document.querySelector(".cm-content")?.textContent).toBe("source"));
   expect(document.querySelector<HTMLElement>(".source-surface")?.hidden).toBe(false);
 });

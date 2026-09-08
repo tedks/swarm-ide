@@ -77,11 +77,11 @@ it("Ctrl+W closes the agent inspection, not the underlying editor or file watch"
   expect(screen.getAllByTestId("retained-graph")).toEqual(graphs);
   fireEvent.click(screen.getByRole("button", { name: "Inspect agent file" }));
   await screen.findByText("child source");
-  fireEvent.click(within(screen.getByRole("navigation", { name: "Workspace lenses" })).getByRole("button", { name: "Plan" }));
-  expect(document.querySelector<HTMLElement>(".planning-field")?.hidden).toBe(false);
+  fireEvent.click(screen.getByRole("button", { name: "System plan" }));
+  expect(document.querySelector<HTMLElement>(".design-document-surface")?.hidden).toBe(false);
   fireEvent.click(screen.getByRole("button", { name: "Worktree · file.ts" }));
   await screen.findByText("child source");
-  expect(document.querySelector<HTMLElement>(".planning-field")?.hidden).toBe(true);
+  expect(document.querySelector<HTMLElement>(".design-document-surface")?.hidden).toBe(true);
   const before = request.mock.calls.length;
   fireEvent.keyDown(window, { key: "w", ctrlKey: true });
   expect(screen.queryByRole("region", { name: "Agent worktree file" })).toBeNull();
@@ -104,10 +104,10 @@ it("Ctrl+W closes the agent inspection, not the underlying editor or file watch"
   expect(within(workLog).getByText("Completed turn")).toBeTruthy();
   expect(document.activeElement).toBe(summaryModel);
   expect(document.querySelector<HTMLElement>(".source-surface")?.hidden).toBe(true);
-  fireEvent.click(within(screen.getByRole("navigation", { name: "Workspace lenses" })).getByRole("button", { name: "Plan" }));
+  fireEvent.click(screen.getByRole("button", { name: "System plan" }));
   expect(screen.queryByRole("region", { name: "Work Log outcome" })).toBeNull();
   fireEvent.click(screen.getByRole("button", { name: "Connected the real operator cockpit." }));
-  expect(document.querySelector<HTMLElement>(".planning-field")?.hidden).toBe(true);
+  expect(document.querySelector<HTMLElement>(".design-document-surface")?.hidden).toBe(true);
   fireEvent.keyDown(window, { key: "w", ctrlKey: true });
   expect(screen.queryByRole("region", { name: "Work Log outcome" })).toBeNull();
   expect(document.querySelector<HTMLElement>(".source-surface")?.hidden).toBe(false);

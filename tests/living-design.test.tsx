@@ -26,6 +26,36 @@ function reply(request: CoreRequest): CoreResponse {
       : request.type === "file.read" ? { file: { kind: "read" as const, path: request.path, content: `# Actual document\n\n${request.path}`, revision: "a".repeat(64), size: 64 } } : {}) };
 }
 describe("living system design", () => {
+  it("keeps authored task/guidance links in the full reading slot without mounting extra graphs", async () => {
+    const request = vi.fn(async (input: CoreRequest) => reply(input));
+    window.swarm = { request, onEvent: () => () => {} };
+    const onOpenTask = vi.fn(), onOpenFile = vi.fn();
+    render(<DesignWorkspace {...base} onOpenFile={onOpenFile} onOpenTask={onOpenTask} documentVisible
+      taskPane={<div data-testid="task-pane">Task graph</div>}
+      renderWorkspace={({ components, document, tasks }) => <>{components}<main>{document}</main>{tasks}</>} />);
+    await screen.findByText("Actual document");
+    const rootNode = index.nodes[0]!;
+    const guidance = screen.getByRole("region", { name: "Design tasks and guidance" });
+    for (const id of rootNode.taskIds) {
+      fireEvent.click(within(guidance).getByRole("button", { name: `Task · ${id}` }));
+      expect(onOpenTask).toHaveBeenLastCalledWith(id);
+    }
+    for (const ref of rootNode.contextRefs) {
+      fireEvent.click(within(guidance).getByRole("button", { name: `${ref.kind} · ${ref.path}` }));
+      expect(onOpenFile).toHaveBeenLastCalledWith(ref.path);
+    }
+    // The original plan forest remains reachable alongside the newer design
+    // root; this actual plan carries guidance rather than an empty test list.
+    const planRoot = index.nodes.find(item => !item.parentId && item.contextRefs.length)!;
+    expect(planRoot).toBeTruthy();
+    fireEvent.change(screen.getByRole("combobox", { name: "Design or plan root" }), { target: { value: planRoot.id } });
+    await waitFor(() => expect(screen.getByRole("region", { name: "Design tasks and guidance" }).textContent).toContain(planRoot.contextRefs[0]!.path));
+    fireEvent.click(within(screen.getByRole("region", { name: "Design tasks and guidance" })).getByRole("button", { name: `${planRoot.contextRefs[0]!.kind} · ${planRoot.contextRefs[0]!.path}` }));
+    expect(onOpenFile).toHaveBeenLastCalledWith(planRoot.contextRefs[0]!.path);
+    expect(screen.getAllByTestId("task-pane")).toHaveLength(1);
+    expect(document.querySelector(".design-implementation-graph")).toBeNull();
+    expect(screen.getByRole("region", { name: "Design implementation" })).toBeTruthy();
+  });
   it("opens only exact observed build declarations, including BUILD without the bazel suffix", () => {
     const capture: BuildLinkSnapshot = { repositoryId: base.repositoryId, revision: "a", capturedAt: "now", command: "query", links: [], targets: [
       { label: "//core:runtime", kind: "rule", path: "core", buildFile: "core/BUILD" },
@@ -104,7 +134,7 @@ describe("living system design", () => {
     fireEvent.click(screen.getByRole("button", { name: "design:repository" }));
     await screen.findByText("docs/design/repository.md");
     expect(screen.queryByRole("button", { name: "BUILD.bazel" })).toBeNull();
-    fireEvent.click(screen.getByRole("button", { name: "Show all 20 source files" }));
+    fireEvent.click(screen.getByRole("button", { name: `Show all ${index.nodes.find(node => node.id === "design:repository")!.sourcePaths.length} source files` }));
     fireEvent.click(screen.getByRole("button", { name: "BUILD.bazel" }));
     expect(onOpenFile).toHaveBeenCalledExactlyOnceWith("BUILD.bazel");
     fireEvent.click(screen.getByRole("button", { name: "Show fewer source files" }));
