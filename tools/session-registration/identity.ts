@@ -48,6 +48,40 @@ export async function metadata(path: string) {
 
 /** Only an explicitly named pane's process tree and open descriptors are searched. */
 export interface PaneInput { socket: string; pane: string; processPid?: number; processStart?: string }
+type Candidate = { target: TmuxTarget; rollout: string };
+const NativeParent = z.object({ subagent: z.object({ thread_spawn: z.object({ parent_thread_id: ExternalSessionId }) }) });
+
+/** A CLI can keep its native children's rollouts open in the same process.
+ * Header ancestry only disambiguates; it never replaces the live handoff check.
+ * Deliberately support direct children, not inferred or partial lineage. */
+async function interactiveCandidate(candidates: Candidate[], check: () => void): Promise<Candidate | undefined> {
+  const first = candidates[0];
+  if (!first || candidates.some(({ target }) => target.processPid !== first.target.processPid || target.processStart !== first.target.processStart)) return;
+  const entries = [];
+  for (const candidate of candidates) {
+    check();
+    const meta = await metadata(candidate.rollout);
+    entries.push({ candidate, meta, source: JSON.parse(meta.header).payload.source as unknown });
+  }
+  check();
+  if (new Set(entries.map(({ meta }) => meta.id)).size !== entries.length) return;
+  const roots = entries.filter(({ source }) => source === "cli");
+  if (roots.length !== 1) return;
+  const root = roots[0];
+  for (const entry of entries) {
+    if (entry !== root) {
+      const native = NativeParent.safeParse(entry.source);
+      if (!native.success || native.data.subagent.thread_spawn.parent_thread_id !== root.meta.id) return;
+    }
+    // Reject an inode/header swap while classifying any participating identity.
+    check();
+    const current = await metadata(entry.candidate.rollout);
+    if (current.dev !== entry.meta.dev || current.ino !== entry.meta.ino || current.header !== entry.meta.header) return;
+  }
+  check();
+  return root.candidate;
+}
+
 export async function discover(input: PaneInput, knownRollout?: string): Promise<{ target: TmuxTarget; rollout: string } | undefined> {
   const until = Date.now() + 3500;
   const check = () => { if (Date.now() > until) throw new Error("Pane discovery exceeded bound"); };
@@ -114,8 +148,10 @@ export async function discover(input: PaneInput, knownRollout?: string): Promise
         for (const rollout of paths) candidates.push({ target: parsed.data, rollout });
       } catch { return undefined; } // A disappearing task makes discovery incomplete.
     }
-    if (candidates.length !== 1) return;
+    const selected = candidates.length === 1 ? candidates[0]
+      : knownRollout === undefined ? await interactiveCandidate(candidates, check) : undefined;
+    if (!selected) return;
     check();
-    return await validateHandoff(candidates[0].target, candidates[0].rollout) ? candidates[0] : undefined;
+    return await validateHandoff(selected.target, selected.rollout) ? selected : undefined;
   } catch { return undefined; }
 }
