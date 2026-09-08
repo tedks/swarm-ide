@@ -103,6 +103,67 @@ it("rejects renderer executable/cwd/query authority", () => {
 });
 
 describe("repository observation lifetime", () => {
+  it("recovers a post-query input read failure without treating it as a failed query", async () => {
+    let now = 1000, reads = 0;
+    const query = vi.fn(async () => sample());
+    const provider = new BuildGraphProvider("/a", "r", "w", { digest: async () => {
+      if (++reads === 2) throw new Error("post-query read failed"); return digest;
+    }, query, now: () => now });
+    provider.observe(); await flush(); expect(provider.observe()).toMatchObject({ status: "error" });
+    expect(provider.observe().graph).toBeUndefined();
+    now += 2000; provider.observe(); await flush();
+    expect(provider.observe().status).toBe("current"); expect(query).toHaveBeenCalledTimes(2);
+    await provider.dispose();
+  });
+  it.each(["missing", "read-error", "changed-query-error"])("restores matching retained data after %s without redundant queries", async (kind) => {
+    let now = 1000, mode = "initial";
+    const query = vi.fn(async () => { if (mode === "interruption") throw new Error("query failed"); return sample(); });
+    const provider = new BuildGraphProvider("/a", "r", "w", { digest: async () => {
+      if (mode !== "interruption") return digest;
+      if (kind === "missing") return null;
+      if (kind === "read-error") throw new Error("read failed");
+      return other;
+    }, query, now: () => now });
+    provider.observe(); await flush(); const graph = provider.observe().graph;
+    mode = "interruption"; now += 2000; provider.observe(); await flush();
+    expect(provider.observe().status).not.toBe("current");
+    mode = "restored"; now += 2000; provider.observe(); await flush();
+    expect(provider.observe()).toMatchObject({ status: "current", graph });
+    expect(query).toHaveBeenCalledTimes(kind === "changed-query-error" ? 2 : 1);
+    await provider.dispose();
+  });
+  it("does not hide a failed explicit refresh of the same retained inputs", async () => {
+    let now = 1000, fail = false;
+    const query = vi.fn(async () => { if (fail) throw new Error("retry failed"); return sample(); });
+    const provider = new BuildGraphProvider("/a", "r", "w", { digest: async () => digest, query, now: () => now });
+    provider.observe(); await flush(); fail = true; provider.observe(true); await flush();
+    now += 2000; provider.observe(); await flush();
+    expect(provider.observe()).toMatchObject({ status: "error", message: "retry failed" });
+    expect(query).toHaveBeenCalledTimes(2); await provider.dispose();
+  });
+  it("preserves a failed same-input refresh when query records fail final schema validation", async () => {
+    let now = 1000, invalid = false;
+    const query = vi.fn(async () => invalid ? output({ type: "RULE", rule: { name: "//a:invalid", ruleClass: "", ruleInput: [] } }) : sample());
+    const provider = new BuildGraphProvider("/a", "r", "w", { digest: async () => digest, query, now: () => now });
+    provider.observe(); await flush(); const retained = provider.observe().graph;
+    invalid = true; provider.observe(true); await flush(); expect(provider.observe().status).toBe("error");
+    now += 2000; provider.observe(); await flush();
+    expect(provider.observe()).toMatchObject({ status: "error", graph: retained });
+    expect(query).toHaveBeenCalledTimes(2); await provider.dispose();
+  });
+  it("retries a changed input after reverting through a valid retained input", async () => {
+    let now = 1000, current = digest, fail = false;
+    const query = vi.fn(async () => { if (fail) throw new Error("failed B"); return sample(); });
+    const provider = new BuildGraphProvider("/a", "r", "w", { digest: async () => current, query, now: () => now });
+    provider.observe(); await flush();
+    current = other; fail = true; now += 2000; provider.observe(); await flush();
+    expect(provider.observe().status).toBe("error");
+    current = digest; now += 2000; provider.observe(); await flush();
+    expect(provider.observe().status).toBe("current");
+    current = other; fail = false; now += 2000; provider.observe(); await flush();
+    expect(provider.observe().graph?.inputDigest).toBe(other);
+    expect(query).toHaveBeenCalledTimes(3); await provider.dispose();
+  });
   it("preserves an initial failure across passive demand so explicit retry remains available", async () => {
     let now = 1000;
     const query = vi.fn(async () => { throw new Error("initial query failed"); });

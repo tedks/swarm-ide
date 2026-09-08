@@ -105,6 +105,8 @@
       "app/renderer/AgentWorktreeBrowser.tsx",
       "tools/worktree-browser/BUILD.bazel",
       "core/build-graph.ts",
+      "app/renderer/repository/use-build-graph.ts",
+      "tools/build-graph/BUILD.bazel",
       "app/renderer/context/ContextPane.tsx",
       "core/project-context/provider.ts",
       "app/renderer/bazel-reference.ts",
@@ -136,6 +138,11 @@
         }
       ],
       "buildTargets": [
+        {
+          "label": "//tools/build-graph:checks",
+          "role": "Checks automatic repository build observation, invalidation and retained graph context",
+          "dependencies": [{ "label": "//:quality_sources", "relation": "data" }]
+        },
         {
           "label": "//tools/project-context:checks",
           "role": "Checks automatic runtime ownership, bounded manifest discovery and Context rendering",
