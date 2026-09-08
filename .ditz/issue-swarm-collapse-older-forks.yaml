@@ -22,3 +22,14 @@ log_events:
   who: Ted Smith
   what: started
   comment: ""
+- time: 2026-09-08T05:37:54-00:00
+  who: Ted Smith
+  what: commented
+  comment: 'Implemented PR97 31c9bb0 from reviewed348965c: subtree disclosure plus
+    Older sessions toggle; defaults retain newest7 dated sessions, recent30min recorded
+    activity, unknown dates and selected ancestry. Deliberate folds/history choice
+    survive refresh; selected path temporarily opens without erasing fold state. All
+    history accessible in newest-first parent hierarchy, no completion inference or
+    Activity/Send/backend change. Focused116 tests and both typechecks PASS after4
+    behavior RED; native CLEAN including living docs/build mapping. Ready for ROOT
+    normal landing, no app adoption.'
