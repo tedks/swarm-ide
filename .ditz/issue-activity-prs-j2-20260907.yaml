@@ -5,8 +5,8 @@ type: feature
 component: default
 release:
 reporter: Ted Smith <tedks@riseup.net>
-status: in_progress
-disposition:
+status: closed
+disposition: fixed
 creation_time: 2026-09-07T22:58:20-00:00
 references: []
 log_events:
@@ -35,3 +35,10 @@ log_events:
     no model. Actual owned:142/55174 (harness default; documented55222 launch variable
     mismatch), no repeat. Historical8608a47/PID690372 OPEN/nonblocking per ROOT, not
     fixed/green. PR64 remains ready for ROOT merge/adoption; issue stays in progress.
+- time: 2026-09-08T00:08:48-00:00
+  who: Ted Smith
+  what: 'closed: fixed'
+  comment: PR64 normally merged3d13a57 after native clean composition, joined quality1796/focused65
+    and actual20-GitHub-PR packaged source/draft/camera/stale-retention proof. Historical
+    PID690372 uncertainty remains open/nonblocking, not fixed by joined pass. Recorded
+    summaries are supervised-generated, not live in-app generation.
