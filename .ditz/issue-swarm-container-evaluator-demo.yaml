@@ -45,5 +45,13 @@ log_events:
   comment: Local Docker evaluator increment is implemented and browser/source/sandbox
     verified. Mac hardware validation and full owned-process controls remain separately
     tracked.
+- time: 2026-09-08T14:25:30-00:00
+  who: Ted Smith
+  what: commented
+  comment: 'Applied the plans owner approved runtime mapping: container guide and
+    actual source paths now accompany checks/smoke data edges to tools/container:sources.
+    Runtime documentation distinguishes Docker invoking desktop-bundle from declared
+    Bazel dependencies. JSON/path inspection and light mapping review passed; no runtime
+    changes or repeated container proof.'
 blocks:
 - swarm-usability-pass
