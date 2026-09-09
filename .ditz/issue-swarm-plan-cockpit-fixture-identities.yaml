@@ -39,3 +39,14 @@ log_events:
     overclaim or blanket full-green here. Evidence /tmp/swarm-ide-task-filters.uQT94o/focused-final.log.
     Component-layout owns its separate corrected component fixtures, not consumed
     by PR144.'
+- time: 2026-09-09T15:29:28-00:00
+  who: Ted Smith
+  what: commented
+  comment: 'Always-on PR146 ran old //tools/demo-plans:regressions once: 40 failures/90
+    pass, including planning-ui and task-workbench response identities rejecting before
+    activation. New awareness107 and graph49 focused cases/types pass. Remaining old
+    planning-ui/manual packaged tours also assume Load dependency graph and retired
+    Plan tabs or 64-task bounds; migrate those expectations to automatic completion
+    without weakening identity/source/camera assertions. New real CLI-Ditz filters
+    journey proves automatic startup and metadata advance on owned X11. No broad-suite
+    success or unrelated repair claimed.'
