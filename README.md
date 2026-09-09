@@ -108,10 +108,10 @@ downloads several gigabytes. Use native Linux to evaluate live swarm operation.
 - **Source and Context:** edit real files; inspect direct/indirect Bazel target
   membership and available project instruments. Example latency/resource profiles
   are marked illustrative, not production telemetry.
-- **Agents:** start Codex or follow a registered conversation. Its worktree icon
-  switches the main workspace to that checked worktree; the terminal icon copies
-  the existing session's attach command. Enter sends; Shift-Enter adds a line.
-  Submitted messages remain copyable while queued.
+- **Agents:** start Codex or follow a registered conversation. A registered agent's
+  worktree icon switches the main workspace to that checked worktree; its terminal
+  icon copies the existing session's attach command. Enter sends; Shift-Enter
+  adds a line. Submitted messages remain copyable while queued.
 - **Activity and Work Log:** timestamped operations beside human-readable outcomes.
   Work Log **Start** invokes its configured summarizer; merely reading does not.
   Saved summaries and GitHub PRs are separate views in the Activity document.

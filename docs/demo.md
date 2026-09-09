@@ -104,8 +104,8 @@ state using normal `gh` authentication; it is an explicit action.
 
 ## 5. Explore the agent's actual worktree
 
-Use the selected agent's **worktree icon**, or choose a registered worktree from
-the sidebar's **Worktree** selector. The main directory browser, source editor,
+For a registered agent, use its **worktree icon**, or choose a registered worktree
+from the sidebar's **Worktree** selector. The main directory browser, source editor,
 Context and builds now use that worktree. Explore files and inspect changes
 against master or the reported base; choose **Launch workspace** to return.
 Editor tabs and buffers stay with their worktree rather than following a
@@ -122,9 +122,10 @@ with the app/core and are not automatically resumed from saved history.
 
 ## Current limits
 
-Build graphs still show a bounded projection (up to 2,000 targets and 8,000
-edges), with partial coverage reported rather than silently claiming the whole
-repository. Task graphs have no fixed node cutoff. Re-clicking the already-selected
+Bazel observations retain up to 2,000 targets and 8,000 edges; the graph displays
+up to 80 rule/unresolved targets at once. Narrow the display's target pattern to
+reduce visible clutter; partial observations may still omit repository targets.
+Task graphs have no fixed node cutoff. Re-clicking the already-selected
 task in the sidebar does not yet recenter after a manual pan; choose another task
 and return, or use the graph/outline selection.
 
