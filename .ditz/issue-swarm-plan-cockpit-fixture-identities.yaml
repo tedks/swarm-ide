@@ -18,3 +18,12 @@ log_events:
   who: Ted Smith
   what: created
   comment: ""
+- time: 2026-09-09T14:56:44-00:00
+  who: Ted Smith
+  what: commented
+  comment: Component-layout broad baseline //tools/living-design:checks also hit prior
+    planning-ui/demo-plan-actions fixture repository mismatches. This slice only corrected
+    its owned component-graph-stability response broker and isolated per-test camera-cache
+    identities. Final focused112 cases/types pass; unrelated fixture failures not
+    fixed or waived. Baseline logs /tmp/swarm-ide-component-layout.2CBDrF/baseline.log
+    and focused1.log.
