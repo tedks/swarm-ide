@@ -23,3 +23,16 @@ log_events:
   who: Ted Smith
   what: started
   comment: ""
+- time: 2026-09-09T15:31:04-00:00
+  who: Ted Smith
+  what: commented
+  comment: "PR146 implements primary-core automatic summary watching with durable
+    Pause/Resume, idle no-model/cross-window attempt deduplication/cancellation, missing-task-ref
+    recovery, automatic dependency replacement preserving reviewed filters/cameras,
+    and coalesced plan refresh.107 awareness+49 graph cases/both types pass. Actual
+    disposable CLI Ditz packaged UI5.699s automatically showed Watching and5\u21926
+    tasks after a new commit, dirty source/cursor and both cameras retained, zero
+    renderer errors/cleanup1. Controlled summary dependencies and empty GUI registry:
+    no live model call. Native scoped convergence CLEAN. Reviewed PR144 normally joined;
+    ready for ROOT normal merge/adoption, keeping issue in_progress until landing.
+    Legacy broad fixture/tour gaps recorded separately."
