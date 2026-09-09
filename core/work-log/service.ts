@@ -86,6 +86,11 @@ export class WorkLogService {
     await this.isPaused(); // Validate existing preferences; never overwrite malformed data.
     await atomic(join(this.privateDir, "watcher.json"), JSON.stringify({ version: 1, paused }));
   }
+  private async maySummarize() {
+    const paused = await this.isPaused();
+    if (paused) this.snapshot.running = false;
+    return this.snapshot.running && !this.disposed && !this.controller.signal.aborted && !paused;
+  }
   private async init() {
     this.root = await realpath(this.root);
     this.privateDir = resolve(this.root, (await runWorkCommand("git", ["rev-parse", "--git-path", "swarm-work-log"], this.root, this.controller.signal, "", 10000)).trim());
@@ -202,12 +207,12 @@ export class WorkLogService {
         // Cross-window attempts are read under the same kernel lock.
         try { this.state = StateSchema.parse(JSON.parse(await readFile(join(this.privateDir, "state.json"), "utf8"))); }
         catch (error) { if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error; }
-        if (await this.isPaused()) { this.snapshot.running = false; return; }
+        if (!await this.maySummarize()) return;
         this.snapshot.settings = this.state.settings;
         await this.loadDocument();
         const observed = await this.deps.inputs(this.root, this.registry, this.state.seen);
         if (!this.snapshot.running || this.disposed) return;
-        if (await this.isPaused()) { this.snapshot.running = false; return; }
+        if (!await this.maySummarize()) return;
         const fresh = observed.filter((item) => this.state.seen[item.sessionId] !== item.boundary)
           .sort((a, b) => b.at.localeCompare(a.at));
         // Bootstrap with recent work, not the entire inherited organization history.
@@ -215,11 +220,10 @@ export class WorkLogService {
         for (const item of fresh.filter((item) => !eligible.length || eligible.includes(item) || Date.parse(item.at) < Date.now() - 30 * 60 * 1000)) this.state.seen[item.sessionId] = item.boundary;
         await this.saveState(); // Record attempts before model admission: restart never replays.
         if (!eligible.length) { this.failures = 0; this.snapshot.notice = ""; return; }
-        if (this.disposed || this.controller.signal.aborted || await this.isPaused()) { this.snapshot.running = false; return; }
+        if (!await this.maySummarize()) return;
         this.snapshot.summarizing = true;
         const summaries = await this.deps.summarize(eligible, this.snapshot.settings, this.controller.signal);
-        if (!this.snapshot.running || this.disposed || this.controller.signal.aborted) return;
-        if (await this.isPaused()) { this.snapshot.running = false; return; }
+        if (!await this.maySummarize()) return;
         const entries = eligible.map((input, index) => WorkLogEntrySchema.parse({ id: `${input.sessionId}:${input.boundary}`,
           sessionId: input.sessionId, agent: input.agent, taskId: input.taskId, at: input.at, ...summaries[index], state: input.state ?? "completed", recorded: false }));
         this.snapshot.entries = [...entries, ...this.snapshot.entries].slice(0, 200);

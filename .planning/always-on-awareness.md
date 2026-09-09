@@ -14,8 +14,9 @@ only automatic model operation; explicit Pause remains effective after restart.
 - [x] (2026-09-09) Read instructions and inspected current startup paths.
 - [x] Persist summary Pause and start the primary core watcher automatically.
 - [x] Recover task reads when metadata first becomes available; refresh plans.
-- [ ] Join ROOT-cleared task-filter code before automatic graph loading.
-- [ ] Focused regressions, native review, documentation, pushed ready PR.
+- [x] Join ROOT-cleared PR144 (63ad77a) normally; automatic dependency replacement preserves its filters.
+- [x] Focused regressions and native convergence CLEAN; actual owned packaged startup/commit-advance proof passes.
+- [ ] Final documentation, pushed ready PR and ROOT handoff.
 
 ## Surprises & Discoveries
 
@@ -35,7 +36,8 @@ now supplies its declared repository ID; new plan tests use current identities.
 Automatic startup belongs to the primary core runtime, not a renderer mount or
 read request. Keep existing outcome/state formats, with a separate small watcher
 preference for Pause so a second producer cannot overwrite it while publishing.
-TaskGraph and graph.ts stay untouched until ROOT clears the active filter owner.
+TaskGraph was changed only after ROOT cleared the normally merged filter owner;
+graph.ts and the component canvas/layout remain unchanged by this work.
 
 ## Context and Orientation
 
@@ -88,4 +90,9 @@ tests. No new renderer filesystem/process authority or provider framework.
 
 ## Outcomes & Retrospective
 
-Implementation underway; no completion or live-provider proof claimed.
+The focused checks pass 107 awareness and 49 graph tests, including both TypeScript
+boundaries. One owned packaged check proved automatic Work Log watching and task
+graph startup, then an actual CLI-authored metadata commit automatically changed
+five tasks to six. All filter, dirty source/cursor and component/task cameras
+survived; zero renderer errors and confirmed cleanup. No real summary/model call
+was made: lifecycle tests use a controlled provider and GUI uses an empty registry.

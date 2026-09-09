@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, expect, it, vi } from "vitest";
+import { StrictMode } from "react";
 import { TaskGraph } from "../app/renderer/tasks/TaskGraph";
 import { TaskBridgeClient } from "../app/renderer/tasks/client";
 import { taskDetailFixture, taskObservationFixture } from "../fixtures/tasks";
@@ -53,7 +54,6 @@ it("defaults to active tasks and filters canvas, outline and actual edges togeth
   h.details.get("task-0")!.blocks = [{ taskId: "task-1", status: "closed", diagnostics: [] }];
   h.details.get("task-1")!.blocks = [{ taskId: "task-2", status: "unstarted", diagnostics: [] }];
   render(<TaskGraph {...h.props} />);
-  fireEvent.click(screen.getByRole("button", { name: "Load dependency graph" }));
   await screen.findByText(/3\/3 details read/);
   expect(screen.getByTestId("task-canvas").dataset.count).toBe("2");
   expect(screen.queryByRole("button", { name: "Inspect graph task task-1", hidden: true })).toBeNull();
@@ -71,7 +71,6 @@ it("keeps a filtered selected task and lets the operator show it without reopeni
   const h = harness(2); closeTasks(h, ["task-1"]);
   const state = { ...h.props.state, selectedTaskId: "task-1" };
   render(<TaskGraph {...h.props} state={state} />);
-  fireEvent.click(screen.getByRole("button", { name: "Load dependency graph" }));
   await screen.findByText(/2\/2 details read/);
   expect(screen.getByTestId("task-canvas").dataset.selected || null).toBeNull();
   expect(screen.getByText(/Selected task is hidden by filters/)).toBeTruthy();
@@ -84,19 +83,16 @@ it("keeps a filtered selected task and lets the operator show it without reopeni
 it("offers Show all when every task is completed and retains validated per-repository preferences", async () => {
   const h = harness(2); closeTasks(h, ["task-0", "task-1"]);
   let view = render(<TaskGraph {...h.props} />);
-  fireEvent.click(screen.getByRole("button", { name: "Load dependency graph" }));
   await screen.findByText(/2\/2 details read/);
   expect(screen.getByText("No tasks match these filters.")).toBeTruthy();
   fireEvent.click(screen.getByRole("button", { name: "Show all" }));
   expect(screen.getByTestId("task-canvas").dataset.count).toBe("2");
   view.unmount(); view = render(<TaskGraph {...h.props} />);
-  fireEvent.click(screen.getByRole("button", { name: "Load dependency graph" }));
   await screen.findByText(/2\/2 details read/);
   expect(screen.getByTestId("task-canvas").dataset.count).toBe("2");
   const other = harness(2); closeTasks(other, ["task-0", "task-1"]);
   other.props.state.observation.snapshot!.repositoryId = "project:another-worktree";
   view.rerender(<TaskGraph {...other.props} />);
-  fireEvent.click(screen.getByRole("button", { name: "Load dependency graph" }));
   await waitFor(() => expect(screen.getByTestId("task-canvas").dataset.count).toBe("0"));
   expect(screen.getByText("No tasks match these filters.")).toBeTruthy();
 });
@@ -107,7 +103,6 @@ it("composes focused scope with filters, restores selected tasks and leaves manu
     { taskId: "task-2", status: "unstarted", diagnostics: [] }];
   const state = { ...h.props.state, selectedTaskId: "task-0" };
   const view = render(<TaskGraph {...h.props} state={state} />);
-  fireEvent.click(screen.getByRole("button", { name: "Load dependency graph" }));
   await screen.findByText(/4\/4 details read/);
   fireEvent.click(screen.getByRole("button", { name: "Focus selected task" }));
   expect(screen.getByTestId("task-canvas").dataset.count).toBe("2");
@@ -119,7 +114,7 @@ it("composes focused scope with filters, restores selected tasks and leaves manu
   view.rerender(<TaskGraph {...h.props} state={{ ...state, refreshing: true }} />);
   expect(screen.getByTestId("task-canvas").dataset.camera).toBe("moved");
   expect(screen.getByTestId("task-canvas").dataset.intent).toBe(intent);
-  fireEvent.click(screen.getByRole("button", { name: "Load dependency graph" }));
+  fireEvent.click(screen.getByRole("button", { name: "Refresh dependencies" }));
   await waitFor(() => expect(h.readGraphDetail).toHaveBeenCalledTimes(8));
   expect(screen.getByTestId("task-canvas").dataset.camera).toBe("moved");
   view.rerender(<TaskGraph {...h.props} state={{ ...state, selectedTaskId: "task-3" }} />);
@@ -135,7 +130,6 @@ it("supports individual status choices and empty-view recovery without another r
   // Use the actual remaining summary status; fixture status is not a UI alias.
   h.props.state.observation.snapshot!.summaries[0]!.status = "unstarted";
   render(<TaskGraph {...h.props} />);
-  fireEvent.click(screen.getByRole("button", { name: "Load dependency graph" }));
   await screen.findByText(/2\/2 details read/);
   fireEvent.click(screen.getByText("Filters"));
   fireEvent.click(screen.getByRole("checkbox", { name: "Not started" }));
@@ -154,7 +148,6 @@ it("still filters in memory when local-profile storage is unavailable", async ()
   const write = vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => { throw new Error("profile unavailable"); });
   try {
     render(<TaskGraph {...h.props} />);
-    fireEvent.click(screen.getByRole("button", { name: "Load dependency graph" }));
     await screen.findByText(/2\/2 details read/);
     expect(screen.getByTestId("task-canvas").dataset.count).toBe("1");
     fireEvent.click(screen.getByText("Filters"));
@@ -166,7 +159,6 @@ it("still filters in memory when local-profile storage is unavailable", async ()
 
 it("loads the whole overview and retains its mounted camera and selection through reload/hide", async () => {
   const h = harness(), view = render(<TaskGraph {...h.props} />);
-  fireEvent.click(screen.getByRole("button", { name: "Load dependency graph" }));
   await screen.findByText(/100\/100 details read/);
   const canvas = screen.getByTestId("task-canvas");
   expect(canvas.dataset.count).toBe("100");
@@ -177,7 +169,7 @@ it("loads the whole overview and retains its mounted camera and selection throug
   const selected = canvas.dataset.selected;
   view.rerender(<TaskGraph {...h.props} visible={false} />);
   view.rerender(<TaskGraph {...h.props} />);
-  fireEvent.click(screen.getByRole("button", { name: "Load dependency graph" }));
+  fireEvent.click(screen.getByRole("button", { name: "Refresh dependencies" }));
   await waitFor(() => expect(h.readGraphDetail).toHaveBeenCalledTimes(200));
   expect(screen.getByTestId("task-canvas")).toBe(canvas);
   expect(canvas.dataset.camera).toBe("moved");
@@ -190,8 +182,8 @@ it.each(["hide", "unmount", "repository", "revision", "lifetime"])("cancels pend
   const pending: { signal: AbortSignal; resolve: (value: TaskDetail | null) => void; id: string }[] = [];
   h.readGraphDetail.mockImplementation((_snapshot, id, signal) => new Promise((resolve) => pending.push({ signal, resolve, id })));
   const view = render(<TaskGraph {...h.props} />);
-  fireEvent.click(screen.getByRole("button", { name: "Load dependency graph" }));
   expect(pending).toHaveLength(4);
+  const original = [...pending];
   if (reason === "hide") view.rerender(<TaskGraph {...h.props} visible={false} />);
   if (reason === "unmount") view.unmount();
   if (reason === "repository" || reason === "revision") {
@@ -205,16 +197,17 @@ it.each(["hide", "unmount", "repository", "revision", "lifetime"])("cancels pend
     h.dispose();
     view.rerender(<TaskGraph {...h.props} state={{ ...h.props.state }} />);
   }
-  await act(async () => { for (const row of pending) row.resolve(h.details.get(row.id)!); });
-  expect(h.readGraphDetail).toHaveBeenCalledTimes(4);
-  expect(pending.every((row) => row.signal.aborted)).toBe(true);
+  await act(async () => { for (const row of original) row.resolve(h.details.get(row.id)!); });
+  const replaced = ["repository", "revision", "lifetime"].includes(reason);
+  expect(h.readGraphDetail).toHaveBeenCalledTimes(replaced ? 8 : 4);
+  expect(original.every((row) => row.signal.aborted)).toBe(true);
+  if (replaced) expect(pending.slice(4).every((row) => !row.signal.aborted)).toBe(true);
   if (reason !== "unmount") expect(screen.queryByText(/4\/100 details read/)).toBeNull();
   expect(h.props.onOpen).not.toHaveBeenCalled();
 });
 
 it("follows sidebar selection while keeping local graph selection until a new external task is chosen", async () => {
   const h = harness(3), view = render(<TaskGraph {...h.props} />);
-  fireEvent.click(screen.getByRole("button", { name: "Load dependency graph" }));
   await screen.findByText(/3\/3 details read/);
   const state = { ...h.props.state, selectedTaskId: "task-0" };
   view.rerender(<TaskGraph {...h.props} state={state} />);
@@ -247,7 +240,6 @@ it("follows sidebar selection while keeping local graph selection until a new ex
 
 it.each(["client", "repository", "revision", "lifetime"])("does not apply new sidebar selection to a retained graph after %s replacement", async (replacement) => {
   const h = harness(3), view = render(<TaskGraph {...h.props} />);
-  fireEvent.click(screen.getByRole("button", { name: "Load dependency graph" }));
   await screen.findByText(/3\/3 details read/);
   let client = h.props.client;
   const snapshot = structuredClone(h.props.state.observation.snapshot!);
@@ -260,7 +252,7 @@ it.each(["client", "repository", "revision", "lifetime"])("does not apply new si
   const canvas = screen.getByTestId("task-canvas");
   expect(canvas.dataset.selected || null).toBeNull();
   expect(JSON.parse(canvas.dataset.identity!).at(-1)).toBe(false);
-  expect(h.readGraphDetail).toHaveBeenCalledTimes(3);
+  expect(h.readGraphDetail).toHaveBeenCalledTimes(replacement === "client" ? 3 : 6);
   expect(h.props.onOpen).not.toHaveBeenCalled();
 });
 
@@ -271,7 +263,6 @@ it("keeps a missing-reference outline selection without inventing a current task
   h.props.state.observation.snapshot!.summaries[0]!.counts.blocks = 1;
   const state = { ...h.props.state, selectedTaskId: "task-0" };
   const view = render(<TaskGraph {...h.props} state={state} />);
-  fireEvent.click(screen.getByRole("button", { name: "Load dependency graph" }));
   await screen.findByText(/2\/2 details read/);
   fireEvent.click(screen.getByRole("button", { name: "Inspect graph task missing" }));
   expect(screen.getByTestId("task-canvas").dataset.selected).toBe("missing");
@@ -289,7 +280,6 @@ it("keeps a missing-reference outline selection without inventing a current task
 it("keeps a sidebar gesture identity stable across a temporary reader error and recovery", async () => {
   const h = harness(2), state = { ...h.props.state, selectedTaskId: "task-0" };
   const view = render(<TaskGraph {...h.props} state={state} />);
-  fireEvent.click(screen.getByRole("button", { name: "Load dependency graph" }));
   await screen.findByText(/2\/2 details read/);
   const canvas = screen.getByTestId("task-canvas"), intent = canvas.dataset.intent;
   h.availability(false);
@@ -301,4 +291,68 @@ it("keeps a sidebar gesture identity stable across a temporary reader error and 
   expect(canvas.dataset.selected).toBe("task-0");
   expect(canvas.dataset.intent).toBe(intent);
   expect(h.readGraphDetail).toHaveBeenCalledTimes(2);
+});
+
+it("automatically replaces a semantic revision without clearing the graph, filters, selection or camera", async () => {
+  const h = harness(3); closeTasks(h, ["task-1"]);
+  const state = { ...h.props.state, selectedTaskId: "task-0" };
+  const view = render(<TaskGraph {...h.props} state={state} />);
+  await screen.findByText(/3\/3 details read/);
+  fireEvent.click(screen.getByText("Filters"));
+  fireEvent.click(screen.getByRole("button", { name: "All" }));
+  fireEvent.click(screen.getByRole("button", { name: "Move graph camera" }));
+  const canvas = screen.getByTestId("task-canvas"), intent = canvas.dataset.intent;
+  const pending: (() => void)[] = [];
+  h.readGraphDetail.mockImplementation((_snapshot, id) => new Promise((resolve) => pending.push(() => resolve(h.details.get(id)!))));
+  const snapshot = structuredClone(state.observation.snapshot!);
+  snapshot.metadataCommit.hex = "b".repeat(40); h.replace(snapshot);
+  const next = { ...state, observation: { ...state.observation, snapshot } };
+  view.rerender(<TaskGraph {...h.props} state={next} />);
+  expect(h.readGraphDetail).toHaveBeenCalledTimes(6);
+  expect(canvas.dataset.count).toBe("3");
+  expect(canvas.dataset.camera).toBe("moved");
+  expect(screen.getByText(/RETAINED \/ NOT CURRENT/)).toBeTruthy();
+  await act(async () => pending.forEach((resolve) => resolve()));
+  await waitFor(() => expect(screen.queryByText(/RETAINED \/ NOT CURRENT/)).toBeNull());
+  expect(screen.getByTestId("task-canvas")).toBe(canvas);
+  expect(canvas.dataset.count).toBe("3");
+  expect(canvas.dataset.camera).toBe("moved");
+  expect(canvas.dataset.selected).toBe("task-0");
+  expect(canvas.dataset.intent).toBe(intent);
+  view.rerender(<TaskGraph {...h.props} state={{ ...next, observation: structuredClone(next.observation) }} />);
+  fireEvent(window, new Event("focus"));
+  expect(h.readGraphDetail).toHaveBeenCalledTimes(6);
+  expect(h.props.onOpen).not.toHaveBeenCalled();
+});
+
+it("coalesces hidden revisions into one current read on resume and does not retry same-ref failed details", async () => {
+  const h = harness(2), view = render(<TaskGraph {...h.props} />);
+  await screen.findByText(/2\/2 details read/);
+  view.rerender(<TaskGraph {...h.props} visible={false} />);
+  let state = h.props.state;
+  for (const digit of ["b", "c", "d"]) {
+    const snapshot = structuredClone(state.observation.snapshot!);
+    snapshot.metadataCommit.hex = digit.repeat(40); h.replace(snapshot);
+    state = { ...state, observation: { ...state.observation, snapshot } };
+    view.rerender(<TaskGraph {...h.props} state={state} visible={false} />);
+  }
+  expect(h.readGraphDetail).toHaveBeenCalledTimes(2);
+  h.readGraphDetail.mockResolvedValue(null);
+  view.rerender(<TaskGraph {...h.props} state={state} />);
+  await screen.findByText(/0\/2 details read/);
+  expect(h.readGraphDetail).toHaveBeenCalledTimes(4);
+  expect(h.readGraphDetail.mock.calls.at(-1)![0].metadataCommit.hex).toBe("d".repeat(40));
+  view.rerender(<TaskGraph {...h.props} state={state} visible={false} />);
+  view.rerender(<TaskGraph {...h.props} state={{ ...state }} />);
+  expect(h.readGraphDetail).toHaveBeenCalledTimes(4);
+});
+
+it("survives StrictMode cleanup with only the current read publishing", async () => {
+  const h = harness(2);
+  render(<StrictMode><TaskGraph {...h.props} /></StrictMode>);
+  await screen.findByText(/2\/2 details read/);
+  expect(screen.getByTestId("task-canvas").dataset.count).toBe("2");
+  expect(h.readGraphDetail.mock.calls.slice(0, 2).every((call) => call[2].aborted)).toBe(true);
+  expect(h.readGraphDetail.mock.calls.slice(2).every((call) => !call[2].aborted)).toBe(true);
+  expect(h.readGraphDetail).toHaveBeenCalledTimes(4);
 });

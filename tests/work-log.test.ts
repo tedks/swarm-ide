@@ -74,6 +74,17 @@ describe("online Work Log", () => {
     await vi.waitFor(async () => expect((await b.request(read)).running).toBe(false));
     expect(summarize).not.toHaveBeenCalled();
   });
+  it("disposal during the post-summary preference read prevents late publication", async () => {
+    const f = await fixture(); let release!: (paused: boolean) => void;
+    const service = new WorkLogService(f.root, undefined, { inputs: async () => [input()], summarize: async () => {
+      vi.spyOn(service as unknown as { isPaused(): Promise<boolean> }, "isPaused").mockImplementationOnce(() => new Promise<boolean>((resolve) => { release = resolve; }));
+      return [summary];
+    } }); services.push(service);
+    await service.request(request("workLog.start", { settings }));
+    await vi.waitFor(() => expect(release).toBeTypeOf("function"));
+    const closing = service.dispose(); release(false); await closing;
+    await expect(readFile(join(f.root, ".swarm/work-log.json"), "utf8")).rejects.toMatchObject({ code: "ENOENT" });
+  });
   it("keeps a saved ten-minute batch delay and prevents a background read overlapping publication", async () => {
     const f = await fixture(), summarize = vi.fn(async () => [summary]);
     const service = new WorkLogService(f.root, undefined, { inputs: async () => [input()], summarize }); services.push(service);
