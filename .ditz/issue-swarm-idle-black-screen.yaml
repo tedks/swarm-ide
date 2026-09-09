@@ -11,8 +11,8 @@ type: bugfix
 component: default
 release:
 reporter: Ted Smith <tedks@riseup.net>
-status: in_progress
-disposition:
+status: closed
+disposition: fixed
 creation_time: 2026-09-09T18:26:41-00:00
 references: []
 log_events:
@@ -33,3 +33,12 @@ log_events:
     exception, source/camera retained, no reload/write/send, cleanup1. Original hours-idle
     cause remains open in swarm-idle-black-screen-cause; final scoped native/local
     gates in progress.
+- time: 2026-09-09T18:55:22-00:00
+  who: Ted Smith
+  what: 'closed: fixed'
+  comment: 'Landed PR147 normally: React render-error containment with copyable registered
+    unsaved source/message/uncertain-operation text, explicit unload acknowledgement
+    and timestamped native renderer failure/hang diagnostics. ROOT verified 27 focused
+    tests, both typechecks, native convergence and short owned controlled-failure
+    proof. This closes the bounded containment/diagnostics increment, NOT the original
+    hours-idle cause: swarm-idle-black-screen-cause remains OPEN for recurrence evidence.'
