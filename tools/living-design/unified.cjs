@@ -24,6 +24,10 @@ async function main() {
     wc.sendInputEvent({ type: "mouseDown", button: "left", clickCount: 1, ...xy }); wc.sendInputEvent({ type: "mouseUp", button: "left", clickCount: 1, ...xy }); await paint();
   };
   await until(() => run(() => document.querySelectorAll(".design-graph .react-flow__node").length === 7 && document.querySelectorAll(".design-graph .react-flow__edge").length === 6), "real seven-component responsibility hierarchy");
+  if (process.env.SWARM_DESIGN_LAYOUT_ONLY === "1") {
+    await require("./layout.cjs")({ wc, run, paint, text, camera, shot, click, until, evidence, errors });
+    return;
+  }
   await until(() => run(() => [...document.querySelectorAll('.task-projection button')].some(n => n.textContent === 'Load dependency graph' && !n.disabled)), 'task metadata available');
   await click('.task-projection button', 'Load dependency graph');
   await until(() => run(() => Boolean(document.querySelector('.task-projection .react-flow__viewport'))), 'actual Ditz dependency graph');

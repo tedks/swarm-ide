@@ -13,7 +13,7 @@ export SWARM_ARTIFACT_DIR
 SWARM_ARTIFACT_DIR=$(mktemp -d "$plans_artifacts/run.XXXXXX")
 export SWARM_PLANS_EVIDENCE="$SWARM_ARTIFACT_DIR"
 export SWARM_PLANS_CASE="${SWARM_PLANS_CASE:-demo}"
-[[ "$SWARM_PLANS_CASE" == demo || "$SWARM_PLANS_CASE" == swarm ]] || { echo 'Unknown plans proof case'; exit 2; }
+[[ "$SWARM_PLANS_CASE" == demo || "$SWARM_PLANS_CASE" == swarm || "$SWARM_PLANS_CASE" == filters ]] || { echo 'Unknown plans proof case'; exit 2; }
 # Archive materialization and CLI-authored fixtures precede port readiness.
 export SWARM_APP_START_TIMEOUT_MS="${SWARM_APP_START_TIMEOUT_MS:-120000}"
 # The proof's own 155-second bound must precede the supervisor's outer deadline.

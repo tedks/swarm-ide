@@ -9,6 +9,37 @@ export interface TaskGraphProjection {
   unread: number;
 }
 
+export const TASK_GRAPH_STATUSES = ["unstarted", "in_progress", "paused", "closed"] as const;
+export type TaskGraphStatus = typeof TASK_GRAPH_STATUSES[number];
+export const ACTIVE_TASK_STATUSES: readonly TaskGraphStatus[] = ["unstarted", "in_progress", "paused"];
+export const TASK_GRAPH_STATUS_LABELS: Record<TaskGraphStatus, string> = {
+  unstarted: "Not started", in_progress: "In progress", paused: "Paused", closed: "Completed",
+};
+export function parseTaskGraphStatuses(raw: string | null): readonly TaskGraphStatus[] {
+  try {
+    const value: unknown = JSON.parse(raw ?? "null");
+    if (Array.isArray(value) && value.length <= TASK_GRAPH_STATUSES.length &&
+      value.every((status) => TASK_GRAPH_STATUSES.includes(status)) && new Set(value).size === value.length)
+      return TASK_GRAPH_STATUSES.filter((status) => value.includes(status));
+  } catch { /* A corrupt UI preference must not hide the graph. */ }
+  return ACTIVE_TASK_STATUSES;
+}
+
+/** Presentation only. Retain missing endpoints adjacent to matching tasks, but
+ * never synthesize a shortcut across a filtered task. Coverage remains global. */
+export function filterTaskGraph(graph: TaskGraphProjection, statuses: readonly TaskGraphStatus[]): TaskGraphProjection & { hiddenTasks: number } {
+  const missing = new Set(graph.nodes.filter((node) => node.missing).map((node) => node.id));
+  const matching = new Set(graph.nodes.filter((node) => !node.missing && statuses.includes(node.status as TaskGraphStatus)).map((node) => node.id));
+  const visible = new Set(matching);
+  for (const edge of graph.edges) {
+    if (matching.has(edge.source) && missing.has(edge.target)) visible.add(edge.target);
+    if (matching.has(edge.target) && missing.has(edge.source)) visible.add(edge.source);
+  }
+  return { ...graph, nodes: graph.nodes.filter((node) => visible.has(node.id)),
+    edges: graph.edges.filter((edge) => visible.has(edge.source) && visible.has(edge.target)),
+    hiddenTasks: graph.nodes.filter((node) => !node.missing && !matching.has(node.id)).length };
+}
+
 /** Scope changes presentation only; unread coverage remains on the full
  * projection. A missing anchor is not replaced by a different task. */
 export function scopeTaskGraph(graph: TaskGraphProjection, anchor: string | null, whole: boolean) {

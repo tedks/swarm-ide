@@ -35,6 +35,21 @@
 .planning-inspector li span { color: #94afa5; }
 .planning-empty { padding: 15px; color: #9bb5ac; font-size: 12px; }
 .planning-links { display: flex; gap: 6px; flex-wrap: wrap; margin: 7px 0; }
+.task-projection { grid-template-rows: auto auto auto minmax(160px, 1fr) auto; }
+.task-projection button { border: 1px solid #33504a; border-radius: 4px; background: #102422; color: #c4ded5; padding: 4px 6px; font: 10px system-ui; cursor: pointer; }
+.task-projection button:disabled { opacity: .45; cursor: default; }
+.task-projection button:focus-visible { outline: 2px solid #9dedc9; outline-offset: 2px; }
+.task-graph-scope { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 6px 9px; color: #a5c0b6; font-size: 11px; }
+.task-graph-scope > span, .task-graph-scope > small, .task-graph-scope > p { flex-basis: 100%; margin: 0; }
+.task-graph-filters { position: relative; border: 1px solid #33504a; border-radius: 4px; padding: 4px 7px; }
+.task-graph-filter-options { position: absolute; z-index: 10; top: 100%; left: 0; width: 240px; padding: 6px 8px; border: 1px solid #497970; border-radius: 4px; background: #102422; box-shadow: 0 5px 14px #0008; }
+.task-graph-filters summary { cursor: pointer; color: #c4ded5; }
+.task-graph-filters summary:focus-visible { outline: 2px solid #9dedc9; outline-offset: 2px; }
+.task-graph-presets { display: flex; gap: 5px; margin-top: 6px; }
+.task-graph-filters fieldset { display: flex; flex-wrap: wrap; gap: 8px; margin: 6px 0 0; padding: 4px 0; border: 0; }
+.task-graph-filters label { display: inline-flex; align-items: center; gap: 4px; }
+.task-graph-filters input { accent-color: #9dedc9; }
+.task-graph-presets button[aria-pressed="true"] { border-color: #9dedc9; color: #c4ffe6; }
 
 /* Selected-plan actions stay outside the outline/context scroll. Do not alter
    the task inspector, graph grid or mounted projection cameras. */

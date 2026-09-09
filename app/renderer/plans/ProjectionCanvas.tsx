@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { Background, BaseEdge, Controls, getBezierPath, MarkerType, Position, ReactFlow, type Edge, type EdgeProps, type Node, type ReactFlowInstance, type Viewport } from "@xyflow/react";
+import { Background, BaseEdge, Controls, getBezierPath, MarkerType, Position, ReactFlow, type Edge, type EdgeProps, type Node, type NodeChange, type ReactFlowInstance, type Viewport } from "@xyflow/react";
 import { compactTaskPositions, dependencyPositions } from "../tasks/graph";
 import { useGraphReveal } from "../repository/reveal";
 import { GraphAgentSprites } from "../graph-agents/GraphAgents";
@@ -30,6 +30,9 @@ const edgeTypes = { design: DesignEdge };
 // Camera coordinates only, scoped by canonical workspace/component identity;
 // retained when a temporary unavailable plan unmounts its canvas.
 const retainedCameras = new Map<string, Viewport>();
+// Presentation only: no writes to the authored plan. A scope identifies the
+// workspace/world, selected component and overview or selected-contract view.
+const retainedLayouts = new Map<string, Map<string, { x: number; y: number }>>();
 function retainCamera(key: string, viewport: Viewport) {
   retainedCameras.delete(key); retainedCameras.set(key, { ...viewport });
   if (retainedCameras.size > 128) retainedCameras.delete(retainedCameras.keys().next().value!);
@@ -48,9 +51,11 @@ export function contractCurveOffset(edge: ProjectionEdge, links: ProjectionEdge[
 
 /** Each mounted projection owns its camera. Only deliberate gestures and
  * opt-in selected-ID changes reveal nodes; metadata never requests fit. */
-export function ProjectionCanvas({ label, nodes: input, edges: links, selected, onSelect, onSelectEdge, taskScopeVersion, cameraScope, revealSelection = false, revealIdentity, selectionIntent, visible = true }: {
+export function ProjectionCanvas({ label, nodes: input, edges: links, selected, onSelect, onSelectEdge, taskScopeVersion, cameraScope, layoutScope, revealSelection = false, revealIdentity, selectionIntent, visible = true }: {
   label: string; nodes: ProjectionNode[]; edges: ProjectionEdge[]; selected: string | null; onSelect: (id: string) => void; onSelectEdge?: (id: string) => void; taskScopeVersion?: number; cameraScope?: string;
   revealSelection?: boolean; revealIdentity?: string; selectionIntent?: number | string; visible?: boolean;
+  /** Opt in to session-local, individually draggable component geometry. */
+  layoutScope?: string;
 }) {
   const flow = useRef<ReactFlowInstance | null>(null);
   const canvas = useRef<HTMLDivElement>(null);
@@ -80,10 +85,29 @@ export function ProjectionCanvas({ label, nodes: input, edges: links, selected, 
     const frame = requestAnimationFrame(() => { void flow.current?.fitView({ padding: .2, maxZoom: 1 }); });
     return () => cancelAnimationFrame(frame);
   }, [taskScopeVersion]);
-  const [positions, setPositions] = useState(new Map<string, { x: number; y: number }>());
+  const layoutKey = layoutScope === undefined ? undefined : JSON.stringify([label, layoutScope]);
+  const [layoutVersion, layoutChanged] = useState(0);
+  useLayoutEffect(() => {
+    if (!layoutKey) return;
+    const saved = retainedLayouts.get(layoutKey);
+    if (saved) for (const id of saved.keys()) if (!input.some(node => node.id === id)) saved.delete(id);
+  }, [layoutKey, input]);
+  const onNodesChange = (changes: NodeChange[]) => {
+    reveal.onNodesChange(changes); // dimensions still complete explicit reveals
+    if (!layoutKey) return;
+    const positions = new Map(retainedLayouts.get(layoutKey));
+    let changed = false;
+    for (const change of changes) {
+      if (change.type !== "position" || !change.position || !input.some(node => node.id === change.id) ||
+        !Number.isFinite(change.position.x) || !Number.isFinite(change.position.y)) continue;
+      positions.set(change.id, { ...change.position }); changed = true;
+    }
+    if (changed) { retainedLayouts.set(layoutKey, positions); layoutChanged(value => value + 1); }
+  };
   const graph = useMemo(() => {
+    const positions = layoutKey ? retainedLayouts.get(layoutKey) : undefined;
     const layout = (taskScopeVersion === undefined ? dependencyPositions : compactTaskPositions)(input.map((node) => node.id), links);
-    const nodes: Node[] = input.map((node) => ({ id: node.id, position: positions.get(node.id) ?? node.position ?? layout.get(node.id)!,
+    const nodes: Node[] = input.map((node) => ({ id: node.id, position: positions?.get(node.id) ?? node.position ?? layout.get(node.id)!,
       sourcePosition: node.port ?? (taskScopeVersion === undefined ? Position.Right : Position.Bottom),
       targetPosition: node.port ?? (taskScopeVersion === undefined ? Position.Left : Position.Top), selected: selected === node.id,
       data: { label: <><strong>{node.title}</strong><small>{node.subtitle}</small><GraphAgentSprites nodeId={node.id} /></> },
@@ -98,7 +122,7 @@ export function ProjectionCanvas({ label, nodes: input, edges: links, selected, 
       style: { stroke: edge.kind === "containment" ? "#426960" : edge.kind === "navigation" ? "#b29cdd" : edge.kind === "result" || edge.kind === "data" ? "#e0bf82" : "#67b6a4", ...(edge.kind === "containment" ? { strokeDasharray: "4 5", opacity: .5 } : {}) }, labelStyle: { fill: "#bcd9d1", fontSize: 10 }, labelBgStyle: { fill: "#0c1b1e" },
       interactionWidth: 24, focusable: true }));
     return { nodes, edges };
-  }, [input, links, selected, positions, taskScopeVersion]);
+  }, [input, links, selected, layoutKey, layoutVersion, taskScopeVersion]);
   return <div ref={canvas} className="planning-canvas" aria-label={label} onPointerDownCapture={reveal.onControlGesture} onKeyDownCapture={(event) => {
     reveal.onControlGesture(event);
     if (event.key !== "Enter" && event.key !== " ") return;
@@ -113,14 +137,19 @@ export function ProjectionCanvas({ label, nodes: input, edges: links, selected, 
     if (!id || !event.currentTarget.contains(target) || !input.some((node) => node.id === id)) return;
     event.preventDefault(); event.stopPropagation(); select(id);
   }}>
-    <ReactFlow nodes={graph.nodes} edges={graph.edges} edgeTypes={edgeTypes} onInit={(instance) => { flow.current = instance; reveal.onInit(instance); const saved = cameraKey ? retainedCameras.get(cameraKey) : undefined; if (saved) requestAnimationFrame(() => requestAnimationFrame(() => { if (flow.current === instance && scope.current === cameraScope) void instance.setViewport(saved); })); }} onNodesChange={reveal.onNodesChange} onMoveStart={(event) => { if (event) reveal.cancel(); }} onMoveEnd={(_event, viewport) => { if (cameraKey) retainCamera(cameraKey, viewport); }} fitView fitViewOptions={{ padding: cameraScope ? .07 : .2, maxZoom: 1 }}
-      minZoom={.08} maxZoom={2} nodesConnectable={false} nodesDraggable={false} elementsSelectable
+    <ReactFlow nodes={graph.nodes} edges={graph.edges} edgeTypes={edgeTypes} onInit={(instance) => { flow.current = instance; reveal.onInit(instance); const saved = cameraKey ? retainedCameras.get(cameraKey) : undefined; if (saved) requestAnimationFrame(() => requestAnimationFrame(() => { if (flow.current === instance && scope.current === cameraScope) void instance.setViewport(saved); })); }} onNodesChange={onNodesChange} onMoveStart={(event) => { if (event) reveal.cancel(); }} onMoveEnd={(_event, viewport) => { if (cameraKey) retainCamera(cameraKey, viewport); }} fitView fitViewOptions={{ padding: cameraScope ? .07 : .2, maxZoom: 1 }}
+      minZoom={.08} maxZoom={2} nodesConnectable={false} nodesDraggable={layoutKey !== undefined} elementsSelectable
+      {...(layoutKey ? { autoPanOnNodeDrag: false, selectNodesOnDrag: false, nodeDragThreshold: 4,
+        multiSelectionKeyCode: null, selectionKeyCode: null } : {})}
+      onNodeDragStart={() => reveal.cancel()}
       onNodeClick={(_event, node) => select(node.id)}
-      onEdgeClick={(_event, edge) => { if (edge.data?.kind !== "containment") onSelectEdge?.(edge.id); }}
-      onNodeDragStop={(_event, node) => setPositions((prior) => new Map(prior).set(node.id, node.position))}>
+      onEdgeClick={(_event, edge) => { if (edge.data?.kind !== "containment") onSelectEdge?.(edge.id); }}>
       {/* Selection has one authority: explicit click/key/outline gestures. A Flow
           selection observation may still describe the previous controlled nodes. */}
       <Background color="#25413f" gap={22} size={1} /><Controls showInteractive={false} />
     </ReactFlow>
+    {layoutKey ? <button className="projection-layout-reset" title="Restore this view's default node positions" onClick={() => {
+      reveal.cancel(); retainedLayouts.delete(layoutKey); layoutChanged(value => value + 1);
+    }}>Reset layout</button> : null}
   </div>;
 }

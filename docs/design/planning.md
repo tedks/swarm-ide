@@ -111,6 +111,19 @@ connections also available in the inspector. A selected component shows its
 incident relationships, not unrelated links among its neighbours. Selecting
 another component keeps the canvas mounted and remembers visited cameras;
 unchanged index reads retain projection identity rather than remeasuring labels.
+The Component canvas uses wider columns and rows so contracts have room. Drag a
+node to arrange it; drag empty canvas to pan. Control/Meta and Shift do not turn
+component dragging into a multi-node selection. A drag neither selects a component
+nor reframes the camera. **Reset layout** restores only the displayed view's
+default positions; **Fit** still frames the full displayed graph. Position
+overrides live only in renderer-session memory, scoped to world, canonical
+repository/worktree identity, component and the selected-contract or overview
+view. Navigation and unchanged refresh retain them; removed nodes lose overrides.
+No drag writes the plan index. Other shared projection canvases remain
+non-draggable. `DesignWorkspace` opts into `ProjectionCanvas.layoutScope`;
+`//tools/living-design:checks` covers these scopes and relationship preservation.
+The existing `//tools/living-design:smoke` supports `SWARM_DESIGN_LAYOUT_ONLY=1`
+for an owned packaged node/background drag, reset and design-reading journey.
 This fixes the selection-remount mechanism, not a claim that an independent
 periodic idle-flashing cause has been reproduced.
 `DesignWorkspace` can accept that shared controller through `navigation` and a
@@ -146,9 +159,20 @@ entries in the byte-bounded metadata tree. Oversized or malformed updates still
 retain the last good revision. Task graphs include every available task and
 recorded edge without graph count truncation. Detail loading keeps four requests
 in flight, coalesces progress, and cancels on hide, disposal or identity/revision
-change. The ordinary overview includes isolated tasks and missing endpoints;
-deliberate focused scope includes all direct neighbors. Unread relations remain
-explicit. Backlink projections retain their separate reported bounds.
+change. The underlying projection retains isolated tasks and missing endpoints.
+The Task blockage view defaults to active statuses (not started, in progress and
+paused), with a compact Filters disclosure, Active/All presets and individual
+status choices. Completed tasks remain in canonical Ditz history. The small
+validated UI preference is scoped by repository and world in the local profile;
+it changes no metadata and starts no new reads. Canvas, keyboard outline and
+recorded-edge list share the filtered, optionally focused view. Counts separate
+filter-hidden tasks, tasks outside focused scope, missing references and unread
+details. Direct missing endpoints of visible tasks keep their warnings; filtering
+never invents edges across hidden tasks or declares work ready. The selected task
+and its document/Context remain unchanged if its node is hidden, with Show selected
+and an empty-view Show all recovery. Explicit filters/scope gestures may frame the
+view, while ordinary metadata refresh does not reset manual camera movement.
+Backlink projections retain their separate reported bounds.
 
 Missing relationships and partial coverage must not turn into fabricated “ready”
 tasks. Updating the list does not silently retarget a revision-pinned detail or
@@ -165,6 +189,10 @@ plan test sources, task-integration sources and owned virtual-desktop support.
 These edges are declared in [tools/demo-plans/BUILD.bazel](../../tools/demo-plans/BUILD.bazel).
 `//tools/demo-plans:graph-checks` also consumes `//:quality_sources` and runs the
 complete-graph, client, scope and mounted graph tests plus both TypeScript checks.
+With `SWARM_PLANS_CASE=filters`, the existing `//tools/demo-plans:smoke` uses
+`tools/demo-plans/filters.cjs` from its `:sources` input for a small real CLI-Ditz
+Active/All journey, retaining dirty source, cursor and the component camera.
+It uses the same owned virtual desktop and packaged core, without a model turn.
 The task client and its regressions are already included by `//:quality_sources`;
 focused client tests and both TypeScript boundaries can run through
 `//tools/demo-syntax:editor-tests --test_arg=tests/task-client.test.ts`.
