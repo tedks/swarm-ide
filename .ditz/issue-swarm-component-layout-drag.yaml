@@ -23,3 +23,12 @@ log_events:
   who: Ted Smith
   what: started
   comment: ""
+- time: 2026-09-09T14:56:18-00:00
+  who: Ted Smith
+  what: commented
+  comment: PR143 implemented wider component geometry, component-only individual dragging
+    (including Ctrl modifier), scoped session retention/current-view reset; no source-truth
+    writes. Final112 focused cases/types and native convergence CLEAN. Initial owned
+    plain journey zero errors/cleanup1; final stronger journey passed all gestures
+    then exact known ResizeObserver warning at console gate, retained for ROOT disposition.
+    Ready/pushed; keep in progress until ROOT normal landing.
