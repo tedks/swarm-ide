@@ -140,9 +140,20 @@ entries in the byte-bounded metadata tree. Oversized or malformed updates still
 retain the last good revision. Task graphs include every available task and
 recorded edge without graph count truncation. Detail loading keeps four requests
 in flight, coalesces progress, and cancels on hide, disposal or identity/revision
-change. The ordinary overview includes isolated tasks and missing endpoints;
-deliberate focused scope includes all direct neighbors. Unread relations remain
-explicit. Backlink projections retain their separate reported bounds.
+change. The underlying projection retains isolated tasks and missing endpoints.
+The Task blockage view defaults to active statuses (not started, in progress and
+paused), with a compact Filters disclosure, Active/All presets and individual
+status choices. Completed tasks remain in canonical Ditz history. The small
+validated UI preference is scoped by repository and world in the local profile;
+it changes no metadata and starts no new reads. Canvas, keyboard outline and
+recorded-edge list share the filtered, optionally focused view. Counts separate
+filter-hidden tasks, tasks outside focused scope, missing references and unread
+details. Direct missing endpoints of visible tasks keep their warnings; filtering
+never invents edges across hidden tasks or declares work ready. The selected task
+and its document/Context remain unchanged if its node is hidden, with Show selected
+and an empty-view Show all recovery. Explicit filters/scope gestures may frame the
+view, while ordinary metadata refresh does not reset manual camera movement.
+Backlink projections retain their separate reported bounds.
 
 Missing relationships and partial coverage must not turn into fabricated “ready”
 tasks. Updating the list does not silently retarget a revision-pinned detail or
@@ -159,6 +170,10 @@ plan test sources, task-integration sources and owned virtual-desktop support.
 These edges are declared in [tools/demo-plans/BUILD.bazel](../../tools/demo-plans/BUILD.bazel).
 `//tools/demo-plans:graph-checks` also consumes `//:quality_sources` and runs the
 complete-graph, client, scope and mounted graph tests plus both TypeScript checks.
+With `SWARM_PLANS_CASE=filters`, the existing `//tools/demo-plans:smoke` uses
+`tools/demo-plans/filters.cjs` from its `:sources` input for a small real CLI-Ditz
+Active/All journey, retaining dirty source, cursor and the component camera.
+It uses the same owned virtual desktop and packaged core, without a model turn.
 The task client and its regressions are already included by `//:quality_sources`;
 focused client tests and both TypeScript boundaries can run through
 `//tools/demo-syntax:editor-tests --test_arg=tests/task-client.test.ts`.
