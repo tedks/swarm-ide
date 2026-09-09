@@ -130,8 +130,14 @@ Ditz reads are pinned to metadata revisions. The visible list checks the local r
 every five seconds and on focus/reopening, then automatically reads changed
 metadata, keeping its old rows until the replacement is valid. One cheap check
 can start at most one full read; a further change catches up on the next check.
-An unchanged failed revision is not repeatedly scanned. Manual Refresh remains
-recovery, including when the initial read never produced a usable list.
+An unchanged failed revision is not repeatedly scanned. A newly available metadata
+ref also recovers an initially missing or failed list, once per discovered ref.
+Manual Refresh remains available to retry an unchanged failure deliberately.
+
+Component plans refresh automatically on the working-source fingerprint and on
+return to the application. Held reads coalesce changes into one catch-up read;
+identical indices keep their object identity and selected component. Failed reads
+retain the prior plan for display but revoke its links until recovery.
 
 The complete task list has no arbitrary issue-count cap. Reader and response
 capacity is bounded by bytes, deadlines and validated data shape instead;

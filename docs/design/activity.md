@@ -25,7 +25,7 @@ retain these outcome notes in-repo, not just disappear from the live roster.
 | Part | Actual source | Current behavior |
 | --- | --- | --- |
 | Observed agent activity | [ObservedActivity.tsx](../../app/renderer/external-agents/ObservedActivity.tsx), [activity-entries.ts](../../app/renderer/external-agents/activity-entries.ts), [external-agents.ts](../../core/external-agents.ts), [FleetActivityView.tsx](../../app/renderer/FleetActivityView.tsx) | Shared newest-first raw operation projection for dock and center; assistant prose stays in conversation/Work Log |
-| Online Work Log | [WorkLogPanel.tsx](../../app/renderer/work-log/WorkLogPanel.tsx), [service.ts](../../core/work-log/service.ts) | Explicit Start/Stop, configurable summary worker and durable outcomes |
+| Online Work Log | [WorkLogPanel.tsx](../../app/renderer/work-log/WorkLogPanel.tsx), [service.ts](../../core/work-log/service.ts) | Automatic watching, persistent Pause/Resume, configurable summary worker and durable outcomes |
 | Recorded logical journal | [JournalPanel.tsx](../../app/renderer/changelog/JournalPanel.tsx), [changelog.ts](../../core/changelog.ts) | Reads validated `.swarm/changelog.json` |
 | Journal authoring | [changelog-authoring.ts](../../core/changelog-authoring.ts) | Exports evidence and validates supervised summary output |
 | GitHub PR view | [GithubPullRequests.tsx](../../app/renderer/changelog/GithubPullRequests.tsx), [github-prs.ts](../../core/github-prs.ts) | Deliberate bounded refresh through ordinary `gh` |
@@ -34,8 +34,8 @@ retain these outcome notes in-repo, not just disappear from the live roster.
 The saved journal is operational, but it is not the running in-app summarizer.
 The separate Work Log watches registered work at meaningful boundaries, batches
 new evidence and uses one in-flight configurable harness/model worker, default
-Codex `gpt-5.6-luna`. It writes deduplicated Ditz accomplishment notes through
-the CLI. F7 supplies the
+Codex `gpt-5.6-luna`. Explicit Record outcome writes deduplicated Ditz accomplishment notes through
+the CLI; startup never records or closes a task. F7 supplies the
 separate granular whole-fleet Activity stream.
 
 The central Activity overview uses the same current fleet snapshots as the dock;
@@ -58,8 +58,17 @@ its details but leaves focus alone if the operator has resumed typing elsewhere.
 The pipeline is: known registered transcript tails → meaningful
 turn boundaries → one summary → human outcome entries in `.swarm/work-log.json`.
 Its modules are [protocol/work-log.ts](../../protocol/work-log.ts), [core/work-log/service.ts](../../core/work-log/service.ts) and
-[WorkLogPanel.tsx](../../app/renderer/work-log/WorkLogPanel.tsx). The panel offers explicit Start/Stop and
-configuration; reading its state alone must not launch a model. An explicit
+[WorkLogPanel.tsx](../../app/renderer/work-log/WorkLogPanel.tsx). The primary core starts
+watching after workspace readiness; secondary worktree views do not create producers.
+The panel offers Pause/Resume and configuration; reading its state alone never
+starts a model. The private Git `swarm-work-log/watcher.json` preference remembers
+Pause across core/app restarts, independently of existing settings/attempt state.
+Other windows observe it within three seconds and recheck before inference and
+publication. Disposal cancels the owned summary without saving a user Pause.
+Idle inputs make no model call. Existing producer locks and attempted-turn records
+prevent duplicate billing; failed attempts are not replayed. Errors back off without
+shortening the configured batch delay, and malformed state is not overwritten.
+An explicit
 Record outcome action appends an idempotent Ditz comment to a known completed
 issue; it does not close worker issues. Private transcript bytes remain local.
 This is a small producer over the registered roster, not another fleet platform.
@@ -94,7 +103,7 @@ session/worktree callbacks, and stay mounted during ordinary background reads.
 Only paused or disconnected observation needs a status note; example sessions
 remain labelled. Tool results are operations too, while assistant recaps are not.
 Summary settings lives behind a keyboard-accessible gear next to explicit
-Start/Stop. A running empty Work Log says it is watching for completed turns.
+Pause/Resume. A running empty Work Log says it is watching for completed turns.
 The shared `RunStatus.tsx` presents the core lifecycle with visible text and
 different shapes: a yellow square for working, paused bars for waiting on input,
 a red hollow slashed circle for failure, and a filled green circle for completion.
@@ -122,6 +131,8 @@ verification without covering the normal UI in diagnostic prose.
 
 The Work Log modules use the same root source/bundle targets. Its dedicated
 `//tools/work-log:check` target runs the focused service/panel checks.
+`//tools/work-log:awareness-check` checks automatic startup, persistent Pause,
+cross-window cancellation/deduplication and task/plan refresh without real models.
 `//tools/demo-agents:unit` checks the shared reader and exact-session rail summaries;
 `//tools/operator-cockpit:checks` verifies refreshed outcome documents in the
 actual App with retained editor, cursor, focus and graph instances.

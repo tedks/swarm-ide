@@ -9,6 +9,7 @@ import { recordWorkOutcome, runWorkCommand, summarizeWork, withWorkLock, type Wo
 
 const DocumentSchema = z.object({ version: z.literal(1), entries: z.array(WorkLogEntrySchema).max(200) }).strict();
 const StateSchema = z.object({ version: z.literal(1), settings: WorkLogSettingsSchema, seen: z.record(z.string(), z.string()).default({}) }).strict();
+const WatcherSchema = z.object({ version: z.literal(1), paused: z.boolean() }).strict();
 type State = z.infer<typeof StateSchema>;
 export type WorkLogDependencies = { inputs(root: string, registry?: string, seen?: Record<string, string>): Promise<WorkInput[]>;
   completions?(root: string, registry?: string): Promise<WorkCompletion[]>;
@@ -34,7 +35,57 @@ export class WorkLogService {
   private lifetime = new AbortController();
   private mutations: Promise<unknown> = Promise.resolve();
   private repairPending = true;
+  private activated = false;
+  private watcherTimer?: ReturnType<typeof setTimeout>;
+  private watcherActive?: Promise<void>;
+  private initializationRetryAt = 0;
+  private initializationError: unknown;
+  private failures = 0;
   constructor(private root: string, private registry?: string, private deps: WorkLogDependencies = { inputs: readWorkInputs, completions: readWorkCompletions, summarize: summarizeWork }) {}
+  /** Only the primary core runtime activates production watching. Renderer reads
+   * remain reads; multiple mounts never own competing startup side effects. */
+  activate() {
+    if (this.activated || this.disposed) return;
+    this.activated = true;
+    const poll = () => {
+      if (this.disposed) return;
+      this.watcherActive = this.mutations.then(async () => {
+        await this.ensureInitialized();
+        if (this.disposed) return;
+        const paused = await this.isPaused();
+        if (paused) await this.stop();
+        if (!this.active) await withWorkLock(join(this.privateDir, "producer.lock"), () => this.loadDocument());
+        if (!paused && !this.snapshot.running) {
+          this.controller = new AbortController(); this.snapshot.running = true; this.schedule(1);
+        }
+      }).catch((error) => {
+        this.snapshot.notice = error instanceof Error && error.message.length < 512 ? error.message : "Work Log unavailable; check its saved settings.";
+      }).finally(() => {
+        this.watcherActive = undefined;
+        if (!this.disposed) this.watcherTimer = setTimeout(poll, Math.max(3000, this.initializationRetryAt - Date.now()));
+      });
+      this.mutations = this.watcherActive;
+    };
+    poll();
+  }
+  private async ensureInitialized() {
+    if (!this.initialized && Date.now() < this.initializationRetryAt) throw this.initializationError;
+    await (this.initialized ??= this.init().catch((error) => {
+      this.initialized = undefined; this.initializationError = error; this.initializationRetryAt = Date.now() + 30000;
+      throw error;
+    }));
+  }
+  private async isPaused() {
+    try { return WatcherSchema.parse(JSON.parse(await readFile(join(this.privateDir, "watcher.json"), "utf8"))).paused; }
+    catch (error) {
+      if ((error as NodeJS.ErrnoException).code === "ENOENT") return false;
+      throw new Error("Work Log watcher settings need attention; they were not replaced.");
+    }
+  }
+  private async savePaused(paused: boolean) {
+    await this.isPaused(); // Validate existing preferences; never overwrite malformed data.
+    await atomic(join(this.privateDir, "watcher.json"), JSON.stringify({ version: 1, paused }));
+  }
   private async init() {
     this.root = await realpath(this.root);
     this.privateDir = resolve(this.root, (await runWorkCommand("git", ["rev-parse", "--git-path", "swarm-work-log"], this.root, this.controller.signal, "", 10000)).trim());
@@ -103,13 +154,14 @@ export class WorkLogService {
   }
   async request(request: WorkLogRequest): Promise<WorkLogSnapshot> {
     if (this.disposed) throw new Error("Work Log is stopped");
-    await (this.initialized ??= this.init());
+    await this.ensureInitialized();
     if (this.disposed) throw new Error("Work Log is stopped");
     if (request.type === "workLog.read" && !this.repairPending) return WorkLogSnapshotSchema.parse(this.snapshot);
     const operation = this.mutations.then(async () => {
       if (this.disposed) throw new Error("Work Log is stopped");
       if (request.type === "workLog.read") await this.repairLegacyEntries();
       if (request.type === "workLog.stop" || request.type === "workLog.start") await this.stop();
+      if (request.type === "workLog.stop") await this.savePaused(true);
       if (request.type === "workLog.start") {
         this.snapshot.settings = WorkLogSettingsSchema.parse(request.settings);
         await withWorkLock(join(this.privateDir, "producer.lock"), async () => {
@@ -117,7 +169,8 @@ export class WorkLogService {
           catch (error) { if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error; }
           this.state.settings = this.snapshot.settings; await this.saveState();
         });
-        this.controller = new AbortController(); this.snapshot.running = true; this.snapshot.notice = "";
+        await this.savePaused(false);
+        this.controller = new AbortController(); this.snapshot.running = true; this.snapshot.notice = ""; this.failures = 0;
         this.schedule(1);
       }
       if (request.type === "workLog.record") {
@@ -135,7 +188,8 @@ export class WorkLogService {
     this.mutations = operation.catch(() => {});
     return operation;
   }
-  private schedule(delay = this.snapshot.settings.debounceSeconds * 1000) {
+  private schedule(delay = Math.max(this.snapshot.settings.debounceSeconds * 1000,
+    Math.min(120000, this.snapshot.settings.debounceSeconds * 1000 * 2 ** this.failures))) {
     clearTimeout(this.timer);
     if (this.snapshot.running && !this.disposed) this.timer = setTimeout(() => {
       this.active = this.tick().finally(() => { this.active = undefined; this.schedule(); });
@@ -146,32 +200,41 @@ export class WorkLogService {
       await withWorkLock(join(this.privateDir, "producer.lock"), async () => {
         if (!this.snapshot.running || this.disposed) return;
         // Cross-window attempts are read under the same kernel lock.
-        this.state = StateSchema.parse(JSON.parse(await readFile(join(this.privateDir, "state.json"), "utf8")));
+        try { this.state = StateSchema.parse(JSON.parse(await readFile(join(this.privateDir, "state.json"), "utf8"))); }
+        catch (error) { if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error; }
+        if (await this.isPaused()) { this.snapshot.running = false; return; }
+        this.snapshot.settings = this.state.settings;
         await this.loadDocument();
         const observed = await this.deps.inputs(this.root, this.registry, this.state.seen);
         if (!this.snapshot.running || this.disposed) return;
+        if (await this.isPaused()) { this.snapshot.running = false; return; }
         const fresh = observed.filter((item) => this.state.seen[item.sessionId] !== item.boundary)
           .sort((a, b) => b.at.localeCompare(a.at));
         // Bootstrap with recent work, not the entire inherited organization history.
         const eligible = fresh.filter((item) => Date.parse(item.at) >= Date.now() - 30 * 60 * 1000).slice(0, 4);
         for (const item of fresh.filter((item) => !eligible.length || eligible.includes(item) || Date.parse(item.at) < Date.now() - 30 * 60 * 1000)) this.state.seen[item.sessionId] = item.boundary;
         await this.saveState(); // Record attempts before model admission: restart never replays.
-        if (!eligible.length) return;
+        if (!eligible.length) { this.failures = 0; this.snapshot.notice = ""; return; }
+        if (this.disposed || this.controller.signal.aborted || await this.isPaused()) { this.snapshot.running = false; return; }
         this.snapshot.summarizing = true;
         const summaries = await this.deps.summarize(eligible, this.snapshot.settings, this.controller.signal);
         if (!this.snapshot.running || this.disposed || this.controller.signal.aborted) return;
+        if (await this.isPaused()) { this.snapshot.running = false; return; }
         const entries = eligible.map((input, index) => WorkLogEntrySchema.parse({ id: `${input.sessionId}:${input.boundary}`,
           sessionId: input.sessionId, agent: input.agent, taskId: input.taskId, at: input.at, ...summaries[index], state: input.state ?? "completed", recorded: false }));
         this.snapshot.entries = [...entries, ...this.snapshot.entries].slice(0, 200);
-        await this.saveDocument(); this.snapshot.notice = "";
+        await this.saveDocument(); this.snapshot.notice = ""; this.failures = 0;
       });
     } catch (error) {
-      if (this.snapshot.running && !this.disposed) this.snapshot.notice = error instanceof Error && error.message.length < 512 ? error.message : "Work Log paused; check the summarizer configuration";
+      if (this.snapshot.running && !this.disposed) {
+        this.failures = Math.min(3, this.failures + 1);
+        this.snapshot.notice = error instanceof Error && error.message.length < 512 ? error.message : "Work Log unavailable; check the summarizer configuration.";
+      }
     } finally { this.snapshot.summarizing = false; }
   }
   private async stop() {
-    this.snapshot.running = false; clearTimeout(this.timer); this.controller.abort();
+    this.snapshot.running = false; clearTimeout(this.timer); this.timer = undefined; this.controller.abort();
     await this.active;
   }
-  async dispose() { this.disposed = true; this.lifetime.abort(); await this.stop(); await this.mutations.catch(() => {}); }
+  async dispose() { this.disposed = true; clearTimeout(this.watcherTimer); this.lifetime.abort(); await this.stop(); await this.mutations.catch(() => {}); }
 }

@@ -1588,6 +1588,7 @@ export function App() {
           })}
         </nav></OverflowStrip> : null}
         <PlanWorkspace visible worldId={snapshot.world.id} repositoryId={snapshot.project.id}
+          changeToken={snapshot.revisions.working.fingerprint}
           generationAction={planGeneration}
           generation={coreGenerationRef.current} connected={!coreUnavailable && Boolean(window.swarm)} tasks={tasks} client={taskClient}
           onOpenFile={openLinkedFile} onOpenTask={openPlanningTask} onOpenBuild={openPlanBuildTarget}

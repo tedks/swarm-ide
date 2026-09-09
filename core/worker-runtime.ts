@@ -474,6 +474,8 @@ const ready = providerPromise.then(async (provider) => {
   // A failed initial directory gets an explicit error observation with Refresh.
   void provider.listRepository({ protocolVersion: PROTOCOL_VERSION, requestId: "initial-repository", type: "repo.list", directory: "", page: 0, filter: "", refresh: true }, publish).catch(() => undefined);
   const service = await agentServicePromise;
+  if (shuttingDown) throw new Error("Workspace closed during initialization.");
+  workLog?.activate();
   if (primary) postMessage({ type: "core.ready" });
   const initial = await service?.request({ protocolVersion: PROTOCOL_VERSION, requestId: "initial-agent-snapshot", type: "agent.snapshot" });
   if (primary) publishAgents(initial?.ok && initial.value.kind === "snapshot" ? initial.value.snapshot : unavailableAgentSnapshot());
@@ -482,6 +484,7 @@ const ready = providerPromise.then(async (provider) => {
 
 function close(): void {
   shuttingDown = true; journalLifetime.abort();
+  void workLog?.dispose();
   void buildGraphPromise.then((graph) => graph.dispose());
   void targetBuildsPromise.then((builds) => builds.dispose());
   void githubPrsPromise.then((prs) => prs.dispose());

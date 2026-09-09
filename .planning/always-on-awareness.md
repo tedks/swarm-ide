@@ -12,8 +12,8 @@ only automatic model operation; explicit Pause remains effective after restart.
 ## Progress
 
 - [x] (2026-09-09) Read instructions and inspected current startup paths.
-- [ ] Persist summary Pause and start the primary core watcher automatically.
-- [ ] Recover task reads when metadata first becomes available; refresh plans.
+- [x] Persist summary Pause and start the primary core watcher automatically.
+- [x] Recover task reads when metadata first becomes available; refresh plans.
 - [ ] Join ROOT-cleared task-filter code before automatic graph loading.
 - [ ] Focused regressions, native review, documentation, pushed ready PR.
 
@@ -22,6 +22,13 @@ only automatic model operation; explicit Pause remains effective after restart.
 Work Log already has a cross-window producer lock and saves attempted turn IDs
 before inference. The renderer only reads it. Task metadata polling already runs
 but its recovery escalation incorrectly requires a previous usable snapshot.
+Native review caught publication/read overlap, a retry cap shortening long saved
+delays, close-before-ready watcher leakage, StrictMode replay and held-input Pause.
+Corrections preserve the existing producer lane and are covered by focused checks.
+The broad old planning/task-workbench target has fixture repository identities
+that disagree with the current protocol; those failures remain on the existing
+fixture issue, not a claimed successful full run. The owned task-client fixture
+now supplies its declared repository ID; new plan tests use current identities.
 
 ## Decision Log
 
