@@ -10,11 +10,22 @@ const command = async (executable, args) => (await exec(executable, args, {
   env: { PATH: process.env.PATH, LANG: "C.UTF-8" },
 })).stdout;
 
+export async function currentTmux(environment, run = command) {
+  if (!environment.TMUX) return undefined;
+  const match = /^(.*),[0-9]+,[0-9]+$/.exec(environment.TMUX);
+  if (!match || !isAbsolute(match[1]) || !/^%[0-9]+$/.test(environment.TMUX_PANE ?? "")) throw new Error("Current tmux pane is unavailable");
+  const socket = await realpath(match[1]), info = await lstat(socket);
+  if (!info.isSocket() || info.uid !== process.getuid()) throw new Error("Current tmux socket is not owned by this user");
+  const fields = (await run("tmux", ["-S", socket, "display-message", "-p", "-t", environment.TMUX_PANE, "#{pane_id}\t#{session_id}\t#{session_name}"])).trimEnd().split("\t");
+  if (fields.length !== 3 || fields[0] !== environment.TMUX_PANE || !/^\$[0-9]+$/.test(fields[1]) || !fields[2]) throw new Error("Current tmux pane changed");
+  return { tmuxSocket: socket, tmuxSessionId: fields[1], tmuxSession: fields[2] };
+}
+
 export async function selectPanes(options, run = command) {
   const target = options.tmuxSocket ? ["-S", resolve(options.cwd, options.tmuxSocket)] : ["-L", options.tmuxServer];
   // display-message takes a pane target: the colon makes this an exact session
   // selection rather than an unresolved window/pane name.
-  const selection = (await run("tmux", [...target, "display-message", "-p", "-t", `=${options.tmuxSession}:`, "#{socket_path}\t#{session_id}"])).trimEnd().split("\t");
+  const selection = (await run("tmux", [...target, "display-message", "-p", "-t", options.tmuxSessionId ? `${options.tmuxSessionId}:` : `=${options.tmuxSession}:`, "#{socket_path}\t#{session_id}"])).trimEnd().split("\t");
   if (selection.length !== 2 || !isAbsolute(selection[0]) || !/^\$\d+$/.test(selection[1])) throw new Error("The selected tmux session could not be identified.");
   const [socket, sessionId] = selection;
   const info = await lstat(socket);
@@ -51,6 +62,7 @@ export async function associateTmux(options, dependencies = {}) {
         const found = await api.discover({ socket: selected.socket, pane });
         if (!found) { skipped.push({ pane, reason: "No unique live Codex owner" }); return; }
         const root = await (dependencies.contextRoot ?? contextRoot)(found.target);
+        if (options.allowedRoots && !options.allowedRoots.includes(root)) { skipped.push({ pane, reason: "Owner belongs to another project" }); return; }
         const currentSocket = await lstat(selected.socket);
         if (currentSocket.dev !== selected.socketDev || currentSocket.ino !== selected.socketIno) throw new Error("Selected tmux server changed");
         let windowName = "";

@@ -16,7 +16,7 @@
 
       apps = forAllSystems (system:
         let swarm = { type = "app"; program = "${self.packages.${system}.swarm-ide}/bin/swarm"; };
-        in { inherit swarm; default = swarm; });
+        in { inherit swarm; swarm-ide = { type = "app"; program = "${self.packages.${system}.swarm-ide}/bin/swarm-ide"; }; default = swarm; });
 
       devShells = forAllSystems (system:
         let pkgs = import nixpkgs { inherit system; };

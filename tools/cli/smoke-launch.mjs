@@ -7,7 +7,7 @@ import { resolveOwnedVirtualPort } from "../task-integration/owned-port.mjs";
 
 const port = await resolveOwnedVirtualPort();
 const scratch = await mkdtemp(join(process.env.SWARM_X11_OWNERSHIP_DIR, "installed-cli-"));
-const repo = join(scratch, "chosen repository"), caller = join(scratch, "caller");
+let repo = join(scratch, "chosen repository"), caller = join(scratch, "caller");
 const evidence = process.env.SWARM_ARTIFACT_DIR;
 let server, desktop;
 const handlers = new Map();
@@ -17,14 +17,22 @@ try {
   const git = (args) => execFileSync("git", args, { cwd: repo, stdio: "pipe", timeout: 5000 });
   git(["init", "-b", "master"]); git(["add", "."]);
   git(["-c", "user.name=Swarm CLI test", "-c", "user.email=cli-test@example.invalid", "commit", "-m", "Create chosen repository"]);
+  const automatic = process.env.SWARM_CLI_TEST_BARE === "1";
+  if (automatic) {
+    caller = join(scratch, "bare project"); await mkdir(caller);
+    git(["clone", "--bare", repo, join(caller, ".git")]);
+    execFileSync("git", ["-C", caller, "worktree", "add", join(caller, "master"), "master"], { stdio: "pipe", timeout: 5000 });
+    execFileSync("git", ["-C", caller, "worktree", "add", "-b", "feature", join(caller, "feature")], { stdio: "pipe", timeout: 5000 });
+    repo = join(caller, "master");
+  }
   // This only satisfies the owned harness's readiness handshake. The installed
   // renderer loads file:// assets; this server never serves application code.
   server = createServer((_request, response) => response.end("Owned CLI readiness"));
   await new Promise((resolve, reject) => { server.once("error", reject); server.listen(port, "127.0.0.1", resolve); });
-  const env = { ...process.env, PATH: "/usr/bin:/bin" };
+  const env = { ...process.env, PATH: "/usr/bin:/bin", XDG_CONFIG_HOME: join(scratch, "config"), XDG_STATE_HOME: join(scratch, "state") };
   // Do not let the test's development shell supply the installed app's tools.
-  for (const key of ["NODE_OPTIONS", "NODE_PATH", "IN_NIX_SHELL", "SWARM_EXTERNAL_AGENTS_REGISTRY", "SWARM_WORKSPACE_ROOT", "SWARM_AGENT_STORE_ROOT", "SWARM_BAZEL_BIN", "SWARM_BAZEL_JAVA_HOME", "SWARM_ELECTRON_BIN", "SWARM_SOURCE_WORKSPACE", "BUILD_WORKSPACE_DIRECTORY"]) delete env[key];
-  const args = ["--workspace", "../chosen repository", "--user-data-dir", "../profile"];
+  for (const key of ["NODE_OPTIONS", "NODE_PATH", "IN_NIX_SHELL", "TMUX", "TMUX_PANE", "SWARM_EXTERNAL_AGENTS_REGISTRY", "SWARM_WORKSPACE_ROOT", "SWARM_AGENT_STORE_ROOT", "SWARM_BAZEL_BIN", "SWARM_BAZEL_JAVA_HOME", "SWARM_ELECTRON_BIN", "SWARM_SOURCE_WORKSPACE", "BUILD_WORKSPACE_DIRECTORY"]) delete env[key];
+  const args = automatic ? [] : ["--workspace", "../chosen repository", "--user-data-dir", "../profile"];
   if (process.env.SWARM_CLI_TEST_AGENT_REGISTRY) {
     if (process.env.SWARM_CLI_TEST_TMUX_SESSION) throw new Error("Choose registry or tmux test association");
     args.push("--agent-registry", process.env.SWARM_CLI_TEST_AGENT_REGISTRY);
@@ -39,7 +47,7 @@ try {
     const handler = () => { if (desktop.exitCode === null) desktop.kill(signal); };
     handlers.set(signal, handler); process.on(signal, handler);
   }
-  await writeFile(join(evidence, "launch.json"), JSON.stringify({ installedCommand: process.env.SWARM_INSTALLED_CLI, caller, workspace: repo, profile: join(scratch, "profile"), sourceText: await readFile(join(repo, "install-proof.txt"), "utf8"), productionEntry: true, devToolPathRemoved: true, existingRegistry: process.env.SWARM_CLI_TEST_AGENT_REGISTRY }));
+  await writeFile(join(evidence, "launch.json"), JSON.stringify({ installedCommand: process.env.SWARM_INSTALLED_CLI, caller, workspace: repo, profile: automatic ? null : join(scratch, "profile"), automaticBareLaunch: automatic, privateStateRoot: env.XDG_STATE_HOME, sourceText: await readFile(join(repo, "install-proof.txt"), "utf8"), productionEntry: true, devToolPathRemoved: true, existingRegistry: process.env.SWARM_CLI_TEST_AGENT_REGISTRY }));
   process.exitCode = await new Promise((resolve, reject) => { desktop.once("error", reject); desktop.once("exit", (code) => resolve(code ?? 1)); });
 } finally {
   for (const [signal, handler] of handlers) process.off(signal, handler);

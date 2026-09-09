@@ -1,13 +1,14 @@
 import { realpathSync, statSync } from "node:fs";
 import { resolve } from "node:path";
 import { spawn } from "node:child_process";
+import { prepareProject } from "./project.mjs";
 
-export const usage = `Usage: swarm [--workspace PATH] [--user-data-dir PATH]
+export const usage = `Usage: swarm-ide [--workspace PATH] [--user-data-dir PATH]
              [--tmux-server NAME | --tmux-socket PATH] --tmux-session NAME
              [--agent-registry PATH]
 
 Open Swarm IDE using the installed application, without a development server.
-  --workspace PATH      Project directory (default: the current directory)
+  --workspace PATH      Project/worktree (default: discover from current directory)
   --user-data-dir PATH  Separate Swarm window/history profile (optional)
   --tmux-server NAME    Observe Codex owners in this named tmux server
   --tmux-socket PATH    Observe this exact tmux socket instead
@@ -16,6 +17,9 @@ Open Swarm IDE using the installed application, without a development server.
   -h, --help            Show this help
 
 Relative paths are resolved from the directory where you invoke this command.
+Bare repositories select an existing worktree; settings are created outside source.
+Inside tmux, current-session owners in this project are associated automatically.
+The swarm command remains an equivalent alias.
 The project and your normal local tools are trusted. No agent is started by this command.
 `;
 
@@ -50,6 +54,12 @@ export function launchConfiguration(options, { cwd, environment, bundleRoot, ele
     throw new Error(`Workspace is not an accessible directory: ${requestedRoot}`);
   }
   const env = { ...environment, SWARM_WORKSPACE_ROOT: workspace };
+  // A shell entered through a Git hook/alias can carry another repository's
+  // selection or command-line config. Do not let it redirect core/agent Git.
+  // SSH/askpass and ordinary host credentials remain available.
+  for (const name of Object.keys(env)) {
+    if (/^GIT_(DIR|WORK_TREE|COMMON_DIR|INDEX_FILE|OBJECT_DIRECTORY|ALTERNATE_OBJECT_DIRECTORIES|NAMESPACE|PREFIX|CEILING_DIRECTORIES|DISCOVERY_ACROSS_FILESYSTEM|CONFIG|CONFIG_PARAMETERS|CONFIG_COUNT|CONFIG_KEY_.*|CONFIG_VALUE_.*)$/.test(name)) delete env[name];
+  }
   // Installed launches must not inherit a development renderer or reload watcher.
   delete env.SWARM_RENDERER_URL;
   delete env.SWARM_DEV_CONTROL;
@@ -74,21 +84,38 @@ export function launchConfiguration(options, { cwd, environment, bundleRoot, ele
 export async function launch(args, runtime) {
   const options = parseArguments(args);
   if (options.help) { process.stdout.write(usage); return 0; }
-  const config = launchConfiguration(options, { cwd: process.cwd(), environment: process.env, ...runtime });
-  if (options.tmuxSession) {
-    const { associateTmux } = await import("./tmux.mjs");
+  const context = { cwd: process.cwd(), environment: process.env, ...runtime };
+  const project = prepareProject(options, context);
+  const config = launchConfiguration({ ...options, workspace: project.workspace, userDataDir: project.profile, agentRegistry: project.registry }, context);
+  console.log(`swarm-ide: opening ${JSON.stringify(project.workspace)}`);
+  console.log(`swarm-ide: settings ${JSON.stringify(project.configPath)}`);
+  const { associateTmux, currentTmux } = await import("./tmux.mjs");
+  let associationOptions = options.tmuxSession ? options : undefined;
+  const automatic = !associationOptions && !options.agentRegistry && !context.environment.SWARM_EXTERNAL_AGENTS_REGISTRY;
+  if (automatic) {
+    try { associationOptions = await currentTmux(context.environment); }
+    catch { console.log("swarm-ide: terminal association unavailable; opening the project without new terminal owners"); }
+  }
+  if (associationOptions) {
     const invocationDirectory = process.cwd();
     let association;
     // The reused registry writer excludes its current workspace. Use the chosen
     // project, not an invocation directory such as the operator's whole home.
     try {
       process.chdir(config.cwd);
-      association = await associateTmux({ ...options, cwd: invocationDirectory });
+      association = await associateTmux({ ...associationOptions, cwd: context.cwd,
+        ...(automatic ? { allowedRoots: project.worktrees.map((row) => row.path) } : {}) }, { stateRoot: project.stateDirectory });
+    } catch (error) {
+      if (!automatic) throw error;
+      console.log("swarm-ide: no current project agents to associate; opening the project");
     } finally { process.chdir(invocationDirectory); }
-    config.env.SWARM_EXTERNAL_AGENTS_REGISTRY = association.registry;
-    console.log(`swarm: observing ${association.registered.length} agent(s) from ${options.tmuxSession}; ${association.skipped.length} pane(s) skipped`);
-    console.log(`swarm: registry ${association.registry}`);
-    console.log(`swarm: terminal ${association.terminalCommand}`);
+    if (association) {
+      config.env.SWARM_EXTERNAL_AGENTS_REGISTRY = association.registry;
+      project.rememberRegistry(association.registry);
+      console.log(`swarm: observing ${association.registered.length} agent(s) from ${associationOptions.tmuxSession}; ${association.skipped.length} pane(s) skipped`);
+      console.log(`swarm: registry ${association.registry}`);
+      console.log(`swarm: terminal ${association.terminalCommand}`);
+    }
   }
   const child = spawn(config.executable, config.args, { cwd: config.cwd, env: config.env, stdio: "inherit", shell: false });
   const forward = (signal) => { if (child.exitCode === null && child.signalCode === null) child.kill(signal); };

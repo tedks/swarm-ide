@@ -25,7 +25,14 @@ node --input-type=module -e '
   const log=fs.readFileSync(path.join(process.env.SWARM_ARTIFACT_DIR,"app.log"),"utf8");
   const profileLine=log.split("\n").find(line=>line.startsWith("swarm: profile "));
   const actualProfile=profileLine && JSON.parse(profileLine.slice("swarm: profile ".length));
-  if(actualProfile!==info.profile || !fs.statSync(info.profile).isDirectory()) throw new Error("Electron did not use the requested profile");
+  if(info.automaticBareLaunch) {
+    const opening=log.split("\n").find(line=>line.startsWith("swarm-ide: opening "));
+    if(!opening || JSON.parse(opening.slice("swarm-ide: opening ".length))!==info.workspace) throw new Error("Bare parent chose the wrong worktree");
+    if(!actualProfile?.startsWith(info.privateStateRoot+"/") || !fs.statSync(actualProfile).isDirectory()) throw new Error("Automatic private profile missing");
+    const settings=log.split("\n").find(line=>line.startsWith("swarm-ide: settings "));
+    const saved=JSON.parse(fs.readFileSync(JSON.parse(settings.slice("swarm-ide: settings ".length)),"utf8"));
+    if(saved.workspace!==info.workspace || JSON.parse(fs.readFileSync(saved.registry,"utf8")).sessions.length!==0) throw new Error("Automatic project config/empty registry missing");
+  } else if(actualProfile!==info.profile || !fs.statSync(info.profile).isDirectory()) throw new Error("Electron did not use the requested profile");
   let association;
   if(process.env.SWARM_CLI_TEST_TMUX_SESSION || info.existingRegistry) {
     const line=log.split("\n").find(line=>line.startsWith("swarm: registry "));

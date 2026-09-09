@@ -6,7 +6,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
-import { associateTmux, selectPanes } from "./tmux.mjs";
+import { associateTmux, currentTmux, selectPanes } from "./tmux.mjs";
 
 test("actual tmux selects the named session rather than an empty pane target", async () => {
   const dir = await mkdtemp(join(tmpdir(), "swarm-tmux-real-")), socket = join(dir, "socket");
@@ -83,4 +83,25 @@ test("each association starts a fresh bounded registry while preserving the old 
   assert.notEqual(first.registry, next.registry);
   assert.equal(writes.length, 2); assert(writes.every((row) => row.label.length === 120));
   assert.equal(writes[0].registry, first.registry); assert.equal(writes[1].registry, next.registry);
+}));
+
+test("automatic selection targets only the invoking pane on its checked current socket", () => fixture(async ({ socket }) => {
+  const commands = [];
+  const selected = await currentTmux({ TMUX: `${socket},123,0`, TMUX_PANE: "%7" }, async (_exe, args) => { commands.push(args); return "%7\t$2\tproject\n"; });
+  assert.deepEqual(selected, { tmuxSocket: socket, tmuxSessionId: "$2", tmuxSession: "project" });
+  assert.deepEqual(commands, [["-S", socket, "display-message", "-p", "-t", "%7", "#{pane_id}\t#{session_id}\t#{session_name}"]]);
+  assert.equal(await currentTmux({}), undefined);
+  await assert.rejects(currentTmux({ TMUX: `${socket},123,0`, TMUX_PANE: "%7" }, async () => "%9\t$2\twrong\n"));
+}));
+
+test("automatic association never registers an owner from a different project", () => fixture(async ({ socket, dir }) => {
+  const writes = [];
+  const result = await associateTmux({ tmuxSocket: socket, tmuxSession: "project", tmuxSessionId: "$0", cwd: dir, allowedRoots: ["/project/main"] }, {
+    stateRoot: join(dir, "state"),
+    command: async (_exe, args) => args.at(-1) === "#{socket_path}\t#{session_id}" ? `${socket}\t$0\n` : args.at(-1) === "#{window_name}" ? "worker" : "%1\n%2\n",
+    api: { discover: async ({ pane }) => ({ target: { processPid: pane === "%1" ? 1 : 2, processStart: "1" }, rollout: "/known/a.jsonl" }), updateRegistry: async (input) => { writes.push(input); return { sessionId: "one" }; } },
+    contextRoot: async (target) => target.processPid === 1 ? "/project/main" : "/unrelated/other",
+  });
+  assert.equal(writes.length, 1); assert.equal(writes[0].contextRoot, "/project/main");
+  assert.deepEqual(result.skipped, [{ pane: "%2", reason: "Owner belongs to another project" }]);
 }));
