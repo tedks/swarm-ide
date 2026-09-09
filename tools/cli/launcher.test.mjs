@@ -67,8 +67,10 @@ test("foreground launch uses literal arguments and reports the owned child's exi
   try {
     const script = join(root, "fake electron.mjs");
     writeFileSync(script, `import assert from 'node:assert/strict'; assert.equal(process.cwd(), process.env.SWARM_WORKSPACE_ROOT); process.exitCode = 7;`);
-    assert.equal(await launch(["--workspace", root], { bundleRoot: script, electron: process.execPath }), 7);
-    await assert.rejects(launch([], { bundleRoot: script, electron: join(root, "missing") }), /ENOENT/);
+    const project = join(root, "project"); mkdirSync(project);
+    const environment = { PATH: process.env.PATH, HOME: join(root, "home") };
+    assert.equal(await launch(["--workspace", project], { bundleRoot: script, electron: process.execPath, environment }), 7);
+    await assert.rejects(launch([], { cwd: project, environment, bundleRoot: script, electron: join(root, "missing") }), /ENOENT/);
   } finally { rmSync(root, { recursive: true, force: true }); }
 });
 for (const [signal, expected] of [["SIGINT", 130], ["SIGTERM", 143], ["SIGHUP", 129]]) {
@@ -79,10 +81,11 @@ for (const [signal, expected] of [["SIGINT", 130], ["SIGTERM", 143], ["SIGHUP", 
       const fake = join(root, "electron.mjs"), driver = join(root, "driver.mjs");
       // The bounded fallback prevents an orphan even if signal forwarding regresses.
       writeFileSync(fake, `console.log('READY'); setTimeout(() => process.exit(0), 1500);`);
-      writeFileSync(driver, `import { launch } from ${JSON.stringify(new URL("./launcher.mjs", import.meta.url).href)}; process.exitCode = await launch([], {bundleRoot: ${JSON.stringify(fake)}, electron: process.execPath});`);
-      wrapper = spawn(process.execPath, [driver], { cwd: root, stdio: ["ignore", "pipe", "inherit"] });
+      const project = join(root, "project"); mkdirSync(project);
+      writeFileSync(driver, `import { launch } from ${JSON.stringify(new URL("./launcher.mjs", import.meta.url).href)}; process.exitCode = await launch([], {bundleRoot: ${JSON.stringify(fake)}, electron: process.execPath, environment: { PATH: process.env.PATH, HOME: ${JSON.stringify(join(root, "home"))} }});`);
+      wrapper = spawn(process.execPath, [driver], { cwd: project, stdio: ["ignore", "pipe", "inherit"] });
       const closed = once(wrapper, "close");
-      await once(wrapper.stdout, "data");
+      await new Promise((resolve) => { let output = ""; wrapper.stdout.on("data", (data) => { output += data; if (output.includes("READY")) resolve(); }); });
       wrapper.kill(signal);
       assert.deepEqual(await closed, [expected, null]);
     } finally {

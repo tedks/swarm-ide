@@ -59,7 +59,7 @@ in buildBazelPackage {
     runHook preInstall
     mkdir -p "$out/share/swarm-ide/cli" "$out/bin"
     tar -xzf bazel-bin/swarm-ide-foundation.tar.gz -C "$out/share/swarm-ide"
-    cp tools/cli/{launcher,main,tmux}.mjs "$out/share/swarm-ide/cli/"
+    cp tools/cli/{launcher,main,tmux,project}.mjs "$out/share/swarm-ide/cli/"
     cp tools/cli/electron-main.cjs "$out/share/swarm-ide/cli/"
     cp bazel-bin/tools/cli/registration.cjs "$out/share/swarm-ide/cli/"
     substituteInPlace "$out/share/swarm-ide/cli/main.mjs" \
@@ -73,6 +73,7 @@ in buildBazelPackage {
       --prefix PATH : ${lib.makeBinPath [ nodejs_22 git tmux util-linux bazel_7 ]} \
       --set-default SWARM_BAZEL_BIN '${bazelBinary}' \
       --set-default SWARM_BAZEL_JAVA_HOME '${jdk21_headless}'
+    ln -s swarm "$out/bin/swarm-ide"
     runHook postInstall
   '';
 
@@ -80,7 +81,7 @@ in buildBazelPackage {
   };
   meta = {
     description = "Local development cockpit for navigating software and steering agent swarms";
-    mainProgram = "swarm";
+    mainProgram = "swarm-ide";
     license = lib.licenses.agpl3Only;
     platforms = [ "x86_64-linux" "aarch64-linux" ];
   };
