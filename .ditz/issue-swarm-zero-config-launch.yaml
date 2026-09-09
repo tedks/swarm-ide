@@ -23,3 +23,12 @@ log_events:
   who: Ted Smith
   what: started
   comment: ""
+- time: 2026-09-09T15:26:20-00:00
+  who: Ted Smith
+  what: commented
+  comment: PR145 implements zero-argument swarm-ide from worktree/nested cwd or either
+    Git bare layout, reusable private project config/registry/per-worktree profiles,
+    equivalent swarm alias and checked current-tmux project-only association. 35 focused
+    checks and Nix package pass; actual owned installed bare-parent/source proof 2.036s
+    cleanup1; native important-fix convergence CLEAN. No model/user config/managed
+    app change. Awaiting ROOT normal landing; keep in progress.
