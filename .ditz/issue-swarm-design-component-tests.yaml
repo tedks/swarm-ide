@@ -9,8 +9,8 @@ type: feature
 component: default
 release:
 reporter: Ted Smith <tedks@riseup.net>
-status: in_progress
-disposition:
+status: closed
+disposition: fixed
 creation_time: 2026-09-09T14:06:56-00:00
 references: []
 log_events:
@@ -32,3 +32,10 @@ log_events:
     reader, genuine packaged Test click and actual-worker pass/fail/no-tests probes
     passed; native review clean. Managed-window adoption follows. Unrelated legacy
     plan-first fixture failures tracked separately in swarm-plan-cockpit-fixture-identities.'
+- time: 2026-09-09T14:28:20-00:00
+  who: Ted Smith
+  what: 'closed: fixed'
+  comment: Landed PR142 with component-specific Context Build/Test actions, real Bazel
+    test execution/results, and restored component Context after task navigation.
+    65 focused checks/types, actual-index reader, real packaged and worker execution
+    proofs passed; native review clean.
