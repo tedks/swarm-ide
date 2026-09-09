@@ -1,0 +1,22 @@
+id: swarm-idle-black-screen
+title: Keep the IDE responsive after idle and recover from black screens
+desc: Investigate actual managed-window idle hang/black-screen evidence before restarting.
+  Separate renderer exception/crash, main/core blockage, GPU/display and resource
+  growth. Reproduce the concrete class in an owned virtual desktop, implement the
+  smallest source-backed fix and useful recovery without losing buffers or replaying
+  agent messages. Preserve automatic awareness; no blind timed reloads or disabled
+  graphics/security defaults. Focused local/native checks and a bounded idle/return
+  proof, with remaining uncertainty recorded.
+type: bugfix
+component: default
+release:
+reporter: Ted Smith <tedks@riseup.net>
+status: unstarted
+disposition:
+creation_time: 2026-09-09T18:26:41-00:00
+references: []
+log_events:
+- time: 2026-09-09T18:26:41-00:00
+  who: Ted Smith
+  what: created
+  comment: ""
