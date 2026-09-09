@@ -6,7 +6,7 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { PlanIndexSchema } from "../protocol/plans";
 import { DesignWorkspace, designProjection, designContracts } from "../app/renderer/plans/DesignWorkspace";
-import { contractCurveOffset } from "../app/renderer/plans/ProjectionCanvas";
+import { ProjectionCanvas, contractCurveOffset } from "../app/renderer/plans/ProjectionCanvas";
 import { initialSnapshot } from "../fixtures/world";
 import { PROTOCOL_VERSION, type CoreRequest, type CoreResponse } from "../protocol/schema";
 
@@ -31,7 +31,7 @@ const index = PlanIndexSchema.parse(JSON.parse(readFileSync(resolve(import.meta.
 const options = { visible: true, connected: true, worldId: "world:working", repositoryId: "project:swarm-ide", generation: 1 };
 afterEach(() => { cleanup(); delete window.swarm; flow.mounts = 0; flow.unmounts = 0; flow.props.clear(); flow.setViewport.mockClear(); flow.fitView.mockClear(); });
 function bridge() {
-  const request = vi.fn(async (req: CoreRequest): Promise<CoreResponse> => ({ protocolVersion: PROTOCOL_VERSION, requestId: req.requestId, ok: true, sequence: 1, snapshot: initialSnapshot(),
+  const request = vi.fn(async (req: CoreRequest): Promise<CoreResponse> => ({ protocolVersion: PROTOCOL_VERSION, requestId: req.requestId, ok: true, sequence: 1, snapshot: { ...initialSnapshot(), project: { ...initialSnapshot().project, id: req.type === "plans.read" ? req.repositoryId : options.repositoryId } },
     ...(req.workspaceId ? { workspaceId: req.workspaceId, snapshot: { ...initialSnapshot(), project: { ...initialSnapshot().project, id: req.workspaceId } } } : {}),
     ...(req.type === "plans.read" ? { plans: { status: "observed", index: structuredClone(index), revision: "a".repeat(64), observedAt: "2026-09-08T00:00:00.000Z" } } :
       req.type === "file.read" ? { file: { kind: "read", path: req.path, content: `# Document\n\n${req.path}`, revision: "a".repeat(64), size: 64 } } : {}) }));
@@ -39,6 +39,56 @@ function bridge() {
 }
 
 describe("component graph remains stable and truthful", () => {
+  it("gives existing hierarchy columns and rows room without changing authored contracts", () => {
+    const root = designProjection(index, index.nodes[0]!);
+    expect(root.nodes[2]!.position!.x - root.nodes[1]!.position!.x).toBeGreaterThanOrEqual(300);
+    expect(root.nodes[4]!.position!.y - root.nodes[1]!.position!.y).toBeGreaterThanOrEqual(140);
+    expect(root.nodes[1]!.position!.y - root.nodes[0]!.position!.y).toBeGreaterThanOrEqual(140);
+    expect(root.nodes.map(n => n.id)).toEqual(index.nodes.filter(n => n.id === "design:system" || n.parentId === "design:system").map(n => n.id));
+  });
+  it("opts only the component view into dragging and preserves keyboard/click activation", async () => {
+    bridge(); render(<DesignWorkspace {...options} repositoryId="drag-mount" onOpenFile={vi.fn()} />);
+    await screen.findByText("docs/design/system.md");
+    expect(flow.props.get("component").nodesDraggable).toBe(true);
+    expect(flow.props.get("component").autoPanOnNodeDrag).toBe(false);
+    expect(screen.getByRole("button", { name: "Reset layout" })).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "design:cockpit" }));
+    await screen.findByText("docs/design/cockpit.md");
+  });
+  it("applies live node changes, scopes arrangements, drops removed IDs and resets only this view", () => {
+    const nodes = [{ id: "design:a", title: "A", subtitle: "", position: { x: 0, y: 0 } }, { id: "design:b", title: "B", subtitle: "", position: { x: 320, y: 140 } }];
+    const onSelect = vi.fn();
+    const component = (scope: string, input = nodes) => <ProjectionCanvas label="drag-test" nodes={input} edges={[]} selected={null} onSelect={onSelect} {...{ layoutScope: scope }} />;
+    const view = render(component("world/repo/a"));
+    const position = () => flow.props.get("component").nodes[0].position;
+    const move = (x: number, y: number) => act(() => flow.props.get("component").onNodesChange([{ id: "design:a", type: "position", position: { x, y }, dragging: true }]));
+    const cameraBefore = { ...flow.viewport };
+    move(42, 80);
+    expect(position()).toEqual({ x: 42, y: 80 });
+    expect(flow.props.get("component").nodes[1].position).toEqual(nodes[1]!.position);
+    expect(flow.viewport).toEqual(cameraBefore); expect(onSelect).not.toHaveBeenCalled();
+    view.rerender(component("world/repo/a", structuredClone(nodes))); // ordinary refresh
+    expect(position()).toEqual({ x: 42, y: 80 });
+    for (const scope of ["world/repo/b", "world/repo/a/contract", "world/another-repo/a", "other-world/repo/a"]) {
+      view.rerender(component(scope)); expect(position()).toEqual(nodes[0]!.position); move(99, 101);
+    }
+    view.rerender(component("world/repo/a")); expect(position()).toEqual({ x: 42, y: 80 });
+    fireEvent.click(screen.getByRole("button", { name: "Reset layout" }));
+    expect(position()).toEqual(nodes[0]!.position); expect(flow.viewport).toEqual(cameraBefore);
+    view.rerender(component("world/repo/b")); expect(position()).toEqual({ x: 99, y: 101 });
+    view.rerender(component("world/repo/b", [nodes[1]!]));
+    view.rerender(component("world/repo/b")); expect(position()).toEqual(nodes[0]!.position);
+    move(18, 29); view.unmount();
+    render(component("world/repo/b")); expect(position()).toEqual({ x: 18, y: 29 });
+    expect(flow.fitView).not.toHaveBeenCalled();
+  });
+  it("leaves shared task/build/containment canvases non-draggable without layout controls", () => {
+    render(<ProjectionCanvas label="other projection" nodes={[{ id: "design:test", title: "Test", subtitle: "", position: { x: 0, y: 0 } }]} edges={[]} selected={null} onSelect={vi.fn()} />);
+    expect(flow.props.get("component").nodesDraggable).toBe(false);
+    expect(screen.queryByRole("button", { name: "Reset layout" })).toBeNull();
+    act(() => flow.props.get("component").onNodesChange([{ id: "design:test", type: "position", position: { x: 900, y: 800 } }]));
+    expect(flow.props.get("component").nodes[0].position).toEqual({ x: 0, y: 0 });
+  });
   it("opens a responsibility hierarchy without drawing every child's contracts", () => {
     const result = designProjection(index, index.nodes[0]!);
     expect(result.nodes).toHaveLength(7);

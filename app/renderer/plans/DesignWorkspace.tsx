@@ -49,8 +49,8 @@ export function designProjection(index: PlanIndex, selected: PlanNode, contractI
   const nodes: ProjectionNode[] = shown.map((node, i) => {
     return { id: node.id, title: node.title,
     subtitle: node.design?.state === "planned" ? "Planned component" : node.id === selected.id ? children.length ? "System overview" : "Selected component" : children.includes(node) ? "Responsibility area" : "Connected component",
-    position: focused ? { x: i * 420, y: 65 }
-      : i === 0 ? { x: 200, y: 0 } : { x: ((i - 1) % 3) * 200, y: 65 + Math.floor((i - 1) / 3) * 65 },
+    position: focused ? { x: i * 480, y: 80 }
+      : i === 0 ? { x: 320, y: 0 } : { x: ((i - 1) % 3) * 320, y: 160 + Math.floor((i - 1) / 3) * 160 },
     port: focused ? i === 0 ? Position.Right : Position.Left : i === 0 ? Position.Bottom : Position.Top,
   }; });
   const edges: ProjectionEdge[] = focused ? [] : children.map((node) => ({ id: `contains:${node.id}`, source: selected.id, target: node.id, label: "contains", kind: "containment" }));
@@ -189,7 +189,7 @@ export function DesignWorkspace(props: DesignWorkspaceProps) {
             {interfaces.map(({ id, link }) => <option key={id} value={id}>{link.kind ?? "contract"} · {link.label}</option>)}
           </select></label> : null}
           <GraphAgentsToggle />
-          <GraphAgentLayer locations={agentLocations}><div className="design-graph"><ProjectionCanvas cameraScope={`${worldId}:${repositoryId}:${node.id}`} label="Component design canvas" {...graph} selected={selected} onSelect={select} onSelectEdge={inspectContract} /></div></GraphAgentLayer>
+          <GraphAgentLayer locations={agentLocations}><div className="design-graph"><ProjectionCanvas cameraScope={`${worldId}:${repositoryId}:${node.id}`} layoutScope={JSON.stringify([worldId, repositoryId, node.id, selectedContract?.id ?? null])} label="Component design canvas" {...graph} selected={selected} onSelect={select} onSelectEdge={inspectContract} /></div></GraphAgentLayer>
           {selectedContract ? <aside className="design-contract-detail" aria-label="Selected architectural contract">
             <strong>{selectedContract.link.kind ?? "Contract"} · {selectedContract.link.label}</strong>
             <p>{selectedContract.source.title} → {selectedContract.target.title}</p>

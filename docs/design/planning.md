@@ -111,6 +111,18 @@ connections also available in the inspector. A selected component shows its
 incident relationships, not unrelated links among its neighbours. Selecting
 another component keeps the canvas mounted and remembers visited cameras;
 unchanged index reads retain projection identity rather than remeasuring labels.
+The Component canvas uses wider columns and rows so contracts have room. Drag a
+node to arrange it; drag empty canvas to pan. A drag neither selects a component
+nor reframes the camera. **Reset layout** restores only the displayed view's
+default positions; **Fit** still frames the full displayed graph. Position
+overrides live only in renderer-session memory, scoped to world, canonical
+repository/worktree identity, component and the selected-contract or overview
+view. Navigation and unchanged refresh retain them; removed nodes lose overrides.
+No drag writes the plan index. Other shared projection canvases remain
+non-draggable. `DesignWorkspace` opts into `ProjectionCanvas.layoutScope`;
+`//tools/living-design:checks` covers these scopes and relationship preservation.
+The existing `//tools/living-design:smoke` supports `SWARM_DESIGN_LAYOUT_ONLY=1`
+for an owned packaged node/background drag, reset and design-reading journey.
 This fixes the selection-remount mechanism, not a claim that an independent
 periodic idle-flashing cause has been reproduced.
 `DesignWorkspace` can accept that shared controller through `navigation` and a
