@@ -11,7 +11,7 @@ import { useTabOrder } from "../use-tab-order";
 import type { PlanGenerationAction } from "./PlanGeneration";
 import type { ComponentSelection } from "./ComponentTargets";
 
-export function PlanWorkspace({ visible, worldId, repositoryId, generation, connected, tasks, client, onOpenFile, onOpenTask, onOpenBuild, initialView = "design", renderWorkspace, documentVisible, onOpenDesign, restoreSelection, onSelectComponent, onSelectionChange, generationAction }: {
+export function PlanWorkspace({ visible, worldId, repositoryId, generation, connected, changeToken, tasks, client, onOpenFile, onOpenTask, onOpenBuild, initialView = "design", renderWorkspace, documentVisible, onOpenDesign, restoreSelection, onSelectComponent, onSelectionChange, generationAction }: {
   visible: boolean; worldId: string; repositoryId: string; generation: number; connected: boolean; tasks: TaskClientState;
   client: TaskBridgeClient; onOpenFile: (path: string) => void; onOpenTask: (snapshot: TaskSnapshot, id: string) => Promise<boolean>;
   onOpenBuild?: (label: string) => void;
@@ -23,10 +23,11 @@ export function PlanWorkspace({ visible, worldId, repositoryId, generation, conn
   onSelectComponent?: (id: string) => void;
   onSelectionChange?: (selection: ComponentSelection) => void;
   generationAction?: PlanGenerationAction & { refreshVersion: number };
+  changeToken?: string;
 }) {
   const [view, setView] = useState(initialView);
   const viewOrder = useTabOrder(["design", "plans", "tasks"] as const);
-  const baseNavigation = usePlanNavigation({ visible: visible && view !== "tasks", worldId, repositoryId, generation, connected });
+  const baseNavigation = usePlanNavigation({ visible: visible && view !== "tasks", worldId, repositoryId, generation, connected, changeToken });
   useLayoutEffect(() => {
     onSelectionChange?.({ node: baseNavigation.node ?? null, current: baseNavigation.current,
       worldId, repositoryId, generation });

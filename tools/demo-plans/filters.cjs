@@ -3,6 +3,7 @@
 const { app, BrowserWindow } = require("electron");
 const fs = require("node:fs/promises"), path = require("node:path"), assert = require("node:assert/strict");
 const { classifyRendererDiagnostics } = require("./diagnostics.cjs");
+const { execFileSync } = require("node:child_process");
 const evidence = process.env.SWARM_PLANS_EVIDENCE, rendererErrors = [];
 let stage = "startup";
 app.on("web-contents-created", (_event, contents) => {
@@ -46,8 +47,8 @@ async function main() {
     return state ? { text: state.doc.toString(), anchor: state.selection.main.anchor, head: state.selection.main.head } : null; });
   const camera = () => run(() => [...document.querySelectorAll('[aria-label="Component design canvas"] .react-flow__viewport')].map((node) => node.style.transform));
   await until(() => run(() => document.querySelector('[data-task-status="observed"]')), "real task observation");
-  await click(`${graph} button`, "Load dependency graph");
   await until(() => run((g) => document.querySelector(`${g} .planning-status`)?.textContent.includes("5/5 details read"), graph), "complete real graph");
+  await until(() => run(() => [...document.querySelectorAll('[aria-label="Work Log"] button')].some((button) => button.textContent.trim() === "Pause")), "automatic Work Log watcher");
   assert.deepEqual(await ids(), ["graph-join", "graph-right", "graph-root"]);
   assert.deepEqual(await edges(), [["graph-right", "graph-join"], ["graph-root", "graph-right"]].map(JSON.stringify).sort());
   await fs.writeFile(path.join(evidence, "01-active-tasks.png"), (await wc.capturePage()).toPNG());
@@ -82,13 +83,30 @@ async function main() {
   await run((g) => document.querySelector(`${g} .planning-canvas`).scrollIntoView({ block: "nearest" }), graph);
   await frame();
   await fs.writeFile(path.join(evidence, "02-show-completed-retained-source.png"), (await wc.capturePage()).toPNG());
+  stage = "automatic-metadata-advance";
+  const taskCamera = await run((g) => document.querySelector(`${g} .react-flow__viewport`).style.transform, graph);
+  execFileSync(fixture.ditzExecutable, ["add", "Observe new metadata automatically", "--id", "graph-added", "--type", "task", "--desc", "Owned ready-on-open acceptance task"], {
+    cwd: fixture.root, timeout: 30000,
+    env: { PATH: process.env.PATH, HOME: path.join(fixture.root, ".fixture-home"), XDG_CONFIG_HOME: path.join(fixture.root, ".fixture-home"),
+      LANG: "C", LC_ALL: "C", USER: "Fixture", LOGNAME: "Fixture", GIT_CONFIG_GLOBAL: "/dev/null", GIT_CONFIG_NOSYSTEM: "1",
+      GIT_TERMINAL_PROMPT: "0", GIT_AUTHOR_NAME: "Plans fixture", GIT_AUTHOR_EMAIL: "fixture@example.invalid",
+      GIT_COMMITTER_NAME: "Plans fixture", GIT_COMMITTER_EMAIL: "fixture@example.invalid" },
+  });
+  await until(() => run((g) => document.querySelector(`${g} .planning-status`)?.textContent.includes("6/6 details read"), graph), "new commit automatically replaces graph");
+  assert.equal((await ids()).length, 6, "All filter remains active through metadata replacement");
+  assert.equal((await edges()).length, 4);
+  assert.deepEqual(await source(), retained);
+  assert.deepEqual(await camera(), componentCamera);
+  assert.equal(await run((g) => document.querySelector(`${g} .react-flow__viewport`).style.transform, graph), taskCamera);
+  await fs.writeFile(path.join(evidence, "03-automatic-metadata-advance.png"), (await wc.capturePage()).toPNG());
   // Preserve dirty work; prove profile reload separately in mounted tests, not
   // by destroying this editor. The ordinary fixture files stay unchanged.
   assert.equal(await fs.readFile(path.join(fixture.root, fixture.sourcePath), "utf8"), fixture.sourceText);
   assert.deepEqual(rendererErrors, []);
   await fs.writeFile(path.join(evidence, "plans-proof.json"), JSON.stringify({ ok: true, realDitz: true, packagedCore: true, modelTurns: 0,
     elapsedMs: Date.now() - started, rendererErrors, diagnostics: classifyRendererDiagnostics(rendererErrors),
-    retained, componentCamera, activeTasks: 3, allTasks: 5, activeEdges: 2, allEdges: 4 }, null, 2));
+    retained, componentCamera, activeTasks: 3, allTasks: 5, activeEdges: 2, allEdges: 4,
+    automaticInitialGraph: true, automaticSummaryWatcher: true, automaticAdvancedTasks: 6, taskCamera }, null, 2));
 }
 main().catch(async (error) => {
   const win = BrowserWindow.getAllWindows()[0];

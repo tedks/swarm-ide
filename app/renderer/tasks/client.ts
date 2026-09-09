@@ -226,8 +226,7 @@ export class TaskBridgeClient {
     let adoptChangedRef = false;
     // Record the intended ref before sending, including if transport fails.
     if (refresh) this.lastFullRef = this.state.observation?.localRef ?? null;
-    // Without a first usable snapshot, a failed initial scan still requires
-    // Refresh or a new lifetime. Automatic adoption updates an existing list.
+    // A failed initial scan is retried only when a cheap check finds a new ref.
     this.needsInitial = false;
     // Starting another request is not evidence that the previous failure has
     // recovered. Keep that warning visible throughout the bounded pending read.
@@ -272,8 +271,8 @@ export class TaskBridgeClient {
         // Even after a failed read the provider keeps checking the local ref,
         // but preserves its error. A *different* ref is fresh reason to try,
         // including a rollback to the retained revision after a failed update.
-        adoptChangedRef = Boolean(observation.snapshot && observation.localRef &&
-          (observation.status !== "observed" || !sameGitObject(observation.snapshot.metadataCommit, observation.localRef)) &&
+        adoptChangedRef = Boolean(observation.localRef &&
+          (!observation.snapshot || observation.status !== "observed" || !sameGitObject(observation.snapshot.metadataCommit, observation.localRef)) &&
           (!this.lastFullRef || !sameGitObject(this.lastFullRef, observation.localRef)));
       }
       // Domain outcomes already have observation.reason. notice is reserved

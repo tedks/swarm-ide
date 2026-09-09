@@ -75,12 +75,12 @@ describe("online Work Log panel", () => {
     fireEvent.click(screen.getByRole("button", { name: "Summary settings" }));
     fireEvent.change(screen.getByLabelText("Model"), { target: { value: "gpt-5.6-luna" } });
     fireEvent.change(screen.getByLabelText("Batch delay (seconds)"), { target: { value: "45" } });
-    fireEvent.click(screen.getByRole("button", { name: "Start" }));
-    await screen.findByRole("button", { name: "Stop" });
+    fireEvent.click(screen.getByRole("button", { name: "Resume" }));
+    await screen.findByRole("button", { name: "Pause" });
     expect(request.mock.calls[1][0]).toMatchObject({ type: "workLog.start", settings: { harness: "codex", model: "gpt-5.6-luna", debounceSeconds: 45 } });
     expect((screen.getByLabelText("Model") as HTMLInputElement).disabled).toBe(true);
-    fireEvent.click(screen.getByRole("button", { name: "Stop" }));
-    await screen.findByRole("button", { name: "Start" });
+    fireEvent.click(screen.getByRole("button", { name: "Pause" }));
+    await screen.findByRole("button", { name: "Resume" });
     expect(request.mock.calls[2][0].type).toBe("workLog.stop");
   });
 
@@ -101,8 +101,8 @@ describe("online Work Log panel", () => {
     render(<WorkLogPanel />); await act(async () => {});
     request.mockImplementationOnce((input) => { held = input; return new Promise((resolve) => { release = resolve; }); });
     await act(async () => vi.advanceTimersByTime(3000));
-    fireEvent.click(screen.getByRole("button", { name: "Start" }));
-    fireEvent.click(screen.getByRole("button", { name: "Start" }));
+    fireEvent.click(screen.getByRole("button", { name: "Resume" }));
+    fireEvent.click(screen.getByRole("button", { name: "Resume" }));
     await act(async () => vi.advanceTimersByTime(9000));
     expect(request).toHaveBeenCalledTimes(2);
     await act(async () => release(reply(held)));
@@ -114,7 +114,7 @@ describe("online Work Log panel", () => {
     const request = bridge(); const view = render(<WorkLogPanel coreGeneration={1} />); await act(async () => {});
     request.mockImplementationOnce((input) => { held = input; return new Promise((resolve) => { release = resolve; }); });
     await act(async () => vi.advanceTimersByTime(3000));
-    fireEvent.click(screen.getByRole("button", { name: "Start" }));
+    fireEvent.click(screen.getByRole("button", { name: "Resume" }));
     view.rerender(<WorkLogPanel coreGeneration={2} />); await act(async () => {});
     const stale = observation(); stale.entries[0].outcome = "Old core result";
     await act(async () => release(reply(held, stale)));
@@ -127,7 +127,7 @@ describe("online Work Log panel", () => {
   it("retains outcomes on a failed mutation and never retries the mutation", async () => {
     vi.useFakeTimers(); const request = bridge(); render(<WorkLogPanel />); await act(async () => {});
     request.mockRejectedValueOnce(new Error("Summary start could not be confirmed"));
-    fireEvent.click(screen.getByRole("button", { name: "Start" })); await act(async () => {});
+    fireEvent.click(screen.getByRole("button", { name: "Resume" })); await act(async () => {});
     expect(screen.getByText("Summary start could not be confirmed")).toBeTruthy();
     expect(screen.getByText("Added a live fleet feed.")).toBeTruthy();
     await act(async () => vi.advanceTimersByTime(3000));
@@ -146,8 +146,8 @@ describe("online Work Log panel", () => {
     expect(screen.getByText("Recorded in Ditz")).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Summary settings" }));
     fireEvent.change(screen.getByLabelText("Model"), { target: { value: "bad model --exec" } });
-    expect((screen.getByRole("button", { name: "Start" }) as HTMLButtonElement).disabled).toBe(true);
-    fireEvent.click(screen.getByRole("button", { name: "Start" }));
+    expect((screen.getByRole("button", { name: "Resume" }) as HTMLButtonElement).disabled).toBe(true);
+    fireEvent.click(screen.getByRole("button", { name: "Resume" }));
     expect(request).toHaveBeenCalledTimes(1);
   });
 });

@@ -619,7 +619,7 @@
       "summary": "Read timestamped commands and edits separately from concrete accomplishments retained in repo task history.",
       "state": "implemented",
       "constraints": [
-        "Opening the Work Log does not start a summarizer.",
+        "The primary core watches automatically; explicit Pause is remembered across restart.",
         "Recording an outcome adds one note; it does not close the issue."
       ],
       "connections": [
@@ -676,6 +676,14 @@
           "label": "//tools/work-log:check",
           "role": "Checks logical outcomes and explicit summary controls",
           "dependencies": [{ "label": "//:quality_sources", "relation": "data" }]
+        },
+        {
+          "label": "//tools/work-log:awareness-check",
+          "role": "Checks automatic watching, durable Pause and task/plan recovery with controlled summaries",
+          "dependencies": [
+            { "label": "//:quality_sources", "relation": "data" },
+            { "label": "//tools/work-log:sources", "relation": "data" }
+          ]
         },
         {
           "label": "//tools/operator-cockpit:activity-refresh",

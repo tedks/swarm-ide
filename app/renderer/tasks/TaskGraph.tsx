@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { sameGitObject, type TaskDetail, type TaskSnapshot } from "../../../protocol/tasks";
+import { type TaskDetail, type TaskSnapshot } from "../../../protocol/tasks";
 import { TaskBridgeClient, type TaskClientState } from "./client";
 import { ACTIVE_TASK_STATUSES, TASK_GRAPH_STATUSES, TASK_GRAPH_STATUS_LABELS, filterTaskGraph, loadTaskGraphDetails, parseTaskGraphStatuses, projectTaskGraph, scopeTaskGraph, type TaskGraphStatus } from "./graph";
 import { ProjectionCanvas } from "../plans/ProjectionCanvas";
@@ -17,11 +17,20 @@ export function TaskGraph({ client, state, visible, onOpen }: {
   const [scope, setScope] = useState<{ anchor: string | null; whole: boolean; version: number }>({ anchor: null, whole: false, version: 0 });
   const [preference, setPreference] = useState<{ key: string; statuses: readonly TaskGraphStatus[] } | null>(null);
   const current = useRef<AbortController | null>(null);
+  const attempted = useRef<{ owner: TaskBridgeClient; key: string } | null>(null);
+  const [foreground, setForeground] = useState(() => !document.hidden);
+  useEffect(() => {
+    const update = () => setForeground(!document.hidden);
+    document.addEventListener("visibilitychange", update);
+    return () => document.removeEventListener("visibilitychange", update);
+  }, []);
   const canvasWasShown = useRef(false);
   // First fit must see the completed projection, not the transient
   // isolated-node stack while details arrive. Later reads preserve the camera.
   if (loaded && !loading) canvasWasShown.current = true;
   const snapshot = state.observation?.snapshot ?? null;
+  const loadKey = JSON.stringify([snapshot?.worldId, snapshot?.repositoryId, snapshot?.metadataCommit, client.graphLifetime()]);
+  const eligible = Boolean(visible && foreground && state.connected && snapshot && client.graphCurrent(snapshot));
   // A retained old graph keeps its own preferences until a new graph is loaded.
   // Do not save defaults while switching repositories or metadata revisions.
   const preferenceSnapshot = loaded?.snapshot ?? snapshot;
@@ -58,30 +67,35 @@ export function TaskGraph({ client, state, visible, onOpen }: {
   }, [client, cameraScope, state.selectedTaskId]);
   const select = (id: string) => setLocalSelection({ id, owner: client, scope: cameraScope, external: state.selectedTaskId, nonce: ++localSerial.current });
   const read = async () => {
-    if (!snapshot || !client.graphCurrent(snapshot)) return;
-    current.current?.abort();
+    if (!eligible || !snapshot || current.current) return;
     const controller = new AbortController(); current.current = controller;
     const lifetime = client.graphLifetime();
+    attempted.current = { owner: client, key: loadKey };
     setLoading(true); setNotice("");
-    setLoaded({ snapshot, owner: client, lifetime, details: new Map(), attempted: 0 });
+    let replacement = { snapshot, owner: client, lifetime, details: new Map() as ReadonlyMap<string, TaskDetail>, attempted: 0 };
+    if (!loaded) setLoaded(replacement);
     await loadTaskGraphDetails(snapshot, async (id, signal) => {
       const detail = await client.readGraphDetail(snapshot, id, signal);
       if (!client.graphCurrent(snapshot, lifetime)) controller.abort();
       return detail;
     }, controller.signal, (details, attempted) => {
-      if (current.current === controller && !controller.signal.aborted && client.graphCurrent(snapshot, lifetime))
-        setLoaded({ snapshot, owner: client, lifetime, details, attempted });
+      replacement = { snapshot, owner: client, lifetime, details, attempted };
+      if (!loaded && current.current === controller && !controller.signal.aborted && client.graphCurrent(snapshot, lifetime)) setLoaded(replacement);
     });
-    if (current.current === controller) { setLoading(false); current.current = null; }
+    if (current.current === controller) {
+      if (!controller.signal.aborted && client.graphCurrent(snapshot, lifetime)) setLoaded(replacement);
+      setLoading(false); current.current = null;
+    }
   };
   useEffect(() => {
-    if (!visible || !state.connected || !snapshot || loaded && (!fresh || loaded.owner !== client ||
-      snapshot.worldId !== loaded.snapshot.worldId || snapshot.repositoryId !== loaded.snapshot.repositoryId ||
-      !sameGitObject(snapshot.metadataCommit, loaded.snapshot.metadataCommit))) {
+    const sameAttempt = attempted.current?.owner === client && attempted.current.key === loadKey;
+    if (!eligible || !sameAttempt) {
+      if (current.current) attempted.current = null;
       current.current?.abort(); current.current = null; setLoading(false);
     }
-  }, [client, visible, state.connected, snapshot, loaded?.snapshot, loaded?.owner, fresh]);
-  useEffect(() => () => { current.current?.abort(); current.current = null; }, []);
+    if (eligible && (attempted.current?.owner !== client || attempted.current.key !== loadKey)) void read();
+  }, [client, loadKey, eligible]);
+  useEffect(() => () => { current.current?.abort(); current.current = null; attempted.current = null; }, []);
   const projection = useMemo(() => loaded ? projectTaskGraph(loaded.snapshot, loaded.details, loaded.attempted) : null, [loaded]);
   const availableTaskIds = useMemo(() => new Set(loaded?.snapshot.summaries.map((row) => row.id)), [loaded?.snapshot]);
   const filtered = useMemo(() => projection ? filterTaskGraph(projection, statuses) : null, [projection, statuses]);
@@ -106,19 +120,19 @@ export function TaskGraph({ client, state, visible, onOpen }: {
   };
   const open = async (id: string) => {
     if (!loaded || loaded.owner !== client || !client.graphCurrent(loaded.snapshot, loaded.lifetime)) return;
-    if (!await onOpen(loaded.snapshot, id)) setNotice("Task link is unavailable at this revision. Refresh tasks and load the graph again.");
+    if (!await onOpen(loaded.snapshot, id)) setNotice("Task link is unavailable at this revision. Task metadata updates automatically.");
   };
   return <section className="planning-projection task-projection" aria-label="Task dependency graph" hidden={!visible}>
     <header className="planning-heading"><div><strong>Task blockage</strong><small>Blocker → blocked · Ditz metadata, not dispatch readiness</small></div>
-      <button disabled={!snapshot || !client.graphCurrent(snapshot) || loading} onClick={() => { void read(); }}>{loading ? "Loading dependencies…" : "Load dependency graph"}</button>
+      <button disabled={!eligible || loading} onClick={() => { void read(); }}>{loading ? "Loading dependencies…" : "Refresh dependencies"}</button>
       <button disabled={!state.connected || state.refreshing} onClick={() => { void client.refresh(); }}>Refresh task metadata</button>
     </header>
     <div className="planning-status" role="status">
-      {!loaded ? <p>Load task relationships from this metadata revision. Filters only change the view; completed tasks stay in Ditz.</p> : <p>
+      {!loaded ? <p>Waiting for task metadata. Relationships load automatically; completed tasks stay in Ditz.</p> : <p>
         Metadata <code>{loaded.snapshot.metadataCommit.hex.slice(0, 12)}</code> · {projection!.loaded}/{projection!.total} details read · {projection!.unread} unread
         {projection!.attempted > projection!.loaded ? ` · ${projection!.attempted - projection!.loaded} reads unavailable` : ""}
         {projection!.attempted < projection!.total ? ` · ${projection!.total - projection!.attempted} ${loading ? "pending" : "not attempted"}` : ""}
-        {!fresh ? " · RETAINED / NOT CURRENT — Refresh tasks and load again" : " · revision checked"}
+        {!fresh ? " · RETAINED / NOT CURRENT" : " · revision checked"}
       </p>}
       {notice || state.notice || state.observation?.reason?.message ? <p>{notice || state.notice || state.observation?.reason?.message}</p> : null}
     </div>
@@ -160,6 +174,6 @@ export function TaskGraph({ client, state, visible, onOpen }: {
           <button disabled={!fresh || !availableTaskIds.has(edge.target)} onClick={() => { void open(edge.target); }}>{edge.target}</button>
         </li>)}</ul></details>
       </div>
-    </> : <div className="planning-empty">A task graph appears here after explicit loading. Isolated tasks remain visible.</div>}
+    </> : <div className="planning-empty">Task relationships appear here automatically. Isolated tasks remain visible.</div>}
   </section>;
 }

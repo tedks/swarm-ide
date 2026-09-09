@@ -39,7 +39,8 @@ function harness(lifecycle = false) {
   };
   const ready = (generation: number, phase: Lifecycle["core"]["phase"] = "ready", revision = generation): Lifecycle => ({
     revision, core: { generation, phase, message: `Core ${phase}` }, reload: "idle", notice: "fixture" });
-  const response = (call: Pending, task: unknown, sequence = 1, workspace = initialSnapshot()) => ({
+  const response = (call: Pending, task: unknown, sequence = 1, workspace = { ...initialSnapshot(),
+    project: { id: TASK_FIXTURE_WORLD.repositoryId, name: "Task fixture" } }) => ({
     protocolVersion: PROTOCOL_VERSION, requestId: call.request.requestId, ok: true, sequence, snapshot: workspace, task,
   });
   const reply = (call: Pending, task: unknown, sequence = 1) => call.resolve(CoreResponseSchema.parse(response(call, task, sequence)));
@@ -84,6 +85,20 @@ function refChanged(sequence: number, retained = taskObservationFixture(), hash 
 }
 
 describe("automatic task-list adoption", () => {
+  it("recovers an initially missing snapshot once per newly available ref", async () => {
+    const h = harness(); h.client.setVisible(true);
+    h.snapshot({ ...taskObservationFixture("unavailable"), snapshot: null, localRef: null }); await drain();
+    const failed = { ...taskObservationFixture("malformed"), snapshot: null, sequence: 2, localRef: advanceObservation(2).localRef };
+    await vi.advanceTimersByTimeAsync(5000); h.snapshot(failed); await drain();
+    expect(h.latest("tasks.snapshot").request).toMatchObject({ refresh: true });
+    h.snapshot({ ...failed, sequence: 3 }); await drain();
+    await vi.advanceTimersByTimeAsync(10000); h.snapshot({ ...failed, sequence: 4 }); await drain();
+    expect(h.calls.filter((call) => call.request.type === "tasks.snapshot" && call.request.refresh)).toHaveLength(2);
+    await vi.advanceTimersByTimeAsync(5000); h.snapshot({ ...failed, sequence: 5, localRef: advanceObservation(5, "d").localRef }); await drain();
+    expect(h.latest("tasks.snapshot").request).toMatchObject({ refresh: true });
+    h.snapshot(advanceObservation(6, "d")); await drain();
+    expect(h.client.getSnapshot().observation?.status).toBe("observed");
+  });
   it("adopts a changed ref without Refresh, retains rows while held and coalesces focus/timer triggers", async () => {
     const h = await observed(), retained = h.client.getSnapshot().observation!.snapshot;
     await vi.advanceTimersByTimeAsync(5000); h.snapshot(refChanged(2)); await drain();
@@ -367,17 +382,17 @@ describe("TaskBridgeClient read-only observation scheduling", () => {
     expect(h.client.getSnapshot()).toMatchObject({ notice: null, refreshing: false });
   });
 
-  it("does not automatically repeat the initial full scan after failure or on reopening", async () => {
+  it("does not repeat an initial failed scan without an available metadata ref", async () => {
     const h = harness(); h.client.setVisible(true); const first = h.latest("tasks.snapshot");
     expect(first.request).toMatchObject({ refresh: true });
     first.resolve({ protocolVersion: PROTOCOL_VERSION, requestId: first.request.requestId,
       ok: false, error: { code: "CORE_TIMEOUT", message: "Initial scan did not complete." } }); await drain();
     h.client.setVisible(false); h.client.setVisible(true);
     expect(h.latest("tasks.snapshot").request).toMatchObject({ refresh: false });
-    h.snapshot(taskObservationFixture("unavailable", false)); await drain();
+    h.snapshot({ ...taskObservationFixture("unavailable", false), localRef: null }); await drain();
     await vi.advanceTimersByTimeAsync(5000);
     expect(h.latest("tasks.snapshot").request).toMatchObject({ refresh: false });
-    h.snapshot({ ...taskObservationFixture("unavailable", false), sequence: 2 }); await drain();
+    h.snapshot({ ...taskObservationFixture("unavailable", false), localRef: null, sequence: 2 }); await drain();
     expect(h.calls.filter((call) => call.request.type === "tasks.snapshot" && call.request.refresh)).toHaveLength(1);
     void h.client.refresh(); expect(h.latest("tasks.snapshot").request).toMatchObject({ refresh: true });
   });

@@ -143,17 +143,27 @@ Ditz reads are pinned to metadata revisions. The visible list checks the local r
 every five seconds and on focus/reopening, then automatically reads changed
 metadata, keeping its old rows until the replacement is valid. One cheap check
 can start at most one full read; a further change catches up on the next check.
-An unchanged failed revision is not repeatedly scanned. Manual Refresh remains
-recovery, including when the initial read never produced a usable list.
+An unchanged failed revision is not repeatedly scanned. A newly available metadata
+ref also recovers an initially missing or failed list, once per discovered ref.
+Manual Refresh remains available to retry an unchanged failure deliberately.
+
+Component plans refresh automatically on the working-source fingerprint and on
+return to the application. Held reads coalesce changes into one catch-up read;
+identical indices keep their object identity and selected component. Failed reads
+retain the prior plan for display but revoke its links until recovery.
 
 The complete task list has no arbitrary issue-count cap. Reader and response
 capacity is bounded by bytes, deadlines and validated data shape instead;
 closed issues are not discarded to fit. Git batch framing scales with the
 entries in the byte-bounded metadata tree. Oversized or malformed updates still
 retain the last good revision. Task graphs include every available task and
-recorded edge without graph count truncation. Detail loading keeps four requests
+recorded edge without graph count truncation. Detail loading starts automatically
+once per semantic metadata revision and client lifetime. It keeps four requests
 in flight, coalesces progress, and cancels on hide, disposal or identity/revision
-change. The underlying projection retains isolated tasks and missing endpoints.
+change. Resuming catches up to the latest revision once; failed details at the
+same revision do not trigger an automatic retry loop. Refresh dependencies is
+an optional explicit retry. A replacement keeps the prior graph mounted until
+its reads finish. The projection retains isolated tasks and missing endpoints.
 The Task blockage view defaults to active statuses (not started, in progress and
 paused), with a compact Filters disclosure, Active/All presets and individual
 status choices. Completed tasks remain in canonical Ditz history. The small
@@ -186,7 +196,10 @@ complete-graph, client, scope and mounted graph tests plus both TypeScript check
 With `SWARM_PLANS_CASE=filters`, the existing `//tools/demo-plans:smoke` uses
 `tools/demo-plans/filters.cjs` from its `:sources` input for a small real CLI-Ditz
 Active/All journey, retaining dirty source, cursor and the component camera.
-It uses the same owned virtual desktop and packaged core, without a model turn.
+It also verifies no-click graph/Work Log startup and an actual new Ditz commit
+automatically replacing dependencies while preserving filters and both cameras.
+It uses the same owned virtual desktop and packaged core with a private empty
+agent registry, without a model turn.
 The task client and its regressions are already included by `//:quality_sources`;
 focused client tests and both TypeScript boundaries can run through
 `//tools/demo-syntax:editor-tests --test_arg=tests/task-client.test.ts`.

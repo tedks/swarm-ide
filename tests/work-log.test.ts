@@ -25,6 +25,95 @@ const input = (): WorkInput => ({ sessionId: "a", agent: "Worker A", taskId: "ta
 const summary = { outcome: "Implemented parser.", areas: ["core/parser.ts"], checks: ["Focused tests reported passing"], followUps: [] };
 
 describe("online Work Log", () => {
+  it("starts from core activation without a read or Start and preserves Pause across restart", async () => {
+    const f = await fixture(), row = input(), summarize = vi.fn(async () => [summary]);
+    const deps = { inputs: async () => [row], summarize };
+    const first = new WorkLogService(f.root, undefined, deps); services.push(first);
+    first.activate(); first.activate();
+    await vi.waitFor(() => expect(summarize).toHaveBeenCalledTimes(1));
+    await vi.waitFor(async () => expect((await first.request(read)).entries).toHaveLength(1));
+    await first.request(request("workLog.stop")); await first.dispose();
+    const next = new WorkLogService(f.root, undefined, deps); services.push(next); next.activate();
+    await new Promise((resolve) => setTimeout(resolve, 80));
+    expect((await next.request(read)).running).toBe(false); expect(summarize).toHaveBeenCalledTimes(1);
+    await next.request(request("workLog.start", { settings })); await next.dispose();
+    const resumed = new WorkLogService(f.root, undefined, deps); services.push(resumed); resumed.activate();
+    await vi.waitFor(async () => expect((await resumed.request(read)).running).toBe(true));
+    expect((await resumed.request(read)).settings).toEqual(settings);
+    expect(summarize).toHaveBeenCalledTimes(1);
+  });
+  it("automatically watches idle input without calling the model or writing Ditz", async () => {
+    const f = await fixture(), inputs = vi.fn(async () => []), summarize = vi.fn(async () => [summary]);
+    const record = vi.spyOn(workCommands, "recordWorkOutcome");
+    const service = new WorkLogService(f.root, undefined, { inputs, summarize }); services.push(service);
+    service.activate();
+    await vi.waitFor(() => expect(inputs).toHaveBeenCalledTimes(1));
+    expect(summarize).not.toHaveBeenCalled(); expect(record).not.toHaveBeenCalled();
+    expect((await service.request(read)).running).toBe(true);
+    await service.dispose(); expect((service as unknown as { timer?: unknown }).timer).toBeUndefined();
+  });
+  it("two activated windows admit a completed turn once and observe saved Pause", async () => {
+    const f = await fixture(), row = input(), summarize = vi.fn(async () => [summary]);
+    const deps = { inputs: async () => [row], summarize };
+    const a = new WorkLogService(f.root, undefined, deps), b = new WorkLogService(f.root, undefined, deps); services.push(a, b);
+    a.activate(); b.activate();
+    await vi.waitFor(() => expect(summarize).toHaveBeenCalledTimes(1));
+    await vi.waitFor(async () => expect((await a.request(read)).summarizing).toBe(false));
+    await a.request(request("workLog.stop"));
+    await vi.waitFor(async () => expect((await b.request(read)).running).toBe(false), { timeout: 5000 });
+    expect(summarize).toHaveBeenCalledTimes(1);
+  });
+  it("a Pause from another window prevents admission after a held input read", async () => {
+    const f = await fixture(); let release!: (rows: WorkInput[]) => void;
+    const summarize = vi.fn(async () => [summary]);
+    const deps = { inputs: () => new Promise<WorkInput[]>((resolve) => { release = resolve; }), summarize };
+    const a = new WorkLogService(f.root, undefined, deps), b = new WorkLogService(f.root, undefined, deps); services.push(a, b);
+    await a.request(read); b.activate();
+    await vi.waitFor(() => expect(release).toBeTypeOf("function"));
+    await a.request(request("workLog.stop")); release([input()]);
+    await vi.waitFor(async () => expect((await b.request(read)).running).toBe(false));
+    expect(summarize).not.toHaveBeenCalled();
+  });
+  it("disposal during the post-summary preference read prevents late publication", async () => {
+    const f = await fixture(); let release!: (paused: boolean) => void;
+    const service = new WorkLogService(f.root, undefined, { inputs: async () => [input()], summarize: async () => {
+      vi.spyOn(service as unknown as { isPaused(): Promise<boolean> }, "isPaused").mockImplementationOnce(() => new Promise<boolean>((resolve) => { release = resolve; }));
+      return [summary];
+    } }); services.push(service);
+    await service.request(request("workLog.start", { settings }));
+    await vi.waitFor(() => expect(release).toBeTypeOf("function"));
+    const closing = service.dispose(); release(false); await closing;
+    await expect(readFile(join(f.root, ".swarm/work-log.json"), "utf8")).rejects.toMatchObject({ code: "ENOENT" });
+  });
+  it("keeps a saved ten-minute batch delay and prevents a background read overlapping publication", async () => {
+    const f = await fixture(), summarize = vi.fn(async () => [summary]);
+    const service = new WorkLogService(f.root, undefined, { inputs: async () => [input()], summarize }); services.push(service);
+    await service.request(request("workLog.start", { settings: { ...settings, debounceSeconds: 600 } }));
+    await vi.waitFor(async () => expect((await service.request(read)).entries).toHaveLength(1));
+    const internal = service as unknown as { timer?: { _idleTimeout: number }; loadDocument(): Promise<void> };
+    expect(internal.timer?._idleTimeout).toBe(600000);
+    await service.request(request("workLog.stop"));
+    let release!: () => void;
+    const held = withWorkLock(join(f.root, ".git/swarm-work-log/producer.lock"), () => new Promise<void>((resolve) => { release = resolve; }));
+    await vi.waitFor(() => expect(release).toBeTypeOf("function"));
+    const documentRead = vi.spyOn(internal, "loadDocument"); service.activate();
+    await vi.waitFor(async () => expect((await service.request(read)).notice).toContain("another window"));
+    expect(documentRead).not.toHaveBeenCalled(); release(); await held;
+  });
+  it("automatic stop drains an in-flight controlled summary and startup never replaces malformed preferences", async () => {
+    const f = await fixture(); let signal!: AbortSignal;
+    const service = new WorkLogService(f.root, undefined, { inputs: async () => [input()], summarize: (_rows, _settings, abort) => {
+      signal = abort; return new Promise((resolve) => abort.addEventListener("abort", () => resolve([summary]), { once: true }));
+    } }); services.push(service); service.activate();
+    await vi.waitFor(() => expect(signal).toBeDefined()); await service.dispose(); expect(signal.aborted).toBe(true);
+    await expect(readFile(join(f.root, ".swarm/work-log.json"), "utf8")).rejects.toMatchObject({ code: "ENOENT" });
+    const path = join(f.root, ".git/swarm-work-log/watcher.json"); await writeFile(path, "broken settings");
+    const summarize = vi.fn(async () => [summary]);
+    const next = new WorkLogService(f.root, undefined, { inputs: async () => [input()], summarize }); services.push(next); next.activate();
+    await vi.waitFor(async () => expect((await next.request(read)).notice).toContain("not replaced"));
+    expect(await readFile(path, "utf8")).toBe("broken settings"); expect(summarize).not.toHaveBeenCalled();
+    await expect(next.request(request("workLog.start", { settings }))).rejects.toThrow("not replaced");
+  });
   it("reads without model calls, runs explicitly, persists and never replays an unchanged turn", async () => {
     const f = await fixture(), row = input(), summarize = vi.fn(async () => [summary]);
     const deps = { inputs: async () => [row], summarize };

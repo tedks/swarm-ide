@@ -128,10 +128,10 @@ function WorkLogView({ onOpen, onAgent, onTask, onOpenAgent, onOpenTask, control
   };
   const entries = [...(snapshot?.entries ?? [])].sort((left, right) => right.at.localeCompare(left.at) || left.id.localeCompare(right.id));
   return <section className="work-log-panel" aria-label="Work Log">
-    <header className="work-log-heading"><h3>Work Log</h3><span>{snapshot?.summarizing ? "Summarizing…" : snapshot?.running ? "Watching" : "Stopped"}</span>
+    <header className="work-log-heading"><h3>Work Log</h3><span>{snapshot?.summarizing ? "Summarizing…" : snapshot?.running ? "Watching" : "Paused"}</span>
       <button disabled={!snapshot || pending || (!snapshot.running && !validSettings)}
         onClick={() => send(snapshot?.running ? { type: "workLog.stop" } : { type: "workLog.start", settings })}>
-        {snapshot?.running ? "Stop" : "Start"}
+        {snapshot?.running ? "Pause" : "Resume"}
       </button>
       <button type="button" className="work-log-settings-toggle" aria-label="Summary settings" title="Summary settings"
         aria-expanded={settingsOpen} aria-controls={`${settingsId}-settings`} onClick={() => setSettingsOpen((open) => !open)}><span aria-hidden="true">⚙</span></button>
@@ -143,11 +143,11 @@ function WorkLogView({ onOpen, onAgent, onTask, onOpenAgent, onOpenTask, control
       <div><label htmlFor={`${settingsId}-debounce`}>Batch delay (seconds)</label><input id={`${settingsId}-debounce`} type="number" min={10} max={600} step={1}
         value={Number.isNaN(settings.debounceSeconds) ? "" : settings.debounceSeconds} disabled={settingsDisabled}
         onChange={(event) => updateSettings({ debounceSeconds: event.target.value === "" ? Number.NaN : Number(event.target.value) })} /></div>
-      <p>Summarize new agent turns. Stop to change settings.</p>
+      <p>Summarizes new agent turns automatically. Pause to change settings; Pause is remembered when you reopen the IDE.</p>
     </div>
     {notice ? <p className="work-log-notice" role="status">{notice}</p> : null}
     {snapshot?.notice && !notice ? <p className="work-log-notice" role="status">{snapshot.notice}</p> : null}
-    {!entries.length ? <p className="work-log-empty">{snapshot?.running ? "Watching for completed agent turns…" : snapshot ? "Start to collect what your agents have accomplished." : "Reading Work Log…"}</p> : null}
+    {!entries.length ? <p className="work-log-empty">{snapshot?.running ? "Watching for completed agent turns…" : snapshot ? "Summaries paused." : "Reading Work Log…"}</p> : null}
     <ol className="work-log-entries">{entries.map((entry) => <Outcome key={entry.id} entry={entry} pending={pending}
       onOpen={onOpen} onOpenAgent={onAgent ?? onOpenAgent} onOpenTask={onTask ?? onOpenTask} onRecord={(taskId) => send({ type: "workLog.record", entryId: entry.id, taskId })} />)}</ol>
   </section>;

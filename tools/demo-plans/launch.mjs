@@ -36,11 +36,15 @@ try {
   const html = await readFile(join(extracted, "renderer/index.html"), "utf8");
   if (/\b(?:src|href)=["']\/assets\//.test(html)) throw new Error("Packaged file URL has absolute asset references");
   const fixture = await createPlanFixture(scratch);
+  // Awareness starts with the primary core. This proof must never summarize
+  // inherited real agent transcripts or use the operator's registry.
+  const registry = join(scratch, "empty-agent-registry.json");
+  await writeFile(registry, JSON.stringify({ version: 1, sessions: [] }), { mode: 0o600 });
   await writeFile(join(evidence, "fixture.json"), JSON.stringify(fixture));
   server = createServer((_request, response) => { response.writeHead(200); response.end("owned packaged plans proof"); });
   await new Promise((resolve, reject) => { server.once("error", reject); server.listen(port, "127.0.0.1", resolve); });
   const environment = { ...process.env, NODE_PATH: "", SWARM_PLANS_PACKAGE: extracted, SWARM_PLANS_PROFILE: profile,
-    SWARM_PLANS_EVIDENCE: evidence, SWARM_PLANS_SCRATCH: scratch };
+    SWARM_PLANS_EVIDENCE: evidence, SWARM_PLANS_SCRATCH: scratch, SWARM_EXTERNAL_AGENTS_REGISTRY: registry };
   for (const name of ["SWARM_RENDERER_URL", "SWARM_DEV_CONTROL", "SWARM_WORKSPACE_ROOT", "SWARM_AGENT_STORE_ROOT", "NODE_OPTIONS", "ELECTRON_RUN_AS_NODE"])
     delete environment[name];
   desktop = spawn(electron, [...resolveElectronRuntimeArguments(), join(scripts, fixture.kind === "filters" ? "filters.cjs" : "acceptance.cjs"),
