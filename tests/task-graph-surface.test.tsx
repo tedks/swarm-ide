@@ -130,6 +130,40 @@ it("composes focused scope with filters, restores selected tasks and leaves manu
   expect(h.props.onOpen).not.toHaveBeenCalled();
 });
 
+it("supports individual status choices and empty-view recovery without another read", async () => {
+  const h = harness(2); closeTasks(h, ["task-1"]);
+  // Use the actual remaining summary status; fixture status is not a UI alias.
+  h.props.state.observation.snapshot!.summaries[0]!.status = "unstarted";
+  render(<TaskGraph {...h.props} />);
+  fireEvent.click(screen.getByRole("button", { name: "Load dependency graph" }));
+  await screen.findByText(/2\/2 details read/);
+  fireEvent.click(screen.getByText("Filters"));
+  fireEvent.click(screen.getByRole("checkbox", { name: "Not started" }));
+  expect(screen.getByTestId("task-canvas").dataset.count).toBe("0");
+  expect(screen.getByText("No tasks match these filters.")).toBeTruthy();
+  fireEvent.click(screen.getByRole("checkbox", { name: "Completed" }));
+  expect(screen.getByTestId("task-canvas").dataset.count).toBe("1");
+  expect(screen.queryByRole("button", { name: "Inspect graph task task-0", hidden: true })).toBeNull();
+  expect(h.readGraphDetail).toHaveBeenCalledTimes(2);
+  expect(h.props.onOpen).not.toHaveBeenCalled();
+});
+
+it("still filters in memory when local-profile storage is unavailable", async () => {
+  const h = harness(2); closeTasks(h, ["task-1"]);
+  const read = vi.spyOn(Storage.prototype, "getItem").mockImplementation(() => { throw new Error("profile unavailable"); });
+  const write = vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => { throw new Error("profile unavailable"); });
+  try {
+    render(<TaskGraph {...h.props} />);
+    fireEvent.click(screen.getByRole("button", { name: "Load dependency graph" }));
+    await screen.findByText(/2\/2 details read/);
+    expect(screen.getByTestId("task-canvas").dataset.count).toBe("1");
+    fireEvent.click(screen.getByText("Filters"));
+    fireEvent.click(screen.getByRole("button", { name: "All" }));
+    expect(screen.getByTestId("task-canvas").dataset.count).toBe("2");
+    expect(h.readGraphDetail).toHaveBeenCalledTimes(2);
+  } finally { read.mockRestore(); write.mockRestore(); }
+});
+
 it("loads the whole overview and retains its mounted camera and selection through reload/hide", async () => {
   const h = harness(), view = render(<TaskGraph {...h.props} />);
   fireEvent.click(screen.getByRole("button", { name: "Load dependency graph" }));

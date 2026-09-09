@@ -9,13 +9,16 @@ Task blockage should start with active work, not every completed issue. Operator
 ## Progress
 
 - [x] (2026-09-09) Read the task projection, loader, canvas contract and existing tests; claimed `swarm-task-graph-filters`.
-- [ ] Add focused failing regressions, then implement presentation-only filtering and repository-scoped preferences.
-- [ ] Verify one owned packaged filter journey, focused checks and native review.
-- [ ] Push a ready PR and leave Ditz in progress for ROOT landing.
+- [x] (2026-09-09 14:52Z) Reproduced three new failing UI cases with 38 existing cases passing; implemented filtering and repository-scoped preferences.
+- [x] (2026-09-09 15:00Z) Final 46 focused tests and both TypeScript boundaries pass. Actual-index reader: 60 tests pass. Native implementation and final UI/proof review CLEAN.
+- [x] (2026-09-09 14:58Z) Actual packaged filter proof passes in 1.359s with zero renderer errors and owned cleanup; source text/cursor and component camera retained.
+- [x] (2026-09-09 14:59Z) Coherent implementation pushed in PR144; final test/report commit and ready handoff follow. Ditz stays in progress until ROOT lands.
 
 ## Surprises & Discoveries
 
 The current graph already reads all available details with four concurrent requests. It merely sorts closed issues last. The keyboard outline and edge list currently ignore Focus selected scope; they must use the same visible projection as the canvas.
+
+The first new-check run produced three intended UI failures and 38 passes. After implementation, 44 tests passed but one newly added test used an unsupported Testing Library `exact` role option; removing that test-only option restored typechecking. A broader `//tools/living-design:checks` run exposed 14 unchanged fixture identity failures (planning-ui 5, component stability 4, plan actions 5). Native review traced `project:test-fixture` responses to `project:swarm-ide` requests, rejected before document activation. This is recorded on existing issue `swarm-plan-cockpit-fixture-identities`, not repaired or waived by this slice.
 
 ## Decision Log
 
@@ -23,7 +26,7 @@ The filter uses summary statuses (`unstarted`, `in_progress`, `paused`, `closed`
 
 ## Outcomes & Retrospective
 
-Implementation and evidence pending. No canonical task metadata or shared canvas API changes are planned.
+Implemented active/all/individual status filters, consistent scoped graph/outline/edges, hidden-selected-task recovery and validated per-world/repository local-profile preferences. No canonical task metadata, loader or shared canvas API changed. The first packaged proof passed in 1.310s; its screenshot showed that expanded options consumed the compact card. A small task-scoped dropdown/button correction and stronger camera-presence assertion produced the final 1.359s proof with the graph visible beside the dirty editor. Both runs had zero errors and cleanup=1. Persistence/repository changes, malformed preferences, unavailable storage and selection/scope/refresh are mounted or pure tests, not claims of separate physical-desktop proof. No model calls were made.
 
 ## Context and Orientation
 
@@ -47,7 +50,7 @@ Preferences are best-effort UI state; malformed storage cannot hide all tasks un
 
 ## Artifacts and Notes
 
-Concise progress and final evidence live in `/tmp/swarm-ide-task-filters.uQT94o/seam.md`, `verification.md` and `final-recap`. Actual results replace pending claims before handoff.
+Concise progress and final evidence live in `/tmp/swarm-ide-task-filters.uQT94o/seam.md`, `verification.md` and `final-recap`. Final owned evidence is `packaged-final/run.yfYlcS/plans-proof.json` and `02-show-completed-retained-source.png` under that step. `final-filter-checks.log` records the 46-case/typecheck gate; `index-reader.log` records actual-index checks. The broader failure log remains `focused-final.log` with precise issue attribution. Hosted CI and foreign seats were not used under the user's local-only/native-review directive.
 
 ## Interfaces and Dependencies
 
