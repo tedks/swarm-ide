@@ -18,7 +18,7 @@ look healthy.
 - [x] (2026-09-09 18:44Z) Owned desktop proof passed three hide/show cycles then controlled render failure with exact dirty source, no reload/write/send and cleanup.
 - [x] (2026-09-09 18:46Z) Final scoped target passed 27 tests/6 files and both TypeScript boundaries in 15.8 s.
 - [x] (2026-09-09 18:49Z) Native fix-delta convergence CLEAN on e1e7940, including runtime, tests, docs/maps and owned proof.
-- [ ] Final ready push/Ditz sync/owned cleanup and ROOT handoff.
+- [x] (2026-09-09 18:51Z) PR147 ready/pushed, Ditz synced; owned GUI resources cleaned and this worktree's Bazel stopped. ROOT owns merge/adoption; original cause issue stays open.
 
 ## Surprises & Discoveries
 
