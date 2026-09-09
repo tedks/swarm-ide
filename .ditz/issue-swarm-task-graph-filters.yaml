@@ -1,0 +1,21 @@
+id: swarm-task-graph-filters
+title: Filter the task dependency graph without deleting completed history
+desc: 'Task blockage currently projects closed and active Ditz tasks together. Add
+  compact visible configuration with active-by-default and status filters, clear visible/filtered/coverage
+  counts, and a simple Show all path. Filtering is renderer presentation only: retain
+  actual metadata and edges, avoid invented transitive dependencies, keep missing-endpoint
+  diagnostics and selected-task recovery. Separate from component layout/dragging;
+  ROOT owns review/landing/adoption.'
+type: feature
+component: default
+release:
+reporter: Ted Smith <tedks@riseup.net>
+status: unstarted
+disposition:
+creation_time: 2026-09-09T14:45:06-00:00
+references: []
+log_events:
+- time: 2026-09-09T14:45:06-00:00
+  who: Ted Smith
+  what: created
+  comment: ""
