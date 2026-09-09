@@ -13,9 +13,10 @@ look healthy.
 ## Progress
 
 - [x] (2026-09-09 18:32Z) Read repository instructions, plan format and ROOT evidence; verified designated clean branch.
-- [ ] Trace renderer lifetime and identify a reproducible failure class.
-- [ ] Add focused regression and smallest correction; update living design.
-- [ ] Run scoped tests, native fix-delta review and one owned desktop proof.
+- [x] (2026-09-09 18:35Z) Bounded trace found no historical idle cause; chose missing render-failure containment/diagnostics rather than a guessed idle fix.
+- [x] (2026-09-09 18:45Z) Added failure screen, mounted text readers and native event logs; updated living design/maps.
+- [x] (2026-09-09 18:44Z) Owned desktop proof passed three hide/show cycles then controlled render failure with exact dirty source, no reload/write/send and cleanup.
+- [ ] Final scoped tests and native fix-delta convergence (initial checks passed; reviewer findings corrected).
 - [ ] Push ready PR, record actual limits and Ditz accomplishments, clean owned resources.
 
 ## Surprises & Discoveries
@@ -27,15 +28,31 @@ it does not independently reproduce a foreground renderer failure. Hardware
 acceleration is already disabled. Renderer failure events are not logged and
 the React tree has no error boundary.
 
+The initial new focused target failed because its two implementation modules did
+not exist (two failed suites, no executed tests). This is not a behavioral RED or
+an idle-cause reproduction. The actual controlled desktop failure below proves
+the new response to a render exception. Native review found that a second error
+during unmount could overwrite the captured text; an instance-owned first snapshot
+and a direct cleanup-throws regression correct that. Uncertain local operations
+and same-batch native composer text now remain available in the copyable snapshot.
+
 ## Decision Log
 
 2026-09-09: Keep the managed process untouched. Diagnose only read-only metadata
 and source, then exercise owned disposable processes. No periodic reload,
 graphics setting change or observer shutdown without a proven mechanism.
 
+2026-09-09: Add only fixed-category health logs, not arbitrary exception payloads
+or URL capture. A React boundary captures in-memory text before cleanup. No
+automatic remount/reload is offered: the operator acknowledges copying text before
+normal closing/reloading. A process crash or exhausted heap is a distinct case
+that cannot rely on this renderer-owned fallback.
+
 ## Outcomes & Retrospective
 
-Investigation is in progress. The historical cause is unproved.
+The renderer now has a demonstrated nonblank render-exception fallback and native
+health categories, with no work replay. The original reported idle cause remains
+unproved. Repeated short hide/show does not stand in for a multi-hour soak.
 
 ## Context and Orientation
 
@@ -48,21 +65,29 @@ when a child render throws; it cannot recover a killed Chromium process.
 
 ## Plan of Work
 
-First inspect recurring subscriptions and state retention and record what is
-actually demonstrated. If a small concrete defect is found, reproduce it before
-correction. Otherwise add narrowly scoped renderer failure reporting and a
-non-destructive failure surface, with explicit user-controlled recovery only
-where retained buffers are safe. Update this plan with exact scope before code.
-Do not conflate diagnostics or simulated failures with a historical idle fix.
+`app/electron/window-health.ts` subscribes to native window/contents lifecycle and
+fixed renderer console categories; main mounts it and removes it on close.
+`app/renderer/renderer-health.ts` installs symmetric global error/rejection
+listeners and mount-scoped text readers. `RendererBoundary.tsx` snapshots those
+readers once before App cleanup, then shows readonly text and an explicit
+close/reload acknowledgement. App contributes unsaved sources across worktrees,
+registered drafts and uncertain local operations. TrustedLocalPane contributes
+new/ongoing native drafts through synchronous references. No observer scheduling,
+core lifecycle, settings or transport command is changed.
 
 ## Concrete Steps
 
 Work only in `/home/tedks/Projects/swarm-ide/idle-black-screen`. Start Ditz issue
 `swarm-idle-black-screen`, commit this plan and open a draft PR. Use
-`nix develop --command bazel test --jobs=2 <focused target>` and
+`nix develop --command bazel test --jobs=2 //tools/renderer-health:checks` and
 `nix develop --command bazel build --jobs=2 //:desktop-bundle` for checks.
-New focused target and actual owned desktop command will be recorded here once
-the concrete mechanism is selected. No direct Vitest/Electron invocation.
+The focused target runs boundary/health and existing new-agent/retention tests,
+then both TypeScript configurations. `nix develop --command bazel run --jobs=2
+//tools/renderer-health:smoke` owns a disposable Xvfb and real Git fixture; its
+test-only renderer imports the production App/Boundary and adds one explicit
+fault button. Packaged main/preload/core are unchanged by that fixture. Expected
+proof JSON has ok=true, three hide/show cycles, noReload=true, writes=[], errors=[]
+and render-error in categories. Cleanup must report cleanup_complete=1.
 
 ## Validation and Acceptance
 
@@ -83,11 +108,16 @@ worktree and transcripts remain after handoff. ROOT alone merges/adopts.
 ROOT observations are in `/tmp/swarm-ide-idle-recovery.FmqOMe/root-evidence.md`.
 Keep concise progress, verification and final recap in that same directory.
 
+First actual proof: `/tmp/renderer-health.mfy99k/proof.json`, elapsed 1,721 ms;
+native log recorded render-error at 2026-09-09T18:44:13.839Z, core generation 1.
+`recovery-text.png` visually inspected: readable fallback and retained dirty source.
+There were zero unexpected renderer errors and zero write/agent-send calls.
+
 ## Interfaces and Dependencies
 
 Use existing Electron, React and typed bridge dependencies. Do not introduce a
 monitoring subsystem. Any new runtime source receives a design document and
 actual Bazel input mapping in `.swarm/plans.json`.
 
-Initial plan recorded 2026-09-09 before implementation; update it when the
-investigation selects a concrete repair.
+Updated 2026-09-09 after concrete containment/diagnostic implementation and first
+proof. Original idle failure remains open rather than attributed to the test fault.

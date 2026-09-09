@@ -40,6 +40,34 @@ fixture targets.
 
 ## Lower-level map
 
+### Renderer failure containment
+
+`app/renderer/main.tsx` mounts `RendererBoundary` around the cockpit. A React
+render/lifecycle exception replaces the failed tree with an explanatory screen,
+not a blank document or automatic reload. Before React cleans up the tree, the
+boundary captures copyable unsaved source buffers across retained worktrees,
+registered steering drafts, native composers, local draft instructions and
+unconfirmed local-operation text/identity. `renderer-health.ts` holds only readers
+for mounted owners; it does not append snapshots or persist text. The boundary's
+first capture survives a second exception during cleanup.
+
+Recovery text is not a save/delivery acknowledgement. Closing/reloading stays
+guarded until the operator explicitly acknowledges copying what they need.
+No operations are replayed, and no settings, Work Log Pause state or model
+authority change. This is in-process recovery: a killed renderer, exhausted heap
+or operating-system termination can lose unsaved memory and cannot render this
+screen. Other state not captured by these owners can also be unavailable.
+
+`//tools/renderer-health:checks` exercises the boundary, mounted reader disposal,
+cleanup failures, synchronous composer retention and diagnostics plus relevant
+existing agent/recovery tests and both TypeScript boundaries. Its data input is
+`//:quality_sources`. `//tools/renderer-health:smoke` loads the packaged main/core
+and production App/Boundary in a separate test renderer entry with one explicit
+fault-injection button. It proves repeated native hide/show, retained dirty source
+and cameras, then copyable failure text without reload, disk writes or agent sends.
+The test entry is not shipped in `//:desktop-bundle`. This is not a multi-hour idle
+failure reproduction; the original reported idle/black-screen cause remains open.
+
 | Part | Actual implementation | Relationship |
 | --- | --- | --- |
 | Composition and commands | [App.tsx](../../app/renderer/App.tsx) | Chooses central surface and coordinates consumers |
