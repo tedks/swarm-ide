@@ -10,7 +10,7 @@ export function useTargetBuilds(repositoryId: string | undefined, worldId: strin
   const current = useRef({ repositoryId, worldId, realm, enabled });
   current.current = { repositoryId, worldId, realm, enabled };
   const controls = useRef<{ send(action: Action): Promise<void> } | undefined>(undefined);
-  type Action = { type: "build.observe" } | { type: "build.start"; target: string } | { type: "build.cancel"; jobId: string };
+  type Action = { type: "build.observe" } | { type: "build.start"; target: string; operation?: "build" | "test" } | { type: "build.cancel"; jobId: string };
   useEffect(() => {
     setObservation(undefined); setError(undefined); setPending(false);
     if (!repositoryId || !worldId || !enabled || !window.swarm) return;
@@ -50,7 +50,7 @@ export function useTargetBuilds(repositoryId: string | undefined, worldId: strin
     window.addEventListener("focus", refresh); refresh();
     return () => { disposed = true; clearTimeout(timer); window.removeEventListener("focus", refresh); if (controls.current === control) controls.current = undefined; };
   }, [repositoryId, worldId, realm, enabled]);
-  const start = useCallback((target: string) => controls.current?.send({ type: "build.start", target }), []);
+  const start = useCallback((target: string, operation?: "build" | "test") => controls.current?.send({ type: "build.start", target, ...(operation ? { operation } : {}) }), []);
   const cancel = useCallback((jobId: string) => controls.current?.send({ type: "build.cancel", jobId }), []);
   const scoped = observation && observation.repositoryId === repositoryId && observation.worldId === worldId ? observation : undefined;
   return { observation: scoped, error, start, cancel, busy: pending || Boolean(scoped?.blocked || scoped?.jobs.some((job) => job.status === "running" || job.status === "stopping")) };

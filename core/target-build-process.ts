@@ -5,6 +5,7 @@ import { tmpdir } from "node:os";
 import { createOwnedCodexTransport } from "./agents/owner";
 import type { CodexTransport, CodexTransportSink } from "./agents/codex-app-server";
 import { watchBuildProgress } from "./build-progress";
+import { TargetBuildOperationSchema, type TargetBuildOperation } from "../protocol/build-jobs";
 
 export interface TargetBuildResult {
   exitCode: number | null;
@@ -13,7 +14,7 @@ export interface TargetBuildResult {
   error?: string;
 }
 export interface TargetBuildExecutor {
-  run(target: string, signal: AbortSignal, progress: (message: string) => void): Promise<TargetBuildResult>;
+  run(target: string, signal: AbortSignal, progress: (message: string) => void, operation?: TargetBuildOperation): Promise<TargetBuildResult>;
   dispose(): Promise<void>;
 }
 
@@ -25,9 +26,10 @@ export function buildOutputText(bytes: Uint8Array): string {
 
 /** Exit is not cleanup. Close the owner, drain its output, then report the result. */
 export function collectTargetBuild(connect: (sink: CodexTransportSink) => CodexTransport, signal: AbortSignal,
-  timeoutMs = 15 * 60_000): Promise<TargetBuildResult> {
+  timeoutMs = 15 * 60_000, operation: TargetBuildOperation = "build"): Promise<TargetBuildResult> {
+  const activity = operation === "test" ? "Tests" : "Build";
   return new Promise((resolve, reject) => {
-    if (signal.aborted) { resolve({ exitCode: null, cleanup: "confirmed", output: "", error: "Build cancelled before launch" }); return; }
+    if (signal.aborted) { resolve({ exitCode: null, cleanup: "confirmed", output: "", error: `${activity} cancelled before launch` }); return; }
     let transport: CodexTransport | undefined, closing: ReturnType<CodexTransport["close"]> | undefined;
     let exited = false, ended = false, finishing = false, code: number | null = null, error: string | undefined;
     let tail = Buffer.alloc(0), total = 0;
@@ -36,14 +38,14 @@ export function collectTargetBuild(connect: (sink: CodexTransportSink) => CodexT
       if (finishing || !transport) return;
       finishing = true; clearTimeout(timer); signal.removeEventListener("abort", abort);
       void close().then((evidence) => resolve({ exitCode: code, cleanup: evidence.status === "confirmed" ? "confirmed" : "unknown", output: buildOutputText(tail), ...(error ? { error } : {}) }),
-        () => resolve({ exitCode: code, cleanup: "unknown", output: buildOutputText(tail), error: "Build process cleanup could not be confirmed" }));
+        () => resolve({ exitCode: code, cleanup: "unknown", output: buildOutputText(tail), error: `${activity} process cleanup could not be confirmed` }));
     };
-    const abort = () => { error = "Build cancelled"; finish(); };
-    const timer = setTimeout(() => { error = "Build exceeded its 15-minute time limit"; finish(); }, timeoutMs);
+    const abort = () => { error = `${activity} cancelled`; finish(); };
+    const timer = setTimeout(() => { error = `${activity} exceeded ${operation === "test" ? "their" : "its"} 15-minute time limit`; finish(); }, timeoutMs);
     const consume = (bytes: Uint8Array) => {
       total += bytes.byteLength;
       tail = Buffer.concat([tail, bytes]).subarray(-8192);
-      if (total > 8 * 1024 * 1024) { error = "Build output exceeded its 8 MiB limit"; finish(); }
+      if (total > 8 * 1024 * 1024) { error = `${activity} output exceeded its 8 MiB limit`; finish(); }
     };
     try {
       transport = connect({ stdout: consume, stderr: consume,
@@ -51,10 +53,10 @@ export function collectTargetBuild(connect: (sink: CodexTransportSink) => CodexT
         exit(value) {
           exited = true; code = value;
           // The guardian emits pipe EOF only after the control pipe is closed.
-          if (transport) void close().then((evidence) => { if (evidence.status !== "confirmed" || ended) finish(); }, () => { error = "Build cleanup failed"; finish(); });
+          if (transport) void close().then((evidence) => { if (evidence.status !== "confirmed" || ended) finish(); }, () => { error = `${activity} cleanup failed`; finish(); });
           if (ended) finish();
         },
-        error() { error = "Bazel could not start"; finish(); },
+        error() { error = operation === "test" ? "Tests could not start" : "Bazel could not start"; finish(); },
       });
       signal.addEventListener("abort", abort, { once: true });
       if (signal.aborted) abort();
@@ -77,7 +79,8 @@ async function executable(name: string): Promise<string> {
 export function createTargetBuildExecutor(root: string): TargetBuildExecutor {
   let scratch: Promise<string> | undefined, blocked = false;
   return {
-    async run(target, signal, progress) {
+    async run(target, signal, progress, operation = "build") {
+      TargetBuildOperationSchema.parse(operation);
       if (blocked) throw new Error("Previous build cleanup is unresolved");
       const [node, unshare, setpriv] = await Promise.all(["node", "unshare", "setpriv"].map(executable));
       const bazel = process.env.SWARM_BAZEL_BIN, java = process.env.SWARM_BAZEL_JAVA_HOME;
@@ -86,13 +89,16 @@ export function createTargetBuildExecutor(root: string): TargetBuildExecutor {
       await Promise.all([access(bazel, constants.X_OK), access(join(java, "bin/java"), constants.X_OK)]);
       const directory = await (scratch ??= mkdtemp(join(tmpdir(), "swarm-target-build-")));
       const events = join(directory, `events-${Date.now()}.jsonl`);
-      const reader = watchBuildProgress(events, progress);
+      const reader = watchBuildProgress(events, (message) => progress(operation === "test" ? `Tests: ${message}` : message));
       try {
         const result = await collectTargetBuild((sink) => createOwnedCodexTransport({ root, executable: bazel,
           nodeExecutable: node!, unshareExecutable: unshare!, setprivExecutable: setpriv!, ownerScript: join(__dirname, "agents/owner-process.js"),
           args: ["--batch", "--nosystem_rc", "--nohome_rc", "--host_jvm_args=-Xmx512m", "--host_jvm_args=-XX:ActiveProcessorCount=3",
             `--server_javabase=${java}`, `--output_user_root=${directory}`, `--output_base=${join(directory, "output")}`,
-            "build", "--jobs=3", "--color=no", "--curses=no", `--build_event_json_file=${events}`, "--", target] }, sink), signal);
+            operation, "--jobs=3", "--color=no", "--curses=no", `--build_event_json_file=${events}`,
+            // A selected test is explicit intent, even if workspace-wide test
+            // defaults filter manual targets or disable build execution.
+            ...(operation === "test" ? ["--build", "--test_output=errors", "--test_tag_filters="] : []), "--", target] }, sink), signal, undefined, operation);
         blocked = result.cleanup !== "confirmed";
         return result;
       } finally { await reader.stop(); }

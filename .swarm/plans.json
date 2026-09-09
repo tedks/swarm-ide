@@ -338,6 +338,8 @@
       "app/renderer/plans/navigation.ts",
       "app/renderer/plans/ProjectionCanvas.tsx",
       "app/renderer/plans/PlanWorkspace.tsx",
+      "app/renderer/plans/ComponentTargets.tsx",
+      "app/renderer/plans/component-targets.css",
       "app/renderer/plans/workspace.css",
       "app/renderer/plans/PlanHierarchy.tsx",
       "protocol/plans.ts",
@@ -346,7 +348,8 @@
     "taskIds": [
       "swarm-living-design",
       "swarm-generate-component-plan",
-      "swarm-plan-index-startup"
+      "swarm-plan-index-startup",
+      "swarm-design-component-tests"
     ],
     "contextRefs": [],
     "design": {
@@ -391,6 +394,14 @@
           "dependencies": [
             { "label": "//:quality_sources", "relation": "data" },
             { "label": "//tools/component-plan:sources", "relation": "data" }
+          ]
+        },
+        {
+          "label": "//tools/design-tests:checks",
+          "role": "Component Context, explicit Bazel test actions and return navigation",
+          "dependencies": [
+            { "label": "//:quality_sources", "relation": "data" },
+            { "label": "//tools/design-tests:sources", "relation": "data" }
           ]
         },
         {

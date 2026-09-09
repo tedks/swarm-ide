@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { PlanHierarchy } from "./PlanHierarchy";
 import { TaskGraph } from "../tasks/TaskGraph";
 import type { TaskBridgeClient, TaskClientState } from "../tasks/client";
@@ -9,8 +9,9 @@ import { DesignWorkspace, type DesignWorkspaceParts } from "./DesignWorkspace";
 import { usePlanNavigation } from "./navigation";
 import { useTabOrder } from "../use-tab-order";
 import type { PlanGenerationAction } from "./PlanGeneration";
+import type { ComponentSelection } from "./ComponentTargets";
 
-export function PlanWorkspace({ visible, worldId, repositoryId, generation, connected, tasks, client, onOpenFile, onOpenTask, onOpenBuild, initialView = "design", renderWorkspace, documentVisible, onOpenDesign, restoreSelection, onSelectComponent, generationAction }: {
+export function PlanWorkspace({ visible, worldId, repositoryId, generation, connected, tasks, client, onOpenFile, onOpenTask, onOpenBuild, initialView = "design", renderWorkspace, documentVisible, onOpenDesign, restoreSelection, onSelectComponent, onSelectionChange, generationAction }: {
   visible: boolean; worldId: string; repositoryId: string; generation: number; connected: boolean; tasks: TaskClientState;
   client: TaskBridgeClient; onOpenFile: (path: string) => void; onOpenTask: (snapshot: TaskSnapshot, id: string) => Promise<boolean>;
   onOpenBuild?: (label: string) => void;
@@ -20,11 +21,16 @@ export function PlanWorkspace({ visible, worldId, repositoryId, generation, conn
   onOpenDesign?: () => void;
   restoreSelection?: { id: string; serial: number };
   onSelectComponent?: (id: string) => void;
+  onSelectionChange?: (selection: ComponentSelection) => void;
   generationAction?: PlanGenerationAction & { refreshVersion: number };
 }) {
   const [view, setView] = useState(initialView);
   const viewOrder = useTabOrder(["design", "plans", "tasks"] as const);
   const baseNavigation = usePlanNavigation({ visible: visible && view !== "tasks", worldId, repositoryId, generation, connected });
+  useLayoutEffect(() => {
+    onSelectionChange?.({ node: baseNavigation.node ?? null, current: baseNavigation.current,
+      worldId, repositoryId, generation });
+  }, [baseNavigation.node, baseNavigation.current, worldId, repositoryId, generation, onSelectionChange]);
   const refreshed = useRef(0);
   useEffect(() => {
     if (!generationAction || refreshed.current === generationAction.refreshVersion) return;

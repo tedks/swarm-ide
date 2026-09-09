@@ -47,15 +47,16 @@ function JobCard({ job }: { job: Job }) {
 }
 
 function TargetJobCard({ job, onCancel }: { job: TargetBuildJob; onCancel?: (id: string) => void }) {
+  const operation = job.operation === "test" ? "Test" : "Build";
   const active = job.status === "running" || job.status === "stopping";
   const status = { running: "Running", stopping: "Stopping", succeeded: "Complete", failed: "Failed", cancelled: "Cancelled" }[job.status];
   return <article className={`resource-job status-${job.status === "failed" ? "red" : job.status === "succeeded" ? "green" : "yellow"}`} data-target-build-id={job.id}>
-    <header><strong title={job.target}>{job.target}</strong><span>{status}</span></header>
-    <div className="resource-progress-row">{active ? <progress aria-label={`${job.target} build in progress`} /> : null}<span>{number.format(job.elapsedMs / 1000)} s</span>
+    <header><strong title={job.target}>{job.target}</strong><span><small>{operation}</small> · <span>{status}</span></span></header>
+    <div className="resource-progress-row">{active ? <progress aria-label={`${job.target} ${operation.toLowerCase()} in progress`} /> : null}<span>{number.format(job.elapsedMs / 1000)} s</span>
       <time dateTime={job.startedAt} title={new Date(job.startedAt).toLocaleString()}>{new Date(job.startedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</time>
       {onCancel && active ? <button type="button" disabled={job.status === "stopping"} onClick={() => onCancel(job.id)}>Stop</button> : null}</div>
     <p className="resource-job-message">{job.message}</p>
-    {job.output ? <details><summary>Build output</summary><pre className="resource-build-output">{job.output}</pre></details> : null}
+    {job.output ? <details><summary>{operation} output</summary><pre className="resource-build-output">{job.output}</pre></details> : null}
   </article>;
 }
 

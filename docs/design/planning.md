@@ -9,6 +9,7 @@ instructions. These link to one another, but they are not interchangeable record
 | Part | Source of truth | Implementation |
 | --- | --- | --- |
 | Design/component hierarchy | [.swarm/plans.json](../../.swarm/plans.json) and component documents | [protocol/plans.ts](../../protocol/plans.ts), [core/plans.ts](../../core/plans.ts), [PlanWorkspace](../../app/renderer/plans/PlanWorkspace.tsx) |
+| Component build and test actions | Authored component target labels, classified by current Bazel rule observations | [ComponentTargets](../../app/renderer/plans/ComponentTargets.tsx), [target jobs](../../core/build-jobs.ts), [owned executor](../../core/target-build-process.ts) |
 | Generate a first design | Explicit operator request; editable local-profile prompt and Codex model/reasoning | [generation contract](../../protocol/plan-generation.ts), [absence guard](../../core/plan-generation.ts), [Generate component plan](../../app/renderer/plans/PlanGeneration.tsx) |
 | Tasks and blockage | Ditz YAML on `ditz-metadata` | [git-reader.ts](../../core/tasks/git-reader.ts), [metadata.ts](../../core/tasks/metadata.ts), [TaskGraph](../../app/renderer/tasks/TaskGraph.tsx) |
 | Current task list | Last complete local metadata revision; automatic adoption after a ref change | [task client](../../app/renderer/tasks/client.ts), [task provider](../../core/tasks/provider.ts) |
@@ -78,6 +79,30 @@ agent or changes the component selection; Explore deliberately navigates to its
 other endpoint. Core/workspace changes revoke the inspected contract.
 Build rules stay in their separate graph projection; component source and target
 lists link into it without guessing declarations.
+
+Selecting a component also makes it the right-hand Context subject. Its authored
+targets are grouped into Tests and Build targets using the current Bazel query:
+`*_test` rules and `test_suite` get Test; other observed rules get Build. Names
+such as `checks` do not make a target a test. Missing mappings remain visible but
+unavailable. These are explicitly mapped targets, not a claim to discover every
+test that might exercise the referenced source. Refreshing plans, switching
+worktrees or replacing the core disables old actions until their inputs are current.
+Returning from a task through Back or Read design restores the selected component's
+Context, not the previous task. Document and graph selection remain independent
+of a job's output.
+
+An explicit action uses the existing target-job owner with `build.start.operation`
+set to `build` or `test` (older callers still default to build). Test executes
+`bazel test`, overriding no-build/manual-filter defaults for the selected label;
+it is not satisfied by compiling a test. Nonzero and no-tests exits fail. Builds &
+resources retains the operation, result, output and Stop controls. Selecting a
+component starts neither jobs nor agents, and there is no run-all action for the
+mixed test, source-bundle and manual-demo mappings.
+`//tools/design-tests:checks` covers classification, Context ownership/navigation,
+job semantics and both TypeScript boundaries. Its manual `:smoke` uses an owned
+virtual desktop and disposable real Bazel repository to click Test, observe the
+actual result and verify retained document/camera state without a model request.
+
 Long reference lists are expandable; the index does not discard their contents.
 Component containment is dashed and muted; authored contracts retain their
 directions, with reciprocal links in separate lanes. Labels appear on focused
