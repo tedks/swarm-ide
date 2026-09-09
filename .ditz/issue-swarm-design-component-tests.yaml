@@ -1,0 +1,20 @@
+id: swarm-design-component-tests
+title: "Run a design component\u2019s Bazel tests from Context"
+desc: Reuse authored component/docs/Bazel links. Show selected component mapped build/test
+  targets in Context, classify observed Bazel test rules correctly, execute explicit
+  build/test jobs through existing rooted job owner, keep document/selection/results
+  visible. Prove real disposable test success and failure; leave managed UI showing
+  a real component and its tests.
+type: feature
+component: default
+release:
+reporter: Ted Smith <tedks@riseup.net>
+status: unstarted
+disposition:
+creation_time: 2026-09-09T14:06:56-00:00
+references: []
+log_events:
+- time: 2026-09-09T14:06:56-00:00
+  who: Ted Smith
+  what: created
+  comment: ""
