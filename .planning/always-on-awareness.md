@@ -16,7 +16,7 @@ only automatic model operation; explicit Pause remains effective after restart.
 - [x] Recover task reads when metadata first becomes available; refresh plans.
 - [x] Join ROOT-cleared PR144 (63ad77a) normally; automatic dependency replacement preserves its filters.
 - [x] Focused regressions and native convergence CLEAN; actual owned packaged startup/commit-advance proof passes.
-- [ ] Final documentation, pushed ready PR and ROOT handoff.
+- [x] Final documentation and pushed PR146; ROOT owns normal landing and app adoption.
 
 ## Surprises & Discoveries
 
