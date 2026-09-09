@@ -16,8 +16,9 @@ look healthy.
 - [x] (2026-09-09 18:35Z) Bounded trace found no historical idle cause; chose missing render-failure containment/diagnostics rather than a guessed idle fix.
 - [x] (2026-09-09 18:45Z) Added failure screen, mounted text readers and native event logs; updated living design/maps.
 - [x] (2026-09-09 18:44Z) Owned desktop proof passed three hide/show cycles then controlled render failure with exact dirty source, no reload/write/send and cleanup.
-- [ ] Final scoped tests and native fix-delta convergence (initial checks passed; reviewer findings corrected).
-- [ ] Push ready PR, record actual limits and Ditz accomplishments, clean owned resources.
+- [x] (2026-09-09 18:46Z) Final scoped target passed 27 tests/6 files and both TypeScript boundaries in 15.8 s.
+- [x] (2026-09-09 18:49Z) Native fix-delta convergence CLEAN on e1e7940, including runtime, tests, docs/maps and owned proof.
+- [ ] Final ready push/Ditz sync/owned cleanup and ROOT handoff.
 
 ## Surprises & Discoveries
 
@@ -112,6 +113,9 @@ First actual proof: `/tmp/renderer-health.mfy99k/proof.json`, elapsed 1,721 ms;
 native log recorded render-error at 2026-09-09T18:44:13.839Z, core generation 1.
 `recovery-text.png` visually inspected: readable fallback and retained dirty source.
 There were zero unexpected renderer errors and zero write/agent-send calls.
+The desktop assertion establishes dirty-source marker retention, not a bytewise
+comparison of the entire source buffer. Unit tests compare exact retained values.
+Remaining original-cause investigation is tracked as `swarm-idle-black-screen-cause`.
 
 ## Interfaces and Dependencies
 
