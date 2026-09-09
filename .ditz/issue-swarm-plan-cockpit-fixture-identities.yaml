@@ -27,3 +27,15 @@ log_events:
     identities. Final focused112 cases/types pass; unrelated fixture failures not
     fixed or waived. Baseline logs /tmp/swarm-ide-component-layout.2CBDrF/baseline.log
     and focused1.log.
+- time: 2026-09-09T14:59:54-00:00
+  who: Ted Smith
+  what: commented
+  comment: 'Task filter PR144 additionally records 14 failures in the unchanged broader
+    living-design suite: planning-ui 5, component-graph-stability 4, demo-plan-actions
+    5. Native review traced initialSnapshot project:test-fixture versus requested
+    project:swarm-ide; protocol/schema.ts rejects response project mismatch before
+    document/plan activation. These files are unchanged against reviewed395a6170;
+    graph-filter44/typechecks and actual-index reader60 pass. No fixture repair, historical-cause
+    overclaim or blanket full-green here. Evidence /tmp/swarm-ide-task-filters.uQT94o/focused-final.log.
+    Component-layout owns its separate corrected component fixtures, not consumed
+    by PR144.'
