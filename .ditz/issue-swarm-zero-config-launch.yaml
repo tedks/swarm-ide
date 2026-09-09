@@ -1,0 +1,21 @@
+id: swarm-zero-config-launch
+title: Launch any project with swarm-ide and automatic local setup
+desc: Provide swarm-ide command, keeping swarm compatible. Resolve current worktree/nested
+  directory or a bare repository parent with linked worktree children through Git
+  metadata. Automatically create private project config/profile/registry without overwriting
+  settings or inspecting credentials. Prefer explicit worktree, configured choice,
+  Git default main/master, deterministic existing fallback. Preserve all worktree
+  navigation and normal tmux/registry flags; prove disposable bare/worktree launch.
+type: feature
+component: default
+release:
+reporter: Ted Smith <tedks@riseup.net>
+status: unstarted
+disposition:
+creation_time: 2026-09-09T14:59:06-00:00
+references: []
+log_events:
+- time: 2026-09-09T14:59:06-00:00
+  who: Ted Smith
+  what: created
+  comment: ""
