@@ -14,6 +14,9 @@
 .design-graph { height: 380px; min-height: 300px; border-block: 1px solid #34554e; }
 .design-components .planning-node { width: 184px; min-height: 52px; padding: 8px; }
 .design-components .planning-node strong { font-size: 14px; }
+.design-components .planning-node.draggable { cursor: grab; }
+.design-components .planning-node.dragging { cursor: grabbing; }
+.design-components .projection-layout-reset { position: absolute; z-index: 5; right: 8px; top: 8px; font-size: 10px; padding: 4px 6px; }
 .design-implementation-graph { height: 200px; min-height: 180px; }
 .design-details { padding-top: 8px; }
 .design-details aside { min-width: 0; }
