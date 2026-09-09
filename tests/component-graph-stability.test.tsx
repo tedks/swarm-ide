@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { useEffect } from "react";
 import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { PlanIndexSchema } from "../protocol/plans";
@@ -24,11 +24,15 @@ vi.mock("@xyflow/react", () => ({
       props.onInit({ getViewport: () => flow.viewport, setViewport: (next: typeof flow.viewport) => { flow.viewport = next; flow.setViewport(next); }, fitView: flow.fitView });
       return () => { flow.unmounts++; };
     }, []);
-    return <div data-testid={component ? "component-canvas" : "other-canvas"}>{props.nodes.map((n: any) => <button key={n.id} onClick={() => props.onNodeClick({}, n)}>{n.id}</button>)}</div>;
+    return <div data-testid={component ? "component-canvas" : "other-canvas"}>{props.nodes.map((n: any) => <button className="react-flow__node" data-id={n.id} key={n.id} onClick={() => props.onNodeClick({}, n)}>{n.id}</button>)}</div>;
   },
 }));
 const index = PlanIndexSchema.parse(JSON.parse(readFileSync(resolve(import.meta.dirname, "../.swarm/plans.json"), "utf8")));
 const options = { visible: true, connected: true, worldId: "world:working", repositoryId: "project:swarm-ide", generation: 1 };
+let testSequence = 0;
+// Each test models a fresh renderer. Session-local caches intentionally survive
+// component unmounts, so unrelated tests must not share workspace identities.
+beforeEach(() => { options.repositoryId = `project:component-test-${++testSequence}`; flow.viewport = { x: 0, y: 0, zoom: 1 }; });
 afterEach(() => { cleanup(); delete window.swarm; flow.mounts = 0; flow.unmounts = 0; flow.props.clear(); flow.setViewport.mockClear(); flow.fitView.mockClear(); });
 function bridge() {
   const request = vi.fn(async (req: CoreRequest): Promise<CoreResponse> => ({ protocolVersion: PROTOCOL_VERSION, requestId: req.requestId, ok: true, sequence: 1, snapshot: { ...initialSnapshot(), project: { ...initialSnapshot().project, id: req.type === "plans.read" ? req.repositoryId : options.repositoryId } },
@@ -51,9 +55,13 @@ describe("component graph remains stable and truthful", () => {
     await screen.findByText("docs/design/system.md");
     expect(flow.props.get("component").nodesDraggable).toBe(true);
     expect(flow.props.get("component").autoPanOnNodeDrag).toBe(false);
+    expect(flow.props.get("component").multiSelectionKeyCode).toBeNull();
+    expect(flow.props.get("component").selectionKeyCode).toBeNull();
     expect(screen.getByRole("button", { name: "Reset layout" })).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "design:cockpit" }));
     await screen.findByText("docs/design/cockpit.md");
+    fireEvent.keyDown(screen.getByRole("button", { name: "design:repository" }), { key: "Enter" });
+    await screen.findByText("docs/design/repository.md");
   });
   it("applies live node changes, scopes arrangements, drops removed IDs and resets only this view", () => {
     const nodes = [{ id: "design:a", title: "A", subtitle: "", position: { x: 0, y: 0 } }, { id: "design:b", title: "B", subtitle: "", position: { x: 320, y: 140 } }];
@@ -85,6 +93,8 @@ describe("component graph remains stable and truthful", () => {
   it("leaves shared task/build/containment canvases non-draggable without layout controls", () => {
     render(<ProjectionCanvas label="other projection" nodes={[{ id: "design:test", title: "Test", subtitle: "", position: { x: 0, y: 0 } }]} edges={[]} selected={null} onSelect={vi.fn()} />);
     expect(flow.props.get("component").nodesDraggable).toBe(false);
+    expect(flow.props.get("component").multiSelectionKeyCode).toBeUndefined();
+    expect(flow.props.get("component").selectionKeyCode).toBeUndefined();
     expect(screen.queryByRole("button", { name: "Reset layout" })).toBeNull();
     act(() => flow.props.get("component").onNodesChange([{ id: "design:test", type: "position", position: { x: 900, y: 800 } }]));
     expect(flow.props.get("component").nodes[0].position).toEqual({ x: 0, y: 0 });

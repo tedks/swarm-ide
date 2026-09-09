@@ -9,22 +9,28 @@ The component design keeps its authored relationships but gains enough space to 
 ## Progress
 
 - [x] 2026-09-09: Confirmed clean designated worktree at PR142, read source/instructions, materialized frozen dependencies, started `swarm-component-layout-drag`.
-- [ ] Add spacing and scoped drag regressions; demonstrate failure before correction.
-- [ ] Implement opt-in component layout and update living design.
-- [ ] Run focused checks, one owned packaged input proof, and native review to convergence.
-- [ ] Push a ready PR and hand off to ROOT for normal merge/adoption.
+- [x] 2026-09-09: Added spacing/position regressions and reproduced their baseline failures.
+- [x] 2026-09-09: Implemented opt-in component layout and updated living design.
+- [x] 2026-09-09: Final 112 focused cases/both typechecks pass; native review converged after modifier correction. Owned packaged plain-drag journey passed; stronger modifier journey passed interactions but ended with the known ResizeObserver warning (retained below).
+- [ ] Push final ready PR and hand off to ROOT for normal merge/adoption.
 
 ## Surprises & Discoveries
 
 The existing projection has 200-pixel columns/65-pixel rows for 184-by-52-pixel nodes. Shared `ProjectionCanvas` disables dragging but holds a dormant unscoped drag-stop map. Enabling that alone would neither control live movement nor separate arrangements.
 
+Native review found default Control/Meta and Shift multi-selection could move the selected parent with a dragged child. The component opt-in now disables those modifiers; shared canvases retain defaults. The modifier regression also exposed test camera-state leakage: test cases now use distinct repository identities, while within-test roundtrips remain unchanged. The older broad plan target has unrelated fixture identity failures; only the test broker owned by this change was repaired.
+
+The plain-drag packaged run passed with zero renderer errors. The stronger driver initially dragged Repository over the later Cockpit click center, correctly failing its hit-test; it now moves Runtime into clear space. The corrected run completed node and Ctrl-drag, background pan, unchanged camera, refresh, component roundtrip, document opening, reset and unchanged plan-byte assertions. Its final empty-console assertion reported exactly `ResizeObserver loop completed with undelivered notifications.` No unrelated investigation, unchanged-head rerun, suppression or broad green claim was made.
+
 ## Decision Log
 
 Use a small optional layout scope on the shared canvas; only Component design opts in. Retain position overrides in renderer memory keyed by world, repository/worktree identity, selected component and selected-contract versus overview. Remove vanished IDs. Keep camera behavior and full-graph Fit unchanged. Reset returns to authored default positions without rewriting plan metadata. No cross-restart storage or new graph engine.
 
+The final focused gate uses the existing `//tools/demo-syntax:editor-tests` entrypoint with seven explicit files, avoiding unrelated old plan fixtures. Preserve the final known resize-warning result for ROOT's landing disposition under the standing critical-only policy.
+
 ## Outcomes & Retrospective
 
-Implementation and proof pending.
+User-visible implementation is complete in PR143; ROOT owns merge/adoption. The geometry-only feature neither runs an agent nor writes authored plans. The final packaged interactions succeeded, but its console gate is not labelled green because of the retained known resize warning. Native review is clean after correcting modifier multi-selection. A small feature can reuse the existing renderer and desktop harness without expanding into a graph platform.
 
 ## Context and Orientation
 
@@ -37,6 +43,8 @@ Increase positions in `designProjection` without changing membership or edges. A
 ## Concrete Steps
 
 From `/home/tedks/Projects/swarm-ide/component-layout`, run `nix develop --command bazel test --jobs=3 //tools/living-design:checks` and `nix develop --command bazel run --jobs=3 //tools/living-design:smoke` with the owned layout-only mode. Record actual output and artifacts in the handoff. Use the existing desktop harness, never inherited DISPLAY=:0.
+
+Actual final focused command used `nix develop --command bazel test --jobs=3 //tools/demo-syntax:editor-tests` with one `--test_arg=` per file: `tests/component-graph-stability.test.tsx`, `tests/graph-click-recenter.test.tsx`, `tests/projection-selection.test.tsx`, `tests/graph-agent-overlay.test.tsx`, `tests/workspace-navigation-camera.test.tsx`, `tests/living-design.test.tsx`, `tests/plans-reader.test.ts`. Result: 112 cases and both TypeScript boundaries pass in 14.8 seconds. Owned smoke used `SWARM_DESIGN_LAYOUT_ONLY=1`, display `:186`, port `55336`; each execution confirmed cleanup.
 
 ## Validation and Acceptance
 
@@ -55,3 +63,5 @@ Step handoff: `/tmp/swarm-ide-component-layout.2CBDrF`; retain concise seam, rev
 Use installed ReactFlow position-change events and existing `useGraphReveal` measurement callback. Introduce only an optional scoped layout prop; no App, protocol, core, filesystem or provider capability changes.
 
 Initial plan recorded before implementation; direct scoped verification replaces broad gate repetition under current user authority.
+
+Updated after implementation and native correction to record exact checks and final warning rather than overstate the GUI result.

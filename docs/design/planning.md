@@ -112,7 +112,8 @@ incident relationships, not unrelated links among its neighbours. Selecting
 another component keeps the canvas mounted and remembers visited cameras;
 unchanged index reads retain projection identity rather than remeasuring labels.
 The Component canvas uses wider columns and rows so contracts have room. Drag a
-node to arrange it; drag empty canvas to pan. A drag neither selects a component
+node to arrange it; drag empty canvas to pan. Control/Meta and Shift do not turn
+component dragging into a multi-node selection. A drag neither selects a component
 nor reframes the camera. **Reset layout** restores only the displayed view's
 default positions; **Fit** still frames the full displayed graph. Position
 overrides live only in renderer-session memory, scoped to world, canonical

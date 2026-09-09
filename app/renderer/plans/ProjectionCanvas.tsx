@@ -139,7 +139,8 @@ export function ProjectionCanvas({ label, nodes: input, edges: links, selected, 
   }}>
     <ReactFlow nodes={graph.nodes} edges={graph.edges} edgeTypes={edgeTypes} onInit={(instance) => { flow.current = instance; reveal.onInit(instance); const saved = cameraKey ? retainedCameras.get(cameraKey) : undefined; if (saved) requestAnimationFrame(() => requestAnimationFrame(() => { if (flow.current === instance && scope.current === cameraScope) void instance.setViewport(saved); })); }} onNodesChange={onNodesChange} onMoveStart={(event) => { if (event) reveal.cancel(); }} onMoveEnd={(_event, viewport) => { if (cameraKey) retainCamera(cameraKey, viewport); }} fitView fitViewOptions={{ padding: cameraScope ? .07 : .2, maxZoom: 1 }}
       minZoom={.08} maxZoom={2} nodesConnectable={false} nodesDraggable={layoutKey !== undefined} elementsSelectable
-      {...(layoutKey ? { autoPanOnNodeDrag: false, selectNodesOnDrag: false, nodeDragThreshold: 4 } : {})}
+      {...(layoutKey ? { autoPanOnNodeDrag: false, selectNodesOnDrag: false, nodeDragThreshold: 4,
+        multiSelectionKeyCode: null, selectionKeyCode: null } : {})}
       onNodeDragStart={() => reveal.cancel()}
       onNodeClick={(_event, node) => select(node.id)}
       onEdgeClick={(_event, edge) => { if (edge.data?.kind !== "containment") onSelectEdge?.(edge.id); }}>

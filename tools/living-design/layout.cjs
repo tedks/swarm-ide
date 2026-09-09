@@ -6,13 +6,18 @@ module.exports = async function layoutProof({ wc, run, paint, text, camera, shot
   const indexBefore = await fs.readFile(path.join(process.cwd(), ".swarm/plans.json"), "utf8");
   const positions = () => run(() => Object.fromEntries([...document.querySelectorAll(".design-graph .react-flow__node")].map(n => [n.dataset.id, n.style.transform])));
   const edges = () => run(() => [...document.querySelectorAll(".design-graph .react-flow__edge")].map(n => n.dataset.id).sort());
-  const drag = async (point, dx, dy) => {
+  const drag = async (point, dx, dy, modifiers = []) => {
     const scale = wc.getZoomFactor();
     const xy = (fraction) => ({ x: Math.round((point.x + dx * fraction) * scale), y: Math.round((point.y + dy * fraction) * scale) });
-    wc.sendInputEvent({ type: "mouseMove", ...xy(0) });
-    wc.sendInputEvent({ type: "mouseDown", button: "left", clickCount: 1, ...xy(0) });
-    for (let step = 1; step <= 8; step++) { wc.sendInputEvent({ type: "mouseMove", button: "left", ...xy(step / 8) }); await paint(); }
-    wc.sendInputEvent({ type: "mouseUp", button: "left", clickCount: 1, ...xy(1) }); await paint();
+    if (modifiers.includes("control")) wc.sendInputEvent({ type: "keyDown", keyCode: "Control" });
+    try {
+      wc.sendInputEvent({ type: "mouseMove", modifiers, ...xy(0) });
+      wc.sendInputEvent({ type: "mouseDown", button: "left", clickCount: 1, modifiers, ...xy(0) });
+      for (let step = 1; step <= 8; step++) { wc.sendInputEvent({ type: "mouseMove", button: "left", modifiers, ...xy(step / 8) }); await paint(); }
+      wc.sendInputEvent({ type: "mouseUp", button: "left", clickCount: 1, modifiers, ...xy(1) }); await paint();
+    } finally {
+      if (modifiers.includes("control")) wc.sendInputEvent({ type: "keyUp", keyCode: "Control" });
+    }
   };
   const nodePoint = (id) => run((id) => {
     const n = document.querySelector(`.design-graph .react-flow__node[data-id="${id}"]`), r = n.getBoundingClientRect();
@@ -25,12 +30,21 @@ module.exports = async function layoutProof({ wc, run, paint, text, camera, shot
   const breadcrumbBefore = await text(".component-graph-card nav");
   const id = "design:cockpit";
   await drag(await nodePoint(id), 48, 12);
-  const moved = await positions();
+  let moved = await positions();
   assert.notEqual(moved[id], before[id], "drag moves the chosen node");
   for (const key of Object.keys(before).filter(key => key !== id)) assert.equal(moved[key], before[key], `other node stays: ${key}`);
   assert.equal(await camera(), cameraBefore, "node drag must not pan or reframe");
   assert.equal(await text(".component-graph-card nav"), breadcrumbBefore, "drag is not selection");
   assert.deepEqual(await edges(), edgesBefore, "authored relationships unchanged");
+  // Keep the second move away from the first node's later click target. The
+  // prior driver deliberately overlapped those cards and failed its hit test.
+  const modifierTarget = "design:runtime", beforeControl = moved;
+  await drag(await nodePoint(modifierTarget), -16, -10, ["control"]);
+  moved = await positions();
+  assert.notEqual(moved[modifierTarget], beforeControl[modifierTarget], "Ctrl-drag moves its target");
+  for (const key of Object.keys(before).filter(key => key !== modifierTarget)) assert.equal(moved[key], beforeControl[key], `Ctrl-drag leaves other node: ${key}`);
+  assert.equal(await camera(), cameraBefore, "Ctrl-drag also leaves camera alone");
+  assert.equal(await text(".component-graph-card nav"), breadcrumbBefore, "Ctrl-drag is not selection");
   await shot("component-node-drag");
   const empty = await run(() => {
     const pane = document.querySelector(".design-graph .react-flow__pane"), r = pane.getBoundingClientRect();
@@ -61,5 +75,5 @@ module.exports = async function layoutProof({ wc, run, paint, text, camera, shot
   assert.equal(await fs.readFile(path.join(process.cwd(), ".swarm/plans.json"), "utf8"), indexBefore, "dragging never edits plan truth");
   assert.deepEqual(errors, []);
   await shot("component-layout-reset");
-  await fs.writeFile(path.join(evidence, "proof.json"), JSON.stringify({ ok: true, layoutOnly: true, elapsedMs: Date.now() - started, actualRepo: process.cwd(), packaged: true, before, moved, cameraBefore, panned, nativeNodeDrag: true, nativeBackgroundPan: true, noDragSelection: true, refreshRetention: true, componentRoundtrip: true, documentOpened: true, reset: true, planUnchanged: true, rendererErrors: errors }));
+  await fs.writeFile(path.join(evidence, "proof.json"), JSON.stringify({ ok: true, layoutOnly: true, elapsedMs: Date.now() - started, actualRepo: process.cwd(), packaged: true, before, moved, cameraBefore, panned, nativeNodeDrag: true, nativeControlDrag: true, nativeBackgroundPan: true, noDragSelection: true, refreshRetention: true, componentRoundtrip: true, documentOpened: true, reset: true, planUnchanged: true, rendererErrors: errors }));
 };
