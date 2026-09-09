@@ -7,8 +7,8 @@ type: task
 component: default
 release:
 reporter: Ted Smith <tedks@riseup.net>
-status: in_progress
-disposition:
+status: closed
+disposition: fixed
 creation_time: 2026-09-09T00:49:10-00:00
 references: []
 log_events:
@@ -20,3 +20,11 @@ log_events:
   who: Ted Smith
   what: started
   comment: ""
+- time: 2026-09-09T00:55:41-00:00
+  who: Ted Smith
+  what: 'closed: fixed'
+  comment: 'Merged PR141: public HTTPS/direct-flake install and current tour for New
+    agent, automatic repository graphs, selected target builds, plan generation and
+    registered worktree switching. Linux full workflow and Docker preview limits retained.
+    Commands/source checked; 50 relative links/anchors and whitespace passed; light
+    native review clean. Documentation only.'
