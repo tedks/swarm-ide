@@ -12,7 +12,8 @@ From a clone of the [public repository](https://github.com/tedks/swarm-ide):
 ```sh
 nix run . -- --workspace /absolute/path/to/your/project
 nix profile install .#swarm-ide
-swarm --workspace /absolute/path/to/your/project
+cd /absolute/path/to/your/project
+swarm-ide
 ```
 
 You can also run or install directly from GitHub, without cloning or setting up
@@ -39,8 +40,16 @@ advance it. Save and close the old window before launching the updated app.
 
 ## Choose the project
 
-`swarm` with no arguments opens the invocation directory. `--workspace` resolves
-relative to the directory where you typed the command, including paths with spaces:
+`swarm-ide` (or the equivalent `swarm` alias) discovers the project from the
+current directory. A source subdirectory opens its Git worktree root. In a bare
+repository with linked worktrees, it opens the last valid choice, otherwise the
+default/main/master worktree, then a stable existing fallback. Both a direct
+bare Git directory and the common `project/.git` plus worktree-children layout
+work. No worktree is created or checked out. A bare repository with none reports
+that you need to create one first.
+
+`--workspace` explicitly chooses another project/worktree and resolves relative
+to where you typed the command, including paths with spaces:
 
 ```sh
 cd /home/me/Projects
@@ -49,11 +58,10 @@ swarm --workspace ../another-checkout
 swarm --help
 ```
 
-Choose an existing Git **working-tree root with a committed HEAD** for repository,
-task and source navigation. In a bare-repo layout, choose a child such as
-`~/Projects/project/master`, not the bare parent or a source subdirectory.
-Ordinary clones and linked worktrees both work on the Linux host; only the
-container needs a standalone clone inside its mount.
+Use an existing Git repository with a committed HEAD for full repository/task
+navigation. Ordinary non-Git directories still open for inspection, with fewer
+repository features. Only the container requires a standalone clone inside its
+mount; the native Linux command understands linked worktrees.
 The command rejects missing directories and unknown options instead of silently
 opening its installation directory. The IDE trusts your chosen local project and
 tools; deliberate build or agent actions may execute those tools normally.
@@ -63,15 +71,24 @@ tools; deliberate build or agent actions may execute those tools normally.
 For a first look at another project, no agent setup is needed:
 
 ```sh
-swarm --workspace "$HOME/Projects/puresky/master" \
-  --user-data-dir "$HOME/.config/swarm-ide-puresky"
+cd "$HOME/Projects/puresky"
+swarm-ide
 ```
 
-Replace the project/profile names with yours. You can run this from any directory.
+Replace the project name with yours. Settings and a separate worktree profile
+are created automatically. You can also use `--workspace` from any directory.
 Without installing first, use `nix run /path/to/swarm-checkout --` followed by
 the same flags. Continue with the [five-minute tour](demo.md).
 
-Choose the project and the exact tmux server/session independently. Agents can
+When invoked inside tmux, the command automatically checks the current pane's
+socket/session and associates discoverable Codex owners whose actual worktree
+belongs to this project. Other projects in that tmux session are excluded. If
+current-session discovery is unavailable or finds no owners, the project still
+opens using its saved private registry. No attach, send, resume or agent launch
+is performed. A newly launched session is discovered on the next invocation,
+not by a new background scanner.
+
+Explicit options can choose the project and exact tmux session independently. Agents can
 have sibling worktrees; their source links use each checked owner's actual Git
 worktree, not the project shown by the main directory browser.
 The agent's **Worktree** icon or the sidebar's **Worktree** selector switches the
@@ -110,8 +127,8 @@ message. Activity refreshes live for registered agents. Discovering newly create
 panes requires another explicit association or adding them through the existing
 checked registration tool; this launcher adds no background discovery daemon.
 
-Each association writes a fresh private generation under
-`${XDG_STATE_HOME:-$HOME/.local/state}/swarm-ide/fleets/`. This prevents a restarted
+Each association writes a fresh private generation under the project's state
+directory (described below). This prevents a restarted
 server from inheriting another session's conversations, and avoids a permanent
 64-lifetime-agent limit. Prior registries remain private history, but are not
 silently mixed into a new association. To reuse an explicitly maintained or
@@ -129,15 +146,28 @@ a Linux host feature, not a claim that the Mac container can see host tmux.
 ## State and tools
 
 Application files live in the immutable Nix store. Electron uses the application
-name `swarm-ide`, so its normal Linux profile/history lives under
-`${XDG_CONFIG_HOME:-$HOME/.config}/swarm-ide`, separate from installed files.
-To use a separate window/history profile (recommended for simultaneous projects):
+name `swarm-ide`. Startup creates a small versioned configuration at
+`${XDG_CONFIG_HOME:-$HOME/.config}/swarm-ide/projects/<project-key>/project.json`.
+The readable project key includes a digest of the canonical Git common-directory
+path: linked worktrees share project identity, unrelated repositories do not.
+It remembers the most recently chosen valid worktree and the latest associated
+registry. Settings and registry files are private (0600); directories are 0700.
+
+The private registry and one reusable Electron profile **per worktree** live
+under `${XDG_STATE_HOME:-$HOME/.local/state}/swarm-ide/projects/<project-key>/`.
+Opening two different worktrees therefore does not share their drafts/history or
+Electron profile. Settings never go into source or the Nix store. A malformed
+settings/managed-registry file is reported and left unchanged, not reset. Moving
+the whole Git common directory creates a new project identity. Existing older
+global profiles are not moved or deleted; select one explicitly if desired:
 
 ```sh
 swarm --workspace ./project --user-data-dir "$HOME/.config/swarm-ide-my-project"
 ```
 
-This option does not move GitHub, Codex, tmux, Docker or other host configuration.
+Explicit profile/registry flags override only this invocation; they do not replace
+the defaults saved for later launches. This option does not move GitHub, Codex,
+tmux, Docker or other host configuration.
 The launcher preserves the host environment and supplies Node, Git, tmux and
 util-linux. It provides the pinned Bazel/Java runtime for existing build-graph
 queries. Your normal `PATH` still supplies Codex/other harnesses, GitHub CLI,
@@ -166,6 +196,8 @@ whose policy cannot support Chromium's sandbox; it is never set automatically.
 nix develop --command bazel test --jobs=3 //tools/cli:checks
 nix build .#swarm-ide
 nix develop --command bazel run --jobs=3 //tools/cli:smoke -- "$(readlink -f result)"
+# Also prove zero-argument selection from a disposable bare parent:
+SWARM_CLI_TEST_BARE=1 nix develop --command bazel run --jobs=3 //tools/cli:smoke -- "$(readlink -f result)"
 ```
 
 The smoke target creates an owned virtual X11 desktop, launches the installed

@@ -80,14 +80,25 @@ GUI verification uses an owned virtual X11 desktop, never the operator's display
 ## Installed application path
 
 The Nix `packages.swarm-ide` output builds the same `//:desktop-bundle`, then
-installs its `app/`, `core/` and `renderer/` trees plus the `swarm` command.
-`apps.default` invokes that command. `swarm --workspace PATH` resolves the project
+installs its `app/`, `core/` and `renderer/` trees plus equivalent `swarm-ide` and
+`swarm` commands. `apps.default` remains compatible, and `apps.swarm-ide` exposes
+the new name. `swarm-ide --workspace PATH` resolves the project
 from the caller's directory and launches packaged Electron; it does not start
 Vite or rebuild the project. An installed `package.json` gives Electron the stable
 `swarm-ide` user-data identity. The fixed installed CLI bootstrap applies any
 explicit profile with Electron's userData API before starting the unchanged main.
 Writable history stays in the user profile, not
 the Nix store. The host's agent tools and configuration remain the source of truth.
+
+`tools/cli/project.mjs` uses Git's canonical common directory and worktree list
+to resolve nested directories or bare-repository parents. It revalidates a saved
+worktree preference, then uses the local default/main/master branch or a stable
+existing fallback. A versioned XDG project config remembers that preference and
+registry; private XDG state contains an empty registry and a reusable profile
+per worktree. No source configuration is generated. Malformed state is left
+unchanged, and canonical containment is checked before any settings creation.
+Inherited Git repository-selection/config-injection environment variables are
+removed before the core starts; host SSH/credential configuration is retained.
 
 The direct launcher boundary is tested by `//tools/cli:checks`; the installed
 command and real workspace/source path are exercised by the owned virtual
@@ -106,6 +117,12 @@ the opened project never substitutes for an unavailable agent context. A fresh
 private bounded registry generation feeds the unchanged observer. Older private
 generations remain available explicitly, not merged automatically into new scope.
 No agent or tmux lifecycle is transferred to the installed app.
+
+Without explicit registry/tmux overrides, an invocation inside tmux selects the
+current pane's checked socket/session and reuses that same discovery helper,
+filtering owners to the project's actual Git worktrees. Failure or no matching
+owner falls back to the private saved registry without preventing project
+startup. This is one launch-time association, not a background scanner.
 
 ## Container browser entry
 

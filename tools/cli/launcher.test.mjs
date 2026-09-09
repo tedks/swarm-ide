@@ -56,6 +56,12 @@ test("no-sandbox is never implicit and only exact explicit environment value is 
   assert.deepEqual(launchConfiguration({}, { ...runtime, environment: { SWARM_ELECTRON_NO_SANDBOX: "1" } }).args, ["/install", "--no-sandbox"]);
   assert.throws(() => launchConfiguration({}, { ...runtime, environment: { SWARM_ELECTRON_NO_SANDBOX: "0" } }), /exactly '1'/);
 });
+test("installed core and agents cannot inherit a different Git repository or injected config", () => {
+  const environment = { GIT_DIR: "/wrong/.git", GIT_WORK_TREE: "/wrong", GIT_COMMON_DIR: "/wrong/.git", GIT_INDEX_FILE: "/wrong/index", GIT_CONFIG_COUNT: "1", GIT_CONFIG_KEY_0: "core.worktree", GIT_CONFIG_VALUE_0: "/wrong", GIT_SSH_COMMAND: "ssh -i /normal/identity", GH_CONFIG_DIR: "/normal/gh" };
+  const config = launchConfiguration({}, { cwd: process.cwd(), environment, bundleRoot: "/install", electron: "/electron" });
+  for (const key of Object.keys(environment).filter((key) => key.startsWith("GIT_") && key !== "GIT_SSH_COMMAND")) assert.equal(config.env[key], undefined);
+  assert.equal(config.env.GIT_SSH_COMMAND, environment.GIT_SSH_COMMAND); assert.equal(config.env.GH_CONFIG_DIR, environment.GH_CONFIG_DIR);
+});
 test("owned-window marker is literal and cannot introduce an Electron option", () => {
   const runtime = { cwd: process.cwd(), bundleRoot: "/install", electron: "/electron" };
   const marker = "--swarm-window-marker=http://127.0.0.1:55417/";
@@ -71,6 +77,15 @@ test("foreground launch uses literal arguments and reports the owned child's exi
     const environment = { PATH: process.env.PATH, HOME: join(root, "home") };
     assert.equal(await launch(["--workspace", project], { bundleRoot: script, electron: process.execPath, environment }), 7);
     await assert.rejects(launch([], { cwd: project, environment, bundleRoot: script, electron: join(root, "missing") }), /ENOENT/);
+  } finally { rmSync(root, { recursive: true, force: true }); }
+});
+test("an unavailable inherited tmux session does not prevent opening the project", async () => {
+  const root = mkdtempSync(join(tmpdir(), "swarm-cli-no-tmux-"));
+  try {
+    const project = join(root, "project"); mkdirSync(project);
+    const script = join(root, "electron.mjs"); writeFileSync(script, "process.exitCode = 0;");
+    assert.equal(await launch([], { cwd: project, bundleRoot: script, electron: process.execPath,
+      environment: { PATH: process.env.PATH, HOME: join(root, "home"), TMUX: `${root}/missing,1,0`, TMUX_PANE: "%0" } }), 0);
   } finally { rmSync(root, { recursive: true, force: true }); }
 });
 for (const [signal, expected] of [["SIGINT", 130], ["SIGTERM", 143], ["SIGHUP", 129]]) {

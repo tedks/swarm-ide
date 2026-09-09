@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import { mkdtempSync, mkdirSync, readFileSync, rmSync, statSync, symlinkSync, writeFileSync } from "node:fs";
+import { mkdtempSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { discoverProject, prepareProject } from "./project.mjs";
@@ -77,4 +77,22 @@ test("settings inside source and relative XDG paths are rejected before creating
 test("ordinary non-Git directory remains supported with its own private configuration", () => fixture(({ directory, prepare }) => {
   const plain = join(directory, "plain"); mkdirSync(plain);
   assert.equal(prepare(plain).workspace, plain); assert.equal(prepare(plain).git, false);
+}));
+
+test("symlinked XDG bases into source are rejected before any directory is created", () => fixture(({ repo, directory, environment }) => {
+  const sourceConfig = join(repo, ".local-config"); mkdirSync(sourceConfig); writeFileSync(join(sourceConfig, "marker"), "untouched");
+  const alias = join(directory, "xdg-alias"); symlinkSync(sourceConfig, alias);
+  assert.throws(() => prepareProject({}, { cwd: repo, environment: { ...environment, XDG_CONFIG_HOME: alias } }), /outside the project/);
+  assert.deepEqual(readdirSync(sourceConfig), ["marker"]); assert.equal(readFileSync(join(sourceConfig, "marker"), "utf8"), "untouched");
+}));
+
+test("symlinked external XDG roots are supported using canonical private paths", () => fixture(({ repo, directory, environment }) => {
+  const external = join(directory, "external-config"); mkdirSync(external); const alias = join(directory, "config-alias"); symlinkSync(external, alias);
+  const first = prepareProject({}, { cwd: repo, environment: { ...environment, XDG_CONFIG_HOME: alias } });
+  assert(first.configPath.startsWith(`${external}/`));
+}));
+
+test("removed saved association falls back to the managed empty registry", () => fixture(({ repo, directory, prepare }) => {
+  const initial = prepare(repo); initial.rememberRegistry(join(directory, "old-removed-association.json"));
+  assert.equal(prepare(repo).registry, initial.registry);
 }));

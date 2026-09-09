@@ -711,6 +711,8 @@
       "app/electron/main.ts",
       "nix/package.nix",
       "tools/cli/launcher.mjs",
+      "tools/cli/project.mjs",
+      "tools/cli/tmux.mjs",
       "tools/cli/BUILD.bazel",
       "Dockerfile",
       "tools/container/runtime.nix",
@@ -752,7 +754,7 @@
       "buildTargets": [
         {
           "label": "//tools/cli:checks",
-          "role": "Checks installed-launch arguments, profile handling and scoped tmux association",
+          "role": "Checks Git worktree discovery, private project settings, installed-launch arguments and scoped tmux association",
           "dependencies": [{ "label": "//tools/cli:sources", "relation": "data" }]
         },
         {

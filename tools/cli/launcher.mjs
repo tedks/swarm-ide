@@ -54,6 +54,12 @@ export function launchConfiguration(options, { cwd, environment, bundleRoot, ele
     throw new Error(`Workspace is not an accessible directory: ${requestedRoot}`);
   }
   const env = { ...environment, SWARM_WORKSPACE_ROOT: workspace };
+  // A shell entered through a Git hook/alias can carry another repository's
+  // selection or command-line config. Do not let it redirect core/agent Git.
+  // SSH/askpass and ordinary host credentials remain available.
+  for (const name of Object.keys(env)) {
+    if (/^GIT_(DIR|WORK_TREE|COMMON_DIR|INDEX_FILE|OBJECT_DIRECTORY|ALTERNATE_OBJECT_DIRECTORIES|NAMESPACE|PREFIX|CEILING_DIRECTORIES|DISCOVERY_ACROSS_FILESYSTEM|CONFIG|CONFIG_PARAMETERS|CONFIG_COUNT|CONFIG_KEY_.*|CONFIG_VALUE_.*)$/.test(name)) delete env[name];
+  }
   // Installed launches must not inherit a development renderer or reload watcher.
   delete env.SWARM_RENDERER_URL;
   delete env.SWARM_DEV_CONTROL;

@@ -27,23 +27,26 @@ No model account is needed to browse. To keep a command on your PATH:
 
 ```bash
 nix profile install .#swarm-ide
-swarm --workspace /absolute/path/to/your/project
+cd /absolute/path/to/your/project
+swarm-ide
 ```
 
-Choose a Git **working-tree root with a committed HEAD**—for a bare-repo layout,
-use `~/Projects/project/master`, not its parent. An ordinary standalone clone or
-a linked worktree on the Linux host is suitable.
+Run from a worktree, a source subdirectory, or a bare-repo parent containing
+linked worktrees. Swarm selects an existing worktree and creates reusable private
+settings outside source. A committed Git HEAD enables full repository features.
+`swarm` remains an equivalent alias; `--workspace PATH` overrides the selection.
 
 ### Try another project and its agents
 
-Give each project its own window/history profile when opening several at once:
+Each project/worktree gets a separate window/history profile automatically:
 
 ```bash
-swarm --workspace "$HOME/Projects/puresky/master" \
-  --user-data-dir "$HOME/.config/swarm-ide-puresky"
+cd "$HOME/Projects/puresky"
+swarm-ide
 ```
 
-To include already-running Codex sessions, add the exact tmux association:
+From inside tmux, discoverable Codex owners in the current session and project
+are associated automatically. To choose another session explicitly:
 
 ```bash
 swarm --workspace "$HOME/Projects/puresky/master" \

@@ -1,6 +1,6 @@
 import { execFileSync } from "node:child_process";
 import { createHash, randomUUID } from "node:crypto";
-import { closeSync, constants, fstatSync, lstatSync, mkdirSync, openSync, readFileSync, realpathSync, renameSync, unlinkSync, writeFileSync } from "node:fs";
+import { closeSync, constants, fstatSync, linkSync, lstatSync, mkdirSync, openSync, readFileSync, realpathSync, renameSync, unlinkSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { basename, dirname, isAbsolute, join, relative, resolve } from "node:path";
 
@@ -47,6 +47,22 @@ function privateDirectory(path) {
   if (!info.isDirectory() || info.uid !== process.getuid() || (info.mode & 0o077) !== 0 || realpathSync(path) !== path) throw new Error(`Project settings directory must be private and not a symlink: ${path}`);
 }
 
+// Resolve existing ancestors before creating anything, including when an XDG
+// base is a symlink. Missing trailing directories remain literal path segments.
+function canonicalFuture(path) {
+  let ancestor = path; const trailing = [];
+  for (;;) {
+    try { return resolve(realpathSync(ancestor), ...trailing); }
+    catch (error) {
+      if (error.code !== "ENOENT") throw error;
+      // A dangling symlink is not an absent directory we may replace.
+      try { lstatSync(ancestor); throw new Error(`Settings path has a dangling symlink: ${ancestor}`); }
+      catch (missing) { if (missing.code !== "ENOENT") throw missing; }
+      trailing.unshift(basename(ancestor)); ancestor = dirname(ancestor);
+    }
+  }
+}
+
 function readPrivate(path) {
   let fd;
   try {
@@ -62,12 +78,12 @@ function readPrivate(path) {
 
 function publish(path, value, create = false) {
   const text = `${JSON.stringify(value, null, 2)}\n`;
-  if (create) {
-    try { writeFileSync(path, text, { mode: 0o600, flag: "wx" }); return; }
-    catch (error) { if (error.code === "EEXIST") return; throw error; }
-  }
   const temporary = `${path}.${randomUUID()}.tmp`;
-  try { writeFileSync(temporary, text, { mode: 0o600, flag: "wx" }); renameSync(temporary, path); }
+  try {
+    writeFileSync(temporary, text, { mode: 0o600, flag: "wx" });
+    if (create) { try { linkSync(temporary, path); } catch (error) { if (error.code !== "EEXIST") throw error; } }
+    else renameSync(temporary, path);
+  }
   finally { try { unlinkSync(temporary); } catch (error) { if (error.code !== "ENOENT") throw error; } }
 }
 
@@ -78,12 +94,12 @@ export function prepareProject(options, { cwd, environment }) {
   const stateBase = environment.XDG_STATE_HOME || join(home, ".local/state");
   if (!isAbsolute(configBase) || !isAbsolute(stateBase)) throw new Error("XDG_CONFIG_HOME and XDG_STATE_HOME must be absolute paths.");
   const projectKey = key(project.identity);
-  const configDirectory = join(resolve(configBase), "swarm-ide/projects", projectKey);
-  const stateDirectory = join(resolve(stateBase), "swarm-ide/projects", projectKey);
+  const configDirectory = canonicalFuture(join(resolve(configBase), "swarm-ide/projects", projectKey));
+  const stateDirectory = canonicalFuture(join(resolve(stateBase), "swarm-ide/projects", projectKey));
   for (const path of [configDirectory, stateDirectory]) {
     if ([project.identity, ...project.worktrees.map((row) => row.path)].some((root) => within(root, path))) throw new Error("Swarm project settings must be outside the project. Set XDG_CONFIG_HOME/XDG_STATE_HOME to an external directory.");
-    privateDirectory(path);
   }
+  for (const path of [configDirectory, stateDirectory]) privateDirectory(path);
   const configPath = join(configDirectory, "project.json");
   let saved = readPrivate(configPath);
   const valid = (value) => value?.version === 1 && value.gitCommonDirectory === project.identity && typeof value.workspace === "string" && isAbsolute(value.workspace) && typeof value.registry === "string" && isAbsolute(value.registry);
@@ -92,9 +108,15 @@ export function prepareProject(options, { cwd, environment }) {
   const selected = project.worktrees.find((row) => row.path === project.invoking) ?? remembered
     ?? [project.defaultBranch, "refs/heads/main", "refs/heads/master"].map((branch) => project.worktrees.find((row) => row.branch && row.branch === branch)).find(Boolean)
     ?? [...project.worktrees].sort((a, b) => a.path < b.path ? -1 : a.path > b.path ? 1 : 0)[0];
+  let rememberedRegistry = saved?.registry;
+  if (rememberedRegistry) {
+    const data = readPrivate(rememberedRegistry);
+    if (data === undefined) rememberedRegistry = undefined;
+    else if (data.version !== 1 || !Array.isArray(data.sessions)) throw new Error(`Malformed private registry: ${rememberedRegistry}. File left unchanged.`);
+  }
   const registry = options.agentRegistry !== undefined ? realpathSync(resolve(cwd, options.agentRegistry))
     : environment.SWARM_EXTERNAL_AGENTS_REGISTRY ? realpathSync(resolve(cwd, environment.SWARM_EXTERNAL_AGENTS_REGISTRY))
-      : saved?.registry ?? join(stateDirectory, "agents.json");
+      : rememberedRegistry ?? join(stateDirectory, "agents.json");
   if (!saved) {
     publish(configPath, { version: 1, gitCommonDirectory: project.identity, workspace: selected.path, registry: join(stateDirectory, "agents.json") }, true);
     saved = readPrivate(configPath);
