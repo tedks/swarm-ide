@@ -10,8 +10,8 @@ type: feature
 component: default
 release:
 reporter: Ted Smith <tedks@riseup.net>
-status: in_progress
-disposition:
+status: closed
+disposition: fixed
 creation_time: 2026-09-09T14:59:06-00:00
 references: []
 log_events:
@@ -32,3 +32,14 @@ log_events:
     checks and Nix package pass; actual owned installed bare-parent/source proof 2.036s
     cleanup1; native important-fix convergence CLEAN. No model/user config/managed
     app change. Awaiting ROOT normal landing; keep in progress.
+- time: 2026-09-09T15:31:44-00:00
+  who: Ted Smith
+  what: 'closed: fixed'
+  comment: PR145 normally merged as a723924a. Equivalent swarm-ide/swarm installed
+    entrypoints discover nested/linked worktrees and both bare layouts; create private
+    reusable project settings, registry and per-worktree profiles; optionally associate
+    checked current-project tmux owners at launch. 35 direct tests, actual Nix package
+    and installed zero-argument bare-parent source proof passed with zero renderer
+    errors/cleanup. Native Git environment and symlink/profile corrections converged
+    CLEAN. No live-owner automatic association or Mac proof claimed. Global user profile
+    unchanged; launch-time discovery limit documented.
