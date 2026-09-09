@@ -192,6 +192,7 @@ export function useTrustedFleet({ bridge, connected, generation, selection, onSn
       void dispatch(request({ type: "trusted.decide", token, approvalId, choice }));
   };
   return { fleet, selected, workspace, pending, newConversation, prepared, confirmed, setConfirmed, outgoing,
+    recoveryComposers: () => fleetRef.current.composers,
     select, begin, prepare, launch, start, fork, control, refresh: () => refreshRef.current?.(true),
     preparationPending: pending[PREPARE] ?? false,
     preparationNotice: notices[PREPARE] ?? "", observationNotice: notices[OBSERVATION] ?? "",

@@ -1,0 +1,7 @@
+.renderer-failure { color: #dce7ec; background: #101c25; max-width: 72rem; margin: 2rem auto; padding: 2rem; border: 1px solid #52626e; border-radius: 8px; overflow: auto; max-height: calc(100vh - 4rem); }
+.renderer-failure h1 { color: #ffca85; font-size: 1.5rem; }
+.renderer-failure p { line-height: 1.5; }
+.renderer-failure section { display: grid; gap: .5rem; margin: 1rem 0; }
+.renderer-failure textarea { width: 100%; min-height: 8rem; color: #e1ebf0; background: #071011; font: 13px monospace; resize: vertical; }
+.renderer-failure button { justify-self: start; color: #e1ebf0; background: #233d4d; padding: .4rem .7rem; border: 1px solid #6f8f9e; }
+.renderer-failure-ack { display: flex; align-items: center; gap: .6rem; }

@@ -6,6 +6,7 @@ import { emptyComposer } from "./fleet-state";
 import { useTrustedFleet, type TrustedSelection } from "./use-trusted-fleet";
 import { TrustedForkControl } from "../../components/TrustedForkControl";
 import { useChatSubmit } from "../use-chat-submit";
+import { useRecoveryText } from "../renderer-health";
 import "./trusted-local.css";
 
 export function TrustedLocalPane({ draft, bridge, generation = 0, connected, selection, onSnapshot, workspaceRoot }: {
@@ -19,6 +20,10 @@ export function TrustedLocalPane({ draft, bridge, generation = 0, connected, sel
   const [text, setText] = useState("");
   const [model, setModel] = useState("");
   const textRef = useRef(text); textRef.current = text;
+  useRecoveryText(() => [
+    ...(textRef.current ? [{ label: "New agent message", text: textRef.current }] : []),
+    ...Object.entries(cockpit.recoveryComposers()).filter(([, value]) => value.text).map(([token, value]) => ({ label: `Codex message · ${token}`, text: value.text })),
+  ]);
   const composerRef = useRef<HTMLTextAreaElement>(null);
   const [focusIntent, setFocusIntent] = useState(0);
   const focusedIntent = useRef(0);
@@ -109,7 +114,7 @@ export function TrustedLocalPane({ draft, bridge, generation = 0, connected, sel
         <textarea ref={composerRef} {...chatKeys} aria-label={showPreparation ? "New agent message" : "Message Codex"}
           title="Enter to send · Shift-Enter for a new line" placeholder={showPreparation ? "What would you like Codex to do?" : "Message Codex…"}
           rows={3} value={showPreparation ? text : composer.text} maxLength={16384}
-          onChange={(event) => { if (showPreparation) setText(event.target.value); else if (state?.runToken) cockpit.edit(state.runToken, event.target.value); }} />
+          onChange={(event) => { if (showPreparation) { textRef.current = event.target.value; setText(event.target.value); } else if (state?.runToken) cockpit.edit(state.runToken, event.target.value); }} />
         <button type="submit" className="trusted-send" aria-label={showPreparation ? "Start agent" : "Send message"} title="Send · Enter"
           onMouseDown={(event) => event.preventDefault()} disabled={!connected || (showPreparation ? !startRootKnown || cockpit.preparationPending || !text.trim() : runPending || !composer.text.trim() || !state || !["ready", "running"].includes(state.status) || state.status === "running" && !state.turnId)}>
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V5m-6 6 6-6 6 6" /></svg>

@@ -22,6 +22,7 @@ import { discardStoredZoom, persistZoom, readStoredZoom, stepZoom, zoomShortcut 
 import type { Lifecycle } from "../lifecycle";
 import { NAVIGATION_KEY, readNavigation, protectsBuffer, staleSnapshot, retainDerived } from "./recovery";
 import { hotMemory, pendingWrites } from "./hot-memory";
+import { useRecoveryText } from "./renderer-health";
 import { RunRail } from "./agents/RunRail";
 import { RunPane } from "./agents/RunPane";
 import { LaunchDraft } from "./agents/LaunchDraft";
@@ -378,6 +379,22 @@ export function App() {
   };
 
   useEffect(() => { fileTabsRef.current = fileTabs; }, [fileTabs]);
+  useRecoveryText(() => {
+      const current = workspaceRef.current.snapshot?.project.id;
+      const label = selectedWorktreeRef.current?.root ?? current ?? "Opened worktree";
+      const files = fileTabsRef.current.filter(protectsBuffer).map((file) => ({ label: `${label} / ${file.path}`, text: file.content }));
+      for (const [id, retained] of worktrees.current) if (id !== current) {
+        for (const file of retained.files.filter(protectsBuffer)) files.push({ label: `${id} / ${file.path}`, text: file.content });
+      }
+      for (const [id, target] of steeringMemory.getSnapshot().targets) if (target.draft) files.push({ label: `Agent message · ${id}`, text: target.draft });
+      const local = agentClient.getSnapshot();
+      if (local.draft) files.push({ label: "Agent draft", text: local.draft.task });
+      for (const [id, text] of Object.entries(local.instructions)) if (text) files.push({ label: `Run instructions · ${id}`, text });
+      for (const operation of local.operations) if (operation.text && ["pending", "delivery-unknown"].includes(operation.status)) {
+        files.push({ label: `${operation.status} ${operation.kind} · ${operation.runId} · ${operation.requestId}`, text: operation.text });
+      }
+      return files;
+  });
   useEffect(() => { workspaceRef.current = workspace; }, [workspace]);
   useEffect(() => taskClient.connect(scopedBridge, window.swarmLifecycle), [taskClient, scopedBridge]);
   useEffect(() => {

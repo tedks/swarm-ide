@@ -9,6 +9,7 @@ import { DevUpdateSchema, LIFECYCLE_CHANNEL, LIFECYCLE_REQUEST_CHANNEL, Lifecycl
 import { applicationMenuTemplate } from "./menu";
 import { CoreSupervisor } from "./core-supervisor";
 import { launchLocalCore } from "./core-launch";
+import { watchWindowHealth } from "./window-health";
 
 const REQUEST_CHANNEL = "swarm:request";
 const EVENT_CHANNEL = "swarm:event";
@@ -48,6 +49,12 @@ function createWindow() {
     backgroundColor: "#071011", autoHideMenuBar: true,
     webPreferences: { preload: join(__dirname, "preload.js"), contextIsolation: true, nodeIntegration: false, sandbox: true },
   });
+  const observedWindow = mainWindow;
+  const stopHealth = watchWindowHealth(observedWindow, observedWindow.webContents, (event, details) => {
+    console.error(`[window-health] ${JSON.stringify({ at: new Date().toISOString(), event, windowId: observedWindow.id,
+      coreGeneration: supervisor.state.generation, ...details })}`);
+  });
+  observedWindow.once("closed", stopHealth);
   mainWindow.webContents.setWindowOpenHandler((details) => {
     const url = projectWebUrl(details.url);
     if (url && !details.postBody && isAllowedRendererUrl(mainWindow?.webContents.getURL() ?? "")) {
