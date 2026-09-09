@@ -7,7 +7,7 @@ authenticate an agent harness for you.
 
 ## Run or install
 
-From a checkout you can access:
+From a clone of the [public repository](https://github.com/tedks/swarm-ide):
 
 ```sh
 nix run . -- --workspace /absolute/path/to/your/project
@@ -15,25 +15,25 @@ nix profile install .#swarm-ide
 swarm --workspace /absolute/path/to/your/project
 ```
 
-The source repository is private during prototyping. Use your existing Git access
-to clone it; no public download or image is implied by these commands. You can
-also install directly with your existing SSH access:
+You can also run or install directly from GitHub, without cloning or setting up
+SSH access:
 
 ```sh
-nix profile install 'git+ssh://git@github.com/tedks/swarm-ide?ref=master#swarm-ide'
+nix run github:tedks/swarm-ide -- --workspace /absolute/path/to/your/project
+nix profile install github:tedks/swarm-ide#swarm-ide
 ```
 
 The first build downloads pinned build/runtime dependencies and assembles the
-production bundle. Subsequent invocations run that installed bundle, not a build.
-For a repeatable fleet rollout, replace `ref=master` with `rev=COMMIT` after the
-chosen commit has landed. Do not share your SSH keys or agent configuration with
-evaluators.
+production bundle. Subsequent invocations of `swarm` run the installed bundle;
+`nix run` reuses an unchanged cached build. For a repeatable fleet rollout, pin a
+landed revision with `github:tedks/swarm-ide/COMMIT#swarm-ide`, replacing `COMMIT`
+with the chosen full commit ID. Accounts and credentials stay on each user's host.
 
 For later updates, use `nix profile list` to find the Swarm entry's actual
 **Name**, then `nix profile upgrade NAME`. If its source is your local clone,
 first preserve local work and pull the intended reviewed revision there.
 Do not repeat `profile install` to update an existing entry: it can collide with
-the installed `swarm` command. A `rev=COMMIT` pin stays fixed; deploying a new
+the installed `swarm` command. A commit pin stays fixed; deploying a new
 fleet revision requires choosing a new pin rather than expecting upgrade to
 advance it. Save and close the old window before launching the updated app.
 
@@ -74,6 +74,9 @@ the same flags. Continue with the [five-minute tour](demo.md).
 Choose the project and the exact tmux server/session independently. Agents can
 have sibling worktrees; their source links use each checked owner's actual Git
 worktree, not the project shown by the main directory browser.
+The agent's **Worktree** icon or the sidebar's **Worktree** selector switches the
+main workspace among registered worktrees of the same repository. Choose
+**Launch workspace** to return. For a different repository, open another window.
 
 ```sh
 swarm --workspace ~/Projects/goals/master --tmux-server personal --tmux-session goals
@@ -140,6 +143,12 @@ util-linux. It provides the pinned Bazel/Java runtime for existing build-graph
 queries. Your normal `PATH` still supplies Codex/other harnesses, GitHub CLI,
 Docker and other optional tools. Those integrations show only what is available;
 installing Swarm neither starts an agent nor copies credentials.
+
+To start one, click **New agent** beside the conversation tabs, check the
+workspace, type a task and press Enter. Optional Settings chooses the model.
+It uses your installed Codex account and approvals; no registry or source-file
+draft is needed. IDE-owned runs stop when the app/core closes, unlike the
+external tmux agents described above.
 
 Installed launch clears inherited `SWARM_RENDERER_URL` and `SWARM_DEV_CONTROL`
 so it cannot accidentally load an old development server or watch a stale reload

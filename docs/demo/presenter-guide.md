@@ -7,9 +7,10 @@ the resulting work.
 ## Before sharing
 
 Open a trusted checkout with the [installed Linux command](../linux-install.md).
-Fetch its local Ditz metadata if you want tasks. Connect an existing Codex tmux
-session if you want live agents; verify the expected agent appears before the
-presentation. Do not distribute private registries, transcripts or account files.
+Fetch its local Ditz metadata if you want tasks. For live agents, authenticate
+Codex normally and use **New agent**, or connect an existing Codex tmux session.
+Verify the conversation you intend to show before the presentation. Do not
+distribute private registries, transcripts or account files.
 
 The design/source part requires no model account. Reading registered agents or
 existing outcomes does not request a turn. Leave Work Log stopped unless you
@@ -21,20 +22,23 @@ intend to run the summary worker, and do not send test messages to a busy agent.
 | --- | --- | --- |
 | 0:00–1:00 | Workspace components → Read design → source link | “The design lives beside the code; I can move from a responsibility to its implementation.” |
 | 1:00–2:00 | Source, file Context, task document and blockers | “Different views explain the same work without losing my editor.” |
-| 2:00–3:00 | Registered conversation, tabs, terminal command | “This is the existing agent, not a second copy. I can keep using its terminal.” |
+| 2:00–3:00 | New agent, or registered conversation and terminal command | “I can start Codex here or follow the same agent I already use in tmux.” |
 | 3:00–4:00 | Activity event → source/patch; Work Log outcome | “Activity shows operations. The Work Log explains what was accomplished.” |
-| 4:00–5:00 | Agent worktree → changed file/diff → original source | “I can inspect the agent's real branch while keeping my own work intact.” |
+| 4:00–5:00 | Agent worktree → file/diff → Launch workspace | “The whole workspace follows the agent's branch; my original editor is still there when I return.” |
 
-Without registered agents, spend the last two minutes on authored task/design
-links and source/build dependencies. Say that live-agent observation requires
-association; do not substitute a synthetic agent without labelling it.
+For a no-model presentation, spend the last two minutes on authored task/design
+links and source/build dependencies, or observe an already-running agent without
+sending. **Generate component plan**, **New agent**, steering and Work Log
+**Start** are deliberate model actions, not prerequisites for browsing.
 
 ## Keep the claims close to the screen
 
-The current worktree action opens a central read-only inspector, not the main
-directory browser. Native worktree switching and selected-target builds are
-pending. Build graph observation reads Bazel definitions; it is not a successful
-binary build. The service-topology action is specific to Swarm's example.
+The Worktree icon/selector switches the main workspace among registered worktrees
+of the same repository. Activity's per-event source/patch inspector is read-only.
+Build graph observation loads Bazel definitions automatically; it is not a binary
+build. **Build selected target** compiles an observed rule, with actual output in
+**Builds & resources**. The service graph reads supported repository declarations;
+the included example is data, not a special application command.
 
 The live Work Log has explicit Start/Stop and model settings. Saved summaries are
 a different, historical source. Opening a report does not rerun its checks.
@@ -44,10 +48,10 @@ open the same terminal before retrying. See [current limits](../demo.md#current-
 If task metadata is missing, fetch/reconcile the local Ditz branch. Tasks update
 when that ref changes, but Swarm does not fetch the remote. Use the sidebar's
 search and All filter for a particular completed issue instead of hunting through
-a partial task graph. Missing plans or services do not make the project empty.
+a large task graph. Missing plans or services do not make the project empty.
 
 Save edits before closing. Prefer a disposable checkout for an editing demo;
-do not resize-stress the app or alter a busy agent's files just to show an effect.
+do not alter a busy agent's files just to show an effect.
 
 ## Existing verification, not a new recording
 

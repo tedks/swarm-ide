@@ -2,9 +2,9 @@
 
 Use the **installed Linux app** for the full local workflow. For a Mac evaluator,
 the [Docker browser demo](container-demo.md) offers design and source browsing,
-but not host-agent or live build execution. The source is private: the sender must
-give you repository access or an authorized clone. No public installer/image is
-published.
+but not host-agent or live build execution. The [source repository](https://github.com/tedks/swarm-ide)
+is public. Both routes build locally; no prebuilt installer or container image is
+published yet.
 
 ## Linux: first window
 
@@ -18,7 +18,7 @@ Keep the host's Electron sandbox and namespace support enabled.
 From a new destination:
 
 ```bash
-git clone git@github.com:tedks/swarm-ide.git
+git clone https://github.com/tedks/swarm-ide.git
 cd swarm-ide
 nix run . -- --workspace "$PWD"
 ```
@@ -39,8 +39,8 @@ fetch remote changes itself. For an existing local branch, use Ditz sync rather
 than force-fetching over work. Other projects need no Ditz setup to browse files.
 
 Follow the [five-minute tour](demo.md). No agent account is required for the
-design/source portion; a fresh install has no registered agents until you
-connect some.
+design/source portion. For agent work, use **New agent** to start Codex or connect
+an existing tmux session as described below.
 
 ## Keep the command, then open another project
 
@@ -65,11 +65,15 @@ linked worktrees work normally because their Git directory is accessible.
 The container instead needs a standalone clone inside its mount.
 
 The installed application lives in the Nix store and opens your chosen project.
-Saving changes that project's files; simply opening it does not install its
-dependencies. Source browsing works without Bazel or project-specific plans.
+Saving changes that project's files. You do not need to install the project's
+dependencies just to browse source; Bazel and project-specific plans are optional.
 Available instruments depend on the actual repository and running local tools.
-Bazel observation loads project-controlled definitions with your local permissions;
-it is a query, not compilation. See [build graph coverage](dynamic-build-graph.md).
+Once the Linux window is ready and focused, supported Bazel declarations load
+automatically, even before you open Build graph. Queries can download declared
+dependencies and evaluate project-controlled loading rules; they do not compile
+targets. Select a rule in **Build graph → Build selected target** to build it.
+**Builds & resources** shows progress, output and Stop.
+See [build graph coverage](dynamic-build-graph.md).
 
 ## Include agents already running in tmux
 
@@ -105,16 +109,24 @@ Select a registered agent to read the conversation and Activity. The terminal
 icon copies its checked attach command, so you can steer the same agent in tmux.
 IDE messages remain copyable while queued. If receipt is unclear, inspect the
 conversation or terminal before submitting again; do not resend just to clear
-the label. Faster refresh and better receipt reconciliation are pending work.
+the label. Conversation and Activity reads refresh automatically while visible;
+**Sent to queue** records queue acceptance, not a read receipt.
 
 ## Optional model and GitHub actions
 
 Browsing and observing do not request a model turn. Explicit trusted-local
 launch uses your existing Codex installation, account, tools and approvals.
-Use the Agent tools control to prepare a source-focused request, inspect the
-prompt, and confirm launch. Unlike external tmux sessions, IDE-owned runs stop
-with the app/core; saved history is not automatically resumed.
+Click **New agent** beside the conversation tabs, check the displayed workspace,
+type your task and press **Enter** or the send arrow. **Shift-Enter** adds a line;
+**Settings** optionally chooses a model. No source attachment or preparation step
+is required. Unlike external tmux sessions, IDE-owned runs stop with the app/core;
+saved history is not automatically resumed.
 See [trusted-local execution](trusted-local-execution.md).
+
+When a repository has no component-plan index, **Generate component plan** can
+start a design agent that writes `.swarm/plans.json` and `docs/design/`.
+Its settings default to `gpt-5.6-sol` with `xhigh` reasoning. This is an explicit
+model/write action; review its changes as you would another agent's work.
 
 Work Log **Start** separately enables online summaries of registered work.
 Its gear exposes the model settings; default is Codex `gpt-5.6-luna`. Leave it
@@ -144,14 +156,14 @@ See the [installation reference](linux-install.md#run-or-install).
 
 | Symptom | Next action |
 | --- | --- |
-| Repository not found | Ask the sender to confirm access; no public artifact exists yet. |
+| Repository not found | Use `https://github.com/tedks/swarm-ide.git` and check network access; the source is public. |
 | Nix command/features unavailable | Install Nix and enable flakes/nix-command; reopen the terminal if needed. |
 | Workspace rejected | Check `git -C "/path/to/project" rev-parse --show-toplevel` and choose the committed worktree root. |
 | No window or sandbox/namespace error | Report the exact host error and use a supported Linux/X11 environment. |
 | Missing tasks | Check local `refs/heads/ditz-metadata` in that project, not just `origin/ditz-metadata`. |
-| No agents | Use an existing Codex tmux session or maintained registry; opening a repo alone does not launch/discover them. |
+| No agents | Click New agent with Codex installed/authenticated, or connect an existing Codex tmux session or registry. Opening a repo alone does not launch agents. |
 | Message remains queued | Check that same conversation in tmux; keep the saved text rather than automatically resending. |
-| Missing build/service information | Use the supported view explanation; queries do not infer arbitrary service deployments. |
+| Missing build/service information | Check project setup and use Refresh dependencies or Refresh services. Services come from supported declarations, not inferred deployments. |
 | GitHub PRs unavailable | Check normal `gh` configuration and the selected repo's origin, then explicitly refresh. |
 
 When reporting a failure, send the command, app revision, host architecture and

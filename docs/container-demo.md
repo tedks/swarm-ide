@@ -13,10 +13,12 @@ were not. For the full local workflow use the [installed Linux app](linux-instal
 ## Start
 
 Install and start [Docker Desktop for your Mac](https://docs.docker.com/desktop/setup/install/mac-install/),
-or use an existing Linux Docker Engine with Compose. The source repository still
-requires access from its owner. In a clone of the supplied source, run:
+or use an existing Linux Docker Engine with Compose. Clone the public source and
+start the demo:
 
 ```bash
+git clone https://github.com/tedks/swarm-ide.git
+cd swarm-ide
 docker compose up --build
 ```
 
@@ -165,5 +167,5 @@ uses a nonroot Chromium user and scoped namespace allowance as well.
 describes the build image, and [Docker's multi-platform guide](https://docs.docker.com/build/building/multi-platform/)
 distinguishes native targets from emulation.
 
-The image is built locally only. This work does not publish an image, change
-repository access or include private transcripts/configuration in the build context.
+The source is public; a prebuilt image is not published yet. This local build
+does not bundle private transcripts or account configuration.
