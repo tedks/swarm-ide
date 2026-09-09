@@ -10,8 +10,8 @@ type: feature
 component: default
 release:
 reporter: Ted Smith <tedks@riseup.net>
-status: in_progress
-disposition:
+status: closed
+disposition: fixed
 creation_time: 2026-09-09T14:45:06-00:00
 references: []
 log_events:
@@ -36,3 +36,14 @@ log_events:
     pushed; issue intentionally remains in_progress until ROOT normal landing. Unrelated14
     broad design-fixture identity failures recorded on swarm-plan-cockpit-fixture-identities;
     no blanket full-green claim.
+- time: 2026-09-09T15:12:22-00:00
+  who: Ted Smith
+  what: 'closed: fixed'
+  comment: PR144 normally merged as63ad77a6, preserving reviewed component layout.
+    Active tasks default, individual statuses/All, saved repository/world preferences,
+    honest counts and hidden-selection recovery; graph/outline/edges agree without
+    Ditz history mutation. Actual46 focused+60 reader tests/types/native clean; real
+    CLI-Ditz packaged Active3/2edges and All5/4edges retained dirty source/cursor/component
+    camera, zero renderer errors and cleanup. Legacy fixture failures remain separately
+    tracked. Managed IDE updated; automatic dependency loading now assigned to always-on
+    worker.
