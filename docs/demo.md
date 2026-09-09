@@ -65,8 +65,8 @@ workspace, type a concrete task and press **Enter** or the send arrow. No source
 attachment, Observe or Prepare step is required. **Settings** optionally changes
 the model; your normal Codex tools and approvals apply.
 
-Alternatively, select a registered agent from the left rail. Its conversation opens in the
-bottom dock. Named conversation tabs and **Ctrl-Tab / Ctrl-Shift-Tab** cycle
+Alternatively, select a registered agent from the left rail. Its conversation
+opens in the bottom dock. Named conversation tabs and **Ctrl-Tab / Ctrl-Shift-Tab** cycle
 agents while focus is in that pane. The rail shows current lifecycle and the
 latest available Work Log summary; a past completed turn is not today's status.
 

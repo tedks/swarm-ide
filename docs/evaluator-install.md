@@ -65,8 +65,8 @@ linked worktrees work normally because their Git directory is accessible.
 The container instead needs a standalone clone inside its mount.
 
 The installed application lives in the Nix store and opens your chosen project.
-Saving changes that project's files; simply opening it does not install its
-dependencies. Source browsing works without Bazel or project-specific plans.
+Saving changes that project's files. You do not need to install the project's
+dependencies just to browse source; Bazel and project-specific plans are optional.
 Available instruments depend on the actual repository and running local tools.
 Once the Linux window is ready and focused, supported Bazel declarations load
 automatically, even before you open Build graph. Queries can download declared
