@@ -9,13 +9,16 @@ Running `swarm-ide` in a Git worktree, a nested source directory, or a bare repo
 ## Progress
 
 - [x] (2026-09-09 15:05Z) Read instructions and current CLI, package, registration and test boundaries; started `swarm-zero-config-launch`.
-- [ ] Add Git discovery, private reusable project configuration and tests.
-- [ ] Wire package aliases and checked current-tmux discovery; update design and installation docs.
-- [ ] Run focused CLI checks, native review and one owned installed desktop proof; push ready PR and handoff.
+- [x] (2026-09-09 15:23Z) Added Git discovery, private reusable configuration and tests, aliases/current-tmux integration and living design/install docs.
+- [x] (2026-09-09 15:23Z) All 35 direct tests pass; actual installed Nix artifact built. Native review converged CLEAN after two important boundary findings and the profile follow-up.
+- [x] (2026-09-09 15:24Z) One actual installed bare-parent/source proof passed: 1.012s scenario, 2.036s harness, cleanup complete and no renderer errors.
+- [ ] Final documentation/push/Ditz sync and ready handoff to ROOT.
 
 ## Surprises & Discoveries
 
 The current launcher only canonicalizes a directory; it does not resolve the Git root. Its existing tmux helper already discovers and verifies exact pane owners but always allocates a new registry and requires explicit session options. The package provides only `swarm`.
+
+Native review found that sanitizing Git only during discovery still allowed inherited Git selection variables to redirect the child core, and that checking lexical XDG paths before mkdir allowed symlinked roots/profiles to create source directories before rejection. Both now have dedicated regressions and canonical pre-creation checks; SSH/auth settings remain inherited. All tests were added alongside implementation, not claimed as a separately executed historical RED baseline.
 
 ## Decision Log
 
@@ -53,6 +56,10 @@ Current reviewed base is `395a6170`. Evidence and concise seam are kept in `/tmp
 
 ## Outcomes & Retrospective
 
-Implementation and evidence pending.
+The new installed command resolves both supported bare layouts, preserves explicit choices, remembers valid selection and creates private settings/profile/registry. The 35 focused cases and actual Nix package are green; native important-fix convergence is clean. The installed desktop opened from a disposable bare parent with two worktrees, selected master, opened actual source and verified automatic private profile/config/empty registry. The harness used owned :167/55437 and cleaned up fully. No model, managed window or real project config was touched.
+
+Automatic tmux registration reuses the existing checked helper and is project-scoped at launch only. Exact actual tmux session selection and controlled owner/project filtering are tested; this increment does not claim a new real-model conversation or discovery of every running pane. Linux x86_64 is the executed package platform; no new macOS/ARM execution claim.
 
 Initial plan records the selection, persistence and no-agent-start boundaries before code changes.
+
+2026-09-09 15:25Z update records implementation, review corrections and completed installed-desktop acceptance with exact attribution.
