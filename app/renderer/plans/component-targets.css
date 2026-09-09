@@ -1,0 +1,13 @@
+.component-targets .instrument-heading { margin-bottom: 10px; }
+.component-target-summary { color: var(--muted); line-height: 1.45; margin: 0 0 16px; }
+.component-target-group { margin: 0 0 18px; }
+.component-target-group h3 { display: flex; gap: 8px; align-items: baseline; padding-bottom: 7px; border-bottom: 1px solid var(--line); font-size: 13px; }
+.component-target-group h3 small, .component-target-empty, .component-target-note { color: var(--muted); font-size: 11px; font-weight: normal; }
+.component-target-group ul { list-style: none; padding: 0; margin: 0; }
+.component-target-group li { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 5px 8px; padding: 10px 0; border-bottom: 1px solid var(--line); }
+.component-target-group li p { grid-column: 1; margin: 0; color: var(--muted); font-size: 11px; line-height: 1.4; }
+.component-target-link { grid-column: 1; min-width: 0; text-align: left; overflow-wrap: anywhere; font-family: var(--mono); font-size: 11px; }
+.component-target-run { grid-column: 2; grid-row: 1 / span 2; align-self: center; white-space: nowrap; }
+.component-target-group code { overflow-wrap: anywhere; font-size: 11px; }
+.component-target-group li > small { grid-column: 1 / -1; color: var(--muted); font-size: 11px; }
+.component-target-note { margin-top: 14px; line-height: 1.45; }

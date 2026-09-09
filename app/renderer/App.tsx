@@ -43,6 +43,7 @@ import { protectsAgentIntent } from "./agents/live-state";
 import "./agents/agents.css";
 import { TaskBridgeClient } from "./tasks/client";
 import { PlanWorkspace } from "./plans/PlanWorkspace";
+import { ComponentTargets, componentTargets, type ComponentSelection } from "./plans/ComponentTargets";
 import { usePlanGeneration } from "./plans/use-plan-generation";
 import { startComponentPlan } from "./plans/start-generation";
 import { TaskPanel } from "./tasks/TaskPanel";
@@ -271,7 +272,11 @@ export function App() {
     void switchWorkspaceRef.current(sessionId);
   };
   const switchWorkspaceRef = useRef<(sessionId: string | null) => Promise<boolean>>(async () => false);
-  const showDesign = () => { ++navigationIntent.current; setWorkLogEntry(null); setDesignVisible(true); setJournalVisible(false); setWorktreeVisible(false); setTaskDocumentVisible(false); };
+  const [designSelection, setDesignSelection] = useState<ComponentSelection>();
+  const showDesign = () => {
+    ++navigationIntent.current; setWorkLogEntry(null); setDesignVisible(true); setJournalVisible(false); setWorktreeVisible(false); setTaskDocumentVisible(false);
+    if (designSelection?.node) inspectComponent(designSelection.node.id);
+  };
   const showWorkLogEntry = (entry: WorkLogEntry) => { ++navigationIntent.current; setWorkLogEntry(entry.id); setDesignVisible(false); setJournalVisible(false); setWorktreeVisible(false); setTaskDocumentVisible(false); };
   useEffect(() => { if (taskDocumentVisible) { setWorkLogEntry(null); setDesignVisible(false); setJournalVisible(false); setWorktreeVisible(false); } }, [taskDocumentVisible]);
   const pendingBacklinkIntent = useRef<number | null>(null);
@@ -317,6 +322,10 @@ export function App() {
   const inspectTask = useCallback((id: string | null) => {
     const current = workspaceRef.current.snapshot;
     if (current) inspect({ repositoryId: current.project.id, worldId: current.world.id, kind: "task", id });
+  }, [inspect]);
+  const inspectComponent = useCallback((id: string) => {
+    const current = workspaceRef.current.snapshot;
+    if (current) inspect({ repositoryId: current.project.id, worldId: current.world.id, kind: "component", id });
   }, [inspect]);
   const inspectedTaskId = attention.subject?.kind === "task" ? attention.subject.id : null;
   useLayoutEffect(() => {
@@ -800,7 +809,7 @@ export function App() {
       else if (target.kind === "directory") { if (!await enterDirectory(target.path)) return; }
       else if (target.kind === "task") { if (!taskClient.getSnapshot().observation?.snapshot?.summaries.some((task) => task.id === target.id)) { setWorkspaceNotice("That task is no longer in the current task list."); return; } openTaskDocument(target.id); }
       else if (target.kind === "agent") { if (!externalAgents.snapshot?.sessions.some((session) => session.id === target.sessionId)) return; showConversation(target.sessionId); }
-      else if (target.kind === "component") { setPlanRestore({ id: target.id, serial: ++navigationIntent.current }); showDesign(); }
+      else if (target.kind === "component") { setPlanRestore({ id: target.id, serial: ++navigationIntent.current }); showDesign(); inspectComponent(target.id); }
       if (ticket !== historyTicket.current) return;
       history.current = commitHistoryNavigation(history.current, intent); changedHistory((n) => n + 1);
     } finally { if (ticket === historyTicket.current) historyRestoring.current = false; }
@@ -1295,6 +1304,14 @@ export function App() {
   const buildLinks = useMemo(() => buildGraphLinks(buildGraph.observation), [buildGraph.observation]);
   const targetBuilds = useTargetBuilds(snapshot?.project.id, snapshot?.world.id, contextRealm(),
     Boolean(snapshot) && observedCoreGeneration === coreGenerationRef.current && (!window.swarmLifecycle || lifecycle?.core.phase === "ready"));
+  const componentSelection = designSelection && designSelection.repositoryId === snapshot?.project.id &&
+    designSelection.worldId === snapshot?.world.id && designSelection.generation === coreGenerationRef.current ? designSelection : undefined;
+  const componentContext = contextSubject?.kind === "component" && componentSelection?.node?.id === contextSubject.id ? componentSelection : undefined;
+  const runComponentTarget = (label: string, operation: "build" | "test") => {
+    if (!componentContext || workspacePendingRef.current || targetBuilds.busy ||
+        !componentTargets(componentContext, buildGraph.observation).some((target) => target.label === label && target.ready && target.kind === operation)) return;
+    void targetBuilds.start(label, operation);
+  };
   const openContextBuildTarget = (target: { topologyId: string; id: string }) => {
     const current = workspaceRef.current.snapshot;
     if (target.topologyId !== "build" || !current || !buildLinks || contextSubject !== attentionRef.current.subject ||
@@ -1574,7 +1591,7 @@ export function App() {
           generationAction={planGeneration}
           generation={coreGenerationRef.current} connected={!coreUnavailable && Boolean(window.swarm)} tasks={tasks} client={taskClient}
           onOpenFile={openLinkedFile} onOpenTask={openPlanningTask} onOpenBuild={openPlanBuildTarget}
-          restoreSelection={planRestore} onSelectComponent={(id) => recordLocation({ kind: "component", id })}
+          restoreSelection={planRestore} onSelectionChange={setDesignSelection} onSelectComponent={(id) => { recordLocation({ kind: "component", id }); inspectComponent(id); }}
           documentVisible={designVisible} onOpenDesign={showDesign}
           renderWorkspace={({ components, document: designDocument, tasks: taskGraph }) => <>
         <div tabIndex={-1} aria-label="Coordinated graphs" className={`graphs-grid ${textOpen ? "is-sidebar" : "is-active"}`}><div className="graph-panels">
@@ -1632,7 +1649,9 @@ export function App() {
         {revealNotice ? <p ref={revealNoticeElement} className="tasks-reveal-notice" role="status" tabIndex={0}>{revealNotice}</p> : null}
         {contextSubject?.kind === "task" ? <div className="artifact-context" data-context-kind="task" data-context-subject={contextSubject.id}><TaskContext returnButtonRef={taskReturnButton} selectedTaskId={contextSubject.id} snapshot={tasks.observation?.snapshot ?? null} detail={tasks.detail?.id === contextSubject.id ? tasks.detail : null} detailRevision={tasks.detailRevision} detailStale={tasks.detailStale || tasks.refreshing || tasks.observation?.status !== "observed" || Boolean(tasks.notice)} reading={tasks.reading} notice={tasks.detailNotice} attachment={taskAttachment(contextSubject.id)} onSelect={openTaskDocument} onReveal={(ref) => { void revealTaskReference(ref); }} onReturnToSource={returnToSourceInformation} onShowDocument={showPinnedTaskDocument} onRefresh={() => { void taskClient.refresh(); }} connected={tasks.connected} generation={coreGenerationRef.current} journal={journal.observation} journalRetained={Boolean(journal.notice) || journal.busy} run={liveAgents.run} runRecords={liveAgents.records} runRetained={liveAgents.detailStale || !liveAgents.connected} onJournal={showJournal} trustedObservation={{ snapshot: trustedObservation, retained: !liveAgents.connected }} onOpenTrustedRun={openTrustedRun} /></div> : <>
         {tasks.selectedTaskId ? <button className="tasks-show-details" onClick={showTaskDetails}>Show task details</button> : null}
-        <ContextPane subject={contextSubject} sections={contextSections} onOpen={openLinkedFile} onGraph={openContextBuildTarget} onTask={(target) => { void inspectBacklink(target); }} onRefreshTasks={() => { void taskClient.refresh(); }} headingRef={sourceInformationHeading} />
+        {componentContext ? <ComponentTargets selection={componentContext} observation={buildGraph.observation} busy={targetBuilds.busy || coreUnavailable || workspacePending}
+          onRun={runComponentTarget} onOpenTarget={openPlanBuildTarget} onRefresh={() => { void buildGraph.refresh(); }} /> :
+          <ContextPane subject={contextSubject} sections={contextSections} onOpen={openLinkedFile} onGraph={openContextBuildTarget} onTask={(target) => { void inspectBacklink(target); }} onRefreshTasks={() => { void taskClient.refresh(); }} headingRef={sourceInformationHeading} />}
         </>}
         {demo.context ? <MockContext focus={contextSubject && "path" in contextSubject ? contextSubject.path : contextSubject && "id" in contextSubject ? contextSubject.id ?? "No task selected" : "Nothing selected"} /> : null}
         </> : null}
