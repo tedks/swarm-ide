@@ -353,7 +353,8 @@
       "swarm-generate-component-plan",
       "swarm-plan-index-startup",
       "swarm-design-component-tests",
-      "swarm-task-graph-filters"
+      "swarm-task-graph-filters",
+      "swarm-component-layout-drag"
     ],
     "contextRefs": [],
     "design": {
@@ -436,7 +437,7 @@
         },
         {
           "label": "//tools/living-design:checks",
-          "role": "Component checks or authoring entry",
+          "role": "Component relationships, scoped layout dragging and plan-reader checks",
           "dependencies": [
             {
               "label": "//:quality_sources",
