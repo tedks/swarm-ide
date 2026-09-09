@@ -60,6 +60,16 @@ isolated-profile limitations do not define all agent execution.
 
 ## Actual build and reload graph
 
+The native window's `window-health.ts` listener reports timestamped renderer
+exit/reason/code, unresponsive/responsive and main-frame load-failure categories.
+It also forwards only fixed renderer render/script/rejection categories; error
+messages, rejected values and URLs are not copied into these health logs. These
+listeners are removed on window close. They never restart, kill or reload a
+process. React rendering failures have a separate copyable-text fallback described
+in [the cockpit design](cockpit.md). A Chromium crash or hang cannot render that
+fallback; the native log identifies that different failure class for diagnosis.
+The idle hang reported on September 9 is not established as either class yet.
+
 1. `//:quality_sources` collects application, core, protocol and supporting inputs.
 2. `//:desktop-bundle` consumes that filegroup plus `//:package.json`; its tool
    `//tools:build-app` produces `swarm-ide-foundation.tar.gz`.

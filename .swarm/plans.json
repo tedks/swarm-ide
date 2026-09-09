@@ -38,6 +38,11 @@
     ],
     "sourcePaths": [
       "app/renderer/App.tsx",
+      "app/renderer/main.tsx",
+      "app/renderer/RendererBoundary.tsx",
+      "app/renderer/renderer-health.ts",
+      "app/renderer/renderer-health.css",
+      "tools/renderer-health/BUILD.bazel",
       "app/renderer/EditorPane.tsx",
       "app/renderer/GraphPane.tsx",
       "app/renderer/repository/reveal.ts",
@@ -87,6 +92,24 @@
         }
       ],
       "buildTargets": [
+        {
+          "label": "//tools/renderer-health:checks",
+          "role": "Checks renderer failure containment, retained text, no replay and lifecycle diagnostics",
+          "dependencies": [{ "label": "//:quality_sources", "relation": "data" }]
+        },
+        {
+          "label": "//tools/renderer-health:smoke",
+          "role": "Owned hide/show and controlled render-failure recovery proof; not a historical idle-cause reproduction",
+          "dependencies": [
+            { "label": "//tools/renderer-health:sources", "relation": "data" },
+            { "label": "//tools/renderer-health:proof-renderer", "relation": "data" },
+            { "label": "//:desktop-bundle", "relation": "data" },
+            { "label": "//tools:virtual-desktop-run.sh", "relation": "data" },
+            { "label": "//tools:x11-driver-source", "relation": "data" },
+            { "label": "//tools:electron-runtime-source", "relation": "data" },
+            { "label": "//tools/task-integration:sources", "relation": "data" }
+          ]
+        },
         {
           "label": "//tools/graph-recenter:checks",
           "role": "Checks deliberate node reveal, camera retention and stale/manual-move cancellation",
@@ -722,6 +745,7 @@
       "protocol/schema.ts",
       "core/worker-runtime.ts",
       "app/electron/main.ts",
+      "app/electron/window-health.ts",
       "nix/package.nix",
       "tools/cli/launcher.mjs",
       "tools/cli/project.mjs",

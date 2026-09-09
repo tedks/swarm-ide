@@ -1,0 +1,25 @@
+package(default_visibility = ["//visibility:public"])
+
+sh_test(
+    name = "checks",
+    srcs = ["checks.sh"],
+    data = ["//:quality_sources"],
+    tags = ["local"],
+)
+
+filegroup(name = "sources", srcs = glob(["*.sh", "*.mjs", "*.cjs", "*.tsx"]))
+sh_binary(name = "build-proof", srcs = ["build-proof.sh"])
+genrule(
+    name = "proof-renderer",
+    srcs = ["//:quality_sources", "//:package.json", ":sources"],
+    outs = ["renderer-proof.js", "renderer-proof.css"],
+    cmd = "$(location :build-proof) $(location renderer-proof.js) $(location //:package.json)",
+    tools = [":build-proof"],
+    local = True,
+)
+sh_binary(
+    name = "smoke",
+    srcs = ["smoke.sh"],
+    data = [":sources", ":proof-renderer", "//:desktop-bundle", "//tools:virtual-desktop-run.sh", "//tools:x11-driver-source", "//tools:electron-runtime-source", "//tools/task-integration:sources"],
+    tags = ["manual"],
+)
