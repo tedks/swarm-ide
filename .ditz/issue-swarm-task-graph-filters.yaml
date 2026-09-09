@@ -23,3 +23,16 @@ log_events:
   who: Ted Smith
   what: started
   comment: ""
+- time: 2026-09-09T15:01:47-00:00
+  who: Ted Smith
+  what: commented
+  comment: Implemented Task blockage Active default, All/individual status controls,
+    repository/world-scoped validated saved preferences, hidden-selected-task recovery
+    and consistent canvas/outline/edge filtering. No Ditz history closure or task
+    metadata changes, no added task cap, no invented shortcut edges. Final46 focused
+    tests+both types and60 actual-index reader tests pass; native implementation/final
+    UI-proof delta CLEAN. Actual CLI-Ditz packaged filter journey1.359s retained dirty
+    source/cursor and component camera, zero renderer errors/owned cleanup1. PR144
+    pushed; issue intentionally remains in_progress until ROOT normal landing. Unrelated14
+    broad design-fixture identity failures recorded on swarm-plan-cockpit-fixture-identities;
+    no blanket full-green claim.
