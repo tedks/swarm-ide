@@ -1,0 +1,21 @@
+id: swarm-always-on-awareness
+title: Open the IDE with situational awareness already running
+desc: Start Work Log summary watching and task dependency analysis automatically;
+  keep existing project, fleet, build and service observations current without clicking
+  Start or Load. Preserve explicit Pause, configured Codex/gpt-5.6-luna settings,
+  single producer and no duplicate model attempts; coalesce/recover readonly refreshes
+  without auto builds, tests, coding agents or Ditz writes. Existing task filter owner
+  must finish before TaskGraph composition.
+type: feature
+component: default
+release:
+reporter: Ted Smith <tedks@riseup.net>
+status: unstarted
+disposition:
+creation_time: 2026-09-09T14:59:05-00:00
+references: []
+log_events:
+- time: 2026-09-09T14:59:05-00:00
+  who: Ted Smith
+  what: created
+  comment: ""
