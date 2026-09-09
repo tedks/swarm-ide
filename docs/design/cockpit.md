@@ -121,8 +121,9 @@ is still registered. Child selection switches chat/control, not the central
 source, task or diff. Context keeps the agent's worktree and terminal details;
 it no longer duplicates the conversation's message owner. One retained
 `SteeringMemory` keeps target drafts/receipts through loading and development
-remounts. The Agent tools icon opens native trusted execution/history and New/Fork
-without a permanent generic tab. Real drafts and explicitly opened native runs
+remounts. **New agent** beside the conversation tabs opens the direct Codex
+composer for the selected workspace. Existing native runs retain their follow-up
+and Fork controls without a permanent generic tab. Real drafts and opened runs
 retain tabs; old stored runs retain their own tabs rather than a competing sidebar list.
 `//tools/conversation-cockpit:unit` and its owned-virtual `:smoke` cover this
 composition. Actual transcript reads are separate from controlled Send evidence.

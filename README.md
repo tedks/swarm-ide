@@ -13,11 +13,10 @@ accomplished; Activity shows their individual operations.
 ## Linux quick start
 
 Use Linux x86_64, Git, Nix with `nix-command` and `flakes` enabled, and a working
-X11 desktop. The repository is private during prototyping; clone with an account
-that has access:
+X11 desktop. Clone the public repository:
 
 ```bash
-git clone git@github.com:tedks/swarm-ide.git
+git clone https://github.com/tedks/swarm-ide.git
 cd swarm-ide
 nix run . -- --workspace "$PWD"
 ```
@@ -57,6 +56,10 @@ does not start, clone or resume agents. Closing Swarm leaves these terminal
 agents running. Discovery currently recognizes Codex, not every harness or pane.
 To reuse a maintained registry instead, pass
 `--agent-registry /absolute/private/agents.json` without the tmux flags.
+
+Or click **New agent** beside the conversation tabs, enter a task, and press
+**Enter**. This starts Codex in the workspace shown above the composer using your
+normal Codex installation and account. No existing tmux session is required.
 
 Start with the [five-minute tour](docs/demo.md).
 [Linux installation](docs/linux-install.md) covers all flags and fleet
@@ -98,22 +101,26 @@ downloads several gigabytes. Use native Linux to evaluate live swarm operation.
 ## What to explore
 
 - **Workspace:** component designs, task dependencies, files and build/service
-  views. Open a document and the graphs remain beside it.
+  views. Open a document and the graphs remain beside it. Supported Bazel
+  declarations load automatically; **Build selected target** compiles deliberately.
+  Repositories without a plan offer **Generate component plan**, a configurable
+  Codex action that writes the design into the repo.
 - **Source and Context:** edit real files; inspect direct/indirect Bazel target
   membership and available project instruments. Example latency/resource profiles
   are marked illustrative, not production telemetry.
-- **Agents:** select a registered conversation, inspect its worktree/diff, or copy
-  its terminal command. Enter sends; Shift-Enter adds a line. Submitted messages
-  remain copyable while queued.
+- **Agents:** start Codex or follow a registered conversation. Its worktree icon
+  switches the main workspace to that checked worktree; the terminal icon copies
+  the existing session's attach command. Enter sends; Shift-Enter adds a line.
+  Submitted messages remain copyable while queued.
 - **Activity and Work Log:** timestamped operations beside human-readable outcomes.
   Work Log **Start** invokes its configured summarizer; merely reading does not.
   Saved summaries and GitHub PRs are separate views in the Activity document.
 
 Agent harnesses, accounts and optional `gh`/Docker tools remain your normal host
 setup. Trusted-local agent runs use those permissions. Bazel observation loads
-repository-controlled definitions, so open projects whose tooling you trust.
-A query is not a binary build. See [current workflow limits](docs/demo.md#current-limits)
-before presenting pending features.
+repository-controlled definitions and may download declared dependencies, so open
+projects whose tooling you trust. A query is not a binary build.
+See [current workflow limits](docs/demo.md#current-limits).
 
 ## Develop Swarm itself
 
