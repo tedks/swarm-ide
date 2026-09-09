@@ -1,0 +1,23 @@
+id: swarm-idle-black-screen-cause
+title: Identify the original hours-idle hang or black-screen cause from renderer health
+  evidence
+desc: The September 9 managed-window symptom is not reproduced by the bounded native
+  hide/show test. PR147 adds render-exception text containment and timestamped window-health
+  events, not a historical idle-cause fix. After ROOT adopts main-process changes,
+  capture whether a recurrence emits render-error, script-error, unresponsive, renderer
+  exit or load failure; retain window visibility and bounded memory samples. Do not
+  reset profiles, auto-reload, disable safety controls or attribute a hidden-window
+  X11 capture as foreground failure.
+type: bugfix
+component: default
+release:
+reporter: Ted Smith <tedks@riseup.net>
+status: unstarted
+disposition:
+creation_time: 2026-09-09T18:47:10-00:00
+references: []
+log_events:
+- time: 2026-09-09T18:47:10-00:00
+  who: Ted Smith
+  what: created
+  comment: ""
