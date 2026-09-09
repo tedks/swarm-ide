@@ -1,0 +1,18 @@
+id: swarm-public-install-tour
+title: Refresh public installation and current cockpit tour
+desc: Replace private-repository setup and superseded tour instructions with the public
+  Linux install, current New agent/worktree/build/graph controls, and accurate browser-demo
+  limits. Verify commands and labels against shipped source; docs-only, light review.
+type: task
+component: default
+release:
+reporter: Ted Smith <tedks@riseup.net>
+status: unstarted
+disposition:
+creation_time: 2026-09-09T00:49:10-00:00
+references: []
+log_events:
+- time: 2026-09-09T00:49:10-00:00
+  who: Ted Smith
+  what: created
+  comment: ""
