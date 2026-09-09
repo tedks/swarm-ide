@@ -4,7 +4,7 @@ This ExecPlan follows `.planning/PLANS.md` and is kept current with the work.
 
 ## Purpose / Big Picture
 
-Select Planning in the component graph, read its design document, and see its
+Select a component in the graph, read its design document, and see its
 real Bazel build and test targets in the right Context sidebar. An explicit Test
 click executes `bazel test` in the selected workspace; the existing jobs panel
 shows running, pass/fail, output and Stop without changing the document or camera.
@@ -14,10 +14,10 @@ ownership or inferring architectural boundaries from shared build inputs.
 ## Progress
 
 - [x] (2026-09-09) Inspected existing design/doc mappings, query rule classes and build-only job owner; created dedicated worktree and Ditz issue `swarm-design-component-tests`.
-- [ ] Implement typed build/test operation and focused backend proof.
-- [ ] Publish current selected component into Context and add classified target controls.
-- [ ] Verify focused UI/operation tests and an owned packaged click-to-test journey; native review to clean.
-- [ ] Normal PR merge, Ditz accomplishment, and managed local window on Planning with tests visible.
+- [x] Implement typed build/test operation and focused backend proof.
+- [x] Publish current selected component into Context and add classified target controls, including design → task → Back/Read design restoration.
+- [x] Verify 65 focused cases and both TypeScript boundaries, the actual-index reader, and an owned packaged click-to-test journey. Native review of the implementation returned CLEAN.
+- [ ] Normal PR142 merge, Ditz accomplishment, and managed local window on Agent owners and steering with tests visible.
 
 ## Surprises & Discoveries
 
@@ -41,9 +41,20 @@ request, manual-demo execution or full-repository test sweep is introduced.
 
 ## Outcomes & Retrospective
 
-Implementation underway. Existing linkage is sufficient; UI selection and test
-execution are the missing pieces. Record actual checks and remaining limits here
-before landing; do not call building a test target a test pass.
+Implemented with existing authored linkage and the existing owned job runner.
+The UI distinguishes observed test rules from ordinary executables and filegroups;
+it does not infer exhaustive test ownership from source paths. The owned packaged
+journey clicked Test and ran a genuine custom Bazel test, not a compiled binary.
+It retained the document, component highlight and zoomed camera with no renderer
+errors or model request, then confirmed owned cleanup. Native `sh_test` and
+`test_suite` classification is covered in focused tests, not misattributed to that
+custom-rule GUI fixture. A separate actual-worker probe proved passing, failing
+and no-tests outcomes, including a build that succeeds where running its test fails.
+
+The older broad `//tools/build-graph:target-checks` aggregate encountered two
+unchanged plan-first cockpit task fixtures with identity errors. Those are not
+claimed fixed or green. The new scoped gate includes the relevant backend and UI
+files and passes all 65 cases. The actual-index regression passed independently.
 
 ## Context and Orientation
 
@@ -74,7 +85,8 @@ Use `/home/tedks/Projects/swarm-ide/design-component-tests`, branch
 materialized through `nix develop --command pnpm install --frozen-lockfile`.
 Run focused verification through Bazel:
 
-    nix develop --command bazel test --jobs=3 //tools/design-tests:checks //tools/build-graph:target-checks
+    nix develop --command bazel test --jobs=3 //tools/design-tests:checks
+    nix develop --command bazel test --jobs=3 //tools/demo-syntax:editor-tests --test_arg=tests/plans-reader.test.ts
     nix develop --command bazel build --jobs=3 //:desktop-bundle
     nix develop --command bazel run --jobs=3 //tools/design-tests:smoke
 
@@ -88,7 +100,7 @@ it is not a model turn or a test of the user's live workspace. Backend proof
 includes real passing/failing/no-tests outcomes with confirmed owned cleanup.
 
 After verified landing, update only the ROOT-managed local :0 window and use
-ordinary controls to select Planning, Read design and display mapped tests. Do
+ordinary controls to select Agent owners and steering, Read design and display mapped tests. Do
 not automate any unrelated desktop or discard protected source/chat buffers.
 
 ## Idempotence and Recovery
@@ -99,7 +111,11 @@ failed evidence and report exact limitations. Use normal PR merge and Ditz sync.
 
 ## Artifacts and Notes
 
-Record focused logs, owned screenshot and final reviewer outcome at completion.
+- PR142 implementation review: native CLEAN for `906ccfc2..dfb876e`.
+- `//tools/design-tests:checks`: 65 tests, both TypeScript boundaries and harness syntax checks passed in 15.5s.
+- Actual-index reader target: passed in 13.5s.
+- Owned packaged proof: `/tmp/swarm-design-ui-proof.LY3V1c/run.ss1XTC/design-tests-proof.json`; screenshot `02-real-test-complete.png` in that directory. Native Test click succeeded in the actual packaged core, zero renderer errors/model calls, cleanup confirmed. This predates only final button theming and plan/evidence notes.
+- Actual-worker proof: `//tools/build-graph:target-probe` passed all operation/cleanup cases, using output base `/tmp/swarm-design-component-backend-bazel`.
 
 ## Interfaces and Dependencies
 
