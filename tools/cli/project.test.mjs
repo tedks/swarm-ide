@@ -96,3 +96,11 @@ test("removed saved association falls back to the managed empty registry", () =>
   const initial = prepare(repo); initial.rememberRegistry(join(directory, "old-removed-association.json"));
   assert.equal(prepare(repo).registry, initial.registry);
 }));
+
+test("automatic profile symlink into source is rejected before creating a profile there", () => fixture(({ repo, prepare }) => {
+  const initial = prepare(repo), sourceProfile = join(repo, "profile-must-stay-empty"); mkdirSync(sourceProfile);
+  rmSync(join(initial.stateDirectory, "profiles"), { recursive: true });
+  symlinkSync(sourceProfile, join(initial.stateDirectory, "profiles"));
+  assert.throws(() => prepare(repo), /profile must be outside/);
+  assert.deepEqual(readdirSync(sourceProfile), []);
+}));

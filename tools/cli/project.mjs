@@ -129,8 +129,11 @@ export function prepareProject(options, { cwd, environment }) {
   // Explicit flags are invocation-local; a bare-parent launch remembers only
   // the most recently selected valid workspace and its managed registry.
   if (saved.workspace !== selected.path) publish(configPath, { ...saved, workspace: selected.path });
-  const profile = options.userDataDir !== undefined ? resolve(cwd, options.userDataDir) : join(stateDirectory, "profiles", key(selected.path));
-  if (options.userDataDir === undefined) privateDirectory(profile);
+  const profile = options.userDataDir !== undefined ? resolve(cwd, options.userDataDir) : canonicalFuture(join(stateDirectory, "profiles", key(selected.path)));
+  if (options.userDataDir === undefined) {
+    if ([project.identity, ...project.worktrees.map((row) => row.path)].some((root) => within(root, profile))) throw new Error("Swarm profile must be outside the project. Existing settings left in place.");
+    privateDirectory(profile);
+  }
   return { ...project, workspace: selected.path, registry, profile, configPath, stateDirectory,
     rememberRegistry(path) {
       const current = readPrivate(configPath);
