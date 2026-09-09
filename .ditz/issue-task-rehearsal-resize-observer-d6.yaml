@@ -67,3 +67,12 @@ log_events:
   who: Ted Smith
   what: updated description
   comment: ""
+- time: 2026-09-09T14:56:43-00:00
+  who: Ted Smith
+  what: commented
+  comment: 'PR143 component-layout final owned proof reached its last console assertion
+    after all requested plain/Ctrl node drag, pan, refresh, roundtrip, document, reset
+    and unchanged plan-byte assertions. Only console entry: ResizeObserver loop completed
+    with undelivered notifications. Evidence /tmp/swarm-ide-component-layout.2CBDrF/gui-final/run.zLB7fC;
+    cleanup1. Initial plain journey on parent passed zero errors. No historical cause
+    or fix claimed, no unchanged retry/suppression; ROOT evaluates known-warning disposition.'
