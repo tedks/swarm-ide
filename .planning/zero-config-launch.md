@@ -12,7 +12,7 @@ Running `swarm-ide` in a Git worktree, a nested source directory, or a bare repo
 - [x] (2026-09-09 15:23Z) Added Git discovery, private reusable configuration and tests, aliases/current-tmux integration and living design/install docs.
 - [x] (2026-09-09 15:23Z) All 35 direct tests pass; actual installed Nix artifact built. Native review converged CLEAN after two important boundary findings and the profile follow-up.
 - [x] (2026-09-09 15:24Z) One actual installed bare-parent/source proof passed: 1.012s scenario, 2.036s harness, cleanup complete and no renderer errors.
-- [ ] Final documentation/push/Ditz sync and ready handoff to ROOT.
+- [x] (2026-09-09 15:26Z) Final documentation pushed, PR145 ready, Ditz accomplishment note synced and own GUI/Bazel cleaned. ROOT owns the remaining normal merge and managed adoption.
 
 ## Surprises & Discoveries
 
