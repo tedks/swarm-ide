@@ -24,3 +24,12 @@ log_events:
   who: Ted Smith
   what: started
   comment: ""
+- time: 2026-09-09T18:47:14-00:00
+  who: Ted Smith
+  what: commented
+  comment: PR147 contains React render failures with copyable unsaved source/steering/native
+    draft text and native fixed-category crash/hang logs. Owned packaged-main/core
+    + production App test-entry proof passed 3 hide/show cycles and explicit render
+    exception, source/camera retained, no reload/write/send, cleanup1. Original hours-idle
+    cause remains open in swarm-idle-black-screen-cause; final scoped native/local
+    gates in progress.
