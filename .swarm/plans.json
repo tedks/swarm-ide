@@ -338,6 +338,9 @@
       "app/renderer/plans/navigation.ts",
       "app/renderer/plans/ProjectionCanvas.tsx",
       "app/renderer/plans/PlanWorkspace.tsx",
+      "app/renderer/tasks/TaskGraph.tsx",
+      "app/renderer/tasks/graph.ts",
+      "tools/demo-plans/filters.cjs",
       "app/renderer/plans/ComponentTargets.tsx",
       "app/renderer/plans/component-targets.css",
       "app/renderer/plans/workspace.css",
@@ -350,6 +353,7 @@
       "swarm-generate-component-plan",
       "swarm-plan-index-startup",
       "swarm-design-component-tests",
+      "swarm-task-graph-filters",
       "swarm-component-layout-drag"
     ],
     "contextRefs": [],

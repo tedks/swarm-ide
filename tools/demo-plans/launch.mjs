@@ -43,7 +43,7 @@ try {
     SWARM_PLANS_EVIDENCE: evidence, SWARM_PLANS_SCRATCH: scratch };
   for (const name of ["SWARM_RENDERER_URL", "SWARM_DEV_CONTROL", "SWARM_WORKSPACE_ROOT", "SWARM_AGENT_STORE_ROOT", "NODE_OPTIONS", "ELECTRON_RUN_AS_NODE"])
     delete environment[name];
-  desktop = spawn(electron, [...resolveElectronRuntimeArguments(), join(scripts, "acceptance.cjs"),
+  desktop = spawn(electron, [...resolveElectronRuntimeArguments(), join(scripts, fixture.kind === "filters" ? "filters.cjs" : "acceptance.cjs"),
     `--user-data-dir=${profile}`, process.env.SWARM_RENDERER_PROCESS_ARGUMENT], { cwd: fixture.root, env: environment, stdio: "inherit" });
   for (const signal of ["SIGINT", "SIGTERM", "SIGHUP"]) {
     const handler = () => { desktop.kill("SIGTERM"); killTimer ??= setTimeout(() => desktop.kill("SIGKILL"), 2000); };

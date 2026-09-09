@@ -96,7 +96,7 @@ export async function createPlanFixture(parent) {
   if (!isAbsolute(parent) || privateParent !== parent || !stat.isDirectory() || stat.uid !== process.getuid() || (stat.mode & 0o077) !== 0)
     throw new Error("Plans fixture requires an owned private parent");
   const kind = process.env.SWARM_PLANS_CASE || "demo";
-  if (!["demo", "swarm"].includes(kind)) throw new Error("Unknown plans fixture case");
+  if (!["demo", "swarm", "filters"].includes(kind)) throw new Error("Unknown plans fixture case");
   const ditzExecutable = await resolveDitzExecutable();
   const root = await mkdtemp(join(privateParent, `plans-${kind}-`));
   let authored;
@@ -132,6 +132,8 @@ export async function createPlanFixture(parent) {
   await ditz(["ref", "graph-root", `${authored.docPath}:1`, "--note", "Explicit read-only design document"]);
   for (const [before, after] of [["graph-root", "graph-left"], ["graph-root", "graph-right"], ["graph-left", "graph-join"], ["graph-right", "graph-join"]])
     await ditz(["blocks", before, after]);
+  if (kind === "filters") for (const id of ["graph-left", "graph-isolated"])
+    await ditz(["close", id, "--reason", "Completed disposable filter proof task"]);
   const metadataCommit = await gitText(root, ["rev-parse", "--verify", "refs/heads/ditz-metadata"]);
   return { root, kind, sourcePath: authored.sourcePath, sourceText: authored.sourceText, docPath: authored.docPath, docText: authored.docText,
     metadataCommit, sourceCommit, ditzExecutable, ditzVersion, index: authored.index,

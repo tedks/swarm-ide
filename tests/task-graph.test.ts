@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { dependencyPositions, graphSummaries, loadTaskGraphDetails, projectTaskGraph, scopeTaskGraph } from "../app/renderer/tasks/graph";
+import { ACTIVE_TASK_STATUSES, TASK_GRAPH_STATUSES, dependencyPositions, filterTaskGraph, graphSummaries, loadTaskGraphDetails, parseTaskGraphStatuses, projectTaskGraph, scopeTaskGraph } from "../app/renderer/tasks/graph";
 import { taskDetailFixture, taskObservationFixture } from "../fixtures/tasks";
 import { TaskDetailSchema, TaskSnapshotSchema, type TaskDetail, type TaskSnapshot } from "../protocol/tasks";
 
@@ -28,6 +28,35 @@ function validate(snapshot: TaskSnapshot, details: Map<string, TaskDetail>) {
 }
 
 describe("complete task blockage projection", () => {
+  it("filters statuses without shortcut edges or changing underlying coverage and diagnostics", () => {
+    const { snapshot, details } = data(5);
+    snapshot.summaries[1]!.status = "closed";
+    snapshot.summaries[2]!.status = "paused";
+    snapshot.summaries[3]!.status = "in_progress";
+    details.get("task-0")!.blocks = [{ taskId: "task-1", status: "closed", diagnostics: [] },
+      { taskId: "missing-active", status: null, diagnostics: ["missing", "asymmetric"] }];
+    details.get("task-1")!.blocks = [{ taskId: "task-2", status: "paused", diagnostics: [] },
+      { taskId: "missing-closed", status: null, diagnostics: ["missing"] }];
+    details.delete("task-4");
+    const graph = projectTaskGraph(snapshot, details, 5), original = structuredClone(graph);
+    const filtered = filterTaskGraph(graph, ACTIVE_TASK_STATUSES);
+    expect(filtered.nodes.map((node) => node.id)).toEqual(["task-0", "task-2", "task-3", "task-4", "missing-active"]);
+    expect(filtered.edges.map((edge) => [edge.source, edge.target])).toEqual([["task-0", "missing-active"]]);
+    expect(filtered.edges[0]!.diagnostics).toEqual(["missing", "asymmetric"]);
+    expect(filtered).toMatchObject({ total: 5, loaded: 4, attempted: 5, unread: 1, hiddenTasks: 1 });
+    expect(graph).toEqual(original);
+    expect(filterTaskGraph(graph, TASK_GRAPH_STATUSES)).toMatchObject(graph);
+    expect(filterTaskGraph(graph, [])).toMatchObject({ nodes: [], edges: [], hiddenTasks: 5, unread: 1 });
+    const focused = scopeTaskGraph(filtered, "task-0", false);
+    expect(focused.nodes.map((node) => node.id)).toEqual(["task-0", "missing-active"]);
+    expect(focused.hidden).toBe(3);
+  });
+  it("validates persisted status choices, including deliberate empty selection", () => {
+    for (const invalid of [null, "{", "null", "{}", '["unknown"]', '["closed","closed"]', '[1]', '["__proto__"]'])
+      expect(parseTaskGraphStatuses(invalid)).toEqual(ACTIVE_TASK_STATUSES);
+    expect(parseTaskGraphStatuses('["closed","unstarted"]')).toEqual(["unstarted", "closed"]);
+    expect(parseTaskGraphStatuses("[]")).toEqual([]);
+  });
   it("preserves isolated tasks and a directed fork/join without conflating containment", () => {
     const { snapshot, details } = data();
     for (const [source, target] of [[0, 1], [0, 2], [1, 3], [2, 3]]) {
