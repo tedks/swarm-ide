@@ -12,7 +12,7 @@ The component design keeps its authored relationships but gains enough space to 
 - [x] 2026-09-09: Added spacing/position regressions and reproduced their baseline failures.
 - [x] 2026-09-09: Implemented opt-in component layout and updated living design.
 - [x] 2026-09-09: Final 112 focused cases/both typechecks pass; native review converged after modifier correction. Owned packaged plain-drag journey passed; stronger modifier journey passed interactions but ended with the known ResizeObserver warning (retained below).
-- [ ] Push final ready PR and hand off to ROOT for normal merge/adoption.
+- [x] 2026-09-09: Implementation pushed in PR143; ready handoff records actual checks and warning for ROOT's normal merge/adoption decision.
 
 ## Surprises & Discoveries
 
