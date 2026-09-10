@@ -6,7 +6,7 @@ import { join } from "node:path";
 import { spawn } from "node:child_process";
 import { once } from "node:events";
 import { runInNewContext } from "node:vm";
-import { parseArguments, launchConfiguration, launch } from "./launcher.mjs";
+import { associationProjectOptions, parseArguments, launchConfiguration, launch } from "./launcher.mjs";
 
 test("arguments accept explicit workspace/profile and help", () => {
   assert.deepEqual(parseArguments(["--workspace", "../project", "--user-data-dir", "./profile"]), { workspace: "../project", userDataDir: "./profile" });
@@ -21,6 +21,11 @@ test("tmux scope is explicit and cannot be confused with a Codex session or regi
   assert.deepEqual(parseArguments(["--tmux-socket", "./socket", "--tmux-session", "project"]), { tmuxSocket: "./socket", tmuxSession: "project" });
   for (const name of ["project:window", "project.1"]) assert.throws(() => parseArguments(["--tmux-server", "personal", "--tmux-session", name]), /Invalid tmux session/);
   for (const args of [["--tmux-session", "project"], ["--tmux-server", "personal"], ["--tmux-server", "../bad", "--tmux-session", "project"], ["--tmux-server", "personal", "--tmux-socket", "/socket", "--tmux-session", "project"], ["--tmux-server", "personal", "--tmux-session", "project", "--agent-registry", "/registry"]]) assert.throws(() => parseArguments(args));
+});
+test("automatic tmux association carries project identity and roots while explicit association keeps session scope", () => {
+  const project = { git: true, identity: "/project/.git", workspace: "/project/main", worktrees: [{ path: "/project/main" }, { path: "/project/feature" }] };
+  assert.deepEqual(associationProjectOptions(project, true), { project, allowedRoots: ["/project/main", "/project/feature"] });
+  assert.deepEqual(associationProjectOptions(project, false), { project });
 });
 test("relative workspace/profile resolve from invocation, not immutable bundle", () => {
   const root = mkdtempSync(join(tmpdir(), "swarm-cli-test-"));

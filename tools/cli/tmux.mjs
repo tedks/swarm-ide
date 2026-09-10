@@ -36,9 +36,44 @@ export async function selectPanes(options, run = command) {
   return { socket, sessionId, panes, socketDev: info.dev, socketIno: info.ino };
 }
 
-async function contextRoot(target) {
+async function bareParentBrowsingRoot(cwd, project) {
+  if (project?.git !== true) throw new Error("Agent process is not in a Git worktree.");
+  let bare;
+  try { bare = (await command("git", ["-C", cwd, "rev-parse", "--is-bare-repository"])).trimEnd(); }
+  catch { throw new Error("Agent process is not in a Git worktree."); }
+  if (bare !== "true") throw new Error("Agent process is not in a Git worktree.");
+
+  if (!isAbsolute(project.identity) || !isAbsolute(project.workspace)
+    || !project.worktrees?.some((row) => row.path === project.workspace)) throw new Error("Selected project worktree is invalid.");
+  let expectedIdentity, selectedRoot;
+  try { expectedIdentity = await realpath(project.identity); selectedRoot = await realpath(project.workspace); }
+  catch { throw new Error("Selected project paths are unavailable."); }
+  if (expectedIdentity !== project.identity || selectedRoot !== project.workspace) throw new Error("Selected project paths are not canonical.");
+  if (cwd !== expectedIdentity && join(cwd, ".git") !== expectedIdentity) throw new Error("Agent process is not at the project's bare repository parent.");
+
+  let commonText, commonRoot;
+  try {
+    commonText = (await command("git", ["-C", cwd, "rev-parse", "--path-format=absolute", "--git-common-dir"])).trimEnd();
+    commonRoot = isAbsolute(commonText) ? await realpath(commonText) : undefined;
+  } catch { throw new Error("Owner bare repository identity is unavailable."); }
+  if (commonRoot !== expectedIdentity) throw new Error("Owner bare repository belongs to another project.");
+
+  let selectedTop, selectedCommon, canonicalTop, canonicalCommon;
+  try {
+    selectedTop = (await command("git", ["-C", selectedRoot, "rev-parse", "--show-toplevel"])).trimEnd();
+    selectedCommon = (await command("git", ["-C", selectedRoot, "rev-parse", "--path-format=absolute", "--git-common-dir"])).trimEnd();
+    canonicalTop = isAbsolute(selectedTop) ? await realpath(selectedTop) : undefined;
+    canonicalCommon = isAbsolute(selectedCommon) ? await realpath(selectedCommon) : undefined;
+  } catch { throw new Error("Selected project worktree no longer belongs to the project."); }
+  if (canonicalTop !== selectedRoot || canonicalCommon !== expectedIdentity) throw new Error("Selected project worktree no longer belongs to the project.");
+  return selectedRoot;
+}
+
+async function contextRoot(target, project) {
   const cwd = await realpath(await readlink(`/proc/${target.processPid}/cwd`));
-  const root = (await command("git", ["-C", cwd, "rev-parse", "--show-toplevel"])).trimEnd();
+  let root;
+  try { root = (await command("git", ["-C", cwd, "rev-parse", "--show-toplevel"])).trimEnd(); }
+  catch { return await bareParentBrowsingRoot(cwd, project); }
   if (!isAbsolute(root)) throw new Error("Agent process is not in a Git worktree.");
   return await realpath(root);
 }
@@ -61,7 +96,7 @@ export async function associateTmux(options, dependencies = {}) {
       try {
         const found = await api.discover({ socket: selected.socket, pane });
         if (!found) { skipped.push({ pane, reason: "No unique live Codex owner" }); return; }
-        const root = await (dependencies.contextRoot ?? contextRoot)(found.target);
+        const root = await (dependencies.contextRoot ?? contextRoot)(found.target, options.project);
         if (options.allowedRoots && !options.allowedRoots.includes(root)) { skipped.push({ pane, reason: "Owner belongs to another project" }); return; }
         const currentSocket = await lstat(selected.socket);
         if (currentSocket.dev !== selected.socketDev || currentSocket.ino !== selected.socketIno) throw new Error("Selected tmux server changed");

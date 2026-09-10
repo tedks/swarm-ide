@@ -81,6 +81,11 @@ export function launchConfiguration(options, { cwd, environment, bundleRoot, ele
   return { executable: electron, args, cwd: workspace, env };
 }
 
+export function associationProjectOptions(project, automatic) {
+  return { project: { git: project.git, identity: project.identity, workspace: project.workspace, worktrees: project.worktrees },
+    ...(automatic ? { allowedRoots: project.worktrees.map((row) => row.path) } : {}) };
+}
+
 export async function launch(args, runtime) {
   const options = parseArguments(args);
   if (options.help) { process.stdout.write(usage); return 0; }
@@ -104,7 +109,7 @@ export async function launch(args, runtime) {
     try {
       process.chdir(config.cwd);
       association = await associateTmux({ ...associationOptions, cwd: context.cwd,
-        ...(automatic ? { allowedRoots: project.worktrees.map((row) => row.path) } : {}) }, { stateRoot: project.stateDirectory });
+        ...associationProjectOptions(project, automatic) }, { stateRoot: project.stateDirectory });
     } catch (error) {
       if (!automatic) throw error;
       console.log("swarm-ide: no current project agents to associate; opening the project");

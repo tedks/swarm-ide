@@ -33,6 +33,13 @@ not change a running IDE's configuration. Once an IDE is configured for this
 path, its existing observer refresh reads new rows. This command does not adopt
 ROOT's running visualization or alter ROOT's private registry automatically.
 
+The registration helper continues to treat `--context-root` as an explicit
+canonical browsing root, independently of the process cwd. For the supported
+bare-parent plus sibling-worktrees layout, the installed launcher's automatic or
+explicit tmux-session association can derive that browsing root by matching the
+bare Git common directory to the opened project and revalidating its selected
+worktree. Neither path changes the running agent's cwd.
+
 For a live target, additionally give `--socket /absolute/tmux/socket --pane %17`.
 These are exact tmux identities, not a window-name search. The helper searches
 only that pane's bounded process tree and open file descriptors, then reuses the

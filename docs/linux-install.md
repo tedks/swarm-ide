@@ -83,6 +83,10 @@ the same flags. Continue with the [five-minute tour](demo.md).
 When invoked inside tmux, the command automatically checks the current pane's
 socket/session and associates discoverable Codex owners whose actual worktree
 belongs to this project. Other projects in that tmux session are excluded. If
+an owner's process cwd is this project's bare-repository parent rather than a
+worktree, Swarm uses the same validated worktree selection described above as
+its browsing root. This does not change the agent's cwd or claim where it edits.
+An owner already in a sibling feature worktree keeps that exact worktree. If
 current-session discovery is unavailable or finds no owners, the project still
 opens using its saved private registry. No attach, send, resume or agent launch
 is performed. A newly launched session is discovered on the next invocation,
@@ -105,8 +109,10 @@ This performs one bounded scan of that session (at most 64 panes), reusing Swarm
 exact process/rollout registration checks. It does not scan every tmux server or
 the account's conversation history. It currently recognizes Codex owners with
 one discoverable open rollout, or one CLI with directly linked native helpers
-in the same process; shells, ambiguous owners and unavailable worktree
-roots are skipped. If nothing can be registered, the command explains that before
+in the same process. The same-project bare-parent browsing mapping also applies
+to this explicit path and requires matching canonical Git common-directory
+identity plus a still-valid selected worktree; shells, ambiguous owners and
+unavailable or unrelated roots are skipped. If nothing can be registered, the command explains that before
 opening a window; remove the tmux flags to open the project by itself.
 
 Discovery is deliberately bounded and can skip busy or ambiguous panes. Direct
