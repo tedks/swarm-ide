@@ -36,9 +36,33 @@ export async function selectPanes(options, run = command) {
   return { socket, sessionId, panes, socketDev: info.dev, socketIno: info.ino };
 }
 
-async function contextRoot(target) {
+async function bareProjectRoot(cwd, project) {
+  if (project?.git !== true) throw new Error("Agent process is not in a Git worktree.");
+  let bare;
+  try { bare = (await command("git", ["-C", cwd, "rev-parse", "--is-bare-repository"])).trim(); }
+  catch { throw new Error("Agent process is not in a Git worktree."); }
+  if (bare !== "true") throw new Error("Agent process is not in a Git worktree.");
+
+  if (!isAbsolute(project.identity) || !isAbsolute(project.workspace)
+    || !project.worktrees?.some((row) => row.path === project.workspace)) throw new Error("Selected project worktree is invalid.");
+  const expectedIdentity = await realpath(project.identity), selectedRoot = await realpath(project.workspace);
+  if (expectedIdentity !== project.identity || selectedRoot !== project.workspace) throw new Error("Selected project paths are not canonical.");
+
+  const commonText = (await command("git", ["-C", cwd, "rev-parse", "--path-format=absolute", "--git-common-dir"])).trimEnd();
+  if (!isAbsolute(commonText) || await realpath(commonText) !== expectedIdentity) throw new Error("Owner bare repository belongs to another project.");
+
+  const selectedTop = (await command("git", ["-C", selectedRoot, "rev-parse", "--show-toplevel"])).trimEnd();
+  const selectedCommon = (await command("git", ["-C", selectedRoot, "rev-parse", "--path-format=absolute", "--git-common-dir"])).trimEnd();
+  if (!isAbsolute(selectedTop) || !isAbsolute(selectedCommon)
+    || await realpath(selectedTop) !== selectedRoot || await realpath(selectedCommon) !== expectedIdentity) throw new Error("Selected project worktree no longer belongs to the project.");
+  return selectedRoot;
+}
+
+async function contextRoot(target, project) {
   const cwd = await realpath(await readlink(`/proc/${target.processPid}/cwd`));
-  const root = (await command("git", ["-C", cwd, "rev-parse", "--show-toplevel"])).trimEnd();
+  let root;
+  try { root = (await command("git", ["-C", cwd, "rev-parse", "--show-toplevel"])).trimEnd(); }
+  catch { return await bareProjectRoot(cwd, project); }
   if (!isAbsolute(root)) throw new Error("Agent process is not in a Git worktree.");
   return await realpath(root);
 }
@@ -61,7 +85,7 @@ export async function associateTmux(options, dependencies = {}) {
       try {
         const found = await api.discover({ socket: selected.socket, pane });
         if (!found) { skipped.push({ pane, reason: "No unique live Codex owner" }); return; }
-        const root = await (dependencies.contextRoot ?? contextRoot)(found.target);
+        const root = await (dependencies.contextRoot ?? contextRoot)(found.target, options.project);
         if (options.allowedRoots && !options.allowedRoots.includes(root)) { skipped.push({ pane, reason: "Owner belongs to another project" }); return; }
         const currentSocket = await lstat(selected.socket);
         if (currentSocket.dev !== selected.socketDev || currentSocket.ino !== selected.socketIno) throw new Error("Selected tmux server changed");

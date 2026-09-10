@@ -104,6 +104,7 @@ export async function launch(args, runtime) {
     try {
       process.chdir(config.cwd);
       association = await associateTmux({ ...associationOptions, cwd: context.cwd,
+        project: { git: project.git, identity: project.identity, workspace: project.workspace, worktrees: project.worktrees },
         ...(automatic ? { allowedRoots: project.worktrees.map((row) => row.path) } : {}) }, { stateRoot: project.stateDirectory });
     } catch (error) {
       if (!automatic) throw error;
