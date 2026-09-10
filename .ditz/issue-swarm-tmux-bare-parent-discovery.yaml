@@ -1,0 +1,22 @@
+id: swarm-tmux-bare-parent-discovery
+title: Find tmux agents launched from a bare repository parent
+desc: Existing Codex tmux agents launched from a bare project parent (for example
+  goals/) are skipped because launcher association requires git --show-toplevel in
+  the process cwd. Reuse canonical common-Git/worktree discovery to associate such
+  owners with a valid same-project browsing worktree, preserving actual worktree mapping
+  for ordinary agents, exact owner validation and current-project scoping. Direct
+  regression and negative tests, concise docs, reviewed normal PR. No user-agent or
+  registry mutation for proof.
+type: bugfix
+component: default
+release:
+reporter: Ted Smith <tedks@riseup.net>
+status: unstarted
+disposition:
+creation_time: 2026-09-10T22:47:46-00:00
+references: []
+log_events:
+- time: 2026-09-10T22:47:46-00:00
+  who: Ted Smith
+  what: created
+  comment: ""
