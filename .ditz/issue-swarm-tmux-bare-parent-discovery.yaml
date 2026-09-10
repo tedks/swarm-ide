@@ -24,3 +24,10 @@ log_events:
   who: Ted Smith
   what: started
   comment: ""
+- time: 2026-09-10T22:58:10-00:00
+  who: Ted Smith
+  what: commented
+  comment: 'PR #148 implements canonical same-project bare-parent tmux discovery with
+    selected-worktree revalidation, exact ordinary-worktree retention, automatic/explicit
+    path coverage, negative identity/stale/alias tests, and updated docs. Scoped CLI
+    and session-registration Bazel gates pass; council review is next.'
