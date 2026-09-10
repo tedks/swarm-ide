@@ -1,0 +1,23 @@
+id: swarm-fresh-spawn-paste
+title: Make fresh agent startup confirm that its task was received
+desc: Fresh non-fork spawn-agent launch on codex-cli 0.154.0 reported spawned after
+  a long prompt paste but no task turn/rollout existed; the owned composer retained
+  pasted chunks. Clearing that unsent brief and submitting a short bracketed-paste
+  instruction to read the task file started the SAME session successfully. No original
+  parser cause proved. Compare/repair ordinary fresh-task delivery and verify actual
+  turn receipt, keeping fresh sessions distinct from fork/compaction checks. Evidence
+  /tmp/swarm-ide-bare-parent.B8OeGn/startup-notes.md; not part of bare-parent CLI
+  discovery fix.
+type: bugfix
+component: default
+release:
+reporter: Ted Smith <tedks@riseup.net>
+status: unstarted
+disposition:
+creation_time: 2026-09-10T22:52:37-00:00
+references: []
+log_events:
+- time: 2026-09-10T22:52:37-00:00
+  who: Ted Smith
+  what: created
+  comment: ""
