@@ -92,30 +92,38 @@ test("association maps a same-project bare-parent owner while retaining another 
 test("bare-parent mapping rejects unrelated, stale and aliased project roots before registration", () => fixture(async ({ socket, dir }) => {
   const exec = promisify(execFile), seed = join(dir, "seed"), container = join(dir, "project"), bare = join(container, ".git"), selected = join(container, "main");
   const other = join(dir, "other.git"), otherRoot = join(dir, "other-main"), alias = join(dir, "identity-alias"), missing = join(container, "missing");
+  const stale = join(container, "stale"), nested = join(container, "nested");
   await exec("git", ["init", "-b", "main", seed]);
   await exec("git", ["-C", seed, "-c", "user.name=Test", "-c", "user.email=test@example.invalid", "commit", "--allow-empty", "-m", "fixture"]);
   await mkdir(container);
   await exec("git", ["clone", "--bare", seed, bare]); await exec("git", ["-C", bare, "worktree", "add", selected, "main"]);
   await exec("git", ["clone", "--bare", seed, other]); await exec("git", ["-C", other, "worktree", "add", otherRoot, "main"]);
-  await symlink(bare, alias);
-  const owner = spawn("sleep", ["30"], { cwd: container, stdio: "ignore" });
-  const projects = [
-    { git: true, identity: other, workspace: otherRoot, worktrees: [{ path: otherRoot }] },
-    { git: true, identity: bare, workspace: missing, worktrees: [{ path: missing }] },
-    { git: true, identity: alias, workspace: selected, worktrees: [{ path: selected }] },
+  await symlink(bare, alias); await mkdir(stale); await mkdir(nested);
+  const parentOwner = spawn("sleep", ["30"], { cwd: container, stdio: "ignore" });
+  const nestedOwner = spawn("sleep", ["30"], { cwd: nested, stdio: "ignore" });
+  const internalOwner = spawn("sleep", ["30"], { cwd: join(bare, "objects"), stdio: "ignore" });
+  const valid = { git: true, identity: bare, workspace: selected, worktrees: [{ path: selected }] };
+  const cases = [
+    { owner: parentOwner, project: { git: true, identity: other, workspace: otherRoot, worktrees: [{ path: otherRoot }] }, message: /bare repository parent/ },
+    { owner: parentOwner, project: { git: true, identity: bare, workspace: missing, worktrees: [{ path: missing }] }, message: /project paths are unavailable/ },
+    { owner: parentOwner, project: { git: true, identity: alias, workspace: selected, worktrees: [{ path: selected }] }, message: /project paths are not canonical/ },
+    { owner: parentOwner, project: { git: true, identity: bare, workspace: stale, worktrees: [{ path: stale }] }, message: /worktree no longer belongs/ },
+    { owner: nestedOwner, project: valid, message: /bare repository parent/ },
+    { owner: internalOwner, project: valid, message: /bare repository parent/ },
   ];
   let writes = 0;
   try {
-    for (const project of projects) {
-      await assert.rejects(associateTmux({ tmuxServer: "personal", tmuxSession: "project", cwd: dir, project }, {
+    for (const row of cases) {
+      await assert.rejects(associateTmux({ tmuxServer: "personal", tmuxSession: "project", cwd: dir, project: row.project }, {
         stateRoot: join(dir, "state"),
         command: async (_exe, args) => args.at(-1) === "#{socket_path}\t#{session_id}" ? `${socket}\t$7\n` : args.at(-1) === "#{window_name}" ? "worker" : "%10\n",
-        api: { discover: async () => ({ target: { processPid: owner.pid, processStart: "123" }, rollout: "/known/owner.jsonl" }), updateRegistry: async () => { writes++; } },
-      }), /No supported Codex sessions/);
+        api: { discover: async () => ({ target: { processPid: row.owner.pid, processStart: "123" }, rollout: "/known/owner.jsonl" }), updateRegistry: async () => { writes++; } },
+      }), row.message);
     }
     assert.equal(writes, 0);
   } finally {
-    owner.kill("SIGTERM"); await new Promise((resolve) => owner.once("exit", resolve));
+    for (const owner of [parentOwner, nestedOwner, internalOwner]) owner.kill("SIGTERM");
+    await Promise.all([parentOwner, nestedOwner, internalOwner].map((owner) => new Promise((resolve) => owner.once("exit", resolve))));
   }
 }));
 test("unknown owner roots do not fall back to the opened project or create authority", () => fixture(async ({ socket, dir }) => {

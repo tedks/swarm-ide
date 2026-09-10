@@ -123,10 +123,11 @@ panes are inspected. A unique rollout, or one explicit CLI header alongside only
 its same-process direct native children, selects a candidate; unknown/mixed
 identities remain ambiguous. Header linkage never substitutes for the existing
 pane/PID/start/open-file validation. A verified process in a worktree supplies that
-exact canonical root. If its cwd instead resolves to the opened project's bare Git
-common directory, the launcher revalidates the selected existing worktree against
-that same common directory and records it as the browsing root; unrelated, missing
-or noncanonical roots are not substituted. A fresh private bounded registry
+exact canonical root. If its cwd is exactly the opened project's direct bare Git
+directory or the parent containing its bare `.git`, the launcher revalidates the
+selected existing worktree against that same common directory and records it as
+the browsing root; unrelated, missing or noncanonical roots are not substituted.
+A fresh private bounded registry
 generation feeds the unchanged observer. Older private
 generations remain available explicitly, not merged automatically into new scope.
 No agent or tmux lifecycle is transferred to the installed app.

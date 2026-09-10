@@ -36,7 +36,7 @@ export async function selectPanes(options, run = command) {
   return { socket, sessionId, panes, socketDev: info.dev, socketIno: info.ino };
 }
 
-async function bareProjectRoot(cwd, project) {
+async function bareParentBrowsingRoot(cwd, project) {
   if (project?.git !== true) throw new Error("Agent process is not in a Git worktree.");
   let bare;
   try { bare = (await command("git", ["-C", cwd, "rev-parse", "--is-bare-repository"])).trim(); }
@@ -45,16 +45,27 @@ async function bareProjectRoot(cwd, project) {
 
   if (!isAbsolute(project.identity) || !isAbsolute(project.workspace)
     || !project.worktrees?.some((row) => row.path === project.workspace)) throw new Error("Selected project worktree is invalid.");
-  const expectedIdentity = await realpath(project.identity), selectedRoot = await realpath(project.workspace);
+  let expectedIdentity, selectedRoot;
+  try { expectedIdentity = await realpath(project.identity); selectedRoot = await realpath(project.workspace); }
+  catch { throw new Error("Selected project paths are unavailable."); }
   if (expectedIdentity !== project.identity || selectedRoot !== project.workspace) throw new Error("Selected project paths are not canonical.");
+  if (cwd !== expectedIdentity && join(cwd, ".git") !== expectedIdentity) throw new Error("Agent process is not at the project's bare repository parent.");
 
-  const commonText = (await command("git", ["-C", cwd, "rev-parse", "--path-format=absolute", "--git-common-dir"])).trimEnd();
-  if (!isAbsolute(commonText) || await realpath(commonText) !== expectedIdentity) throw new Error("Owner bare repository belongs to another project.");
+  let commonText, commonRoot;
+  try {
+    commonText = (await command("git", ["-C", cwd, "rev-parse", "--path-format=absolute", "--git-common-dir"])).trimEnd();
+    commonRoot = isAbsolute(commonText) ? await realpath(commonText) : undefined;
+  } catch { throw new Error("Owner bare repository identity is unavailable."); }
+  if (commonRoot !== expectedIdentity) throw new Error("Owner bare repository belongs to another project.");
 
-  const selectedTop = (await command("git", ["-C", selectedRoot, "rev-parse", "--show-toplevel"])).trimEnd();
-  const selectedCommon = (await command("git", ["-C", selectedRoot, "rev-parse", "--path-format=absolute", "--git-common-dir"])).trimEnd();
-  if (!isAbsolute(selectedTop) || !isAbsolute(selectedCommon)
-    || await realpath(selectedTop) !== selectedRoot || await realpath(selectedCommon) !== expectedIdentity) throw new Error("Selected project worktree no longer belongs to the project.");
+  let selectedTop, selectedCommon, canonicalTop, canonicalCommon;
+  try {
+    selectedTop = (await command("git", ["-C", selectedRoot, "rev-parse", "--show-toplevel"])).trimEnd();
+    selectedCommon = (await command("git", ["-C", selectedRoot, "rev-parse", "--path-format=absolute", "--git-common-dir"])).trimEnd();
+    canonicalTop = isAbsolute(selectedTop) ? await realpath(selectedTop) : undefined;
+    canonicalCommon = isAbsolute(selectedCommon) ? await realpath(selectedCommon) : undefined;
+  } catch { throw new Error("Selected project worktree no longer belongs to the project."); }
+  if (canonicalTop !== selectedRoot || canonicalCommon !== expectedIdentity) throw new Error("Selected project worktree no longer belongs to the project.");
   return selectedRoot;
 }
 
@@ -62,7 +73,7 @@ async function contextRoot(target, project) {
   const cwd = await realpath(await readlink(`/proc/${target.processPid}/cwd`));
   let root;
   try { root = (await command("git", ["-C", cwd, "rev-parse", "--show-toplevel"])).trimEnd(); }
-  catch { return await bareProjectRoot(cwd, project); }
+  catch { return await bareParentBrowsingRoot(cwd, project); }
   if (!isAbsolute(root)) throw new Error("Agent process is not in a Git worktree.");
   return await realpath(root);
 }
