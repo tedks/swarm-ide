@@ -39,7 +39,7 @@ export async function selectPanes(options, run = command) {
 async function bareParentBrowsingRoot(cwd, project) {
   if (project?.git !== true) throw new Error("Agent process is not in a Git worktree.");
   let bare;
-  try { bare = (await command("git", ["-C", cwd, "rev-parse", "--is-bare-repository"])).trim(); }
+  try { bare = (await command("git", ["-C", cwd, "rev-parse", "--is-bare-repository"])).trimEnd(); }
   catch { throw new Error("Agent process is not in a Git worktree."); }
   if (bare !== "true") throw new Error("Agent process is not in a Git worktree.");
 

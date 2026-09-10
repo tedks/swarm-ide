@@ -89,6 +89,25 @@ test("association maps a same-project bare-parent owner while retaining another 
     await Promise.all([bareOwner, featureOwner].map((owner) => new Promise((resolve) => owner.once("exit", resolve))));
   }
 }));
+test("association maps an owner whose cwd is the same direct bare repository", () => fixture(async ({ socket, dir }) => {
+  const exec = promisify(execFile), seed = join(dir, "seed"), bare = join(dir, "project.git"), selected = join(dir, "main");
+  await exec("git", ["init", "-b", "main", seed]);
+  await exec("git", ["-C", seed, "-c", "user.name=Test", "-c", "user.email=test@example.invalid", "commit", "--allow-empty", "-m", "fixture"]);
+  await exec("git", ["clone", "--bare", seed, bare]); await exec("git", ["-C", bare, "worktree", "add", selected, "main"]);
+  const owner = spawn("sleep", ["30"], { cwd: bare, stdio: "ignore" }), writes = [];
+  try {
+    const result = await associateTmux({ tmuxServer: "personal", tmuxSession: "project", cwd: dir,
+      project: { git: true, identity: bare, workspace: selected, worktrees: [{ path: selected }] } }, {
+      stateRoot: join(dir, "state"),
+      command: async (_exe, args) => args.at(-1) === "#{socket_path}\t#{session_id}" ? `${socket}\t$7\n` : args.at(-1) === "#{window_name}" ? "worker" : "%10\n",
+      api: { discover: async () => ({ target: { processPid: owner.pid, processStart: "123" }, rollout: "/known/owner.jsonl" }),
+        updateRegistry: async (input) => { writes.push(input); return { sessionId: "owner", authority: "checked-live" }; } },
+    });
+    assert.equal(result.registered.length, 1); assert.equal(writes[0].contextRoot, selected);
+  } finally {
+    owner.kill("SIGTERM"); await new Promise((resolve) => owner.once("exit", resolve));
+  }
+}));
 test("bare-parent mapping rejects unrelated, stale and aliased project roots before registration", () => fixture(async ({ socket, dir }) => {
   const exec = promisify(execFile), seed = join(dir, "seed"), container = join(dir, "project"), bare = join(container, ".git"), selected = join(container, "main");
   const other = join(dir, "other.git"), otherRoot = join(dir, "other-main"), alias = join(dir, "identity-alias"), missing = join(container, "missing");
@@ -101,6 +120,8 @@ test("bare-parent mapping rejects unrelated, stale and aliased project roots bef
   await symlink(bare, alias); await mkdir(stale); await mkdir(nested);
   const parentOwner = spawn("sleep", ["30"], { cwd: container, stdio: "ignore" });
   const nestedOwner = spawn("sleep", ["30"], { cwd: nested, stdio: "ignore" });
+  // Git discovers the enclosing bare repository from an internal subdirectory;
+  // canonical identity alone must not promote that directory to a browsing root.
   const internalOwner = spawn("sleep", ["30"], { cwd: join(bare, "objects"), stdio: "ignore" });
   const valid = { git: true, identity: bare, workspace: selected, worktrees: [{ path: selected }] };
   const cases = [

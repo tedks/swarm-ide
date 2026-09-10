@@ -123,8 +123,8 @@ panes are inspected. A unique rollout, or one explicit CLI header alongside only
 its same-process direct native children, selects a candidate; unknown/mixed
 identities remain ambiguous. Header linkage never substitutes for the existing
 pane/PID/start/open-file validation. A verified process in a worktree supplies that
-exact canonical root. If its cwd is exactly the opened project's direct bare Git
-directory or the parent containing its bare `.git`, the launcher revalidates the
+exact canonical root. If its cwd is exactly the opened project's bare Git directory
+itself or the parent containing its bare `.git`, the launcher revalidates the
 selected existing worktree against that same common directory and records it as
 the browsing root; unrelated, missing or noncanonical roots are not substituted.
 A fresh private bounded registry
