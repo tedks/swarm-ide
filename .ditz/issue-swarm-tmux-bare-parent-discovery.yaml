@@ -31,3 +31,11 @@ log_events:
     selected-worktree revalidation, exact ordinary-worktree retention, automatic/explicit
     path coverage, negative identity/stale/alias tests, and updated docs. Scoped CLI
     and session-registration Bazel gates pass; council review is next.'
+- time: 2026-09-10T23:15:25-00:00
+  who: Ted Smith
+  what: commented
+  comment: 'Implementation complete on ready PR #148 at e5bfd31f. Exact bare-parent/common-Git
+    mapping, ordinary-worktree preservation, negative cases and docs are pushed. Uncached
+    //tools/cli:checks and //tools/session-registration:unit pass. Three-provider
+    council reached CLEAN convergence; issue intentionally remains in_progress for
+    ROOT''s normal landing.'
