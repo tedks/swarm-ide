@@ -11,8 +11,8 @@ type: bugfix
 component: default
 release:
 reporter: Ted Smith <tedks@riseup.net>
-status: in_progress
-disposition:
+status: closed
+disposition: fixed
 creation_time: 2026-09-10T22:47:46-00:00
 references: []
 log_events:
@@ -39,3 +39,13 @@ log_events:
     //tools/cli:checks and //tools/session-registration:unit pass. Three-provider
     council reached CLEAN convergence; issue intentionally remains in_progress for
     ROOT''s normal landing.'
+- time: 2026-09-10T23:20:44-00:00
+  who: Ted Smith
+  what: 'closed: fixed'
+  comment: Merged PR148 normally into public master as f08c75d5. Automatic and explicit
+    launcher association now map exact same-project bare-parent/direct-bare owners
+    to the selected revalidated browsing worktree; actual feature-worktree owners
+    retain their roots. Scoped CLI 39 and registration 73 tests passed and three-provider
+    council converged clean. Existing Goals agent/config/registry/app untouched. Continuous
+    discovery of newly spawned agents and ongoing-turn Work Log summaries remain separate
+    gaps, not claimed fixed.
