@@ -4,7 +4,7 @@ import { createServer } from "node:net";
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { execFile } from "node:child_process";
+import { execFile, spawn } from "node:child_process";
 import { promisify } from "node:util";
 import { associateTmux, currentTmux, selectPanes } from "./tmux.mjs";
 
@@ -60,6 +60,30 @@ test("association reuses checked registration and each owner's real worktree", (
   assert(writes.every((row) => row.action === "register" && row.evidence === "local" && row.pane.socket === socket && row.pane.processStart === "123"));
   assert.equal(result.registered.length, 2); assert.deepEqual(result.skipped, [{ pane: "%12", reason: "No unique live Codex owner" }]);
   assert.equal(result.terminalCommand, `tmux -S '${socket}' attach-session -t '$7'`);
+}));
+test("association maps an owner in the same bare parent to the selected valid worktree", () => fixture(async ({ socket, dir }) => {
+  const exec = promisify(execFile), seed = join(dir, "seed"), bare = join(dir, "bare project"), selected = join(bare, "main");
+  await exec("git", ["init", "-b", "main", seed]);
+  await exec("git", ["-C", seed, "-c", "user.name=Test", "-c", "user.email=test@example.invalid", "commit", "--allow-empty", "-m", "fixture"]);
+  await exec("git", ["clone", "--bare", seed, bare]);
+  await exec("git", ["-C", bare, "worktree", "add", selected, "main"]);
+  const owner = spawn("sleep", ["30"], { cwd: bare, stdio: "ignore" }), writes = [];
+  try {
+    const result = await associateTmux({ tmuxServer: "personal", tmuxSession: "project", cwd: dir,
+      project: { identity: bare, workspace: selected, worktrees: [{ path: selected }] } }, {
+      stateRoot: join(dir, "state"),
+      command: async (_exe, args) => args.at(-1) === "#{socket_path}\t#{session_id}" ? `${socket}\t$7\n` : args.at(-1) === "#{window_name}" ? "worker" : "%10\n",
+      api: {
+        discover: async () => ({ target: { processPid: owner.pid, processStart: "123" }, rollout: "/known/owner.jsonl" }),
+        updateRegistry: async (input) => { writes.push(input); return { sessionId: "owner", authority: "checked-live" }; },
+      },
+    });
+    assert.equal(result.registered.length, 1);
+    assert.equal(writes[0].contextRoot, selected);
+  } finally {
+    owner.kill("SIGTERM");
+    await new Promise((resolve) => owner.once("exit", resolve));
+  }
 }));
 test("unknown owner roots do not fall back to the opened project or create authority", () => fixture(async ({ socket, dir }) => {
   let calls = 0, writes = 0;
