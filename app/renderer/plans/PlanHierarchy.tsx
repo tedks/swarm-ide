@@ -22,7 +22,7 @@ export function PlanHierarchy({ visible, worldId, repositoryId, generation, conn
   const nodes = useMemo(() => index?.nodes.map((node) => ({ id: node.id, title: node.title, subtitle: `${node.kind} · authored` })) ?? [], [index]);
   const edges = useMemo(() => index?.nodes.filter((node) => node.parentId !== null).map((node) => ({ id: node.id,
     source: node.parentId!, target: node.id, label: "contains · authored" })) ?? [], [index]);
-  const agentLocations = useMemo(() => index ? componentAgentLocations(index) : [], [index]);
+  const agentLocations = useMemo(() => index && current ? componentAgentLocations(index) : [], [index, current]);
   const depth = (id: string) => {
     let entry = index?.nodes.find((item) => item.id === id), count = 0;
     while (entry?.parentId && count < 128) { count++; entry = index?.nodes.find((item) => item.id === entry!.parentId); }

@@ -16,6 +16,13 @@ instructions. These link to one another, but they are not interchangeable record
 | Task detail and links | Revision-pinned task observation | [TaskDetail](../../app/renderer/tasks/TaskDetail.tsx), [TaskContext](../../app/renderer/tasks/TaskContext.tsx) |
 | Prepared task context | Fixed attachment plus selected source | [draft-context.ts](../../core/tasks/draft-context.ts), [protocol/agent-task.ts](../../protocol/agent-task.ts) |
 
+Plan, component and task canvases mount the shared registered-agent overlay.
+Component placement uses authored source, document and exact task-ID membership;
+task placement uses only the current loaded metadata revision's exact IDs and
+revision-pinned backlink/detail paths. A stale plan navigation or task snapshot
+contributes no placement. Eligible agents without such a relationship remain
+selectable as unplaced instead of being assigned by title or prose similarity.
+
 Plan relationships are authored in-repo. The core reads a bounded canonical
 index and validates its structure; a reference remains a candidate until its
 target can actually be opened. The accompanying component graph descends to the

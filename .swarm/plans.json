@@ -161,7 +161,7 @@
         },
         {
           "label": "//tools/live-sprites:checks",
-          "role": "Checks exact-worktree agent locations, gestures and stable graph overlays",
+          "role": "Checks project/worktree-scoped agent placement, unplaced reachability, gestures and stable overlays across graph projections",
           "dependencies": [
             { "label": "//:quality_sources", "relation": "data" },
             { "label": "//tools/live-sprites:sources", "relation": "data" }
@@ -181,6 +181,7 @@
     "sourcePaths": [
       "core/repository.ts",
       "core/worktree-inspection.ts",
+      "core/git-worktree-identity.ts",
       "protocol/worktree-inspection.ts",
       "core/workspace-context.ts",
       "protocol/workspace.ts",
@@ -494,9 +495,11 @@
       "core/agents/trusted-local-session.ts",
       "core/agent-lifecycle.ts",
       "protocol/agent-lifecycle.ts",
+      "core/git-worktree-identity.ts",
       "core/external-agents.ts",
       "core/external-agents-send.ts",
       "protocol/external-agents.ts",
+      "protocol/workspace.ts",
       "app/renderer/external-agents/ExternalAgents.tsx",
       "app/renderer/external-agents/client.ts",
       "app/renderer/external-agents/AgentConversation.tsx",

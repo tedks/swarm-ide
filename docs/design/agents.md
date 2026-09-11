@@ -21,6 +21,14 @@ the next new agent. Old history without the additive fields remains readable.
 Restored history never automatically starts or resumes a provider. Reserved
 tokens persist even when the small visible history has been trimmed.
 
+Registered graph observations carry a separately checked, additive Git-family
+identity and branch. `core/git-worktree-identity.ts` derives the opaque project
+key from Git's canonical common directory; it is never accepted from registry
+text. The default-branch worktree may present same-project sibling sessions on
+graph projections, while feature, detached and uncertain worktrees remain
+exact-root scoped. This visibility metadata does not change registration,
+execution ownership, lifecycle, routing or steering authority.
+
 `native-outbox.ts` saves initial and follow-up instructions in the local operator
 profile before dispatch. Failed or unconfirmed messages remain copyable after
 reload, with no automatic resend. An acknowledgement cannot erase newer typing
