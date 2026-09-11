@@ -34,3 +34,11 @@ log_events:
     all-target build pass; provider-diverse council converged CLEAN. Follow-ups: swarm-workspace-identity-response-contract
     and swarm-external-agent-identity-bounds-test. Issue intentionally remains in
     progress for ROOT landing.'
+- time: 2026-09-11T02:56:32-00:00
+  who: Ted Smith
+  what: commented
+  comment: 'ROOT intake correction committed: removed unverified Progress timestamps
+    and replaced full //... gates with the focused sprite/workspace/mounted-graph
+    tests, packaged desktop build, and one owned walkthrough. This is plan-only; no
+    feature behavior changed and no duplicate validation cycle was run. All-graph
+    project-versus-worktree outcome remains unchanged.'
