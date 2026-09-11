@@ -42,3 +42,14 @@ log_events:
     tests, packaged desktop build, and one owned walkthrough. This is plan-only; no
     feature behavior changed and no duplicate validation cycle was run. All-graph
     project-versus-worktree outcome remains unchanged.'
+- time: 2026-09-11T03:25:36-00:00
+  who: Ted Smith
+  what: commented
+  comment: 'Bounded ROOT correction complete on PR #152: preserved graph-pane geometry
+    with a single overlay child, reserved full-height task sprite controls, coalesced
+    selected Git identity reads while retaining snapshot branch refresh, and normally
+    composed reviewed master 27d001a9 lifecycle work. Focused joined check and owned
+    unified component/task agent-heavy proof pass with zero model turns. Correction
+    council: Codex native CLEAN; Antigravity CLEAN; Claude produced no verdict within
+    the eight-minute cap and is recorded unavailable without retry. Issue remains
+    in progress for ROOT landing.'
