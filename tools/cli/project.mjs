@@ -1,16 +1,30 @@
-import { execFileSync } from "node:child_process";
+import { execFile, execFileSync } from "node:child_process";
 import { createHash, randomUUID } from "node:crypto";
 import { closeSync, constants, fstatSync, linkSync, lstatSync, mkdirSync, openSync, readFileSync, realpathSync, renameSync, unlinkSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { basename, dirname, isAbsolute, join, relative, resolve } from "node:path";
+import { lstat as lstatAsync, realpath as realpathAsync } from "node:fs/promises";
 
 const within = (root, path) => { const part = relative(root, path); return part === "" || (part !== ".." && !part.startsWith(`../`) && !isAbsolute(part)); };
 const key = (path) => `${basename(path === dirname(path) ? path : path.endsWith("/.git") ? dirname(path) : path).replace(/[^a-zA-Z0-9_.-]/g, "-").slice(0, 48) || "project"}-${createHash("sha256").update(path).digest("hex").slice(0, 16)}`;
+const gitEnvironment = (environment) => ({
+  ...Object.fromEntries(Object.entries(environment).filter(([name]) => !name.startsWith("GIT_"))),
+  GIT_OPTIONAL_LOCKS: "0", LC_ALL: "C",
+});
 const git = (directory, args, environment) => execFileSync("git", ["-C", directory, ...args], {
   encoding: "utf8", timeout: 5000, maxBuffer: 8 * 1024 * 1024, stdio: ["ignore", "pipe", "pipe"],
-  env: { ...Object.fromEntries(Object.entries(environment).filter(([name]) => !name.startsWith("GIT_"))), GIT_OPTIONAL_LOCKS: "0", LC_ALL: "C" },
+  env: gitEnvironment(environment),
 });
 const maybeGit = (directory, args, environment) => { try { return git(directory, args, environment).trimEnd(); } catch { return undefined; } };
+
+const asyncGit = (directory, args, environment, signal) => new Promise((resolveText, reject) => {
+  let result;
+  const child = execFile("git", ["-C", directory, ...args], {
+    encoding: "utf8", timeout: 5000, maxBuffer: 8 * 1024 * 1024, signal,
+    killSignal: "SIGKILL", env: gitEnvironment(environment),
+  }, (error, stdout) => { result = { error, stdout }; });
+  child.once("close", () => result && !result.error ? resolveText(result.stdout) : reject(result?.error ?? new Error("Git refresh did not complete")));
+});
 
 export function discoverProject(directory, environment = process.env) {
   let requested;
@@ -39,6 +53,44 @@ export function discoverProject(directory, environment = process.env) {
   const remoteDefault = maybeGit(requested, ["symbolic-ref", "refs/remotes/origin/HEAD"], environment)?.replace(/^refs\/remotes\/origin\//, "refs/heads/");
   const localDefault = maybeGit(identity, ["symbolic-ref", "HEAD"], environment);
   return { identity, worktrees, invoking, defaultBranch: remoteDefault ?? localDefault, git: true };
+}
+
+/** Refresh only membership for an already selected project. Unlike startup
+ * discovery this runs repeatedly, so all Git subprocesses are asynchronous and
+ * abortable; it never selects a different project identity or workspace. */
+export async function refreshProject(project, environment = process.env, signal) {
+  const check = () => { if (signal?.aborted) throw new Error("Project refresh stopped"); };
+  check();
+  const identity = await realpathAsync(project.identity);
+  if (identity !== project.identity) throw new Error("Selected project identity is no longer canonical");
+  if (!project.git) {
+    if (!(await lstatAsync(identity)).isDirectory()) throw new Error("Selected project is unavailable");
+    return { ...project, worktrees: [{ path: identity }] };
+  }
+  const entries = (await asyncGit(identity, ["worktree", "list", "--porcelain", "-z"], environment, signal)).split("\0\0");
+  const worktrees = [];
+  for (const entry of entries) {
+    check();
+    const fields = entry.split("\0"), pathField = fields.find((part) => part.startsWith("worktree "));
+    if (!pathField || fields.includes("bare") || fields.some((part) => part === "prunable" || part.startsWith("prunable "))) continue;
+    try {
+      const path = await realpathAsync(pathField.slice(9));
+      const checked = await Promise.allSettled([
+        asyncGit(path, ["rev-parse", "--path-format=absolute", "--git-common-dir"], environment, signal),
+        asyncGit(path, ["rev-parse", "--show-toplevel"], environment, signal),
+      ]);
+      check();
+      if (checked.some((result) => result.status === "rejected")) continue;
+      const [commonText, topText] = checked.map((result) => result.value);
+      if (await realpathAsync(commonText.trimEnd()) !== identity || await realpathAsync(topText.trimEnd()) !== path) continue;
+      worktrees.push({ path, branch: fields.find((part) => part.startsWith("branch "))?.slice(7) });
+    } catch (error) {
+      check();
+      // Missing, stale or inaccessible worktrees are not live scan members.
+    }
+  }
+  if (!worktrees.length) throw new Error(`No accessible worktree belongs to ${identity}.`);
+  return { ...project, identity, worktrees };
 }
 
 function privateDirectory(path) {

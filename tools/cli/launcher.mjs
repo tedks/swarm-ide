@@ -1,7 +1,7 @@
 import { realpathSync, statSync } from "node:fs";
 import { resolve } from "node:path";
 import { spawn } from "node:child_process";
-import { prepareProject } from "./project.mjs";
+import { prepareProject, refreshProject } from "./project.mjs";
 
 export const usage = `Usage: swarm-ide [--workspace PATH] [--user-data-dir PATH]
              [--tmux-server NAME | --tmux-socket PATH] --tmux-session NAME
@@ -101,15 +101,18 @@ export async function launch(args, runtime) {
     try { associationOptions = await currentTmux(context.environment); }
     catch { console.log("swarm-ide: terminal association unavailable; opening the project without new terminal owners"); }
   }
+  let association;
   if (associationOptions) {
     const invocationDirectory = process.cwd();
-    let association;
     // The reused registry writer excludes its current workspace. Use the chosen
     // project, not an invocation directory such as the operator's whole home.
     try {
       process.chdir(config.cwd);
       association = await associateTmux({ ...associationOptions, cwd: context.cwd,
-        ...associationProjectOptions(project, automatic) }, { stateRoot: project.stateDirectory });
+        ...associationProjectOptions(project, automatic) }, {
+        stateRoot: project.stateDirectory,
+        refreshProject: async (signal) => associationProjectOptions(await refreshProject(project, context.environment, signal), automatic),
+      });
     } catch (error) {
       if (!automatic) throw error;
       console.log("swarm-ide: no current project agents to associate; opening the project");
@@ -120,6 +123,7 @@ export async function launch(args, runtime) {
       console.log(`swarm: observing ${association.registered.length} agent(s) from ${associationOptions.tmuxSession}; ${association.skipped.length} pane(s) skipped`);
       console.log(`swarm: registry ${association.registry}`);
       console.log(`swarm: terminal ${association.terminalCommand}`);
+      association.watch({ onError: (error) => console.log(`swarm-ide: tmux refresh unavailable; retaining registered history: ${error.message}`) });
     }
   }
   const child = spawn(config.executable, config.args, { cwd: config.cwd, env: config.env, stdio: "inherit", shell: false });
@@ -132,6 +136,7 @@ export async function launch(args, runtime) {
       child.once("close", (code, signal) => resolveResult(code ?? ({ SIGINT: 130, SIGTERM: 143, SIGHUP: 129 }[signal] ?? 1)));
     });
   } finally {
+    await association?.dispose();
     process.off("SIGINT", onInt); process.off("SIGTERM", onTerm); process.off("SIGHUP", onHup);
   }
 }
