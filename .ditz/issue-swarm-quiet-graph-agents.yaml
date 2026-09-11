@@ -1,0 +1,19 @@
+id: swarm-quiet-graph-agents
+title: Keep graph agent overlays quiet when no node matches
+desc: Remove the located/unplaced graph count and list at user request. Preserve node-linked
+  sprites, ordinary agent list, worktree scope, graph geometry and existing activity-window
+  behavior. Focused overlay regressions and current owned proof expectations; no agent
+  or Goals changes.
+type: task
+component: default
+release:
+reporter: Ted Smith <tedks@riseup.net>
+status: unstarted
+disposition:
+creation_time: 2026-09-11T13:47:28-00:00
+references: []
+log_events:
+- time: 2026-09-11T13:47:28-00:00
+  who: Ted Smith
+  what: created
+  comment: ""
