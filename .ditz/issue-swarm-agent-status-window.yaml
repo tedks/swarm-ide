@@ -10,7 +10,7 @@ type: task
 component: default
 release:
 reporter: Ted Smith <tedks@riseup.net>
-status: unstarted
+status: in_progress
 disposition:
 creation_time: 2026-09-08T16:08:46-00:00
 references: []
@@ -29,3 +29,7 @@ log_events:
     propagation or lifecycle cause. No inferred completion from process existence,
     old summaries or timing. Preserve original PR121 negative boundary; this is a
     new live report.
+- time: 2026-09-11T01:33:46-00:00
+  who: Ted Smith
+  what: started
+  comment: ""
