@@ -16,7 +16,8 @@ Registered Goals conversations with explicit Codex lifecycle records should show
 - [x] (2026-09-11 01:49Z) Updated the agent design and exact `//tools/demo-agents:unit` plan mapping for the split lifecycle/Activity bounds.
 - [x] (2026-09-11 02:35Z) Passed the focused `//tools/demo-agents:unit` regressions (156 cases: 155 passed, 1 skipped) and `//:desktop-bundle` packaging/type gate.
 - [x] (2026-09-11 02:35Z) Reached council-review fixpoint across native Codex, Claude Sonnet, and Antigravity: bounded incremental attestation, dependent-terminal authority, and the final rewrite regression all received clean convergence rounds.
-- [ ] Mark PR 151 ready, add and sync the Ditz accomplishment note without closing the issue, clean owned resources, and write verification/final recap artifacts.
+- [x] (2026-09-11 02:41Z) Marked PR 151 ready, posted verification/review evidence, and added/synced the Ditz accomplishment note while leaving the issue in progress for ROOT landing.
+- [x] (2026-09-11 02:41Z) Wrote the owned verification, seam, council-fixpoint, and marker-qualified final recap artifacts; no product follow-up issue remains beyond the existing landing/adoption issue.
 
 ## Surprises & Discoveries
 
