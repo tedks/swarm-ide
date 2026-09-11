@@ -33,3 +33,14 @@ log_events:
   who: Ted Smith
   what: started
   comment: ""
+- time: 2026-09-11T02:42:07-00:00
+  who: Ted Smith
+  what: commented
+  comment: 'Implemented and pushed PR #151. Direct read-only production service observation
+    reproduced two false unknowns caused by the 256 KiB lifecycle tail and valid oversized
+    records, then verified snapshot/detail/protocol agreement at two working and five
+    completed after the bounded 4 MiB recovery fix. Added content-attested incremental
+    checkpoints, rewrite/dependent-terminal protections, focused regressions, docs/plan
+    mappings, green Bazel unit and desktop-bundle gates, and clean Codex/Claude Sonnet/Antigravity
+    council fixpoint. Issue remains in progress pending ROOT review, normal merge,
+    and deliberate installed-app adoption.'
