@@ -14,7 +14,7 @@ Registered Goals conversations with explicit Codex lifecycle records should show
 - [x] (2026-09-11 01:47Z) Added RED regressions for cold recovery beyond Activity and valid oversized terminal envelopes, then implemented a 4-MiB cold/discontinuous lifecycle lookback plus a per-version content checkpoint; malformed and greater-than-lookback gaps remain unknown.
 - [x] (2026-09-11 01:48Z) Confirmed the real read-only service path publishes two current working and five completed Goals sessions identically through snapshot/detail and protocol validation.
 - [x] (2026-09-11 01:49Z) Updated the agent design and exact `//tools/demo-agents:unit` plan mapping for the split lifecycle/Activity bounds.
-- [ ] Run focused Bazel tests and type/build gates, then obtain native and foreign council-review convergence (round 1 found continuity/I/O issues; fix delta in progress).
+- [ ] Run focused Bazel tests and type/build gates, then obtain native and foreign council-review convergence (round 1 fixed; convergence found full-rescan cost; incremental attestation in progress).
 - [ ] Push the ready PR, update and sync Ditz without closing the in-progress issue, clean owned resources, and write verification/final recap artifacts.
 
 ## Surprises & Discoveries
@@ -36,15 +36,15 @@ The two added regressions failed before the correction and all 151 focused cases
   Date/Author: 2026-09-11 / Codex.
 
 - Decision: Give lifecycle parsing a separate 4-MiB maximum recovery window while leaving published Activity at 256 KiB and 64-KiB per record.
-  Rationale: The real missed start was 1.7 MiB behind EOF among valid large compaction/tool records. A fixed recovery cap repairs that case without recurrent full-history scans; the checkpoint avoids a lifecycle rescan for unchanged file versions and changed sessions reread at most the fixed window.
+  Rationale: The real missed start was 1.7 MiB behind EOF among valid large compaction/tool records. A fixed recovery cap repairs that case without recurrent full-history scans; the checkpoint avoids a lifecycle rescan for unchanged file versions, validates only the state-bearing suffix on bounded appends, and cold-scans at most the fixed window when needed.
   Date/Author: 2026-09-11 / Codex.
 
 - Decision: Parse every complete JSONL envelope contained in the lifecycle window, including records larger than the Activity record limit, but reset on invalid JSON.
   Rationale: A valid large non-lifecycle record is not an evidence gap, and a large lifecycle envelope remains authoritative; malformed bytes cannot prove that no transition occurred.
   Date/Author: 2026-09-11 / Codex.
 
-- Decision: Reproject every changed file version from the content-hashed lifecycle window instead of carrying state across a short trailing anchor.
-  Rationale: Council review constructed a same-inode growth rewrite that preserves the old 128-byte anchor while removing its lifecycle boundary. Hashing the entire window and deriving state only from that window makes older unvalidated bytes irrelevant; concurrent appends are accepted only after the scanned bytes are revalidated.
+- Decision: Start the content-hashed checkpoint at the latest independently owned lifecycle boundary and extend it incrementally only after every prior state-bearing byte is revalidated.
+  Rationale: Council review constructed a same-inode growth rewrite that preserves the old 128-byte anchor while removing its lifecycle boundary. Hashing from the authority boundary makes older bytes irrelevant and catches that rewrite. A later convergence review showed cold-reprojecting every append was unnecessarily expensive, so bounded appends validate this suffix and parse only new complete records; a suffix beyond 4 MiB falls back to cold recovery.
   Date/Author: 2026-09-11 / Codex.
 
 ## Outcomes & Retrospective

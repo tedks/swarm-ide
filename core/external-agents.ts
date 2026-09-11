@@ -35,7 +35,8 @@ export class ExternalAgentService {
   private sending = new Set<string>();
   private sentRequests = new Set<string>();
   private historical = new Map<string, { registration: string; version: string; detail: ExternalDetail }>();
-  private lifecycle = new Map<string, { observationId: string; version: string; start: number; length: number; digest: string; projection: AgentLifecycleProjection }>();
+  private lifecycle = new Map<string, { observationId: string; version: string; start: number; position: number; digest: string;
+    incremental: boolean; projection: AgentLifecycleProjection }>();
   constructor(private readonly root: string, private readonly registryPath: string | undefined,
     private readonly sender: { queue: QueueMessage; executable(): Promise<string> } = { queue: queueExternalMessage, executable: resolveExternalCodex }) {}
   dispose(): Promise<void> {
@@ -91,30 +92,42 @@ export class ExternalAgentService {
     previous: ReturnType<typeof this.lifecycle.get>): Promise<NonNullable<ReturnType<typeof this.lifecycle.get>>> {
     const version = fileVersion(stat);
     if (previous?.observationId === observationId && previous.version === version) return previous;
-    const windowStart = Math.max(0, stat.size - LIFECYCLE_LOOKBACK);
-    // Include the preceding byte so a newline proves whether the recovery
-    // window starts at a record boundary. Otherwise skip its partial record.
-    const start = Math.max(0, windowStart - 1), buffer = Buffer.alloc(stat.size - start);
+    const append = previous?.observationId === observationId && previous.incremental && previous.position <= stat.size &&
+      stat.size - previous.start <= LIFECYCLE_LOOKBACK;
+    const windowStart = append ? previous.start : Math.max(0, stat.size - LIFECYCLE_LOOKBACK);
+    // A cold window includes its preceding byte so a newline proves alignment.
+    // An attested append begins at the lifecycle boundary retained in cache.
+    const start = append ? windowStart : Math.max(0, windowStart - 1), buffer = Buffer.alloc(stat.size - start);
     const { bytesRead } = await file.read(buffer, 0, buffer.length, start); this.check();
     if (bytesRead !== buffer.length) throw new Error("Lifecycle window changed during read");
-    let cursor = windowStart - start;
-    if (windowStart > 0 && buffer[cursor - 1] !== 10) {
+    let cursor = append ? previous.position - start : windowStart - start;
+    if (append) {
+      const prefix = buffer.subarray(0, cursor);
+      if (createHash("sha256").update(prefix).digest("hex") !== previous.digest)
+        return this.projectLifecycle(file, stat, meta, observationId, undefined);
+    }
+    let projection = append ? previous.projection.clone() : new AgentLifecycleProjection(meta);
+    let authority = append ? previous.start : start + cursor, incremental = true;
+    if (!append && windowStart > 0 && buffer[cursor - 1] !== 10) {
       const newline = buffer.indexOf(10, cursor);
-      cursor = newline < 0 ? buffer.length : newline + 1;
+      if (newline < 0) { cursor = buffer.length; authority = stat.size; incremental = false; }
+      else { cursor = newline + 1; authority = start + cursor; }
     }
-    let projection = new AgentLifecycleProjection(meta);
+    let completePosition = start + cursor;
     while (cursor < bytesRead) {
+      const offset = start + cursor;
       const end = buffer.indexOf(10, cursor); if (end < 0) break;
-      const line = buffer.subarray(cursor, end).toString("utf8"); cursor = end + 1;
+      const line = buffer.subarray(cursor, end).toString("utf8"); cursor = end + 1; completePosition = start + cursor;
       if (!line) continue;
-      try { projection.consume(JSON.parse(line)); }
-      catch { projection = new AgentLifecycleProjection(meta); }
+      try { if (projection.consume(JSON.parse(line))) authority = offset; }
+      catch { projection = new AgentLifecycleProjection(meta); authority = offset; }
     }
-    return { observationId, version, start, length: buffer.length,
-      digest: createHash("sha256").update(buffer).digest("hex"), projection };
+    const checkpointStart = Math.min(authority, completePosition), from = checkpointStart - start, to = completePosition - start;
+    return { observationId, version, start: checkpointStart, position: completePosition,
+      digest: createHash("sha256").update(buffer.subarray(from, to)).digest("hex"), incremental, projection };
   }
   private async confirmLifecycle(file: FileHandle, checkpoint: NonNullable<ReturnType<typeof this.lifecycle.get>>): Promise<void> {
-    const buffer = Buffer.alloc(checkpoint.length);
+    const buffer = Buffer.alloc(checkpoint.position - checkpoint.start);
     const { bytesRead } = await file.read(buffer, 0, buffer.length, checkpoint.start); this.check();
     if (bytesRead !== buffer.length || createHash("sha256").update(buffer).digest("hex") !== checkpoint.digest)
       throw new Error("Lifecycle window changed during read");

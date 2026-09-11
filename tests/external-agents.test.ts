@@ -6,6 +6,7 @@ import { tmpdir } from "node:os";
 import { execFileSync } from "node:child_process";
 import { join } from "node:path";
 import { ExternalAgentService, extractEntry, resolveAncestry } from "../core/external-agents";
+import { AgentLifecycleProjection } from "../core/agent-lifecycle";
 import { PROTOCOL_VERSION, parseCoreRequest, parseCoreResponseForRequest } from "../protocol/schema";
 import { initialSnapshot } from "../fixtures/world";
 import type { ExternalAgentSummary, ExternalRequest } from "../protocol/external-agents";
@@ -45,6 +46,16 @@ describe("operator-registered external observation", () => {
     expect(await service.request(request("externalAgents.snapshot"))).toMatchObject({ snapshot: { sessions: [{ lifecycle: { state: "completed" } }] } });
     await writeFile(rollout, meta() + message("Replaced contents without execution evidence"));
     expect(await service.request(request("externalAgents.snapshot"))).toMatchObject({ snapshot: { sessions: [{ lifecycle: { state: "unknown" } }] } });
+  });
+
+  it("validates the state-bearing suffix but projects only new append records", async () => {
+    const begin = JSON.stringify({ type: "event_msg", timestamp: "2026-09-08T12:00:01Z", payload: { type: "task_started", turn_id: "current" } }) + "\n";
+    const { service, rollout } = await setup(meta() + begin + message("history").repeat(100));
+    await service.request(request("externalAgents.snapshot"));
+    const consume = vi.spyOn(AgentLifecycleProjection.prototype, "consume");
+    await appendFile(rollout, message("one new record"));
+    expect(await service.request(request("externalAgents.snapshot"))).toMatchObject({ snapshot: { sessions: [{ lifecycle: { state: "working" } }] } });
+    expect(consume).toHaveBeenCalledTimes(1);
   });
 
   it("does not carry old running state over an unobserved byte gap", async () => {
@@ -114,10 +125,10 @@ describe("operator-registered external observation", () => {
     expect(await service.request(request("externalAgents.snapshot"))).toMatchObject({ snapshot: { sessions: [{ lifecycle: { state: "unknown" } }] } });
   });
 
-  it("keeps a recovery window trapped inside one larger record unknown", async () => {
+  it("keeps a recovery window trapped inside one unterminated larger record unknown", async () => {
     const begin = JSON.stringify({ type: "event_msg", timestamp: "2026-09-08T12:00:01Z", payload: { type: "task_started", turn_id: "old" } }) + "\n";
-    const compacted = JSON.stringify({ type: "compacted", timestamp: "2026-09-08T12:01:00Z", payload: { replacement_history: "x".repeat(4 * 1024 * 1024) } }) + "\n";
-    const { service } = await setup(meta() + begin + compacted + message("after the bounded gap"));
+    const compacted = JSON.stringify({ type: "compacted", timestamp: "2026-09-08T12:01:00Z", payload: { replacement_history: "x".repeat(4 * 1024 * 1024) } });
+    const { service } = await setup(meta() + begin + compacted);
     for (let i = 0; i < 2; i++)
       expect(await service.request(request("externalAgents.snapshot"))).toMatchObject({ snapshot: { sessions: [{ lifecycle: { state: "unknown" } }] } });
   });
