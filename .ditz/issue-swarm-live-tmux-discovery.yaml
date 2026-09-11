@@ -11,8 +11,8 @@ type: bugfix
 component: default
 release:
 reporter: Ted Smith <tedks@riseup.net>
-status: in_progress
-disposition:
+status: closed
+disposition: fixed
 creation_time: 2026-09-10T23:21:33-00:00
 references: []
 log_events:
@@ -37,3 +37,13 @@ log_events:
     pass. Council fixpoint: Codex CLEAN, Claude Sonnet CLEAN; agy unavailable after
     two permitted headless-denial attempts. Capacity archival follow-up: swarm-live-tmux-history-capacity.
     Keep this issue in_progress for ROOT to normal-merge/adopt.'
+- time: 2026-09-11T02:17:17-00:00
+  who: Ted Smith
+  what: 'closed: fixed'
+  comment: PR149 normally merged as d587a9f9. Launcher now maintains one serialized
+    watcher for its exact tmux session and registry, discovers later supported owners
+    and worktrees, retires stale terminal authority without deleting history, and
+    drains its own commands on close. Focused CLI/registration tests and component
+    bundles pass; Codex and Claude Sonnet convergence clean, Google convergence unavailable.
+    Owned descriptor-holder fixture is not a real model turn or installed smoke. Historical
+    planning-fixture failures and registry-capacity follow-ups remain recorded.
