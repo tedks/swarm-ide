@@ -7,7 +7,7 @@ export const WorkLogSettingsSchema = z.object({
   model: z.string().regex(/^[a-zA-Z0-9._-]{1,80}$/).default("gpt-5.6-luna"),
   debounceSeconds: z.number().int().min(10).max(600).default(30),
 }).strict();
-export const WorkLogEntrySchema = z.object({
+export const WorkLogEntryBaseSchema = z.object({
   id: z.string().min(1).max(160), sessionId: z.string().min(1).max(160),
   agent: z.string().min(1).max(120), taskId: z.string().max(200).nullable(),
   origin: z.enum(["milestone", "terminal"]).optional(),
@@ -16,6 +16,10 @@ export const WorkLogEntrySchema = z.object({
   checks: z.array(z.string().max(320)).max(8), followUps: z.array(z.string().max(320)).max(8),
   recorded: z.boolean().default(false),
 }).strict();
+export const WorkLogEntrySchema = WorkLogEntryBaseSchema.superRefine((entry, context) => {
+  if (entry.origin === "milestone" && entry.state !== "working") context.addIssue({ code: "custom", path: ["state"], message: "Milestones remain working" });
+  if (entry.origin === "terminal" && entry.state !== "completed" && entry.state !== "failed") context.addIssue({ code: "custom", path: ["state"], message: "Terminal entries require a terminal state" });
+});
 export const WorkLogSnapshotSchema = z.object({
   running: z.boolean(), summarizing: z.boolean(), settings: WorkLogSettingsSchema,
   entries: z.array(WorkLogEntrySchema).max(200), notice: z.string().max(512),

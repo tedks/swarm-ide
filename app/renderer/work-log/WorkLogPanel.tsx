@@ -144,7 +144,7 @@ function WorkLogView({ onOpen, onAgent, onTask, onOpenAgent, onOpenTask, control
       <div><label htmlFor={`${settingsId}-debounce`}>Batch delay (seconds)</label><input id={`${settingsId}-debounce`} type="number" min={10} max={600} step={1}
         value={Number.isNaN(settings.debounceSeconds) ? "" : settings.debounceSeconds} disabled={settingsDisabled}
         onChange={(event) => updateSettings({ debounceSeconds: event.target.value === "" ? Number.NaN : Number(event.target.value) })} /></div>
-      <p>Summarizes new agent turns automatically. Pause to change settings; Pause is remembered when you reopen the IDE.</p>
+      <p>Summarizes concrete milestones and terminal agent turns automatically. Pause to change settings; Pause is remembered when you reopen the IDE.</p>
     </div>
     {notice ? <p className="work-log-notice" role="status">{notice}</p> : null}
     {snapshot?.notice && !notice ? <p className="work-log-notice" role="status">{snapshot.notice}</p> : null}

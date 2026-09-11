@@ -5,10 +5,12 @@ import { isAbsolute, relative } from "node:path";
 import { Registry } from "../external-agents-registry";
 import { extractEntries } from "../external-agents-activity";
 
-export type WorkCheckpoint = { source: string; offset: number; length: number; anchor: string; at: string; turnId: string | null };
-export type WorkInput = { origin: "milestone" | "terminal"; sessionId: string; agent: string; taskId: string | null;
-  boundary: string; at: string; text: string; state?: "completed" | "failed"; checkpoint?: WorkCheckpoint };
-export type WorkCompletion = Pick<WorkInput, "sessionId" | "boundary" | "at" | "state">;
+export type WorkCheckpoint = { source: string; offset: number; length: number; anchor: string; at: string; turnId: string | null;
+  kind?: "milestone" | "terminal" | "abort" };
+type WorkInputBase = { sessionId: string; agent: string; taskId: string | null; boundary: string; at: string; text: string; checkpoint?: WorkCheckpoint };
+export type WorkInput = (WorkInputBase & { origin: "milestone"; state?: never })
+  | (WorkInputBase & { origin: "terminal"; state: "completed" | "failed" });
+export type WorkCompletion = { sessionId: string; boundary: string; at: string; state: "completed" | "failed" };
 export type WorkObservation = { inputs: WorkInput[]; advances: Record<string, WorkCheckpoint> };
 const TAIL = 512 * 1024;
 
@@ -21,17 +23,25 @@ async function regular(path: string) {
 }
 
 export function cleanWorkText(text: string, max = 1600): string {
-  return text.replace(/(?:\/home\/[^\s"'<>]+|\/tmp\/[^\s"'<>]+|[A-Za-z0-9_-]*(?:api[_-]?key|access[_-]?token|password|secret)\s*[=:]\s*[^\s,;]+)/gi, "[private]")
+  return text.replace(/authorization\s*:\s*(?:bearer\s+)?[^\s,;]+/gi, "[private]")
+    .replace(/\b[A-Za-z0-9_-]*(?:api[_-]?key|access[_-]?token|password|secret|token)\s*[=:]\s*[^\s,;]+/gi, "[private]")
+    .replace(/(^|[\s("'=,:])\/(?!\/)[^\s"'<>),;]+/g, "$1[private]")
     .replace(/[\p{Cc}\p{Cf}]/gu, (c) => c === "\n" || c === "\t" ? c : "").slice(0, max);
 }
 
 function concreteCommand(command: string): boolean {
-  return /(?:^|&&|\|\||;)\s*(?:nix\s+develop\s+--command\s+)?(?:(?:bazel|bazelisk)\s+(?:test|build|run)|(?:pnpm|npm|yarn)\s+(?:run\s+)?(?:test|lint|typecheck|build|check)|vitest\s+run|pytest\b|cargo\s+test\b|go\s+test\b|make\s+(?:test|check)\b|git\s+(?:commit|push|merge|rebase|cherry-pick|tag)\b|gh\s+pr\s+(?:create|ready|merge|comment)\b|ditz\s+(?:add|start|close|comment|sync)\b)/i.test(command);
+  return /^\s*(?:nix\s+develop\s+--command\s+)?(?:(?:bazel|bazelisk)\s+(?:test|build|run)|(?:pnpm|npm|yarn)\s+(?:run\s+)?(?:test|lint|typecheck|build|check)|vitest\s+run|pytest\b|cargo\s+test\b|go\s+test\b|make\s+(?:test|check)\b|git\s+(?:commit|push|merge|rebase|cherry-pick|tag)\b|gh\s+pr\s+(?:create|ready|merge|comment)\b|ditz\s+(?:add|start|close|comment|sync)\b)/i.test(command);
 }
 
-function nextCheckpoint(source: string, offset: number, at: string, turnId: string | undefined, bytes: string): WorkCheckpoint {
-  const anchor = createHash("sha256").update(`${source}\n${offset}\n${bytes}`).digest("hex").slice(0, 32);
-  return { source, offset, length: Buffer.byteLength(bytes) + 1, anchor, at, turnId: turnId ?? null };
+function turnIdentity(value: unknown): string | undefined {
+  if (typeof value !== "string" || !value) return;
+  return /^[A-Za-z0-9._:-]{1,80}$/.test(value) ? value : `sha256:${createHash("sha256").update(value).digest("hex")}`;
+}
+
+function nextCheckpoint(source: string, offset: number, at: string, turnId: string | undefined,
+  kind: NonNullable<WorkCheckpoint["kind"]>, bytes: Buffer): WorkCheckpoint {
+  const anchor = createHash("sha256").update(source).update("\n").update(String(offset)).update("\n").update(bytes).digest("hex").slice(0, 32);
+  return { source, offset, length: bytes.length + 1, anchor, at, turnId: turnId ?? null, kind };
 }
 
 function iso(value: unknown): string | undefined {
@@ -88,8 +98,8 @@ async function readWorkEvidence(root: string, registryPath: string | undefined, 
         if (!prior) return true;
         const saved = Buffer.alloc(prior.length), read = await file!.read(saved, 0, saved.length, prior.offset - prior.length);
         if (read.bytesRead !== prior.length || saved.at(-1) !== 10) return false;
-        const raw = saved.subarray(0, -1).toString("utf8");
-        return nextCheckpoint(source, prior.offset, prior.at, prior.turnId ?? undefined, raw).anchor === prior.anchor;
+        const raw = saved.subarray(0, -1);
+        return nextCheckpoint(source, prior.offset, prior.at, prior.turnId ?? undefined, prior.kind ?? "milestone", raw).anchor === prior.anchor;
       };
       if (!await anchorMatches()) continue;
       const header = Buffer.alloc(65536), head = await file.read(header, 0, header.length, 0);
@@ -118,16 +128,20 @@ async function readWorkEvidence(root: string, registryPath: string | undefined, 
       const fork = !!meta.payload?.forked_from_id;
       const born = Date.parse(meta.payload?.timestamp ?? (fork ? "" : meta.timestamp) ?? "");
       if (fork && !Number.isFinite(born)) continue;
-      let ownTurn = prior?.turnId ?? undefined;
-      let owned = fork ? ownTurn !== undefined : true;
+      let ownTurn = prior?.kind === "milestone" ? prior.turnId ?? undefined : undefined;
+      let owned = prior ? prior.kind === "milestone" && (!fork || ownTurn !== undefined) : !fork;
       let evidence: string[] = [], milestones: { at: string; text: string; checkpoint: WorkCheckpoint }[] = [];
       let terminalInput: WorkInput | undefined, latestAdvance: WorkCheckpoint | undefined;
       const calls = new Map<string, { descriptions: string[] }>();
 
-      for (const raw of bytes.toString("utf8").split("\n")) {
-        if (!raw) { absolute += 1; continue; }
-        const end = absolute + Buffer.byteLength(raw) + 1;
-        if (raw.length > 64000) { evidence = []; milestones = []; calls.clear(); owned = false; ownTurn = undefined; absolute = end; continue; }
+      for (let position = 0; position < bytes.length;) {
+        const newline = bytes.indexOf(10, position);
+        if (newline < 0) break;
+        const rawBytes = bytes.subarray(position, newline), raw = rawBytes.toString("utf8");
+        position = newline + 1;
+        const end = absolute + rawBytes.length + 1;
+        if (!raw) { absolute = end; continue; }
+        if (rawBytes.length > 64000) { evidence = []; milestones = []; calls.clear(); owned = false; ownTurn = undefined; absolute = end; continue; }
         let event: Record<string, unknown>;
         try { event = JSON.parse(raw); }
         catch { evidence = []; milestones = []; calls.clear(); owned = false; ownTurn = undefined; absolute = end; continue; }
@@ -143,7 +157,7 @@ async function readWorkEvidence(root: string, registryPath: string | undefined, 
         const started = typeof payload?.started_at === "number" ? payload.started_at * 1000 : NaN;
         if (event.type === "event_msg" && payload?.type === "task_started") {
           evidence = []; milestones = []; calls.clear();
-          ownTurn = typeof payload.turn_id === "string" && (!fork || Number.isFinite(started) && started >= born) ? payload.turn_id : undefined;
+          ownTurn = (!fork || Number.isFinite(started) && started >= born) ? turnIdentity(payload.turn_id) : undefined;
           owned = !fork || ownTurn !== undefined; absolute = end; continue;
         }
 
@@ -167,25 +181,27 @@ async function readWorkEvidence(root: string, registryPath: string | undefined, 
           const result = cleanWorkText(payload.output, 1200), call = calls.get(payload.call_id);
           evidence.push(`Result: ${cleanWorkText(payload.output, 700)}`);
           calls.delete(payload.call_id);
-          if (call && result.trim()) {
-            const detail = `${call.descriptions.join("\n")}\nResult: ${result}`;
-            milestones.push({ at, text: detail, checkpoint: nextCheckpoint(source, end, at, ownTurn, raw) });
+          if (call) {
+            const detail = `${call.descriptions.join("\n")}\nResult: ${result.trim() || "(completed without output)"}`;
+            milestones.push({ at, text: detail, checkpoint: nextCheckpoint(source, end, at, ownTurn, "milestone", rawBytes) });
           }
         }
 
         if (event.type === "event_msg" && payload?.type === "task_complete") {
-          const ownTerminal = !fork || (Number.isFinite(started) ? started >= born : ownTurn !== undefined && payload.turn_id === ownTurn);
+          const eventTurn = turnIdentity(payload.turn_id);
+          const ownTerminal = owned && (ownTurn === undefined || eventTurn === ownTurn)
+            && (!fork || (Number.isFinite(started) ? started >= born : ownTurn !== undefined && eventTurn === ownTurn));
           if (!ownTerminal) { absolute = end; continue; }
-          if (fork && payload.turn_id !== ownTurn) evidence = [];
           if (typeof payload.last_agent_message === "string") evidence.push(cleanWorkText(payload.last_agent_message, 3500));
-          const turn = typeof payload.turn_id === "string" ? cleanWorkText(payload.turn_id, 80) : "turn";
+          const turn = eventTurn ?? "turn";
           const boundary = `${turn}:${at}`;
           const state = payload.error != null ? "failed" as const : "completed" as const;
-          const next = nextCheckpoint(source, end, at, undefined, raw);
+          const next = nextCheckpoint(source, end, at, eventTurn, "terminal", rawBytes);
           completions.push({ sessionId: row.id, boundary, at, state });
           terminalInput = undefined;
           const terminalText = evidence.slice(-16).join("\n").slice(-10000).trim()
-            || (prior ? `Turn ${state === "failed" ? "failed" : "completed"} after earlier saved milestones; no additional outcome text was reported.` : "");
+            || (prior?.kind === "milestone" && prior.turnId !== null && prior.turnId === eventTurn
+              ? `Turn ${state === "failed" ? "failed" : "completed"} after earlier saved milestones; no additional outcome text was reported.` : "");
           if (legacySeen[row.id] !== boundary && terminalText) terminalInput = { origin: "terminal", sessionId: row.id,
             agent: cleanWorkText(row.label, 120), taskId: row.task && /^[a-zA-Z0-9][a-zA-Z0-9_-]{0,199}$/.test(row.task) ? row.task : null,
             boundary, at, text: terminalText, state, checkpoint: next };
@@ -193,7 +209,8 @@ async function readWorkEvidence(root: string, registryPath: string | undefined, 
           evidence = []; milestones = []; calls.clear(); owned = false; ownTurn = undefined;
         }
         if (event.type === "event_msg" && payload?.type === "turn_aborted") {
-          latestAdvance = nextCheckpoint(source, end, at, undefined, raw);
+          const eventTurn = turnIdentity(payload.turn_id);
+          if (owned && (ownTurn === undefined || eventTurn === ownTurn)) latestAdvance = nextCheckpoint(source, end, at, eventTurn, "abort", rawBytes);
           evidence = []; milestones = []; calls.clear(); owned = false; ownTurn = undefined;
         }
         absolute = end;

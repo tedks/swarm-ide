@@ -5,10 +5,10 @@ import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { WorkLogService } from "../core/work-log/service";
-import { cleanWorkText, readWorkCompletions, readWorkInputs, type WorkInput } from "../core/work-log/transcripts";
+import { cleanWorkText, observeWork, readWorkCompletions, readWorkInputs, type WorkInput } from "../core/work-log/transcripts";
 import { recordWorkOutcome, runWorkCommand, withWorkLock } from "../core/work-log/commands";
 import * as workCommands from "../core/work-log/commands";
-import { WorkLogSettingsSchema, type WorkLogRequest } from "../protocol/work-log";
+import { WorkLogEntrySchema, WorkLogSettingsSchema, type WorkLogRequest } from "../protocol/work-log";
 import { PROTOCOL_VERSION, CoreRequestSchema } from "../protocol/schema";
 
 const roots: string[] = [], services: WorkLogService[] = [];
@@ -21,8 +21,10 @@ async function fixture() {
 const request = (type: WorkLogRequest["type"], extra = {}) => CoreRequestSchema.parse({ protocolVersion: PROTOCOL_VERSION, requestId: crypto.randomUUID(), type, ...extra }) as WorkLogRequest;
 const read = request("workLog.read");
 const settings = WorkLogSettingsSchema.parse({ debounceSeconds: 10 });
-const input = (): WorkInput => ({ origin: "terminal", sessionId: "a", agent: "Worker A", taskId: "task-a", boundary: `turn:${Date.now()}`, at: new Date().toISOString(), text: "Implemented parser; focused tests pass." });
-const milestone = (boundary = `milestone:${Date.now()}`): WorkInput => ({ ...input(), origin: "milestone", boundary, state: undefined });
+const input = (): Extract<WorkInput, { origin: "terminal" }> => ({ origin: "terminal", sessionId: "a", agent: "Worker A", taskId: "task-a", boundary: `turn:${Date.now()}`, at: new Date().toISOString(), text: "Implemented parser; focused tests pass.", state: "completed" });
+const milestone = (boundary = `milestone:${Date.now()}`): WorkInput => {
+  const { state: _state, ...base } = input(); return { ...base, origin: "milestone", boundary };
+};
 const summary = { outcome: "Implemented parser.", areas: ["core/parser.ts"], checks: ["Focused tests reported passing"], followUps: [] };
 
 describe("online Work Log", () => {
@@ -252,6 +254,13 @@ describe("online Work Log", () => {
     expect(record).toHaveBeenCalledTimes(1);
     expect(recorded.entries[0]).toEqual({ ...entry, recorded: true });
   });
+  it("bounds generated entry identities for maximum-length registered sessions", async () => {
+    const f = await fixture(), row = { ...input(), sessionId: "s".repeat(160), boundary: "b".repeat(160) };
+    const service = new WorkLogService(f.root, undefined, { inputs: async () => [row], summarize: async () => [summary] }); services.push(service);
+    await service.request(request("workLog.start", { settings }));
+    await vi.waitFor(async () => expect((await service.request(read)).entries).toHaveLength(1));
+    expect((await service.request(read)).entries[0].id.length).toBeLessThanOrEqual(160);
+  });
   it("repairs exact legacy completions while stopped without changing outcomes, recording or attempts", async () => {
     const f = await fixture(), at = new Date().toISOString();
     const base = { sessionId: "a", agent: "Worker", taskId: "task-a", at, state: "working", recorded: false, ...summary, outcome: "  Original outcome\nwith spacing.  " };
@@ -269,9 +278,9 @@ describe("online Work Log", () => {
     await writeFile(join(f.root, ".git/swarm-work-log/state.json"), state);
     const summarize = vi.fn(async () => [summary]), inputs = vi.fn(async () => []);
     const completions = vi.fn(async () => [
-      { sessionId: "a", boundary: `older:${at}`, at },
+      { sessionId: "a", boundary: `older:${at}`, at, state: "completed" as const },
       { sessionId: "a", boundary: `failed:${at}`, at, state: "failed" as const },
-      { sessionId: "a", boundary: `mismatch:${at}`, at },
+      { sessionId: "a", boundary: `mismatch:${at}`, at, state: "completed" as const },
     ]);
     const service = new WorkLogService(f.root, undefined, { inputs, completions, summarize }); services.push(service);
     const snapshot = await service.request(read);
@@ -300,7 +309,7 @@ describe("online Work Log", () => {
     const held = withWorkLock(join(f.root, ".git/swarm-work-log/producer.lock"), () => new Promise<void>((resolve) => { release = resolve; }));
     await vi.waitFor(() => expect(release).toBeTypeOf("function"));
     const summarize = vi.fn(async () => [summary]);
-    const service = new WorkLogService(f.root, undefined, { inputs: async () => [], completions: async () => [{ sessionId: "a", boundary: `old:${at}`, at }], summarize }); services.push(service);
+    const service = new WorkLogService(f.root, undefined, { inputs: async () => [], completions: async () => [{ sessionId: "a", boundary: `old:${at}`, at, state: "completed" as const }], summarize }); services.push(service);
     expect((await service.request(read)).entries).toEqual([entry]);
     const newer = { ...entry, id: "newer", state: "completed", recorded: true };
     await writeFile(join(f.root, ".swarm/work-log.json"), JSON.stringify({ version: 1, entries: [newer, { ...entry, recorded: true }] }));
@@ -413,12 +422,88 @@ describe("online Work Log", () => {
       { type: "response_item", timestamp: at, payload: { type: "function_call_output", call_id: "status", output: "clean" } },
       { type: "response_item", timestamp: at, payload: { type: "function_call", name: "exec_command", call_id: "search", arguments: JSON.stringify({ cmd: "rg 'bazel test' docs" }) } },
       { type: "response_item", timestamp: at, payload: { type: "function_call_output", call_id: "search", output: "docs/example.md:bazel test //..." } },
+      { type: "response_item", timestamp: at, payload: { type: "function_call", name: "exec_command", call_id: "quoted", arguments: JSON.stringify({ cmd: "printf '; bazel test //...' && rg '&& git commit' docs" }) } },
+      { type: "response_item", timestamp: at, payload: { type: "function_call_output", call_id: "quoted", output: "just documentation" } },
       { type: "response_item", timestamp: at, payload: { type: "function_call_output", call_id: "missing", output: "Done!" } },
       { type: "event_msg", timestamp: at, payload: { type: "agent_message", message: "Implemented everything." } },
       { type: "event_msg", timestamp: at, payload: { type: "turn_aborted", turn_id: "turn" } },
     ].map((row) => JSON.stringify(row)).join("\n") + "\n");
     await writeFile(registry, JSON.stringify({ version: 1, sessions: [{ id, label: "Worker", rollout }] }), { mode: 0o600 });
     expect(await readWorkInputs(f.root, registry)).toEqual([]);
+  });
+  it("accepts a matched concrete operation with silent output", async () => {
+    const f = await fixture(), id = "01a07f1d-d6d0-7f01-b2bd-4154876ec187", rollout = join(f.dir, "session.jsonl"), registry = join(f.dir, "registry.json"), at = new Date().toISOString();
+    await writeFile(rollout, [
+      { type: "session_meta", timestamp: at, payload: { id } },
+      { type: "response_item", timestamp: at, payload: { type: "function_call", name: "exec_command", call_id: "push", arguments: JSON.stringify({ cmd: "git push" }) } },
+      { type: "response_item", timestamp: at, payload: { type: "function_call_output", call_id: "push", output: "" } },
+    ].map((row) => JSON.stringify(row)).join("\n") + "\n");
+    await writeFile(registry, JSON.stringify({ version: 1, sessions: [{ id, label: "Worker", rollout }] }), { mode: 0o600 });
+    const [result] = await readWorkInputs(f.root, registry);
+    expect(result.text).toContain("git push"); expect(result.text).toContain("completed without output");
+  });
+  it("uses byte-accurate checkpoints after invalid UTF-8 and rejects oversized multibyte records", async () => {
+    const f = await fixture(), id = "01a07f1d-d6d0-7f01-b2bd-4154876ec187", rollout = join(f.dir, "session.jsonl"), registry = join(f.dir, "registry.json"), at = new Date().toISOString();
+    const header = Buffer.from(`${JSON.stringify({ type: "session_meta", timestamp: at, payload: { id } })}\n`);
+    const invalid = Buffer.concat([Buffer.from('{"type":"noise","payload":"'), Buffer.from([0xff]), Buffer.from('"}\n')]);
+    const concrete = Buffer.from([
+      { type: "event_msg", timestamp: at, payload: { type: "task_started", turn_id: "valid" } },
+      { type: "response_item", timestamp: at, payload: { type: "function_call", name: "exec_command", call_id: "test", arguments: JSON.stringify({ cmd: "bazel test //tools/work-log:check" }) } },
+      { type: "response_item", timestamp: at, payload: { type: "function_call_output", call_id: "test", output: "passed" } },
+    ].map((row) => JSON.stringify(row)).join("\n") + "\n");
+    await writeFile(rollout, Buffer.concat([header, invalid, concrete]));
+    await writeFile(registry, JSON.stringify({ version: 1, sessions: [{ id, label: "Worker", rollout }] }), { mode: 0o600 });
+    const [first] = await readWorkInputs(f.root, registry); expect(first.checkpoint?.offset).toBe(header.length + invalid.length + concrete.length);
+    expect(await readWorkInputs(f.root, registry, { [id]: first.checkpoint! })).toEqual([]);
+
+    const oversized = Buffer.from(`${JSON.stringify({ type: "noise", payload: "é".repeat(33_000) })}\n`);
+    const later = Buffer.from([
+      { type: "event_msg", timestamp: at, payload: { type: "task_started", turn_id: "later" } },
+      { type: "response_item", timestamp: at, payload: { type: "function_call", name: "exec_command", call_id: "build", arguments: JSON.stringify({ cmd: "bazel build //..." }) } },
+      { type: "response_item", timestamp: at, payload: { type: "function_call_output", call_id: "build", output: "built" } },
+    ].map((row) => JSON.stringify(row)).join("\n") + "\n");
+    await writeFile(rollout, Buffer.concat([header, oversized, later]));
+    const [second] = await readWorkInputs(f.root, registry); expect(second.text).toContain("bazel build");
+    expect(second.checkpoint!.length).toBeLessThanOrEqual(64_001);
+  });
+  it("bounds untrusted turn identities before checkpoint persistence", async () => {
+    const f = await fixture(), id = "01a07f1d-d6d0-7f01-b2bd-4154876ec187", rollout = join(f.dir, "session.jsonl"), registry = join(f.dir, "registry.json"), at = new Date().toISOString();
+    await writeFile(rollout, [
+      { type: "session_meta", timestamp: at, payload: { id } },
+      { type: "event_msg", timestamp: at, payload: { type: "task_started", turn_id: "x".repeat(1000) } },
+      { type: "response_item", timestamp: at, payload: { type: "function_call", name: "exec_command", call_id: "test", arguments: JSON.stringify({ cmd: "bazel test //tools/work-log:check" }) } },
+      { type: "response_item", timestamp: at, payload: { type: "function_call_output", call_id: "test", output: "passed" } },
+    ].map((row) => JSON.stringify(row)).join("\n") + "\n");
+    await writeFile(registry, JSON.stringify({ version: 1, sessions: [{ id, label: "Worker", rollout }] }), { mode: 0o600 });
+    const [result] = await readWorkInputs(f.root, registry); expect(result.checkpoint!.turnId!.length).toBeLessThanOrEqual(160);
+  });
+  it("does not revive aborted or nested ownership with a later terminal", async () => {
+    const f = await fixture(), id = "01a07f1d-d6d0-7f01-b2bd-4154876ec187", rollout = join(f.dir, "session.jsonl"), registry = join(f.dir, "registry.json"), at = new Date().toISOString();
+    const header = { type: "session_meta", timestamp: at, payload: { id } };
+    const abort = { type: "event_msg", timestamp: at, payload: { type: "turn_aborted", turn_id: "stopped" } };
+    const terminal = { type: "event_msg", timestamp: at, payload: { type: "task_complete", turn_id: "stopped", last_agent_message: "Not actually complete" } };
+    const save = async (rows: unknown[]) => writeFile(rollout, rows.map((row) => JSON.stringify(row)).join("\n") + "\n");
+    await writeFile(registry, JSON.stringify({ version: 1, sessions: [{ id, label: "Worker", rollout }] }), { mode: 0o600 });
+    await save([header, { type: "event_msg", timestamp: at, payload: { type: "task_started", turn_id: "stopped" } }, abort, terminal]);
+    expect(await readWorkInputs(f.root, registry)).toEqual([]);
+    await save([header, { type: "event_msg", timestamp: at, payload: { type: "task_started", turn_id: "stopped" } }, abort]);
+    const observed = await observeWork(f.root, registry); expect(observed.advances[id]).toMatchObject({ kind: "abort" });
+    await save([header, { type: "event_msg", timestamp: at, payload: { type: "task_started", turn_id: "stopped" } }, abort, terminal]);
+    expect((await observeWork(f.root, registry, { [id]: observed.advances[id] })).inputs).toEqual([]);
+    await save([header, { type: "session_meta", timestamp: at, payload: { id: "nested" } }, terminal]);
+    expect(await readWorkInputs(f.root, registry)).toEqual([]);
+  });
+  it("uses empty-terminal fallback only after a milestone from the same turn", async () => {
+    const f = await fixture(), id = "01a07f1d-d6d0-7f01-b2bd-4154876ec187", rollout = join(f.dir, "session.jsonl"), registry = join(f.dir, "registry.json"), at = new Date().toISOString();
+    const header = { type: "session_meta", timestamp: at, payload: { id } };
+    const save = async (rows: unknown[]) => writeFile(rollout, rows.map((row) => JSON.stringify(row)).join("\n") + "\n");
+    await writeFile(registry, JSON.stringify({ version: 1, sessions: [{ id, label: "Worker", rollout }] }), { mode: 0o600 });
+    await save([header, { type: "event_msg", timestamp: at, payload: { type: "task_complete", turn_id: "first", last_agent_message: "First done" } }]);
+    const [first] = await readWorkInputs(f.root, registry); expect(first.checkpoint).toMatchObject({ kind: "terminal" });
+    await save([header, { type: "event_msg", timestamp: at, payload: { type: "task_complete", turn_id: "first", last_agent_message: "First done" } },
+      { type: "event_msg", timestamp: at, payload: { type: "task_started", turn_id: "empty" } },
+      { type: "event_msg", timestamp: at, payload: { type: "task_complete", turn_id: "empty" } }]);
+    expect(await readWorkInputs(f.root, registry, { [id]: first.checkpoint! })).toEqual([]);
   });
   it("keeps new concrete work eligible after its prior checkpoint leaves the bounded tail", async () => {
     const f = await fixture(), id = "01a07f1d-d6d0-7f01-b2bd-4154876ec187", rollout = join(f.dir, "session.jsonl"), registry = join(f.dir, "registry.json");
@@ -498,8 +583,11 @@ describe("online Work Log", () => {
       { type: "event_msg", timestamp: at, payload: { type: "agent_message", message: "Copied nested evidence" } },
       { type: "event_msg", timestamp: at, payload: { type: "task_complete", turn_id: "child", started_at: started, last_agent_message: "Own completion after nested header" } },
     ]);
-    expect((await readWorkInputs(f.root, registry))[0].text).toBe("Own completion after nested header");
-    await save([...inherited, { type: "event_msg", timestamp: at, payload: { type: "task_complete", turn_id: "child", started_at: started, last_agent_message: "Own final only", error: { message: "Provider failed" } } }]);
+    expect(await readWorkInputs(f.root, registry)).toEqual([]);
+    await save([...inherited,
+      { type: "event_msg", timestamp: at, payload: { type: "task_started", turn_id: "child", started_at: started } },
+      { type: "event_msg", timestamp: at, payload: { type: "task_complete", turn_id: "child", started_at: started, last_agent_message: "Own final only", error: { message: "Provider failed" } } },
+    ]);
     expect((await readWorkInputs(f.root, registry))[0]).toMatchObject({ text: "Own final only", state: "failed" });
     await save([{ ...header, payload: { id, forked_from_id: "parent" } }, ...inherited.slice(1)]);
     expect(await readWorkInputs(f.root, registry)).toEqual([]);
@@ -515,7 +603,9 @@ describe("online Work Log", () => {
     const f = await fixture(), id = "01a07f1d-d6d0-7f01-b2bd-4154876ec187", rollout = join(f.dir, "session.jsonl"), registry = join(f.dir, "registry.json"), at = new Date().toISOString();
     await writeFile(rollout, [
       { type: "session_meta", timestamp: at, payload: { id } },
+      { type: "event_msg", timestamp: at, payload: { type: "task_started", turn_id: "older" } },
       { type: "event_msg", timestamp: at, payload: { type: "task_complete", turn_id: "older", last_agent_message: "Older outcome" } },
+      { type: "event_msg", timestamp: at, payload: { type: "task_started", turn_id: "empty" } },
       { type: "event_msg", timestamp: at, payload: { type: "task_complete", turn_id: "empty", error: { message: "Provider unavailable" } } },
     ].map((row) => JSON.stringify(row)).join("\n") + "\n");
     await writeFile(registry, JSON.stringify({ version: 1, sessions: [{ id, label: "Worker", rollout }] }), { mode: 0o600 });
@@ -533,7 +623,13 @@ describe("online Work Log", () => {
     expect(await readWorkInputs(f.root, registry)).toEqual([]);
   });
   it("scrubs private paths and common credential assignments", () => {
-    expect(cleanWorkText("Edited /home/alice/private/a and /tmp/token with api_key=sekret")).not.toMatch(/alice|token|sekret/);
+    expect(cleanWorkText("Edited /home/alice/private/a, /tmp/token and /srv/company/private.ts with api_key=sekret GITHUB_TOKEN=hidden Authorization: Bearer abc.def")).not.toMatch(/alice|\/srv|token|sekret|hidden|abc\.def/i);
+  });
+  it("enforces explicit saved-entry provenance and state invariants", () => {
+    const base = { id: "entry", sessionId: "session", agent: "Worker", taskId: null, at: new Date().toISOString(), outcome: "Did work", areas: [], checks: [], followUps: [], recorded: false };
+    expect(WorkLogEntrySchema.safeParse({ ...base, origin: "milestone", state: "completed" }).success).toBe(false);
+    expect(WorkLogEntrySchema.safeParse({ ...base, origin: "terminal", state: "working" }).success).toBe(false);
+    expect(WorkLogEntrySchema.safeParse({ ...base, state: "working" }).success).toBe(true);
   });
   it("rejects record target mismatch before spawning Ditz", async () => {
     const f = await fixture();

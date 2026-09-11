@@ -1,7 +1,7 @@
 import { constants } from "node:fs";
 import { mkdir, open, readFile, realpath, rename, unlink } from "node:fs/promises";
 import { join, resolve } from "node:path";
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { z } from "zod";
 import { WorkLogEntrySchema, WorkLogSettingsSchema, WorkLogSnapshotSchema, type WorkLogRequest, type WorkLogSnapshot } from "../../protocol/work-log";
 import { observeWork, readWorkCompletions, readWorkInputs, type WorkCheckpoint, type WorkCompletion, type WorkInput, type WorkObservation } from "./transcripts";
@@ -9,7 +9,7 @@ import { recordWorkOutcome, runWorkCommand, summarizeWork, withWorkLock, type Wo
 
 const DocumentSchema = z.object({ version: z.literal(1), entries: z.array(WorkLogEntrySchema).max(200) }).strict();
 const CheckpointSchema = z.object({ source: z.string().min(1).max(160), offset: z.number().int().nonnegative(), length: z.number().int().nonnegative(), anchor: z.string().min(1).max(160),
-  at: z.string().datetime(), turnId: z.string().max(160).nullable() }).strict();
+  at: z.string().datetime(), turnId: z.string().max(160).nullable(), kind: z.enum(["milestone", "terminal", "abort"]).optional() }).strict();
 const PendingSchema = z.object({ checkpoint: CheckpointSchema, since: z.number().int().nonnegative() }).strict();
 const StateSchema = z.object({ version: z.literal(1), settings: WorkLogSettingsSchema,
   seen: z.record(z.string(), z.string()).default({}), checkpoints: z.record(z.string(), CheckpointSchema).default({}),
@@ -127,7 +127,8 @@ export class WorkLogService {
         const legacy = this.snapshot.entries.filter((entry) => entry.state === "working" && entry.origin === undefined);
         let observed: WorkCompletion[] = [];
         if (legacy.length) {
-          try { observed = await (this.deps.completions ? this.deps.completions(this.root, this.registry) : this.deps.inputs(this.root, this.registry, {})); }
+          try { observed = this.deps.completions ? await this.deps.completions(this.root, this.registry)
+            : (await this.deps.inputs(this.root, this.registry, {})).filter((item): item is Extract<WorkInput, { origin: "terminal" }> => item.origin === "terminal"); }
           catch { /* Missing evidence leaves unmatched outcomes unchanged. */ }
         }
         let changed = false;
@@ -157,7 +158,7 @@ export class WorkLogService {
       } finally { await file.close(); }
     } catch (error) { if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw new Error("Work Log document needs attention; it was not replaced"); }
   }
-  private saveState() { return atomic(join(this.privateDir, "state.json"), JSON.stringify(this.state)); }
+  private saveState() { return atomic(join(this.privateDir, "state.json"), JSON.stringify(StateSchema.parse(this.state))); }
   private async saveDocument() {
     const directory = join(this.root, ".swarm");
     await mkdir(directory, { recursive: true });
@@ -262,9 +263,9 @@ export class WorkLogService {
         const summaries = await this.deps.summarize(eligible, this.snapshot.settings, this.controller.signal);
         await withWorkLock(join(this.privateDir, "publication.lock"), async () => {
           if (!await this.maySummarize()) return;
-          const entries = eligible.map((input, index) => WorkLogEntrySchema.parse({ id: `${input.sessionId}:${input.boundary}`,
+          const entries = eligible.map((input, index) => WorkLogEntrySchema.parse({ id: `work:${createHash("sha256").update(`${input.sessionId}\0${input.boundary}`).digest("hex")}`,
             sessionId: input.sessionId, agent: input.agent, taskId: input.taskId, at: input.at, ...summaries[index],
-            origin: input.origin, state: input.origin === "milestone" ? "working" : input.state ?? "completed", recorded: false }));
+            origin: input.origin, state: input.origin === "milestone" ? "working" : input.state, recorded: false }));
           this.snapshot.entries = [...entries, ...this.snapshot.entries].slice(0, 200);
           await this.saveDocument(); this.snapshot.notice = ""; this.failures = 0;
         }, true);

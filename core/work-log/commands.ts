@@ -4,10 +4,10 @@ import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { z } from "zod";
 import { resolveExternalCodex } from "../external-agents-send";
-import { WorkLogEntrySchema, type WorkLogEntry, type WorkLogSettings } from "../../protocol/work-log";
+import { WorkLogEntryBaseSchema, type WorkLogEntry, type WorkLogSettings } from "../../protocol/work-log";
 import { cleanWorkText, type WorkInput } from "./transcripts";
 
-export const SummarySchema = WorkLogEntrySchema.pick({ outcome: true, areas: true, checks: true, followUps: true });
+export const SummarySchema = WorkLogEntryBaseSchema.pick({ outcome: true, areas: true, checks: true, followUps: true });
 export type WorkSummary = z.infer<typeof SummarySchema>;
 
 /** Fixed argv, bounded output and owned process group. Stop waits for close. */
