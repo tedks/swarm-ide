@@ -19,7 +19,7 @@ The visible proof uses an owned disposable Git repository, worktrees, tmux socke
 - [x] (2026-09-11 01:36Z) Passed focused CLI/registration tests and packaging from the dedicated Bazel output root; the registration target includes one bounded owned late-worktree/tmux-owner observer proof.
 - [x] (2026-09-11 02:07Z) Pushed draft PR #149 and ran the provider-diverse council to fixpoint. Codex and Claude returned CLEAN in the final delta round; agy remained an explicitly unfilled seat after two headless-permission denials.
 - [x] (2026-09-11 02:09Z) Re-ran final focused Bazel tests for CLI and session registration plus the CLI registration and desktop bundle builds from the dedicated output root; all passed.
-- [ ] Update and sync Ditz, clean only owned resources, pull/rebase, push, verify the branch is clean/up to date, and write the final handoff artifacts.
+- [x] (2026-09-11 02:12Z) Updated and synced the still-in-progress Ditz task, filed `swarm-live-tmux-history-capacity`, and prepared the final clean/push/handoff sequence.
 
 ## Surprises & Discoveries
 
