@@ -23,3 +23,14 @@ log_events:
   who: Ted Smith
   what: started
   comment: ""
+- time: 2026-09-11T02:52:10-00:00
+  who: Ted Smith
+  what: commented
+  comment: 'Implemented and pushed ready PR #152 (ee46abec): canonical same-project
+    identity with conservative main/master scope, exact feature-worktree filtering,
+    origin-preserving located/unplaced sprites across repository/build/service/plan/component/task
+    graphs, observer-driven bounded identity revalidation, focused regressions, and
+    an owned packaged Xvfb proof with zero model turns. Affected Bazel suites and
+    all-target build pass; provider-diverse council converged CLEAN. Follow-ups: swarm-workspace-identity-response-contract
+    and swarm-external-agent-identity-bounds-test. Issue intentionally remains in
+    progress for ROOT landing.'
