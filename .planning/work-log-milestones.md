@@ -17,8 +17,9 @@ The behavior is visible in controlled Work Log tests: append a completed concret
 - [x] (2026-09-11 01:39Z) Added RED transcript/service/UI regressions for ongoing milestones, deduplication, restart and tail movement, milestone-to-terminal transitions, errors/aborts, batching, provenance repair, and cancellation/ownership races; the first focused run failed on the intentionally absent protocol/input fields.
 - [x] (2026-09-11 01:41Z) Implemented bounded transcript milestone extraction, one ordered persisted checkpoint, persisted batching, provenance-safe publication, and Pause publication linearization without changing agent liveness or registry ownership.
 - [x] (2026-09-11 01:47Z) Updated summarizer context, saved-entry provenance, UI copy, design documents, and exact `.swarm/plans.json` source/target mappings.
-- [x] (2026-09-11 02:08Z) Ran the focused Nix/Bazel Work Log and awareness gates after review fixes; 123 controlled Work Log/task/UI tests pass, and the awareness target passes with the updated source mapping. The earlier broader living-design bundle retained its recorded unrelated planning-UI failures.
-- [ ] Run the one optional disposable Luna summary over synthetic input, push granular review fixes, maintain the draft PR and Ditz progress, run the fix-delta council to convergence, and record final verification/handoff artifacts.
+- [x] (2026-09-11 02:25Z) Ran the focused Nix/Bazel Work Log and awareness gates after review fixes; 127 controlled Work Log/task/UI tests pass, and the awareness target passes with the updated source mapping. The earlier broader living-design bundle retained its recorded unrelated planning-UI failures.
+- [x] (2026-09-11 02:25Z) Ran exactly one disposable `gpt-5.6-luna` summary over fixed synthetic milestone input through a temporary Bazel-only harness; it returned ongoing-work wording, made no Ditz write, and the harness was removed.
+- [x] (2026-09-11 02:25Z) Pushed granular commits to draft PR #150, updated the in-progress Ditz issue, and ran provider-diverse council fix deltas until Codex, Claude Sonnet, and Google returned CLEAN on `4d4cafcf..2340e667`.
 
 ## Surprises & Discoveries
 
@@ -82,7 +83,9 @@ The behavior is visible in controlled Work Log tests: append a completed concret
 
 ## Outcomes & Retrospective
 
-The implementation and controlled verification are complete; council convergence, optional synthetic summarizer evidence, Ditz progress, and final handoff remain. The feature stays inside the existing registered-transcript reader, shared Activity literal-operation extractor, single core producer, saved Work Log document, and panel; it adds no agent discovery, liveness inference, generic event system, dashboard, Goals writes, or automatic Ditz action.
+The implementation, controlled verification, one synthetic real-summary proof, and provider-diverse council convergence are complete. Registered long-running turns now yield concise saved Milestones only after matched concrete operation results; one ordered byte checkpoint and persisted batch window prevent idle/restart/tail replay, while exact `task_complete`, abort/nested/fork ownership, Pause/disposal/settings and cross-window publication remain independently guarded. Explicit provenance protects historical milestones from legacy repair and the UI labels them without claiming current liveness.
+
+The feature stayed inside the existing registered-transcript reader, shared Activity literal-operation extractor, single core producer, saved Work Log document, protocol and panel; it added no agent discovery, liveness inference, generic event system, dashboard, Goals writes, automatic Ditz action, or App wiring. The one intentionally retained limit is fail-closed ambiguity: after a closed checkpoint has fallen outside the 512 KiB tail, a different explicit terminal may bridge the gap, but ongoing evidence waits for a visible owned `task_started`.
 
 ## Context and Orientation
 
@@ -159,3 +162,5 @@ Plan revision note (2026-09-11 01:34Z): replaced independent milestone/terminal 
 Plan revision note (2026-09-11 02:08Z): incorporated first-round council findings with byte-accurate line handling, checkpoint kind/turn provenance, active-span terminal admission, bounded identities, stricter privacy/command admission, silent-result handling, and protocol state invariants; recorded the unavailable Claude seat and new RED/GREEN evidence.
 
 Plan revision note (2026-09-11 02:18Z): distinguished active missing-ID terminals from closed-checkpoint tail gaps after delayed Claude convergence; retained fail-closed milestone ownership while allowing only an explicit different terminal to bridge a closed gap.
+
+Plan revision note (2026-09-11 02:25Z): recorded the final timestamp-ordering fix, 127-test GREEN evidence, one synthetic Luna proof, and three-provider CLEAN convergence; replaced the provisional outcome with the completed implementation and its deliberate fail-closed tail-gap limit.
