@@ -13,8 +13,9 @@ conversation buttons and worktree scope.
 
 - [x] Inspected the shared overlay and identified its count/list and callers.
 - [x] Created `fix/quiet-graph-agents` from merged master in the existing sprite worktree; recorded Ditz `swarm-quiet-graph-agents`.
-- [ ] Remove the shared summary and obsolete styles; update focused regressions and owned proof expectations.
-- [ ] Run focused local checks, review, push and normal-merge the change.
+- [x] Removed the shared summary and obsolete styles; updated focused regressions and owned proof expectations.
+- [x] Focused local checks and one owned packaged proof passed on `5e33095b`; native and Google review CLEAN, Claude unavailable at the two-minute bound.
+- [x] Implementation committed and pushed in PR #153; ROOT performs the normal merge after this outcome note.
 
 ## Assumptions and Context
 
@@ -64,7 +65,20 @@ and task sprite strip. Do not invent an arbitrary new time limit.
 
 ## Outcomes & Retrospective
 
-Implementation and verification pending.
+PR #153 removes the count/list on all graph surfaces without touching placement,
+the ordinary agent list or discovery. The focused target passed in 23.837s:
+116 cases plus one selected mounted case (eight unrelated cases filtered), with
+the existing type/syntax checks. The owned packaged proof passed in 1.490s
+(2.622s harness), zero renderer errors, zero model turns and confirmed cleanup.
+It verified 20 unmatched agents add no graph UI, matched sprite click identity,
+task hit targets, worktree exclusions and retained source/cameras. Native Codex
+and Google reviews returned CLEAN; Claude Sonnet produced no review within 120s
+and remains an explicitly unfilled seat. No repeat or substitute review.
+
+The dedicated test Bazel server was shut down; evidence remains in
+`/tmp/swarm-quiet-graphs.Qb7Sso/ui`. Goals and its active buffers were untouched;
+the installed Goals process is not hot-swapped by this small change. Previous
+unrelated black-screen and aggregate navigation issues are not claimed fixed.
 
 ## Idempotence and Recovery
 
@@ -78,3 +92,6 @@ No protocol, provider, dependency or caller API changes. All edits stay in the
 shared renderer, its existing focused checks/proof and living design documents.
 
 Initial plan records the user's 2026-09-11 graph-clutter refinement.
+
+Final note records the tested implementation and review limits; no extra
+production or provider scope was added.
