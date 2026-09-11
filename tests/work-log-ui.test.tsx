@@ -28,6 +28,14 @@ describe("online Work Log panel", () => {
     expect(screen.queryByText("Status unavailable")).toBeNull();
     expect(screen.queryByText("Recorded in Ditz")).toBeNull();
   });
+  it("labels explicit ongoing accomplishments as milestones without claiming terminal completion", async () => {
+    const data = observation(); data.entries[0] = { ...data.entries[0], origin: "milestone" };
+    bridge(vi.fn(async (input: CoreRequest) => reply(input, data)));
+    render(<WorkLogPanel />);
+    await screen.findByText("Milestone");
+    expect(screen.queryByText("Completed turn")).toBeNull();
+    expect(screen.queryByText("In progress")).toBeNull();
+  });
   it("offers a compact accessible settings gear without starting or stopping the summarizer", async () => {
     const request = bridge(); render(<WorkLogPanel />);
     await screen.findByText("Added a live fleet feed.");
