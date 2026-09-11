@@ -6,7 +6,9 @@
 .topology-view[hidden] { display: none; }
 .topology-view > * { flex: 1; min-width: 0; }
 .build-graph-view { display: flex; flex-direction: column; min-width: 0; min-height: 0; overflow: auto; }
-.build-graph-view > :not(.build-canvas) { flex-shrink: 0; }
+.build-graph-view > :not(.graph-agent-layer) { flex-shrink: 0; }
+.build-graph-view > .graph-agent-layer { flex: 1 0 160px; min-height: 160px; }
+.build-graph-view > .graph-agent-layer > .build-canvas { height: 100%; min-height: 0; }
 .build-target-controls { display: flex; gap: 5px; align-items: center; flex-wrap: wrap; padding: 6px; border-bottom: 1px solid #2a3e30; font: 9px monospace; }
 .build-target-controls form { display: flex; flex: 1; min-width: 150px; gap: 4px; }
 .build-target-controls input:not([type="checkbox"]) { flex: 1; min-width: 0; color: #c5d4c6; background: #0b1812; border: 1px solid #375440; padding: 4px; font: 10px monospace; }

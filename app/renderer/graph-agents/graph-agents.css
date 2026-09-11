@@ -1,5 +1,7 @@
 .graph-agent-sprites { position: absolute; left: 4px; top: calc(100% - 4px); z-index: 6; display: flex; flex-wrap: wrap; gap: 3px; max-width: 240px; pointer-events: auto; }
 .topology-node:has(.graph-agent-sprites) { overflow: visible; }
+.task-projection .planning-node:has(.graph-agent-sprites) { min-height: 96px; padding-bottom: 36px; overflow: visible; }
+.task-projection .planning-node .graph-agent-sprites { top: auto; right: 4px; bottom: 4px; max-width: calc(100% - 8px); overflow-x: auto; flex-wrap: nowrap; }
 .graph-agent-sprite { display: inline-flex; align-items: center; gap: 3px; max-width: 125px; min-height: 24px; padding: 2px 5px; border: 1px solid #548379; border-radius: 5px; color: #d7eee5; background: #102b2b; font-size: 10px; line-height: 14px; cursor: pointer; box-shadow: 0 2px 5px #00181688; }
 .graph-agent-sprite span { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 .graph-agent-sprite svg { width: 19px; height: 19px; flex-shrink: 0; fill: #173a35; stroke: #aad7bd; stroke-width: 1.5; }
@@ -10,5 +12,11 @@
 .graph-agent-sprite.state-waiting i { border-color: #e6c56f; }
 .graph-agent-sprite.is-retained { border-style: dashed; opacity: .75; }
 .graph-agent-sprite:focus-visible { outline: 2px solid #e6c56f; outline-offset: 2px; }
+.graph-agent-layer { min-width: 0; min-height: 0; display: grid; overflow: hidden; }
+.graph-agent-layer > * { min-width: 0; min-height: 0; grid-area: 1 / 1; }
+.graph-agent-placement-summary { z-index: 7; align-self: end; justify-self: end; display: flex; align-items: center; flex-wrap: wrap; gap: 5px; width: min(220px, calc(100% - 12px)); max-height: min(42%, 144px); margin: 6px; padding: 3px 7px; overflow: auto; box-sizing: border-box; border: 1px solid #284a46; border-radius: 5px; color: #9ab8b0; background: #0b1d20ee; box-shadow: 0 3px 10px #0008; font-size: 10px; pointer-events: auto; }
+.graph-agent-placement-summary > span { text-transform: uppercase; letter-spacing: .04em; }
+.graph-agent-placement-summary button { max-width: 190px; overflow: hidden; padding: 2px 5px; border: 1px dashed #548379; border-radius: 4px; color: #d7eee5; background: #102b2b; font: inherit; white-space: nowrap; text-overflow: ellipsis; cursor: pointer; }
+.graph-agent-placement-summary button:focus-visible { outline: 2px solid #e6c56f; outline-offset: 1px; }
 @media (prefers-reduced-motion: no-preference) { .graph-agent-sprite[data-agent-working="true"] svg { animation: graph-agent-working 1.8s ease-in-out infinite; } }
 @keyframes graph-agent-working { 50% { transform: translateY(-2px); } }

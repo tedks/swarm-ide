@@ -1,9 +1,9 @@
 .graph-pane.has-directory { position: relative; grid-template-rows: 32px auto minmax(0, 1fr); }
-.has-directory > .graph-canvas { grid-row: 3; position: relative; }
+.has-directory > .graph-agent-layer { grid-row: 3; position: relative; }
 .repository-browser-surface { grid-row: 3; min-width: 0; min-height: 0; overflow: hidden; }
 .repository-browser-surface[hidden] { display: none; }
-.repository-view-tree > .graph-canvas { visibility: hidden; pointer-events: none; }
-.repository-view-map > .graph-canvas { grid-row: 3; }
+.repository-view-tree > .graph-agent-layer { visibility: hidden; pointer-events: none; }
+.repository-view-map > .graph-agent-layer { grid-row: 3; }
 .repository-view-switch { display: flex; gap: 2px; }
 .repository-view-switch button { font: inherit; font-size: 10px; border: 0; padding: 4px 7px; border-radius: 4px; background: transparent; color: #7f9993; cursor: pointer; }
 .repository-view-switch button[aria-pressed="true"] { background: #20332f; color: #c2ddd2; }

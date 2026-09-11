@@ -10,6 +10,7 @@ import { extractEntries } from "./external-agents-activity";
 import { AgentLifecycleProjection } from "./agent-lifecycle";
 import { Registry, type Registered } from "./external-agents-registry";
 import { queueExternalMessage, resolveExternalCodex, type QueueMessage, type ExternalSendReceipt } from "./external-agents-send";
+import { gitWorktreeIdentity, type GitWorktreeIdentity } from "./git-worktree-identity";
 
 const HEADER = 65536, TAIL = 262144, MAX_ENTRIES = 120;
 // Lifecycle boundaries are tiny but ordinary compaction/tool records between
@@ -24,6 +25,7 @@ const Meta = z.object({ type: z.literal("session_meta"), payload: z.object({ id:
 const safe = (text: string, size = 4096) => (text.length > size ? text.slice(0, size - 16) + " … [truncated]" : text).replace(/[\p{Cf}\p{Cc}]/gu,
   (c) => c === "\n" || c === "\t" ? c : "�");
 const within = (root: string, path: string) => { const r = relative(root, path); return r === "" || r !== ".." && !r.startsWith("../") && !isAbsolute(r); };
+type ObservedRegistration = Registered & { projectId?: string; branch?: string };
 
 /** No watches, polling or observed process ownership. Each read uses a bounded
  * descriptor and closes it before publishing. Registry is re-read on demand. */
@@ -37,10 +39,12 @@ export class ExternalAgentService {
   private historical = new Map<string, { registration: string; version: string; detail: ExternalDetail }>();
   private lifecycle = new Map<string, { observationId: string; version: string; start: number; position: number; digest: string;
     incremental: boolean; projection: AgentLifecycleProjection }>();
+  private identities = new Map<string, GitWorktreeIdentity | null>();
+  private identityReads = new Map<string, Promise<GitWorktreeIdentity | null>>();
   constructor(private readonly root: string, private readonly registryPath: string | undefined,
     private readonly sender: { queue: QueueMessage; executable(): Promise<string> } = { queue: queueExternalMessage, executable: resolveExternalCodex }) {}
   dispose(): Promise<void> {
-    this.disposed = true; this.controller.abort(); this.historical.clear(); this.lifecycle.clear();
+    this.disposed = true; this.controller.abort(); this.historical.clear(); this.lifecycle.clear(); this.identities.clear(); this.identityReads.clear();
     return this.pending ? new Promise((resolve) => this.drained.push(resolve)) : Promise.resolve();
   }
   private check() { if (this.disposed) throw new Error("Observer disposed"); }
@@ -56,7 +60,7 @@ export class ExternalAgentService {
       return file;
     } catch (error) { await file.close(); throw error; }
   }
-  private async registrations(): Promise<Registered[]> {
+  private async registrations(): Promise<ObservedRegistration[]> {
     if (!this.registryPath) throw new Error("Not configured");
     const root = await realpath(this.root);
     // Repo-controlled files are never an authority to read account transcripts.
@@ -67,6 +71,7 @@ export class ExternalAgentService {
       this.check();
       if (bytesRead > HEADER) throw new Error("Registry grew beyond bound");
       const registry = Registry.parse(JSON.parse(bytes.subarray(0, bytesRead).toString("utf8")));
+      const observed: ObservedRegistration[] = [];
       for (const session of registry.sessions) {
         if (!session.rollout.endsWith(".jsonl")) throw new Error("Not a rollout");
         // Links belong to this explicitly registered canonical worktree, not
@@ -78,15 +83,60 @@ export class ExternalAgentService {
             await realpath(session.contextRoot) === session.contextRoot && (await lstat(session.contextRoot)).isDirectory());
         } catch { /* Missing/noncanonical worktree has no navigation links. */ }
         this.check();
-        if (!canonicalContext) { session.contextPaths = []; delete session.contextRoot; }
+        if (!canonicalContext) { session.contextPaths = []; delete session.contextRoot; observed.push(session); continue; }
+        observed.push(session);
       }
-      return registry.sessions;
+      const roots = new Set(observed.flatMap((row) => row.contextRoot ? [row.contextRoot] : []));
+      for (const cached of this.identities.keys()) if (!roots.has(cached)) this.identities.delete(cached);
+      return observed;
     } finally { await file.close(); }
   }
-  private summary(row: Registered): ExternalAgentSummary {
+  private identity(root: string, signal: AbortSignal, refresh: boolean): Promise<GitWorktreeIdentity | null> {
+    if (!refresh && this.identities.has(root)) return Promise.resolve(this.identities.get(root)!);
+    const pending = this.identityReads.get(root);
+    if (pending) return pending;
+    const read = gitWorktreeIdentity(root, signal).then((identity) => {
+      this.check(); this.identities.set(root, identity); return identity;
+    }, () => {
+      this.check(); this.identities.set(root, null); return null;
+    }).finally(() => { if (this.identityReads.get(root) === read) this.identityReads.delete(root); });
+    this.identityReads.set(root, read);
+    return read;
+  }
+  private async enrichIdentities(observed: ObservedRegistration[], refresh: boolean): Promise<ObservedRegistration[]> {
+      // Fleet snapshots refresh every canonical root in bounded batches so a
+      // branch transition narrows scope promptly. Selected detail/handoff reads
+      // resolve only their row and reuse the last snapshot identity; concurrent
+      // reads coalesce rather than spawning duplicate Git metadata queries.
+      const roots = [...new Set(observed.flatMap((row) => row.contextRoot ? [row.contextRoot] : []))];
+      const identities = new Map<string, Awaited<ReturnType<typeof gitWorktreeIdentity>>>();
+      const identityController = new AbortController();
+      const abort = () => identityController.abort();
+      if (this.controller.signal.aborted) abort();
+      else this.controller.signal.addEventListener("abort", abort, { once: true });
+      let deadlineReached = false;
+      const deadline = setTimeout(() => { deadlineReached = true; identityController.abort(); }, 2500);
+      try {
+        for (let index = 0; index < roots.length && !deadlineReached; index += 4) {
+          const batchRoots = roots.slice(index, index + 4);
+          const batch = await Promise.allSettled(batchRoots.map((contextRoot) => this.identity(contextRoot, identityController.signal, refresh)));
+          this.check();
+          for (const [offset, result] of batch.entries()) if (result.status === "fulfilled" && result.value) identities.set(batchRoots[offset]!, result.value);
+        }
+      } finally {
+        clearTimeout(deadline);
+        this.controller.signal.removeEventListener("abort", abort);
+      }
+      return observed.map((session) => {
+        const identity = session.contextRoot ? identities.get(session.contextRoot) : undefined;
+        return identity ? { ...session, projectId: identity.projectId, ...(identity.branch ? { branch: identity.branch } : {}) } : session;
+      });
+  }
+  private summary(row: ObservedRegistration): ExternalAgentSummary {
     return { id: row.id, label: safe(row.label, 120), evidence: row.evidence, status: "unavailable", parentId: null,
       ancestry: "unavailable", observationId: "", observedAt: new Date().toISOString(), message: "Registered session could not be read safely.",
-      ...(row.role ? { role: safe(row.role, 120) } : {}), ...(row.task ? { task: safe(row.task, 200) } : {}), contextPaths: row.contextPaths, lifecycle: { state: "unknown" } };
+      ...(row.role ? { role: safe(row.role, 120) } : {}), ...(row.task ? { task: safe(row.task, 200) } : {}), contextPaths: row.contextPaths,
+      ...(row.projectId ? { projectId: row.projectId } : {}), ...(row.branch ? { branch: safe(row.branch, 256) } : {}), lifecycle: { state: "unknown" } };
   }
   private async projectLifecycle(file: FileHandle, stat: Stats, meta: { timestamp?: string; forked_from_id?: string | null }, observationId: string,
     previous: ReturnType<typeof this.lifecycle.get>): Promise<NonNullable<ReturnType<typeof this.lifecycle.get>>> {
@@ -132,7 +182,7 @@ export class ExternalAgentService {
     if (bytesRead !== buffer.length || createHash("sha256").update(buffer).digest("hex") !== checkpoint.digest)
       throw new Error("Lifecycle window changed during read");
   }
-  private async read(row: Registered, tail: boolean, checkHandoff = tail): Promise<ExternalDetail> {
+  private async read(row: ObservedRegistration, tail: boolean, checkHandoff = tail): Promise<ExternalDetail> {
     const summary = this.summary(row);
     const result: ExternalDetail = { session: summary, entries: [], handoff: row.tmux ? "unavailable" : "unconfigured",
       coverage: { tailBytes: 0, partial: true, omittedRecords: 0, message: "No transcript observed." } };
@@ -233,7 +283,7 @@ export class ExternalAgentService {
         coverage: { tailBytes: 0, partial: true, omittedRecords: 0, message: "Missing, changed, invalid or unsafe registered transcript; no transcript authority retained." } };
     } finally { await file?.close(); }
   }
-  private async readFleet(row: Registered): Promise<ExternalDetail> {
+  private async readFleet(row: ObservedRegistration): Promise<ExternalDetail> {
     if (row.tmux) this.historical.delete(row.id);
     const cached = !row.tmux ? this.historical.get(row.id) : undefined;
     if (cached?.registration === JSON.stringify(row)) {
@@ -295,7 +345,7 @@ export class ExternalAgentService {
     this.pending++;
     try {
       if (request.type === "externalAgents.send") return await this.send(request);
-      let rows: Registered[];
+      let rows: ObservedRegistration[];
       try { rows = await this.registrations(); } catch {
         this.check();
         if (request.type !== "externalAgents.snapshot") throw new Error("External registry unavailable");
@@ -304,6 +354,7 @@ export class ExternalAgentService {
       }
       this.check();
       if (request.type === "externalAgents.snapshot") {
+        rows = await this.enrichIdentities(rows, true); this.check();
         const registeredIds = new Set(rows.map((row) => row.id));
         for (const id of this.historical.keys()) if (!registeredIds.has(id)) this.historical.delete(id);
         for (const id of this.lifecycle.keys()) if (!registeredIds.has(id)) this.lifecycle.delete(id);
@@ -320,8 +371,9 @@ export class ExternalAgentService {
         return ExternalResultSchema.parse({ kind: "snapshot", snapshot: { status: "observed", sessions, fleet: boundFleet(fleet), observedAt: new Date().toISOString(),
           message: "Registered fleet" } });
       }
-      const row = rows.find((candidate) => candidate.id === request.sessionId);
-      if (!row) throw new Error("Session is not registered");
+      const registration = rows.find((candidate) => candidate.id === request.sessionId);
+      if (!registration) throw new Error("Session is not registered");
+      const row = (await this.enrichIdentities([registration], false))[0]!; this.check();
       const detail = await this.read(row, true); this.check();
       if (request.type === "externalAgents.read") return ExternalResultSchema.parse({ kind: "read", detail });
       let opened = false;

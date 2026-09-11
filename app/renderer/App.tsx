@@ -251,6 +251,41 @@ export function App() {
   const pendingRevealIntent = useRef<number | null>(null);
   const mounted = useRef(false);
   useEffect(() => { mounted.current = true; return () => { mounted.current = false; sourceNavigationRef.current = null; ++navigationIntent.current; }; }, []);
+  const projectScopeRefresh = useRef({ inFlight: false, lastAttempt: 0 });
+  const scopeFailureNotice = "Project-wide agent scope could not be revalidated; exact-worktree scope retained.";
+  useEffect(() => {
+    const bridge = window.swarm, selected = selectedWorktreeRef.current;
+    if (!bridge || !selected || workspacePendingRef.current || externalAgents.observing === false || externalAgents.refreshing ||
+        window.swarmLifecycle && lifecycle?.core.phase !== "ready") return;
+    // Every observer request publishes a refreshing transition, including
+    // failed registry polls. Borrow that cadence without adding a timer, while
+    // ensuring slow identity reads never overlap or complete out of order.
+    const now = Date.now();
+    if (projectScopeRefresh.current.inFlight || now - projectScopeRefresh.current.lastAttempt < 2500) return;
+    projectScopeRefresh.current = { inFlight: true, lastAttempt: now };
+    const generation = coreGenerationRef.current, visit = workspaceVisit.current;
+    void bridge.request({ type: "workspace.open", sessionId: selected.sessionId, identityOnly: true, requestId: requestId(), protocolVersion: PROTOCOL_VERSION }).then((response) => {
+      if (!mounted.current || workspacePendingRef.current || generation !== coreGenerationRef.current || visit !== workspaceVisit.current ||
+          selectedWorktreeRef.current?.id !== selected.id || selectedWorktreeRef.current.root !== selected.root) return;
+      const refreshed = response.ok && response.workspace?.id === selected.id && response.workspace.root === selected.root ? {
+        ...selected, projectId: response.workspace.projectId, agentVisibility: response.workspace.agentVisibility, branch: response.workspace.branch,
+        ...(selected.notice === scopeFailureNotice ? { notice: undefined } : {}),
+      } : { ...selected, projectId: null, agentVisibility: "worktree" as const, branch: null, notice: scopeFailureNotice };
+      if (selectedWorktreeRef.current.projectId === refreshed.projectId && selectedWorktreeRef.current.agentVisibility === refreshed.agentVisibility &&
+          selectedWorktreeRef.current.branch === refreshed.branch && selectedWorktreeRef.current.notice === refreshed.notice) return;
+      selectedWorktreeRef.current = refreshed; setSelectedWorktree(refreshed);
+      descriptors.current.set(refreshed.root, refreshed); descriptors.current.set(refreshed.id, refreshed);
+    }).catch(() => {
+      if (!mounted.current || generation !== coreGenerationRef.current || visit !== workspaceVisit.current || selectedWorktreeRef.current?.id !== selected.id ||
+          selectedWorktreeRef.current.root !== selected.root) return;
+      const narrowed = { ...selected, projectId: null, agentVisibility: "worktree" as const, branch: null, notice: scopeFailureNotice };
+      if (selectedWorktreeRef.current.projectId === null && selectedWorktreeRef.current.agentVisibility === "worktree" &&
+          selectedWorktreeRef.current.branch === null && selectedWorktreeRef.current.notice === scopeFailureNotice) return;
+      selectedWorktreeRef.current = narrowed; setSelectedWorktree(narrowed);
+      descriptors.current.set(narrowed.root, narrowed); descriptors.current.set(narrowed.id, narrowed);
+    }).finally(() => { projectScopeRefresh.current.inFlight = false; });
+  }, [externalAgents.refreshing, externalAgents.observing, lifecycle?.core.generation, lifecycle?.core.phase,
+    selectedWorktree?.id, selectedWorktree?.root, selectedWorktree?.sessionId]);
   const [commandQuery, setCommandQuery] = useState("");
   const [hmr, setHmr] = useState({ generation: 0, milliseconds: 0 });
   const [fileTabs, setFileTabs] = useState<FileTab[]>(hotCheckpoint?.files ?? []);
@@ -1546,7 +1581,7 @@ export function App() {
 
   if (!snapshot) return <main className="loading-screen"><div className="loading-mark hmr-probe" />Opening the working world…{error ? <strong>{error}</strong> : null}<small>{lifecycleNotice}</small><AgentReloadGuard state={liveAgents} client={agentClient} /></main>;
   return (
-    <GraphAgents client={externalAgents} root={selectedWorktree?.root} connected={!workspacePending && (!window.swarmLifecycle || lifecycle?.core.phase === "ready")} onOpen={showConversation}>
+    <GraphAgents client={externalAgents} selection={selectedWorktree} connected={!workspacePending && (!window.swarmLifecycle || lifecycle?.core.phase === "ready")} onOpen={showConversation}>
     <main className="workbench" onPointerDownCapture={(event) => { cancelHistoryRestore(); interruptPendingReveal(event); }} onFocusCapture={interruptPendingReveal} onKeyDownCapture={(event) => { cancelHistoryRestore(); if (event.key === "Escape" && definitionRef.current) { event.preventDefault(); event.stopPropagation(); cancelDefinition(); } }} data-compact-panel={compactPanel ?? "none"} style={{ "--context-width": `${contextWidth}%`, ...(dockShare !== null ? { gridTemplateRows: `var(--topbar-height) minmax(0, 1fr) ${dockShare}%` } : agents.selected || liveAgents.paneOpen ? { gridTemplateRows: `var(--topbar-height) minmax(0, 1fr) calc(160px + (clamp(180px, 40vh, 448px) - 160px) * ${Math.min(1, Math.max(0, ((liveAgents.paneOpen ? liveAgents.height : agentPaneHeight) - 230) / 190))})` } : {}) } as CSSProperties}>
       <header className="topbar">
         <div className="product-mark"><span className="hmr-probe" />swarm</div>

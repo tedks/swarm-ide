@@ -18,8 +18,11 @@ vi.mock("@xyflow/react", async (original) => {
 });
 
 const root = "/projects/app/master", at = "2026-09-08T12:00:00Z";
+const projectId = "1".repeat(64);
+const selection = (worktree = root) => ({ id: worktree, root: worktree, label: worktree, projectId,
+  agentVisibility: "worktree" as const, sessionId: null, branch: "master", base: null, changes: [], changesComplete: true });
 function detail(id = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa", state: "working" | "completed" | "failed" | "waiting" = "working"): ExternalDetail {
-  return { session: { id, label: id === "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa" ? "F7" : "K7", evidence: "local", status: "observed", parentId: null, ancestry: "root", observationId: "a".repeat(64), observedAt: at, message: "", contextPaths: [], worktree: root, lifecycle: { state } },
+  return { session: { id, label: id === "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa" ? "F7" : "K7", evidence: "local", status: "observed", parentId: null, ancestry: "root", observationId: "a".repeat(64), observedAt: at, message: "", contextPaths: [], worktree: root, projectId, branch: "master", lifecycle: { state } },
     entries: [{ id: "edit", at, kind: "tool-call", path: "app.ts", text: "Edited app.ts", attribution: "recorded-tool-event" }], handoff: "unavailable", coverage: { tailBytes: 10, omittedRecords: 0, partial: false, message: "" } };
 }
 function client(fleet = [detail()], stale = false): ExternalClient {
@@ -30,7 +33,7 @@ afterEach(() => { cleanup(); captured.mounts = 0; vi.clearAllMocks(); });
 describe("real agent graph overlays", () => {
   it("opens independent exact identities, suppressing node click, drag and keyboard propagation", () => {
     const open = vi.fn(), nodeClick = vi.fn(), nodeKey = vi.fn(), down = vi.fn();
-    render(<GraphAgents client={client([detail(), detail("bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb")])} root={root} connected onOpen={open}>
+    render(<GraphAgents client={client([detail(), detail("bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb")])} selection={selection()} connected onOpen={open}>
       <GraphAgentLayer locations={[{ id: "file", paths: ["app.ts"] }]}><div onClick={nodeClick} onKeyDown={nodeKey} onPointerDown={down}><GraphAgentSprites nodeId="file" /></div></GraphAgentLayer>
     </GraphAgents>);
     const first = screen.getByRole("button", { name: /Open F7/ }), second = screen.getByRole("button", { name: /Open K7/ });
@@ -40,7 +43,7 @@ describe("real agent graph overlays", () => {
   });
   it("updates lifecycle/retained labels and visibility without a new timer", () => {
     const setTimer = vi.spyOn(globalThis, "setInterval");
-    const view = (observation: ExternalClient) => <GraphAgents client={observation} root={root} connected onOpen={vi.fn()}>
+    const view = (observation: ExternalClient) => <GraphAgents client={observation} selection={selection()} connected onOpen={vi.fn()}>
       <GraphAgentsToggle /><GraphAgentLayer locations={[{ id: "file", paths: ["app.ts"] }]}><GraphAgentSprites nodeId="file" /></GraphAgentLayer></GraphAgents>;
     const mounted = render(view(client()));
     expect(screen.getByRole("button", { name: /Open F7/ }).dataset.agentWorking).toBe("true");
@@ -58,7 +61,7 @@ describe("real agent graph overlays", () => {
     const nodes = [{ id: "component", title: "App", subtitle: "Component", position: { x: 3, y: 7 } }], edges: [] = [];
     const locations = [{ id: "component", paths: ["app.ts"] }];
     const canvas = <GraphAgentLayer locations={locations}><ProjectionCanvas label="Agent stability" nodes={nodes} edges={edges} selected="component" onSelect={select} /></GraphAgentLayer>;
-    const view = (observation: ExternalClient) => <GraphAgents client={observation} root={root} connected onOpen={open}>{canvas}</GraphAgents>;
+    const view = (observation: ExternalClient) => <GraphAgents client={observation} selection={selection()} connected onOpen={open}>{canvas}</GraphAgents>;
     const mounted = render(view(client())), originalNodes = captured.nodes, originalEdges = captured.edges;
     mounted.rerender(view(client([detail(undefined, "waiting")])));
     expect(captured.nodes).toBe(originalNodes); expect(captured.edges).toBe(originalEdges); expect(captured.mounts).toBe(1);
@@ -68,9 +71,32 @@ describe("real agent graph overlays", () => {
   });
   it("removes placement immediately on canonical worktree change", () => {
     const canvas = <GraphAgentLayer locations={[{ id: "file", paths: ["app.ts"] }]}><GraphAgentSprites nodeId="file" /></GraphAgentLayer>;
-    const mounted = render(<GraphAgents client={client()} root={root} connected onOpen={vi.fn()}>{canvas}</GraphAgents>);
+    const mounted = render(<GraphAgents client={client()} selection={selection()} connected onOpen={vi.fn()}>{canvas}</GraphAgents>);
     expect(screen.getByRole("button", { name: /Open F7/ })).toBeTruthy();
-    mounted.rerender(<GraphAgents client={client()} root="/projects/app/feature" connected onOpen={vi.fn()}>{canvas}</GraphAgents>);
+    mounted.rerender(<GraphAgents client={client()} selection={selection("/projects/app/feature")} connected onOpen={vi.fn()}>{canvas}</GraphAgents>);
     expect(screen.queryByRole("button", { name: /Open F7/ })).toBeNull();
+  });
+  it("keeps pathless agents reachable as unplaced with origin identity", () => {
+    const pathless = { ...detail(), entries: [{ ...detail().entries[0]!, path: undefined, text: "Branch-only work" }] };
+    const open = vi.fn();
+    render(<GraphAgents client={client([pathless])} selection={selection()} connected onOpen={open}>
+      <section data-testid="graph-owner"><GraphAgentLayer locations={[{ id: "file", paths: ["app.ts"] }]}><GraphAgentSprites nodeId="file" /></GraphAgentLayer></section>
+    </GraphAgents>);
+    const owner = screen.getByTestId("graph-owner"), layer = owner.querySelector("[data-graph-agent-layer]");
+    expect(owner.children).toHaveLength(1); expect(layer?.parentElement).toBe(owner);
+    expect(layer?.querySelector("[data-graph-agent-summary]")).toBeTruthy();
+    expect(screen.getByText("0 located · 1 unplaced")).toBeTruthy();
+    const button = screen.getByRole("button", { name: /Open unplaced agent F7 from master/ });
+    expect(button.title).toContain("No explicit membership in this graph");
+    fireEvent.click(button); expect(open).toHaveBeenCalledWith(pathless.session.id);
+  });
+  it("describes exact task-only placement without null path or timestamp text", () => {
+    const taskOnly = { ...detail(), session: { ...detail().session, task: "swarm-task" }, entries: [] };
+    render(<GraphAgents client={client([taskOnly])} selection={selection()} connected onOpen={vi.fn()}>
+      <GraphAgentLayer locations={[{ id: "task", paths: [], tasks: ["swarm-task"] }]}><GraphAgentSprites nodeId="task" /></GraphAgentLayer>
+    </GraphAgents>);
+    const button = screen.getByRole("button", { name: /Exact task swarm-task/ });
+    expect(button.title).toContain("Exact task swarm-task");
+    expect(button.title).not.toContain("null");
   });
 });

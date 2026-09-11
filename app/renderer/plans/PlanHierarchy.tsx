@@ -6,6 +6,8 @@ import { ProjectionCanvas } from "./ProjectionCanvas";
 import { displayTaskText } from "../tasks/display";
 import { usePlanNavigation, type PlanNavigation } from "./navigation";
 import { PlanLinkList } from "./DesignWorkspace";
+import { GraphAgentLayer, GraphAgentsToggle } from "../graph-agents/GraphAgents";
+import { componentAgentLocations } from "../graph-agents/locations";
 
 export function PlanHierarchy({ visible, worldId, repositoryId, generation, connected, tasks, onOpenFile, onOpenTask, navigation }: {
   visible: boolean; worldId: string; repositoryId: string; generation: number; connected: boolean; tasks: TaskClientState;
@@ -20,6 +22,7 @@ export function PlanHierarchy({ visible, worldId, repositoryId, generation, conn
   const nodes = useMemo(() => index?.nodes.map((node) => ({ id: node.id, title: node.title, subtitle: `${node.kind} · authored` })) ?? [], [index]);
   const edges = useMemo(() => index?.nodes.filter((node) => node.parentId !== null).map((node) => ({ id: node.id,
     source: node.parentId!, target: node.id, label: "contains · authored" })) ?? [], [index]);
+  const agentLocations = useMemo(() => index && current ? componentAgentLocations(index) : [], [index, current]);
   const depth = (id: string) => {
     let entry = index?.nodes.find((item) => item.id === id), count = 0;
     while (entry?.parentId && count < 128) { count++; entry = index?.nodes.find((item) => item.id === entry!.parentId); }
@@ -33,6 +36,7 @@ export function PlanHierarchy({ visible, worldId, repositoryId, generation, conn
     <header className="planning-heading"><div><strong>Plans & components</strong><small>Design outline</small></div>
       <button disabled={!connected || loading} onClick={() => { void read(); }}>{loading ? "Reading plan index…" : "Load plan index"}</button>
       <button onClick={() => onOpenFile(PLAN_INDEX_PATH)}>Open index source</button>
+      <GraphAgentsToggle />
     </header>
     <div className="planning-status" role="status"><p>{result?.status === "observed"
       ? `${index!.nodes.length} components${current ? "" : " · Refresh to navigate"}`
@@ -40,7 +44,7 @@ export function PlanHierarchy({ visible, worldId, repositoryId, generation, conn
       {notice ? <p>{notice}</p> : null}
     </div>
     {index ? <>
-      <ProjectionCanvas label="Plan containment canvas" nodes={nodes} edges={edges} selected={selected} onSelect={select} />
+      <GraphAgentLayer locations={agentLocations}><ProjectionCanvas label="Plan containment canvas" nodes={nodes} edges={edges} selected={selected} onSelect={select} /></GraphAgentLayer>
       <div className="planning-inspector plan-selection-inspector">
         {node ? <div className="plan-selection-primary">
           <div className="plan-selection-title"><strong title={node.title} tabIndex={0}>{node.title}</strong>

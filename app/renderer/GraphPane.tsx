@@ -99,10 +99,13 @@ const GraphPaneContent = memo(function GraphPaneContent({ workspaceId, graph, fo
   const [selectedBuildLink, setSelectedBuildLink] = useState<string | null>(null);
   const buildEdges = useMemo(() => graph.directory && buildLinksVisible && buildLinkSnapshot ? directoryBuildLinks(adapted.nodes, buildLinkSnapshot) : [], [graph.directory, adapted.nodes, buildLinksVisible, buildLinkSnapshot]);
   const displayNodes = useMemo(() => mockAgentsVisible ? withMockDirectoryAgents(adapted.nodes) : adapted.nodes, [mockAgentsVisible, adapted.nodes]);
-  const agentLocations = useMemo(() => graph.topologyId === "repo" ? adapted.nodes.filter((node) => !node.data.unavailable && node.data.focus.path !== undefined)
-    .map((node) => ({ id: node.id, paths: [node.data.focus.path!], directory: node.data.kind === "directory" }))
-    : serviceDeclarations && serviceDeclarations.repositoryId === workspaceId && serviceDeclarations.sourceFingerprint === graph.inputFingerprint
-      ? serviceAgentLocations(serviceDeclarations) : [], [adapted.nodes, graph.topologyId, graph.inputFingerprint, serviceDeclarations, workspaceId]);
+  const agentLocations = useMemo(() => {
+    if (graph.topologyId === "repo") return adapted.nodes.filter((node) => !node.data.unavailable && node.data.focus.path !== undefined)
+      .map((node) => ({ id: node.id, paths: [node.data.focus.path!], directory: node.data.kind === "directory" }));
+    if (!serviceDeclarations || serviceDeclarations.repositoryId !== workspaceId || serviceDeclarations.sourceFingerprint !== graph.inputFingerprint) return [];
+    const mounted = new Set(adapted.nodes.map((node) => node.id));
+    return serviceAgentLocations(serviceDeclarations).filter((location) => mounted.has(location.id));
+  }, [adapted.nodes, graph.topologyId, graph.inputFingerprint, serviceDeclarations, workspaceId]);
   const selectedBuild = buildEdges.find((edge) => edge.id === selectedBuildLink);
   const [repositoryView, setRepositoryView] = useState<"tree" | "map">("tree");
   const explorer = Boolean(graph.directory && repositoryNavigation);

@@ -9,6 +9,14 @@ import { readWorkspaceFile, writeWorkspaceFile } from "../core/files";
 import { initialSnapshot } from "../fixtures/world";
 import { PROTOCOL_VERSION, parseCoreRequest, parseCoreResponseForRequest, FileEventSchema, type WorkspaceSnapshot } from "../protocol/schema";
 import type { WorkspaceSelection } from "../protocol/workspace";
+import { ExternalAgentService } from "../core/external-agents";
+import { gitWorktreeIdentity } from "../core/git-worktree-identity";
+import type { ExternalRequest } from "../protocol/external-agents";
+
+vi.mock("../core/git-worktree-identity", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../core/git-worktree-identity")>();
+  return { ...actual, gitWorktreeIdentity: vi.fn(actual.gitWorktreeIdentity) };
+});
 
 const SESSION = "10000000-0000-4000-8000-000000000001";
 const directories: string[] = [];
@@ -25,14 +33,16 @@ async function repositories() {
   git(primary, "worktree", "add", "--quiet", "-b", "agent-work", other);
   await writeFile(join(other, "same.txt"), "agent bytes\n");
   const registry = join(directory, "registry.json");
+  const rollout = join(directory, "agent.jsonl");
+  await writeFile(rollout, `${JSON.stringify({ type: "session_meta", payload: { id: SESSION } })}\n`);
   const register = (root: string) => writeFile(registry, JSON.stringify({ version: 1, sessions: [{
-    id: SESSION, label: "Agent", rollout: join(directory, "agent.jsonl"), contextRoot: root,
+    id: SESSION, label: "Agent", rollout, contextRoot: root,
   }] }), { mode: 0o600 });
   await register(other);
   return { primary, other, unrelated, registry, register };
 }
 const selection = (id: string, sessionId: string | null = null): WorkspaceSelection => ({
-  id, root: `/work/${id}`, label: id, sessionId, branch: "master", base: null, changes: [], changesComplete: true,
+  id, root: `/work/${id}`, label: id, projectId: "a".repeat(64), agentVisibility: "worktree", sessionId, branch: "master", base: null, changes: [], changesComplete: true,
 });
 const snapshot = (id: string): WorkspaceSnapshot => ({ ...initialSnapshot(), project: { id, name: id } });
 const command = (type: string, fields = {}) => ({ protocolVersion: PROTOCOL_VERSION, requestId: crypto.randomUUID(), type, ...fields });
@@ -77,6 +87,25 @@ describe("workspace routing", () => {
     expect(calls.map((call) => call.id)).toEqual(["other", "primary", "other"]);
     expect(calls[0]!.input).not.toHaveProperty("workspaceId");
     expect(outputs[0]).toMatchObject({ ok: true, workspaceId: "other", workspace: { id: "other" }, snapshot: { project: { id: "other" } } });
+    await router.shutdown();
+  });
+  it("re-resolves launch scope on workspace refresh without recreating its runtime", async () => {
+    const calls: WorkspaceSelection[] = [], outputs: unknown[] = [];
+    let visibility: WorkspaceSelection["agentVisibility"] = "project", branch: string | null = "master";
+    const snapshotRead = vi.fn(async () => snapshot("primary"));
+    const create = vi.fn((selected: WorkspaceSelection): RootedRuntime => ({ ready: Promise.resolve(snapshot(selected.id)), snapshot: snapshotRead,
+      request: async () => {}, shutdown: async () => {}, close() {} }));
+    const router = new WorkspaceContextRouter({
+      resolve: async (_sessionId, _signal, identityOnly) => { const value = { ...selection("primary"), agentVisibility: visibility, branch }; calls.push(value);
+        expect(identityOnly ?? false).toBe(calls.length > 1); return value; },
+      create, post: (value) => outputs.push(value),
+    });
+    await router.primary;
+    visibility = "worktree"; branch = "feature/mutable";
+    await router.request(command("workspace.open", { sessionId: null, identityOnly: true }));
+    expect(calls).toHaveLength(2); expect(create).toHaveBeenCalledOnce();
+    expect(snapshotRead).not.toHaveBeenCalled();
+    expect(outputs.at(-1)).toMatchObject({ ok: true, workspace: { branch: "feature/mutable", agentVisibility: "worktree" } });
     await router.shutdown();
   });
   it("captures a freshly checked opened worktree for direct start while controls keep one owner", async () => {
@@ -206,9 +235,71 @@ describe("registered same-repository selection", () => {
   it("returns distinct root identities and real branch/master comparison; another repository is rejected", async () => {
     const { primary, other, unrelated, registry, register } = await repositories();
     const a = await resolveWorkspaceSelection(primary, registry, null), b = await resolveWorkspaceSelection(primary, registry, SESSION);
-    expect(b.id).not.toBe(a.id); expect(b).toMatchObject({ root: other, branch: "agent-work", base: "master", sessionId: SESSION });
+    expect(b.id).not.toBe(a.id); expect(a).toMatchObject({ projectId: expect.stringMatching(/^[a-f0-9]{64}$/), agentVisibility: "project" });
+    expect(b).toMatchObject({ root: other, projectId: a.projectId, agentVisibility: "worktree", branch: "agent-work", base: "master", sessionId: SESSION });
     expect(b.changes).toContainEqual({ path: "same.txt", status: "modified" });
     await register(unrelated); await expect(resolveWorkspaceSelection(primary, registry, SESSION)).rejects.toThrow("this Git repository");
+  });
+  it("publishes the same opaque project identity and each registered origin branch", async () => {
+    const { primary, other, registry } = await repositories();
+    const selected = await resolveWorkspaceSelection(primary, registry, SESSION);
+    const service = new ExternalAgentService(primary, registry);
+    try {
+      const input: ExternalRequest = { protocolVersion: PROTOCOL_VERSION, requestId: "project-metadata", type: "externalAgents.snapshot" };
+      const result = await service.request(input);
+      expect(result).toMatchObject({ kind: "snapshot", snapshot: { sessions: [{ worktree: other, projectId: selected.projectId, branch: "agent-work" }] } });
+      expect(JSON.stringify(result)).not.toContain(`${primary}/.git`);
+    } finally { await service.dispose(); }
+  });
+  it("coalesces and reuses selected-detail Git identity until the next conservative fleet refresh", async () => {
+    const { primary, other, registry } = await repositories();
+    const selected = await resolveWorkspaceSelection(primary, registry, SESSION);
+    const identify = vi.mocked(gitWorktreeIdentity); identify.mockClear();
+    const service = new ExternalAgentService(primary, registry);
+    try {
+      const snapshotRequest: ExternalRequest = { protocolVersion: PROTOCOL_VERSION, requestId: "identity-snapshot", type: "externalAgents.snapshot" };
+      const detailRequest: ExternalRequest = { protocolVersion: PROTOCOL_VERSION, requestId: "identity-detail", type: "externalAgents.read", sessionId: SESSION };
+      const details = await Promise.all([service.request(detailRequest), service.request(detailRequest)]);
+      expect(details).toEqual(expect.arrayContaining([
+        expect.objectContaining({ detail: expect.objectContaining({ session: expect.objectContaining({ projectId: selected.projectId, branch: "agent-work" }) }) }),
+      ]));
+      expect(identify).toHaveBeenCalledTimes(1);
+      expect(await service.request(detailRequest)).toMatchObject({ detail: { session: { branch: "agent-work" } } });
+      expect(identify).toHaveBeenCalledTimes(1);
+      git(other, "checkout", "--quiet", "-b", "agent-next");
+      expect(await service.request(detailRequest)).toMatchObject({ detail: { session: { branch: "agent-work" } } });
+      expect(identify).toHaveBeenCalledTimes(1);
+      expect(await service.request(snapshotRequest)).toMatchObject({ snapshot: { sessions: [{ branch: "agent-next" }] } });
+      expect(identify).toHaveBeenCalledTimes(2);
+    } finally { await service.dispose(); }
+  });
+  it("keeps a detached worktree in exact-root scope even with confirmed project identity", async () => {
+    const { primary, other, registry } = await repositories();
+    git(other, "checkout", "--detach", "--quiet");
+    const selected = await resolveWorkspaceSelection(primary, registry, SESSION);
+    expect(selected).toMatchObject({ root: other, projectId: expect.stringMatching(/^[a-f0-9]{64}$/), branch: null, agentVisibility: "worktree" });
+  });
+  it("revalidates mutable default, feature and detached scope without reopening a runtime", async () => {
+    const { primary, registry } = await repositories();
+    const defaultScope = await resolveWorkspaceSelection(primary, registry, null);
+    expect(defaultScope).toMatchObject({ branch: "master", agentVisibility: "project" });
+    git(primary, "checkout", "--quiet", "-b", "temporary-feature");
+    const featureScope = await resolveWorkspaceSelection(primary, registry, null);
+    expect(featureScope).toMatchObject({ id: defaultScope.id, root: defaultScope.root, branch: "temporary-feature", agentVisibility: "worktree" });
+    git(primary, "checkout", "--detach", "--quiet");
+    const detachedScope = await resolveWorkspaceSelection(primary, registry, null);
+    expect(detachedScope).toMatchObject({ id: defaultScope.id, root: defaultScope.root, branch: null, agentVisibility: "worktree" });
+  });
+  it("does not widen an ambiguous local main/master repository without remote default authority", async () => {
+    const { primary, registry } = await repositories();
+    git(primary, "branch", "main"); git(primary, "checkout", "--quiet", "main");
+    const selected = await resolveWorkspaceSelection(primary, registry, null);
+    expect(selected).toMatchObject({ branch: "main", agentVisibility: "worktree" });
+  });
+  it("uses the lightweight registered identity path without collecting changes", async () => {
+    const { primary, other, registry } = await repositories();
+    const selected = await resolveWorkspaceSelection(primary, registry, SESSION, undefined, true);
+    expect(selected).toMatchObject({ root: other, branch: "agent-work", base: null, changes: [], changesComplete: false });
   });
   it("an accepted write holds its original root while another same-path file is explored", async () => {
     const { primary, other, registry } = await repositories();

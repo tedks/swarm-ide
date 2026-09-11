@@ -23,6 +23,8 @@ export const ExternalAgentSummarySchema = z.object({
   task: z.string().max(200).optional(),
   contextPaths: z.array(z.string().min(1).max(512)).max(12),
   worktree: z.string().min(1).max(4096).optional(),
+  projectId: z.string().regex(/^[a-f0-9]{64}$/).optional(),
+  branch: z.string().min(1).max(256).optional(),
   control: z.enum(["tmux", "read-only"]).optional(),
   lastActivityAt: z.string().max(64).optional(),
   lifecycle: AgentLifecycleSchema.optional(),

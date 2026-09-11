@@ -1,35 +1,42 @@
-import { realpath } from "node:fs/promises";
 import { registerRepository } from "./repository-registration";
-import { queryRepositoryGit } from "./repository-boundary";
 import { registeredWorktree, browseRegisteredWorktree } from "./worktree-inspection";
 import { PROTOCOL_VERSION, CoreResponseSchema, parseCoreRequest, type CoreRequest, type WorkspaceSnapshot } from "../protocol/schema";
 import { WorkspaceSelectionSchema, isSharedWorkspaceRequest, type WorkspaceSelection } from "../protocol/workspace";
 import { BoundedRequestIds } from "./request-ids";
+import { gitWorktreeIdentity } from "./git-worktree-identity";
 
 export async function resolveWorkspaceSelection(launchRoot: string, registry: string | undefined, sessionId: string | null,
-  signal?: AbortSignal): Promise<WorkspaceSelection> {
+  signal?: AbortSignal, identityOnly = false): Promise<WorkspaceSelection> {
   const launch = await registerRepository(launchRoot);
+  let launchGit: Awaited<ReturnType<typeof gitWorktreeIdentity>> | null = null;
+  let launchGitFailure: unknown;
+  try { launchGit = await gitWorktreeIdentity(launch.root, signal); }
+  catch (error) { if (signal?.aborted) throw new Error("Workspace selection stopped."); launchGitFailure = error; }
   if (sessionId === null) {
-    let branch: string | null = null;
-    try { branch = (await queryRepositoryGit(launch.root, ["symbolic-ref", "--short", "HEAD"], { signal, maximumBytes: 1024 })).toString("utf8").trim(); }
-    catch { if (signal?.aborted) throw new Error("Workspace selection stopped."); }
-    return WorkspaceSelectionSchema.parse({ id: launch.id, root: launch.root, label: launch.name, sessionId, branch, base: null, changes: [], changesComplete: false,
+    const branch = launchGit?.branch ?? null;
+    return WorkspaceSelectionSchema.parse({ id: launch.id, root: launch.root, label: launch.name,
+      projectId: launchGit?.projectId ?? null, agentVisibility: branch && branch === launchGit?.defaultBranch ? "project" : "worktree",
+      sessionId, branch, base: null, changes: [], changesComplete: false,
       notice: "Launch worktree. Select a registered worktree for its master comparison." });
   }
+  if (!launchGit) throw new Error("Launch workspace Git identity is unavailable. Check Git repository metadata and permissions.",
+    { cause: launchGitFailure });
   const selected = await registeredWorktree(launch.root, registry, sessionId, signal);
-  const common = async (root: string) => {
-    const bytes = await queryRepositoryGit(root, ["rev-parse", "--path-format=absolute", "--git-common-dir"], { signal, maximumBytes: 16384 });
-    const path = new TextDecoder("utf8", { fatal: true }).decode(bytes);
-    if (!path.endsWith("\n")) throw new Error("Git common directory is unavailable.");
-    return realpath(path.slice(0, -1));
-  };
-  const [launchCommon, targetCommon, target] = await Promise.all([common(launch.root), common(selected.root), registerRepository(selected.root)]);
-  if (launchCommon !== targetCommon) throw new Error("Choose a registered worktree of this Git repository.");
+  const [targetGit, target] = await Promise.all([gitWorktreeIdentity(selected.root, signal), registerRepository(selected.root)]);
+  if (launchGit.projectId !== targetGit.projectId) throw new Error("Choose a registered worktree of this Git repository.");
+  if (identityOnly) {
+    selected.check();
+    return WorkspaceSelectionSchema.parse({ id: target.id, root: target.root, label: selected.row.label, projectId: targetGit.projectId,
+      agentVisibility: targetGit.branch && targetGit.branch === targetGit.defaultBranch ? "project" : "worktree",
+      sessionId, branch: targetGit.branch, base: null, changes: [], changesComplete: false });
+  }
   const browser = await browseRegisteredWorktree(launch.root, registry, {
     protocolVersion: PROTOCOL_VERSION, requestId: "workspace-metadata", type: "worktree.browse", sessionId, directory: "", page: 0,
   }, signal);
   if (browser.worktree !== target.root) throw new Error("The registered worktree changed during selection. Try again.");
-  return WorkspaceSelectionSchema.parse({ id: target.id, root: target.root, label: browser.label, sessionId, branch: browser.branch,
+  return WorkspaceSelectionSchema.parse({ id: target.id, root: target.root, label: browser.label, projectId: targetGit.projectId,
+    agentVisibility: targetGit.branch && targetGit.branch === targetGit.defaultBranch ? "project" : "worktree",
+    sessionId, branch: targetGit.branch,
     base: browser.base, changes: browser.changes, changesComplete: browser.changesComplete, ...(browser.notice ? { notice: browser.notice } : {}) });
 }
 
@@ -51,7 +58,7 @@ export class WorkspaceContextRouter {
   private lifetime = new AbortController();
   readonly primary: Promise<{ selection: WorkspaceSelection; runtime: RootedRuntime }>;
   constructor(private readonly options: {
-    resolve(sessionId: string | null, signal: AbortSignal): Promise<WorkspaceSelection>;
+    resolve(sessionId: string | null, signal: AbortSignal, identityOnly?: boolean): Promise<WorkspaceSelection>;
     create(selection: WorkspaceSelection, primary: boolean): RootedRuntime;
     post(message: unknown): void;
   }) {
@@ -84,10 +91,24 @@ export class WorkspaceContextRouter {
       const primary = await this.primary;
       if (this.stopping) throw new Error("Core is shutting down.");
       if (request.type === "workspace.open") {
-        const selection = request.sessionId === null ? primary.selection : await this.options.resolve(request.sessionId, this.lifetime.signal);
+        // Opening is also the renderer's bounded identity revalidation path.
+        // Re-resolve even the launch worktree so a mutable HEAD cannot retain
+        // stale project-wide visibility after the initial runtime was created.
+        let selection: WorkspaceSelection;
+        if (request.identityOnly) {
+          const deadline = new AbortController(), cancel = () => deadline.abort();
+          const timer = setTimeout(cancel, 4_000);
+          this.lifetime.signal.addEventListener("abort", cancel, { once: true });
+          if (this.lifetime.signal.aborted) cancel();
+          try { selection = await this.options.resolve(request.sessionId, deadline.signal, true); }
+          finally { clearTimeout(timer); this.lifetime.signal.removeEventListener("abort", cancel); }
+        } else selection = await this.options.resolve(request.sessionId, this.lifetime.signal);
         if (this.stopping) throw new Error("Core is shutting down.");
         const runtime = await this.open(selection, selection.id === primary.selection.id);
-        const snapshot = await runtime.snapshot();
+        // Identity refreshes retain the typed response envelope but reuse the
+        // runtime's already-loaded snapshot; the renderer discards it and no
+        // repository traversal is warranted for this metadata-only request.
+        const snapshot = request.identityOnly ? await runtime.ready : await runtime.snapshot();
         if (this.stopping) throw new Error("Core is shutting down.");
         this.options.post(CoreResponseSchema.parse({ protocolVersion: PROTOCOL_VERSION, requestId: request.requestId, ok: true,
           sequence: 0, workspaceId: selection.id, workspace: selection, snapshot }));
