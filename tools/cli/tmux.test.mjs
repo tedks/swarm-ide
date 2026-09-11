@@ -227,6 +227,30 @@ test("confirmed selected-session teardown retires authority while a transient tm
   assert.equal(retired.retired.length, 1); assert.equal(records.get(id).tmux, undefined);
   await result.dispose();
 }));
+test("a fixed-locale connection-refused diagnostic confirms orphaned selected-server teardown", () => fixture(async ({ socket, dir }) => {
+  let initial = true, retired = false;
+  const result = await associateTmux({ tmuxSocket: socket, tmuxSession: "project", cwd: dir }, {
+    stateRoot: join(dir, "state"), contextRoot: async () => "/project/main",
+    api: {
+      discover: async () => ({ target: { processPid: 10, processStart: "1" }, rollout: "/known/a.jsonl" }),
+      metadata: async () => ({ id: "10000000-0000-4000-8000-000000000011", parentId: null }),
+      updateRegistry: async (input) => {
+        if (input.action === "retire") { retired = true; return { sessionId: input.sessionId, authority: "historical-only", changed: true }; }
+        return { sessionId: "10000000-0000-4000-8000-000000000011", authority: "checked-live", changed: true };
+      },
+    },
+    command: async (_exe, args) => {
+      if (args.includes("list-sessions")) { const error = new Error("tmux unavailable"); error.stderr = `error connecting to ${socket} (Connection refused)\n`; throw error; }
+      if (args.at(-1) === "#{socket_path}\t#{session_id}") {
+        if (!initial) throw new Error("tmux unavailable");
+        initial = false; return `${socket}\t$7\n`;
+      }
+      return args.at(-1) === "#{window_name}" ? "worker\n" : "%10\n";
+    },
+  });
+  await result.reconcile(); assert.equal(retired, true);
+  await result.dispose();
+}));
 test("the watcher serializes scans and disposal aborts owned work without scheduling again", () => fixture(async ({ socket, dir }) => {
   let discoveries = 0, scheduled, schedules = 0, started;
   const began = new Promise((resolve) => { started = resolve; });
