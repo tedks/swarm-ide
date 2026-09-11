@@ -53,8 +53,10 @@ describe("actual agent execution lifecycle", () => {
     p.consume(event("task_complete", { started_at: start - 60, error: { message: "parent failed" } }));
     p.consume(response("function_call", { name: "request_user_input", call_id: "parent-question" }));
     expect(p.snapshot().state).toBe("unknown");
-    p.consume(event("task_started")); expect(p.snapshot().state).toBe("working");
-    p.consume(event("task_complete", {}, 4)); expect(p.snapshot().state).toBe("completed");
+    expect(p.consume(event("task_started"))).toBe(true);
+    expect(p.snapshot().state).toBe("working");
+    expect(p.consume(event("task_complete", { started_at: undefined }, 4))).toBe(false);
+    expect(p.snapshot().state).toBe("completed");
     const unknownBirth = new AgentLifecycleProjection({ forked_from_id: "parent" });
     unknownBirth.consume(event("task_started")); expect(unknownBirth.snapshot().state).toBe("unknown");
   });
