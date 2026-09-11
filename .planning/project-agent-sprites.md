@@ -18,7 +18,9 @@ The implementation must preserve an important distinction: graphs and source byt
 - [x] (2026-09-10 18:25Z) Added exact membership adapters and mounts for plan hierarchy, component/design, component build-mapping, and task graphs while preserving repository, service, and direct-source build semantics.
 - [x] (2026-09-10 19:12Z) Extended the owned packaged proof to two linked worktrees plus an unrelated repository; verified repository/service/component coverage, exact feature scope, retained editor/cameras, and `modelTurns: 0`.
 - [x] (2026-09-10 19:32Z) Aligned `docs/design/graph-agent-locations.md`, related living design text, `.swarm/plans.json`, and Bazel inputs with the delivered behavior.
-- [ ] Run focused checks, type/build gates, the bounded packaged proof, and proportional council review to a clean convergence round; address or file every finding.
+- [x] (2026-09-11 02:29Z) Addressed the first provider-diverse council round: exact-root fallback, mounted-node filtering, null-safe task tooltips, launch-identity diagnostics, mutable branch revalidation, and bounded per-snapshot Git enrichment.
+- [x] (2026-09-11 02:29Z) Re-ran the three affected Bazel suites green, built all 154 targets, and passed the packaged two-worktree proof with repository/service/component coverage, retained state, and zero model turns.
+- [ ] Run the council convergence review on the fix delta and address or file every new finding until a round is clean.
 - [ ] Commit and push all reviewable increments, update the Ditz issue without closing it, sync metadata, mark the draft PR ready, verify branch/remote state, and write `verification.md`, `seam.md`, and `final-recap` in the authorized step directory.
 
 ## Surprises & Discoveries
@@ -33,6 +35,10 @@ The implementation must preserve an important distinction: graphs and source byt
   Evidence: `PlanNode.design.buildTargets` in `protocol/plans.ts` records labels, roles, and dependency labels only.
 - Observation: synthesizing a trusted click against an existing user registry would make the packaged walkthrough depend on live terminal state and user-owned paths.
   Evidence: the final proof instead creates its own private registry, sanitized rollout files, linked Git worktrees, unrelated repository, Electron profile, and Xvfb session under its owned temporary directory; the resulting proof reports all assertions true and zero model turns.
+- Observation: a non-bare repository's common `HEAD` follows the branch checked out in its primary worktree; it cannot serve as stable default-branch authority.
+  Evidence: the new default-to-feature regression initially widened `temporary-feature` to project scope. Using remote `origin/HEAD`, then only conventional local `main`/`master` refs, makes unknown custom defaults conservative instead.
+- Observation: Git identity enrichment was on the passive observation path as well as the exact send-authorization path, multiplying three or more Git subprocesses by every registration and poll.
+  Evidence: the reviewed implementation now skips non-authoritative metadata during Send validation and deduplicates canonical roots in batches of four under one 2.5-second fleet deadline.
 
 ## Decision Log
 
@@ -48,10 +54,13 @@ The implementation must preserve an important distinction: graphs and source byt
 - Decision: allow task placement only through exact task IDs or canonical file references already present in the current task snapshot/details. Allow component placement through authored source/docs paths and exact `PlanNode.taskIds`.
   Rationale: these are explicit typed memberships. Free-form task prose, ancestry, directory proximity, and transitive dependency inference are not.
   Date/Author: 2026-09-10 / Codex
+- Decision: piggyback workspace identity revalidation on the existing external-observer publication cadence and update only the descriptor, not the graph snapshot or camera realm.
+  Rationale: branch scope is mutable after opening. Reusing the existing cadence adds no timer, while response/root/generation/visit fences prevent a late refresh from changing the active workspace. Failure narrows to exact-root scope.
+  Date/Author: 2026-09-11 / Codex
 
 ## Outcomes & Retrospective
 
-Implementation is in progress. At completion this section will state exact shipped surfaces, test counts, packaged evidence, unresolved limitations, and any follow-up issues.
+Implementation and first-round review fixes are complete. The focused graph suite now passes 57 tests, workspace core passes 36 tests, the mounted navigation suite passes 38 tests, and `bazel build //...` passes all 154 targets. The packaged proof at `/tmp/swarm-sprites-proof.cZh047/proof.json` confirms project-wide repository/service/component placement, exact feature filtering, unrelated exclusion, pathless reachability, exact conversation selection, retained editor/cameras, no renderer errors, and `modelTurns: 0`. Final council convergence, metadata sync, and handoff artifacts remain.
 
 ## Context and Orientation
 
@@ -132,3 +141,5 @@ Revision note (2026-09-10): created the initial self-contained plan after inspec
 Revision note (2026-09-10): recorded the focused pre-fix regression result so later green runs can be compared to demonstrated baseline behavior.
 
 Revision note (2026-09-10): recorded the implemented identity, overlay, projection, documentation, and owned packaged-proof milestones before the final full-suite and council gates.
+
+Revision note (2026-09-11): incorporated round-one council findings, the mutable-default discovery, focused/build results, and the second successful owned packaged proof before convergence review.
