@@ -10,15 +10,20 @@ Registered Goals conversations with explicit Codex lifecycle records should show
 
 - [x] (2026-09-11 01:37Z) Read the task packet, repository instructions, planning format, prior sanitized diagnostic, and verified the designated clean `fix/live-agent-status` worktree at `f08c75d5`.
 - [x] (2026-09-11 01:37Z) Recorded the fresh-session readiness and ownership boundary in the assigned step directory.
-- [ ] Trace actual `ExternalAgentService` snapshot/read output, protocol validation, and renderer retention to isolate one reproducible lifecycle loss.
-- [ ] Add a sanitized failing regression and implement the smallest bounded, identity-safe correction.
-- [ ] Update the agent design and exact plan/build mapping where the implementation changes their documented contract.
+- [x] (2026-09-11 01:43Z) Traced the real service and protocol path: five sessions initially published completed, while `goals:node` and tooling-review were unknown; sanitized metadata located the latest valid node start about 1.7 MiB behind EOF after valid oversized records.
+- [x] (2026-09-11 01:47Z) Added RED regressions for cold recovery beyond Activity and valid oversized terminal envelopes, then implemented a 4-MiB cold/discontinuous lifecycle lookback plus incremental checkpoint; malformed and greater-than-lookback gaps remain unknown.
+- [x] (2026-09-11 01:48Z) Confirmed the real read-only service path publishes two current working and five completed Goals sessions identically through snapshot/detail and protocol validation.
+- [x] (2026-09-11 01:49Z) Updated the agent design and exact `//tools/demo-agents:unit` plan mapping for the split lifecycle/Activity bounds.
 - [ ] Run focused Bazel tests and type/build gates, then obtain native and foreign council-review convergence.
 - [ ] Push the ready PR, update and sync Ditz without closing the in-progress issue, clean owned resources, and write verification/final recap artifacts.
 
 ## Surprises & Discoveries
 
 The prior inventory found accepted-format `task_complete` boundaries inside six current 256-KiB tails, so a cold bounded read should already publish those six as completed. That evidence narrows the investigation but does not establish what the previously open renderer received.
+
+The direct pre-fix service path showed that the apparent registry file in the project descriptor is an envelope pointing to the actual private registry; passing the envelope itself correctly returns unavailable. Resolving its registered path read-only produced five completions and two unknown states. A separate four-MiB metadata-only scan found the node's latest `task_started` about 1.7 MiB behind EOF, after eight valid records larger than 64 KiB and no malformed records. The existing 256-KiB reader therefore could not reconstruct it cold, and its 64-KiB Activity record guard also reset an already accepted projection on valid large records.
+
+The two added regressions failed before the correction and all 151 focused cases passed after it. The corrected real snapshot and per-session details agreed on two current working states and five completed states; the protocol parser accepted every result.
 
 ## Decision Log
 
@@ -30,9 +35,17 @@ The prior inventory found accepted-format `task_complete` boundaries inside six 
   Rationale: Retaining status across a rewrite, rotation, malformed record, or missed boundary would fabricate an outcome.
   Date/Author: 2026-09-11 / Codex.
 
+- Decision: Give lifecycle parsing a separate 4-MiB maximum recovery window while leaving published Activity at 256 KiB and 64-KiB per record.
+  Rationale: The real missed start was 1.7 MiB behind EOF among valid large compaction/tool records. A fixed recovery cap repairs that case without recurrent full-history scans; the checkpoint makes unchanged reads constant-size and append reads proportional to new bytes.
+  Date/Author: 2026-09-11 / Codex.
+
+- Decision: Parse every complete JSONL envelope contained in the lifecycle window, including records larger than the Activity record limit, but reset on invalid JSON.
+  Rationale: A valid large non-lifecycle record is not an evidence gap, and a large lifecycle envelope remains authoritative; malformed bytes cannot prove that no transition occurred.
+  Date/Author: 2026-09-11 / Codex.
+
 ## Outcomes & Retrospective
 
-Work is in progress. No source diagnosis or correction is yet claimed.
+The concrete core-side loss is repaired and demonstrated with sanitized regressions and the authorized real read-only path. Review, final gates, PR readiness and handoff remain in progress.
 
 ## Context and Orientation
 
@@ -63,3 +76,5 @@ Sanitized verification and council summaries belong in `/tmp/swarm-ide-agent-vis
 Keep `AgentLifecycleProjection.consume(input: unknown): void` and the optional `ExternalAgentSummary.lifecycle` wire shape unless the diagnosis proves a narrowly necessary extension. Use existing Node filesystem APIs, Zod schemas, React state, and current Bazel targets; add no dependency and do not broaden renderer authority.
 
 Initial plan recorded before implementation to make the trust, continuity, privacy, and failure assumptions explicit.
+
+2026-09-11 update: recorded the live metadata diagnosis, RED/green regression evidence, bounded checkpoint design, and current remaining review/landing work.

@@ -178,10 +178,14 @@ outcome document. The rail only reads that observation; selection cannot start a
 summarizer or another polling lane. The existing fork ordering, folds and primary
 keyboard navigation remain independent of summary updates.
 
-The core reduces lifecycle before Activity trimming. A bounded per-registration
-cache bridges observed append intervals only while the file identity and a raw
-overlap anchor agree. Missing bytes, unreadable records, replacement or truncation
-discard that continuity. A cold read without a usable boundary can be unknown.
+The core reduces lifecycle separately from Activity trimming. A cold or
+discontinuous observation searches at most the latest 4 MiB for an explicit
+lifecycle boundary, while the Activity feed remains a 256 KiB tail. A bounded
+per-registration checkpoint then reads only unchecked appends while the session
+header, inode and raw overlap anchor agree. Valid large JSONL records can carry
+or follow lifecycle evidence without publishing their large content; malformed
+records, replacement, truncation or a gap beyond the lifecycle lookback discard
+unsupported continuity. A cold read without a usable boundary remains unknown.
 Forks rewrite outer timestamps: preserved `started_at` must establish the turn
 after the child's metadata birth; ambiguous second-precision birth-time turns
 are not borrowed from the parent. Blocking `request_user_input` waits for its
