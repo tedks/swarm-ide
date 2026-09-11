@@ -12,25 +12,27 @@ The implementation must preserve an important distinction: graphs and source byt
 
 - [x] (2026-09-10 15:50Z) Read the authorization, common safety boundary, repository instructions, and `.planning/PLANS.md`; confirmed the clean designated worktree and branch; wrote the required ready note.
 - [x] (2026-09-10 16:05Z) Mapped the current workspace contract, external observer, graph overlay, graph surfaces, tests, live-sprites proof, living design documents, and Bazel source mappings.
-- [ ] Add a focused regression that demonstrates the current exact-root filter omits a sibling-worktree agent in primary scope, and record the failing result before implementing the correction.
-- [ ] Publish bounded canonical Git-family identity, branch identity, and explicit project-versus-worktree sprite scope from the privileged core.
-- [ ] Separate eligible from placed agents, retain exact origin identity, and expose eligible-but-unplaced conversations on every graph layer.
-- [ ] Add exact membership adapters and mounts for the plan hierarchy, component/design projection, component build-mapping projection, and task graph while preserving existing repository, service, and build behavior.
-- [ ] Extend the owned two-worktree packaged proof with multiple visible graph assertions and no model turn.
-- [ ] Align `docs/design/graph-agent-locations.md`, related living design text, `.swarm/plans.json`, and Bazel inputs with the delivered behavior.
+- [x] (2026-09-10 16:42Z) Added the focused sibling-worktree regression and recorded the expected red run: 1 new failure, 52 existing tests passed.
+- [x] (2026-09-10 17:20Z) Published bounded canonical Git-family identity, branch identity, and explicit project-versus-worktree sprite scope from the privileged core.
+- [x] (2026-09-10 17:48Z) Separated eligible from placed agents, retained exact origin identity, and exposed eligible-but-unplaced conversations on every graph layer.
+- [x] (2026-09-10 18:25Z) Added exact membership adapters and mounts for plan hierarchy, component/design, component build-mapping, and task graphs while preserving repository, service, and direct-source build semantics.
+- [x] (2026-09-10 19:12Z) Extended the owned packaged proof to two linked worktrees plus an unrelated repository; verified repository/service/component coverage, exact feature scope, retained editor/cameras, and `modelTurns: 0`.
+- [x] (2026-09-10 19:32Z) Aligned `docs/design/graph-agent-locations.md`, related living design text, `.swarm/plans.json`, and Bazel inputs with the delivered behavior.
 - [ ] Run focused checks, type/build gates, the bounded packaged proof, and proportional council review to a clean convergence round; address or file every finding.
 - [ ] Commit and push all reviewable increments, update the Ditz issue without closing it, sync metadata, mark the draft PR ready, verify branch/remote state, and write `verification.md`, `seam.md`, and `final-recap` in the authorized step directory.
 
 ## Surprises & Discoveries
 
 - Observation: the current renderer admits an agent only when both summary and detail `worktree` fields equal the selected root, so the primary branch cannot show a sibling-worktree agent even though its repository-relative event path could map to the primary graph.
-  Evidence: `observedGraphAgents` in `app/renderer/graph-agents/locations.ts` performs both hard equalities before resolving the event path.
+  Evidence: `//tools/live-sprites:checks` failed only `includes a sibling worktree's relative location in the primary project view`, reporting `expected [] to deeply equal [ObjectContaining …]`; 52 other tests passed.
 - Observation: `core/workspace-context.ts` already proves two selected roots share the same canonical Git common directory, but discards that identity, while `tools/cli/project.mjs` already treats the canonical common directory as the project-family authority.
   Evidence: both modules call `git rev-parse --path-format=absolute --git-common-dir`; the launcher hashes that canonical path for its private project key.
 - Observation: `ProjectionCanvas` already renders `GraphAgentSprites` inside each node. Plan hierarchy and task graph therefore need a surrounding membership layer, not new node rendering or camera ownership.
   Evidence: the node label assembled in `app/renderer/plans/ProjectionCanvas.tsx` includes `GraphAgentSprites` and its memoized graph arrays exclude agent observations.
 - Observation: the authored component build-mapping projection contains Bazel labels and label-to-label relations but no source-file-to-target association. It can truthfully expose eligible agents as unplaced; it must not assign component source paths to arbitrary build targets.
   Evidence: `PlanNode.design.buildTargets` in `protocol/plans.ts` records labels, roles, and dependency labels only.
+- Observation: synthesizing a trusted click against an existing user registry would make the packaged walkthrough depend on live terminal state and user-owned paths.
+  Evidence: the final proof instead creates its own private registry, sanitized rollout files, linked Git worktrees, unrelated repository, Electron profile, and Xvfb session under its owned temporary directory; the resulting proof reports all assertions true and zero model turns.
 
 ## Decision Log
 
@@ -95,7 +97,7 @@ After all graph mounts and documentation are complete, run:
     nix develop --command bazel test //...
     nix develop --command bazel run //tools/live-sprites:smoke
 
-The exact commands and observed results will be updated here as work proceeds. The smoke must report a packaged desktop, two same-project worktrees, an excluded unrelated repository, meaningful multi-graph assertions, retained source/cameras, zero renderer errors, and `modelTurns: 0`.
+The first command completed with the expected pre-fix failure: the new sibling-worktree case was the sole failure among 53 tests. The smoke must report a packaged desktop, two same-project worktrees, an excluded unrelated repository, meaningful multi-graph assertions, retained source/cameras, zero renderer errors, and `modelTurns: 0`.
 
 ## Validation and Acceptance
 
@@ -126,3 +128,7 @@ The authorization and worker coordination artifacts live outside the repository 
 No new runtime package is needed. React, Zod, Node’s existing filesystem/crypto APIs, Git through `queryRepositoryGit`, and the existing Bazel/Nix toolchain are sufficient.
 
 Revision note (2026-09-10): created the initial self-contained plan after inspecting the authorized baseline; decisions emphasize conservative Git scope and explicit per-projection membership.
+
+Revision note (2026-09-10): recorded the focused pre-fix regression result so later green runs can be compared to demonstrated baseline behavior.
+
+Revision note (2026-09-10): recorded the implemented identity, overlay, projection, documentation, and owned packaged-proof milestones before the final full-suite and council gates.
