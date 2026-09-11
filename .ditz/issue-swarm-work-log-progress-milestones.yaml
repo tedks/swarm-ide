@@ -35,3 +35,11 @@ log_events:
     gate passes 127 controlled tests; awareness mapping passes. One synthetic gpt-5.6-luna
     call succeeded with zero Ditz writes. Provider-diverse council is at final fixpoint
     review. Keeping issue in_progress for ROOT landing.'
+- time: 2026-09-11T02:31:21-00:00
+  who: Ted Smith
+  what: commented
+  comment: Recorded ROOT's source-traced intake for the 13 retained planning fixture
+    failures at 5b8d5f5e. They are pre-existing fixture drift, not a pristine-base
+    execution and not a scoped landing blocker after focused gates/council. No broad
+    rerun, unrelated repair, or duplicate follow-up issue; ROOT owns the shared follow-up.
+    Issue remains in_progress for landing.
