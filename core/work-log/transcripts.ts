@@ -111,6 +111,7 @@ async function readWorkEvidence(root: string, registryPath: string | undefined, 
       const tailStart = Math.max(0, stat.size - TAIL);
       const start = Math.max(tailStart, prior?.offset ?? 0);
       const closedGap = !!prior && prior.offset < tailStart && prior.kind !== "milestone" && !(prior.kind === undefined && prior.turnId);
+      let gapTerminalEligible = closedGap;
       const data = Buffer.alloc(stat.size - start), read = await file.read(data, 0, data.length, start);
       const after = await file.stat();
       if (after.dev !== stat.dev || after.ino !== stat.ino || after.size < stat.size || !await anchorMatches()) continue;
@@ -144,16 +145,16 @@ async function readWorkEvidence(root: string, registryPath: string | undefined, 
         position = newline + 1;
         const end = absolute + rawBytes.length + 1;
         if (!raw) { absolute = end; continue; }
-        if (rawBytes.length > 64000) { evidence = []; milestones = []; calls.clear(); owned = false; ownTurn = undefined; absolute = end; continue; }
+        if (rawBytes.length > 64000) { evidence = []; milestones = []; calls.clear(); owned = false; ownTurn = undefined; gapTerminalEligible = false; absolute = end; continue; }
         let event: Record<string, unknown>;
         try { event = JSON.parse(raw); }
-        catch { evidence = []; milestones = []; calls.clear(); owned = false; ownTurn = undefined; absolute = end; continue; }
+        catch { evidence = []; milestones = []; calls.clear(); owned = false; ownTurn = undefined; gapTerminalEligible = false; absolute = end; continue; }
         const payload = event.payload as Record<string, unknown> | undefined;
         if (event.type === "session_meta" && absolute === 0 && payload?.id === row.id) {
           absolute = end; continue;
         }
         if (event.type === "session_meta") {
-          evidence = []; milestones = []; calls.clear(); owned = false; ownTurn = undefined; absolute = end; continue;
+          evidence = []; milestones = []; calls.clear(); owned = false; ownTurn = undefined; gapTerminalEligible = false; absolute = end; continue;
         }
         const at = iso(event.timestamp);
         if (!at || (Number.isFinite(born) && Date.parse(at) < born)) { absolute = end; continue; }
@@ -161,7 +162,7 @@ async function readWorkEvidence(root: string, registryPath: string | undefined, 
         if (event.type === "event_msg" && payload?.type === "task_started") {
           evidence = []; milestones = []; calls.clear();
           ownTurn = (!fork || Number.isFinite(started) && started >= born) ? turnIdentity(payload.turn_id) : undefined;
-          owned = !fork || ownTurn !== undefined; absolute = end; continue;
+          owned = !fork || ownTurn !== undefined; gapTerminalEligible = false; absolute = end; continue;
         }
 
         if (owned && event.type === "event_msg" && payload?.type === "agent_message" && typeof payload.message === "string")
@@ -197,7 +198,7 @@ async function readWorkEvidence(root: string, registryPath: string | undefined, 
           // A closed checkpoint may fall behind the bounded tail while a later
           // turn runs. Only an explicit different turn can bridge that gap;
           // ambiguous milestones and the previously closed turn stay rejected.
-          const gapTerminal = closedGap && !fork && eventTurn !== undefined && eventTurn !== prior?.turnId;
+          const gapTerminal = gapTerminalEligible && !fork && eventTurn !== undefined && eventTurn !== prior?.turnId;
           const ownTerminal = activeTerminal || gapTerminal;
           if (!ownTerminal) { absolute = end; continue; }
           if (typeof payload.last_agent_message === "string") evidence.push(cleanWorkText(payload.last_agent_message, 3500));
@@ -214,12 +215,12 @@ async function readWorkEvidence(root: string, registryPath: string | undefined, 
             agent: cleanWorkText(row.label, 120), taskId: row.task && /^[a-zA-Z0-9][a-zA-Z0-9_-]{0,199}$/.test(row.task) ? row.task : null,
             boundary, at, text: terminalText, state, checkpoint: next };
           else latestAdvance = next;
-          evidence = []; milestones = []; calls.clear(); owned = false; ownTurn = undefined;
+          evidence = []; milestones = []; calls.clear(); owned = false; ownTurn = undefined; gapTerminalEligible = false;
         }
         if (event.type === "event_msg" && payload?.type === "turn_aborted") {
           const eventTurn = turnIdentity(payload.turn_id);
           if (owned && (ownTurn === undefined || eventTurn === ownTurn)) latestAdvance = nextCheckpoint(source, end, at, eventTurn, "abort", rawBytes);
-          evidence = []; milestones = []; calls.clear(); owned = false; ownTurn = undefined;
+          evidence = []; milestones = []; calls.clear(); owned = false; ownTurn = undefined; gapTerminalEligible = false;
         }
         absolute = end;
       }

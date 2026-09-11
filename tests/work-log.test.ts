@@ -520,14 +520,26 @@ describe("online Work Log", () => {
     const rows = [{ type: "session_meta", timestamp: at, payload: { id } },
       { type: "event_msg", timestamp: at, payload: { type: "task_started", turn_id: "closed" } },
       { type: "event_msg", timestamp: at, payload: { type: "turn_aborted", turn_id: "closed" } }];
-    await writeFile(rollout, rows.map((row) => JSON.stringify(row)).join("\n") + "\n");
+    const base = rows.map((row) => JSON.stringify(row)).join("\n") + "\n";
+    await writeFile(rollout, base);
     await writeFile(registry, JSON.stringify({ version: 1, sessions: [{ id, label: "Worker", rollout }] }), { mode: 0o600 });
     const checkpoint = (await observeWork(f.root, registry)).advances[id]; expect(checkpoint).toMatchObject({ kind: "abort", turnId: "closed" });
-    await appendFile(rollout, `${JSON.stringify({ type: "noise", payload: "x".repeat(530_000) })}\n`);
+    const noise = `${JSON.stringify({ type: "noise", payload: "x".repeat(530_000) })}\n`;
+    await appendFile(rollout, noise);
     await appendFile(rollout, `${JSON.stringify({ type: "event_msg", timestamp: at, payload: { type: "task_complete", turn_id: "closed", last_agent_message: "Still closed" } })}\n`);
     expect(await readWorkInputs(f.root, registry, { [id]: checkpoint })).toEqual([]);
     await appendFile(rollout, `${JSON.stringify({ type: "event_msg", timestamp: at, payload: { type: "task_complete", turn_id: "later", last_agent_message: "Later turn completed" } })}\n`);
     expect((await readWorkInputs(f.root, registry, { [id]: checkpoint }))[0]).toMatchObject({ origin: "terminal", text: "Later turn completed" });
+    const terminal = { type: "event_msg", timestamp: at, payload: { type: "task_complete", turn_id: "later", last_agent_message: "Must stay aborted" } };
+    await writeFile(rollout, `${base}${noise}${[
+      { type: "event_msg", timestamp: at, payload: { type: "task_started", turn_id: "later" } },
+      { type: "event_msg", timestamp: at, payload: { type: "turn_aborted", turn_id: "later" } }, terminal,
+    ].map((row) => JSON.stringify(row)).join("\n")}\n`);
+    expect(await readWorkInputs(f.root, registry, { [id]: checkpoint })).toEqual([]);
+    await writeFile(rollout, `${base}${noise}${[
+      { type: "session_meta", timestamp: at, payload: { id: "nested" } }, terminal,
+    ].map((row) => JSON.stringify(row)).join("\n")}\n`);
+    expect(await readWorkInputs(f.root, registry, { [id]: checkpoint })).toEqual([]);
   });
   it("uses empty-terminal fallback only after a milestone from the same turn", async () => {
     const f = await fixture(), id = "01a07f1d-d6d0-7f01-b2bd-4154876ec187", rollout = join(f.dir, "session.jsonl"), registry = join(f.dir, "registry.json"), at = new Date().toISOString();
