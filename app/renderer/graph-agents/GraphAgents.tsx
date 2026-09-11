@@ -46,10 +46,11 @@ function GraphAgentPlacementSummary({ placedIds }: { placedIds: ReadonlySet<stri
     onPointerDown={(event) => event.stopPropagation()} onMouseDown={(event) => event.stopPropagation()}
     onDoubleClick={(event) => event.stopPropagation()} onKeyDown={(event) => event.stopPropagation()}>
     <span>{placedIds.size} located · {unplaced.length} unplaced</span>
-    {unplaced.map((agent) => <button type="button" key={agent.id} data-agent-id={agent.id}
-      aria-label={`Open unplaced agent ${agent.label} from ${agent.branch ?? agent.worktree}`}
-      title={`${agent.label} · ${agent.branch ?? agent.worktree}\nNo explicit membership in this graph.\nLatest: ${agent.latestAction}`}
-      onClick={(event) => { event.stopPropagation(); open(agent.id); }}>{agent.label} · {agent.branch ?? agent.worktree.split("/").at(-1)}</button>)}
+    {unplaced.map((agent) => { const origin = agent.branch ?? agent.worktree.split("/").at(-1) ?? agent.worktree;
+      return <button type="button" key={agent.id} data-agent-id={agent.id}
+        aria-label={`Open unplaced agent ${agent.label} from ${origin}`}
+        title={`${agent.label} · Origin ${origin}\nNo explicit membership in this graph.\nLatest: ${agent.latestAction}`}
+        onClick={(event) => { event.stopPropagation(); open(agent.id); }}>{agent.label} · {origin}</button>; })}
   </div>;
 }
 
@@ -63,10 +64,12 @@ export function GraphAgentSprites({ nodeId }: { nodeId: string }) {
     {agents.map((agent) => {
       const status = agent.retained ? `Last seen · ${AGENT_EXECUTION_LABELS[agent.state]}` : AGENT_EXECUTION_LABELS[agent.state];
       const origin = agent.branch ? `${agent.branch} · ${agent.worktree}` : agent.worktree;
-      const description = `${agent.label} · ${status} · Origin ${origin} · Last touched ${agent.path}\n${agent.action}\n${agent.at}\nLatest: ${agent.latestAction}`;
+      const placement = agent.path ? `Last touched ${agent.path}` : agent.task ? `Exact task ${agent.task}` : "Explicit graph membership";
+      const activity = [agent.action, agent.at].filter(Boolean).join("\n");
+      const description = `${agent.label} · ${status} · Origin ${origin} · ${placement}${activity ? `\n${activity}` : ""}\nLatest: ${agent.latestAction}`;
       return <button type="button" key={agent.id} className={`graph-agent-sprite state-${agent.state}${agent.retained ? " is-retained" : ""}`}
         data-agent-id={agent.id} data-agent-path={agent.path} data-agent-working={!agent.retained && agent.state === "working"}
-        aria-label={`Open ${agent.label} from ${agent.branch ?? agent.worktree} · ${status} · last touched ${agent.path}`} title={description}
+        aria-label={`Open ${agent.label} from ${agent.branch ?? agent.worktree} · ${status} · ${placement}`} title={description}
         onClick={(event) => { event.stopPropagation(); open(agent.id); }}>
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2v4M3 11v6m18-6v6M8 20v2m8-2v2" /><rect x="5" y="6" width="14" height="14" rx="4" /><path d="M9 16h6" /><circle cx="9" cy="11" r="1" /><circle cx="15" cy="11" r="1" /></svg>
         <span>{agent.label}</span><i aria-hidden="true" />

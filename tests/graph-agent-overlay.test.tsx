@@ -87,4 +87,13 @@ describe("real agent graph overlays", () => {
     expect(button.title).toContain("No explicit membership in this graph");
     fireEvent.click(button); expect(open).toHaveBeenCalledWith(pathless.session.id);
   });
+  it("describes exact task-only placement without null path or timestamp text", () => {
+    const taskOnly = { ...detail(), session: { ...detail().session, task: "swarm-task" }, entries: [] };
+    render(<GraphAgents client={client([taskOnly])} selection={selection()} connected onOpen={vi.fn()}>
+      <GraphAgentLayer locations={[{ id: "task", paths: [], tasks: ["swarm-task"] }]}><GraphAgentSprites nodeId="task" /></GraphAgentLayer>
+    </GraphAgents>);
+    const button = screen.getByRole("button", { name: /Exact task swarm-task/ });
+    expect(button.title).toContain("Exact task swarm-task");
+    expect(button.title).not.toContain("null");
+  });
 });

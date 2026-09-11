@@ -40,7 +40,9 @@ describe("registered graph locations", () => {
     expect(observedGraphAgents({ selection: { ...selection, agentVisibility: "project" }, sessions, fleet }).map((agent) => agent.id)).toEqual([session.id, sibling.id]);
     expect(observedGraphAgents({ selection: { ...selection, root: sibling.worktree, agentVisibility: "worktree" }, sessions, fleet }).map((agent) => agent.id)).toEqual([sibling.id]);
     expect(observedGraphAgents({ selection: { root: sibling.worktree, projectId: null, agentVisibility: "worktree" }, sessions, fleet }).map((agent) => agent.id)).toEqual([sibling.id]);
-    expect(observedGraphAgents({ selection: { root, projectId: null, agentVisibility: "project" }, sessions, fleet })).toEqual([]);
+    expect(observedGraphAgents({ selection: { root, projectId: null, agentVisibility: "project" }, sessions, fleet }).map((agent) => agent.id)).toEqual([session.id]);
+    const missingIdentity = { ...session, projectId: undefined };
+    expect(observedGraphAgents({ selection: { ...selection, agentVisibility: "project" }, sessions: [missingIdentity], fleet: [{ ...detail, session: missingIdentity }] }).map((agent) => agent.id)).toEqual([session.id]);
   });
   it("resolves exact absolute/nested cwd paths without common-prefix or traversal matches", () => {
     expect(graphEventPath(root, { path: `${root}/src/app.ts` })).toBe("src/app.ts");
@@ -75,8 +77,13 @@ describe("registered graph locations", () => {
     expect([...placeGraphAgents(observe(), buildAgentLocations(capture)).keys()]).toEqual(["//src:a"]);
   });
   it("uses authored component and service/interface sources, not descriptions", () => {
-    const index = PlanIndexSchema.parse({ version: 1, nodes: [{ id: "app", kind: "component", title: "app", parentId: null, docs: ["docs/app.md"], sourcePaths: ["src/app.ts"], taskIds: [], contextRefs: [] }] });
+    const index = PlanIndexSchema.parse({ version: 1, nodes: [
+      { id: "app", kind: "component", title: "app", parentId: null, docs: ["docs/app.md"], sourcePaths: ["src/app.ts"], taskIds: [], contextRefs: [] },
+      { id: "hidden", kind: "component", title: "hidden", parentId: null, docs: [], sourcePaths: ["src/hidden.ts"], taskIds: [], contextRefs: [] },
+    ] });
     expect([...placeGraphAgents(observe(), componentAgentLocations(index)).keys()]).toEqual(["app"]);
+    expect(componentAgentLocations(index, new Set(["app"])).map((location) => location.id)).toEqual(["app"]);
+    expect(placeGraphAgents([{ ...observe()[0]!, path: "src/hidden.ts" }], componentAgentLocations(index, new Set(["app"]))).size).toBe(0);
     const locations = serviceAgentLocations({ repositoryId: "r", worldId: "w", sourceFingerprint: "r", observedAt: at, status: "current", paths: ["compose.yaml"], issues: [], services: [{ id: "service:app", displayName: "app", declarationPath: "compose.yaml", implementationPaths: ["src/app.ts"], interfaces: [{ id: "interface:api", name: "api", path: "src/api.ts", requestType: "Request", responseType: "Response", role: "provided" }] }] });
     expect([...placeGraphAgents(observe(), locations).keys()]).toEqual(["service:app"]);
     expect([...placeGraphAgents([{ ...observe()[0]!, path: "src/api.ts" }], locations).keys()]).toEqual(["interface:api"]);

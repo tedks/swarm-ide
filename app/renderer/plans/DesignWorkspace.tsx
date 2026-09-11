@@ -155,7 +155,8 @@ export function DesignWorkspace(props: DesignWorkspaceProps) {
   const interfaces = useMemo(() => index && node ? designContracts(index, node) : [], [index, node]);
   const selectedContract = contractSelection?.scope === contractScope ? interfaces.find((item) => item.id === contractSelection.id) : undefined;
   const graph = useMemo(() => index && node ? designProjection(index, node, selectedContract?.id) : null, [index, node, selectedContract?.id]);
-  const agentLocations = useMemo(() => current && index ? componentAgentLocations(index) : [], [index, current]);
+  const agentLocations = useMemo(() => current && index && graph
+    ? componentAgentLocations(index, new Set(graph.nodes.map((entry) => entry.id))) : [], [index, graph, current]);
   const implementation = useMemo(() => node ? implementationProjection(node) : null, [node]);
   const inspectContract = (id: string) => {
     if (!current) return;
@@ -208,7 +209,7 @@ export function DesignWorkspace(props: DesignWorkspaceProps) {
     {generate}
   </div>;
   const implementationPane = node && graph ? (<section className="design-implementation" aria-label="Design implementation"><h3>Implementation</h3>
-          <GraphAgentsToggle />
+          {!props.renderWorkspace && <GraphAgentsToggle />}
           {!props.renderWorkspace && (implementation?.nodes.length ? <GraphAgentLayer locations={[]}><div className="design-implementation-graph"><ProjectionCanvas cameraScope={`${worldId}:${repositoryId}:${node.id}`} label="Component build mappings" {...implementation} selected={null} onSelect={openBuild} /></div></GraphAgentLayer> : <p className="design-empty">Select a component to explore its build connections.</p>)}
           {linkNotice ? <p role="status">{linkNotice}</p> : null}
           <PlanLinkList key={`${node.id}:source`} label="Source files" items={node.sourcePaths.map((path) => <button key={path} disabled={!current} onClick={() => onOpenFile(path)}>{path}</button>)} />

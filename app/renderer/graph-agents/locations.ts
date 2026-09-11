@@ -47,12 +47,12 @@ export function observedGraphAgents({ selection, sessions, fleet, detail, retain
   for (const row of sessions) {
     const value = observations.get(row.id);
     if (row.evidence !== "local" || !row.worktree || !absolute(row.worktree)) continue;
-    const eligible = selection.agentVisibility === "project"
-      ? Boolean(selection.projectId && row.projectId === selection.projectId)
-      : row.worktree === selection.root;
+    const exactWorktree = row.worktree === selection.root;
+    const eligible = exactWorktree || selection.agentVisibility === "project" &&
+      Boolean(selection.projectId && row.projectId === selection.projectId);
     if (!eligible) continue;
     const matchingDetail = value?.session.evidence === "local" && value.session.worktree === row.worktree &&
-      (selection.agentVisibility !== "project" || value.session.projectId === selection.projectId) ? value : undefined;
+      (exactWorktree || selection.agentVisibility !== "project" || value.session.projectId === selection.projectId) ? value : undefined;
     const event = matchingDetail && [...matchingDetail.entries].reverse().find((entry) => entry.path && entry.attribution === "recorded-tool-event");
     const path = event ? graphEventPath(row.worktree, event) : null;
     const newest = matchingDetail && Date.parse(row.observedAt) <= Date.parse(matchingDetail.session.observedAt) ? matchingDetail.session : row;
@@ -72,7 +72,7 @@ export function placeGraphAgents(agents: readonly GraphAgent[], locations: reado
   for (const agent of agents) {
     const matches = locations.map((location) => ({ location, specificity: Math.max(-1, ...location.paths.map((path) =>
       path === agent.path || agent.path !== null && location.directory && (path === "" || agent.path.startsWith(`${path}/`)) ? path.length : -1),
-      location.tasks?.includes(agent.task ?? "") ? Number.MAX_SAFE_INTEGER : -1) }))
+      agent.task && location.tasks?.includes(agent.task) ? Number.MAX_SAFE_INTEGER : -1) }))
       .filter((match) => match.specificity >= 0).sort((a, b) => b.specificity - a.specificity || a.location.id.localeCompare(b.location.id));
     for (const { location } of nearest ? matches.slice(0, 1) : matches) {
       const list = placed.get(location.id) ?? []; list.push(agent); placed.set(location.id, list);
@@ -98,8 +98,9 @@ export function serviceAgentLocations(declarations?: ServiceDeclarations): Agent
   ]) ?? [];
 }
 
-export function componentAgentLocations(index: PlanIndex): AgentNodeLocation[] {
-  return index.nodes.map((node) => ({ id: node.id, paths: [...node.sourcePaths, ...node.docs], tasks: node.taskIds }));
+export function componentAgentLocations(index: PlanIndex, visibleIds?: ReadonlySet<string>): AgentNodeLocation[] {
+  return index.nodes.filter((node) => !visibleIds || visibleIds.has(node.id))
+    .map((node) => ({ id: node.id, paths: [...node.sourcePaths, ...node.docs], tasks: node.taskIds }));
 }
 
 /** Current task nodes accept only their exact typed task identity and canonical
