@@ -10,18 +10,18 @@ The implementation must preserve an important distinction: graphs and source byt
 
 ## Progress
 
-- [x] (2026-09-10 15:50Z) Read the authorization, common safety boundary, repository instructions, and `.planning/PLANS.md`; confirmed the clean designated worktree and branch; wrote the required ready note.
-- [x] (2026-09-10 16:05Z) Mapped the current workspace contract, external observer, graph overlay, graph surfaces, tests, live-sprites proof, living design documents, and Bazel source mappings.
-- [x] (2026-09-10 16:42Z) Added the focused sibling-worktree regression and recorded the expected red run: 1 new failure, 52 existing tests passed.
-- [x] (2026-09-10 17:20Z) Published bounded canonical Git-family identity, branch identity, and explicit project-versus-worktree sprite scope from the privileged core.
-- [x] (2026-09-10 17:48Z) Separated eligible from placed agents, retained exact origin identity, and exposed eligible-but-unplaced conversations on every graph layer.
-- [x] (2026-09-10 18:25Z) Added exact membership adapters and mounts for plan hierarchy, component/design, component build-mapping, and task graphs while preserving repository, service, and direct-source build semantics.
-- [x] (2026-09-10 19:12Z) Extended the owned packaged proof to two linked worktrees plus an unrelated repository; verified repository/service/component coverage, exact feature scope, retained editor/cameras, and `modelTurns: 0`.
-- [x] (2026-09-10 19:32Z) Aligned `docs/design/graph-agent-locations.md`, related living design text, `.swarm/plans.json`, and Bazel inputs with the delivered behavior.
-- [x] (2026-09-11 02:29Z) Addressed the first provider-diverse council round: exact-root fallback, mounted-node filtering, null-safe task tooltips, launch-identity diagnostics, mutable branch revalidation, and bounded per-snapshot Git enrichment.
-- [x] (2026-09-11 02:29Z) Re-ran the three affected Bazel suites green, built all 154 targets, and passed the packaged two-worktree proof with repository/service/component coverage, retained state, and zero model turns.
-- [x] (2026-09-11 02:50Z) Reached council fixpoint after delta-only rounds: Codex native, Claude Sonnet, and Antigravity all returned CLEAN with zero Critical/Important findings; fixed the final redundant-render nit.
-- [ ] Commit and push the completed plan/handoff increment, update the Ditz issue without closing it, sync metadata, verify branch/remote state, and write `verification.md`, `seam.md`, and `final-recap` in the authorized step directory.
+- [x] Read the authorization, common safety boundary, repository instructions, and `.planning/PLANS.md`; confirmed the clean designated worktree and branch; wrote the required ready note.
+- [x] Mapped the current workspace contract, external observer, graph overlay, graph surfaces, tests, live-sprites proof, living design documents, and Bazel source mappings.
+- [x] Added the focused sibling-worktree regression and recorded the expected red run: 1 new failure, 52 existing tests passed.
+- [x] Published bounded canonical Git-family identity, branch identity, and explicit project-versus-worktree sprite scope from the privileged core.
+- [x] Separated eligible from placed agents, retained exact origin identity, and exposed eligible-but-unplaced conversations on every graph layer.
+- [x] Added exact membership adapters and mounts for plan hierarchy, component/design, component build-mapping, and task graphs while preserving repository, service, and direct-source build semantics.
+- [x] Extended the owned packaged proof to two linked worktrees plus an unrelated repository; verified repository/service/component coverage, exact feature scope, retained editor/cameras, and `modelTurns: 0`.
+- [x] Aligned `docs/design/graph-agent-locations.md`, related living design text, `.swarm/plans.json`, and Bazel inputs with the delivered behavior.
+- [x] Addressed the first provider-diverse council round: exact-root fallback, mounted-node filtering, null-safe task tooltips, launch-identity diagnostics, mutable branch revalidation, and bounded per-snapshot Git enrichment.
+- [x] Re-ran the affected Bazel suites green, built the packaged desktop target, and passed the packaged two-worktree proof with repository/service/component coverage, retained state, and zero model turns.
+- [x] Reached council fixpoint after delta-only rounds: Codex native, Claude Sonnet, and Antigravity all returned CLEAN with zero Critical/Important findings; fixed the final redundant-render nit.
+- [x] Committed and pushed the completed plan/handoff increment, updated the Ditz issue without closing it, synced metadata, verified branch/remote state, and wrote `verification.md`, `seam.md`, and `final-recap` in the authorized step directory.
 
 ## Surprises & Discoveries
 
@@ -88,7 +88,7 @@ Add pure membership builders in `locations.ts`. Plan/component nodes use authore
 
 Extend the sanitized live-sprites launcher/proof to create a primary worktree, a sibling feature worktree, and an unrelated repository in owned temporary directories. Its private registry and rollout fixtures will prove that the primary view includes same-project siblings, excludes the unrelated agent, that switching to the feature view narrows to the exact origin, and that repository plus at least two other graph surfaces expose truthful placed/unplaced state. It will perform no model turn and preserve the existing source-buffer and camera assertions.
 
-Finally, revise `docs/design/graph-agent-locations.md`, the relevant component text and source lists in `.swarm/plans.json`, and Bazel filegroups for the new helper/proof inputs. Run the focused target after each milestone, then the broader Bazel build/test gates proportional to touched code. Push reviewable commits throughout, run the mandated provider-diverse council review to fixpoint, and record its outcome on the PR.
+Finally, revise `docs/design/graph-agent-locations.md`, the relevant component text and source lists in `.swarm/plans.json`, and Bazel filegroups for the new helper/proof inputs. Run only the focused sprite/workspace/mounted-graph checks, their TypeScript gate, the packaged desktop target, and one owned walkthrough. Push reviewable commits throughout, run the mandated provider-diverse council review to fixpoint, and record its outcome on the PR.
 
 ## Concrete Steps
 
@@ -98,14 +98,13 @@ Create and retain the red regression evidence with:
 
     nix develop --command bazel test //tools/live-sprites:checks --test_output=errors
 
-After the identity and location milestone, run:
+After the identity and location milestone, run the focused sprite, core-workspace, and mounted-navigation/type gates:
 
-    nix develop --command bazel test //tools/workspace-navigation:core-checks //tools/live-sprites:checks --test_output=errors
+    nix develop --command bazel test //tools/live-sprites:checks //tools/workspace-navigation:core-checks //tools/workspace-navigation:checks --test_output=errors
 
-After all graph mounts and documentation are complete, run:
+After all graph mounts and documentation are complete, build the packaged desktop and run one owned walkthrough:
 
-    nix develop --command bazel build //...
-    nix develop --command bazel test //...
+    nix develop --command bazel build //:desktop-bundle
     nix develop --command bazel run //tools/live-sprites:smoke
 
 The first command completed with the expected pre-fix failure: the new sibling-worktree case was the sole failure among 53 tests. The smoke must report a packaged desktop, two same-project worktrees, an excluded unrelated repository, meaningful multi-graph assertions, retained source/cameras, zero renderer errors, and `modelTurns: 0`.
@@ -147,3 +146,5 @@ Revision note (2026-09-10): recorded the implemented identity, overlay, projecti
 Revision note (2026-09-11): incorporated round-one council findings, the mutable-default discovery, focused/build results, and the second successful owned packaged proof before convergence review.
 
 Revision note (2026-09-11): recorded final provider-diverse council convergence, final gate counts/evidence, known unrelated full-suite/hosted-CI limitations, and filed follow-up issue identities.
+
+Revision note (2026-09-11): ROOT intake correction removed unverified progress timestamps and narrowed the prescribed gates to the rapid focused sprite/workspace/mounted-graph checks, packaged desktop build, and one owned walkthrough; the all-graph project-versus-worktree outcome is unchanged.
