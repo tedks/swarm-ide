@@ -19,7 +19,8 @@ export async function resolveWorkspaceSelection(launchRoot: string, registry: st
       sessionId, branch, base: null, changes: [], changesComplete: false,
       notice: "Launch worktree. Select a registered worktree for its master comparison." });
   }
-  if (!launchGit) throw new Error(`Launch workspace Git identity is unavailable${launchGitFailure instanceof Error ? `: ${launchGitFailure.message}` : "."}`);
+  if (!launchGit) throw new Error("Launch workspace Git identity is unavailable. Check Git repository metadata and permissions.",
+    { cause: launchGitFailure });
   const selected = await registeredWorktree(launch.root, registry, sessionId, signal);
   const [targetGit, target] = await Promise.all([gitWorktreeIdentity(selected.root, signal), registerRepository(selected.root)]);
   if (launchGit.projectId !== targetGit.projectId) throw new Error("Choose a registered worktree of this Git repository.");
@@ -90,7 +91,10 @@ export class WorkspaceContextRouter {
         const selection = await this.options.resolve(request.sessionId, this.lifetime.signal);
         if (this.stopping) throw new Error("Core is shutting down.");
         const runtime = await this.open(selection, selection.id === primary.selection.id);
-        const snapshot = await runtime.snapshot();
+        // Identity refreshes retain the typed response envelope but reuse the
+        // runtime's already-loaded snapshot; the renderer discards it and no
+        // repository traversal is warranted for this metadata-only request.
+        const snapshot = request.identityOnly ? await runtime.ready : await runtime.snapshot();
         if (this.stopping) throw new Error("Core is shutting down.");
         this.options.post(CoreResponseSchema.parse({ protocolVersion: PROTOCOL_VERSION, requestId: request.requestId, ok: true,
           sequence: 0, workspaceId: selection.id, workspace: selection, snapshot }));

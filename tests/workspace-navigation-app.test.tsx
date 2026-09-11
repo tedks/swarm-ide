@@ -52,7 +52,8 @@ function snapshotFor(scope: "A" | "B"): WorkspaceSnapshot {
 function setup() {
   const snapshots = { A: snapshotFor("A"), B: snapshotFor("B") };
   const disk = { A: { content: "A disk source\n", revision: "a".repeat(64) }, B: { content: "B disk source\n", revision: "b".repeat(64) } };
-  let sequence = 0, failSelection = false, holdA = false;
+  let sequence = 0, failSelection = false, failIdentity = false, holdA = false;
+  let launchScope = { ...scopes.A };
   let held: { response: CoreResponse; resolve(value: CoreResponse): void } | undefined;
   let workspaceHold: string | null | undefined;
   let heldWorkspace: { request: CoreRequest; resolve(value: CoreResponse): void } | undefined;
@@ -62,9 +63,11 @@ function setup() {
     const snapshot = snapshots[scope];
     const common = { protocolVersion: PROTOCOL_VERSION, requestId: input.requestId, ok: true as const, sequence: ++sequence, workspaceId: snapshot.project.id, snapshot };
     if (input.type === "workspace.open") {
+      if (input.identityOnly && failIdentity) return { protocolVersion: PROTOCOL_VERSION, requestId: input.requestId, ok: false, error: { code: "WORKSPACE_UNAVAILABLE", message: "Identity unavailable." } };
       if (input.sessionId === CHILD && failSelection) return { protocolVersion: PROTOCOL_VERSION, requestId: input.requestId, ok: false, error: { code: "WORKSPACE_UNAVAILABLE", message: "Child worktree disappeared." } };
       const destination = input.sessionId === CHILD ? "B" : "A";
-      return { ...common, workspaceId: scopes[destination].id, snapshot: snapshots[destination], workspace: scopes[destination] };
+      const workspace = destination === "A" ? launchScope : scopes.B;
+      return { ...common, workspaceId: workspace.id, snapshot: snapshots[destination], workspace };
     }
     if (input.type === "file.read") {
       const { content, revision } = disk[scope];
@@ -95,7 +98,9 @@ function setup() {
     return response(input);
   });
   window.swarm = { request, onEvent: (listener) => { listeners.add(listener); return () => { listeners.delete(listener); }; } };
-  return { request, snapshots, fail: () => { failSelection = true; }, hold: () => { holdA = true; }, held: () => Boolean(held),
+  return { request, snapshots, fail: () => { failSelection = true; }, failIdentity: () => { failIdentity = true; },
+    launchScope: (patch: Partial<WorkspaceDescriptor>) => { launchScope = { ...launchScope, ...patch }; },
+    hold: () => { holdA = true; }, held: () => Boolean(held),
     holdWorkspace: (sessionId: string | null) => { workspaceHold = sessionId; }, workspaceHeld: () => Boolean(heldWorkspace),
     releaseWorkspace: async () => { if (!heldWorkspace) throw new Error("No held workspace opening"); const item = heldWorkspace; workspaceHold = undefined; await act(async () => item.resolve(response(item.request))); },
     release: async (failed = false) => {
@@ -133,8 +138,19 @@ describe("ordinary worktree navigation in the mounted cockpit", () => {
     expect(context.textContent).toContain("/repo/master");
     expect(test.request.mock.calls.filter(([request]) => request.type === "workspace.open").map(([request]) => request))
       .toEqual([expect.objectContaining({ type: "workspace.open", sessionId: null }),
-        expect.objectContaining({ type: "workspace.open", sessionId: null })]);
+        expect.objectContaining({ type: "workspace.open", sessionId: null, identityOnly: true })]);
     expect(test.request.mock.calls.some(([request]) => request.type === "workspace.snapshot")).toBe(false);
+  });
+  it("refreshes mutable branch scope on observer-driven renders and narrows on identity failure", async () => {
+    const test = setup(); render(<App />);
+    const context = await screen.findByRole("region", { name: "Worktree context" });
+    await waitFor(() => expect(test.request.mock.calls.filter(([request]) => request.type === "workspace.open" && request.identityOnly)).toHaveLength(1));
+    const now = Date.now(); vi.spyOn(Date, "now").mockReturnValue(now + 10_000);
+    test.launchScope({ branch: "feature/mutable", agentVisibility: "worktree" }); test.emit("A");
+    await waitFor(() => expect(context.textContent).toContain("feature/mutable"));
+    vi.mocked(Date.now).mockReturnValue(now + 20_000); test.failIdentity(); test.emit("A");
+    await waitFor(() => expect(context.textContent).toContain("Detached HEAD"));
+    expect(context.textContent).toContain("exact-worktree scope retained");
   });
   it("keeps separate same-path dirty editors and steering through ordinary browsing and Back/Forward", async () => {
     const test = setup(); render(<App />);

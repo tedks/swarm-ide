@@ -86,7 +86,8 @@ describe("workspace routing", () => {
   it("re-resolves launch scope on workspace refresh without recreating its runtime", async () => {
     const calls: WorkspaceSelection[] = [], outputs: unknown[] = [];
     let visibility: WorkspaceSelection["agentVisibility"] = "project", branch: string | null = "master";
-    const create = vi.fn((selected: WorkspaceSelection): RootedRuntime => ({ ready: Promise.resolve(snapshot(selected.id)), snapshot: async () => snapshot(selected.id),
+    const snapshotRead = vi.fn(async () => snapshot("primary"));
+    const create = vi.fn((selected: WorkspaceSelection): RootedRuntime => ({ ready: Promise.resolve(snapshot(selected.id)), snapshot: snapshotRead,
       request: async () => {}, shutdown: async () => {}, close() {} }));
     const router = new WorkspaceContextRouter({
       resolve: async () => { const value = { ...selection("primary"), agentVisibility: visibility, branch }; calls.push(value); return value; },
@@ -94,8 +95,9 @@ describe("workspace routing", () => {
     });
     await router.primary;
     visibility = "worktree"; branch = "feature/mutable";
-    await router.request(command("workspace.open", { sessionId: null }));
+    await router.request(command("workspace.open", { sessionId: null, identityOnly: true }));
     expect(calls).toHaveLength(2); expect(create).toHaveBeenCalledOnce();
+    expect(snapshotRead).not.toHaveBeenCalled();
     expect(outputs.at(-1)).toMatchObject({ ok: true, workspace: { branch: "feature/mutable", agentVisibility: "worktree" } });
     await router.shutdown();
   });
@@ -258,6 +260,12 @@ describe("registered same-repository selection", () => {
     git(primary, "checkout", "--detach", "--quiet");
     const detachedScope = await resolveWorkspaceSelection(primary, registry, null);
     expect(detachedScope).toMatchObject({ id: defaultScope.id, root: defaultScope.root, branch: null, agentVisibility: "worktree" });
+  });
+  it("does not widen an ambiguous local main/master repository without remote default authority", async () => {
+    const { primary, registry } = await repositories();
+    git(primary, "branch", "main"); git(primary, "checkout", "--quiet", "main");
+    const selected = await resolveWorkspaceSelection(primary, registry, null);
+    expect(selected).toMatchObject({ branch: "main", agentVisibility: "worktree" });
   });
   it("an accepted write holds its original root while another same-path file is explored", async () => {
     const { primary, other, registry } = await repositories();

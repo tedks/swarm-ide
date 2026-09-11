@@ -7,7 +7,7 @@ export const WorkspaceIdSchema = z.string().min(1).max(256);
 export const WorkspaceProjectIdSchema = z.string().regex(/^[a-f0-9]{64}$/).nullable();
 export const WorkspaceOpenRequestSchema = z.object({
   protocolVersion: z.literal(PROTOCOL_VERSION), requestId: z.string().min(1),
-  type: z.literal("workspace.open"), sessionId: ExternalSessionId.nullable(),
+  type: z.literal("workspace.open"), sessionId: ExternalSessionId.nullable(), identityOnly: z.boolean().optional(),
 }).strict();
 export const WorkspaceSelectionSchema = z.object({
   id: WorkspaceIdSchema, root: z.string().min(1).max(4096), label: z.string().min(1).max(256),

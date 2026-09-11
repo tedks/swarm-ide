@@ -29,13 +29,14 @@ const symbolic = async (root: string, ref: string, signal?: AbortSignal): Promis
 };
 
 const localPrimary = async (root: string, signal?: AbortSignal): Promise<string | null> => {
+  const candidates: string[] = [];
   for (const branch of ["main", "master"]) try {
     const line = boundedLine(await queryRepositoryGit(root, ["show-ref", "--verify", `refs/heads/${branch}`], { signal, maximumBytes: 8192 }));
-    if (line.endsWith(` refs/heads/${branch}`)) return branch;
+    if (line.endsWith(` refs/heads/${branch}`)) candidates.push(branch);
   } catch {
     if (signal?.aborted) throw new Error("Git identity observation stopped.");
   }
-  return null;
+  return candidates.length === 1 ? candidates[0]! : null;
 };
 
 /** Checked Git-family identity for renderer equality only. The opaque digest is
