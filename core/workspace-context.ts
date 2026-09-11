@@ -6,7 +6,7 @@ import { BoundedRequestIds } from "./request-ids";
 import { gitWorktreeIdentity } from "./git-worktree-identity";
 
 export async function resolveWorkspaceSelection(launchRoot: string, registry: string | undefined, sessionId: string | null,
-  signal?: AbortSignal): Promise<WorkspaceSelection> {
+  signal?: AbortSignal, identityOnly = false): Promise<WorkspaceSelection> {
   const launch = await registerRepository(launchRoot);
   let launchGit: Awaited<ReturnType<typeof gitWorktreeIdentity>> | null = null;
   let launchGitFailure: unknown;
@@ -24,6 +24,12 @@ export async function resolveWorkspaceSelection(launchRoot: string, registry: st
   const selected = await registeredWorktree(launch.root, registry, sessionId, signal);
   const [targetGit, target] = await Promise.all([gitWorktreeIdentity(selected.root, signal), registerRepository(selected.root)]);
   if (launchGit.projectId !== targetGit.projectId) throw new Error("Choose a registered worktree of this Git repository.");
+  if (identityOnly) {
+    selected.check();
+    return WorkspaceSelectionSchema.parse({ id: target.id, root: target.root, label: selected.row.label, projectId: targetGit.projectId,
+      agentVisibility: targetGit.branch && targetGit.branch === targetGit.defaultBranch ? "project" : "worktree",
+      sessionId, branch: targetGit.branch, base: null, changes: [], changesComplete: false });
+  }
   const browser = await browseRegisteredWorktree(launch.root, registry, {
     protocolVersion: PROTOCOL_VERSION, requestId: "workspace-metadata", type: "worktree.browse", sessionId, directory: "", page: 0,
   }, signal);
@@ -52,7 +58,7 @@ export class WorkspaceContextRouter {
   private lifetime = new AbortController();
   readonly primary: Promise<{ selection: WorkspaceSelection; runtime: RootedRuntime }>;
   constructor(private readonly options: {
-    resolve(sessionId: string | null, signal: AbortSignal): Promise<WorkspaceSelection>;
+    resolve(sessionId: string | null, signal: AbortSignal, identityOnly?: boolean): Promise<WorkspaceSelection>;
     create(selection: WorkspaceSelection, primary: boolean): RootedRuntime;
     post(message: unknown): void;
   }) {
@@ -88,7 +94,15 @@ export class WorkspaceContextRouter {
         // Opening is also the renderer's bounded identity revalidation path.
         // Re-resolve even the launch worktree so a mutable HEAD cannot retain
         // stale project-wide visibility after the initial runtime was created.
-        const selection = await this.options.resolve(request.sessionId, this.lifetime.signal);
+        let selection: WorkspaceSelection;
+        if (request.identityOnly) {
+          const deadline = new AbortController(), cancel = () => deadline.abort();
+          const timer = setTimeout(cancel, 4_000);
+          this.lifetime.signal.addEventListener("abort", cancel, { once: true });
+          if (this.lifetime.signal.aborted) cancel();
+          try { selection = await this.options.resolve(request.sessionId, deadline.signal, true); }
+          finally { clearTimeout(timer); this.lifetime.signal.removeEventListener("abort", cancel); }
+        } else selection = await this.options.resolve(request.sessionId, this.lifetime.signal);
         if (this.stopping) throw new Error("Core is shutting down.");
         const runtime = await this.open(selection, selection.id === primary.selection.id);
         // Identity refreshes retain the typed response envelope but reuse the

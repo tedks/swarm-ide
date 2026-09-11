@@ -11,6 +11,7 @@ import type { WorkspaceDescriptor } from "../protocol/workspace";
 import type { RepositoryObservation } from "../protocol/repository";
 import { fixtureBuildObservation } from "./support/build-graph-fixture";
 
+const externalFixture = vi.hoisted(() => ({ refreshing: false }));
 vi.mock("../app/renderer/GraphPane", () => ({ GraphPane: ({ graph }: { graph: GraphSlice }) => <div data-testid={`scope-${graph.topologyId}`}>{graph.scope}</div> }));
 vi.mock("../app/renderer/plans/PlanWorkspace", () => ({ PlanWorkspace: ({ renderWorkspace }: {
   renderWorkspace(value: { components: ReactNode; document: ReactNode; tasks: ReactNode }): ReactNode;
@@ -22,7 +23,7 @@ vi.mock("../app/renderer/external-agents/client", () => {
   const client = { selected: root.id, detail: { session: root, handoff: "available", entries: [], coverage: { tailBytes: 0, partial: false, omittedRecords: 0, message: "Recent" } },
     snapshot: { status: "observed", observedAt: root.observedAt, message: "Registered", sessions: [root, child] }, busy: false, notice: "", fleet: [],
     read: async () => {}, refresh: async () => {}, handoff: async () => {} };
-  return { useExternalAgents: () => client };
+  return { useExternalAgents: () => ({ ...client, observing: true, refreshing: externalFixture.refreshing }) };
 });
 import { App } from "../app/renderer/App";
 
@@ -109,6 +110,7 @@ function setup() {
       await act(async () => item.resolve(failed ? { protocolVersion: PROTOCOL_VERSION, requestId: item.response.requestId,
         ok: false, workspaceId: scopes.A.id, error: { code: "FILE_NOT_FOUND", message: "Old source read was unavailable." } } : item.response));
     },
+    externalRefreshing: (refreshing: boolean) => { externalFixture.refreshing = refreshing; },
     emit: (scope: "A" | "B") => act(() => {
       for (const listener of listeners) listener({ protocolVersion: PROTOCOL_VERSION, type: "workspace.changed", sequence: ++sequence,
         epoch: snapshots[scope].reconciliation.epoch, emittedAt: "2026-09-08T06:01:00Z", snapshot: snapshots[scope] });
@@ -120,7 +122,7 @@ beforeAll(() => {
   Object.defineProperty(Range.prototype, "getClientRects", { configurable: true, value: () => [] });
   Object.defineProperty(Range.prototype, "getBoundingClientRect", { configurable: true, value: () => new DOMRect() });
 });
-afterEach(() => { cleanup(); vi.restoreAllMocks(); localStorage.clear(); sessionStorage.clear(); delete window.swarm; delete window.swarmView; delete window.swarmLifecycle; });
+afterEach(() => { cleanup(); vi.restoreAllMocks(); externalFixture.refreshing = false; localStorage.clear(); sessionStorage.clear(); delete window.swarm; delete window.swarmView; delete window.swarmLifecycle; });
 const editor = () => EditorView.findFromDOM(document.querySelector(".cm-editor")!)!;
 async function openSource(expected: string) {
   fireEvent.click(await screen.findByRole("button", { name: `Open file ${path}` }));
@@ -146,9 +148,11 @@ describe("ordinary worktree navigation in the mounted cockpit", () => {
     const context = await screen.findByRole("region", { name: "Worktree context" });
     await waitFor(() => expect(test.request.mock.calls.filter(([request]) => request.type === "workspace.open" && request.identityOnly)).toHaveLength(1));
     const now = Date.now(); vi.spyOn(Date, "now").mockReturnValue(now + 10_000);
-    test.launchScope({ branch: "feature/mutable", agentVisibility: "worktree" }); test.emit("A");
+    test.launchScope({ branch: "feature/mutable", agentVisibility: "worktree" });
+    test.externalRefreshing(true); test.emit("A"); test.externalRefreshing(false); test.emit("A");
     await waitFor(() => expect(context.textContent).toContain("feature/mutable"));
-    vi.mocked(Date.now).mockReturnValue(now + 20_000); test.failIdentity(); test.emit("A");
+    vi.mocked(Date.now).mockReturnValue(now + 20_000); test.failIdentity();
+    test.externalRefreshing(true); test.emit("A"); test.externalRefreshing(false); test.emit("A");
     await waitFor(() => expect(context.textContent).toContain("Detached HEAD"));
     expect(context.textContent).toContain("exact-worktree scope retained");
   });

@@ -56,7 +56,7 @@ export interface WorkerDependencies {
 export function startCoreWorker(dependencies: WorkerDependencies = {}): void {
   const launchRoot = process.env.SWARM_WORKSPACE_ROOT ?? process.cwd();
   const router = new WorkspaceContextRouter({
-    resolve: (sessionId, signal) => resolveWorkspaceSelection(launchRoot, process.env.SWARM_EXTERNAL_AGENTS_REGISTRY, sessionId, signal),
+    resolve: (sessionId, signal, identityOnly) => resolveWorkspaceSelection(launchRoot, process.env.SWARM_EXTERNAL_AGENTS_REGISTRY, sessionId, signal, identityOnly),
     create: (selection, primary) => createWorkspaceRuntime(selection.root, selection.id, primary, dependencies,
       (message) => process.parentPort?.postMessage(message)),
     post: (message) => process.parentPort?.postMessage(message),

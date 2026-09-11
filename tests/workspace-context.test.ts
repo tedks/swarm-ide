@@ -90,7 +90,8 @@ describe("workspace routing", () => {
     const create = vi.fn((selected: WorkspaceSelection): RootedRuntime => ({ ready: Promise.resolve(snapshot(selected.id)), snapshot: snapshotRead,
       request: async () => {}, shutdown: async () => {}, close() {} }));
     const router = new WorkspaceContextRouter({
-      resolve: async () => { const value = { ...selection("primary"), agentVisibility: visibility, branch }; calls.push(value); return value; },
+      resolve: async (_sessionId, _signal, identityOnly) => { const value = { ...selection("primary"), agentVisibility: visibility, branch }; calls.push(value);
+        expect(identityOnly ?? false).toBe(calls.length > 1); return value; },
       create, post: (value) => outputs.push(value),
     });
     await router.primary;
@@ -266,6 +267,11 @@ describe("registered same-repository selection", () => {
     git(primary, "branch", "main"); git(primary, "checkout", "--quiet", "main");
     const selected = await resolveWorkspaceSelection(primary, registry, null);
     expect(selected).toMatchObject({ branch: "main", agentVisibility: "worktree" });
+  });
+  it("uses the lightweight registered identity path without collecting changes", async () => {
+    const { primary, other, registry } = await repositories();
+    const selected = await resolveWorkspaceSelection(primary, registry, SESSION, undefined, true);
+    expect(selected).toMatchObject({ root: other, branch: "agent-work", base: null, changes: [], changesComplete: false });
   });
   it("an accepted write holds its original root while another same-path file is explored", async () => {
     const { primary, other, registry } = await repositories();
