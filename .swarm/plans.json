@@ -161,7 +161,7 @@
         },
         {
           "label": "//tools/live-sprites:checks",
-          "role": "Checks project/worktree-scoped agent placement, bounded agent-heavy overlays, visible task sprites, unplaced reachability, gestures and stable graph geometry",
+          "role": "Checks project/worktree-scoped agent placement, quiet unmatched-agent behavior, visible task sprites, gestures and stable graph geometry",
           "dependencies": [
             { "label": "//:quality_sources", "relation": "data" },
             { "label": "//tools/live-sprites:sources", "relation": "data" }

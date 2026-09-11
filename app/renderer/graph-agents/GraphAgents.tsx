@@ -34,28 +34,9 @@ export function GraphAgentLayer({ locations, nearest = false, children }: {
 }) {
   const { agents, visible } = useContext(AgentContext);
   const placed = useMemo(() => placeGraphAgents(visible ? agents : emptyAgents, locations, nearest), [agents, locations, nearest, visible]);
-  const placedIds = useMemo(() => new Set([...placed.values()].flatMap((rows) => rows.map((agent) => agent.id))), [placed]);
   return <LocationContext.Provider value={placed}><div className="graph-agent-layer" data-graph-agent-layer="true">
-    {children}<GraphAgentPlacementSummary placedIds={placedIds} />
+    {children}
   </div></LocationContext.Provider>;
-}
-
-function GraphAgentPlacementSummary({ placedIds }: { placedIds: ReadonlySet<string> }) {
-  const { agents, visible, open } = useContext(AgentContext);
-  if (!visible || !agents.length) return null;
-  const unplaced = agents.filter((agent) => !placedIds.has(agent.id));
-  return <div className="graph-agent-placement-summary nodrag nopan" data-graph-agent-summary="true"
-    onPointerDown={(event) => event.stopPropagation()} onMouseDown={(event) => event.stopPropagation()}
-    onDoubleClick={(event) => event.stopPropagation()} onKeyDown={(event) => event.stopPropagation()}>
-    <span>{placedIds.size} located · {unplaced.length} unplaced</span>
-    {unplaced.map((agent) => { const worktree = agent.worktree.split("/").at(-1) ?? agent.worktree;
-      const origin = agent.branch ? `${agent.branch} · ${worktree}` : worktree;
-      const exactOrigin = agent.branch ? `${agent.branch} · ${agent.worktree}` : agent.worktree;
-      return <button type="button" key={agent.id} data-agent-id={agent.id}
-        aria-label={`Open unplaced agent ${agent.label} from ${exactOrigin}`}
-        title={`${agent.label} · Origin ${exactOrigin}\nNo explicit membership in this graph.\nLatest: ${agent.latestAction}`}
-        onClick={(event) => { event.stopPropagation(); open(agent.id); }}>{agent.label} · {origin}</button>; })}
-  </div>;
 }
 
 export function GraphAgentSprites({ nodeId }: { nodeId: string }) {

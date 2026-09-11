@@ -30,30 +30,28 @@ async function main() {
   await run(() => document.querySelector("#reconcile-success")?.click());
   await until(async () => (await surface(".graph-pane[data-topology='service']", sessions.feature)).length > 0, "feature agent on service graph");
   await until(async () => (await surface(".component-graph-card", sessions.feature)).length > 0, "feature agent on component graph");
-  const geometry = (ownerSelector, canvasSelector) => run((ownerSelector, canvasSelector) => {
+  const geometry = (ownerSelector, canvasSelector) => run((ownerSelector, canvasSelector, unplacedIds) => {
     const owner = document.querySelector(ownerSelector);
     const layer = owner && [...owner.children].find((element) => element.matches("[data-graph-agent-layer]"));
-    const canvas = layer?.querySelector(canvasSelector), summary = layer?.querySelector("[data-graph-agent-summary]");
-    if (!owner || !layer || !canvas || !summary) return null;
-    const layerBox = layer.getBoundingClientRect(), canvasBox = canvas.getBoundingClientRect(), summaryBox = summary.getBoundingClientRect();
+    const canvas = layer?.querySelector(canvasSelector);
+    if (!owner || !layer || !canvas) return null;
+    const layerBox = layer.getBoundingClientRect(), canvasBox = canvas.getBoundingClientRect();
     return { directLayer: layer.parentElement === owner, canvasInsideLayer: canvas.parentElement === layer,
-      layerHeight: layerBox.height, canvasHeight: canvasBox.height, summaryHeight: summaryBox.height,
-      summaryScrollHeight: summary.scrollHeight, summaryClientHeight: summary.clientHeight,
-      summaryInsideLayer: summaryBox.left >= layerBox.left - 1 && summaryBox.right <= layerBox.right + 1 &&
-        summaryBox.top >= layerBox.top - 1 && summaryBox.bottom <= layerBox.bottom + 1,
-      unplaced: summary.querySelectorAll("button[data-agent-id]").length };
-  }, ownerSelector, canvasSelector);
-  const assertBounded = (layout, name, minimumHeight = 120) => {
+      layerHeight: layerBox.height, canvasHeight: canvasBox.height,
+      summaries: layer.querySelectorAll("[data-graph-agent-summary], .graph-agent-placement-summary").length,
+      unplacedAgents: [...layer.querySelectorAll("[data-agent-id]")].filter((element) => unplacedIds.includes(element.dataset.agentId)).map((element) => element.dataset.agentId) };
+  }, ownerSelector, canvasSelector, [sessions.pathless, ...heavySessions]);
+  const assertCanvasGeometry = (layout, name, minimumHeight = 120) => {
     assert(layout?.directLayer && layout.canvasInsideLayer, `${name} must own one intentional canvas layer`);
     assert(layout.layerHeight >= minimumHeight && Math.abs(layout.layerHeight - layout.canvasHeight) <= 1, `${name} canvas must retain its allocated geometry`);
-    assert(layout.summaryInsideLayer && layout.summaryHeight <= 144, `${name} summary must stay bounded inside the canvas layer`);
-    assert(layout.unplaced >= heavySessions.length && layout.summaryScrollHeight > layout.summaryClientHeight, `${name} must bound an agent-heavy unplaced list`);
+    assert.equal(layout.summaries, 0, `${name} must not show a located/unplaced summary`);
+    assert.deepEqual(layout.unplacedAgents, [], `${name} must omit agents without graph membership even with an agent-heavy fleet`);
   };
   const serviceGeometry = await geometry(".graph-pane[data-topology='service']", ".graph-canvas");
-  assertBounded(serviceGeometry, "service graph");
+  assertCanvasGeometry(serviceGeometry, "service graph");
   await until(() => run(() => !!document.querySelector(".component-graph-card .design-components [data-graph-agent-layer]")), "unified component plan graph");
   const componentGeometry = await geometry(".component-graph-card .design-components", ".design-graph");
-  assertBounded(componentGeometry, "component plan graph", 100);
+  assertCanvasGeometry(componentGeometry, "component plan graph", 100);
   await until(() => run((id) => !!document.querySelector(`.task-graph-card .task-projection:not([hidden]) .graph-agent-sprite[data-agent-id='${id}']`), sessions.task), "task agent placement");
   const taskGeometry = await run((id) => {
     const sprite = document.querySelector(`.task-graph-card .task-projection:not([hidden]) .graph-agent-sprite[data-agent-id='${id}']`);
@@ -73,19 +71,21 @@ async function main() {
     primaryCoverage[name] = { primary: await surface(selector, sessions.primary), feature: await surface(selector, sessions.feature) };
     assert(primaryCoverage[name].primary.length > 0 && primaryCoverage[name].feature.length > 0, `${name} must show both same-project worktrees`);
   }
-  const unrelatedVisible = await run((id) => !!document.querySelector(`.graph-agent-sprite[data-agent-id='${id}'], .graph-agent-placement-summary button[data-agent-id='${id}']`), sessions.unrelated);
+  const graphContainsAgent = (id) => run((id) => !!document.querySelector(`[data-graph-agent-layer] [data-agent-id='${id}']`), id);
+  const unrelatedVisible = await graphContainsAgent(sessions.unrelated);
   assert.equal(unrelatedVisible, false, "unrelated project agent must not enter graph layers");
-  assert(await run((id) => !!document.querySelector(`.graph-agent-placement-summary button[data-agent-id='${id}']`), sessions.pathless), "pathless same-project agent must remain reachable as unplaced");
+  assert.equal(await graphContainsAgent(sessions.pathless), false, "pathless same-project agent must be omitted from graph layers");
+  assert.equal(await run(() => !!document.querySelector("[data-graph-agent-summary], .graph-agent-placement-summary")), false, "graph layers must omit the located/unplaced overlay");
   assert(Object.values(primaryCoverage).every((coverage) => coverage.feature.every((entry) => entry.title.includes("feature/agent"))));
   await run((id) => { const select = document.querySelector("select[aria-label='Worktree']"); const setter = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, "value").set;
     setter.call(select, id); select.dispatchEvent(new Event("change", { bubbles: true })); }, sessions.feature);
   await until(() => run((ids) => !!document.querySelector(`.graph-pane[data-topology='repo'] .graph-agent-sprite[data-agent-id='${ids.feature}']`) &&
-    !document.querySelector(`.graph-agent-sprite[data-agent-id='${ids.primary}'], .graph-agent-placement-summary button[data-agent-id='${ids.primary}']`), sessions), "feature worktree graph and exact agent scope");
-  assert.equal(await run((id) => !!document.querySelector(`.graph-agent-sprite[data-agent-id='${id}'], .graph-agent-placement-summary button[data-agent-id='${id}']`), sessions.primary), false,
+    !document.querySelector(`[data-graph-agent-layer] [data-agent-id='${ids.primary}']`), sessions), "feature worktree graph and exact agent scope");
+  assert.equal(await graphContainsAgent(sessions.primary), false,
     "feature scope must exclude the primary worktree agent");
-  assert.equal(await run((id) => !!document.querySelector(`.graph-agent-sprite[data-agent-id='${id}'], .graph-agent-placement-summary button[data-agent-id='${id}']`), sessions.unrelated), false,
+  assert.equal(await graphContainsAgent(sessions.unrelated), false,
     "feature scope must exclude unrelated agents");
-  assert(await run((id) => !!document.querySelector(`.graph-agent-placement-summary button[data-agent-id='${id}']`), sessions.pathless), "feature pathless agent must remain unplaced");
+  assert.equal(await graphContainsAgent(sessions.pathless), false, "feature pathless agent must be omitted from graph layers");
   const actual = await surface(".graph-pane[data-topology='repo']", sessions.feature);
   assert(actual.length > 0 && actual.every((entry) => entry.path === "src/shared.ts" && entry.node));
   // Open one real source through the ordinary palette and retain a local edit.
@@ -125,7 +125,7 @@ async function main() {
   const after = await run(() => ({ text: document.querySelector(".cm-content").textContent, cameras: [...document.querySelectorAll(".react-flow__viewport")].map((node) => node.style.transform) }));
   assert.equal(after.text, before.text); assert.deepEqual(after.cameras, before.cameras); assert.deepEqual(errors, []);
   await fs.writeFile(path.join(evidence, "proof.json"), JSON.stringify({ registeredObservation: true, owned: true, twoWorktrees: true,
-    unrelatedExcluded: true, featureExactScope: true, pathlessUnplaced: true, sessions, primaryCoverage, actual,
+    unrelatedExcluded: true, featureExactScope: true, pathlessOmittedFromGraphs: true, placementSummaryOmitted: true, sessions, primaryCoverage, actual,
     heavySessions: heavySessions.length, serviceGeometry, componentGeometry, taskGeometry,
     visibleNativeClick: true, sourceRetained: true, camerasRetained: true, modelTurns: 0, errors }));
   await until(() => fs.access(path.join(evidence, "close-request")).then(() => true, () => false), "capture");
