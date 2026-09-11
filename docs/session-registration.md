@@ -33,6 +33,24 @@ not change a running IDE's configuration. Once an IDE is configured for this
 path, its existing observer refresh reads new rows. This command does not adopt
 ROOT's running visualization or alter ROOT's private registry automatically.
 
+An installed launch made with `--tmux-server`/`--tmux-socket` plus
+`--tmux-session`, or selected automatically from the invoking tmux pane, maintains
+its generated registry while that window is open. It repeatedly checks only the
+initially resolved canonical socket and numeric session ID. Newly appearing
+supported owners are registered through this same helper; unchanged rows are not
+rewritten. Automatic selection refreshes only linked worktrees under the original
+Git common directory, while explicit selection keeps its independent project/session
+scope. No process name, window label, timing or OS parent/child relationship supplies
+logical ancestry: only `session_meta.forked_from_id` does.
+
+When a pane disappears or a checked replacement arrives, reconciliation uses the
+`retire` operation below, keeping the old rollout row and removing its live target.
+A present pane gets one inconclusive discovery grace scan, but exact handoff/send
+validation rejects stale process, start-time, pane, socket or rollout identity on
+every action regardless. A failed whole scan changes nothing and retries later.
+Exiting Swarm aborts and drains only its short-lived tmux, Git and registration
+commands; the observed session and agent continue running.
+
 The registration helper continues to treat `--context-root` as an explicit
 canonical browsing root, independently of the process cwd. For the supported
 bare-parent plus sibling-worktrees layout, the installed launcher's automatic or

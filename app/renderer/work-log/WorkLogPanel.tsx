@@ -64,6 +64,7 @@ export type WorkLogController = ReturnType<typeof useWorkLog>;
 
 /** Outcome labels describe past evidence, never the current agent's liveness. */
 export function workOutcomeLabel(entry: WorkLogEntry): string {
+  if (entry.origin === "milestone") return "Milestone";
   return entry.state === "completed" ? "Completed turn" : entry.state === "failed" ? "Failed turn" : "Saved update";
 }
 
@@ -143,11 +144,11 @@ function WorkLogView({ onOpen, onAgent, onTask, onOpenAgent, onOpenTask, control
       <div><label htmlFor={`${settingsId}-debounce`}>Batch delay (seconds)</label><input id={`${settingsId}-debounce`} type="number" min={10} max={600} step={1}
         value={Number.isNaN(settings.debounceSeconds) ? "" : settings.debounceSeconds} disabled={settingsDisabled}
         onChange={(event) => updateSettings({ debounceSeconds: event.target.value === "" ? Number.NaN : Number(event.target.value) })} /></div>
-      <p>Summarizes new agent turns automatically. Pause to change settings; Pause is remembered when you reopen the IDE.</p>
+      <p>Summarizes concrete milestones and terminal agent turns automatically. Pause to change settings; Pause is remembered when you reopen the IDE.</p>
     </div>
     {notice ? <p className="work-log-notice" role="status">{notice}</p> : null}
     {snapshot?.notice && !notice ? <p className="work-log-notice" role="status">{snapshot.notice}</p> : null}
-    {!entries.length ? <p className="work-log-empty">{snapshot?.running ? "Watching for completed agent turns…" : snapshot ? "Summaries paused." : "Reading Work Log…"}</p> : null}
+    {!entries.length ? <p className="work-log-empty">{snapshot?.running ? "Watching for concrete agent updates…" : snapshot ? "Summaries paused." : "Reading Work Log…"}</p> : null}
     <ol className="work-log-entries">{entries.map((entry) => <Outcome key={entry.id} entry={entry} pending={pending}
       onOpen={onOpen} onOpenAgent={onAgent ?? onOpenAgent} onOpenTask={onTask ?? onOpenTask} onRecord={(taskId) => send({ type: "workLog.record", entryId: entry.id, taskId })} />)}</ol>
   </section>;

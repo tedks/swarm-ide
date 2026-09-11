@@ -127,16 +127,26 @@ exact canonical root. If its cwd is exactly the opened project's bare Git direct
 itself or the parent containing its bare `.git`, the launcher revalidates the
 selected existing worktree against that same common directory and records it as
 the browsing root; unrelated, missing or noncanonical roots are not substituted.
-A fresh private bounded registry
-generation feeds the unchanged observer. Older private
+A fresh private bounded registry generation feeds the unchanged observer. While
+that installed window remains open, the launcher rescans only the initially
+resolved canonical socket and numeric session ID, serially and without overlapping
+polls. It reuses exact registration checks, updates only changed rows, and removes
+only stale `tmux` authority while retaining observed rollout history. A whole-scan
+failure keeps the last registry and is retried with rate-limited terminal reporting.
+Confirmed selected-session or server teardown retires its live authority even when
+a killed server leaves its socket inode behind; unclassified command failures remain
+inconclusive.
+The launcher aborts and drains its own short-lived discovery commands on exit;
+no agent or tmux lifecycle is transferred to the installed app. Older private
 generations remain available explicitly, not merged automatically into new scope.
-No agent or tmux lifecycle is transferred to the installed app.
 
 Without explicit registry/tmux overrides, an invocation inside tmux selects the
 current pane's checked socket/session and reuses that same discovery helper,
-filtering owners to the project's actual Git worktrees. Failure or no matching
-owner falls back to the private saved registry without preventing project
-startup. This is one launch-time association, not a background scanner.
+filtering owners to the project's actual Git worktrees. The recurring asynchronous
+project refresh admits worktrees created after startup only when they retain the
+same Git common-directory identity. Explicit selection continues to choose the
+project and tmux session independently. An empty selected session opens with an
+empty observed generation so a later supported owner can appear without restart.
 
 ## Container browser entry
 

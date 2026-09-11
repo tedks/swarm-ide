@@ -4,7 +4,7 @@ import { execFileSync } from "node:child_process";
 import { mkdtempSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { discoverProject, prepareProject } from "./project.mjs";
+import { discoverProject, prepareProject, refreshProject } from "./project.mjs";
 
 function fixture(run) {
   const directory = mkdtempSync(join(tmpdir(), "swarm-project-start-"));
@@ -96,6 +96,19 @@ test("removed saved association falls back to the managed empty registry", () =>
   const initial = prepare(repo); initial.rememberRegistry(join(directory, "old-removed-association.json"));
   assert.equal(prepare(repo).registry, initial.registry);
 }));
+
+test("live refresh rejects an excessive worktree listing before inspecting any entry", async () => {
+  const directory = mkdtempSync(join(tmpdir(), "swarm-project-refresh-"));
+  let calls = 0;
+  try {
+    const entries = Array.from({ length: 3 }, (_, index) => `worktree ${join(directory, `worktree-${index}`)}\0HEAD 0000`).join("\0\0");
+    await assert.rejects(refreshProject({ identity: directory, git: true, worktrees: [] }, process.env, undefined, {
+      maxWorktrees: 2,
+      runGit: async (_cwd, args) => { calls++; assert.deepEqual(args, ["worktree", "list", "--porcelain", "-z"]); return entries; },
+    }), /more than 2 worktree records/);
+    assert.equal(calls, 1);
+  } finally { rmSync(directory, { recursive: true, force: true }); }
+});
 
 test("automatic profile symlink into source is rejected before creating a profile there", () => fixture(({ repo, prepare }) => {
   const initial = prepare(repo), sourceProfile = join(repo, "profile-must-stay-empty"); mkdirSync(sourceProfile);
