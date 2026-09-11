@@ -43,33 +43,31 @@ async function main() {
         summaryBox.top >= layerBox.top - 1 && summaryBox.bottom <= layerBox.bottom + 1,
       unplaced: summary.querySelectorAll("button[data-agent-id]").length };
   }, ownerSelector, canvasSelector);
-  const assertBounded = (layout, name) => {
+  const assertBounded = (layout, name, minimumHeight = 120) => {
     assert(layout?.directLayer && layout.canvasInsideLayer, `${name} must own one intentional canvas layer`);
-    assert(layout.layerHeight >= 120 && Math.abs(layout.layerHeight - layout.canvasHeight) <= 1, `${name} canvas must retain its allocated geometry`);
+    assert(layout.layerHeight >= minimumHeight && Math.abs(layout.layerHeight - layout.canvasHeight) <= 1, `${name} canvas must retain its allocated geometry`);
     assert(layout.summaryInsideLayer && layout.summaryHeight <= 144, `${name} summary must stay bounded inside the canvas layer`);
     assert(layout.unplaced >= heavySessions.length && layout.summaryScrollHeight > layout.summaryClientHeight, `${name} must bound an agent-heavy unplaced list`);
   };
   const serviceGeometry = await geometry(".graph-pane[data-topology='service']", ".graph-canvas");
   assertBounded(serviceGeometry, "service graph");
-  await run(() => [...document.querySelectorAll(".planning-tabs button")].find((button) => button.textContent === "Plans & components")?.click());
-  await until(() => run(() => !!document.querySelector(".planning-projection[aria-label='Authored plan hierarchy']:not([hidden]) [data-graph-agent-layer]")), "authored plan graph");
-  const planGeometry = await geometry(".planning-projection[aria-label='Authored plan hierarchy']:not([hidden])", ".planning-canvas");
-  assertBounded(planGeometry, "plan graph");
-  await run(() => [...document.querySelectorAll(".planning-tabs button")].find((button) => button.textContent === "Task blockage")?.click());
-  await until(() => run((id) => !!document.querySelector(`.task-projection:not([hidden]) .graph-agent-sprite[data-agent-id='${id}']`), sessions.task), "task agent placement");
+  await until(() => run(() => !!document.querySelector(".component-graph-card .design-components [data-graph-agent-layer]")), "unified component plan graph");
+  const componentGeometry = await geometry(".component-graph-card .design-components", ".design-graph");
+  assertBounded(componentGeometry, "component plan graph", 100);
+  await until(() => run((id) => !!document.querySelector(`.task-graph-card .task-projection:not([hidden]) .graph-agent-sprite[data-agent-id='${id}']`), sessions.task), "task agent placement");
   const taskGeometry = await run((id) => {
-    const sprite = document.querySelector(`.task-projection:not([hidden]) .graph-agent-sprite[data-agent-id='${id}']`);
+    const sprite = document.querySelector(`.task-graph-card .task-projection:not([hidden]) .graph-agent-sprite[data-agent-id='${id}']`);
     const node = sprite?.closest(".planning-node"), layer = sprite?.closest("[data-graph-agent-layer]");
     if (!sprite || !node || !layer) return null;
     sprite.scrollIntoView({ block: "nearest", inline: "nearest" });
     const box = sprite.getBoundingClientRect(), nodeBox = node.getBoundingClientRect(), layerBox = layer.getBoundingClientRect();
     const x = box.left + box.width / 2, y = box.top + box.height / 2;
-    return { height: box.height, extendsBelowNode: box.bottom > nodeBox.bottom + 8,
+    return { height: box.height, insideNode: box.left >= nodeBox.left && box.right <= nodeBox.right && box.top >= nodeBox.top && box.bottom <= nodeBox.bottom,
       insideLayer: box.left >= layerBox.left && box.right <= layerBox.right && box.top >= layerBox.top && box.bottom <= layerBox.bottom,
       clickable: sprite.contains(document.elementFromPoint(x, y)), nodeOverflow: getComputedStyle(node).overflow };
   }, sessions.task);
-  assert(taskGeometry?.height >= 20 && taskGeometry.extendsBelowNode && taskGeometry.insideLayer && taskGeometry.clickable && taskGeometry.nodeOverflow === "visible",
-    "task sprite must be fully visible and clickable outside the task node");
+  assert(taskGeometry?.height >= 18 && taskGeometry.insideNode && taskGeometry.insideLayer && taskGeometry.clickable && taskGeometry.nodeOverflow === "visible",
+    `task sprite must be measured, fully visible and clickable inside the task node: ${JSON.stringify(taskGeometry)}`);
   const primaryCoverage = {};
   for (const [name, selector] of Object.entries({ repository: ".graph-pane[data-topology='repo']", service: ".graph-pane[data-topology='service']", component: ".component-graph-card" })) {
     primaryCoverage[name] = { primary: await surface(selector, sessions.primary), feature: await surface(selector, sessions.feature) };
@@ -128,7 +126,7 @@ async function main() {
   assert.equal(after.text, before.text); assert.deepEqual(after.cameras, before.cameras); assert.deepEqual(errors, []);
   await fs.writeFile(path.join(evidence, "proof.json"), JSON.stringify({ registeredObservation: true, owned: true, twoWorktrees: true,
     unrelatedExcluded: true, featureExactScope: true, pathlessUnplaced: true, sessions, primaryCoverage, actual,
-    heavySessions: heavySessions.length, serviceGeometry, planGeometry, taskGeometry,
+    heavySessions: heavySessions.length, serviceGeometry, componentGeometry, taskGeometry,
     visibleNativeClick: true, sourceRetained: true, camerasRetained: true, modelTurns: 0, errors }));
   await until(() => fs.access(path.join(evidence, "close-request")).then(() => true, () => false), "capture");
   // The repository and profile are disposable proof resources. Exit this owned

@@ -32,6 +32,7 @@ await writeFile(join(primary, ".swarm/plans.json"), JSON.stringify({ version: 1,
 git(primary, "add", ".");
 git(primary, "-c", "user.name=Sprite proof", "-c", "user.email=proof@example.invalid", "commit", "-qm", "Owned sprite project");
 const ditzEnvironment = { ...process.env, HOME: ditzHome, XDG_CONFIG_HOME: ditzHome,
+  DITZ_USER: "Sprite proof", DITZ_EMAIL: "proof@example.invalid",
   GIT_AUTHOR_NAME: "Sprite proof", GIT_AUTHOR_EMAIL: "proof@example.invalid",
   GIT_COMMITTER_NAME: "Sprite proof", GIT_COMMITTER_EMAIL: "proof@example.invalid" };
 const ditz = (...args) => execFileSync("ditz", args, { cwd: primary, env: ditzEnvironment, stdio: "ignore" });

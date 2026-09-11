@@ -22,6 +22,9 @@ The implementation must preserve an important distinction: graphs and source byt
 - [x] Re-ran the affected Bazel suites green, built the packaged desktop target, and passed the packaged two-worktree proof with repository/service/component coverage, retained state, and zero model turns.
 - [x] Reached council fixpoint after delta-only rounds: Codex native, Claude Sonnet, and Antigravity all returned CLEAN with zero Critical/Important findings; fixed the final redundant-render nit.
 - [x] Committed and pushed the completed plan/handoff increment, updated the Ditz issue without closing it, synced metadata, verified branch/remote state, and wrote `verification.md`, `seam.md`, and `final-recap` in the authorized step directory.
+- [x] Corrected the joined layout defects with one bounded canvas-layer overlay and a measured task-node control strip; added a 20-agent service/component/task geometry proof.
+- [x] Coalesced selected-detail Git identity reads while retaining fleet snapshots as conservative branch-refresh authority.
+- [x] Normally merged reviewed master `27d001a9`, preserving its lifecycle projection, then passed the single joined check and owned packaged correction proof.
 
 ## Surprises & Discoveries
 
@@ -39,6 +42,8 @@ The implementation must preserve an important distinction: graphs and source byt
   Evidence: the new default-to-feature regression initially widened `temporary-feature` to project scope. Using remote `origin/HEAD`, then only conventional local `main`/`master` refs, makes unknown custom defaults conservative instead.
 - Observation: Git identity enrichment was on the passive observation path as well as the exact send-authorization path, multiplying three or more Git subprocesses by every registration and poll.
   Evidence: the reviewed implementation now skips non-authoritative metadata during Send validation and deduplicates canonical roots in batches of four under one 2.5-second fleet deadline.
+- Observation: an unbounded summary sibling created implicit grid rows, while task sprites placed below an overflow-hidden task node exposed only a four-pixel strip.
+  Evidence: the correction proof records identical canvas/layer heights for service (`159.18px`) and unified component (`100px`) surfaces with 21 unplaced agents in bounded scrolling overlays; the task sprite is `26.91px` high, inside both node and layer, and hit-testable.
 
 ## Decision Log
 
@@ -57,12 +62,17 @@ The implementation must preserve an important distinction: graphs and source byt
 - Decision: piggyback workspace identity revalidation on the existing external-observer publication cadence and update only the descriptor, not the graph snapshot or camera realm.
   Rationale: branch scope is mutable after opening. Reusing the existing cadence adds no timer, while response/root/generation/visit fences prevent a late refresh from changing the active workspace. Failure narrows to exact-root scope.
   Date/Author: 2026-09-11 / Codex
+- Decision: make `GraphAgentLayer` the sole parent grid/flex child and overlay a bounded scrolling summary within it; reserve a measured in-node strip for exact task sprites.
+  Rationale: agent count must not add implicit parent rows, and task placement must remain visibly clickable even when ReactFlow fits a node against the canvas edge.
+  Date/Author: 2026-09-11 / Codex
 
 ## Outcomes & Retrospective
 
 The feature is implemented and council-clean. The final focused graph suite passes 57 tests and the final workspace navigation suite passes 41 tests; the core subset within it passes 38 tests. `bazel build //...` passes all 154 targets. The final packaged proof at `/tmp/swarm-sprites-proof.mf4NVH/proof.json` confirms project-wide repository/service/component placement, exact feature filtering, unrelated exclusion, pathless reachability, exact conversation selection, retained editor/cameras, no renderer errors, and `modelTurns: 0`.
 
 The full `bazel test //...` gate was attempted once before convergence and exposed pre-existing repository-wide fixture/UI-authority drift plus parallel timeout/contention outside this change; affected targets pass in isolation. Hosted CI stops even earlier at its Linux namespace prerequisite because the runner cannot write its user namespace UID map, and the authorization explicitly designates hosted CI as ignored under local-only landing authority. Follow-up issues `swarm-workspace-identity-response-contract` and `swarm-external-agent-identity-bounds-test` retain the council's nonblocking API-shape and focused performance-test suggestions. ROOT retains merge and installed-app adoption.
+
+The bounded ROOT correction composes reviewed master `27d001a9` without replacing its lifecycle work. `//tools/live-sprites:checks` is green for the joined renderer, identity-cache, and lifecycle seam. `/tmp/swarm-sprites-correction.Y6iJKI/proof.json` is green for bounded agent-heavy service/unified-component geometry, a fully visible and clickable task sprite, exact project/worktree scope, retained source/cameras, no renderer errors, and zero model turns. The earlier broad-suite result remains historical evidence only; its 32 failures were not individually proven baseline and the correction did not repeat that suite.
 
 ## Context and Orientation
 
@@ -148,3 +158,5 @@ Revision note (2026-09-11): incorporated round-one council findings, the mutable
 Revision note (2026-09-11): recorded final provider-diverse council convergence, final gate counts/evidence, known unrelated full-suite/hosted-CI limitations, and filed follow-up issue identities.
 
 Revision note (2026-09-11): ROOT intake correction removed unverified progress timestamps and narrowed the prescribed gates to the rapid focused sprite/workspace/mounted-graph checks, packaged desktop build, and one owned walkthrough; the all-graph project-versus-worktree outcome is unchanged.
+
+Revision note (2026-09-11): recorded the bounded joined-layout/task-sprite/identity-cache correction, reviewed-master composition, single focused check, and one successful combined owned geometry proof without restoring unverified timestamps or repeating the broad suite.
