@@ -33,10 +33,12 @@ afterEach(() => { cleanup(); captured.mounts = 0; vi.clearAllMocks(); });
 describe("real agent graph overlays", () => {
   it("opens independent exact identities, suppressing node click, drag and keyboard propagation", () => {
     const open = vi.fn(), nodeClick = vi.fn(), nodeKey = vi.fn(), down = vi.fn();
-    render(<GraphAgents client={client([detail(), detail("bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb")])} selection={selection()} connected onOpen={open}>
+    const mounted = render(<GraphAgents client={client([detail(), detail("bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb")])} selection={selection()} connected onOpen={open}>
       <GraphAgentLayer locations={[{ id: "file", paths: ["app.ts"] }]}><div onClick={nodeClick} onKeyDown={nodeKey} onPointerDown={down}><GraphAgentSprites nodeId="file" /></div></GraphAgentLayer>
     </GraphAgents>);
     const first = screen.getByRole("button", { name: /Open F7/ }), second = screen.getByRole("button", { name: /Open K7/ });
+    expect(mounted.container.querySelector("[data-graph-agent-summary]")).toBeNull();
+    expect(screen.queryByText(/located|unplaced/i)).toBeNull();
     fireEvent.pointerDown(first); fireEvent.keyDown(first, { key: "Enter" }); fireEvent.click(first); fireEvent.click(second);
     expect(open.mock.calls.map(([id]) => id)).toEqual(["aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa", "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb"]);
     expect(nodeClick).not.toHaveBeenCalled(); expect(nodeKey).not.toHaveBeenCalled(); expect(down).not.toHaveBeenCalled();
@@ -76,19 +78,41 @@ describe("real agent graph overlays", () => {
     mounted.rerender(<GraphAgents client={client()} selection={selection("/projects/app/feature")} connected onOpen={vi.fn()}>{canvas}</GraphAgents>);
     expect(screen.queryByRole("button", { name: /Open F7/ })).toBeNull();
   });
-  it("keeps pathless agents reachable as unplaced with origin identity", () => {
+  it("omits every unplaced agent and the placement summary without changing the canvas wrapper", () => {
     const pathless = { ...detail(), entries: [{ ...detail().entries[0]!, path: undefined, text: "Branch-only work" }] };
+    const unmatched = { ...detail("bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb"), entries: [{ ...detail().entries[0]!, path: "other.ts" }] };
     const open = vi.fn();
-    render(<GraphAgents client={client([pathless])} selection={selection()} connected onOpen={open}>
-      <section data-testid="graph-owner"><GraphAgentLayer locations={[{ id: "file", paths: ["app.ts"] }]}><GraphAgentSprites nodeId="file" /></GraphAgentLayer></section>
+    render(<GraphAgents client={client([pathless, unmatched])} selection={selection()} connected onOpen={open}>
+      <section data-testid="graph-owner"><GraphAgentLayer locations={[{ id: "file", paths: ["app.ts"] }]}><div data-testid="graph-canvas"><GraphAgentSprites nodeId="file" /></div></GraphAgentLayer></section>
     </GraphAgents>);
     const owner = screen.getByTestId("graph-owner"), layer = owner.querySelector("[data-graph-agent-layer]");
     expect(owner.children).toHaveLength(1); expect(layer?.parentElement).toBe(owner);
-    expect(layer?.querySelector("[data-graph-agent-summary]")).toBeTruthy();
-    expect(screen.getByText("0 located · 1 unplaced")).toBeTruthy();
-    const button = screen.getByRole("button", { name: /Open unplaced agent F7 from master/ });
-    expect(button.title).toContain("No explicit membership in this graph");
-    fireEvent.click(button); expect(open).toHaveBeenCalledWith(pathless.session.id);
+    expect(layer?.children).toHaveLength(1); expect(screen.getByTestId("graph-canvas").parentElement).toBe(layer);
+    expect(layer?.querySelector("[data-graph-agent-summary]")).toBeNull();
+    expect(layer?.querySelector("[data-agent-id]")).toBeNull();
+    expect(screen.queryByText(/located|unplaced/i)).toBeNull();
+    expect(screen.queryByRole("button")).toBeNull(); expect(open).not.toHaveBeenCalled();
+  });
+  it("shows only located sprites in mixed observations and preserves their callback and visibility toggle", () => {
+    const located = detail(), pathless = { ...detail("bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb"), entries: [] };
+    const open = vi.fn();
+    const mounted = render(<GraphAgents client={client([located, pathless])} selection={selection()} connected onOpen={open}>
+      <GraphAgentsToggle /><GraphAgentLayer locations={[{ id: "file", paths: ["app.ts"] }]}><GraphAgentSprites nodeId="file" /></GraphAgentLayer>
+    </GraphAgents>);
+    const toggle = screen.getByRole("button", { name: "♧ Agents" });
+    const expectNoUnplaced = () => {
+      expect(mounted.container.querySelector("[data-graph-agent-summary]")).toBeNull();
+      expect(mounted.container.querySelector(`[data-agent-id="${pathless.session.id}"]`)).toBeNull();
+      expect(screen.queryByText(/located|unplaced/i)).toBeNull();
+      expect(screen.queryByRole("button", { name: /Open K7/ })).toBeNull();
+    };
+    const sprite = screen.getByRole("button", { name: /Open F7/ });
+    expect(sprite.dataset.agentId).toBe(located.session.id); expect(sprite.dataset.agentPath).toBe("app.ts");
+    fireEvent.click(sprite); expect(open).toHaveBeenCalledExactlyOnceWith(located.session.id); expectNoUnplaced();
+    fireEvent.click(toggle);
+    expect(toggle.getAttribute("aria-pressed")).toBe("false"); expect(screen.queryByRole("button", { name: /Open F7/ })).toBeNull(); expectNoUnplaced();
+    fireEvent.click(toggle);
+    expect(toggle.getAttribute("aria-pressed")).toBe("true"); expect(screen.getByRole("button", { name: /Open F7/ })).toBeTruthy(); expectNoUnplaced();
   });
   it("describes exact task-only placement without null path or timestamp text", () => {
     const taskOnly = { ...detail(), session: { ...detail().session, task: "swarm-task" }, entries: [] };
