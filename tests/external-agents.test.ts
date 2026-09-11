@@ -112,10 +112,12 @@ describe("operator-registered external observation", () => {
   it("revalidates terminal ordering from a rewritten earlier start", async () => {
     const begin = JSON.stringify({ type: "event_msg", timestamp: "2026-09-08T12:00:01Z", payload: { type: "task_started", turn_id: "old" } }) + "\n";
     const complete = JSON.stringify({ type: "event_msg", timestamp: "2026-09-08T12:02:00Z", payload: { type: "task_complete", turn_id: "old" } }) + "\n";
+    // A newer different turn makes cold replay observably diverge from stale
+    // reuse; replacing this with a neutral record would leave both completed.
     const replacement = JSON.stringify({ type: "event_msg", timestamp: "2026-09-08T12:03:00Z", payload: { type: "task_started", turn_id: "new" } }) + "\n";
     expect(replacement).toHaveLength(begin.length);
     const { service, rollout } = await setup(meta() + begin + complete + message("preserved suffix"));
-    expect(await service.request(request("externalAgents.snapshot"))).toMatchObject({ snapshot: { sessions: [{ lifecycle: { state: "completed" } }] } });
+    expect(await service.request(request("externalAgents.snapshot"))).toMatchObject({ snapshot: { sessions: [{ lifecycle: { state: "completed", turnId: "old" } }] } });
     await writeFile(rollout, meta() + replacement + complete + message("preserved suffix") + message("growth"));
     expect(await service.request(request("externalAgents.snapshot"))).toMatchObject({ snapshot: { sessions: [{ lifecycle: { state: "working", turnId: "new" } }] } });
   });
