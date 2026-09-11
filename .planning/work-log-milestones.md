@@ -17,8 +17,8 @@ The behavior is visible in controlled Work Log tests: append a completed concret
 - [x] (2026-09-11 01:39Z) Added RED transcript/service/UI regressions for ongoing milestones, deduplication, restart and tail movement, milestone-to-terminal transitions, errors/aborts, batching, provenance repair, and cancellation/ownership races; the first focused run failed on the intentionally absent protocol/input fields.
 - [x] (2026-09-11 01:41Z) Implemented bounded transcript milestone extraction, one ordered persisted checkpoint, persisted batching, provenance-safe publication, and Pause publication linearization without changing agent liveness or registry ownership.
 - [x] (2026-09-11 01:47Z) Updated summarizer context, saved-entry provenance, UI copy, design documents, and exact `.swarm/plans.json` source/target mappings.
-- [ ] Run focused Nix/Bazel checks and one bounded owned proof that uses controlled input (completed: Work Log check and awareness targets pass; living-design reader/stability tests pass inside its bundle; remaining: triage recorded unrelated planning-UI bundle failure and decide whether one disposable Luna call adds evidence without touching Goals or Ditz).
-- [ ] Push granular commits, maintain the draft PR and Ditz progress, run the provider-diverse council to convergence, and record final verification/handoff artifacts.
+- [x] (2026-09-11 02:08Z) Ran the focused Nix/Bazel Work Log and awareness gates after review fixes; 123 controlled Work Log/task/UI tests pass, and the awareness target passes with the updated source mapping. The earlier broader living-design bundle retained its recorded unrelated planning-UI failures.
+- [ ] Run the one optional disposable Luna summary over synthetic input, push granular review fixes, maintain the draft PR and Ditz progress, run the fix-delta council to convergence, and record final verification/handoff artifacts.
 
 ## Surprises & Discoveries
 
@@ -40,6 +40,9 @@ The behavior is visible in controlled Work Log tests: append a completed concret
 - Observation: the repository-wide living-design bundle's plan readers and component-graph tests pass with the updated mapping, while 13 unrelated planning UI/bridge cases fail with “Could not read the plan” and cross-response authority mismatches.
   Evidence: `//tools/living-design:checks` reported 89 passing tests, including all `plans-reader`, `component-graph-stability`, and `living-design` tests, plus 13 failures isolated to `planning-ui` and `demo-plan-actions`; no Work Log assertion failed.
 
+- Observation: the first provider-diverse council round found byte/character checkpoint drift, post-abort and nested-session terminal revival, quote-blind command admission, insufficient privacy scrubbing, unbounded turn and generated-entry identities, silent completed operations being dropped, and unenforced provenance/state combinations.
+  Evidence: new focused regressions failed in seven expected cases before the fixes; after byte-oriented parsing, checkpoint kinds, active-span admission, bounded hashes, stricter prefixes/scrubbing and protocol validation, `//tools/work-log:check` passed all 123 selected tests. The Claude seat returned no report during its single bounded attempt and was not substituted.
+
 ## Decision Log
 
 - Decision: Admit ongoing milestones only after a completed tool operation with concrete accomplishment potential: a patch/edit, a test/build/type/lint/check command, a state-changing Git/PR command, or an explicit Ditz lifecycle/note command. Assistant prose, tool invocation without its matching result, read-only inspection commands, generic tool noise, and partial JSONL do not trigger inference.
@@ -58,8 +61,8 @@ The behavior is visible in controlled Work Log tests: append a completed concret
   Rationale: separate milestone and terminal cursors could each rediscover evidence paid by the other and alternate after restart. One append-order cursor makes the later terminal naturally follow milestones once and allows old offsets to stay valid when the 512 KiB tail moves.
   Date/Author: 2026-09-11 / Codex
 
-- Decision: Derive a stable milestone boundary from the owning turn, completed call identity, event timestamp, and sanitized concrete evidence. When the prior boundary is still in the 512 KiB tail, aggregate only later concrete operations; when it has moved out, admit only a newer latest operation rather than resending the tail.
-  Rationale: stable event-derived boundaries do not change merely because the tail start moves. The timestamp fallback keeps recent work from a turn older than 30 minutes eligible while preventing a finite-tail rescan from rebilling older outcomes.
+- Decision: Derive a stable milestone boundary from the validated transcript identity, absolute result-line byte offset, and exact result-line bytes; retain a bounded/hash-normalized owning-turn identity and checkpoint kind alongside it. When the prior boundary is still in the 512 KiB tail, aggregate only later concrete operations; when it has moved out, admit only a newer latest operation rather than resending the tail.
+  Rationale: byte-derived boundaries do not drift on malformed UTF-8 or tail movement. Turn provenance and checkpoint kind keep empty-terminal fallback specific to a paid milestone in the same turn and prevent abort, nested-session and earlier-terminal spans from being revived.
   Date/Author: 2026-09-11 / Codex
 
 - Decision: Keep the current maximum four inputs per inference and let unselected fresh candidates remain uncheckpointed for the next automatic tick. Age eligibility applies to the concrete evidence time, not turn start time.
@@ -76,7 +79,7 @@ The behavior is visible in controlled Work Log tests: append a completed concret
 
 ## Outcomes & Retrospective
 
-Implementation is not yet complete. The plan intentionally keeps the feature inside the existing registered-transcript reader, single core producer, saved Work Log document, and panel; it adds no agent discovery, liveness inference, generic event system, dashboard, Goals writes, or automatic Ditz action.
+The implementation and controlled verification are complete; council convergence, optional synthetic summarizer evidence, Ditz progress, and final handoff remain. The feature stays inside the existing registered-transcript reader, shared Activity literal-operation extractor, single core producer, saved Work Log document, and panel; it adds no agent discovery, liveness inference, generic event system, dashboard, Goals writes, or automatic Ditz action.
 
 ## Context and Orientation
 
@@ -149,3 +152,5 @@ At completion, `WorkInput` in `core/work-log/transcripts.ts` has explicit `origi
 Plan revision note (2026-09-11 01:24Z): created the initial self-contained plan after source/test/design inspection; recorded the admission, checkpoint, provenance, tail-recovery, batching, and race decisions required before implementation.
 
 Plan revision note (2026-09-11 01:34Z): replaced independent milestone/terminal cursors with one ordered byte checkpoint, made batching a persisted first-seen window, and added Pause/publication linearization after focused review found that the initial design could alternate cursors, bill immediately on activation, and publish after another window returned from Pause.
+
+Plan revision note (2026-09-11 02:08Z): incorporated first-round council findings with byte-accurate line handling, checkpoint kind/turn provenance, active-span terminal admission, bounded identities, stricter privacy/command admission, silent-result handling, and protocol state invariants; recorded the unavailable Claude seat and new RED/GREEN evidence.

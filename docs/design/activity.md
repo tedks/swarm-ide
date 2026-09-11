@@ -61,6 +61,7 @@ or actual turn terminals → one batched summary → human outcome entries in
 publication actions and explicit Ditz lifecycle actions can make an ongoing
 milestone eligible; intentions, unmatched tool calls, read-only inspection and
 partial records cannot. Its modules are [protocol/work-log.ts](../../protocol/work-log.ts),
+[core/external-agents-activity.ts](../../core/external-agents-activity.ts),
 [core/work-log/transcripts.ts](../../core/work-log/transcripts.ts),
 [core/work-log/service.ts](../../core/work-log/service.ts),
 [core/work-log/commands.ts](../../core/work-log/commands.ts) and
@@ -80,6 +81,10 @@ cannot alternate over already paid bytes. Failed attempts are not replayed. A
 persisted first-seen window batches milestone evidence for the configured delay,
 survives restart and does not reset when more evidence arrives. Errors back off
 without shortening that delay, and malformed state is not overwritten.
+Checkpoint kind and bounded turn provenance prevent an aborted, nested or prior
+terminal span from being revived as a later completion. Lines and checkpoint
+anchors are measured from the original bytes, and command admission accepts only
+a concrete top-level command prefix rather than command-looking quoted text.
 An explicit
 Record outcome action appends an idempotent Ditz comment to a known completed
 issue; it does not close worker issues. Private transcript bytes remain local.

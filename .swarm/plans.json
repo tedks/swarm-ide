@@ -633,6 +633,7 @@
       "app/renderer/external-agents/RunStatus.tsx",
       "app/renderer/build-resources/BuildResources.tsx",
       "app/renderer/work-log/WorkLogPanel.tsx",
+      "core/external-agents-activity.ts",
       "core/work-log/service.ts",
       "core/work-log/transcripts.ts",
       "core/work-log/commands.ts",
