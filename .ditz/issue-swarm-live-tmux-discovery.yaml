@@ -24,3 +24,16 @@ log_events:
   who: Ted Smith
   what: started
   comment: ""
+- time: 2026-09-11T02:11:38-00:00
+  who: Ted Smith
+  what: commented
+  comment: 'Implemented continuous bounded reconciliation for one exact selected tmux
+    socket/session in PR #149. Later supported Codex owners and newly created same-project
+    worktrees appear without restart; unchanged scans avoid publication; recorded
+    fork ancestry/history remain; stale, replaced, missing-session, and orphaned-server
+    authority retires fail-closed. Polling is serialized, abortable/drained, worktree
+    refresh is capped at 128 records/10 seconds, and errors share a one-minute report
+    budget. Final focused Bazel CLI/session-registration tests and CLI/desktop builds
+    pass. Council fixpoint: Codex CLEAN, Claude Sonnet CLEAN; agy unavailable after
+    two permitted headless-denial attempts. Capacity archival follow-up: swarm-live-tmux-history-capacity.
+    Keep this issue in_progress for ROOT to normal-merge/adopt.'
