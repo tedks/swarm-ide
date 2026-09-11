@@ -12,6 +12,10 @@ import { Registry, type Registered } from "./external-agents-registry";
 import { queueExternalMessage, resolveExternalCodex, type QueueMessage, type ExternalSendReceipt } from "./external-agents-send";
 
 const HEADER = 65536, TAIL = 262144, MAX_ENTRIES = 120;
+// Lifecycle boundaries are tiny but ordinary compaction/tool records between
+// them can exceed the Activity tail. Cold recovery gets one larger fixed
+// window; continuous observations read only the unchecked append interval.
+const LIFECYCLE_LOOKBACK = 4 * 1024 * 1024, LIFECYCLE_ANCHOR = 128;
 const HISTORY_ENTRIES = 16;
 const fileVersion = (stat: Stats) => `${stat.dev}:${stat.ino}:${stat.size}:${stat.mtimeMs}:${stat.ctimeMs}:${stat.mode}:${stat.uid}`;
 const Meta = z.object({ type: z.literal("session_meta"), payload: z.object({ id: ExternalSessionId,
@@ -83,6 +87,48 @@ export class ExternalAgentService {
       ancestry: "unavailable", observationId: "", observedAt: new Date().toISOString(), message: "Registered session could not be read safely.",
       ...(row.role ? { role: safe(row.role, 120) } : {}), ...(row.task ? { task: safe(row.task, 200) } : {}), contextPaths: row.contextPaths, lifecycle: { state: "unknown" } };
   }
+  private async projectLifecycle(file: FileHandle, stat: Stats, meta: { timestamp?: string; forked_from_id?: string | null }, observationId: string,
+    previous: ReturnType<typeof this.lifecycle.get>): Promise<NonNullable<ReturnType<typeof this.lifecycle.get>>> {
+    let continuous = Boolean(previous && previous.observationId === observationId && previous.size <= stat.size &&
+      (previous.size < stat.size || previous.mtime === stat.mtimeMs) && previous.anchor.length > 0 && previous.position >= previous.anchor.length);
+    if (continuous && previous) {
+      const anchor = Buffer.alloc(previous.anchor.length);
+      const checked = await file.read(anchor, 0, anchor.length, previous.position - anchor.length); this.check();
+      continuous = checked.bytesRead === anchor.length && anchor.equals(previous.anchor);
+    }
+    if (continuous && previous && stat.size - previous.position > LIFECYCLE_LOOKBACK) continuous = false;
+
+    const start = continuous && previous ? previous.position : Math.max(0, stat.size - LIFECYCLE_LOOKBACK);
+    const buffer = Buffer.alloc(Math.min(stat.size - start, LIFECYCLE_LOOKBACK));
+    const { bytesRead } = await file.read(buffer, 0, buffer.length, start); this.check();
+    const bytes = buffer.subarray(0, bytesRead);
+    let cursor = 0, checkpointable = true;
+    if (!continuous && start > 0) {
+      const preceding = Buffer.alloc(1), checked = await file.read(preceding, 0, 1, start - 1); this.check();
+      if (checked.bytesRead !== 1) throw new Error("Lifecycle window changed during read");
+      if (preceding[0] !== 10) {
+        const newline = bytes.indexOf(10);
+        if (newline < 0) { cursor = bytesRead; checkpointable = false; }
+        else cursor = newline + 1;
+      }
+    }
+    let projection = continuous && previous ? previous.projection.clone() : new AgentLifecycleProjection(meta);
+    let completePosition = checkpointable ? start + cursor : 0;
+    while (cursor < bytesRead) {
+      const end = bytes.indexOf(10, cursor); if (end < 0) break;
+      const line = bytes.subarray(cursor, end).toString("utf8"); cursor = end + 1; completePosition = start + cursor;
+      if (!line) continue;
+      try { projection.consume(JSON.parse(line)); }
+      catch { projection = new AgentLifecycleProjection(meta); }
+    }
+    const anchorLength = Math.min(LIFECYCLE_ANCHOR, completePosition);
+    const anchor = Buffer.alloc(anchorLength);
+    if (anchorLength) {
+      const checked = await file.read(anchor, 0, anchorLength, completePosition - anchorLength); this.check();
+      if (checked.bytesRead !== anchorLength) throw new Error("Lifecycle checkpoint changed during read");
+    }
+    return { observationId, position: completePosition, size: stat.size, mtime: stat.mtimeMs, anchor, projection };
+  }
   private async read(row: Registered, tail: boolean, checkHandoff = tail): Promise<ExternalDetail> {
     const summary = this.summary(row);
     const result: ExternalDetail = { session: summary, entries: [], handoff: row.tmux ? "unavailable" : "unconfigured",
@@ -106,6 +152,7 @@ export class ExternalAgentService {
       summary.control = row.tmux ? "tmux" : "read-only";
       if (row.contextRoot && isAbsolute(row.contextRoot)) summary.worktree = row.contextRoot;
       if (tail) {
+        nextLifecycle = await this.projectLifecycle(file, stat, meta.payload, summary.observationId, previousLifecycle);
         const start = Math.max(0, stat.size - TAIL), buffer = Buffer.alloc(Math.min(stat.size, TAIL));
         const { bytesRead } = await file.read(buffer, 0, buffer.length, start); this.check();
         result.coverage.tailBytes = bytesRead;
@@ -115,33 +162,22 @@ export class ExternalAgentService {
         // A complete record keeps its identity as later appends shift this tail.
         let cursor = start > 0 ? bytes.indexOf(10) + 1 : 0;
         if (start > 0 && cursor === 0) cursor = bytesRead;
-        const previous = previousLifecycle;
-        const anchorStart = previous ? previous.position - previous.anchor.length - start : -1;
-        const uninterrupted = previous && previous.observationId === summary.observationId && previous.size <= stat.size &&
-          (previous.size < stat.size || previous.mtime === stat.mtimeMs) && start + cursor <= previous.position &&
-          anchorStart >= 0 && bytes.subarray(anchorStart, anchorStart + previous.anchor.length).equals(previous.anchor);
-        let projection = uninterrupted ? previous.projection.clone() : new AgentLifecycleProjection(meta.payload);
-        const afterOffset = uninterrupted ? previous.position : -1;
-        let completePosition = start + cursor;
         if (bytesRead && bytes[bytesRead - 1] !== 10) partial = true;
         const entries: ExternalEntry[] = [];
         let omitted = 0;
         while (cursor < bytesRead) {
           const end = bytes.indexOf(10, cursor); if (end < 0) break;
-          const offset = start + cursor, line = bytes.subarray(cursor, end).toString("utf8"); cursor = end + 1; completePosition = start + cursor;
+          const offset = start + cursor, line = bytes.subarray(cursor, end).toString("utf8"); cursor = end + 1;
           if (!line) continue;
           if (line.length > 65536) {
             omitted++; partial = true;
-            if (offset >= afterOffset) projection = new AgentLifecycleProjection(meta.payload);
             continue;
           }
           let item: unknown;
           try { item = JSON.parse(line); } catch {
             omitted++; partial = true;
-            if (offset >= afterOffset) projection = new AgentLifecycleProjection(meta.payload);
             continue;
           }
-          if (offset >= afterOffset) projection.consume(item);
           const identity = `${stat.dev}:${stat.ino}:${offset}:${createHash("sha256").update(line).digest("hex").slice(0, 12)}`;
           const extracted = extractEntries(item, identity);
           if (extracted.length) entries.push(...extracted); else omitted++;
@@ -151,12 +187,7 @@ export class ExternalAgentService {
         result.coverage = { tailBytes: bytesRead, partial, omittedRecords: omitted,
           message: "Recent activity; older entries may be outside this window." };
         summary.lastActivityAt = result.entries.at(-1)?.at;
-        summary.lifecycle = projection.snapshot();
-        // Publish before per-session and aggregate Activity trimming. This cache
-        // only bridges observed append-only intervals; an unobserved byte gap
-        // starts from unknown rather than retaining possibly obsolete work.
-        nextLifecycle = { observationId: summary.observationId, position: completePosition,
-          size: stat.size, mtime: stat.mtimeMs, anchor: Buffer.from(bytes.subarray(Math.max(0, completePosition - start - 128), completePosition - start)), projection };
+        summary.lifecycle = nextLifecycle.projection.snapshot();
       }
       // An inode can be truncated and rewritten to another session without
       // shrinking its final size. Verify the accepted header on this descriptor

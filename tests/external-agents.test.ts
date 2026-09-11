@@ -51,8 +51,27 @@ describe("operator-registered external observation", () => {
     const begin = JSON.stringify({ type: "event_msg", timestamp: "2026-09-08T12:00:01Z", payload: { type: "task_started", turn_id: "old" } }) + "\n";
     const { service, rollout } = await setup(meta() + begin);
     await service.request(request("externalAgents.snapshot"));
-    await appendFile(rollout, message("x".repeat(3000)).repeat(100));
+    await appendFile(rollout, message("x".repeat(3000)).repeat(1500));
     expect(await service.request(request("externalAgents.snapshot"))).toMatchObject({ snapshot: { sessions: [{ lifecycle: { state: "unknown" } }] } });
+  });
+
+  it("recovers the latest explicit lifecycle beyond the activity tail on a cold read", async () => {
+    const at = "2026-09-08T12:00:01Z", started = Date.parse(at) / 1000;
+    const oldStart = JSON.stringify({ type: "event_msg", timestamp: "2026-09-08T11:59:00Z", payload: { type: "task_started", turn_id: "old", started_at: started - 60 } }) + "\n";
+    const oldComplete = JSON.stringify({ type: "event_msg", timestamp: "2026-09-08T12:00:00Z", payload: { type: "task_complete", turn_id: "old", started_at: started - 60 } }) + "\n";
+    const begin = JSON.stringify({ type: "event_msg", timestamp: at, payload: { type: "task_started", turn_id: "current", started_at: started } }) + "\n";
+    const compacted = JSON.stringify({ type: "compacted", timestamp: "2026-09-08T12:01:00Z", payload: { replacement_history: "x".repeat(700000) } }) + "\n";
+    const { service, rollout, root, registry } = await setup(meta() + oldStart + oldComplete + begin + message("x".repeat(3000)).repeat(350) + compacted + message("latest activity"));
+    const first = await service.request(request("externalAgents.snapshot"));
+    expect(first).toMatchObject({ snapshot: { sessions: [{ lifecycle: { state: "working", turnId: "current" } }],
+      fleet: [{ session: { lifecycle: { state: "working", turnId: "current" } } }] } });
+    const detail = await service.request(request("externalAgents.read", { sessionId: A }));
+    expect(detail).toMatchObject({ detail: { session: { lifecycle: { state: "working", turnId: "current" } } } });
+    expect(await service.request(request("externalAgents.snapshot"))).toMatchObject({ snapshot: { sessions: [{ lifecycle: { state: "working" } }] } });
+    await appendFile(rollout, JSON.stringify({ type: "event_msg", timestamp: "2026-09-08T12:02:00Z", payload: { type: "task_complete", turn_id: "current", started_at: started } }) + "\n" +
+      message("x".repeat(3000)).repeat(350));
+    const cold = new ExternalAgentService(root, registry); services.push(cold);
+    expect(await cold.request(request("externalAgents.snapshot"))).toMatchObject({ snapshot: { sessions: [{ lifecycle: { state: "completed", turnId: "current" } }] } });
   });
 
   it("does not carry status through same-inode same-header growth rewrites", async () => {
@@ -63,11 +82,19 @@ describe("operator-registered external observation", () => {
     expect(await service.request(request("externalAgents.snapshot"))).toMatchObject({ snapshot: { sessions: [{ lifecycle: { state: "unknown" } }] } });
   });
 
-  it("drops old working evidence when an oversized terminal record cannot be inspected", async () => {
+  it("accepts a valid oversized terminal envelope without publishing its large content", async () => {
     const begin = JSON.stringify({ type: "event_msg", timestamp: "2026-09-08T12:00:01Z", payload: { type: "task_started", turn_id: "old" } }) + "\n";
     const { service, rollout } = await setup(meta() + begin);
     await service.request(request("externalAgents.snapshot"));
     await appendFile(rollout, JSON.stringify({ type: "event_msg", timestamp: "2026-09-08T12:02:00Z", payload: { type: "task_complete", turn_id: "old", last_agent_message: "x".repeat(70000) } }) + "\n");
+    expect(await service.request(request("externalAgents.snapshot"))).toMatchObject({ snapshot: { sessions: [{ lifecycle: { state: "completed", turnId: "old" } }] } });
+  });
+
+  it("drops old working evidence after a malformed oversized record", async () => {
+    const begin = JSON.stringify({ type: "event_msg", timestamp: "2026-09-08T12:00:01Z", payload: { type: "task_started", turn_id: "old" } }) + "\n";
+    const { service, rollout } = await setup(meta() + begin);
+    await service.request(request("externalAgents.snapshot"));
+    await appendFile(rollout, `{\"type\":\"response_item\",\"payload\":${"x".repeat(70000)}\n`);
     expect(await service.request(request("externalAgents.snapshot"))).toMatchObject({ snapshot: { sessions: [{ lifecycle: { state: "unknown" } }] } });
   });
 
