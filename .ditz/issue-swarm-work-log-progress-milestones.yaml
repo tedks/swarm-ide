@@ -12,8 +12,8 @@ type: feature
 component: default
 release:
 reporter: Ted Smith <tedks@riseup.net>
-status: in_progress
-disposition:
+status: closed
+disposition: fixed
 creation_time: 2026-09-10T23:21:34-00:00
 references: []
 log_events:
@@ -52,3 +52,12 @@ log_events:
     //tools/work-log:check passes 128 cases and awareness-check passes. Native-only
     correction review CLEAN. No second model, broad run, Goals data, registry work,
     or unrelated repair; issue remains in progress for ROOT landing.'
+- time: 2026-09-11T02:46:07-00:00
+  who: Ted Smith
+  what: 'closed: fixed'
+  comment: Implemented mid-turn Work Log milestones from completed edit/check/tool
+    events, persistent checkpoints and no-model legacy repair. PR150 normally merged
+    as 5590b477 after provider council and current array-shaped tool-result correction.
+    Production reader/service regression 128 focused tests and awareness 131 tests
+    pass; one separately labelled synthetic Luna output proof. Installed Goals adoption
+    follows reviewed aggregate verification.
