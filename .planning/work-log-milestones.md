@@ -20,7 +20,7 @@ The behavior is visible in controlled Work Log tests: append a completed concret
 - [x] (2026-09-11 02:25Z) Ran the focused Nix/Bazel Work Log and awareness gates after review fixes; 127 controlled Work Log/task/UI tests pass, and the awareness target passes with the updated source mapping. The earlier broader living-design bundle retained its recorded unrelated planning-UI failures.
 - [x] (2026-09-11 02:25Z) Ran exactly one disposable `gpt-5.6-luna` summary over fixed synthetic milestone input through a temporary Bazel-only harness; it returned ongoing-work wording, made no Ditz write, and the harness was removed.
 - [x] (2026-09-11 02:25Z) Pushed granular commits to draft PR #150, updated the in-progress Ditz issue, and ran provider-diverse council fix deltas until Codex, Claude Sonnet, and Google returned CLEAN on `4d4cafcf..2340e667`.
-- [x] (2026-09-11 02:36Z) Corrected current `custom_tool_call_output` content-block normalization after ROOT found real wrapper results use arrays; a sanitized production-reader/service regression was RED with zero inputs, then GREEN with all 128 focused cases and no model call.
+- [x] (2026-09-11 02:36Z) Corrected current `custom_tool_call_output` content-block normalization after ROOT found real wrapper results use arrays; a sanitized production-reader/service regression was RED with zero inputs, then GREEN with all 128 focused cases and no model call. The requested native-only review of `5b8d5f5e..e0b19c25` returned CLEAN.
 
 ## Surprises & Discoveries
 
@@ -180,3 +180,5 @@ Plan revision note (2026-09-11 02:25Z): recorded the final timestamp-ordering fi
 Plan revision note (2026-09-11 02:35Z): incorporated ROOT's source-traced intake for the 13 retained planning fixture failures, explicitly distinguished it from pristine-base execution, and left the shared follow-up and unrelated repair outside this increment.
 
 Plan revision note (2026-09-11 02:36Z): incorporated ROOT's real output-shape finding, added bounded `input_text`-only result normalization and a sanitized reader/service RED/GREEN regression, and preserved the original one-call Luna proof as summary-only evidence without another model or broad test run.
+
+Plan revision note (2026-09-11 02:37Z): recorded CLEAN narrow native review of the pushed correction delta; no wider council or model run was opened.
