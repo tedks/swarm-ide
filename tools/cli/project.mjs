@@ -58,39 +58,57 @@ export function discoverProject(directory, environment = process.env) {
 /** Refresh only membership for an already selected project. Unlike startup
  * discovery this runs repeatedly, so all Git subprocesses are asynchronous and
  * abortable; it never selects a different project identity or workspace. */
-export async function refreshProject(project, environment = process.env, signal) {
-  const check = () => { if (signal?.aborted) throw new Error("Project refresh stopped"); };
-  check();
-  const identity = await realpathAsync(project.identity);
-  if (identity !== project.identity) throw new Error("Selected project identity is no longer canonical");
-  if (!project.git) {
-    if (!(await lstatAsync(identity)).isDirectory()) throw new Error("Selected project is unavailable");
-    return { ...project, worktrees: [{ path: identity }] };
-  }
-  const entries = (await asyncGit(identity, ["worktree", "list", "--porcelain", "-z"], environment, signal)).split("\0\0");
-  const worktrees = [];
-  for (const entry of entries) {
+export async function refreshProject(project, environment = process.env, signal,
+  { runGit = asyncGit, maxWorktrees = 128, timeoutMs = 10000 } = {}) {
+  const controller = new AbortController();
+  const stop = () => controller.abort();
+  signal?.addEventListener("abort", stop, { once: true });
+  const timer = setTimeout(() => controller.abort(), timeoutMs); timer.unref?.();
+  const check = () => {
+    if (signal?.aborted) throw new Error("Project refresh stopped");
+    if (controller.signal.aborted) throw new Error(`Project refresh exceeded its ${timeoutMs}-millisecond deadline`);
+  };
+  try {
     check();
-    const fields = entry.split("\0"), pathField = fields.find((part) => part.startsWith("worktree "));
-    if (!pathField || fields.includes("bare") || fields.some((part) => part === "prunable" || part.startsWith("prunable "))) continue;
-    try {
-      const path = await realpathAsync(pathField.slice(9));
-      const checked = await Promise.allSettled([
-        asyncGit(path, ["rev-parse", "--path-format=absolute", "--git-common-dir"], environment, signal),
-        asyncGit(path, ["rev-parse", "--show-toplevel"], environment, signal),
-      ]);
-      check();
-      if (checked.some((result) => result.status === "rejected")) continue;
-      const [commonText, topText] = checked.map((result) => result.value);
-      if (await realpathAsync(commonText.trimEnd()) !== identity || await realpathAsync(topText.trimEnd()) !== path) continue;
-      worktrees.push({ path, branch: fields.find((part) => part.startsWith("branch "))?.slice(7) });
-    } catch (error) {
-      check();
-      // Missing, stale or inaccessible worktrees are not live scan members.
+    const identity = await realpathAsync(project.identity);
+    if (identity !== project.identity) throw new Error("Selected project identity is no longer canonical");
+    if (!project.git) {
+      if (!(await lstatAsync(identity)).isDirectory()) throw new Error("Selected project is unavailable");
+      return { ...project, worktrees: [{ path: identity }] };
     }
+    const entries = (await runGit(identity, ["worktree", "list", "--porcelain", "-z"], environment, controller.signal)).split("\0\0").filter(Boolean);
+    check();
+    if (entries.length > maxWorktrees) throw new Error(`Project refresh found more than ${maxWorktrees} worktree records`);
+    const worktrees = [];
+    for (const entry of entries) {
+      check();
+      const fields = entry.split("\0"), pathField = fields.find((part) => part.startsWith("worktree "));
+      if (!pathField || fields.includes("bare") || fields.some((part) => part === "prunable" || part.startsWith("prunable "))) continue;
+      try {
+        const path = await realpathAsync(pathField.slice(9));
+        const checked = await Promise.allSettled([
+          runGit(path, ["rev-parse", "--path-format=absolute", "--git-common-dir"], environment, controller.signal),
+          runGit(path, ["rev-parse", "--show-toplevel"], environment, controller.signal),
+        ]);
+        check();
+        if (checked.some((result) => result.status === "rejected")) continue;
+        const [commonText, topText] = checked.map((result) => result.value);
+        if (await realpathAsync(commonText.trimEnd()) !== identity || await realpathAsync(topText.trimEnd()) !== path) continue;
+        worktrees.push({ path, branch: fields.find((part) => part.startsWith("branch "))?.slice(7) });
+      } catch (error) {
+        check();
+        // Missing, stale or inaccessible worktrees are not live scan members.
+      }
+    }
+    if (!worktrees.length) throw new Error(`No accessible worktree belongs to ${identity}.`);
+    return { ...project, identity, worktrees };
+  } catch (error) {
+    check();
+    throw error;
+  } finally {
+    clearTimeout(timer);
+    signal?.removeEventListener("abort", stop);
   }
-  if (!worktrees.length) throw new Error(`No accessible worktree belongs to ${identity}.`);
-  return { ...project, identity, worktrees };
 }
 
 function privateDirectory(path) {

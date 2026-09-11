@@ -11,9 +11,9 @@ import { absolute, discover, LIMIT, metadata, ownedFile, type PaneInput } from "
 export interface RegisterInput {
   action: "register"; registry: string; label: string; rollout?: string; pane?: PaneInput; sessionId?: string;
   role?: string; task?: string; contextRoot?: string; contextPaths?: string[]; evidence?: "local" | "synthetic";
-  signal?: AbortSignal;
+  signal?: AbortSignal; workspaceRoot?: string;
 }
-export interface RetireInput { action: "retire"; registry: string; sessionId: string; signal?: AbortSignal }
+export interface RetireInput { action: "retire"; registry: string; sessionId: string; signal?: AbortSignal; workspaceRoot?: string }
 export interface Receipt { action: "register" | "retire"; sessionId: string; parentId?: string | null;
   changed: boolean; authority: "checked-live" | "historical-only"; message: string }
 const within = (root: string, path: string) => { const p = relative(root, path); return !p || p !== ".." && !p.startsWith("../") && !isAbsolute(p); };
@@ -21,13 +21,15 @@ const within = (root: string, path: string) => { const p = relative(root, path);
 /** All cooperating writers use this permanent inode; never unlink the lock file.
  * flock locks the inherited open description, retained by our parent descriptor.
  * Process exit (including SIGKILL) releases it without stale-lock reclamation. */
-async function lockRegistry(path: string, signal?: AbortSignal) {
+async function lockRegistry(path: string, signal?: AbortSignal, workspaceRoot?: string) {
   if (signal?.aborted) throw new Error("Registry update stopped");
   absolute(path);
   const parent = dirname(path), dir = await lstat(parent);
   if (!dir.isDirectory() || dir.uid !== process.getuid!() || (dir.mode & 0o077) || await realpath(parent) !== parent)
     throw new Error("Registry requires an existing canonical owned mode-0700 directory");
-  if (within(await realpath(process.cwd()), path)) throw new Error("Registry must be outside the current repository/workspace");
+  const workspace = workspaceRoot ?? await realpath(process.cwd());
+  absolute(workspace);
+  if (within(workspace, path)) throw new Error("Registry must be outside the current repository/workspace");
   const lock = await open(`${path}.lock`, constants.O_CREAT | constants.O_RDWR | constants.O_NONBLOCK | constants.O_NOFOLLOW, 0o600);
   try {
     const info = await lock.stat();
@@ -38,7 +40,8 @@ async function lockRegistry(path: string, signal?: AbortSignal) {
       const child = spawn("flock", ["--exclusive", "--timeout", "5", "3"],
         { timeout: 6000, killSignal: "SIGKILL", signal, stdio: ["ignore", "ignore", "ignore", lock.fd] });
       child.once("error", () => { failed = true; });
-      child.once("close", (code) => !failed && code === 0 ? resolve() : reject(new Error("Registry writer lock unavailable within five seconds")));
+      child.once("close", (code) => !failed && code === 0 ? resolve()
+        : reject(new Error(signal?.aborted ? "Registry update stopped" : "Registry writer lock unavailable within five seconds")));
     });
     return lock;
   } catch (error) { await lock.close(); throw error; }
@@ -62,7 +65,7 @@ async function readRegistry(path: string): Promise<{ raw: { version: 1; sessions
 
 export async function updateRegistry(input: RegisterInput | RetireInput): Promise<Receipt> {
   if (process.platform !== "linux" || !process.getuid) throw new Error("Registration requires Linux process identity and flock");
-  const lock = await lockRegistry(input.registry, input.signal);
+  const lock = await lockRegistry(input.registry, input.signal, input.workspaceRoot);
   try {
     if (input.signal?.aborted) throw new Error("Registry update stopped");
     const { raw, existed } = await readRegistry(input.registry);

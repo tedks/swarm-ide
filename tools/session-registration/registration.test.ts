@@ -90,6 +90,14 @@ process.stdout.write('locked\\n'); setInterval(() => {}, 1000);
 }
 
 describe("known worker registration", () => {
+  it("uses the captured workspace boundary when the launcher restores an ancestor cwd", async () => {
+    const f = await fixture(), original = process.cwd();
+    try {
+      process.chdir(f.dir);
+      await expect(updateRegistry({ ...f.input, workspaceRoot: f.root })).resolves.toMatchObject({ changed: true });
+    } finally { process.chdir(original); }
+  });
+
   it("registers idempotently, preserves omitted peer defaults and metadata, retires without losing history", async () => {
     const f = await fixture(), peer = { id: randomUUID(), label: "untouched", rollout: join(f.dir, "peer.jsonl") };
     await writeFile(f.registry, JSON.stringify({ version: 1, sessions: [peer] }), { mode: 0o600 });

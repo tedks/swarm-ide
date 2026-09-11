@@ -43,6 +43,31 @@ export async function selectPanes(options, run = command, signal) {
   return { socket, sessionId, panes, socketDev: info.dev, socketIno: info.ino };
 }
 
+async function selectedSessionGone(selected, run, signal) {
+  stopped(signal);
+  try {
+    const info = await lstat(selected.socket);
+    if (!info.isSocket() || info.uid !== process.getuid() || info.dev !== selected.socketDev || info.ino !== selected.socketIno) return true;
+  } catch (error) {
+    if (error.code === "ENOENT") return true;
+    throw error;
+  }
+  let output;
+  try { output = await run("tmux", ["-S", selected.socket, "list-sessions", "-F", "#{session_id}"], signal); }
+  catch (error) {
+    // A command failure alone is inconclusive. A socket removed during that
+    // failure is authoritative evidence that the selected server is gone.
+    try {
+      const info = await lstat(selected.socket);
+      if (!info.isSocket() || info.uid !== process.getuid() || info.dev !== selected.socketDev || info.ino !== selected.socketIno) return true;
+    } catch (checkError) { if (checkError.code === "ENOENT") return true; }
+    throw error;
+  }
+  const ids = output.trimEnd() ? output.trimEnd().split("\n") : [];
+  if (ids.some((id) => !/^\$\d+$/.test(id)) || new Set(ids).size !== ids.length) return false;
+  return !ids.includes(selected.sessionId);
+}
+
 async function bareParentBrowsingRoot(cwd, project, signal) {
   stopped(signal);
   if (project?.git !== true) throw new Error("Agent process is not in a Git worktree.");
@@ -131,10 +156,20 @@ function reconciler(options, dependencies, selected, registry, api) {
 
   const runScan = async (signal, initialSelection) => {
     stopped(signal);
-    const current = initialSelection ?? await selectPanes(exact, run, signal);
-    if (current.socket !== selected.socket || current.sessionId !== selected.sessionId
-      || current.socketDev !== selected.socketDev || current.socketIno !== selected.socketIno) throw new Error("Selected tmux server/session changed; retaining prior history without adopting it");
-    const refreshed = dependencies.refreshProject ? await dependencies.refreshProject(signal) : undefined;
+    let current, selectionGone = false;
+    try { current = initialSelection ?? await selectPanes(exact, run, signal); }
+    catch (error) {
+      if (!await selectedSessionGone(selected, run, signal)) throw error;
+      selectionGone = true; current = { ...selected, panes: [] };
+    }
+    if (current.socket !== selected.socket || current.sessionId !== selected.sessionId)
+      throw new Error("Selected tmux server/session changed; retaining prior history without adopting it");
+    if (current.socketDev !== selected.socketDev || current.socketIno !== selected.socketIno) {
+      selectionGone = true; current = { ...selected, panes: [] };
+    }
+    // Startup already has a synchronously validated project. Later scans alone
+    // refresh membership, and confirmed teardown does not depend on Git health.
+    const refreshed = !initialSelection && !selectionGone && dependencies.refreshProject ? await dependencies.refreshProject(signal) : undefined;
     stopped(signal);
     const scope = refreshed ?? { project: options.project, allowedRoots: options.allowedRoots };
     if (originalProjectIdentity !== undefined && scope.project?.identity !== originalProjectIdentity)
@@ -164,15 +199,16 @@ function reconciler(options, dependencies, selected, registry, api) {
       }
       try {
         stopped(signal);
-        const receipt = await api.updateRegistry({ action: "register", registry,
+        const receipt = await api.updateRegistry({ action: "register", registry, workspaceRoot: options.project?.workspace,
           label: row.label, rollout: row.found.rollout, signal,
           pane: { socket: selected.socket, pane: row.pane, processPid: row.found.target.processPid,
             processStart: row.found.target.processStart, signal },
           contextRoot: row.root, evidence: "local" });
         stopped(signal);
         if (currentIds.has(receipt.sessionId)) {
-          await api.updateRegistry({ action: "retire", registry, sessionId: receipt.sessionId, signal });
+          await api.updateRegistry({ action: "retire", registry, sessionId: receipt.sessionId, signal, workspaceRoot: options.project?.workspace });
           for (const [pane, value] of next) if (value.sessionId === receipt.sessionId) next.delete(pane);
+          for (let index = registered.length - 1; index >= 0; index--) if (registered[index].sessionId === receipt.sessionId) registered.splice(index, 1);
           currentIds.delete(receipt.sessionId);
           row.kind = "rejected";
           skipped.push({ pane: row.pane, reason: "Session is open in more than one selected pane" });
@@ -202,11 +238,11 @@ function reconciler(options, dependencies, selected, registry, api) {
         else { next.set(pane, { ...previous, misses }); currentIds.add(previous.sessionId); }
       }
     }
-    for (const sessionId of currentIds) retireIds.delete(sessionId);
+    for (const sessionId of currentIds) { retireIds.delete(sessionId); pendingRetire.delete(sessionId); }
     for (const sessionId of retireIds) {
       try {
         stopped(signal);
-        const receipt = await api.updateRegistry({ action: "retire", registry, sessionId, signal });
+        const receipt = await api.updateRegistry({ action: "retire", registry, sessionId, signal, workspaceRoot: options.project?.workspace });
         stopped(signal); retired.push(receipt); pendingRetire.delete(sessionId);
       } catch (error) {
         stopped(signal);
@@ -229,19 +265,19 @@ function reconciler(options, dependencies, selected, registry, api) {
     inFlight = current;
     return current;
   };
-  const watch = ({ intervalMs = 5000, setTimer = setTimeout, clearTimer = clearTimeout, onError = () => {} } = {}) => {
+  const watch = ({ intervalMs = 5000, setTimer = setTimeout, clearTimer = clearTimeout, now = Date.now, onError = () => {} } = {}) => {
     if (disposed) throw new Error("Tmux reconciliation is disposed");
     if (watching) return;
     watching = true; cancelTimer = clearTimer;
-    let lastMessage, lastReport = 0;
+    let lastReport;
     const schedule = () => { if (!disposed && watching) timer = setTimer(tick, intervalMs); };
     const tick = async () => {
       timer = undefined;
-      try { await scan(); lastMessage = undefined; }
+      try { await scan(); }
       catch (error) {
         if (!disposed) {
-          const message = error.message, now = Date.now();
-          if (message !== lastMessage || now - lastReport >= 60000) { lastMessage = message; lastReport = now; onError(error); }
+          const timestamp = now();
+          if (lastReport === undefined || timestamp - lastReport >= 60000) { lastReport = timestamp; onError(error); }
         }
       } finally { schedule(); }
     };
