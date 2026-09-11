@@ -88,9 +88,10 @@ swarm --workspace /absolute/path/to/your/project \
 
 Replace `personal` and `project` with your actual server/session. The alternative
 `--tmux-socket /absolute/path/to/socket --tmux-session project` selects a socket
-directly. Association scans that session once, up to 64 panes. Shells, unsupported
-harnesses and ambiguous owners may be skipped. If none are found, omit the tmux
-flags to open the project alone.
+directly. Association checks up to 64 panes at a time and continues serially while
+that installed window is open. Shells, unsupported harnesses and ambiguous owners
+may be skipped; an initially empty session can gain a supported Codex owner later
+without restarting Swarm.
 
 For an already-maintained private registry, use this instead of tmux flags:
 
@@ -101,9 +102,11 @@ swarm --workspace /absolute/path/to/your/project \
 ```
 
 Registration observes existing processes; it does not create a second agent.
-Closing the IDE or a conversation tab leaves those tmux agents running. New panes
-need a new association or explicit registration. [Linux installation](linux-install.md)
-covers skipped panes, generated registry paths and reuse.
+Closing the IDE or a conversation tab leaves those tmux agents running and stops
+only the launcher's own discovery checks. New panes in the exact selected session
+appear automatically; automatic current-session selection also refreshes new
+worktrees belonging to the same Git project. [Linux installation](linux-install.md)
+covers scope, skipped panes, generated registry paths and reuse.
 
 Select a registered agent to read the conversation and Activity. The terminal
 icon copies its checked attach command, so you can steer the same agent in tmux.

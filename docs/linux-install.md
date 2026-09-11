@@ -87,10 +87,10 @@ an owner's process cwd is this project's bare-repository parent rather than a
 worktree, Swarm uses the same validated worktree selection described above as
 its browsing root. This does not change the agent's cwd or claim where it edits.
 An owner already in a sibling feature worktree keeps that exact worktree. If
-current-session discovery is unavailable or finds no owners, the project still
-opens using its saved private registry. No attach, send, resume or agent launch
-is performed. A newly launched session is discovered on the next invocation,
-not by a new background scanner.
+current-session discovery is unavailable, the project still opens without changing
+the running terminal. No attach, send, resume or agent launch is performed. A
+supported owner launched later in that same selected session is discovered by the
+open launcher's bounded refresh.
 
 Explicit options can choose the project and exact tmux session independently. Agents can
 have sibling worktrees; their source links use each checked owner's actual Git
@@ -105,15 +105,19 @@ swarm --workspace ~/Projects/goals/master --tmux-server personal --tmux-session 
 swarm --workspace ./project --tmux-socket /absolute/path/to/socket --tmux-session project
 ```
 
-This performs one bounded scan of that session (at most 64 panes), reusing Swarm's
-exact process/rollout registration checks. It does not scan every tmux server or
-the account's conversation history. It currently recognizes Codex owners with
+This performs bounded scans of that session (at most 64 panes per scan) for the
+lifetime of the installed window, reusing Swarm's exact process/rollout registration
+checks. Scans do not overlap. The first scan may be empty; a later supported owner
+then appears automatically in the existing IDE. It does not scan every tmux server
+or the account's conversation history. It currently recognizes Codex owners with
 one discoverable open rollout, or one CLI with directly linked native helpers
 in the same process. The same-project bare-parent browsing mapping also applies
 to this explicit path and requires matching canonical Git common-directory
 identity plus a still-valid selected worktree; shells, ambiguous owners and
-unavailable or unrelated roots are skipped. If nothing can be registered, the command explains that before
-opening a window; remove the tmux flags to open the project by itself.
+unavailable or unrelated roots are skipped. Automatic current-session association
+refreshes same-project Git worktree membership, so an owner in a worktree created
+after Swarm opened can appear with that exact root. Explicit project/session flags
+retain their existing independent selection semantics.
 
 Discovery is deliberately bounded and can skip busy or ambiguous panes. Direct
 native children are recognized from their headers; deeper or missing-parent
@@ -129,16 +133,22 @@ The command prints the private registry path and an exact tmux attach command.
 In the IDE, selecting a checked agent exposes the existing per-agent terminal
 navigation/copy action. The terminal and IDE refer to the same running owner.
 Closing or restarting Swarm does not close tmux, clone/resume an agent, or send a
-message. Activity refreshes live for registered agents. Discovering newly created
-panes requires another explicit association or adding them through the existing
-checked registration tool; this launcher adds no background discovery daemon.
+message. Activity refreshes live for registered agents. The launcher checks newly
+created panes about every five seconds using the original socket and numeric session
+identity. A replaced socket/session is not adopted. Closed or replaced owners lose
+steering authority; their row and readable transcript remain useful history. One
+present-pane discovery miss is tolerated, and every Send/handoff still performs
+the exact live identity check immediately, so grace never makes a stale target
+steerable. Whole-scan failures retain the last registry and retry without flooding
+the terminal. Closing the window stops and drains only these owned checks.
 
 Each association writes a fresh private generation under the project's state
-directory (described below). This prevents a restarted
-server from inheriting another session's conversations, and avoids a permanent
-64-lifetime-agent limit. Prior registries remain private history, but are not
-silently mixed into a new association. To reuse an explicitly maintained or
-previous registry instead of scanning tmux:
+directory (described below). This prevents a restarted server from inheriting
+another session's conversations. A continuously observed generation retains the
+existing limit of 64 recorded session IDs and 65,536 registry bytes; reaching it
+keeps existing history unchanged and skips later admission. Prior registries remain
+private history, but are not silently mixed into a new association. To reuse an
+explicitly maintained or previous registry instead of scanning tmux:
 
 ```sh
 swarm --workspace ./project --agent-registry /absolute/private/agents.json

@@ -12,11 +12,11 @@ The visible proof uses an owned disposable Git repository, worktrees, tmux socke
 
 - [x] (2026-09-11 01:16Z) Read the task/common instructions, repository instructions, planning rules, and relevant launcher, project, registration, observer, documentation, test, and build mappings.
 - [x] (2026-09-11 01:16Z) Confirmed the designated clean worktree `feature/live-tmux-discovery` at base `f08c75d5` and wrote the required fresh-session startup note.
-- [ ] Add a focused failing regression that demonstrates launch-time association cannot discover a later pane/worktree, along with idempotence, scope, failure, replacement, and disposal cases.
-- [ ] Extract one-scan registry reconciliation from fresh association creation and add a non-overlapping, abortable installed-launch lifetime poller.
-- [ ] Refresh Git worktree membership without changing explicit-versus-automatic project scope semantics.
-- [ ] Update runtime/install/registration documentation and `.swarm/plans.json` so the living design and Bazel input mapping match the implementation.
-- [ ] Run focused Bazel tests and one bounded owned end-to-end proof, recording exact evidence.
+- [x] (2026-09-11 01:18Z) Added a focused regression and captured RED: 39 existing CLI tests passed and the new later-pane/worktree test failed at the original zero-owner one-shot exception.
+- [x] (2026-09-11 01:28Z) Extracted one-scan registry reconciliation and added a non-overlapping, abortable installed-launch lifetime poller with serialized registry updates and rate-limited whole-scan errors.
+- [x] (2026-09-11 01:31Z) Added asynchronous same-identity Git worktree membership refresh without changing explicit-versus-automatic project scope semantics.
+- [x] (2026-09-11 01:33Z) Updated runtime, agent, install, evaluator, registration, and `.swarm/plans.json` source/target explanations to match the implementation.
+- [x] (2026-09-11 01:36Z) Passed focused CLI/registration tests and packaging from the dedicated Bazel output root; the registration target includes one bounded owned late-worktree/tmux-owner observer proof.
 - [ ] Push a ready draft PR, run the required provider-diverse council review to a clean convergence round, and address or file every finding.
 - [ ] Update and sync Ditz, clean only owned resources, pull/rebase, push, verify the branch is clean/up to date, and write the final handoff artifacts.
 
@@ -30,6 +30,12 @@ The visible proof uses an owned disposable Git repository, worktrees, tmux socke
 
 - Observation: Registration already preserves an old row when retiring by removing only its `tmux` field, and unchanged registration input avoids a registry rename.
   Evidence: `tools/session-registration/registry.ts` implements `retire` by destructuring away `tmux`, compares serialized before/after state, and publishes only when `changed` is true.
+
+- Observation: Recurring worktree discovery could not safely reuse the synchronous startup helper because it would block the launcher's event loop and delay signal handling.
+  Evidence: Production now uses `refreshProject`, which runs fixed-argument Git subprocesses asynchronously with timeouts and a shared abort signal; the owned integration proves a post-start worktree is admitted.
+
+- Observation: The broad living-design bundle has an unrelated planning-UI failure even though its index parser and component graph tests pass.
+  Evidence: `//tools/living-design:checks` reported 89/102 passing, including all 60 `plans-reader`, all 13 component-stability, and all 15 living-design tests; 13 failures were confined to untouched `planning-ui.test.tsx` and `demo-plan-actions.test.tsx`, whose mocked reads returned “Could not read the plan.”
 
 ## Decision Log
 
@@ -55,7 +61,7 @@ The visible proof uses an owned disposable Git repository, worktrees, tmux socke
 
 ## Outcomes & Retrospective
 
-Implementation is pending. At completion this section will compare the owned live proof and focused test results with the purpose above, state the retained registry-capacity boundary, and record any follow-up issue.
+Implementation and task-owned verification are complete before council review. A running `ExternalAgentService` observed an initially empty generated registry, then saw a controlled descriptor-backed owner created in a new tmux window and new linked worktree, with the rollout header's actual parent ID. Repeating the scan retained the registry inode and modification time; removing the pane retired only live authority; disposing the reconciler left the selected tmux session alive. The existing 64-session/65,536-byte per-generation capacity remains the declared boundary and will receive a follow-up issue rather than an unreviewed schema/archive expansion.
 
 ## Context and Orientation
 
@@ -133,4 +139,6 @@ The task-owned evidence directory is `/tmp/swarm-ide-live-awareness.UonFxG/disco
 
 `tools/cli/project.mjs` remains the only Git worktree enumerator. `tools/session-registration/identity.ts` and `registry.ts` remain the only owners of live process/rollout validation and atomic private registry changes. No new npm dependency, renderer request, provider abstraction, OS process tracer, model inference, or tmux naming convention is introduced.
 
-Revision note (2026-09-11): Created the initial self-contained plan after source orientation. It chooses a launcher-lifetime reconciler because the existing observer already refreshes registry state, and records exact selection, retirement, disposal, and capacity boundaries before implementation.
+Revision note (2026-09-11 01:16Z): Created the initial self-contained plan after source orientation. It chooses a launcher-lifetime reconciler because the existing observer already refreshes registry state, and records exact selection, retirement, disposal, and capacity boundaries before implementation.
+
+Revision note (2026-09-11 01:37Z): Updated progress, discoveries and outcomes after implementation and owned verification. The recurring project refresh became asynchronous to preserve launcher responsiveness; exact RED/GREEN and the unrelated broad planning-test failure are retained for handoff.

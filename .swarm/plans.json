@@ -513,7 +513,12 @@
       "protocol/trusted-local.ts",
       "app/renderer/agents/TrustedLocalPane.tsx",
       "app/renderer/agents/use-trusted-fleet.ts",
-      "app/renderer/agents/native-outbox.ts"
+      "app/renderer/agents/native-outbox.ts",
+      "core/external-agents-handoff.ts",
+      "core/external-agents-registry.ts",
+      "tools/session-registration/identity.ts",
+      "tools/session-registration/registry.ts",
+      "tools/session-registration/BUILD.bazel"
     ],
     "taskIds": [],
     "contextRefs": [],
@@ -539,6 +544,16 @@
         }
       ],
       "buildTargets": [
+        {
+          "label": "//tools/session-registration:unit",
+          "role": "Checks exact registration, retirement and an owned already-running observer discovering a later tmux owner in a newly created worktree",
+          "dependencies": [
+            { "label": "//tools/session-registration:sources", "relation": "data" },
+            { "label": "//tools/session-registration:bundle", "relation": "data" },
+            { "label": "//tools/cli:sources", "relation": "data" },
+            { "label": "//:quality_sources", "relation": "data" }
+          ]
+        },
         {
           "label": "//:desktop-bundle",
           "role": "Packages renderer and local core",
@@ -750,6 +765,7 @@
       "tools/cli/launcher.mjs",
       "tools/cli/project.mjs",
       "tools/cli/tmux.mjs",
+      "tools/cli/registration-api.ts",
       "tools/cli/BUILD.bazel",
       "Dockerfile",
       "tools/container/runtime.nix",
@@ -791,7 +807,7 @@
       "buildTargets": [
         {
           "label": "//tools/cli:checks",
-          "role": "Checks Git worktree discovery, private project settings, installed-launch arguments and scoped tmux association",
+          "role": "Checks Git worktree discovery, private project settings, installed-launch arguments and serial exact-session tmux reconciliation",
           "dependencies": [{ "label": "//tools/cli:sources", "relation": "data" }]
         },
         {
