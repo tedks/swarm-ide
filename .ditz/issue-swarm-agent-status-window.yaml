@@ -19,3 +19,13 @@ log_events:
   who: Ted Smith
   what: created
   comment: ""
+- time: 2026-09-11T01:33:45-00:00
+  who: Ted Smith
+  what: commented
+  comment: September 10 Goals run reproduces mostly Status unavailable in installed
+    public master f08c75d5. Six registered tails contain supported-format latest task_complete
+    events; one busy reviewer has no recent boundary. User authorized a dedicated
+    fresh worker to capture actual observer/renderer status and repair the concrete
+    propagation or lifecycle cause. No inferred completion from process existence,
+    old summaries or timing. Preserve original PR121 negative boundary; this is a
+    new live report.
