@@ -16,8 +16,8 @@ The behavior is visible in controlled Work Log tests: append a completed concret
 - [x] (2026-09-11 01:34Z) Corrected the cursor design to one ordered transcript checkpoint, added a persisted first-seen batching window, and added cross-window Pause/publication linearization after focused source review exposed replay and race hazards.
 - [x] (2026-09-11 01:39Z) Added RED transcript/service/UI regressions for ongoing milestones, deduplication, restart and tail movement, milestone-to-terminal transitions, errors/aborts, batching, provenance repair, and cancellation/ownership races; the first focused run failed on the intentionally absent protocol/input fields.
 - [x] (2026-09-11 01:41Z) Implemented bounded transcript milestone extraction, one ordered persisted checkpoint, persisted batching, provenance-safe publication, and Pause publication linearization without changing agent liveness or registry ownership.
-- [ ] Update summarizer context, saved-entry provenance, UI copy, design documents, and exact `.swarm/plans.json` source/target mappings.
-- [ ] Run focused Nix/Bazel checks and one bounded owned proof that uses controlled input; decide whether the one authorized disposable Luna call adds evidence without touching Goals or Ditz.
+- [x] (2026-09-11 01:47Z) Updated summarizer context, saved-entry provenance, UI copy, design documents, and exact `.swarm/plans.json` source/target mappings.
+- [ ] Run focused Nix/Bazel checks and one bounded owned proof that uses controlled input (completed: Work Log check and awareness targets pass; living-design reader/stability tests pass inside its bundle; remaining: triage recorded unrelated planning-UI bundle failure and decide whether one disposable Luna call adds evidence without touching Goals or Ditz).
 - [ ] Push granular commits, maintain the draft PR and Ditz progress, run the provider-diverse council to convergence, and record final verification/handoff artifacts.
 
 ## Surprises & Discoveries
@@ -36,6 +36,9 @@ The behavior is visible in controlled Work Log tests: append a completed concret
 
 - Observation: the first RED `//tools/work-log:check` run stopped in TypeScript with the expected missing `origin`, checkpoint, and deterministic clock interfaces; after the implementation and fixture corrections, the same target passed all 116 selected tests.
   Evidence: Bazel reported the initial protocol/input errors, then `//tools/work-log:check PASSED` in 19.0 seconds with controlled summarizers only.
+
+- Observation: the repository-wide living-design bundle's plan readers and component-graph tests pass with the updated mapping, while 13 unrelated planning UI/bridge cases fail with “Could not read the plan” and cross-response authority mismatches.
+  Evidence: `//tools/living-design:checks` reported 89 passing tests, including all `plans-reader`, `component-graph-stability`, and `living-design` tests, plus 13 failures isolated to `planning-ui` and `demo-plan-actions`; no Work Log assertion failed.
 
 ## Decision Log
 

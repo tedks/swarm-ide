@@ -634,15 +634,19 @@
       "app/renderer/build-resources/BuildResources.tsx",
       "app/renderer/work-log/WorkLogPanel.tsx",
       "core/work-log/service.ts",
+      "core/work-log/transcripts.ts",
+      "core/work-log/commands.ts",
+      "protocol/work-log.ts",
       "BUILD.bazel"
     ],
     "taskIds": [],
     "contextRefs": [],
     "design": {
-      "summary": "Read timestamped commands and edits separately from concrete accomplishments retained in repo task history.",
+      "summary": "Read timestamped commands and edits separately from ongoing milestones and terminal accomplishments retained in repo task history.",
       "state": "implemented",
       "constraints": [
         "The primary core watches automatically; explicit Pause is remembered across restart.",
+        "Only completed concrete operations or actual terminal events become summary inputs; current liveness remains separate.",
         "Recording an outcome adds one note; it does not close the issue."
       ],
       "connections": [
@@ -697,12 +701,12 @@
         },
         {
           "label": "//tools/work-log:check",
-          "role": "Checks logical outcomes and explicit summary controls",
+          "role": "Checks ongoing milestone checkpoints, terminal outcomes and explicit summary controls",
           "dependencies": [{ "label": "//:quality_sources", "relation": "data" }]
         },
         {
           "label": "//tools/work-log:awareness-check",
-          "role": "Checks automatic watching, durable Pause and task/plan recovery with controlled summaries",
+          "role": "Checks automatic watching, persisted milestone batching, durable Pause, terminal semantics and task/plan recovery with controlled summaries",
           "dependencies": [
             { "label": "//:quality_sources", "relation": "data" },
             { "label": "//tools/work-log:sources", "relation": "data" }
