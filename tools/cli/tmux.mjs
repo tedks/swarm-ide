@@ -10,10 +10,17 @@ const command = (executable, args, signal) => new Promise((resolve, reject) => {
   const child = execFile(executable, args, {
     encoding: "utf8", timeout: 3000, maxBuffer: 65536, killSignal: "SIGKILL", signal,
     env: { PATH: process.env.PATH, LANG: "C.UTF-8" },
-  }, (error, stdout) => { result = { error, stdout }; });
+  }, (error, stdout, stderr) => { result = { error, stdout, stderr }; });
   // The callback can run before close on abort. Resolve only after the owned
   // process is drained so launcher disposal never leaves a tmux/git child.
-  child.once("close", () => result && !result.error ? resolve(result.stdout) : reject(result?.error ?? new Error("Command did not complete")));
+  child.once("close", () => {
+    if (result && !result.error) resolve(result.stdout);
+    else {
+      const failure = result?.error ?? new Error("Command did not complete");
+      failure.stderr = result?.stderr ?? "";
+      reject(failure);
+    }
+  });
 });
 
 export async function currentTmux(environment, run = command) {
@@ -55,6 +62,9 @@ async function selectedSessionGone(selected, run, signal) {
   let output;
   try { output = await run("tmux", ["-S", selected.socket, "list-sessions", "-F", "#{session_id}"], signal); }
   catch (error) {
+    // LANG is fixed for the production command. These messages mean tmux
+    // itself reached no listener; other failures remain inconclusive.
+    if (/(?:^|\n)(?:no server running on |error connecting to .* \(Connection refused\))(?:.|\n)*$/.test(error.stderr ?? "")) return true;
     // A command failure alone is inconclusive. A socket removed during that
     // failure is authoritative evidence that the selected server is gone.
     try {
@@ -162,6 +172,8 @@ function reconciler(options, dependencies, selected, registry, api) {
       if (!await selectedSessionGone(selected, run, signal)) throw error;
       selectionGone = true; current = { ...selected, panes: [] };
     }
+    // Defensive parser invariant: exact -S/$id queries cannot legitimately
+    // answer for a different socket/session, so never transfer that scope.
     if (current.socket !== selected.socket || current.sessionId !== selected.sessionId)
       throw new Error("Selected tmux server/session changed; retaining prior history without adopting it");
     if (current.socketDev !== selected.socketDev || current.socketIno !== selected.socketIno) {

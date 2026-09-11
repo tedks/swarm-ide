@@ -23,6 +23,34 @@ test("actual tmux selects the named session rather than an empty pane target", a
   }
 });
 
+test("an orphaned socket from a killed selected tmux server retires old authority", async () => {
+  const dir = await mkdtemp(join(tmpdir(), "swarm-tmux-orphan-")), socket = join(dir, "socket");
+  const exec = promisify(execFile), records = new Map(), id = "10000000-0000-4000-8000-000000000011";
+  try {
+    await exec("tmux", ["-S", socket, "-f", "/dev/null", "new-session", "-d", "-s", "selected", "sleep", "30"], { timeout: 5000 });
+    const result = await associateTmux({ tmuxSocket: socket, tmuxSession: "selected", cwd: dir }, {
+      stateRoot: join(dir, "state"), contextRoot: async () => "/project/main",
+      api: {
+        discover: async () => ({ target: { processPid: 10, processStart: "1" }, rollout: "/known/a.jsonl" }),
+        metadata: async () => ({ id, parentId: null }),
+        updateRegistry: async (input) => {
+          if (input.action === "retire") { const previous = records.get(id); records.set(id, { ...previous, tmux: undefined }); return { sessionId: id, authority: "historical-only", changed: true }; }
+          records.set(id, { tmux: input.pane }); return { sessionId: id, authority: "checked-live", changed: true };
+        },
+      },
+    });
+    const serverPid = Number((await exec("tmux", ["-S", socket, "display-message", "-p", "#{pid}"], { timeout: 5000 })).stdout.trim());
+    process.kill(serverPid, "SIGKILL");
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    const retired = await result.reconcile();
+    assert.equal(retired.retired.length, 1); assert.equal(records.get(id).tmux, undefined);
+    await result.dispose();
+  } finally {
+    await exec("tmux", ["-S", socket, "kill-server"], { timeout: 5000 }).catch(() => {});
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
 async function fixture(run) {
   const dir = await mkdtemp(join(tmpdir(), "swarm-tmux-cli-")), socket = join(dir, "socket");
   const server = createServer();

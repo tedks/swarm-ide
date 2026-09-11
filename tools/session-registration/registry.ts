@@ -27,6 +27,8 @@ async function lockRegistry(path: string, signal?: AbortSignal, workspaceRoot?: 
   const parent = dirname(path), dir = await lstat(parent);
   if (!dir.isDirectory() || dir.uid !== process.getuid!() || (dir.mode & 0o077) || await realpath(parent) !== parent)
     throw new Error("Registry requires an existing canonical owned mode-0700 directory");
+  // The reconciler supplies the canonical root captured by discoverProject;
+  // it stays lexical here so removal of that worktree cannot block retirement.
   const workspace = workspaceRoot ?? await realpath(process.cwd());
   absolute(workspace);
   if (within(workspace, path)) throw new Error("Registry must be outside the current repository/workspace");
