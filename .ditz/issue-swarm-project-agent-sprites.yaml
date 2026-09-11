@@ -1,0 +1,21 @@
+id: swarm-project-agent-sprites
+title: Show project-wide agent sprites with focused worktree views
+desc: Show agent overlays across graph surfaces. On primary master/main worktree include
+  agents from all confirmed same-project worktrees with origin labels; on a feature
+  worktree include only that worktree. Use meaningful file/component/build/service/task
+  memberships, preserve source/worktree identity and current graph layout, retain
+  unplaced agents visibly without fabricating positions. User approved dispatch and
+  completion on September 10.
+type: feature
+component: default
+release:
+reporter: Ted Smith <tedks@riseup.net>
+status: unstarted
+disposition:
+creation_time: 2026-09-11T01:33:42-00:00
+references: []
+log_events:
+- time: 2026-09-11T01:33:42-00:00
+  who: Ted Smith
+  what: created
+  comment: ""
