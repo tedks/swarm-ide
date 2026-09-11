@@ -29,8 +29,8 @@ export class AgentLifecycleProjection {
     return next;
   }
   /** Returns true only when this record independently establishes lifecycle.
-   * A fork terminal without started_at can update an already-owned turn, but
-   * its checkpoint must retain the earlier owned start. */
+   * A terminal without started_at can update an already-owned turn, but its
+   * checkpoint must retain the earlier owned start. */
   consume(input: unknown): boolean {
     const record = object(input), payload = object(record?.payload);
     if (!record || !payload) return false;
@@ -58,7 +58,7 @@ export class AgentLifecycleProjection {
           at: new Date(at).toISOString(), turnId };
         this.latestStart = order; this.ownTurn = true; this.terminal = true; this.pending.clear();
       }
-      return payload.type === "task_started" || !this.forked || Number.isFinite(started);
+      return payload.type === "task_started" || Number.isFinite(started);
     }
     if (!this.ownTurn || this.terminal || (this.current.at && at < Date.parse(this.current.at))) return false;
     // Only blocking human-input calls stop work. Async request acceptance is

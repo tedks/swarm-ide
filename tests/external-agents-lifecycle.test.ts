@@ -33,6 +33,12 @@ describe("actual agent execution lifecycle", () => {
     q.consume(event("task_started")); q.consume(event("turn_aborted", { reason: "interrupted" }, 2));
     expect(q.snapshot().state).toBe("unknown");
   });
+  it("keeps the owning start authoritative when a terminal omits started_at", () => {
+    const p = new AgentLifecycleProjection({ timestamp: born });
+    expect(p.consume(event("task_started"))).toBe(true);
+    expect(p.consume(event("task_complete", { started_at: undefined }, 2))).toBe(false);
+    expect(p.snapshot()).toMatchObject({ state: "completed", turnId: "turn-a" });
+  });
   it("correlates blocking human requests and does not treat async acceptance as waiting or an answer", () => {
     const p = new AgentLifecycleProjection({ timestamp: born }); p.consume(event("task_started"));
     p.consume(response("function_call", { name: "functions.request_user_input_async", call_id: "async" }));

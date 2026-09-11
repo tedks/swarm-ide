@@ -183,8 +183,11 @@ discontinuous observation searches at most the latest 4 MiB for an explicit
 lifecycle boundary, while the Activity feed remains a 256 KiB tail. A bounded
 per-registration content checkpoint starts at the latest independently owned
 lifecycle boundary and reuses the result while the complete file version is
-unchanged. A bounded append validates every cached byte before parsing only new
-complete records. A suffix that reaches 4 MiB is reprojected cold; an append
+unchanged. A bounded append rereads and hashes the cached state-bearing suffix,
+from that authority boundary through the prior complete record, before parsing
+only new complete records. This bounded I/O is deliberate: validating only new
+bytes could not detect a same-inode rewrite of earlier lifecycle evidence without
+an external append-only guarantee. A suffix that reaches 4 MiB is reprojected cold; an append
 concurrent with any read is accepted only when the exact state-bearing bytes
 still hash identically. Valid large JSONL records contained by the window can
 carry or follow lifecycle evidence without publishing their large content.
