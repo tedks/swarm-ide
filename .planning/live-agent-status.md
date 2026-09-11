@@ -14,8 +14,9 @@ Registered Goals conversations with explicit Codex lifecycle records should show
 - [x] (2026-09-11 01:47Z) Added RED regressions for cold recovery beyond Activity and valid oversized terminal envelopes, then implemented a 4-MiB cold/discontinuous lifecycle lookback plus a per-version content checkpoint; malformed and greater-than-lookback gaps remain unknown.
 - [x] (2026-09-11 01:48Z) Confirmed the real read-only service path publishes two current working and five completed Goals sessions identically through snapshot/detail and protocol validation.
 - [x] (2026-09-11 01:49Z) Updated the agent design and exact `//tools/demo-agents:unit` plan mapping for the split lifecycle/Activity bounds.
-- [ ] Run focused Bazel tests and type/build gates, then obtain native and foreign council-review convergence (round 1 fixed; convergence found full-rescan cost; incremental attestation in progress).
-- [ ] Push the ready PR, update and sync Ditz without closing the in-progress issue, clean owned resources, and write verification/final recap artifacts.
+- [x] (2026-09-11 02:35Z) Passed the focused `//tools/demo-agents:unit` regressions (156 cases: 155 passed, 1 skipped) and `//:desktop-bundle` packaging/type gate.
+- [x] (2026-09-11 02:35Z) Reached council-review fixpoint across native Codex, Claude Sonnet, and Antigravity: bounded incremental attestation, dependent-terminal authority, and the final rewrite regression all received clean convergence rounds.
+- [ ] Mark PR 151 ready, add and sync the Ditz accomplishment note without closing the issue, clean owned resources, and write verification/final recap artifacts.
 
 ## Surprises & Discoveries
 
@@ -23,7 +24,7 @@ The prior inventory found accepted-format `task_complete` boundaries inside six 
 
 The direct pre-fix service path showed that the apparent registry file in the project descriptor is an envelope pointing to the actual private registry; passing the envelope itself correctly returns unavailable. Resolving its registered path read-only produced five completions and two unknown states. A separate four-MiB metadata-only scan found the node's latest `task_started` about 1.7 MiB behind EOF, after eight valid records larger than 64 KiB and no malformed records. The existing 256-KiB reader therefore could not reconstruct it cold, and its 64-KiB Activity record guard also reset an already accepted projection on valid large records.
 
-The two added regressions failed before the correction and all 151 focused cases passed after it. The corrected real snapshot and per-session details agreed on two current working states and five completed states; the protocol parser accepted every result.
+The two initial regressions failed before the correction and the expanded focused suite passed after it. The corrected real snapshot and per-session details agreed on two current working states and five completed states; the protocol parser accepted every result.
 
 ## Decision Log
 
@@ -49,7 +50,7 @@ The two added regressions failed before the correction and all 151 focused cases
 
 ## Outcomes & Retrospective
 
-The concrete core-side loss is repaired and demonstrated with sanitized regressions and the authorized real read-only path. Review, final gates, PR readiness and handoff remain in progress.
+The concrete core-side loss is repaired and demonstrated with sanitized regressions and the authorized real read-only path. Repeated council rounds exposed and closed same-inode rewrite and dependent-terminal checkpoint hazards, while preserving bounded I/O and incremental parsing. Focused tests and the desktop bundle pass; only the PR/issue handoff remains.
 
 ## Context and Orientation
 
@@ -77,8 +78,10 @@ Sanitized verification and council summaries belong in `/tmp/swarm-ide-agent-vis
 
 ## Interfaces and Dependencies
 
-Keep `AgentLifecycleProjection.consume(input: unknown): void` and the optional `ExternalAgentSummary.lifecycle` wire shape unless the diagnosis proves a narrowly necessary extension. Use existing Node filesystem APIs, Zod schemas, React state, and current Bazel targets; add no dependency and do not broaden renderer authority.
+`AgentLifecycleProjection.consume(input: unknown): boolean` returns whether a record independently establishes lifecycle and may therefore advance the recovery checkpoint; state-changing dependent terminals return false. The optional `ExternalAgentSummary.lifecycle` wire shape remains unchanged. Use existing Node filesystem APIs, Zod schemas, React state, and current Bazel targets; add no dependency and do not broaden renderer authority.
 
 Initial plan recorded before implementation to make the trust, continuity, privacy, and failure assumptions explicit.
 
 2026-09-11 update: recorded the live metadata diagnosis, RED/green regression evidence, bounded checkpoint design, and current remaining review/landing work.
+
+2026-09-11 final update: recorded incremental content attestation, dependent-terminal authority, focused gates, and clean multi-provider convergence.
