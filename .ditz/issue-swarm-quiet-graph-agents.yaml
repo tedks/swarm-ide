@@ -21,3 +21,12 @@ log_events:
   who: Ted Smith
   what: started
   comment: ""
+- time: 2026-09-11T13:52:47-00:00
+  who: Ted Smith
+  what: commented
+  comment: PR153 removes all located/unplaced graph counts and lists; preserves placed
+    sprite controls, geometry, worktree scope and existing observation window. Focused
+    check passed 116 cases plus one selected mounted case/typechecks. Owned packaged
+    check passed 1.49s scenario, zero renderer errors/model turns, cleanup1; matched
+    sprites/cameras/source retained. Native and Google reviews CLEAN; bounded Claude
+    review pending.
