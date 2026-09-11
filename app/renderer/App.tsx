@@ -1546,7 +1546,7 @@ export function App() {
 
   if (!snapshot) return <main className="loading-screen"><div className="loading-mark hmr-probe" />Opening the working world…{error ? <strong>{error}</strong> : null}<small>{lifecycleNotice}</small><AgentReloadGuard state={liveAgents} client={agentClient} /></main>;
   return (
-    <GraphAgents client={externalAgents} root={selectedWorktree?.root} connected={!workspacePending && (!window.swarmLifecycle || lifecycle?.core.phase === "ready")} onOpen={showConversation}>
+    <GraphAgents client={externalAgents} selection={selectedWorktree} connected={!workspacePending && (!window.swarmLifecycle || lifecycle?.core.phase === "ready")} onOpen={showConversation}>
     <main className="workbench" onPointerDownCapture={(event) => { cancelHistoryRestore(); interruptPendingReveal(event); }} onFocusCapture={interruptPendingReveal} onKeyDownCapture={(event) => { cancelHistoryRestore(); if (event.key === "Escape" && definitionRef.current) { event.preventDefault(); event.stopPropagation(); cancelDefinition(); } }} data-compact-panel={compactPanel ?? "none"} style={{ "--context-width": `${contextWidth}%`, ...(dockShare !== null ? { gridTemplateRows: `var(--topbar-height) minmax(0, 1fr) ${dockShare}%` } : agents.selected || liveAgents.paneOpen ? { gridTemplateRows: `var(--topbar-height) minmax(0, 1fr) calc(160px + (clamp(180px, 40vh, 448px) - 160px) * ${Math.min(1, Math.max(0, ((liveAgents.paneOpen ? liveAgents.height : agentPaneHeight) - 230) / 190))})` } : {}) } as CSSProperties}>
       <header className="topbar">
         <div className="product-mark"><span className="hmr-probe" />swarm</div>

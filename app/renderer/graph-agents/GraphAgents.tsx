@@ -2,6 +2,7 @@ import { createContext, useContext, useMemo, useState, type ReactNode } from "re
 import { AGENT_EXECUTION_LABELS } from "../../../protocol/agent-lifecycle";
 import type { ExternalClient } from "../external-agents/client";
 import { observedGraphAgents, placeGraphAgents, type AgentNodeLocation, type GraphAgent } from "./locations";
+import type { WorkspaceDescriptor } from "../../../protocol/workspace";
 import "./graph-agents.css";
 
 const emptyAgents: GraphAgent[] = [];
@@ -10,14 +11,14 @@ const AgentContext = createContext<{ agents: GraphAgent[]; visible: boolean; tog
 const LocationContext = createContext<ReadonlyMap<string, GraphAgent[]>>(new Map());
 
 /** The existing observer supplies updates. No timer or provider is introduced. */
-export function GraphAgents({ client, root, connected, onOpen, children }: {
-  client: ExternalClient; root?: string; connected: boolean; onOpen(id: string): void; children: ReactNode;
+export function GraphAgents({ client, selection, connected, onOpen, children }: {
+  client: ExternalClient; selection?: WorkspaceDescriptor; connected: boolean; onOpen(id: string): void; children: ReactNode;
 }) {
   const [visible, setVisible] = useState(true);
-  const agents = useMemo(() => observedGraphAgents({ root, sessions: client.snapshot?.sessions ?? [],
+  const agents = useMemo(() => observedGraphAgents({ selection, sessions: client.snapshot?.sessions ?? [],
     fleet: client.fleet ?? [], detail: client.detail,
     retained: !connected || client.stale || client.observing === false || client.snapshot?.status !== "observed",
-  }), [root, client.snapshot, client.fleet, client.detail, client.stale, client.observing, connected]);
+  }), [selection, client.snapshot, client.fleet, client.detail, client.stale, client.observing, connected]);
   return <AgentContext.Provider value={{ agents, visible, toggle: () => setVisible((value) => !value), open: onOpen }}>{children}</AgentContext.Provider>;
 }
 
@@ -33,7 +34,23 @@ export function GraphAgentLayer({ locations, nearest = false, children }: {
 }) {
   const { agents, visible } = useContext(AgentContext);
   const placed = useMemo(() => placeGraphAgents(visible ? agents : emptyAgents, locations, nearest), [agents, locations, nearest, visible]);
-  return <LocationContext.Provider value={placed}>{children}</LocationContext.Provider>;
+  const placedIds = useMemo(() => new Set([...placed.values()].flatMap((rows) => rows.map((agent) => agent.id))), [placed]);
+  return <LocationContext.Provider value={placed}>{children}<GraphAgentPlacementSummary placedIds={placedIds} /></LocationContext.Provider>;
+}
+
+function GraphAgentPlacementSummary({ placedIds }: { placedIds: ReadonlySet<string> }) {
+  const { agents, visible, open } = useContext(AgentContext);
+  if (!visible || !agents.length) return null;
+  const unplaced = agents.filter((agent) => !placedIds.has(agent.id));
+  return <div className="graph-agent-placement-summary nodrag nopan" data-graph-agent-summary="true"
+    onPointerDown={(event) => event.stopPropagation()} onMouseDown={(event) => event.stopPropagation()}
+    onDoubleClick={(event) => event.stopPropagation()} onKeyDown={(event) => event.stopPropagation()}>
+    <span>{placedIds.size} located · {unplaced.length} unplaced</span>
+    {unplaced.map((agent) => <button type="button" key={agent.id} data-agent-id={agent.id}
+      aria-label={`Open unplaced agent ${agent.label} from ${agent.branch ?? agent.worktree}`}
+      title={`${agent.label} · ${agent.branch ?? agent.worktree}\nNo explicit membership in this graph.\nLatest: ${agent.latestAction}`}
+      onClick={(event) => { event.stopPropagation(); open(agent.id); }}>{agent.label} · {agent.branch ?? agent.worktree.split("/").at(-1)}</button>)}
+  </div>;
 }
 
 export function GraphAgentSprites({ nodeId }: { nodeId: string }) {
@@ -45,10 +62,11 @@ export function GraphAgentSprites({ nodeId }: { nodeId: string }) {
     onDoubleClick={(event) => event.stopPropagation()} onKeyDown={(event) => event.stopPropagation()}>
     {agents.map((agent) => {
       const status = agent.retained ? `Last seen · ${AGENT_EXECUTION_LABELS[agent.state]}` : AGENT_EXECUTION_LABELS[agent.state];
-      const description = `${agent.label} · ${status} · Last touched ${agent.path}\n${agent.action}\n${agent.at}\nLatest: ${agent.latestAction}`;
+      const origin = agent.branch ? `${agent.branch} · ${agent.worktree}` : agent.worktree;
+      const description = `${agent.label} · ${status} · Origin ${origin} · Last touched ${agent.path}\n${agent.action}\n${agent.at}\nLatest: ${agent.latestAction}`;
       return <button type="button" key={agent.id} className={`graph-agent-sprite state-${agent.state}${agent.retained ? " is-retained" : ""}`}
         data-agent-id={agent.id} data-agent-path={agent.path} data-agent-working={!agent.retained && agent.state === "working"}
-        aria-label={`Open ${agent.label} · ${status} · last touched ${agent.path}`} title={description}
+        aria-label={`Open ${agent.label} from ${agent.branch ?? agent.worktree} · ${status} · last touched ${agent.path}`} title={description}
         onClick={(event) => { event.stopPropagation(); open(agent.id); }}>
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2v4M3 11v6m18-6v6M8 20v2m8-2v2" /><rect x="5" y="6" width="14" height="14" rx="4" /><path d="M9 16h6" /><circle cx="9" cy="11" r="1" /><circle cx="15" cy="11" r="1" /></svg>
         <span>{agent.label}</span><i aria-hidden="true" />

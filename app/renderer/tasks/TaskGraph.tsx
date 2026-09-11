@@ -4,6 +4,8 @@ import { TaskBridgeClient, type TaskClientState } from "./client";
 import { ACTIVE_TASK_STATUSES, TASK_GRAPH_STATUSES, TASK_GRAPH_STATUS_LABELS, filterTaskGraph, loadTaskGraphDetails, parseTaskGraphStatuses, projectTaskGraph, scopeTaskGraph, type TaskGraphStatus } from "./graph";
 import { ProjectionCanvas } from "../plans/ProjectionCanvas";
 import { displayTaskText } from "./display";
+import { GraphAgentLayer, GraphAgentsToggle } from "../graph-agents/GraphAgents";
+import { taskAgentLocations } from "../graph-agents/locations";
 
 export function TaskGraph({ client, state, visible, onOpen }: {
   client: TaskBridgeClient; state: TaskClientState; visible: boolean;
@@ -110,6 +112,8 @@ export function TaskGraph({ client, state, visible, onOpen }: {
     subtitle: `${row.status} · ${row.missing ? "missing" : row.detailLoaded ? "relations read" : "relations unread"}`, warning: row.missing })) ?? [], [scoped]);
   const edges = useMemo(() => scoped?.edges.map((edge) => ({ ...edge,
     label: `blocks${edge.diagnostics.length ? ` · ${edge.diagnostics.join(", ")}` : ""}` })) ?? [], [scoped]);
+  const agentLocations = useMemo(() => taskAgentLocations(fresh ? loaded.snapshot : undefined,
+    fresh ? loaded.details : new Map(), visibleIds), [fresh, loaded, visibleIds]);
   const picked = projection?.nodes.find((node) => node.id === selected);
   const selectedHidden = picked && !visibleIds.has(picked.id);
   const showSelected = () => {
@@ -126,6 +130,7 @@ export function TaskGraph({ client, state, visible, onOpen }: {
     <header className="planning-heading"><div><strong>Task blockage</strong><small>Blocker → blocked · Ditz metadata, not dispatch readiness</small></div>
       <button disabled={!eligible || loading} onClick={() => { void read(); }}>{loading ? "Loading dependencies…" : "Refresh dependencies"}</button>
       <button disabled={!state.connected || state.refreshing} onClick={() => { void client.refresh(); }}>Refresh task metadata</button>
+      <GraphAgentsToggle />
     </header>
     <div className="planning-status" role="status">
       {!loaded ? <p>Waiting for task metadata. Relationships load automatically; completed tasks stay in Ditz.</p> : <p>
@@ -159,7 +164,7 @@ export function TaskGraph({ client, state, visible, onOpen }: {
         {selectedHidden ? <p>Selected task is hidden by {matchingIds.has(picked.id) ? "focused scope" : "filters"}. <button onClick={showSelected}>Show selected</button></p> : null}
         {matchingTasks === 0 ? <p>No tasks match these filters. <button onClick={() => changeStatuses(TASK_GRAPH_STATUSES)}>Show all</button></p> : null}
       </nav>
-      {canvasWasShown.current ? <ProjectionCanvas label="Task blockage canvas" nodes={nodes} edges={edges} selected={selected && visibleIds.has(selected) ? selected : null} taskScopeVersion={scope.version} cameraScope={cameraScope} revealIdentity={revealIdentity} revealSelection selectionIntent={selectionIntent} visible={visible} onSelect={(id) => { select(id); void open(id); }} />
+      {canvasWasShown.current ? <GraphAgentLayer locations={agentLocations}><ProjectionCanvas label="Task blockage canvas" nodes={nodes} edges={edges} selected={selected && visibleIds.has(selected) ? selected : null} taskScopeVersion={scope.version} cameraScope={cameraScope} revealIdentity={revealIdentity} revealSelection selectionIntent={selectionIntent} visible={visible} onSelect={(id) => { select(id); void open(id); }} /></GraphAgentLayer>
         : <div className="planning-empty">Reading relationships before framing the graph…</div>}
       <div className="planning-inspector">
         {picked ? <><strong>{displayTaskText(picked.title)}</strong><code>{picked.id}</code><button disabled={!fresh || picked.missing} onClick={() => { void open(picked.id); }}>Open task details</button></> : <p>Select a task, then explicitly open its pinned detail.</p>}

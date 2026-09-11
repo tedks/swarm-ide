@@ -208,7 +208,8 @@ export function DesignWorkspace(props: DesignWorkspaceProps) {
     {generate}
   </div>;
   const implementationPane = node && graph ? (<section className="design-implementation" aria-label="Design implementation"><h3>Implementation</h3>
-          {!props.renderWorkspace && (implementation?.nodes.length ? <div className="design-implementation-graph"><ProjectionCanvas cameraScope={`${worldId}:${repositoryId}:${node.id}`} label="Component build mappings" {...implementation} selected={null} onSelect={openBuild} /></div> : <p className="design-empty">Select a component to explore its build connections.</p>)}
+          <GraphAgentsToggle />
+          {!props.renderWorkspace && (implementation?.nodes.length ? <GraphAgentLayer locations={[]}><div className="design-implementation-graph"><ProjectionCanvas cameraScope={`${worldId}:${repositoryId}:${node.id}`} label="Component build mappings" {...implementation} selected={null} onSelect={openBuild} /></div></GraphAgentLayer> : <p className="design-empty">Select a component to explore its build connections.</p>)}
           {linkNotice ? <p role="status">{linkNotice}</p> : null}
           <PlanLinkList key={`${node.id}:source`} label="Source files" items={node.sourcePaths.map((path) => <button key={path} disabled={!current} onClick={() => onOpenFile(path)}>{path}</button>)} />
           <PlanLinkList key={`${node.id}:build`} label="Build targets" items={(node.design?.buildTargets ?? []).map((target) => <button key={target.label} disabled={!current} title={target.role} onClick={() => openBuild(target.label)}>{target.label}</button>)} />

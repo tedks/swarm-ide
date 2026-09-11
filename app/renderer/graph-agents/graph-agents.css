@@ -10,5 +10,9 @@
 .graph-agent-sprite.state-waiting i { border-color: #e6c56f; }
 .graph-agent-sprite.is-retained { border-style: dashed; opacity: .75; }
 .graph-agent-sprite:focus-visible { outline: 2px solid #e6c56f; outline-offset: 2px; }
+.graph-agent-placement-summary { display: flex; align-items: center; flex-wrap: wrap; gap: 5px; min-height: 24px; padding: 3px 7px; border-top: 1px solid #284a46; color: #9ab8b0; background: #0b1d20; font-size: 10px; pointer-events: auto; }
+.graph-agent-placement-summary > span { text-transform: uppercase; letter-spacing: .04em; }
+.graph-agent-placement-summary button { max-width: 190px; overflow: hidden; padding: 2px 5px; border: 1px dashed #548379; border-radius: 4px; color: #d7eee5; background: #102b2b; font: inherit; white-space: nowrap; text-overflow: ellipsis; cursor: pointer; }
+.graph-agent-placement-summary button:focus-visible { outline: 2px solid #e6c56f; outline-offset: 1px; }
 @media (prefers-reduced-motion: no-preference) { .graph-agent-sprite[data-agent-working="true"] svg { animation: graph-agent-working 1.8s ease-in-out infinite; } }
 @keyframes graph-agent-working { 50% { transform: translateY(-2px); } }
