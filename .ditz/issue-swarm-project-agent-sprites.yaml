@@ -10,8 +10,8 @@ type: feature
 component: default
 release:
 reporter: Ted Smith <tedks@riseup.net>
-status: in_progress
-disposition:
+status: closed
+disposition: fixed
 creation_time: 2026-09-11T01:33:42-00:00
 references: []
 log_events:
@@ -53,3 +53,14 @@ log_events:
     council: Codex native CLEAN; Antigravity CLEAN; Claude produced no verdict within
     the eight-minute cap and is recorded unavailable without retry. Issue remains
     in progress for ROOT landing.'
+- time: 2026-09-11T03:29:03-00:00
+  who: Ted Smith
+  what: 'closed: fixed'
+  comment: PR152 normally merged as56444c58. Project-wide sprites on the confirmed
+    primary worktree and exact feature-worktree scope; per-origin membership and reachable
+    unplaced agents across graph layers. ROOT intake fixed unbounded overlay rows,
+    clipped task sprites and repeated detail-read Git scans. Joined focused check
+    and actual two-worktree/20-extra-agent geometry/retention proof passed, native+Google
+    correction CLEAN, Claude unavailable. Original broad-suite/navigation failures
+    remain separately attributed and filed; no historical-cause claim. Installed aggregate
+    adoption underway.
