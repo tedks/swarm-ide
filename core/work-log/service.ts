@@ -4,16 +4,23 @@ import { join, resolve } from "node:path";
 import { randomUUID } from "node:crypto";
 import { z } from "zod";
 import { WorkLogEntrySchema, WorkLogSettingsSchema, WorkLogSnapshotSchema, type WorkLogRequest, type WorkLogSnapshot } from "../../protocol/work-log";
-import { readWorkCompletions, readWorkInputs, type WorkCompletion, type WorkInput } from "./transcripts";
+import { observeWork, readWorkCompletions, readWorkInputs, type WorkCheckpoint, type WorkCompletion, type WorkInput, type WorkObservation } from "./transcripts";
 import { recordWorkOutcome, runWorkCommand, summarizeWork, withWorkLock, type WorkSummary } from "./commands";
 
 const DocumentSchema = z.object({ version: z.literal(1), entries: z.array(WorkLogEntrySchema).max(200) }).strict();
-const StateSchema = z.object({ version: z.literal(1), settings: WorkLogSettingsSchema, seen: z.record(z.string(), z.string()).default({}) }).strict();
+const CheckpointSchema = z.object({ source: z.string().min(1).max(160), offset: z.number().int().nonnegative(), length: z.number().int().nonnegative(), anchor: z.string().min(1).max(160),
+  at: z.string().datetime(), turnId: z.string().max(160).nullable() }).strict();
+const PendingSchema = z.object({ checkpoint: CheckpointSchema, since: z.number().int().nonnegative() }).strict();
+const StateSchema = z.object({ version: z.literal(1), settings: WorkLogSettingsSchema,
+  seen: z.record(z.string(), z.string()).default({}), checkpoints: z.record(z.string(), CheckpointSchema).default({}),
+  pending: z.record(z.string(), PendingSchema).default({}) }).strict();
 const WatcherSchema = z.object({ version: z.literal(1), paused: z.boolean() }).strict();
 type State = z.infer<typeof StateSchema>;
-export type WorkLogDependencies = { inputs(root: string, registry?: string, seen?: Record<string, string>): Promise<WorkInput[]>;
+export type WorkLogDependencies = { inputs(root: string, registry?: string, checkpoints?: Record<string, WorkCheckpoint>, legacySeen?: Record<string, string>): Promise<WorkInput[]>;
+  observe?(root: string, registry?: string, checkpoints?: Record<string, WorkCheckpoint>, legacySeen?: Record<string, string>): Promise<WorkObservation>;
   completions?(root: string, registry?: string): Promise<WorkCompletion[]>;
-  summarize(input: WorkInput[], settings: WorkLogSnapshot["settings"], signal: AbortSignal): Promise<WorkSummary[]> };
+  summarize(input: WorkInput[], settings: WorkLogSnapshot["settings"], signal: AbortSignal): Promise<WorkSummary[]>;
+  now?(): number };
 
 async function atomic(path: string, bytes: string, mode = 0o600) {
   const temporary = `${path}.${randomUUID()}.tmp`;
@@ -24,7 +31,7 @@ async function atomic(path: string, bytes: string, mode = 0o600) {
 
 export class WorkLogService {
   private snapshot: WorkLogSnapshot = { running: false, summarizing: false, settings: WorkLogSettingsSchema.parse({}), entries: [], notice: "" };
-  private state: State = { version: 1, settings: this.snapshot.settings, seen: {} };
+  private state: State = { version: 1, settings: this.snapshot.settings, seen: {}, checkpoints: {}, pending: {} };
   private initialized?: Promise<void>;
   private privateDir = "";
   private commonDir = "";
@@ -41,7 +48,9 @@ export class WorkLogService {
   private initializationRetryAt = 0;
   private initializationError: unknown;
   private failures = 0;
-  constructor(private root: string, private registry?: string, private deps: WorkLogDependencies = { inputs: readWorkInputs, completions: readWorkCompletions, summarize: summarizeWork }) {}
+  constructor(private root: string, private registry?: string, private deps: WorkLogDependencies = {
+    inputs: readWorkInputs, observe: observeWork, completions: readWorkCompletions, summarize: summarizeWork,
+  }) {}
   /** Only the primary core runtime activates production watching. Renderer reads
    * remain reads; multiple mounts never own competing startup side effects. */
   activate() {
@@ -83,8 +92,10 @@ export class WorkLogService {
     }
   }
   private async savePaused(paused: boolean) {
-    await this.isPaused(); // Validate existing preferences; never overwrite malformed data.
-    await atomic(join(this.privateDir, "watcher.json"), JSON.stringify({ version: 1, paused }));
+    await withWorkLock(join(this.privateDir, "publication.lock"), async () => {
+      await this.isPaused(); // Validate existing preferences; never overwrite malformed data.
+      await atomic(join(this.privateDir, "watcher.json"), JSON.stringify({ version: 1, paused }));
+    }, true);
   }
   private async maySummarize() {
     const paused = await this.isPaused();
@@ -104,7 +115,7 @@ export class WorkLogService {
   }
   private async repairLegacyEntries() {
     if (!this.repairPending) return;
-    if (!this.snapshot.entries.some((entry) => entry.state === "working")) { this.repairPending = false; return; }
+    if (!this.snapshot.entries.some((entry) => entry.state === "working" && entry.origin === undefined)) { this.repairPending = false; return; }
     try {
       await withWorkLock(join(this.privateDir, "producer.lock"), async () => {
         // Reload inside the same lane as publication and recording, so another
@@ -113,7 +124,7 @@ export class WorkLogService {
         try { savedSeen = StateSchema.parse(JSON.parse(await readFile(join(this.privateDir, "state.json"), "utf8"))).seen; }
         catch (error) { if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error; }
         await this.loadDocument();
-        const legacy = this.snapshot.entries.filter((entry) => entry.state === "working");
+        const legacy = this.snapshot.entries.filter((entry) => entry.state === "working" && entry.origin === undefined);
         let observed: WorkCompletion[] = [];
         if (legacy.length) {
           try { observed = await (this.deps.completions ? this.deps.completions(this.root, this.registry) : this.deps.inputs(this.root, this.registry, {})); }
@@ -210,24 +221,53 @@ export class WorkLogService {
         if (!await this.maySummarize()) return;
         this.snapshot.settings = this.state.settings;
         await this.loadDocument();
-        const observed = await this.deps.inputs(this.root, this.registry, this.state.seen);
+        const observed = this.deps.observe
+          ? await this.deps.observe(this.root, this.registry, this.state.checkpoints, this.state.seen)
+          : { inputs: await this.deps.inputs(this.root, this.registry, this.state.checkpoints, this.state.seen), advances: {} };
         if (!this.snapshot.running || this.disposed) return;
         if (!await this.maySummarize()) return;
-        const fresh = observed.filter((item) => this.state.seen[item.sessionId] !== item.boundary)
+        for (const [sessionId, advance] of Object.entries(observed.advances)) {
+          this.state.checkpoints[sessionId] = advance; delete this.state.pending[sessionId];
+        }
+        const fallback = (item: WorkInput): WorkCheckpoint => item.checkpoint ?? { source: "injected", offset: 0, length: 0,
+          anchor: item.boundary, at: item.at, turnId: null };
+        const fresh = observed.inputs.filter((item) => this.state.checkpoints[item.sessionId]?.anchor !== fallback(item).anchor)
           .sort((a, b) => b.at.localeCompare(a.at));
-        // Bootstrap with recent work, not the entire inherited organization history.
-        const eligible = fresh.filter((item) => Date.parse(item.at) >= Date.now() - 30 * 60 * 1000).slice(0, 4);
-        for (const item of fresh.filter((item) => !eligible.length || eligible.includes(item) || Date.parse(item.at) < Date.now() - 30 * 60 * 1000)) this.state.seen[item.sessionId] = item.boundary;
+        const now = this.deps.now?.() ?? Date.now(), due: WorkInput[] = [];
+        for (const item of fresh) {
+          const next = fallback(item);
+          // Bootstrap with recent work, not the entire inherited organization history.
+          if (Date.parse(item.at) < now - 30 * 60 * 1000) {
+            this.state.checkpoints[item.sessionId] = next; delete this.state.pending[item.sessionId]; continue;
+          }
+          if (item.origin === "terminal") {
+            delete this.state.pending[item.sessionId]; due.push(item); continue;
+          }
+          const pending = this.state.pending[item.sessionId];
+          if (!pending) this.state.pending[item.sessionId] = { checkpoint: next, since: now };
+          else {
+            pending.checkpoint = next;
+            if (now - pending.since >= this.snapshot.settings.debounceSeconds * 1000) due.push(item);
+          }
+        }
+        const eligible = due.slice(0, 4);
+        for (const item of eligible) {
+          this.state.checkpoints[item.sessionId] = fallback(item); delete this.state.pending[item.sessionId];
+          if (item.origin === "terminal") this.state.seen[item.sessionId] = item.boundary;
+        }
         await this.saveState(); // Record attempts before model admission: restart never replays.
         if (!eligible.length) { this.failures = 0; this.snapshot.notice = ""; return; }
         if (!await this.maySummarize()) return;
         this.snapshot.summarizing = true;
         const summaries = await this.deps.summarize(eligible, this.snapshot.settings, this.controller.signal);
-        if (!await this.maySummarize()) return;
-        const entries = eligible.map((input, index) => WorkLogEntrySchema.parse({ id: `${input.sessionId}:${input.boundary}`,
-          sessionId: input.sessionId, agent: input.agent, taskId: input.taskId, at: input.at, ...summaries[index], state: input.state ?? "completed", recorded: false }));
-        this.snapshot.entries = [...entries, ...this.snapshot.entries].slice(0, 200);
-        await this.saveDocument(); this.snapshot.notice = ""; this.failures = 0;
+        await withWorkLock(join(this.privateDir, "publication.lock"), async () => {
+          if (!await this.maySummarize()) return;
+          const entries = eligible.map((input, index) => WorkLogEntrySchema.parse({ id: `${input.sessionId}:${input.boundary}`,
+            sessionId: input.sessionId, agent: input.agent, taskId: input.taskId, at: input.at, ...summaries[index],
+            origin: input.origin, state: input.origin === "milestone" ? "working" : input.state ?? "completed", recorded: false }));
+          this.snapshot.entries = [...entries, ...this.snapshot.entries].slice(0, 200);
+          await this.saveDocument(); this.snapshot.notice = ""; this.failures = 0;
+        }, true);
       });
     } catch (error) {
       if (this.snapshot.running && !this.disposed) {

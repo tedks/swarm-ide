@@ -12,9 +12,10 @@ The behavior is visible in controlled Work Log tests: append a completed concret
 
 - [x] (2026-09-11 01:18Z) Read the milestone/common instructions, repository `AGENTS.md`, `.planning/PLANS.md`, and the existing Work Log source, tests, proof tooling, design, and build mappings.
 - [x] (2026-09-11 01:18Z) Wrote the required fresh-session `ready` note and initialized the short step `seam.md` after verifying the designated clean worktree and branch.
-- [x] (2026-09-11 01:24Z) Chose separate persisted milestone and terminal checkpoints, explicit saved-entry provenance, and completed-tool evidence as the bounded admission rule before writing code.
-- [ ] Add RED transcript/service/UI regressions for ongoing milestones, deduplication, restart and tail movement, milestone-to-terminal transitions, errors/aborts, batching, provenance repair, and cancellation/ownership races.
-- [ ] Implement bounded transcript milestone extraction and independent persisted checkpoint advancement without changing agent liveness or registry ownership.
+- [x] (2026-09-11 01:24Z) Chose explicit saved-entry provenance and completed-tool evidence as the bounded admission rule before writing code.
+- [x] (2026-09-11 01:34Z) Corrected the cursor design to one ordered transcript checkpoint, added a persisted first-seen batching window, and added cross-window Pause/publication linearization after focused source review exposed replay and race hazards.
+- [x] (2026-09-11 01:39Z) Added RED transcript/service/UI regressions for ongoing milestones, deduplication, restart and tail movement, milestone-to-terminal transitions, errors/aborts, batching, provenance repair, and cancellation/ownership races; the first focused run failed on the intentionally absent protocol/input fields.
+- [x] (2026-09-11 01:41Z) Implemented bounded transcript milestone extraction, one ordered persisted checkpoint, persisted batching, provenance-safe publication, and Pause publication linearization without changing agent liveness or registry ownership.
 - [ ] Update summarizer context, saved-entry provenance, UI copy, design documents, and exact `.swarm/plans.json` source/target mappings.
 - [ ] Run focused Nix/Bazel checks and one bounded owned proof that uses controlled input; decide whether the one authorized disposable Luna call adds evidence without touching Goals or Ditz.
 - [ ] Push granular commits, maintain the draft PR and Ditz progress, run the provider-diverse council to convergence, and record final verification/handoff artifacts.
@@ -33,6 +34,9 @@ The behavior is visible in controlled Work Log tests: append a completed concret
 - Observation: legacy repair currently treats every saved `state: "working"` row as an old terminal-summary bug. A real ongoing milestone would be corrupted on restart unless it has explicit provenance.
   Evidence: `repairLegacyEntries` filters only on `entry.state === "working"`.
 
+- Observation: the first RED `//tools/work-log:check` run stopped in TypeScript with the expected missing `origin`, checkpoint, and deterministic clock interfaces; after the implementation and fixture corrections, the same target passed all 116 selected tests.
+  Evidence: Bazel reported the initial protocol/input errors, then `//tools/work-log:check PASSED` in 19.0 seconds with controlled summarizers only.
+
 ## Decision Log
 
 - Decision: Admit ongoing milestones only after a completed tool operation with concrete accomplishment potential: a patch/edit, a test/build/type/lint/check command, a state-changing Git/PR command, or an explicit Ditz lifecycle/note command. Assistant prose, tool invocation without its matching result, read-only inspection commands, generic tool noise, and partial JSONL do not trigger inference.
@@ -47,8 +51,8 @@ The behavior is visible in controlled Work Log tests: append a completed concret
   Rationale: milestones deliberately remain `working` as historical in-progress accomplishments, so execution state alone cannot distinguish them from legacy terminal rows. Optional provenance preserves existing documents without a destructive migration.
   Date/Author: 2026-09-11 / Codex
 
-- Decision: Preserve terminal `seen` boundaries and add a separate per-session milestone checkpoint containing the latest stable evidence boundary and timestamp to the private state document.
-  Rationale: one alternating cursor would make a milestone replay after terminal handling or suppress the eventual completion. Separate channels allow each paid attempt to advance before inference, survive restart, and remain bounded to one checkpoint per registered session.
+- Decision: Preserve legacy terminal `seen` only for backward migration and add one ordered per-session transcript checkpoint shared by milestone, abort, and terminal processing. The checkpoint carries the validated transcript identity, absolute complete-line byte offset, anchor, and evidence time.
+  Rationale: separate milestone and terminal cursors could each rediscover evidence paid by the other and alternate after restart. One append-order cursor makes the later terminal naturally follow milestones once and allows old offsets to stay valid when the 512 KiB tail moves.
   Date/Author: 2026-09-11 / Codex
 
 - Decision: Derive a stable milestone boundary from the owning turn, completed call identity, event timestamp, and sanitized concrete evidence. When the prior boundary is still in the 512 KiB tail, aggregate only later concrete operations; when it has moved out, admit only a newer latest operation rather than resending the tail.
@@ -57,6 +61,14 @@ The behavior is visible in controlled Work Log tests: append a completed concret
 
 - Decision: Keep the current maximum four inputs per inference and let unselected fresh candidates remain uncheckpointed for the next automatic tick. Age eligibility applies to the concrete evidence time, not turn start time.
   Rationale: this preserves the existing model/input bound, handles several agents fairly through the existing newest-first batch, and allows a long-running old turn to publish newly completed work.
+  Date/Author: 2026-09-11 / Codex
+
+- Decision: Persist a per-session pending milestone with its first-observed time. New concrete evidence joins that window without resetting its start; only a window at least `debounceSeconds` old becomes billable. Terminal inputs remain immediately eligible and supersede pending milestone work.
+  Rationale: the existing delay is scheduled after a tick and activation runs immediately, so it is not a batching debounce. A persisted fixed window batches bursts, survives restart, avoids starvation during continuous work, and begins a new window only after an attempted milestone checkpoint.
+  Date/Author: 2026-09-11 / Codex
+
+- Decision: Serialize watcher preference writes and the final post-summary Pause check/document publication with a small publication lock, always nested producer-lock then publication-lock.
+  Rationale: same-instance Stop drains correctly, but a second window could otherwise return from Pause in the gap after the last check and before the document save. Linearization guarantees no older output appears after Pause returns without changing inference ownership.
   Date/Author: 2026-09-11 / Codex
 
 ## Outcomes & Retrospective
@@ -81,9 +93,9 @@ Assumptions are that registered transcripts remain append-oriented in normal ope
 
 First extend tests with transcript helpers that append owned, timestamped calls/results and terminal events. Prove the absent behavior at the transcript boundary and service boundary before implementation where practical. Cover direct functions, the literal `functions.exec` wrapper, fork/nested ownership, unmatched/noisy/partial records, a prior checkpoint leaving the bounded tail, and a turn whose start is old but concrete work is recent.
 
-Then update `core/work-log/transcripts.ts` to correlate supported tool calls and their results inside the currently owned turn. Reuse `extractEntries` for safe literal attribution, filter its entries through the narrow concrete-command rule, sanitize/cap the corresponding result, and produce at most one ongoing input per session containing a bounded batch after the supplied milestone checkpoint. Keep terminal collection independent and authoritative. Extend `WorkInput` with origin and extend the reader dependency signature with milestone checkpoints.
+Then update `core/work-log/transcripts.ts` to correlate supported tool calls and their results inside the currently owned turn. Reuse `extractEntries` for safe literal attribution, filter its entries through the narrow concrete-command rule, sanitize/cap the corresponding result, and produce at most one ordered input per session after the supplied transcript checkpoint. The reader records a validated file identity and absolute complete-line byte offset so a moved tail begins after already-paid evidence. Keep terminal collection authoritative, and return non-billable abort/legacy-terminal cursor advances alongside billable inputs.
 
-Update `core/work-log/service.ts` so the backward-compatible private state schema has both terminal and milestone checkpoints. Fresh filtering and pre-inference advancement select the channel from input origin. Publication adds explicit provenance. Legacy repair ignores explicit milestones. Retain the kernel lock, maximum-four batch, 30-minute bootstrap window based on each input's evidence time, existing backoff, and every Pause/settings/disposal recheck.
+Update `core/work-log/service.ts` so the backward-compatible private state schema has an ordered checkpoint and pending first-seen milestone per session. Apply non-billable advances, stage milestone inputs until their persisted window is due, and persist selected paid checkpoints before inference. Publication adds explicit provenance. Legacy repair ignores explicit milestones. Retain the kernel lock, maximum-four batch, 30-minute bootstrap window based on each input's evidence time, existing backoff, and every Pause/settings/disposal recheck; add a consistently ordered publication lock around preference changes and the last publication decision.
 
 Update `core/work-log/commands.ts` to give the summarizer origin/state context and explicitly forbid terminal claims for milestones. Update the protocol and panel copy, then update design and component mappings. No new settings or App wiring are expected.
 
@@ -125,10 +137,12 @@ Current baseline is `f08c75d546f3e59aba0e5b7bebfe074e8b1c37f3`. Baseline inspect
 
 ## Interfaces and Dependencies
 
-At completion, `WorkInput` in `core/work-log/transcripts.ts` has explicit `origin: "milestone" | "terminal"`. `readWorkInputs(root, registryPath, terminalSeen, milestoneSeen)` accepts the existing terminal boundary map plus a per-session milestone checkpoint map and returns at most one newest eligible input per registered session. A checkpoint contains a stable `boundary` and ISO timestamp. `WorkLogDependencies.inputs` mirrors that signature.
+At completion, `WorkInput` in `core/work-log/transcripts.ts` has explicit `origin: "milestone" | "terminal"` and its next ordered transcript checkpoint. `readWorkInputs(root, registryPath, checkpoints, legacySeen)` accepts one per-session checkpoint map plus the old terminal boundary map needed during migration and returns at most one newest eligible input per registered session. A checkpoint contains validated transcript identity, absolute complete-line offset, stable anchor, and ISO timestamp. The production observation also returns non-billable checkpoint advances; `WorkLogDependencies` retains a simple injectable input seam for deterministic tests.
 
 `WorkLogEntrySchema` in `protocol/work-log.ts` accepts optional `origin: "milestone" | "terminal"`; all new generated entries set it, while existing documents without it remain valid. `StateSchema` in `core/work-log/service.ts` preserves version 1 compatibility by defaulting a new milestone-checkpoint record when absent. No public request type or renderer authority changes.
 
 `summarizeWork` keeps the current `WorkSummary[]` output and process contract. Its untrusted input data includes origin and terminal state so one same-order batch can contain ongoing milestones and terminal outcomes safely.
 
 Plan revision note (2026-09-11 01:24Z): created the initial self-contained plan after source/test/design inspection; recorded the admission, checkpoint, provenance, tail-recovery, batching, and race decisions required before implementation.
+
+Plan revision note (2026-09-11 01:34Z): replaced independent milestone/terminal cursors with one ordered byte checkpoint, made batching a persisted first-seen window, and added Pause/publication linearization after focused review found that the initial design could alternate cursors, bill immediately on activation, and publish after another window returned from Pause.

@@ -21,7 +21,8 @@ async function fixture() {
 const request = (type: WorkLogRequest["type"], extra = {}) => CoreRequestSchema.parse({ protocolVersion: PROTOCOL_VERSION, requestId: crypto.randomUUID(), type, ...extra }) as WorkLogRequest;
 const read = request("workLog.read");
 const settings = WorkLogSettingsSchema.parse({ debounceSeconds: 10 });
-const input = (): WorkInput => ({ sessionId: "a", agent: "Worker A", taskId: "task-a", boundary: `turn:${Date.now()}`, at: new Date().toISOString(), text: "Implemented parser; focused tests pass." });
+const input = (): WorkInput => ({ origin: "terminal", sessionId: "a", agent: "Worker A", taskId: "task-a", boundary: `turn:${Date.now()}`, at: new Date().toISOString(), text: "Implemented parser; focused tests pass." });
+const milestone = (boundary = `milestone:${Date.now()}`): WorkInput => ({ ...input(), origin: "milestone", boundary, state: undefined });
 const summary = { outcome: "Implemented parser.", areas: ["core/parser.ts"], checks: ["Focused tests reported passing"], followUps: [] };
 
 describe("online Work Log", () => {
@@ -73,6 +74,19 @@ describe("online Work Log", () => {
     await a.request(request("workLog.stop")); release([input()]);
     await vi.waitFor(async () => expect((await b.request(read)).running).toBe(false));
     expect(summarize).not.toHaveBeenCalled();
+  });
+  it("a Pause from another window wins before a held summary can publish", async () => {
+    const f = await fixture(); let release!: () => void;
+    const summarize = vi.fn((_rows: WorkInput[], _settings: typeof settings, signal: AbortSignal) => new Promise<typeof summary[]>((resolve) => {
+      release = () => resolve([summary]); signal.addEventListener("abort", release, { once: true });
+    }));
+    const deps = { inputs: async () => [input()], summarize };
+    const reader = new WorkLogService(f.root, undefined, deps), producer = new WorkLogService(f.root, undefined, deps); services.push(reader, producer);
+    await reader.request(read); await producer.request(request("workLog.start", { settings }));
+    await vi.waitFor(() => expect(release).toBeTypeOf("function"));
+    await reader.request(request("workLog.stop")); release();
+    await vi.waitFor(async () => expect((await producer.request(read)).summarizing).toBe(false));
+    expect((await producer.request(read)).entries).toHaveLength(0); expect(summarize).toHaveBeenCalledTimes(1);
   });
   it("disposal during the post-summary preference read prevents late publication", async () => {
     const f = await fixture(); let release!: (paused: boolean) => void;
@@ -131,6 +145,65 @@ describe("online Work Log", () => {
     await new Promise((r) => setTimeout(r, 60));
     expect(summarize).toHaveBeenCalledTimes(1);
   });
+  it("publishes successive ongoing milestones and one later terminal without alternating checkpoints", async () => {
+    const f = await fixture(); let observed = [milestone("m:first")], now = Date.now();
+    const summarize = vi.fn(async (batch: WorkInput[]) => batch.map((row) => ({ ...summary, outcome: `${row.origin}:${row.boundary}` })));
+    const inputs = vi.fn(async (_root: string, _registry?: string, checkpoints = {}, legacySeen = {}) => {
+      expect(checkpoints).toBeTypeOf("object"); expect(legacySeen).toBeTypeOf("object"); return observed;
+    });
+    const deps = { inputs, summarize, now: () => now };
+    const service = new WorkLogService(f.root, undefined, deps); services.push(service);
+    await service.request(request("workLog.start", { settings }));
+    await vi.waitFor(() => expect(inputs).toHaveBeenCalled()); expect(summarize).not.toHaveBeenCalled();
+    now += 10_000; await (service as unknown as { tick(): Promise<void> }).tick();
+    await vi.waitFor(async () => expect((await service.request(read)).entries).toHaveLength(1));
+    expect((await service.request(read)).entries[0]).toMatchObject({ origin: "milestone", state: "working", outcome: "milestone:m:first" });
+
+    observed = [milestone("m:second")];
+    await (service as unknown as { tick(): Promise<void> }).tick(); expect(summarize).toHaveBeenCalledTimes(1);
+    now += 10_000;
+    await (service as unknown as { tick(): Promise<void> }).tick();
+    expect((await service.request(read)).entries.map((entry) => [entry.origin, entry.state, entry.outcome])).toEqual([
+      ["milestone", "working", "milestone:m:second"], ["milestone", "working", "milestone:m:first"],
+    ]);
+
+    observed = [{ ...input(), boundary: "turn:done" }];
+    await (service as unknown as { tick(): Promise<void> }).tick();
+    expect((await service.request(read)).entries.map((entry) => [entry.origin, entry.state])).toEqual([
+      ["terminal", "completed"], ["milestone", "working"], ["milestone", "working"],
+    ]);
+    await service.request(request("workLog.stop")); await service.dispose();
+
+    const restarted = new WorkLogService(f.root, undefined, deps); services.push(restarted);
+    await restarted.request(request("workLog.start", { settings })); await new Promise((resolve) => setTimeout(resolve, 60));
+    expect(summarize).toHaveBeenCalledTimes(3);
+  });
+  it("does not replay a failed milestone attempt but admits genuinely newer evidence", async () => {
+    const f = await fixture(); let observed = [milestone("m:failed")], now = Date.now();
+    const summarize = vi.fn(async () => { throw new Error("Provider unavailable"); });
+    const inputs = vi.fn(async () => observed);
+    const service = new WorkLogService(f.root, undefined, { inputs, summarize, now: () => now }); services.push(service);
+    await service.request(request("workLog.start", { settings }));
+    await vi.waitFor(() => expect(inputs).toHaveBeenCalled());
+    now += 10_000; await (service as unknown as { tick(): Promise<void> }).tick();
+    await vi.waitFor(async () => expect((await service.request(read)).notice).toBe("Provider unavailable"));
+    await (service as unknown as { tick(): Promise<void> }).tick(); expect(summarize).toHaveBeenCalledTimes(1);
+    observed = [milestone("m:new")];
+    await (service as unknown as { tick(): Promise<void> }).tick(); expect(summarize).toHaveBeenCalledTimes(1);
+    now += 10_000; await (service as unknown as { tick(): Promise<void> }).tick(); expect(summarize).toHaveBeenCalledTimes(2);
+  });
+  it("persists a pending milestone batching window across restart", async () => {
+    const f = await fixture(); let now = Date.now(); const inputs = vi.fn(async () => [milestone("m:pending")]);
+    const summarize = vi.fn(async () => [summary]), deps = { inputs, summarize, now: () => now };
+    const first = new WorkLogService(f.root, undefined, deps); services.push(first);
+    await first.request(request("workLog.start", { settings })); await vi.waitFor(() => expect(inputs).toHaveBeenCalled());
+    expect(summarize).not.toHaveBeenCalled(); await first.dispose();
+    now += 10_000;
+    const restarted = new WorkLogService(f.root, undefined, deps); services.push(restarted);
+    await restarted.request(request("workLog.start", { settings }));
+    await vi.waitFor(async () => expect((await restarted.request(read)).entries).toHaveLength(1));
+    expect(summarize).toHaveBeenCalledTimes(1);
+  });
   it("stop aborts in-flight summary and prevents late publication", async () => {
     const f = await fixture(); let aborted = false;
     const service = new WorkLogService(f.root, undefined, { inputs: async () => [input()], summarize: (_input, _settings, signal) => new Promise((resolve) => signal.addEventListener("abort", () => { aborted = true; resolve([summary]); })) }); services.push(service);
@@ -138,6 +211,18 @@ describe("online Work Log", () => {
     await vi.waitFor(async () => expect((await service.request(read)).summarizing).toBe(true));
     await service.request(request("workLog.stop")); expect(aborted).toBe(true);
     expect((await service.request(read)).entries).toHaveLength(0);
+  });
+  it("settings replacement drains the old summary and cannot publish its stale output", async () => {
+    const f = await fixture(), row = input(); let signal!: AbortSignal;
+    const summarize = vi.fn((_rows: WorkInput[], _settings: typeof settings, abort: AbortSignal) => {
+      signal = abort; return new Promise<typeof summary[]>((resolve) => abort.addEventListener("abort", () => resolve([summary]), { once: true }));
+    });
+    const service = new WorkLogService(f.root, undefined, { inputs: async () => [row], summarize }); services.push(service);
+    await service.request(request("workLog.start", { settings })); await vi.waitFor(() => expect(signal).toBeDefined());
+    const changed = { ...settings, model: "gpt-5.6-luna-next" };
+    const snapshot = await service.request(request("workLog.start", { settings: changed }));
+    expect(signal.aborted).toBe(true); expect(snapshot.settings).toEqual(changed); expect(snapshot.entries).toHaveLength(0);
+    await new Promise((resolve) => setTimeout(resolve, 60)); expect(summarize).toHaveBeenCalledTimes(1);
   });
   it("two windows preserve attempted boundaries and both published outcomes", async () => {
     const f = await fixture(); let row = input();
@@ -197,6 +282,16 @@ describe("online Work Log", () => {
     await service.request(read);
     expect(completions).toHaveBeenCalledTimes(1); expect(inputs).not.toHaveBeenCalled(); expect(summarize).not.toHaveBeenCalled();
   });
+  it("preserves explicit ongoing milestone provenance during restart repair", async () => {
+    const f = await fixture(), at = new Date().toISOString();
+    const milestoneEntry = { id: "milestone-entry", origin: "milestone", sessionId: "a", agent: "Worker", taskId: "task-a", at,
+      state: "working", recorded: true, ...summary };
+    await mkdir(join(f.root, ".swarm")); await writeFile(join(f.root, ".swarm/work-log.json"), JSON.stringify({ version: 1, entries: [milestoneEntry] }));
+    const completions = vi.fn(async () => [{ sessionId: "a", boundary: "anything", at, state: "completed" as const }]);
+    const service = new WorkLogService(f.root, undefined, { inputs: async () => [], completions, summarize: async () => [summary] }); services.push(service);
+    expect((await service.request(read)).entries).toEqual([milestoneEntry]);
+    expect(completions).not.toHaveBeenCalled();
+  });
   it("defers legacy repair behind another producer and preserves its newer document", async () => {
     const f = await fixture(), at = new Date().toISOString();
     const entry = { id: `a:old:${at}`, sessionId: "a", agent: "Worker", taskId: "task-a", at, state: "working", recorded: false, ...summary };
@@ -221,6 +316,19 @@ describe("online Work Log", () => {
     await vi.waitFor(async () => expect((await service.request(read)).entries).toHaveLength(4));
     await service.request(request("workLog.stop")); await service.request(request("workLog.start", { settings }));
     await vi.waitFor(async () => expect((await service.request(read)).entries).toHaveLength(5));
+    expect(summarize.mock.calls.map((call) => call[0].length)).toEqual([4, 1]);
+  });
+  it("drains milestone batch overflow without losing per-session checkpoints", async () => {
+    const f = await fixture(); let now = Date.now(); const rows = Array.from({ length: 5 }, (_, index) => ({ ...milestone(`m:${index}`), sessionId: String(index), at: new Date(now + index).toISOString() }));
+    const summarize = vi.fn(async (batch: WorkInput[]) => batch.map(() => summary));
+    const inputs = vi.fn(async () => rows);
+    const service = new WorkLogService(f.root, undefined, { inputs, summarize, now: () => now }); services.push(service);
+    await service.request(request("workLog.start", { settings }));
+    await vi.waitFor(() => expect(inputs).toHaveBeenCalled()); expect(summarize).not.toHaveBeenCalled();
+    now += 10_000; await (service as unknown as { tick(): Promise<void> }).tick();
+    await vi.waitFor(async () => expect((await service.request(read)).entries).toHaveLength(4));
+    await (service as unknown as { tick(): Promise<void> }).tick();
+    expect((await service.request(read)).entries).toHaveLength(5);
     expect(summarize.mock.calls.map((call) => call[0].length)).toEqual([4, 1]);
   });
   it("records failed attempts before inference and does not pay again on restart", async () => {
@@ -257,10 +365,87 @@ describe("online Work Log", () => {
     ].map((v) => JSON.stringify(v)).join("\n") + "\n{partial");
     await writeFile(registry, JSON.stringify({ version: 1, sessions: [{ id, label: "Worker", task: "task-a", rollout }] }), { mode: 0o600 });
     const result = await readWorkInputs(f.root, registry);
-    expect(result).toHaveLength(1); expect(result[0].boundary).toContain("new:"); expect(result[0].text).not.toContain("private-value"); expect(result[0].text).not.toContain("Inherited");
-    expect(await readWorkInputs(f.root, registry, { [id]: result[0].boundary })).toEqual([]);
+    expect(result).toHaveLength(1); expect(result[0]).toMatchObject({ origin: "terminal" }); expect(result[0].boundary).toContain("new:"); expect(result[0].text).not.toContain("private-value"); expect(result[0].text).not.toContain("Inherited");
+    expect(await readWorkInputs(f.root, registry, { [id]: result[0].checkpoint! })).toEqual([]);
     await writeFile(registry, JSON.stringify({ version: 1, sessions: [{ id: "01a07f1d-d63e-7963-b2b4-41e4c4538c7b", label: "Wrong", rollout }] }));
     expect(await readWorkInputs(f.root, registry)).toEqual([]);
+  });
+  it("emits only completed concrete ongoing operations and advances from a stable checkpoint", async () => {
+    const f = await fixture(), id = "01a07f1d-d6d0-7f01-b2bd-4154876ec187", rollout = join(f.dir, "session.jsonl"), registry = join(f.dir, "registry.json");
+    const startedAt = "2026-09-11T00:00:00.000Z", firstAt = "2026-09-11T01:00:00.000Z", secondAt = "2026-09-11T01:05:00.000Z";
+    const rows: unknown[] = [
+      { type: "session_meta", timestamp: startedAt, payload: { id } },
+      { type: "event_msg", timestamp: startedAt, payload: { type: "task_started", turn_id: "long-turn", started_at: Date.parse(startedAt) / 1000 } },
+      { type: "event_msg", timestamp: firstAt, payload: { type: "agent_message", message: "I plan to change the parser next." } },
+      { type: "response_item", timestamp: firstAt, payload: { type: "function_call", name: "functions.exec_command", call_id: "inspect", arguments: JSON.stringify({ cmd: "rg parser core" }) } },
+      { type: "response_item", timestamp: firstAt, payload: { type: "function_call_output", call_id: "inspect", output: "core/parser.ts:1" } },
+      { type: "response_item", timestamp: firstAt, payload: { type: "custom_tool_call", name: "functions.apply_patch", call_id: "patch-1", input: "*** Begin Patch\n*** Update File: core/parser.ts\n@@\n-old\n+new\n*** End Patch" } },
+      { type: "response_item", timestamp: firstAt, payload: { type: "custom_tool_call_output", call_id: "patch-1", output: "Done!" } },
+    ];
+    const save = async () => writeFile(rollout, rows.map((row) => JSON.stringify(row)).join("\n") + "\n{partial");
+    await save(); await writeFile(registry, JSON.stringify({ version: 1, sessions: [{ id, label: "Worker", task: "task-a", rollout }] }), { mode: 0o600 });
+    const [first] = await readWorkInputs(f.root, registry);
+    expect(first).toMatchObject({ origin: "milestone", at: firstAt, sessionId: id }); expect(first).not.toHaveProperty("state");
+    expect(first.text).toContain("core/parser.ts"); expect(first.text).toContain("Done!");
+    expect(first.text).not.toContain("plan to"); expect(first.text).not.toContain("rg parser");
+    expect(await readWorkInputs(f.root, registry, { [id]: first.checkpoint! })).toEqual([]);
+
+    rows.push(
+      { type: "response_item", timestamp: secondAt, payload: { type: "function_call", name: "functions.exec_command", call_id: "test-1", arguments: JSON.stringify({ cmd: "nix develop --command bazel test //tools/work-log:check" }) } },
+      { type: "response_item", timestamp: secondAt, payload: { type: "function_call_output", call_id: "test-1", output: "Executed 1 out of 1 test: 1 test passes." } },
+    );
+    await save();
+    const [second] = await readWorkInputs(f.root, registry, { [id]: first.checkpoint! });
+    expect(second).toMatchObject({ origin: "milestone", at: secondAt }); expect(second.boundary).not.toBe(first.boundary);
+    expect(second.text).toContain("bazel test"); expect(second.text).not.toContain("core/parser.ts");
+
+    rows.push({ type: "event_msg", timestamp: secondAt, payload: { type: "task_complete", turn_id: "long-turn", last_agent_message: "Implemented and checked the parser." } });
+    await save();
+    const [terminal] = await readWorkInputs(f.root, registry, { [id]: second.checkpoint! });
+    expect(terminal).toMatchObject({ origin: "terminal", state: "completed" });
+  });
+  it("ignores unmatched results, repeated intention, noisy commands and aborted final prose", async () => {
+    const f = await fixture(), id = "01a07f1d-d6d0-7f01-b2bd-4154876ec187", rollout = join(f.dir, "session.jsonl"), registry = join(f.dir, "registry.json"), at = new Date().toISOString();
+    await writeFile(rollout, [
+      { type: "session_meta", timestamp: at, payload: { id } },
+      { type: "event_msg", timestamp: at, payload: { type: "agent_message", message: "I will implement this next. I will implement this next." } },
+      { type: "response_item", timestamp: at, payload: { type: "function_call", name: "exec_command", call_id: "status", arguments: JSON.stringify({ cmd: "git status --short" }) } },
+      { type: "response_item", timestamp: at, payload: { type: "function_call_output", call_id: "status", output: "clean" } },
+      { type: "response_item", timestamp: at, payload: { type: "function_call_output", call_id: "missing", output: "Done!" } },
+      { type: "event_msg", timestamp: at, payload: { type: "agent_message", message: "Implemented everything." } },
+      { type: "event_msg", timestamp: at, payload: { type: "turn_aborted", turn_id: "turn" } },
+    ].map((row) => JSON.stringify(row)).join("\n") + "\n");
+    await writeFile(registry, JSON.stringify({ version: 1, sessions: [{ id, label: "Worker", rollout }] }), { mode: 0o600 });
+    expect(await readWorkInputs(f.root, registry)).toEqual([]);
+  });
+  it("keeps new concrete work eligible after its prior checkpoint leaves the bounded tail", async () => {
+    const f = await fixture(), id = "01a07f1d-d6d0-7f01-b2bd-4154876ec187", rollout = join(f.dir, "session.jsonl"), registry = join(f.dir, "registry.json");
+    const oldAt = "2026-09-10T20:00:00.000Z", newAt = new Date().toISOString();
+    const header = JSON.stringify({ type: "session_meta", timestamp: oldAt, payload: { id } });
+    const oldCall = JSON.stringify({ type: "response_item", timestamp: oldAt, payload: { type: "custom_tool_call", name: "apply_patch", call_id: "old", input: "*** Begin Patch\n*** Update File: old.ts\n@@\n-a\n+b\n*** End Patch" } });
+    const oldResult = JSON.stringify({ type: "response_item", timestamp: oldAt, payload: { type: "custom_tool_call_output", call_id: "old", output: "Done!" } });
+    await writeFile(rollout, `${header}\n${oldCall}\n${oldResult}\n`);
+    await writeFile(registry, JSON.stringify({ version: 1, sessions: [{ id, label: "Worker", rollout }] }), { mode: 0o600 });
+    const [old] = await readWorkInputs(f.root, registry);
+    const noise = Array.from({ length: 12 }, (_, index) => JSON.stringify({ type: "event_msg", timestamp: newAt,
+      payload: { type: "token_count", ignored: `${index}:${"noise".repeat(12000)}` } })).join("\n");
+    const newCall = JSON.stringify({ type: "response_item", timestamp: newAt, payload: { type: "function_call", name: "exec_command", call_id: "new", arguments: JSON.stringify({ cmd: "git commit -m milestone" }) } });
+    const newResult = JSON.stringify({ type: "response_item", timestamp: newAt, payload: { type: "function_call_output", call_id: "new", output: "[feature abc123] milestone" } });
+    await writeFile(rollout, `${header}\n${oldCall}\n${oldResult}\n${noise}\n${newCall}\n${newResult}\n`);
+    const [fresh] = await readWorkInputs(f.root, registry, { [id]: old.checkpoint! });
+    expect(fresh).toMatchObject({ origin: "milestone", at: newAt }); expect(fresh.text).toContain("git commit"); expect(fresh.text).not.toContain("old.ts");
+  });
+  it("fails closed when a transcript is rewritten in place across a saved checkpoint", async () => {
+    const f = await fixture(), id = "01a07f1d-d6d0-7f01-b2bd-4154876ec187", rollout = join(f.dir, "session.jsonl"), registry = join(f.dir, "registry.json"), at = new Date().toISOString();
+    const header = JSON.stringify({ type: "session_meta", timestamp: at, payload: { id } });
+    const call = JSON.stringify({ type: "response_item", timestamp: at, payload: { type: "custom_tool_call", name: "apply_patch", call_id: "old", input: "*** Begin Patch\n*** Update File: old.ts\n@@\n-a\n+b\n*** End Patch" } });
+    const result = JSON.stringify({ type: "response_item", timestamp: at, payload: { type: "custom_tool_call_output", call_id: "old", output: "Done!" } });
+    await writeFile(rollout, `${header}\n${call}\n${result}\n`);
+    await writeFile(registry, JSON.stringify({ version: 1, sessions: [{ id, label: "Worker", rollout }] }), { mode: 0o600 });
+    const [old] = await readWorkInputs(f.root, registry);
+    const replacement = `${header}\n${" ".repeat(old.checkpoint!.offset)}\n${call.replaceAll("old", "new")}\n${result.replaceAll("old", "new")}\n`;
+    await writeFile(rollout, replacement);
+    expect(await readWorkInputs(f.root, registry, { [id]: old.checkpoint! })).toEqual([]);
   });
   it("retains the latest boundary behind a large ongoing turn without sending its noisy tail", async () => {
     const f = await fixture(), id = "01a07f1d-d6d0-7f01-b2bd-4154876ec187", rollout = join(f.dir, "session.jsonl"), registry = join(f.dir, "registry.json"), at = new Date().toISOString();
