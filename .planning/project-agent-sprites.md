@@ -20,8 +20,8 @@ The implementation must preserve an important distinction: graphs and source byt
 - [x] (2026-09-10 19:32Z) Aligned `docs/design/graph-agent-locations.md`, related living design text, `.swarm/plans.json`, and Bazel inputs with the delivered behavior.
 - [x] (2026-09-11 02:29Z) Addressed the first provider-diverse council round: exact-root fallback, mounted-node filtering, null-safe task tooltips, launch-identity diagnostics, mutable branch revalidation, and bounded per-snapshot Git enrichment.
 - [x] (2026-09-11 02:29Z) Re-ran the three affected Bazel suites green, built all 154 targets, and passed the packaged two-worktree proof with repository/service/component coverage, retained state, and zero model turns.
-- [ ] Run the council convergence review on the fix delta and address or file every new finding until a round is clean.
-- [ ] Commit and push all reviewable increments, update the Ditz issue without closing it, sync metadata, mark the draft PR ready, verify branch/remote state, and write `verification.md`, `seam.md`, and `final-recap` in the authorized step directory.
+- [x] (2026-09-11 02:50Z) Reached council fixpoint after delta-only rounds: Codex native, Claude Sonnet, and Antigravity all returned CLEAN with zero Critical/Important findings; fixed the final redundant-render nit.
+- [ ] Commit and push the completed plan/handoff increment, update the Ditz issue without closing it, sync metadata, verify branch/remote state, and write `verification.md`, `seam.md`, and `final-recap` in the authorized step directory.
 
 ## Surprises & Discoveries
 
@@ -60,7 +60,9 @@ The implementation must preserve an important distinction: graphs and source byt
 
 ## Outcomes & Retrospective
 
-Implementation and first-round review fixes are complete. The focused graph suite now passes 57 tests, workspace core passes 36 tests, the mounted navigation suite passes 38 tests, and `bazel build //...` passes all 154 targets. The packaged proof at `/tmp/swarm-sprites-proof.cZh047/proof.json` confirms project-wide repository/service/component placement, exact feature filtering, unrelated exclusion, pathless reachability, exact conversation selection, retained editor/cameras, no renderer errors, and `modelTurns: 0`. Final council convergence, metadata sync, and handoff artifacts remain.
+The feature is implemented and council-clean. The final focused graph suite passes 57 tests and the final workspace navigation suite passes 41 tests; the core subset within it passes 38 tests. `bazel build //...` passes all 154 targets. The final packaged proof at `/tmp/swarm-sprites-proof.mf4NVH/proof.json` confirms project-wide repository/service/component placement, exact feature filtering, unrelated exclusion, pathless reachability, exact conversation selection, retained editor/cameras, no renderer errors, and `modelTurns: 0`.
+
+The full `bazel test //...` gate was attempted once before convergence and exposed pre-existing repository-wide fixture/UI-authority drift plus parallel timeout/contention outside this change; affected targets pass in isolation. Hosted CI stops even earlier at its Linux namespace prerequisite because the runner cannot write its user namespace UID map, and the authorization explicitly designates hosted CI as ignored under local-only landing authority. Follow-up issues `swarm-workspace-identity-response-contract` and `swarm-external-agent-identity-bounds-test` retain the council's nonblocking API-shape and focused performance-test suggestions. ROOT retains merge and installed-app adoption.
 
 ## Context and Orientation
 
@@ -143,3 +145,5 @@ Revision note (2026-09-10): recorded the focused pre-fix regression result so la
 Revision note (2026-09-10): recorded the implemented identity, overlay, projection, documentation, and owned packaged-proof milestones before the final full-suite and council gates.
 
 Revision note (2026-09-11): incorporated round-one council findings, the mutable-default discovery, focused/build results, and the second successful owned packaged proof before convergence review.
+
+Revision note (2026-09-11): recorded final provider-diverse council convergence, final gate counts/evidence, known unrelated full-suite/hosted-CI limitations, and filed follow-up issue identities.
