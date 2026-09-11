@@ -17,7 +17,8 @@ The visible proof uses an owned disposable Git repository, worktrees, tmux socke
 - [x] (2026-09-11 01:31Z) Added asynchronous same-identity Git worktree membership refresh without changing explicit-versus-automatic project scope semantics.
 - [x] (2026-09-11 01:33Z) Updated runtime, agent, install, evaluator, registration, and `.swarm/plans.json` source/target explanations to match the implementation.
 - [x] (2026-09-11 01:36Z) Passed focused CLI/registration tests and packaging from the dedicated Bazel output root; the registration target includes one bounded owned late-worktree/tmux-owner observer proof.
-- [ ] Push a ready draft PR, run the required provider-diverse council review to a clean convergence round, and address or file every finding.
+- [x] (2026-09-11 02:07Z) Pushed draft PR #149 and ran the provider-diverse council to fixpoint. Codex and Claude returned CLEAN in the final delta round; agy remained an explicitly unfilled seat after two headless-permission denials.
+- [x] (2026-09-11 02:09Z) Re-ran final focused Bazel tests for CLI and session registration plus the CLI registration and desktop bundle builds from the dedicated output root; all passed.
 - [ ] Update and sync Ditz, clean only owned resources, pull/rebase, push, verify the branch is clean/up to date, and write the final handoff artifacts.
 
 ## Surprises & Discoveries
@@ -36,6 +37,12 @@ The visible proof uses an owned disposable Git repository, worktrees, tmux socke
 
 - Observation: The broad living-design bundle has an unrelated planning-UI failure even though its index parser and component graph tests pass.
   Evidence: `//tools/living-design:checks` reported 89/102 passing, including all 60 `plans-reader`, all 13 component-stability, and all 15 living-design tests; 13 failures were confined to untouched `planning-ui.test.tsx` and `demo-plan-actions.test.tsx`, whose mocked reads returned “Could not read the plan.”
+
+- Observation: A killed tmux server can leave its owned socket inode behind, so filesystem identity alone cannot prove whether the original server is still listening.
+  Evidence: The council reproduced real tmux's fixed-locale `no server running on <path>` response against an orphaned socket. Production now treats only that/no-listener diagnostic, an absent or replaced socket, or a successful session listing without the numeric ID as confirmed teardown; all other failures preserve the prior snapshot.
+
+- Observation: The hosted PR check did not reach repository tests because its runner could not establish the required user-namespace UID map.
+  Evidence: run 34552465837 stopped in `//tools/ci:linux-prerequisites` with `UID_MAP_WRITE_FAILED`; the task's dedicated local Bazel output root remains the authoritative validation requested by the common instructions.
 
 ## Decision Log
 
@@ -59,9 +66,17 @@ The visible proof uses an owned disposable Git repository, worktrees, tmux socke
   Rationale: They are shared observer safety contracts. Long-running generations can eventually fill with history; changing archival/schema policy is a separate design decision and will be recorded as a concrete boundary rather than hidden scope expansion.
   Date/Author: 2026-09-11 / Codex
 
+- Decision: Carry the launch-time canonical workspace as the registry confinement boundary instead of consulting mutable `process.cwd()` during later scans.
+  Rationale: The launcher restores its invocation directory before polling. Retaining the validated selected workspace keeps registry writes outside source while still allowing historical retirement if that worktree is later removed.
+  Date/Author: 2026-09-11 / Codex
+
+- Decision: Bound each recurring worktree refresh to 128 records and ten seconds, and share one failure-reporting budget across alternating errors.
+  Rationale: A five-second poll must not create unbounded Git subprocess work or a message-alternation log flood. A breached bound is a whole-scan failure, so the last consistent registry remains unchanged.
+  Date/Author: 2026-09-11 / Codex
+
 ## Outcomes & Retrospective
 
-Implementation and task-owned verification are complete before council review. A running `ExternalAgentService` observed an initially empty generated registry, then saw a controlled descriptor-backed owner created in a new tmux window and new linked worktree, with the rollout header's actual parent ID. Repeating the scan retained the registry inode and modification time; removing the pane retired only live authority; disposing the reconciler left the selected tmux session alive. The existing 64-session/65,536-byte per-generation capacity remains the declared boundary and will receive a follow-up issue rather than an unreviewed schema/archive expansion.
+Implementation, task-owned verification, and council convergence are complete. A running `ExternalAgentService` observed an initially empty generated registry, then saw a controlled descriptor-backed owner created in a new tmux window and new linked worktree, with the rollout header's actual parent ID. Repeating the scan retained the registry inode and modification time; removing the pane retired only live authority; disposing the reconciler left the selected tmux session alive. Review additionally hardened workspace confinement after CWD restoration, aggregate worktree-refresh bounds, alternating-error rate limiting, confirmed whole-session/orphaned-socket retirement, and owned test PID validation. The existing 64-session/65,536-byte per-generation capacity remains the declared boundary; follow-up `swarm-live-tmux-history-capacity` records archival design rather than expanding scope here.
 
 ## Context and Orientation
 
@@ -142,3 +157,5 @@ The task-owned evidence directory is `/tmp/swarm-ide-live-awareness.UonFxG/disco
 Revision note (2026-09-11 01:16Z): Created the initial self-contained plan after source orientation. It chooses a launcher-lifetime reconciler because the existing observer already refreshes registry state, and records exact selection, retirement, disposal, and capacity boundaries before implementation.
 
 Revision note (2026-09-11 01:37Z): Updated progress, discoveries and outcomes after implementation and owned verification. The recurring project refresh became asynchronous to preserve launcher responsiveness; exact RED/GREEN and the unrelated broad planning-test failure are retained for handoff.
+
+Revision note (2026-09-11 02:07Z): Recorded council fixpoint and its hardened CWD, refresh-bound, log-budget, orphaned-server, and owned-harness behaviors, plus the unrelated hosted namespace prerequisite failure and bounded-capacity follow-up.

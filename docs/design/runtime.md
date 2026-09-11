@@ -133,6 +133,9 @@ resolved canonical socket and numeric session ID, serially and without overlappi
 polls. It reuses exact registration checks, updates only changed rows, and removes
 only stale `tmux` authority while retaining observed rollout history. A whole-scan
 failure keeps the last registry and is retried with rate-limited terminal reporting.
+Confirmed selected-session or server teardown retires its live authority even when
+a killed server leaves its socket inode behind; unclassified command failures remain
+inconclusive.
 The launcher aborts and drains its own short-lived discovery commands on exit;
 no agent or tmux lifecycle is transferred to the installed app. Older private
 generations remain available explicitly, not merged automatically into new scope.

@@ -136,7 +136,9 @@ Closing or restarting Swarm does not close tmux, clone/resume an agent, or send 
 message. Activity refreshes live for registered agents. The launcher checks newly
 created panes about every five seconds using the original socket and numeric session
 identity. A replaced socket/session is not adopted. Closed or replaced owners lose
-steering authority; their row and readable transcript remain useful history. One
+steering authority; confirmed whole-session/server teardown, including an orphaned
+same-inode socket, retires every old live target. Their rows and readable transcripts
+remain useful history. One
 present-pane discovery miss is tolerated, and every Send/handoff still performs
 the exact live identity check immediately, so grace never makes a stale target
 steerable. Whole-scan failures retain the last registry and retry without flooding
