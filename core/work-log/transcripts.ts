@@ -24,8 +24,8 @@ async function regular(path: string) {
 
 export function cleanWorkText(text: string, max = 1600): string {
   return text.replace(/authorization\s*:\s*(?:bearer\s+)?[^\s,;]+/gi, "[private]")
-    .replace(/\b[A-Za-z0-9_-]*(?:api[_-]?key|access[_-]?token|password|secret|token)\s*[=:]\s*[^\s,;]+/gi, "[private]")
-    .replace(/(^|[\s("'=,:])\/(?!\/)[^\s"'<>),;]+/g, "$1[private]")
+    .replace(/\b[A-Za-z0-9_-]*(?:api[_-]?key|access[_-]?token|password|secret|token)[A-Za-z0-9_-]*\s*[=:]\s*[^\s,;]+/gi, "[private]")
+    .replace(/(^|[^A-Za-z0-9_:/])\/(?!\/)[^\s"'<>),;\]`]+/g, "$1[private]")
     .replace(/[\p{Cc}\p{Cf}]/gu, (c) => c === "\n" || c === "\t" ? c : "").slice(0, max);
 }
 
@@ -128,8 +128,9 @@ async function readWorkEvidence(root: string, registryPath: string | undefined, 
       const fork = !!meta.payload?.forked_from_id;
       const born = Date.parse(meta.payload?.timestamp ?? (fork ? "" : meta.timestamp) ?? "");
       if (fork && !Number.isFinite(born)) continue;
-      let ownTurn = prior?.kind === "milestone" ? prior.turnId ?? undefined : undefined;
-      let owned = prior ? prior.kind === "milestone" && (!fork || ownTurn !== undefined) : !fork;
+      const priorKind = prior?.kind ?? (prior?.turnId ? "milestone" : undefined);
+      let ownTurn = priorKind === "milestone" ? prior?.turnId ?? undefined : undefined;
+      let owned = prior ? priorKind === "milestone" && (!fork || ownTurn !== undefined) : !fork;
       let evidence: string[] = [], milestones: { at: string; text: string; checkpoint: WorkCheckpoint }[] = [];
       let terminalInput: WorkInput | undefined, latestAdvance: WorkCheckpoint | undefined;
       const calls = new Map<string, { descriptions: string[] }>();
@@ -200,7 +201,7 @@ async function readWorkEvidence(root: string, registryPath: string | undefined, 
           completions.push({ sessionId: row.id, boundary, at, state });
           terminalInput = undefined;
           const terminalText = evidence.slice(-16).join("\n").slice(-10000).trim()
-            || (prior?.kind === "milestone" && prior.turnId !== null && prior.turnId === eventTurn
+            || (priorKind === "milestone" && prior?.turnId !== null && prior?.turnId === eventTurn
               ? `Turn ${state === "failed" ? "failed" : "completed"} after earlier saved milestones; no additional outcome text was reported.` : "");
           if (legacySeen[row.id] !== boundary && terminalText) terminalInput = { origin: "terminal", sessionId: row.id,
             agent: cleanWorkText(row.label, 120), taskId: row.task && /^[a-zA-Z0-9][a-zA-Z0-9_-]{0,199}$/.test(row.task) ? row.task : null,

@@ -505,6 +505,20 @@ describe("online Work Log", () => {
       { type: "event_msg", timestamp: at, payload: { type: "task_complete", turn_id: "empty" } }]);
     expect(await readWorkInputs(f.root, registry, { [id]: first.checkpoint! })).toEqual([]);
   });
+  it("restores a pre-kind paid milestone checkpoint by its bounded turn", async () => {
+    const f = await fixture(), id = "01a07f1d-d6d0-7f01-b2bd-4154876ec187", rollout = join(f.dir, "session.jsonl"), registry = join(f.dir, "registry.json"), at = new Date().toISOString();
+    const rows: unknown[] = [
+      { type: "session_meta", timestamp: at, payload: { id } },
+      { type: "event_msg", timestamp: at, payload: { type: "task_started", turn_id: "ongoing" } },
+      { type: "response_item", timestamp: at, payload: { type: "function_call", name: "exec_command", call_id: "test", arguments: JSON.stringify({ cmd: "bazel test //tools/work-log:check" }) } },
+      { type: "response_item", timestamp: at, payload: { type: "function_call_output", call_id: "test", output: "passed" } },
+    ];
+    const save = async () => writeFile(rollout, rows.map((row) => JSON.stringify(row)).join("\n") + "\n");
+    await save(); await writeFile(registry, JSON.stringify({ version: 1, sessions: [{ id, label: "Worker", rollout }] }), { mode: 0o600 });
+    const [milestone] = await readWorkInputs(f.root, registry); const { kind: _kind, ...legacy } = milestone.checkpoint!;
+    rows.push({ type: "event_msg", timestamp: at, payload: { type: "task_complete", turn_id: "ongoing" } }); await save();
+    expect((await readWorkInputs(f.root, registry, { [id]: legacy }))[0]).toMatchObject({ origin: "terminal", state: "completed" });
+  });
   it("keeps new concrete work eligible after its prior checkpoint leaves the bounded tail", async () => {
     const f = await fixture(), id = "01a07f1d-d6d0-7f01-b2bd-4154876ec187", rollout = join(f.dir, "session.jsonl"), registry = join(f.dir, "registry.json");
     const oldAt = "2026-09-10T20:00:00.000Z", newAt = new Date().toISOString();
@@ -623,7 +637,7 @@ describe("online Work Log", () => {
     expect(await readWorkInputs(f.root, registry)).toEqual([]);
   });
   it("scrubs private paths and common credential assignments", () => {
-    expect(cleanWorkText("Edited /home/alice/private/a, /tmp/token and /srv/company/private.ts with api_key=sekret GITHUB_TOKEN=hidden Authorization: Bearer abc.def")).not.toMatch(/alice|\/srv|token|sekret|hidden|abc\.def/i);
+    expect(cleanWorkText("Edited /home/alice/private/a, /tmp/token, /srv/company/private.ts and [`/run/user/1000/key`] with api_key=sekret GITHUB_TOKEN=hidden AWS_SECRET_ACCESS_KEY=also-hidden Authorization: Bearer abc.def")).not.toMatch(/alice|\/srv|\/run|token|sekret|hidden|abc\.def/i);
   });
   it("enforces explicit saved-entry provenance and state invariants", () => {
     const base = { id: "entry", sessionId: "session", agent: "Worker", taskId: null, at: new Date().toISOString(), outcome: "Did work", areas: [], checks: [], followUps: [], recorded: false };
