@@ -20,6 +20,7 @@ The behavior is visible in controlled Work Log tests: append a completed concret
 - [x] (2026-09-11 02:25Z) Ran the focused Nix/Bazel Work Log and awareness gates after review fixes; 127 controlled Work Log/task/UI tests pass, and the awareness target passes with the updated source mapping. The earlier broader living-design bundle retained its recorded unrelated planning-UI failures.
 - [x] (2026-09-11 02:25Z) Ran exactly one disposable `gpt-5.6-luna` summary over fixed synthetic milestone input through a temporary Bazel-only harness; it returned ongoing-work wording, made no Ditz write, and the harness was removed.
 - [x] (2026-09-11 02:25Z) Pushed granular commits to draft PR #150, updated the in-progress Ditz issue, and ran provider-diverse council fix deltas until Codex, Claude Sonnet, and Google returned CLEAN on `4d4cafcf..2340e667`.
+- [x] (2026-09-11 02:36Z) Corrected current `custom_tool_call_output` content-block normalization after ROOT found real wrapper results use arrays; a sanitized production-reader/service regression was RED with zero inputs, then GREEN with all 128 focused cases and no model call.
 
 ## Surprises & Discoveries
 
@@ -47,6 +48,9 @@ The behavior is visible in controlled Work Log tests: append a completed concret
 - Observation: delayed Claude convergence found missing-turn terminals and closed checkpoints beyond the finite tail needed separate continuity rules.
   Evidence: a missing terminal turn now inherits the active owned turn only while ownership remains live; a closed checkpoint beyond the tail accepts only an explicit different terminal turn. Focused post-abort, missing-ID and 530 KiB gap regressions pass, bringing the controlled count to 127.
 
+- Observation: the current Codex rollout format commonly records `custom_tool_call_output.output` as an array of `input_text` content blocks, while the first implementation accepted result text only as a legacy string.
+  Evidence: ROOT counted 257 array-shaped results in this worker's rollout and supplied the exact source trace. The new sanitized wrapper fixture reproduced the omission at `observeWork`, then passed through the production reader and service after normalization. The earlier one-call synthetic Luna proof exercised summarization only and remains attributed as such; it did not cover this reader envelope.
+
 ## Decision Log
 
 - Decision: Admit ongoing milestones only after a completed tool operation with concrete accomplishment potential: a patch/edit, a test/build/type/lint/check command, a state-changing Git/PR command, or an explicit Ditz lifecycle/note command. Assistant prose, tool invocation without its matching result, read-only inspection commands, generic tool noise, and partial JSONL do not trigger inference.
@@ -55,6 +59,10 @@ The behavior is visible in controlled Work Log tests: append a completed concret
 
 - Decision: Reuse the literal, non-evaluating operation extraction already exported by `core/external-agents-activity.ts` to recognize direct calls and `functions.exec` wrappers, then correlate their call IDs with result records in Work Log.
   Rationale: duplicating a JavaScript wrapper parser would create divergent security and attribution behavior. Work Log adds only its narrower admission classifier and private result text; Activity remains the raw-event owner.
+  Date/Author: 2026-09-11 / Codex
+
+- Decision: Normalize tool-result payloads at the transcript-reader boundary, preserving legacy strings and accepting only `input_text` strings from bounded content-block arrays. Ignore image and unknown object blocks rather than coercing them.
+  Rationale: this matches the recorded Codex envelope without widening evidence authority or allowing arbitrary structured/private payloads into model input. Array length, per-block text and combined text remain explicitly capped before the existing scrub and input caps.
   Date/Author: 2026-09-11 / Codex
 
 - Decision: Add `origin: "milestone" | "terminal"` to newly generated saved entries while leaving it optional for old documents. Legacy repair processes only origin-less `working` rows.
@@ -85,13 +93,15 @@ The behavior is visible in controlled Work Log tests: append a completed concret
 
 The implementation, controlled verification, one synthetic real-summary proof, and provider-diverse council convergence are complete. Registered long-running turns now yield concise saved Milestones only after matched concrete operation results; one ordered byte checkpoint and persisted batch window prevent idle/restart/tail replay, while exact `task_complete`, abort/nested/fork ownership, Pause/disposal/settings and cross-window publication remain independently guarded. Explicit provenance protects historical milestones from legacy repair and the UI labels them without claiming current liveness.
 
+The correction also accepts current array-shaped Codex results without serializing images or arbitrary blocks. A no-model regression now drives the exact `functions.exec` wrapper and matching `custom_tool_call_output` through `observeWork`, stable checkpoint deduplication, the service debounce and saved milestone publication. The original synthetic Luna result remains useful summary-output evidence but is not claimed as reader-path proof.
+
 The feature stayed inside the existing registered-transcript reader, shared Activity literal-operation extractor, single core producer, saved Work Log document, protocol and panel; it added no agent discovery, liveness inference, generic event system, dashboard, Goals writes, automatic Ditz action, or App wiring. The one intentionally retained limit is fail-closed ambiguity: after a closed checkpoint has fallen outside the 512 KiB tail, a different explicit terminal may bridge the gap, but ongoing evidence waits for a visible owned `task_started`.
 
 ROOT accepted the retained 13 broad planning-test failures as source-traced pre-existing fixture drift under the focused local/critical-only policy. They are not claimed green or presented as a pristine-base reproduction, and they do not hold this scoped PR after its relevant gates and council convergence. No unrelated repair or repeat broad run was performed; ROOT will file the shared follow-up.
 
 ## Context and Orientation
 
-`core/work-log/transcripts.ts` opens only canonical, operator-owned transcript files named in the private external-agent registry. It validates the matching session header, reads at most the most recent 512 KiB, ignores oversized/malformed/partial records, enforces fork ownership, scrubs private paths and credentials, and currently emits only completed turns. A **milestone checkpoint** in this plan is a private record of the latest concrete ongoing evidence already admitted for summarization; it is not agent status and does not appear in Activity.
+`core/work-log/transcripts.ts` opens only canonical, operator-owned transcript files named in the private external-agent registry. It validates the matching session header, reads at most the most recent 512 KiB, ignores oversized/malformed/partial records, enforces fork ownership, scrubs private paths and credentials, and emits bounded concrete milestones plus authoritative completed turns. A **milestone checkpoint** in this plan is a private record of the latest concrete ongoing evidence already admitted for summarization; it is not agent status and does not appear in Activity.
 
 `core/work-log/service.ts` is the sole producer. The primary core activates it, a repository-wide `flock` excludes competing windows, `.git/swarm-work-log/state.json` stores settings and attempted boundaries, `.git/swarm-work-log/watcher.json` stores Pause, and `.swarm/work-log.json` stores the latest 200 human-readable entries. `tick` persists attempts before calling a deterministic injected or real summarizer and rechecks Pause/disposal before publication. `repairLegacyEntries` is a bounded non-model migration for historical rows whose old producer incorrectly saved terminal summaries as `working`.
 
@@ -168,3 +178,5 @@ Plan revision note (2026-09-11 02:18Z): distinguished active missing-ID terminal
 Plan revision note (2026-09-11 02:25Z): recorded the final timestamp-ordering fix, 127-test GREEN evidence, one synthetic Luna proof, and three-provider CLEAN convergence; replaced the provisional outcome with the completed implementation and its deliberate fail-closed tail-gap limit.
 
 Plan revision note (2026-09-11 02:35Z): incorporated ROOT's source-traced intake for the 13 retained planning fixture failures, explicitly distinguished it from pristine-base execution, and left the shared follow-up and unrelated repair outside this increment.
+
+Plan revision note (2026-09-11 02:36Z): incorporated ROOT's real output-shape finding, added bounded `input_text`-only result normalization and a sanitized reader/service RED/GREEN regression, and preserved the original one-call Luna proof as summary-only evidence without another model or broad test run.

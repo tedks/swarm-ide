@@ -29,6 +29,21 @@ export function cleanWorkText(text: string, max = 1600): string {
     .replace(/[\p{Cc}\p{Cf}]/gu, (c) => c === "\n" || c === "\t" ? c : "").slice(0, max);
 }
 
+/** Codex tool results exist in both the legacy string envelope and the current
+ * content-block envelope. Only the explicitly textual block is evidence; image
+ * and future object blocks must never be coerced into summary input. */
+function toolResultText(output: unknown): string | undefined {
+  if (typeof output === "string") return output;
+  if (!Array.isArray(output)) return;
+  const chunks: string[] = [];
+  for (const item of output.slice(0, 64)) {
+    if (!item || typeof item !== "object" || Array.isArray(item)) continue;
+    const block = item as Record<string, unknown>;
+    if (block.type === "input_text" && typeof block.text === "string") chunks.push(block.text.slice(0, 2500));
+  }
+  return chunks.join("\n").slice(0, 10000);
+}
+
 function concreteCommand(command: string): boolean {
   const candidate = command.replace(/^\s*cd\s+(?:"[^"\n]*"|'[^'\n]*'|[^\s;&|]+)\s*&&\s*/, "");
   return /^\s*(?:nix\s+develop\s+--command\s+)?(?:(?:bazel|bazelisk)\s+(?:test|build|run)|(?:pnpm|npm|yarn)\s+(?:run\s+)?(?:test|lint|typecheck|build|check)|vitest\s+run|pytest\b|cargo\s+test\b|go\s+test\b|make\s+(?:test|check)\b|git\s+(?:commit|push|merge|rebase|cherry-pick|tag)\b|gh\s+pr\s+(?:create|ready|merge|comment)\b|ditz\s+(?:add|start|close|comment|sync)\b)/i.test(candidate);
@@ -187,13 +202,16 @@ async function readWorkEvidence(root: string, registryPath: string | undefined, 
         }
 
         if (owned && event.type === "response_item" && (payload?.type === "function_call_output" || payload?.type === "custom_tool_call_output")
-          && typeof payload.call_id === "string" && typeof payload.output === "string") {
-          const result = cleanWorkText(payload.output, 1200), call = calls.get(payload.call_id);
-          evidence.push(`Result: ${cleanWorkText(payload.output, 700)}`);
+          && typeof payload.call_id === "string") {
+          const output = toolResultText(payload.output), call = calls.get(payload.call_id);
           calls.delete(payload.call_id);
-          if (call) {
-            const detail = `${call.descriptions.join("\n")}\nResult: ${result.trim() || "(completed without output)"}`;
-            milestones.push({ at, text: detail, checkpoint: nextCheckpoint(source, end, at, ownTurn, "milestone", rawBytes) });
+          if (output !== undefined) {
+            const result = cleanWorkText(output, 1200);
+            evidence.push(`Result: ${cleanWorkText(output, 700)}`);
+            if (call) {
+              const detail = `${call.descriptions.join("\n")}\nResult: ${result.trim() || "(completed without output)"}`;
+              milestones.push({ at, text: detail, checkpoint: nextCheckpoint(source, end, at, ownTurn, "milestone", rawBytes) });
+            }
           }
         }
 

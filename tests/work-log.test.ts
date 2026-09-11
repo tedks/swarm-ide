@@ -413,6 +413,44 @@ describe("online Work Log", () => {
     const [terminal] = await readWorkInputs(f.root, registry, { [id]: second.checkpoint! });
     expect(terminal).toMatchObject({ origin: "terminal", state: "completed" }); expect(terminal.text).toContain("earlier saved milestones");
   });
+  it("normalizes current wrapper result blocks through the reader and service without leaking other blocks", async () => {
+    const f = await fixture(), id = "01a07f1d-d6d0-7f01-b2bd-4154876ec187", rollout = join(f.dir, "session.jsonl"), registry = join(f.dir, "registry.json");
+    let now = Date.now(); const at = new Date(now).toISOString();
+    const patch = "*** Begin Patch\n*** Update File: core/work-log/transcripts.ts\n@@\n-old\n+new\n*** End Patch";
+    const wrapper = `text(await tools.apply_patch(${JSON.stringify(patch)}));\ntext(await tools.exec_command(${JSON.stringify({ cmd: "nix develop --command bazel test //tools/work-log:check" })}));`;
+    await writeFile(rollout, [
+      { type: "session_meta", timestamp: at, payload: { id } },
+      { type: "event_msg", timestamp: at, payload: { type: "task_started", turn_id: "current-shape", started_at: now / 1000 } },
+      { type: "response_item", timestamp: at, payload: { type: "custom_tool_call", name: "functions.exec", call_id: "wrapped", input: wrapper } },
+      { type: "response_item", timestamp: at, payload: { type: "custom_tool_call_output", call_id: "wrapped", output: [
+        { type: "input_text", text: "Passed /srv/private/check; access_token=private-value" },
+        { type: "input_image", image_url: "IMAGE_SHOULD_NOT_LEAK" },
+        { type: "future_block", secret: "OBJECT_SHOULD_NOT_LEAK" },
+      ] } },
+    ].map((row) => JSON.stringify(row)).join("\n") + "\n");
+    await writeFile(registry, JSON.stringify({ version: 1, sessions: [{ id, label: "Worker", task: "task-a", rollout }] }), { mode: 0o600 });
+
+    const observed = await observeWork(f.root, registry);
+    expect(observed.inputs).toHaveLength(1);
+    expect(observed.inputs[0]).toMatchObject({ origin: "milestone", sessionId: id });
+    expect(observed.inputs[0].text).toContain("Edited core/work-log/transcripts.ts");
+    expect(observed.inputs[0].text).toContain("bazel test //tools/work-log:check");
+    expect(observed.inputs[0].text).toContain("Result: Passed [private]; [private]");
+    expect(observed.inputs[0].text).not.toMatch(/private-value|IMAGE_SHOULD_NOT_LEAK|OBJECT_SHOULD_NOT_LEAK|\[object Object\]/);
+    expect((await observeWork(f.root, registry, { [id]: observed.inputs[0].checkpoint! })).inputs).toEqual([]);
+
+    const summarize = vi.fn(async (rows: WorkInput[]) => {
+      expect(rows).toHaveLength(1); expect(rows[0].text).toBe(observed.inputs[0].text); return [summary];
+    });
+    const productionObserve = vi.fn(observeWork);
+    const service = new WorkLogService(f.root, registry, { inputs: readWorkInputs, observe: productionObserve, summarize, now: () => now }); services.push(service);
+    await service.request(request("workLog.start", { settings }));
+    await vi.waitFor(() => expect(productionObserve).toHaveBeenCalled());
+    expect(summarize).not.toHaveBeenCalled();
+    now += 10_000; await (service as unknown as { tick(): Promise<void> }).tick();
+    expect(summarize).toHaveBeenCalledTimes(1);
+    expect((await service.request(read)).entries[0]).toMatchObject({ origin: "milestone", state: "working" });
+  });
   it("ignores unmatched results, repeated intention, noisy commands and aborted final prose", async () => {
     const f = await fixture(), id = "01a07f1d-d6d0-7f01-b2bd-4154876ec187", rollout = join(f.dir, "session.jsonl"), registry = join(f.dir, "registry.json"), at = new Date().toISOString();
     await writeFile(rollout, [

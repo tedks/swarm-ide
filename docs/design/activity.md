@@ -60,7 +60,9 @@ or actual turn terminals → one batched summary → human outcome entries in
 `.swarm/work-log.json`. Completed patch operations, checks/builds, Git/PR
 publication actions and explicit Ditz lifecycle actions can make an ongoing
 milestone eligible; intentions, unmatched tool calls, read-only inspection and
-partial records cannot. Its modules are [protocol/work-log.ts](../../protocol/work-log.ts),
+partial records cannot. Matching results may use the legacy string envelope or
+the current content-block array; only bounded `input_text` blocks enter evidence,
+never images or arbitrary objects. Its modules are [protocol/work-log.ts](../../protocol/work-log.ts),
 [core/external-agents-activity.ts](../../core/external-agents-activity.ts),
 [core/work-log/transcripts.ts](../../core/work-log/transcripts.ts),
 [core/work-log/service.ts](../../core/work-log/service.ts),
