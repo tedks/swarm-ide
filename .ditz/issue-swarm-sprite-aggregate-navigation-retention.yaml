@@ -1,0 +1,21 @@
+id: swarm-sprite-aggregate-navigation-retention
+title: Investigate the retained navigation-camera failure from the broad sprite run
+desc: 'PR152 original broad suite recorded service-camera translation changing by
+  336px/120px at scale1.2 during declaration/source activation, plus No visible blank
+  repo pane point. Zero renderer errors; no established source cause or baseline attribution.
+  Do not call an isolated sprite proof a historical fix. Preserved log: project-agent-sprites/bazel-testlogs/tools/repository-navigation/packaged-navigation-test/test.log;
+  ROOT analysis: /tmp/swarm-ide-agent-visibility.xuxEvL/sprites/root-broad-run-attribution.md.
+  Follow up with a discriminating focused case, not a blanket broad rerun.'
+type: bugfix
+component: workbench
+release:
+reporter: Ted Smith <tedks@riseup.net>
+status: unstarted
+disposition:
+creation_time: 2026-09-11T03:02:38-00:00
+references: []
+log_events:
+- time: 2026-09-11T03:02:38-00:00
+  who: Ted Smith
+  what: created
+  comment: ""
