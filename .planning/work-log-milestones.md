@@ -39,7 +39,7 @@ The behavior is visible in controlled Work Log tests: append a completed concret
   Evidence: Bazel reported the initial protocol/input errors, then `//tools/work-log:check PASSED` in 19.0 seconds with controlled summarizers only.
 
 - Observation: the repository-wide living-design bundle's plan readers and component-graph tests pass with the updated mapping, while 13 unrelated planning UI/bridge cases fail with “Could not read the plan” and cross-response authority mismatches.
-  Evidence: `//tools/living-design:checks` reported 89 passing tests, including all `plans-reader`, `component-graph-stability`, and `living-design` tests, plus 13 failures isolated to `planning-ui` and `demo-plan-actions`; no Work Log assertion failed.
+  Evidence: `//tools/living-design:checks` reported 89 passing tests, including all `plans-reader`, `component-graph-stability`, and `living-design` tests, plus 13 failures isolated to `planning-ui` and `demo-plan-actions`; no Work Log assertion failed. ROOT's later read-only source trace matched those failures to pre-existing fixture drift—nine project-identity mismatches, three removed manual-load controls, and one obsolete no-automatic-read expectation—against reviewed `f08c75d5`. This is not a pristine-base execution. ROOT owns the shared follow-up issue, so this increment neither reruns nor repairs those tests.
 
 - Observation: the first provider-diverse council round found byte/character checkpoint drift, post-abort and nested-session terminal revival, quote-blind command admission, insufficient privacy scrubbing, unbounded turn and generated-entry identities, silent completed operations being dropped, and unenforced provenance/state combinations.
   Evidence: new focused regressions failed in seven expected cases before the fixes; after byte-oriented parsing, checkpoint kinds, active-span admission, bounded hashes, stricter prefixes/scrubbing and protocol validation, `//tools/work-log:check` passed all 123 selected tests. The Claude seat returned no report during its single bounded attempt and was not substituted.
@@ -86,6 +86,8 @@ The behavior is visible in controlled Work Log tests: append a completed concret
 The implementation, controlled verification, one synthetic real-summary proof, and provider-diverse council convergence are complete. Registered long-running turns now yield concise saved Milestones only after matched concrete operation results; one ordered byte checkpoint and persisted batch window prevent idle/restart/tail replay, while exact `task_complete`, abort/nested/fork ownership, Pause/disposal/settings and cross-window publication remain independently guarded. Explicit provenance protects historical milestones from legacy repair and the UI labels them without claiming current liveness.
 
 The feature stayed inside the existing registered-transcript reader, shared Activity literal-operation extractor, single core producer, saved Work Log document, protocol and panel; it added no agent discovery, liveness inference, generic event system, dashboard, Goals writes, automatic Ditz action, or App wiring. The one intentionally retained limit is fail-closed ambiguity: after a closed checkpoint has fallen outside the 512 KiB tail, a different explicit terminal may bridge the gap, but ongoing evidence waits for a visible owned `task_started`.
+
+ROOT accepted the retained 13 broad planning-test failures as source-traced pre-existing fixture drift under the focused local/critical-only policy. They are not claimed green or presented as a pristine-base reproduction, and they do not hold this scoped PR after its relevant gates and council convergence. No unrelated repair or repeat broad run was performed; ROOT will file the shared follow-up.
 
 ## Context and Orientation
 
@@ -164,3 +166,5 @@ Plan revision note (2026-09-11 02:08Z): incorporated first-round council finding
 Plan revision note (2026-09-11 02:18Z): distinguished active missing-ID terminals from closed-checkpoint tail gaps after delayed Claude convergence; retained fail-closed milestone ownership while allowing only an explicit different terminal to bridge a closed gap.
 
 Plan revision note (2026-09-11 02:25Z): recorded the final timestamp-ordering fix, 127-test GREEN evidence, one synthetic Luna proof, and three-provider CLEAN convergence; replaced the provisional outcome with the completed implementation and its deliberate fail-closed tail-gap limit.
+
+Plan revision note (2026-09-11 02:35Z): incorporated ROOT's source-traced intake for the 13 retained planning fixture failures, explicitly distinguished it from pristine-base execution, and left the shared follow-up and unrelated repair outside this increment.
