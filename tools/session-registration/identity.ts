@@ -47,7 +47,7 @@ export async function metadata(path: string) {
 }
 
 /** Only an explicitly named pane's process tree and open descriptors are searched. */
-export interface PaneInput { socket: string; pane: string; processPid?: number; processStart?: string }
+export interface PaneInput { socket: string; pane: string; processPid?: number; processStart?: string; signal?: AbortSignal }
 type Candidate = { target: TmuxTarget; rollout: string };
 const NativeParent = z.object({ subagent: z.object({ thread_spawn: z.object({ parent_thread_id: ExternalSessionId }) }) });
 
@@ -84,7 +84,10 @@ async function interactiveCandidate(candidates: Candidate[], check: () => void):
 
 export async function discover(input: PaneInput, knownRollout?: string): Promise<{ target: TmuxTarget; rollout: string } | undefined> {
   const until = Date.now() + 3500;
-  const check = () => { if (Date.now() > until) throw new Error("Pane discovery exceeded bound"); };
+  const check = () => {
+    if (input.signal?.aborted) throw new Error("Pane discovery stopped");
+    if (Date.now() > until) throw new Error("Pane discovery exceeded bound");
+  };
   try {
     absolute(input.socket);
     if (!/^%\d{1,12}$/.test(input.pane)) return;
@@ -93,7 +96,8 @@ export async function discover(input: PaneInput, knownRollout?: string): Promise
     const output = await new Promise<string>((resolve, reject) => {
       let result: { error: Error | null; stdout: string } | undefined;
       const child = execFile("tmux", ["-S", input.socket, "list-panes", "-a", "-F", "#{window_id}\t#{pane_id}\t#{pane_pid}"],
-        { encoding: "utf8", timeout: 1000, maxBuffer: LIMIT, killSignal: "SIGKILL", env: { PATH: process.env.PATH, LANG: "C.UTF-8" } },
+        { encoding: "utf8", timeout: 1000, maxBuffer: LIMIT, killSignal: "SIGKILL", signal: input.signal,
+          env: { PATH: process.env.PATH, LANG: "C.UTF-8" } },
         (error, stdout) => { result = { error, stdout }; });
       child.once("close", () => result && !result.error ? resolve(result.stdout) : reject(new Error("Exact tmux pane unavailable")));
     });
@@ -152,6 +156,6 @@ export async function discover(input: PaneInput, knownRollout?: string): Promise
       : knownRollout === undefined ? await interactiveCandidate(candidates, check) : undefined;
     if (!selected) return;
     check();
-    return await validateHandoff(selected.target, selected.rollout) ? selected : undefined;
+    return await validateHandoff(selected.target, selected.rollout, input.signal) ? selected : undefined;
   } catch { return undefined; }
 }

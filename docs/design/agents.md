@@ -203,7 +203,13 @@ inside-tmux switch commands. It is offered only for the currently selected local
 available detail, and hidden during stale observation or history-only access.
 Copying is display-only: a pasted command is not a new identity check and does not
 replay pending message text. Explicit launch-time project/tmux association reuses
-registration; it does not convert terminal-owned agents into IDE-owned runs.
+registration; it does not convert terminal-owned agents into IDE-owned runs. The
+installed launcher continues reconciling that exact selected socket/session while
+its window lives. New checked Codex owners become registrations, including owners
+in same-project worktrees created after startup. Disappearance or replacement
+strips the old row's tmux target but retains its transcript and metadata-derived
+fork ancestry. Executable names, pane/window labels, timing and OS parentage never
+become logical hierarchy evidence.
 
 ## Build connections
 
