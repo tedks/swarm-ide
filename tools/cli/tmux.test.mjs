@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { createServer } from "node:net";
-import { mkdir, mkdtemp, rm, symlink } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, symlink } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { execFile, spawn } from "node:child_process";
@@ -39,7 +39,12 @@ test("an orphaned socket from a killed selected tmux server retires old authorit
         },
       },
     });
-    const serverPid = Number((await exec("tmux", ["-S", socket, "display-message", "-p", "#{pid}"], { timeout: 5000 })).stdout.trim());
+    const rawPid = (await exec("tmux", ["-S", socket, "display-message", "-p", "#{pid}"], { timeout: 5000 })).stdout.trim();
+    assert.match(rawPid, /^[1-9]\d*$/);
+    const serverPid = Number(rawPid);
+    assert.notEqual(serverPid, 1); assert.notEqual(serverPid, process.pid);
+    const owner = (await readFile(`/proc/${serverPid}/status`, "utf8")).match(/^Uid:\s+(\d+)\s+(\d+)\s+(\d+)\s+(\d+)$/m);
+    assert(owner); assert(owner.slice(1).every((value) => value === String(process.getuid())));
     process.kill(serverPid, "SIGKILL");
     await new Promise((resolve) => setTimeout(resolve, 50));
     const retired = await result.reconcile();
