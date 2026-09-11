@@ -80,8 +80,11 @@ describe("real agent graph overlays", () => {
     const pathless = { ...detail(), entries: [{ ...detail().entries[0]!, path: undefined, text: "Branch-only work" }] };
     const open = vi.fn();
     render(<GraphAgents client={client([pathless])} selection={selection()} connected onOpen={open}>
-      <GraphAgentLayer locations={[{ id: "file", paths: ["app.ts"] }]}><GraphAgentSprites nodeId="file" /></GraphAgentLayer>
+      <section data-testid="graph-owner"><GraphAgentLayer locations={[{ id: "file", paths: ["app.ts"] }]}><GraphAgentSprites nodeId="file" /></GraphAgentLayer></section>
     </GraphAgents>);
+    const owner = screen.getByTestId("graph-owner"), layer = owner.querySelector("[data-graph-agent-layer]");
+    expect(owner.children).toHaveLength(1); expect(layer?.parentElement).toBe(owner);
+    expect(layer?.querySelector("[data-graph-agent-summary]")).toBeTruthy();
     expect(screen.getByText("0 located · 1 unplaced")).toBeTruthy();
     const button = screen.getByRole("button", { name: /Open unplaced agent F7 from master/ });
     expect(button.title).toContain("No explicit membership in this graph");

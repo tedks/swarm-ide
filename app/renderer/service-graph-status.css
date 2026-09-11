@@ -1,4 +1,4 @@
-.graph-pane[data-topology="service"] > .graph-canvas { position: relative; }
+.graph-pane[data-topology="service"] > .graph-agent-layer > .graph-canvas { position: relative; }
 .service-graph-status {
   position: absolute;
   inset: 20px 24px 54px;

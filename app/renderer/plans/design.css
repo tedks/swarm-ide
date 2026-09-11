@@ -52,7 +52,7 @@
 .component-graph-card .design-contract-picker { padding: 0 7px; margin-bottom: 4px; }
 .component-graph-card .design-components:has(.design-contract-detail) > .design-legend,
 .component-graph-card .design-components:has(.design-contract-detail) > .design-details { display: none; }
-.component-graph-card .design-components:has(.design-contract-detail) > .design-graph { min-height: 65px; flex-basis: 65px; }
+.component-graph-card .design-components:has(.design-contract-detail) > .graph-agent-layer { min-height: 65px; flex-basis: 65px; }
 .component-graph-card .design-contract-detail { max-height: 72px; flex: 0 0 auto; overflow: auto; padding: 4px 7px; }
 @media (max-width: 900px) { .design-quadrants { grid-template-columns: minmax(0, 1fr); grid-template-rows: none; overflow: visible; } .design-quadrants > * { max-height: 500px; } }
 @container (max-width: 850px) { .design-quadrants { display: flex; flex-direction: column; } .design-components { order: -1; min-height: 460px; } .design-quadrants > * { flex: 0 0 auto; max-height: 500px; } }

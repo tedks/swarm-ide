@@ -16,7 +16,8 @@
 .component-graph-card .planning-node small { display: none; }
 .component-graph-card .design-components > h3 { display: none; }
 .component-graph-card .design-legend { font-size: 10px; padding: 0 7px; margin: 2px 0 4px; }
-.component-graph-card .design-graph { height: auto; min-height: 100px; flex: 1 0 100px; }
+.component-graph-card .design-components > .graph-agent-layer { min-height: 100px; flex: 1 0 100px; }
+.component-graph-card .design-graph { height: auto; min-height: 100px; }
 .component-graph-card .design-details { padding: 4px 7px; max-height: 160px; overflow: auto; flex: 0 0 auto; font-size: 11px; }
 .component-graph-card .design-details summary { cursor: pointer; }
 .task-graph-card > .task-projection { height: 100%; border: 0; }

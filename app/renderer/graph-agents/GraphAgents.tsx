@@ -35,7 +35,9 @@ export function GraphAgentLayer({ locations, nearest = false, children }: {
   const { agents, visible } = useContext(AgentContext);
   const placed = useMemo(() => placeGraphAgents(visible ? agents : emptyAgents, locations, nearest), [agents, locations, nearest, visible]);
   const placedIds = useMemo(() => new Set([...placed.values()].flatMap((rows) => rows.map((agent) => agent.id))), [placed]);
-  return <LocationContext.Provider value={placed}>{children}<GraphAgentPlacementSummary placedIds={placedIds} /></LocationContext.Provider>;
+  return <LocationContext.Provider value={placed}><div className="graph-agent-layer" data-graph-agent-layer="true">
+    {children}<GraphAgentPlacementSummary placedIds={placedIds} />
+  </div></LocationContext.Provider>;
 }
 
 function GraphAgentPlacementSummary({ placedIds }: { placedIds: ReadonlySet<string> }) {
