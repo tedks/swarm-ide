@@ -26,12 +26,7 @@ export function cleanWorkText(text: string, max = 1600): string {
 }
 
 function concreteCommand(command: string): boolean {
-  return /\b(?:bazel|bazelisk)\s+(?:test|build|run)\b/i.test(command)
-    || /\b(?:pnpm|npm|yarn)\s+(?:run\s+)?(?:test|lint|typecheck|build|check)\b/i.test(command)
-    || /\b(?:vitest|pytest|cargo\s+test|go\s+test|make\s+(?:test|check))\b/i.test(command)
-    || /\bgit\s+(?:commit|push|merge|rebase|cherry-pick|tag)\b/i.test(command)
-    || /\bgh\s+pr\s+(?:create|ready|merge|comment)\b/i.test(command)
-    || /\bditz\s+(?:add|start|close|comment|sync)\b/i.test(command);
+  return /(?:^|&&|\|\||;)\s*(?:nix\s+develop\s+--command\s+)?(?:(?:bazel|bazelisk)\s+(?:test|build|run)|(?:pnpm|npm|yarn)\s+(?:run\s+)?(?:test|lint|typecheck|build|check)|vitest\s+run|pytest\b|cargo\s+test\b|go\s+test\b|make\s+(?:test|check)\b|git\s+(?:commit|push|merge|rebase|cherry-pick|tag)\b|gh\s+pr\s+(?:create|ready|merge|comment)\b|ditz\s+(?:add|start|close|comment|sync)\b)/i.test(command);
 }
 
 function nextCheckpoint(source: string, offset: number, at: string, turnId: string | undefined, bytes: string): WorkCheckpoint {
@@ -74,7 +69,10 @@ async function readWorkEvidence(root: string, registryPath: string | undefined, 
   try {
     const stat = await registryFile.stat();
     if (stat.size > 65536 || (stat.mode & 0o022)) throw new Error("Private registry is not readable safely");
-    rows = Registry.parse(JSON.parse(await registryFile.readFile("utf8"))).sessions;
+    const bytes = Buffer.alloc(stat.size + 1), read = await registryFile.read(bytes, 0, bytes.length, 0), after = await registryFile.stat();
+    if (read.bytesRead !== stat.size || after.size !== stat.size || after.dev !== stat.dev || after.ino !== stat.ino)
+      throw new Error("Private registry changed while reading");
+    rows = Registry.parse(JSON.parse(bytes.subarray(0, read.bytesRead).toString("utf8"))).sessions;
   } finally { await registryFile.close(); }
   const inputs: WorkInput[] = [], completions: WorkCompletion[] = [];
   const advances: Record<string, WorkCheckpoint> = {};
@@ -180,14 +178,17 @@ async function readWorkEvidence(root: string, registryPath: string | undefined, 
           if (!ownTerminal) { absolute = end; continue; }
           if (fork && payload.turn_id !== ownTurn) evidence = [];
           if (typeof payload.last_agent_message === "string") evidence.push(cleanWorkText(payload.last_agent_message, 3500));
-          const boundary = `${payload.turn_id ?? "turn"}:${at}`;
+          const turn = typeof payload.turn_id === "string" ? cleanWorkText(payload.turn_id, 80) : "turn";
+          const boundary = `${turn}:${at}`;
           const state = payload.error != null ? "failed" as const : "completed" as const;
           const next = nextCheckpoint(source, end, at, undefined, raw);
           completions.push({ sessionId: row.id, boundary, at, state });
           terminalInput = undefined;
-          if (legacySeen[row.id] !== boundary && evidence.join("\n").trim()) terminalInput = { origin: "terminal", sessionId: row.id,
+          const terminalText = evidence.slice(-16).join("\n").slice(-10000).trim()
+            || (prior ? `Turn ${state === "failed" ? "failed" : "completed"} after earlier saved milestones; no additional outcome text was reported.` : "");
+          if (legacySeen[row.id] !== boundary && terminalText) terminalInput = { origin: "terminal", sessionId: row.id,
             agent: cleanWorkText(row.label, 120), taskId: row.task && /^[a-zA-Z0-9][a-zA-Z0-9_-]{0,199}$/.test(row.task) ? row.task : null,
-            boundary, at, text: evidence.slice(-16).join("\n").slice(-10000), state, checkpoint: next };
+            boundary, at, text: terminalText, state, checkpoint: next };
           else latestAdvance = next;
           evidence = []; milestones = []; calls.clear(); owned = false; ownTurn = undefined;
         }

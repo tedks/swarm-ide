@@ -399,10 +399,10 @@ describe("online Work Log", () => {
     expect(second).toMatchObject({ origin: "milestone", at: secondAt }); expect(second.boundary).not.toBe(first.boundary);
     expect(second.text).toContain("bazel test"); expect(second.text).not.toContain("core/parser.ts");
 
-    rows.push({ type: "event_msg", timestamp: secondAt, payload: { type: "task_complete", turn_id: "long-turn", last_agent_message: "Implemented and checked the parser." } });
+    rows.push({ type: "event_msg", timestamp: secondAt, payload: { type: "task_complete", turn_id: "long-turn" } });
     await save();
     const [terminal] = await readWorkInputs(f.root, registry, { [id]: second.checkpoint! });
-    expect(terminal).toMatchObject({ origin: "terminal", state: "completed" });
+    expect(terminal).toMatchObject({ origin: "terminal", state: "completed" }); expect(terminal.text).toContain("earlier saved milestones");
   });
   it("ignores unmatched results, repeated intention, noisy commands and aborted final prose", async () => {
     const f = await fixture(), id = "01a07f1d-d6d0-7f01-b2bd-4154876ec187", rollout = join(f.dir, "session.jsonl"), registry = join(f.dir, "registry.json"), at = new Date().toISOString();
@@ -411,6 +411,8 @@ describe("online Work Log", () => {
       { type: "event_msg", timestamp: at, payload: { type: "agent_message", message: "I will implement this next. I will implement this next." } },
       { type: "response_item", timestamp: at, payload: { type: "function_call", name: "exec_command", call_id: "status", arguments: JSON.stringify({ cmd: "git status --short" }) } },
       { type: "response_item", timestamp: at, payload: { type: "function_call_output", call_id: "status", output: "clean" } },
+      { type: "response_item", timestamp: at, payload: { type: "function_call", name: "exec_command", call_id: "search", arguments: JSON.stringify({ cmd: "rg 'bazel test' docs" }) } },
+      { type: "response_item", timestamp: at, payload: { type: "function_call_output", call_id: "search", output: "docs/example.md:bazel test //..." } },
       { type: "response_item", timestamp: at, payload: { type: "function_call_output", call_id: "missing", output: "Done!" } },
       { type: "event_msg", timestamp: at, payload: { type: "agent_message", message: "Implemented everything." } },
       { type: "event_msg", timestamp: at, payload: { type: "turn_aborted", turn_id: "turn" } },
@@ -473,6 +475,12 @@ describe("online Work Log", () => {
     const save = async (rows: unknown[]) => writeFile(rollout, rows.map((row) => JSON.stringify(row)).join("\n") + "\n");
     await save(inherited);
     expect(await readWorkInputs(f.root, registry)).toEqual([]);
+    await save([...inherited,
+      { type: "event_msg", timestamp: at, payload: { type: "task_started", turn_id: "child", started_at: started } },
+      { type: "response_item", timestamp: at, payload: { type: "custom_tool_call", name: "apply_patch", call_id: "child-patch", input: "*** Begin Patch\n*** Update File: child.ts\n@@\n-old\n+new\n*** End Patch" } },
+      { type: "response_item", timestamp: at, payload: { type: "custom_tool_call_output", call_id: "child-patch", output: "Done!" } },
+    ]);
+    expect((await readWorkInputs(f.root, registry))[0]).toMatchObject({ origin: "milestone", agent: "Child" });
     await save([...inherited,
       { type: "event_msg", timestamp: at, payload: { type: "task_started", turn_id: "child", started_at: started } },
       { type: "event_msg", timestamp: before, payload: { type: "agent_message", message: "Pre-birth evidence" } },

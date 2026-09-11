@@ -64,7 +64,7 @@ export async function withWorkLock<T>(path: string, work: () => Promise<T>, wait
   const ended = new Promise<void>((resolve) => { child.once("close", () => { closed = true; resolve(); }); });
   try {
     await new Promise<void>((resolve, reject) => {
-      const timer = setTimeout(() => reject(new Error("Work Log is busy in another window")), 5000);
+      const timer = setTimeout(() => reject(new Error("Work Log is busy in another window")), wait ? 6000 : 5000);
       const finish = (error?: Error) => { clearTimeout(timer); error ? reject(error) : resolve(); };
       child.stdout.once("data", (data: Buffer) => finish(data.toString() === "locked\n" ? undefined : new Error("Work Log lock unavailable")));
       child.once("error", () => finish(new Error("Work Log lock unavailable")));
