@@ -10,7 +10,7 @@ import { ExternalAgentService } from "../../core/external-agents";
 import { Registry } from "../../core/external-agents-registry";
 import { PROTOCOL_VERSION } from "../../protocol/common";
 import { parseArgs } from "./cli";
-import { discover } from "./identity";
+import { discover, metadata } from "./identity";
 import { updateRegistry, type RegisterInput } from "./registry";
 
 const dirs: string[] = [], sockets: string[] = [], holders: ChildProcess[] = [];
@@ -184,6 +184,63 @@ describe("known worker registration", () => {
         .toMatchObject({ detail: { handoff: "unconfigured", session: { status: "observed", parentId } } });
       expect((await readFile(`/proc/${f.pid}/stat`, "utf8")).startsWith(`${f.pid} (`)).toBe(true);
     } finally { await service.dispose(); }
+  });
+
+  it("lets an already-running observer discover a later tmux owner in a newly created worktree", async () => {
+    // These JavaScript launcher modules are exercised directly by this runtime
+    // integration test; they intentionally have no TypeScript declarations.
+    // @ts-expect-error runtime JavaScript module
+    const { associateTmux } = await import("../cli/tmux.mjs");
+    // @ts-expect-error runtime JavaScript module
+    const { discoverProject, refreshProject } = await import("../cli/project.mjs");
+    const dir = await mkdtemp(join(tmpdir(), "swarm-live-discovery-")); dirs.push(dir);
+    const repo = join(dir, "main"), late = join(dir, "late-worktree"), socket = join(dir, "owned.sock");
+    await mkdir(repo);
+    execFileSync("git", ["-C", repo, "init", "-b", "main"], { env: environment });
+    execFileSync("git", ["-C", repo, "-c", "user.name=Test", "-c", "user.email=test@example.invalid", "commit", "--allow-empty", "-m", "fixture"], { env: environment });
+    sockets.push(socket);
+    tmux(socket, "-f", "/dev/null", "new-session", "-d", "-s", "observed", "-n", "shell", "sleep", "30");
+    const initialProject = discoverProject(repo, environment);
+    const association = await associateTmux({ tmuxSocket: socket, tmuxSession: "observed", cwd: dir,
+      project: { ...initialProject, workspace: repo }, allowedRoots: [repo] }, {
+      stateRoot: join(dir, "state"), api: { discover, metadata, updateRegistry },
+      refreshProject: async (signal: AbortSignal) => {
+        const current = await refreshProject({ ...initialProject, workspace: repo }, environment, signal);
+        return { project: { ...current, workspace: repo }, allowedRoots: current.worktrees.map((row: { path: string }) => row.path) };
+      },
+    });
+    const observer = new ExternalAgentService(repo, association.registry);
+    try {
+      const empty = await observer.request({ protocolVersion: PROTOCOL_VERSION, requestId: "before-late-owner", type: "externalAgents.snapshot" });
+      expect(empty).toMatchObject({ kind: "snapshot", snapshot: { status: "observed", sessions: [] } });
+
+      execFileSync("git", ["-C", repo, "worktree", "add", "-b", "late", late], { env: environment });
+      const id = randomUUID(), rollout = join(dir, "late.jsonl"), ready = join(dir, "late-ready"), script = join(dir, "late-holder.cjs");
+      await writeFile(rollout, header(id, parentId, "cli"), { mode: 0o600 });
+      await writeFile(script, `const fs=require('node:fs');fs.openSync(${JSON.stringify(rollout)},'r');fs.writeFileSync(${JSON.stringify(ready)},String(process.pid));setInterval(()=>{},1000);`);
+      const tuple = tmux(socket, "new-window", "-d", "-t", "observed", "-n", "late", "-c", late, "-P", "-F", "#{window_id}\t#{pane_id}", process.execPath, script).trim().split("\t");
+      await until(async () => { try { await readFile(ready); return true; } catch { return false; } });
+
+      const changed = await association.reconcile();
+      expect(changed.registered).toHaveLength(1);
+      const observed = await observer.request({ protocolVersion: PROTOCOL_VERSION, requestId: "after-late-owner", type: "externalAgents.snapshot" });
+      expect(observed).toMatchObject({ kind: "snapshot", snapshot: { sessions: [{ id, parentId, worktree: late, control: "tmux" }] } });
+      const bytes = await readFile(association.registry, "utf8"), before = await lstat(association.registry);
+      await association.reconcile();
+      const after = await lstat(association.registry);
+      expect(await readFile(association.registry, "utf8")).toBe(bytes);
+      expect({ ino: after.ino, mtimeMs: after.mtimeMs }).toEqual({ ino: before.ino, mtimeMs: before.mtimeMs });
+
+      tmux(socket, "kill-window", "-t", tuple[0]);
+      const retired = await association.reconcile();
+      expect(retired.retired).toHaveLength(1);
+      const history = JSON.parse(await readFile(association.registry, "utf8"));
+      expect(history.sessions).toMatchObject([{ id, contextRoot: late }]);
+      expect(history.sessions[0].tmux).toBeUndefined();
+      expect(tmux(socket, "has-session", "-t", "observed")).toBe("");
+    } finally {
+      await association.dispose(); await observer.dispose();
+    }
   });
 
   it("finds a holder spawned by a non-leader thread in the exact pane", async () => {

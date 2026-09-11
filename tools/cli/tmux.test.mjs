@@ -61,6 +61,119 @@ test("association reuses checked registration and each owner's real worktree", (
   assert.equal(result.registered.length, 2); assert.deepEqual(result.skipped, [{ pane: "%12", reason: "No unique live Codex owner" }]);
   assert.equal(result.terminalCommand, `tmux -S '${socket}' attach-session -t '$7'`);
 }));
+test("one association discovers a later pane in a newly refreshed project worktree", () => fixture(async ({ socket, dir }) => {
+  let panes = ["%10"], allowedRoots = ["/projects/main"];
+  const owners = new Map(), records = new Map(), updates = [];
+  const api = {
+    discover: async ({ pane }) => owners.get(pane),
+    metadata: async (rollout) => ({ id: `10000000-0000-4000-8000-0000000000${rollout.endsWith("11.jsonl") ? "11" : "12"}`, parentId: null }),
+    updateRegistry: async (input) => {
+      updates.push(input);
+      if (input.action === "retire") {
+        const previous = records.get(input.sessionId); records.set(input.sessionId, { ...previous, tmux: undefined });
+        return { action: "retire", sessionId: input.sessionId, changed: Boolean(previous?.tmux), authority: "historical-only" };
+      }
+      const id = (await api.metadata(input.rollout)).id, previous = records.get(id);
+      const next = { id, rollout: input.rollout, contextRoot: input.contextRoot, tmux: input.pane };
+      records.set(id, next);
+      return { action: "register", sessionId: id, parentId: null, changed: JSON.stringify(previous) !== JSON.stringify(next), authority: "checked-live" };
+    },
+  };
+  const result = await associateTmux({ tmuxSocket: socket, tmuxSession: "project", cwd: dir,
+    project: { git: true, identity: "/projects/.git", workspace: "/projects/main", worktrees: [{ path: "/projects/main" }] },
+    allowedRoots }, {
+    stateRoot: join(dir, "state"), api,
+    command: async (_exe, args) => args.at(-1) === "#{socket_path}\t#{session_id}" ? `${socket}\t$7\n`
+      : args.at(-1) === "#{window_name}" ? "worker\n" : `${panes.join("\n")}\n`,
+    contextRoot: async (target) => target.root,
+    refreshProject: async () => ({
+      project: { git: true, identity: "/projects/.git", workspace: "/projects/main", worktrees: allowedRoots.map((path) => ({ path })) },
+      allowedRoots,
+    }),
+  });
+  assert.equal(result.registered.length, 0);
+  allowedRoots = ["/projects/main", "/projects/late-worktree"];
+  panes = ["%10", "%11"];
+  owners.set("%11", { target: { processPid: 11, processStart: "123", root: "/projects/late-worktree" }, rollout: "/known/11.jsonl" });
+  const refreshed = await result.reconcile();
+  assert.equal(refreshed.registered.length, 1);
+  assert.equal([...records.values()][0].contextRoot, "/projects/late-worktree");
+  assert.equal(result.registry, refreshed.registry);
+  assert.equal(updates.filter((row) => row.action === "register").length, 1);
+  await result.dispose();
+}));
+test("reconciliation is idempotent, fails closed on scope drift and preserves history across replacement", () => fixture(async ({ socket, dir }) => {
+  const firstId = "10000000-0000-4000-8000-000000000011", nextId = "10000000-0000-4000-8000-000000000012";
+  let sessionId = "$7", failSelection = false, publications = 0;
+  const owners = new Map([["%10", { target: { processPid: 10, processStart: "1", root: "/project/main" }, rollout: "/known/first.jsonl" }]]);
+  const records = new Map();
+  const api = {
+    discover: async ({ pane }) => owners.get(pane),
+    metadata: async (rollout) => ({ id: rollout.includes("first") ? firstId : nextId, parentId: null }),
+    updateRegistry: async (input) => {
+      if (input.action === "retire") {
+        const before = records.get(input.sessionId), after = { ...before }; delete after.tmux;
+        const changed = JSON.stringify(before) !== JSON.stringify(after); records.set(input.sessionId, after); if (changed) publications++;
+        return { action: "retire", sessionId: input.sessionId, changed, authority: "historical-only" };
+      }
+      const id = (await api.metadata(input.rollout)).id, before = records.get(id);
+      const after = { id, rollout: input.rollout, contextRoot: input.contextRoot, tmux: input.pane };
+      const changed = JSON.stringify(before) !== JSON.stringify(after); records.set(id, after); if (changed) publications++;
+      return { action: "register", sessionId: id, changed, authority: "checked-live" };
+    },
+  };
+  const result = await associateTmux({ tmuxSocket: socket, tmuxSession: "project", cwd: dir,
+    project: { identity: "/project/.git" }, allowedRoots: ["/project/main"] }, {
+    stateRoot: join(dir, "state"), api, contextRoot: async (target) => target.root,
+    command: async (_exe, args) => {
+      if (args.at(-1) === "#{socket_path}\t#{session_id}") {
+        if (failSelection) throw new Error("temporary tmux failure");
+        return `${socket}\t${sessionId}\n`;
+      }
+      return args.at(-1) === "#{window_name}" ? "worker\n" : "%10\n";
+    },
+  });
+  assert.equal(result.registered.length, 1); assert.equal(publications, 1);
+  await result.reconcile(); assert.equal(publications, 1); assert.equal(records.size, 1);
+  failSelection = true;
+  await assert.rejects(result.reconcile(), /temporary tmux failure/);
+  assert(records.get(firstId).tmux); assert.equal(publications, 1);
+  failSelection = false; sessionId = "$8";
+  await assert.rejects(result.reconcile(), /server\/session changed/);
+  assert(records.get(firstId).tmux); assert.equal(publications, 1);
+  sessionId = "$7";
+  owners.set("%10", { target: { processPid: 12, processStart: "2", root: "/project/main" }, rollout: "/known/next.jsonl" });
+  const replacement = await result.reconcile();
+  assert.equal(replacement.registered[0].sessionId, nextId); assert.equal(records.get(firstId).tmux, undefined); assert(records.get(nextId).tmux);
+  owners.delete("%10");
+  await result.reconcile(); assert(records.get(nextId).tmux, "one inconclusive present-pane scan keeps the last target record");
+  await result.reconcile(); assert.equal(records.get(nextId).tmux, undefined); assert.equal(records.size, 2);
+  await result.dispose();
+}));
+test("the watcher serializes scans and disposal aborts owned work without scheduling again", () => fixture(async ({ socket, dir }) => {
+  let discoveries = 0, scheduled, schedules = 0, started;
+  const began = new Promise((resolve) => { started = resolve; });
+  const api = {
+    metadata: async () => ({ id: "10000000-0000-4000-8000-000000000011", parentId: null }),
+    updateRegistry: async () => { throw new Error("aborted discovery must not write"); },
+    discover: async ({ signal }) => {
+      discoveries++;
+      if (discoveries === 1) return undefined;
+      started();
+      return await new Promise((resolve) => signal.addEventListener("abort", () => resolve(undefined), { once: true }));
+    },
+  };
+  const result = await associateTmux({ tmuxSocket: socket, tmuxSession: "project", cwd: dir }, {
+    stateRoot: join(dir, "state"), api,
+    command: async (_exe, args) => args.at(-1) === "#{socket_path}\t#{session_id}" ? `${socket}\t$7\n` : "%10\n",
+  });
+  result.watch({ intervalMs: 1, setTimer: (callback) => { schedules++; scheduled = callback; return schedules; }, clearTimer: () => {} });
+  const tick = scheduled(); await began;
+  const concurrent = assert.rejects(result.reconcile(), /stopped/);
+  await result.dispose(); await tick; await concurrent;
+  assert.equal(discoveries, 2); assert.equal(schedules, 1);
+  await assert.rejects(result.reconcile(), /disposed/);
+}));
 test("association maps a same-project bare-parent owner while retaining another owner's actual worktree", () => fixture(async ({ socket, dir }) => {
   const exec = promisify(execFile), seed = join(dir, "seed"), container = join(dir, "bare project"), bare = join(container, ".git");
   const selected = join(container, "main"), feature = join(container, "feature");
@@ -135,11 +248,12 @@ test("bare-parent mapping rejects unrelated, stale and aliased project roots bef
   let writes = 0;
   try {
     for (const row of cases) {
-      await assert.rejects(associateTmux({ tmuxServer: "personal", tmuxSession: "project", cwd: dir, project: row.project }, {
+      const result = await associateTmux({ tmuxServer: "personal", tmuxSession: "project", cwd: dir, project: row.project }, {
         stateRoot: join(dir, "state"),
         command: async (_exe, args) => args.at(-1) === "#{socket_path}\t#{session_id}" ? `${socket}\t$7\n` : args.at(-1) === "#{window_name}" ? "worker" : "%10\n",
         api: { discover: async () => ({ target: { processPid: row.owner.pid, processStart: "123" }, rollout: "/known/owner.jsonl" }), updateRegistry: async () => { writes++; } },
-      }), row.message);
+      });
+      assert.equal(result.registered.length, 0); assert.match(result.skipped[0].reason, row.message); await result.dispose();
     }
     assert.equal(writes, 0);
   } finally {
@@ -149,12 +263,13 @@ test("bare-parent mapping rejects unrelated, stale and aliased project roots bef
 }));
 test("unknown owner roots do not fall back to the opened project or create authority", () => fixture(async ({ socket, dir }) => {
   let calls = 0, writes = 0;
-  await assert.rejects(associateTmux({ tmuxServer: "personal", tmuxSession: "project", cwd: "/caller" }, {
+  const result = await associateTmux({ tmuxServer: "personal", tmuxSession: "project", cwd: "/caller" }, {
     stateRoot: join(dir, "state"), command: async () => ++calls === 1 ? `${socket}\t$7\n` : "%10\n",
     api: { discover: async () => ({ target: { processPid: 10 }, rollout: "/known/x.jsonl" }), updateRegistry: async () => { writes++; } },
     contextRoot: async () => { throw new Error("owner worktree unavailable"); },
-  }), /owner worktree unavailable/);
-  assert.equal(writes, 0);
+  });
+  assert.equal(result.registered.length, 0); assert.match(result.skipped[0].reason, /owner worktree unavailable/);
+  assert.equal(writes, 0); await result.dispose();
 }));
 test("each association starts a fresh bounded registry while preserving the old generation", () => fixture(async ({ socket, dir }) => {
   const writes = [];
@@ -185,7 +300,7 @@ test("automatic association never registers an owner from a different project", 
   const result = await associateTmux({ tmuxSocket: socket, tmuxSession: "project", tmuxSessionId: "$0", cwd: dir, allowedRoots: ["/project/main"] }, {
     stateRoot: join(dir, "state"),
     command: async (_exe, args) => args.at(-1) === "#{socket_path}\t#{session_id}" ? `${socket}\t$0\n` : args.at(-1) === "#{window_name}" ? "worker" : "%1\n%2\n",
-    api: { discover: async ({ pane }) => ({ target: { processPid: pane === "%1" ? 1 : 2, processStart: "1" }, rollout: "/known/a.jsonl" }), updateRegistry: async (input) => { writes.push(input); return { sessionId: "one" }; } },
+    api: { discover: async ({ pane }) => ({ target: { processPid: pane === "%1" ? 1 : 2, processStart: "1" }, rollout: "/known/a.jsonl" }), updateRegistry: async (input) => { writes.push(input); return { sessionId: "one", authority: "checked-live" }; } },
     contextRoot: async (target) => target.processPid === 1 ? "/project/main" : "/unrelated/other",
   });
   assert.equal(writes.length, 1); assert.equal(writes[0].contextRoot, "/project/main");

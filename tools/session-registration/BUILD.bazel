@@ -20,7 +20,7 @@ sh_binary(
 sh_test(
     name = "unit",
     srcs = ["unit.sh"],
-    data = [":sources", ":bundle", "//:quality_sources"],
+    data = [":sources", ":bundle", "//:quality_sources", "//tools/cli:sources"],
     tags = ["local"],
     timeout = "moderate",
 )
