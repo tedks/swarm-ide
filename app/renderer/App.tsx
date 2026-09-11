@@ -279,10 +279,13 @@ export function App() {
       if (!mounted.current || generation !== coreGenerationRef.current || visit !== workspaceVisit.current || selectedWorktreeRef.current?.id !== selected.id ||
           selectedWorktreeRef.current.root !== selected.root) return;
       const narrowed = { ...selected, projectId: null, agentVisibility: "worktree" as const, branch: null, notice: scopeFailureNotice };
+      if (selectedWorktreeRef.current.projectId === null && selectedWorktreeRef.current.agentVisibility === "worktree" &&
+          selectedWorktreeRef.current.branch === null && selectedWorktreeRef.current.notice === scopeFailureNotice) return;
       selectedWorktreeRef.current = narrowed; setSelectedWorktree(narrowed);
       descriptors.current.set(narrowed.root, narrowed); descriptors.current.set(narrowed.id, narrowed);
     }).finally(() => { projectScopeRefresh.current.inFlight = false; });
-  }, [externalAgents.refreshing, externalAgents.observing, lifecycle?.core.generation, selectedWorktree?.id, selectedWorktree?.root, selectedWorktree?.sessionId]);
+  }, [externalAgents.refreshing, externalAgents.observing, lifecycle?.core.generation, lifecycle?.core.phase,
+    selectedWorktree?.id, selectedWorktree?.root, selectedWorktree?.sessionId]);
   const [commandQuery, setCommandQuery] = useState("");
   const [hmr, setHmr] = useState({ generation: 0, milliseconds: 0 });
   const [fileTabs, setFileTabs] = useState<FileTab[]>(hotCheckpoint?.files ?? []);
