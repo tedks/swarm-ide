@@ -183,7 +183,7 @@ discontinuous observation searches at most the latest 4 MiB for an explicit
 lifecycle boundary, while the Activity feed remains a 256 KiB tail. A bounded
 per-registration content checkpoint starts at the latest independently owned
 lifecycle boundary and reuses the result while the complete file version is
-unchanged. A bounded append rereads and hashes the cached state-bearing suffix,
+unchanged. A bounded append rereads and hashes up to 4 MiB of cached state-bearing suffix,
 from that authority boundary through the prior complete record, before parsing
 only new complete records. This bounded I/O is deliberate: validating only new
 bytes could not detect a same-inode rewrite of earlier lifecycle evidence without
