@@ -43,6 +43,9 @@ The behavior is visible in controlled Work Log tests: append a completed concret
 - Observation: the first provider-diverse council round found byte/character checkpoint drift, post-abort and nested-session terminal revival, quote-blind command admission, insufficient privacy scrubbing, unbounded turn and generated-entry identities, silent completed operations being dropped, and unenforced provenance/state combinations.
   Evidence: new focused regressions failed in seven expected cases before the fixes; after byte-oriented parsing, checkpoint kinds, active-span admission, bounded hashes, stricter prefixes/scrubbing and protocol validation, `//tools/work-log:check` passed all 123 selected tests. The Claude seat returned no report during its single bounded attempt and was not substituted.
 
+- Observation: delayed Claude convergence found missing-turn terminals and closed checkpoints beyond the finite tail needed separate continuity rules.
+  Evidence: a missing terminal turn now inherits the active owned turn only while ownership remains live; a closed checkpoint beyond the tail accepts only an explicit different terminal turn. Focused post-abort, missing-ID and 530 KiB gap regressions pass, bringing the controlled count to 127.
+
 ## Decision Log
 
 - Decision: Admit ongoing milestones only after a completed tool operation with concrete accomplishment potential: a patch/edit, a test/build/type/lint/check command, a state-changing Git/PR command, or an explicit Ditz lifecycle/note command. Assistant prose, tool invocation without its matching result, read-only inspection commands, generic tool noise, and partial JSONL do not trigger inference.
@@ -154,3 +157,5 @@ Plan revision note (2026-09-11 01:24Z): created the initial self-contained plan 
 Plan revision note (2026-09-11 01:34Z): replaced independent milestone/terminal cursors with one ordered byte checkpoint, made batching a persisted first-seen window, and added Pause/publication linearization after focused review found that the initial design could alternate cursors, bill immediately on activation, and publish after another window returned from Pause.
 
 Plan revision note (2026-09-11 02:08Z): incorporated first-round council findings with byte-accurate line handling, checkpoint kind/turn provenance, active-span terminal admission, bounded identities, stricter privacy/command admission, silent-result handling, and protocol state invariants; recorded the unavailable Claude seat and new RED/GREEN evidence.
+
+Plan revision note (2026-09-11 02:18Z): distinguished active missing-ID terminals from closed-checkpoint tail gaps after delayed Claude convergence; retained fail-closed milestone ownership while allowing only an explicit different terminal to bridge a closed gap.

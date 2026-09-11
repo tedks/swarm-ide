@@ -77,8 +77,10 @@ cancels the owned summary without saving a user Pause. Idle inputs make no model
 call. One private per-session checkpoint records the validated transcript identity,
 absolute complete-line position and anchor in append order. It advances for paid
 milestones, terminals and non-billable aborts, so milestone and terminal handling
-cannot alternate over already paid bytes. Failed attempts are not replayed. A
-persisted first-seen window batches milestone evidence for the configured delay,
+cannot alternate over already paid bytes. A missing terminal turn ID is accepted
+only inside an active owned span. If a closed checkpoint falls outside the bounded
+tail, only an explicit different terminal turn bridges the gap; ambiguous milestones
+remain excluded. Failed attempts are not replayed. A persisted first-seen window batches milestone evidence for the configured delay,
 survives restart and does not reset when more evidence arrives. Errors back off
 without shortening that delay, and malformed state is not overwritten.
 Checkpoint kind and bounded turn provenance prevent an aborted, nested or prior

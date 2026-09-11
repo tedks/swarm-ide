@@ -231,7 +231,7 @@ export class WorkLogService {
           this.state.checkpoints[sessionId] = advance; delete this.state.pending[sessionId];
         }
         const fallback = (item: WorkInput): WorkCheckpoint => item.checkpoint ?? { source: "injected", offset: 0, length: 0,
-          anchor: item.boundary, at: item.at, turnId: null };
+          anchor: createHash("sha256").update(item.boundary).digest("hex").slice(0, 32), at: item.at, turnId: null };
         const fresh = observed.inputs.filter((item) => this.state.checkpoints[item.sessionId]?.anchor !== fallback(item).anchor)
           .sort((a, b) => b.at.localeCompare(a.at));
         const now = this.deps.now?.() ?? Date.now(), due: WorkInput[] = [];

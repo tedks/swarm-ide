@@ -30,12 +30,13 @@ export function cleanWorkText(text: string, max = 1600): string {
 }
 
 function concreteCommand(command: string): boolean {
-  return /^\s*(?:nix\s+develop\s+--command\s+)?(?:(?:bazel|bazelisk)\s+(?:test|build|run)|(?:pnpm|npm|yarn)\s+(?:run\s+)?(?:test|lint|typecheck|build|check)|vitest\s+run|pytest\b|cargo\s+test\b|go\s+test\b|make\s+(?:test|check)\b|git\s+(?:commit|push|merge|rebase|cherry-pick|tag)\b|gh\s+pr\s+(?:create|ready|merge|comment)\b|ditz\s+(?:add|start|close|comment|sync)\b)/i.test(command);
+  const candidate = command.replace(/^\s*cd\s+(?:"[^"\n]*"|'[^'\n]*'|[^\s;&|]+)\s*&&\s*/, "");
+  return /^\s*(?:nix\s+develop\s+--command\s+)?(?:(?:bazel|bazelisk)\s+(?:test|build|run)|(?:pnpm|npm|yarn)\s+(?:run\s+)?(?:test|lint|typecheck|build|check)|vitest\s+run|pytest\b|cargo\s+test\b|go\s+test\b|make\s+(?:test|check)\b|git\s+(?:commit|push|merge|rebase|cherry-pick|tag)\b|gh\s+pr\s+(?:create|ready|merge|comment)\b|ditz\s+(?:add|start|close|comment|sync)\b)/i.test(candidate);
 }
 
 function turnIdentity(value: unknown): string | undefined {
   if (typeof value !== "string" || !value) return;
-  return /^[A-Za-z0-9._:-]{1,80}$/.test(value) ? value : `sha256:${createHash("sha256").update(value).digest("hex")}`;
+  return /^[A-Za-z0-9._:-]{1,80}$/.test(value) ? value : `hash/${createHash("sha256").update(value).digest("hex")}`;
 }
 
 function nextCheckpoint(source: string, offset: number, at: string, turnId: string | undefined,
@@ -109,6 +110,7 @@ async function readWorkEvidence(root: string, registryPath: string | undefined, 
 
       const tailStart = Math.max(0, stat.size - TAIL);
       const start = Math.max(tailStart, prior?.offset ?? 0);
+      const closedGap = !!prior && prior.offset < tailStart && prior.kind !== "milestone" && !(prior.kind === undefined && prior.turnId);
       const data = Buffer.alloc(stat.size - start), read = await file.read(data, 0, data.length, start);
       const after = await file.stat();
       if (after.dev !== stat.dev || after.ino !== stat.ino || after.size < stat.size || !await anchorMatches()) continue;
@@ -190,18 +192,23 @@ async function readWorkEvidence(root: string, registryPath: string | undefined, 
 
         if (event.type === "event_msg" && payload?.type === "task_complete") {
           const eventTurn = turnIdentity(payload.turn_id);
-          const ownTerminal = owned && (ownTurn === undefined || eventTurn === ownTurn)
-            && (!fork || (Number.isFinite(started) ? started >= born : ownTurn !== undefined && eventTurn === ownTurn));
+          const activeTerminal = owned && (ownTurn === undefined || eventTurn === undefined || eventTurn === ownTurn)
+            && (!fork || (Number.isFinite(started) ? started >= born : ownTurn !== undefined && (eventTurn === undefined || eventTurn === ownTurn)));
+          // A closed checkpoint may fall behind the bounded tail while a later
+          // turn runs. Only an explicit different turn can bridge that gap;
+          // ambiguous milestones and the previously closed turn stay rejected.
+          const gapTerminal = closedGap && !fork && eventTurn !== undefined && eventTurn !== prior?.turnId;
+          const ownTerminal = activeTerminal || gapTerminal;
           if (!ownTerminal) { absolute = end; continue; }
           if (typeof payload.last_agent_message === "string") evidence.push(cleanWorkText(payload.last_agent_message, 3500));
-          const turn = eventTurn ?? "turn";
+          const turn = eventTurn ?? ownTurn ?? "turn";
           const boundary = `${turn}:${at}`;
           const state = payload.error != null ? "failed" as const : "completed" as const;
-          const next = nextCheckpoint(source, end, at, eventTurn, "terminal", rawBytes);
+          const next = nextCheckpoint(source, end, at, eventTurn ?? ownTurn, "terminal", rawBytes);
           completions.push({ sessionId: row.id, boundary, at, state });
           terminalInput = undefined;
           const terminalText = evidence.slice(-16).join("\n").slice(-10000).trim()
-            || (priorKind === "milestone" && prior?.turnId !== null && prior?.turnId === eventTurn
+            || (priorKind === "milestone" && prior?.turnId !== null && prior?.turnId === (eventTurn ?? ownTurn)
               ? `Turn ${state === "failed" ? "failed" : "completed"} after earlier saved milestones; no additional outcome text was reported.` : "");
           if (legacySeen[row.id] !== boundary && terminalText) terminalInput = { origin: "terminal", sessionId: row.id,
             agent: cleanWorkText(row.label, 120), taskId: row.task && /^[a-zA-Z0-9][a-zA-Z0-9_-]{0,199}$/.test(row.task) ? row.task : null,

@@ -1,6 +1,6 @@
 // @vitest-environment node
 import { execFileSync } from "node:child_process";
-import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { appendFile, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -442,6 +442,16 @@ describe("online Work Log", () => {
     const [result] = await readWorkInputs(f.root, registry);
     expect(result.text).toContain("git push"); expect(result.text).toContain("completed without output");
   });
+  it("accepts a concrete command after one safely parsed leading directory change", async () => {
+    const f = await fixture(), id = "01a07f1d-d6d0-7f01-b2bd-4154876ec187", rollout = join(f.dir, "session.jsonl"), registry = join(f.dir, "registry.json"), at = new Date().toISOString();
+    await writeFile(rollout, [
+      { type: "session_meta", timestamp: at, payload: { id } },
+      { type: "response_item", timestamp: at, payload: { type: "function_call", name: "exec_command", call_id: "test", arguments: JSON.stringify({ cmd: "cd 'work tree' && bazel test //tools/work-log:check" }) } },
+      { type: "response_item", timestamp: at, payload: { type: "function_call_output", call_id: "test", output: "passed" } },
+    ].map((row) => JSON.stringify(row)).join("\n") + "\n");
+    await writeFile(registry, JSON.stringify({ version: 1, sessions: [{ id, label: "Worker", rollout }] }), { mode: 0o600 });
+    expect((await readWorkInputs(f.root, registry))[0].text).toContain("bazel test");
+  });
   it("uses byte-accurate checkpoints after invalid UTF-8 and rejects oversized multibyte records", async () => {
     const f = await fixture(), id = "01a07f1d-d6d0-7f01-b2bd-4154876ec187", rollout = join(f.dir, "session.jsonl"), registry = join(f.dir, "registry.json"), at = new Date().toISOString();
     const header = Buffer.from(`${JSON.stringify({ type: "session_meta", timestamp: at, payload: { id } })}\n`);
@@ -492,6 +502,32 @@ describe("online Work Log", () => {
     expect((await observeWork(f.root, registry, { [id]: observed.advances[id] })).inputs).toEqual([]);
     await save([header, { type: "session_meta", timestamp: at, payload: { id: "nested" } }, terminal]);
     expect(await readWorkInputs(f.root, registry)).toEqual([]);
+  });
+  it("accepts a missing terminal turn id only inside its active owned span", async () => {
+    const f = await fixture(), id = "01a07f1d-d6d0-7f01-b2bd-4154876ec187", rollout = join(f.dir, "session.jsonl"), registry = join(f.dir, "registry.json"), at = new Date().toISOString();
+    const rows = [{ type: "session_meta", timestamp: at, payload: { id } },
+      { type: "event_msg", timestamp: at, payload: { type: "task_started", turn_id: "owned" } },
+      { type: "event_msg", timestamp: at, payload: { type: "task_complete", last_agent_message: "Owned turn completed" } }];
+    await writeFile(rollout, rows.map((row) => JSON.stringify(row)).join("\n") + "\n");
+    await writeFile(registry, JSON.stringify({ version: 1, sessions: [{ id, label: "Worker", rollout }] }), { mode: 0o600 });
+    expect((await readWorkInputs(f.root, registry))[0]).toMatchObject({ origin: "terminal", state: "completed", text: "Owned turn completed" });
+    rows.splice(2, 0, { type: "event_msg", timestamp: at, payload: { type: "turn_aborted", turn_id: "owned" } });
+    await writeFile(rollout, rows.map((row) => JSON.stringify(row)).join("\n") + "\n");
+    expect(await readWorkInputs(f.root, registry)).toEqual([]);
+  });
+  it("bridges a bounded-tail gap only for an explicit turn after the closed turn", async () => {
+    const f = await fixture(), id = "01a07f1d-d6d0-7f01-b2bd-4154876ec187", rollout = join(f.dir, "session.jsonl"), registry = join(f.dir, "registry.json"), at = new Date().toISOString();
+    const rows = [{ type: "session_meta", timestamp: at, payload: { id } },
+      { type: "event_msg", timestamp: at, payload: { type: "task_started", turn_id: "closed" } },
+      { type: "event_msg", timestamp: at, payload: { type: "turn_aborted", turn_id: "closed" } }];
+    await writeFile(rollout, rows.map((row) => JSON.stringify(row)).join("\n") + "\n");
+    await writeFile(registry, JSON.stringify({ version: 1, sessions: [{ id, label: "Worker", rollout }] }), { mode: 0o600 });
+    const checkpoint = (await observeWork(f.root, registry)).advances[id]; expect(checkpoint).toMatchObject({ kind: "abort", turnId: "closed" });
+    await appendFile(rollout, `${JSON.stringify({ type: "noise", payload: "x".repeat(530_000) })}\n`);
+    await appendFile(rollout, `${JSON.stringify({ type: "event_msg", timestamp: at, payload: { type: "task_complete", turn_id: "closed", last_agent_message: "Still closed" } })}\n`);
+    expect(await readWorkInputs(f.root, registry, { [id]: checkpoint })).toEqual([]);
+    await appendFile(rollout, `${JSON.stringify({ type: "event_msg", timestamp: at, payload: { type: "task_complete", turn_id: "later", last_agent_message: "Later turn completed" } })}\n`);
+    expect((await readWorkInputs(f.root, registry, { [id]: checkpoint }))[0]).toMatchObject({ origin: "terminal", text: "Later turn completed" });
   });
   it("uses empty-terminal fallback only after a milestone from the same turn", async () => {
     const f = await fixture(), id = "01a07f1d-d6d0-7f01-b2bd-4154876ec187", rollout = join(f.dir, "session.jsonl"), registry = join(f.dir, "registry.json"), at = new Date().toISOString();
