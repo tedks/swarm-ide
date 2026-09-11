@@ -11,10 +11,10 @@ Registered Goals conversations with explicit Codex lifecycle records should show
 - [x] (2026-09-11 01:37Z) Read the task packet, repository instructions, planning format, prior sanitized diagnostic, and verified the designated clean `fix/live-agent-status` worktree at `f08c75d5`.
 - [x] (2026-09-11 01:37Z) Recorded the fresh-session readiness and ownership boundary in the assigned step directory.
 - [x] (2026-09-11 01:43Z) Traced the real service and protocol path: five sessions initially published completed, while `goals:node` and tooling-review were unknown; sanitized metadata located the latest valid node start about 1.7 MiB behind EOF after valid oversized records.
-- [x] (2026-09-11 01:47Z) Added RED regressions for cold recovery beyond Activity and valid oversized terminal envelopes, then implemented a 4-MiB cold/discontinuous lifecycle lookback plus incremental checkpoint; malformed and greater-than-lookback gaps remain unknown.
+- [x] (2026-09-11 01:47Z) Added RED regressions for cold recovery beyond Activity and valid oversized terminal envelopes, then implemented a 4-MiB cold/discontinuous lifecycle lookback plus a per-version content checkpoint; malformed and greater-than-lookback gaps remain unknown.
 - [x] (2026-09-11 01:48Z) Confirmed the real read-only service path publishes two current working and five completed Goals sessions identically through snapshot/detail and protocol validation.
 - [x] (2026-09-11 01:49Z) Updated the agent design and exact `//tools/demo-agents:unit` plan mapping for the split lifecycle/Activity bounds.
-- [ ] Run focused Bazel tests and type/build gates, then obtain native and foreign council-review convergence.
+- [ ] Run focused Bazel tests and type/build gates, then obtain native and foreign council-review convergence (round 1 found continuity/I/O issues; fix delta in progress).
 - [ ] Push the ready PR, update and sync Ditz without closing the in-progress issue, clean owned resources, and write verification/final recap artifacts.
 
 ## Surprises & Discoveries
@@ -31,16 +31,20 @@ The two added regressions failed before the correction and all 151 focused cases
   Rationale: The current tails contain supported lifecycle records, and PID presence, activity age, window labels, and transcript prose are not lifecycle authority.
   Date/Author: 2026-09-11 / Codex session `01a08e1b-56ce-7a23-8c27-e9b2009f4f44`.
 
-- Decision: Any retained lifecycle must remain tied to the same validated session header, inode, and proven byte continuity; unknown gaps invalidate unsupported state.
+- Decision: Any retained lifecycle must remain tied to the same validated session header, inode, complete file version, and content-attested recovery window; unknown gaps invalidate unsupported state.
   Rationale: Retaining status across a rewrite, rotation, malformed record, or missed boundary would fabricate an outcome.
   Date/Author: 2026-09-11 / Codex.
 
 - Decision: Give lifecycle parsing a separate 4-MiB maximum recovery window while leaving published Activity at 256 KiB and 64-KiB per record.
-  Rationale: The real missed start was 1.7 MiB behind EOF among valid large compaction/tool records. A fixed recovery cap repairs that case without recurrent full-history scans; the checkpoint makes unchanged reads constant-size and append reads proportional to new bytes.
+  Rationale: The real missed start was 1.7 MiB behind EOF among valid large compaction/tool records. A fixed recovery cap repairs that case without recurrent full-history scans; the checkpoint avoids a lifecycle rescan for unchanged file versions and changed sessions reread at most the fixed window.
   Date/Author: 2026-09-11 / Codex.
 
 - Decision: Parse every complete JSONL envelope contained in the lifecycle window, including records larger than the Activity record limit, but reset on invalid JSON.
   Rationale: A valid large non-lifecycle record is not an evidence gap, and a large lifecycle envelope remains authoritative; malformed bytes cannot prove that no transition occurred.
+  Date/Author: 2026-09-11 / Codex.
+
+- Decision: Reproject every changed file version from the content-hashed lifecycle window instead of carrying state across a short trailing anchor.
+  Rationale: Council review constructed a same-inode growth rewrite that preserves the old 128-byte anchor while removing its lifecycle boundary. Hashing the entire window and deriving state only from that window makes older unvalidated bytes irrelevant; concurrent appends are accepted only after the scanned bytes are revalidated.
   Date/Author: 2026-09-11 / Codex.
 
 ## Outcomes & Retrospective
@@ -49,7 +53,7 @@ The concrete core-side loss is repaired and demonstrated with sanitized regressi
 
 ## Context and Orientation
 
-`core/agent-lifecycle.ts` reduces validated JSONL records into the current lifecycle. `core/external-agents.ts` reads each registered transcript header and at most the latest 256 KiB, keeps an incremental per-session projection only across proven append continuity, and publishes summary/detail results. `protocol/external-agents.ts` validates those results. `app/renderer/external-agents/client.ts` serializes fleet and selected-detail observations; `RunStatus.tsx` and `ExternalAgents.tsx` display the lifecycle. A lifecycle boundary is an explicit `event_msg` record such as `task_started`, `task_complete`, or `turn_aborted`, with a valid outer timestamp and turn identifier. A cold read means no prior in-memory projection exists.
+`core/agent-lifecycle.ts` reduces validated JSONL records into the current lifecycle. `core/external-agents.ts` reads each registered transcript header, a lifecycle window of at most 4 MiB, and a separately published Activity tail of at most 256 KiB. It reuses a per-session projection only for the same complete file version and content-attests the recovery window if an append races with the read. `protocol/external-agents.ts` validates those results. `app/renderer/external-agents/client.ts` serializes fleet and selected-detail observations; `RunStatus.tsx` and `ExternalAgents.tsx` display the lifecycle. A lifecycle boundary is an explicit `event_msg` record such as `task_started`, `task_complete`, or `turn_aborted`, with a valid outer timestamp and turn identifier. A cold read means no prior in-memory projection exists.
 
 ## Plan of Work
 

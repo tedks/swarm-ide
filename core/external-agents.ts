@@ -13,9 +13,9 @@ import { queueExternalMessage, resolveExternalCodex, type QueueMessage, type Ext
 
 const HEADER = 65536, TAIL = 262144, MAX_ENTRIES = 120;
 // Lifecycle boundaries are tiny but ordinary compaction/tool records between
-// them can exceed the Activity tail. Cold recovery gets one larger fixed
-// window; continuous observations read only the unchecked append interval.
-const LIFECYCLE_LOOKBACK = 4 * 1024 * 1024, LIFECYCLE_ANCHOR = 128;
+// them can exceed the Activity tail. Recovery gets one larger fixed window;
+// unchanged versions reuse its content-attested projection.
+const LIFECYCLE_LOOKBACK = 4 * 1024 * 1024;
 const HISTORY_ENTRIES = 16;
 const fileVersion = (stat: Stats) => `${stat.dev}:${stat.ino}:${stat.size}:${stat.mtimeMs}:${stat.ctimeMs}:${stat.mode}:${stat.uid}`;
 const Meta = z.object({ type: z.literal("session_meta"), payload: z.object({ id: ExternalSessionId,
@@ -35,7 +35,7 @@ export class ExternalAgentService {
   private sending = new Set<string>();
   private sentRequests = new Set<string>();
   private historical = new Map<string, { registration: string; version: string; detail: ExternalDetail }>();
-  private lifecycle = new Map<string, { observationId: string; position: number; size: number; mtime: number; anchor: Buffer; projection: AgentLifecycleProjection }>();
+  private lifecycle = new Map<string, { observationId: string; version: string; start: number; length: number; digest: string; projection: AgentLifecycleProjection }>();
   constructor(private readonly root: string, private readonly registryPath: string | undefined,
     private readonly sender: { queue: QueueMessage; executable(): Promise<string> } = { queue: queueExternalMessage, executable: resolveExternalCodex }) {}
   dispose(): Promise<void> {
@@ -89,45 +89,35 @@ export class ExternalAgentService {
   }
   private async projectLifecycle(file: FileHandle, stat: Stats, meta: { timestamp?: string; forked_from_id?: string | null }, observationId: string,
     previous: ReturnType<typeof this.lifecycle.get>): Promise<NonNullable<ReturnType<typeof this.lifecycle.get>>> {
-    let continuous = Boolean(previous && previous.observationId === observationId && previous.size <= stat.size &&
-      (previous.size < stat.size || previous.mtime === stat.mtimeMs) && previous.anchor.length > 0 && previous.position >= previous.anchor.length);
-    if (continuous && previous) {
-      const anchor = Buffer.alloc(previous.anchor.length);
-      const checked = await file.read(anchor, 0, anchor.length, previous.position - anchor.length); this.check();
-      continuous = checked.bytesRead === anchor.length && anchor.equals(previous.anchor);
-    }
-    if (continuous && previous && stat.size - previous.position > LIFECYCLE_LOOKBACK) continuous = false;
-
-    const start = continuous && previous ? previous.position : Math.max(0, stat.size - LIFECYCLE_LOOKBACK);
-    const buffer = Buffer.alloc(Math.min(stat.size - start, LIFECYCLE_LOOKBACK));
+    const version = fileVersion(stat);
+    if (previous?.observationId === observationId && previous.version === version) return previous;
+    const windowStart = Math.max(0, stat.size - LIFECYCLE_LOOKBACK);
+    // Include the preceding byte so a newline proves whether the recovery
+    // window starts at a record boundary. Otherwise skip its partial record.
+    const start = Math.max(0, windowStart - 1), buffer = Buffer.alloc(stat.size - start);
     const { bytesRead } = await file.read(buffer, 0, buffer.length, start); this.check();
-    const bytes = buffer.subarray(0, bytesRead);
-    let cursor = 0, checkpointable = true;
-    if (!continuous && start > 0) {
-      const preceding = Buffer.alloc(1), checked = await file.read(preceding, 0, 1, start - 1); this.check();
-      if (checked.bytesRead !== 1) throw new Error("Lifecycle window changed during read");
-      if (preceding[0] !== 10) {
-        const newline = bytes.indexOf(10);
-        if (newline < 0) { cursor = bytesRead; checkpointable = false; }
-        else cursor = newline + 1;
-      }
+    if (bytesRead !== buffer.length) throw new Error("Lifecycle window changed during read");
+    let cursor = windowStart - start;
+    if (windowStart > 0 && buffer[cursor - 1] !== 10) {
+      const newline = buffer.indexOf(10, cursor);
+      cursor = newline < 0 ? buffer.length : newline + 1;
     }
-    let projection = continuous && previous ? previous.projection.clone() : new AgentLifecycleProjection(meta);
-    let completePosition = checkpointable ? start + cursor : 0;
+    let projection = new AgentLifecycleProjection(meta);
     while (cursor < bytesRead) {
-      const end = bytes.indexOf(10, cursor); if (end < 0) break;
-      const line = bytes.subarray(cursor, end).toString("utf8"); cursor = end + 1; completePosition = start + cursor;
+      const end = buffer.indexOf(10, cursor); if (end < 0) break;
+      const line = buffer.subarray(cursor, end).toString("utf8"); cursor = end + 1;
       if (!line) continue;
       try { projection.consume(JSON.parse(line)); }
       catch { projection = new AgentLifecycleProjection(meta); }
     }
-    const anchorLength = Math.min(LIFECYCLE_ANCHOR, completePosition);
-    const anchor = Buffer.alloc(anchorLength);
-    if (anchorLength) {
-      const checked = await file.read(anchor, 0, anchorLength, completePosition - anchorLength); this.check();
-      if (checked.bytesRead !== anchorLength) throw new Error("Lifecycle checkpoint changed during read");
-    }
-    return { observationId, position: completePosition, size: stat.size, mtime: stat.mtimeMs, anchor, projection };
+    return { observationId, version, start, length: buffer.length,
+      digest: createHash("sha256").update(buffer).digest("hex"), projection };
+  }
+  private async confirmLifecycle(file: FileHandle, checkpoint: NonNullable<ReturnType<typeof this.lifecycle.get>>): Promise<void> {
+    const buffer = Buffer.alloc(checkpoint.length);
+    const { bytesRead } = await file.read(buffer, 0, buffer.length, checkpoint.start); this.check();
+    if (bytesRead !== buffer.length || createHash("sha256").update(buffer).digest("hex") !== checkpoint.digest)
+      throw new Error("Lifecycle window changed during read");
   }
   private async read(row: Registered, tail: boolean, checkHandoff = tail): Promise<ExternalDetail> {
     const summary = this.summary(row);
@@ -199,6 +189,10 @@ export class ExternalAgentService {
       const after = await file.stat(), current = await lstat(row.rollout); this.check();
       if (after.size < stat.size || current.ino !== stat.ino || current.dev !== stat.dev || current.isSymbolicLink())
         throw new Error("Transcript rotated or truncated");
+      // Ordinary appends after the initial stat are safe only when the exact
+      // bytes that established lifecycle are unchanged. A rewrite that keeps
+      // the header/inode cannot carry a stale projection through publication.
+      if (nextLifecycle && fileVersion(after) !== nextLifecycle.version) await this.confirmLifecycle(file, nextLifecycle);
       if (checkHandoff && row.tmux) {
         result.handoff = await validateHandoff(row.tmux, row.rollout, this.controller.signal) ? "available" : "unavailable";
         if (result.handoff === "available") result.terminal = terminalCommands(row.tmux);

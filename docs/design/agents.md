@@ -181,11 +181,15 @@ keyboard navigation remain independent of summary updates.
 The core reduces lifecycle separately from Activity trimming. A cold or
 discontinuous observation searches at most the latest 4 MiB for an explicit
 lifecycle boundary, while the Activity feed remains a 256 KiB tail. A bounded
-per-registration checkpoint then reads only unchecked appends while the session
-header, inode and raw overlap anchor agree. Valid large JSONL records can carry
-or follow lifecycle evidence without publishing their large content; malformed
-records, replacement, truncation or a gap beyond the lifecycle lookback discard
-unsupported continuity. A cold read without a usable boundary remains unknown.
+per-registration content checkpoint reuses the result only while the complete
+file version is unchanged. Changed versions are reprojected from the bounded
+window; an append concurrent with a read is accepted only when those exact
+window bytes still hash identically. Valid large JSONL records contained by the
+window can carry or follow lifecycle evidence without publishing their large
+content. Malformed records, replacement, truncation, or a gap or single record
+beyond the lifecycle lookback discard unsupported continuity. A cold read
+without a usable boundary remains unknown. Fleet reads remain in batches of
+four, bounding simultaneous lifecycle buffers to about 16 MiB.
 Forks rewrite outer timestamps: preserved `started_at` must establish the turn
 after the child's metadata birth; ambiguous second-precision birth-time turns
 are not borrowed from the parent. Blocking `request_user_input` waits for its
