@@ -156,10 +156,16 @@ async function readWorkEvidence(root: string, registryPath: string | undefined, 
         if (event.type === "session_meta") {
           evidence = []; milestones = []; calls.clear(); owned = false; ownTurn = undefined; gapTerminalEligible = false; absolute = end; continue;
         }
+        const startsTurn = event.type === "event_msg" && payload?.type === "task_started";
+        const abortsTurn = event.type === "event_msg" && payload?.type === "turn_aborted";
         const at = iso(event.timestamp);
-        if (!at || (Number.isFinite(born) && Date.parse(at) < born)) { absolute = end; continue; }
+        if (startsTurn || abortsTurn) gapTerminalEligible = false;
+        if (!at || (Number.isFinite(born) && Date.parse(at) < born)) {
+          if (startsTurn || abortsTurn) { evidence = []; milestones = []; calls.clear(); owned = false; ownTurn = undefined; }
+          absolute = end; continue;
+        }
         const started = typeof payload?.started_at === "number" ? payload.started_at * 1000 : NaN;
-        if (event.type === "event_msg" && payload?.type === "task_started") {
+        if (startsTurn) {
           evidence = []; milestones = []; calls.clear();
           ownTurn = (!fork || Number.isFinite(started) && started >= born) ? turnIdentity(payload.turn_id) : undefined;
           owned = !fork || ownTurn !== undefined; gapTerminalEligible = false; absolute = end; continue;
@@ -217,7 +223,7 @@ async function readWorkEvidence(root: string, registryPath: string | undefined, 
           else latestAdvance = next;
           evidence = []; milestones = []; calls.clear(); owned = false; ownTurn = undefined; gapTerminalEligible = false;
         }
-        if (event.type === "event_msg" && payload?.type === "turn_aborted") {
+        if (abortsTurn) {
           const eventTurn = turnIdentity(payload.turn_id);
           if (owned && (ownTurn === undefined || eventTurn === ownTurn)) latestAdvance = nextCheckpoint(source, end, at, eventTurn, "abort", rawBytes);
           evidence = []; milestones = []; calls.clear(); owned = false; ownTurn = undefined; gapTerminalEligible = false;

@@ -540,6 +540,14 @@ describe("online Work Log", () => {
       { type: "session_meta", timestamp: at, payload: { id: "nested" } }, terminal,
     ].map((row) => JSON.stringify(row)).join("\n")}\n`);
     expect(await readWorkInputs(f.root, registry, { [id]: checkpoint })).toEqual([]);
+    await writeFile(rollout, `${base}${noise}${[
+      { type: "event_msg", payload: { type: "turn_aborted", turn_id: "later" } }, terminal,
+    ].map((row) => JSON.stringify(row)).join("\n")}\n`);
+    expect(await readWorkInputs(f.root, registry, { [id]: checkpoint })).toEqual([]);
+    await writeFile(rollout, `${base}${noise}${[
+      { type: "event_msg", timestamp: "invalid", payload: { type: "task_started", turn_id: "later" } }, terminal,
+    ].map((row) => JSON.stringify(row)).join("\n")}\n`);
+    expect(await readWorkInputs(f.root, registry, { [id]: checkpoint })).toEqual([]);
   });
   it("uses empty-terminal fallback only after a milestone from the same turn", async () => {
     const f = await fixture(), id = "01a07f1d-d6d0-7f01-b2bd-4154876ec187", rollout = join(f.dir, "session.jsonl"), registry = join(f.dir, "registry.json"), at = new Date().toISOString();
