@@ -35,8 +35,8 @@ The visible proof uses an owned disposable Git repository, worktrees, tmux socke
 - Observation: Recurring worktree discovery could not safely reuse the synchronous startup helper because it would block the launcher's event loop and delay signal handling.
   Evidence: Production now uses `refreshProject`, which runs fixed-argument Git subprocesses asynchronously with timeouts and a shared abort signal; the owned integration proves a post-start worktree is admitted.
 
-- Observation: The broad living-design bundle has an unrelated planning-UI failure even though its index parser and component graph tests pass.
-  Evidence: `//tools/living-design:checks` reported 89/102 passing, including all 60 `plans-reader`, all 13 component-stability, and all 15 living-design tests; 13 failures were confined to untouched `planning-ui.test.tsx` and `demo-plan-actions.test.tsx`, whose mocked reads returned “Could not read the plan.”
+- Observation: The broad living-design bundle has source-traced pre-existing planning fixture drift even though its index parser and component graph tests pass.
+  Evidence: `//tools/living-design:checks` reported 89/102 passing, including all 60 `plans-reader`, all 13 component-stability, and all 15 living-design tests; 13 failures were confined to untouched `planning-ui.test.tsx` and `demo-plan-actions.test.tsx`. ROOT traced nine to project-identity mismatches in mocked responses, three to removed manual-load buttons, and one to obsolete no-automatic-read behavior against sources matching reviewed base `f08c75d5`. This is not a separately executed pristine-base reproduction.
 
 - Observation: A killed tmux server can leave its owned socket inode behind, so filesystem identity alone cannot prove whether the original server is still listening.
   Evidence: The council reproduced real tmux's fixed-locale `no server running on <path>` response against an orphaned socket. Production now treats only that/no-listener diagnostic, an absent or replaced socket, or a successful session listing without the numeric ID as confirmed teardown; all other failures preserve the prior snapshot.
@@ -159,3 +159,5 @@ Revision note (2026-09-11 01:16Z): Created the initial self-contained plan after
 Revision note (2026-09-11 01:37Z): Updated progress, discoveries and outcomes after implementation and owned verification. The recurring project refresh became asynchronous to preserve launcher responsiveness; exact RED/GREEN and the unrelated broad planning-test failure are retained for handoff.
 
 Revision note (2026-09-11 02:07Z): Recorded council fixpoint and its hardened CWD, refresh-bound, log-budget, orphaned-server, and owned-harness behaviors, plus the unrelated hosted namespace prerequisite failure and bounded-capacity follow-up.
+
+Revision note (2026-09-11 02:18Z): Incorporated ROOT's read-only intake of the retained planning-test failures as source-traced fixture drift, explicitly not a pristine-base execution; no broad rerun or unrelated repair was performed.
