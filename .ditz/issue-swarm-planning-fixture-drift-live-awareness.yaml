@@ -1,0 +1,25 @@
+id: swarm-planning-fixture-drift-live-awareness
+title: Update old planning fixtures for automatic graphs and repository identity
+desc: 'PR149 and PR150 each recorded 13 failures in //tools/living-design:checks:
+  five demo-plan-actions and eight planning-ui. Read-only ROOT intake traces nine
+  to project:test-fixture versus project:swarm-ide response identity, three to removed
+  Load dependency graph buttons, and one to obsolete no-automatic-read behavior. Relevant
+  source and fixtures match reviewed f08c75d5; no pristine-base execution was performed.
+  Actual plans-reader/component-stability/living-design suites pass. Repair only those
+  obsolete fixtures/assertions while preserving identity checks and automatic behavior;
+  reproduce focused failures and prove correction, no product change by assumption.
+  This test-maintenance follow-up does not hold the scoped live-discovery or Work
+  Log changes under local critical-only authority.'
+type: task
+component: default
+release:
+reporter: Ted Smith <tedks@riseup.net>
+status: unstarted
+disposition:
+creation_time: 2026-09-11T01:53:41-00:00
+references: []
+log_events:
+- time: 2026-09-11T01:53:41-00:00
+  who: Ted Smith
+  what: created
+  comment: ""
