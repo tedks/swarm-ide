@@ -83,6 +83,22 @@ describe("workspace routing", () => {
     expect(outputs[0]).toMatchObject({ ok: true, workspaceId: "other", workspace: { id: "other" }, snapshot: { project: { id: "other" } } });
     await router.shutdown();
   });
+  it("re-resolves launch scope on workspace refresh without recreating its runtime", async () => {
+    const calls: WorkspaceSelection[] = [], outputs: unknown[] = [];
+    let visibility: WorkspaceSelection["agentVisibility"] = "project", branch: string | null = "master";
+    const create = vi.fn((selected: WorkspaceSelection): RootedRuntime => ({ ready: Promise.resolve(snapshot(selected.id)), snapshot: async () => snapshot(selected.id),
+      request: async () => {}, shutdown: async () => {}, close() {} }));
+    const router = new WorkspaceContextRouter({
+      resolve: async () => { const value = { ...selection("primary"), agentVisibility: visibility, branch }; calls.push(value); return value; },
+      create, post: (value) => outputs.push(value),
+    });
+    await router.primary;
+    visibility = "worktree"; branch = "feature/mutable";
+    await router.request(command("workspace.open", { sessionId: null }));
+    expect(calls).toHaveLength(2); expect(create).toHaveBeenCalledOnce();
+    expect(outputs.at(-1)).toMatchObject({ ok: true, workspace: { branch: "feature/mutable", agentVisibility: "worktree" } });
+    await router.shutdown();
+  });
   it("captures a freshly checked opened worktree for direct start while controls keep one owner", async () => {
     const f = fixture();
     await f.router.request(command("workspace.open", { sessionId: SESSION }));
@@ -231,6 +247,17 @@ describe("registered same-repository selection", () => {
     git(other, "checkout", "--detach", "--quiet");
     const selected = await resolveWorkspaceSelection(primary, registry, SESSION);
     expect(selected).toMatchObject({ root: other, projectId: expect.stringMatching(/^[a-f0-9]{64}$/), branch: null, agentVisibility: "worktree" });
+  });
+  it("revalidates mutable default, feature and detached scope without reopening a runtime", async () => {
+    const { primary, registry } = await repositories();
+    const defaultScope = await resolveWorkspaceSelection(primary, registry, null);
+    expect(defaultScope).toMatchObject({ branch: "master", agentVisibility: "project" });
+    git(primary, "checkout", "--quiet", "-b", "temporary-feature");
+    const featureScope = await resolveWorkspaceSelection(primary, registry, null);
+    expect(featureScope).toMatchObject({ id: defaultScope.id, root: defaultScope.root, branch: "temporary-feature", agentVisibility: "worktree" });
+    git(primary, "checkout", "--detach", "--quiet");
+    const detachedScope = await resolveWorkspaceSelection(primary, registry, null);
+    expect(detachedScope).toMatchObject({ id: defaultScope.id, root: defaultScope.root, branch: null, agentVisibility: "worktree" });
   });
   it("an accepted write holds its original root while another same-path file is explored", async () => {
     const { primary, other, registry } = await repositories();

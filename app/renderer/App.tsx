@@ -251,6 +251,31 @@ export function App() {
   const pendingRevealIntent = useRef<number | null>(null);
   const mounted = useRef(false);
   useEffect(() => { mounted.current = true; return () => { mounted.current = false; sourceNavigationRef.current = null; ++navigationIntent.current; }; }, []);
+  const projectScopeRefresh = useRef("");
+  useEffect(() => {
+    const bridge = window.swarm, selected = selectedWorktreeRef.current, observation = externalAgents.snapshot;
+    if (!bridge || !selected || workspacePendingRef.current || observation?.status !== "observed" || !observation.observedAt ||
+        window.swarmLifecycle && lifecycle?.core.phase !== "ready") return;
+    const key = JSON.stringify([observation.observedAt, selected.id, selected.root, selected.sessionId, coreGenerationRef.current]);
+    if (projectScopeRefresh.current === key) return;
+    projectScopeRefresh.current = key;
+    const generation = coreGenerationRef.current, visit = workspaceVisit.current;
+    void bridge.request({ type: "workspace.open", sessionId: selected.sessionId, requestId: requestId(), protocolVersion: PROTOCOL_VERSION }).then((response) => {
+      if (!mounted.current || workspacePendingRef.current || generation !== coreGenerationRef.current || visit !== workspaceVisit.current ||
+          selectedWorktreeRef.current?.id !== selected.id || selectedWorktreeRef.current.root !== selected.root) return;
+      const refreshed = response.ok && response.workspace?.id === selected.id && response.workspace.root === selected.root ? response.workspace : {
+        ...selected, projectId: null, agentVisibility: "worktree" as const, branch: null,
+        notice: "Project-wide agent scope could not be revalidated; exact-worktree scope retained.",
+      };
+      selectedWorktreeRef.current = refreshed; setSelectedWorktree(refreshed);
+      descriptors.current.set(refreshed.root, refreshed); descriptors.current.set(refreshed.id, refreshed);
+    }).catch(() => {
+      if (!mounted.current || generation !== coreGenerationRef.current || visit !== workspaceVisit.current || selectedWorktreeRef.current?.id !== selected.id) return;
+      const narrowed = { ...selected, projectId: null, agentVisibility: "worktree" as const, branch: null,
+        notice: "Project-wide agent scope could not be revalidated; exact-worktree scope retained." };
+      selectedWorktreeRef.current = narrowed; setSelectedWorktree(narrowed);
+    });
+  }, [externalAgents.snapshot?.observedAt, lifecycle?.core.generation, selectedWorktree?.id, selectedWorktree?.root, selectedWorktree?.sessionId]);
   const [commandQuery, setCommandQuery] = useState("");
   const [hmr, setHmr] = useState({ generation: 0, milliseconds: 0 });
   const [fileTabs, setFileTabs] = useState<FileTab[]>(hotCheckpoint?.files ?? []);

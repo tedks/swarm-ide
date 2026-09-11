@@ -28,6 +28,16 @@ const symbolic = async (root: string, ref: string, signal?: AbortSignal): Promis
   }
 };
 
+const localPrimary = async (root: string, signal?: AbortSignal): Promise<string | null> => {
+  for (const branch of ["main", "master"]) try {
+    const line = boundedLine(await queryRepositoryGit(root, ["show-ref", "--verify", `refs/heads/${branch}`], { signal, maximumBytes: 8192 }));
+    if (line.endsWith(` refs/heads/${branch}`)) return branch;
+  } catch {
+    if (signal?.aborted) throw new Error("Git identity observation stopped.");
+  }
+  return null;
+};
+
 /** Checked Git-family identity for renderer equality only. The opaque digest is
  * not repository authority; every file operation remains rooted separately. */
 export async function gitWorktreeIdentity(root: string, signal?: AbortSignal): Promise<GitWorktreeIdentity> {
@@ -40,6 +50,9 @@ export async function gitWorktreeIdentity(root: string, signal?: AbortSignal): P
     symbolic(canonicalRoot, "HEAD", signal),
     symbolic(canonicalRoot, "refs/remotes/origin/HEAD", signal),
   ]);
-  const localDefault = remoteDefault ? null : await symbolic(common, "HEAD", signal);
+  // A non-bare common HEAD follows whichever branch its main worktree checks
+  // out, so it is not stable default-branch authority. Without origin/HEAD,
+  // recognize only the settled primary names and otherwise stay conservative.
+  const localDefault = remoteDefault ? null : await localPrimary(canonicalRoot, signal);
   return { root: canonicalRoot, projectId: createHash("sha256").update(common).digest("hex"), branch, defaultBranch: remoteDefault ?? localDefault };
 }

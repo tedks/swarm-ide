@@ -53,7 +53,7 @@ export class ExternalAgentService {
       return file;
     } catch (error) { await file.close(); throw error; }
   }
-  private async registrations(): Promise<ObservedRegistration[]> {
+  private async registrations(enrichIdentity = true): Promise<ObservedRegistration[]> {
     if (!this.registryPath) throw new Error("Not configured");
     const root = await realpath(this.root);
     // Repo-controlled files are never an authority to read account transcripts.
@@ -77,12 +77,35 @@ export class ExternalAgentService {
         } catch { /* Missing/noncanonical worktree has no navigation links. */ }
         this.check();
         if (!canonicalContext) { session.contextPaths = []; delete session.contextRoot; observed.push(session); continue; }
-        try {
-          const identity = await gitWorktreeIdentity(session.contextRoot!, this.controller.signal);
-          observed.push({ ...session, projectId: identity.projectId, ...(identity.branch ? { branch: identity.branch } : {}) });
-        } catch { this.check(); observed.push(session); }
+        observed.push(session);
       }
-      return observed;
+      if (!enrichIdentity) return observed;
+      // A fleet snapshot may contain the maximum 64 registrations. Resolve each
+      // canonical root once, in bounded batches, and stop Git discovery after a
+      // single deadline rather than multiplying a per-row timeout by fleet size.
+      const roots = [...new Set(observed.flatMap((row) => row.contextRoot ? [row.contextRoot] : []))];
+      const identities = new Map<string, Awaited<ReturnType<typeof gitWorktreeIdentity>>>();
+      const identityController = new AbortController();
+      const abort = () => identityController.abort();
+      if (this.controller.signal.aborted) abort();
+      else this.controller.signal.addEventListener("abort", abort, { once: true });
+      let deadlineReached = false;
+      const deadline = setTimeout(() => { deadlineReached = true; identityController.abort(); }, 2500);
+      try {
+        for (let index = 0; index < roots.length && !deadlineReached; index += 4) {
+          const batchRoots = roots.slice(index, index + 4);
+          const batch = await Promise.allSettled(batchRoots.map((contextRoot) => gitWorktreeIdentity(contextRoot, identityController.signal)));
+          this.check();
+          for (const [offset, result] of batch.entries()) if (result.status === "fulfilled") identities.set(batchRoots[offset]!, result.value);
+        }
+      } finally {
+        clearTimeout(deadline);
+        this.controller.signal.removeEventListener("abort", abort);
+      }
+      return observed.map((session) => {
+        const identity = session.contextRoot ? identities.get(session.contextRoot) : undefined;
+        return identity ? { ...session, projectId: identity.projectId, ...(identity.branch ? { branch: identity.branch } : {}) } : session;
+      });
     } finally { await file.close(); }
   }
   private summary(row: ObservedRegistration): ExternalAgentSummary {
@@ -231,7 +254,7 @@ export class ExternalAgentService {
       // Executable resolution may await disk. It must precede the final authority
       // checks, not open a stale-target interval after them.
       const executable = await this.sender.executable(); this.check();
-      const row = (await this.registrations()).find((candidate) => candidate.id === request.sessionId); this.check();
+      const row = (await this.registrations(false)).find((candidate) => candidate.id === request.sessionId); this.check();
       if (!row || row.evidence !== "local" || !row.tmux) return reject("Only a registered local session with a checked current tmux target can receive messages. Nothing was queued.");
       const detail = await this.read(row, false); this.check();
       if (detail.session.status !== "observed" || detail.session.observationId !== request.observationId)
@@ -241,7 +264,7 @@ export class ExternalAgentService {
       // Last registry check prevents a concurrent operator removal/retarget from
       // granting authority through a previously read row. Revalidate the target
       // once more after that await, immediately before spawning the queue CLI.
-      const current = (await this.registrations()).find((candidate) => candidate.id === row.id); this.check();
+      const current = (await this.registrations(false)).find((candidate) => candidate.id === row.id); this.check();
       if (!current || current.evidence !== "local" || current.rollout !== row.rollout || JSON.stringify(current.tmux) !== JSON.stringify(row.tmux))
         return reject("The operator registration changed. Refresh before sending; nothing was queued.");
       if (!await validateHandoff(row.tmux, row.rollout, this.controller.signal)) return reject("The target closed during verification. Nothing was queued.");

@@ -132,7 +132,8 @@ describe("ordinary worktree navigation in the mounted cockpit", () => {
     const context = await screen.findByRole("region", { name: "Worktree context" });
     expect(context.textContent).toContain("/repo/master");
     expect(test.request.mock.calls.filter(([request]) => request.type === "workspace.open").map(([request]) => request))
-      .toEqual([expect.objectContaining({ type: "workspace.open", sessionId: null })]);
+      .toEqual([expect.objectContaining({ type: "workspace.open", sessionId: null }),
+        expect.objectContaining({ type: "workspace.open", sessionId: null })]);
     expect(test.request.mock.calls.some(([request]) => request.type === "workspace.snapshot")).toBe(false);
   });
   it("keeps separate same-path dirty editors and steering through ordinary browsing and Back/Forward", async () => {

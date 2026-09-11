@@ -9,8 +9,9 @@ export async function resolveWorkspaceSelection(launchRoot: string, registry: st
   signal?: AbortSignal): Promise<WorkspaceSelection> {
   const launch = await registerRepository(launchRoot);
   let launchGit: Awaited<ReturnType<typeof gitWorktreeIdentity>> | null = null;
+  let launchGitFailure: unknown;
   try { launchGit = await gitWorktreeIdentity(launch.root, signal); }
-  catch { if (signal?.aborted) throw new Error("Workspace selection stopped."); }
+  catch (error) { if (signal?.aborted) throw new Error("Workspace selection stopped."); launchGitFailure = error; }
   if (sessionId === null) {
     const branch = launchGit?.branch ?? null;
     return WorkspaceSelectionSchema.parse({ id: launch.id, root: launch.root, label: launch.name,
@@ -18,9 +19,10 @@ export async function resolveWorkspaceSelection(launchRoot: string, registry: st
       sessionId, branch, base: null, changes: [], changesComplete: false,
       notice: "Launch worktree. Select a registered worktree for its master comparison." });
   }
+  if (!launchGit) throw new Error(`Launch workspace Git identity is unavailable${launchGitFailure instanceof Error ? `: ${launchGitFailure.message}` : "."}`);
   const selected = await registeredWorktree(launch.root, registry, sessionId, signal);
   const [targetGit, target] = await Promise.all([gitWorktreeIdentity(selected.root, signal), registerRepository(selected.root)]);
-  if (!launchGit || launchGit.projectId !== targetGit.projectId) throw new Error("Choose a registered worktree of this Git repository.");
+  if (launchGit.projectId !== targetGit.projectId) throw new Error("Choose a registered worktree of this Git repository.");
   const browser = await browseRegisteredWorktree(launch.root, registry, {
     protocolVersion: PROTOCOL_VERSION, requestId: "workspace-metadata", type: "worktree.browse", sessionId, directory: "", page: 0,
   }, signal);
@@ -82,7 +84,10 @@ export class WorkspaceContextRouter {
       const primary = await this.primary;
       if (this.stopping) throw new Error("Core is shutting down.");
       if (request.type === "workspace.open") {
-        const selection = request.sessionId === null ? primary.selection : await this.options.resolve(request.sessionId, this.lifetime.signal);
+        // Opening is also the renderer's bounded identity revalidation path.
+        // Re-resolve even the launch worktree so a mutable HEAD cannot retain
+        // stale project-wide visibility after the initial runtime was created.
+        const selection = await this.options.resolve(request.sessionId, this.lifetime.signal);
         if (this.stopping) throw new Error("Core is shutting down.");
         const runtime = await this.open(selection, selection.id === primary.selection.id);
         const snapshot = await runtime.snapshot();
