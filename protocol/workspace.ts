@@ -4,12 +4,14 @@ import { ExternalSessionId } from "./external-agents";
 import { WorktreeChangeSchema } from "./worktree-inspection";
 
 export const WorkspaceIdSchema = z.string().min(1).max(256);
+export const WorkspaceProjectIdSchema = z.string().regex(/^[a-f0-9]{64}$/).nullable();
 export const WorkspaceOpenRequestSchema = z.object({
   protocolVersion: z.literal(PROTOCOL_VERSION), requestId: z.string().min(1),
   type: z.literal("workspace.open"), sessionId: ExternalSessionId.nullable(),
 }).strict();
 export const WorkspaceSelectionSchema = z.object({
   id: WorkspaceIdSchema, root: z.string().min(1).max(4096), label: z.string().min(1).max(256),
+  projectId: WorkspaceProjectIdSchema.default(null), agentVisibility: z.enum(["project", "worktree"]).default("worktree"),
   sessionId: ExternalSessionId.nullable(), branch: z.string().max(256).nullable(),
   base: z.string().max(160).nullable(), changes: z.array(WorktreeChangeSchema).max(400),
   changesComplete: z.boolean(), notice: z.string().max(512).optional(),

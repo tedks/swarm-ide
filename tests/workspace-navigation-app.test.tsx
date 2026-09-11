@@ -29,8 +29,8 @@ import { App } from "../app/renderer/App";
 const CHILD = "00000000-0000-4000-8000-000000000002";
 const path = "same.ts";
 const scopes: Record<"A" | "B", WorkspaceDescriptor> = {
-  A: { id: "workspace:A", root: "/repo/master", label: "Main workspace", sessionId: null, branch: "master", base: "master", changes: [], changesComplete: true },
-  B: { id: "workspace:B", root: "/repo/child", label: "Child", sessionId: CHILD, branch: "feature/child", base: "master", changes: [{ path, status: "modified" }], changesComplete: true },
+  A: { id: "workspace:A", root: "/repo/master", label: "Main workspace", projectId: "a".repeat(64), agentVisibility: "project", sessionId: null, branch: "master", base: "master", changes: [], changesComplete: true },
+  B: { id: "workspace:B", root: "/repo/child", label: "Child", projectId: "a".repeat(64), agentVisibility: "worktree", sessionId: CHILD, branch: "feature/child", base: "master", changes: [{ path, status: "modified" }], changesComplete: true },
 };
 
 function snapshotFor(scope: "A" | "B"): WorkspaceSnapshot {

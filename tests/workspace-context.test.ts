@@ -9,6 +9,8 @@ import { readWorkspaceFile, writeWorkspaceFile } from "../core/files";
 import { initialSnapshot } from "../fixtures/world";
 import { PROTOCOL_VERSION, parseCoreRequest, parseCoreResponseForRequest, FileEventSchema, type WorkspaceSnapshot } from "../protocol/schema";
 import type { WorkspaceSelection } from "../protocol/workspace";
+import { ExternalAgentService } from "../core/external-agents";
+import type { ExternalRequest } from "../protocol/external-agents";
 
 const SESSION = "10000000-0000-4000-8000-000000000001";
 const directories: string[] = [];
@@ -25,14 +27,16 @@ async function repositories() {
   git(primary, "worktree", "add", "--quiet", "-b", "agent-work", other);
   await writeFile(join(other, "same.txt"), "agent bytes\n");
   const registry = join(directory, "registry.json");
+  const rollout = join(directory, "agent.jsonl");
+  await writeFile(rollout, `${JSON.stringify({ type: "session_meta", payload: { id: SESSION } })}\n`);
   const register = (root: string) => writeFile(registry, JSON.stringify({ version: 1, sessions: [{
-    id: SESSION, label: "Agent", rollout: join(directory, "agent.jsonl"), contextRoot: root,
+    id: SESSION, label: "Agent", rollout, contextRoot: root,
   }] }), { mode: 0o600 });
   await register(other);
   return { primary, other, unrelated, registry, register };
 }
 const selection = (id: string, sessionId: string | null = null): WorkspaceSelection => ({
-  id, root: `/work/${id}`, label: id, sessionId, branch: "master", base: null, changes: [], changesComplete: true,
+  id, root: `/work/${id}`, label: id, projectId: "a".repeat(64), agentVisibility: "worktree", sessionId, branch: "master", base: null, changes: [], changesComplete: true,
 });
 const snapshot = (id: string): WorkspaceSnapshot => ({ ...initialSnapshot(), project: { id, name: id } });
 const command = (type: string, fields = {}) => ({ protocolVersion: PROTOCOL_VERSION, requestId: crypto.randomUUID(), type, ...fields });
@@ -206,9 +210,27 @@ describe("registered same-repository selection", () => {
   it("returns distinct root identities and real branch/master comparison; another repository is rejected", async () => {
     const { primary, other, unrelated, registry, register } = await repositories();
     const a = await resolveWorkspaceSelection(primary, registry, null), b = await resolveWorkspaceSelection(primary, registry, SESSION);
-    expect(b.id).not.toBe(a.id); expect(b).toMatchObject({ root: other, branch: "agent-work", base: "master", sessionId: SESSION });
+    expect(b.id).not.toBe(a.id); expect(a).toMatchObject({ projectId: expect.stringMatching(/^[a-f0-9]{64}$/), agentVisibility: "project" });
+    expect(b).toMatchObject({ root: other, projectId: a.projectId, agentVisibility: "worktree", branch: "agent-work", base: "master", sessionId: SESSION });
     expect(b.changes).toContainEqual({ path: "same.txt", status: "modified" });
     await register(unrelated); await expect(resolveWorkspaceSelection(primary, registry, SESSION)).rejects.toThrow("this Git repository");
+  });
+  it("publishes the same opaque project identity and each registered origin branch", async () => {
+    const { primary, other, registry } = await repositories();
+    const selected = await resolveWorkspaceSelection(primary, registry, SESSION);
+    const service = new ExternalAgentService(primary, registry);
+    try {
+      const input: ExternalRequest = { protocolVersion: PROTOCOL_VERSION, requestId: "project-metadata", type: "externalAgents.snapshot" };
+      const result = await service.request(input);
+      expect(result).toMatchObject({ kind: "snapshot", snapshot: { sessions: [{ worktree: other, projectId: selected.projectId, branch: "agent-work" }] } });
+      expect(JSON.stringify(result)).not.toContain(`${primary}/.git`);
+    } finally { await service.dispose(); }
+  });
+  it("keeps a detached worktree in exact-root scope even with confirmed project identity", async () => {
+    const { primary, other, registry } = await repositories();
+    git(other, "checkout", "--detach", "--quiet");
+    const selected = await resolveWorkspaceSelection(primary, registry, SESSION);
+    expect(selected).toMatchObject({ root: other, projectId: expect.stringMatching(/^[a-f0-9]{64}$/), branch: null, agentVisibility: "worktree" });
   });
   it("an accepted write holds its original root while another same-path file is explored", async () => {
     const { primary, other, registry } = await repositories();

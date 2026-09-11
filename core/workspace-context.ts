@@ -1,35 +1,33 @@
-import { realpath } from "node:fs/promises";
 import { registerRepository } from "./repository-registration";
-import { queryRepositoryGit } from "./repository-boundary";
 import { registeredWorktree, browseRegisteredWorktree } from "./worktree-inspection";
 import { PROTOCOL_VERSION, CoreResponseSchema, parseCoreRequest, type CoreRequest, type WorkspaceSnapshot } from "../protocol/schema";
 import { WorkspaceSelectionSchema, isSharedWorkspaceRequest, type WorkspaceSelection } from "../protocol/workspace";
 import { BoundedRequestIds } from "./request-ids";
+import { gitWorktreeIdentity } from "./git-worktree-identity";
 
 export async function resolveWorkspaceSelection(launchRoot: string, registry: string | undefined, sessionId: string | null,
   signal?: AbortSignal): Promise<WorkspaceSelection> {
   const launch = await registerRepository(launchRoot);
+  let launchGit: Awaited<ReturnType<typeof gitWorktreeIdentity>> | null = null;
+  try { launchGit = await gitWorktreeIdentity(launch.root, signal); }
+  catch { if (signal?.aborted) throw new Error("Workspace selection stopped."); }
   if (sessionId === null) {
-    let branch: string | null = null;
-    try { branch = (await queryRepositoryGit(launch.root, ["symbolic-ref", "--short", "HEAD"], { signal, maximumBytes: 1024 })).toString("utf8").trim(); }
-    catch { if (signal?.aborted) throw new Error("Workspace selection stopped."); }
-    return WorkspaceSelectionSchema.parse({ id: launch.id, root: launch.root, label: launch.name, sessionId, branch, base: null, changes: [], changesComplete: false,
+    const branch = launchGit?.branch ?? null;
+    return WorkspaceSelectionSchema.parse({ id: launch.id, root: launch.root, label: launch.name,
+      projectId: launchGit?.projectId ?? null, agentVisibility: branch && branch === launchGit?.defaultBranch ? "project" : "worktree",
+      sessionId, branch, base: null, changes: [], changesComplete: false,
       notice: "Launch worktree. Select a registered worktree for its master comparison." });
   }
   const selected = await registeredWorktree(launch.root, registry, sessionId, signal);
-  const common = async (root: string) => {
-    const bytes = await queryRepositoryGit(root, ["rev-parse", "--path-format=absolute", "--git-common-dir"], { signal, maximumBytes: 16384 });
-    const path = new TextDecoder("utf8", { fatal: true }).decode(bytes);
-    if (!path.endsWith("\n")) throw new Error("Git common directory is unavailable.");
-    return realpath(path.slice(0, -1));
-  };
-  const [launchCommon, targetCommon, target] = await Promise.all([common(launch.root), common(selected.root), registerRepository(selected.root)]);
-  if (launchCommon !== targetCommon) throw new Error("Choose a registered worktree of this Git repository.");
+  const [targetGit, target] = await Promise.all([gitWorktreeIdentity(selected.root, signal), registerRepository(selected.root)]);
+  if (!launchGit || launchGit.projectId !== targetGit.projectId) throw new Error("Choose a registered worktree of this Git repository.");
   const browser = await browseRegisteredWorktree(launch.root, registry, {
     protocolVersion: PROTOCOL_VERSION, requestId: "workspace-metadata", type: "worktree.browse", sessionId, directory: "", page: 0,
   }, signal);
   if (browser.worktree !== target.root) throw new Error("The registered worktree changed during selection. Try again.");
-  return WorkspaceSelectionSchema.parse({ id: target.id, root: target.root, label: browser.label, sessionId, branch: browser.branch,
+  return WorkspaceSelectionSchema.parse({ id: target.id, root: target.root, label: browser.label, projectId: targetGit.projectId,
+    agentVisibility: targetGit.branch && targetGit.branch === targetGit.defaultBranch ? "project" : "worktree",
+    sessionId, branch: targetGit.branch,
     base: browser.base, changes: browser.changes, changesComplete: browser.changesComplete, ...(browser.notice ? { notice: browser.notice } : {}) });
 }
 

@@ -10,6 +10,7 @@ import { extractEntries } from "./external-agents-activity";
 import { AgentLifecycleProjection } from "./agent-lifecycle";
 import { Registry, type Registered } from "./external-agents-registry";
 import { queueExternalMessage, resolveExternalCodex, type QueueMessage, type ExternalSendReceipt } from "./external-agents-send";
+import { gitWorktreeIdentity } from "./git-worktree-identity";
 
 const HEADER = 65536, TAIL = 262144, MAX_ENTRIES = 120;
 const HISTORY_ENTRIES = 16;
@@ -20,6 +21,7 @@ const Meta = z.object({ type: z.literal("session_meta"), payload: z.object({ id:
 const safe = (text: string, size = 4096) => (text.length > size ? text.slice(0, size - 16) + " … [truncated]" : text).replace(/[\p{Cf}\p{Cc}]/gu,
   (c) => c === "\n" || c === "\t" ? c : "�");
 const within = (root: string, path: string) => { const r = relative(root, path); return r === "" || r !== ".." && !r.startsWith("../") && !isAbsolute(r); };
+type ObservedRegistration = Registered & { projectId?: string; branch?: string };
 
 /** No watches, polling or observed process ownership. Each read uses a bounded
  * descriptor and closes it before publishing. Registry is re-read on demand. */
@@ -51,7 +53,7 @@ export class ExternalAgentService {
       return file;
     } catch (error) { await file.close(); throw error; }
   }
-  private async registrations(): Promise<Registered[]> {
+  private async registrations(): Promise<ObservedRegistration[]> {
     if (!this.registryPath) throw new Error("Not configured");
     const root = await realpath(this.root);
     // Repo-controlled files are never an authority to read account transcripts.
@@ -62,6 +64,7 @@ export class ExternalAgentService {
       this.check();
       if (bytesRead > HEADER) throw new Error("Registry grew beyond bound");
       const registry = Registry.parse(JSON.parse(bytes.subarray(0, bytesRead).toString("utf8")));
+      const observed: ObservedRegistration[] = [];
       for (const session of registry.sessions) {
         if (!session.rollout.endsWith(".jsonl")) throw new Error("Not a rollout");
         // Links belong to this explicitly registered canonical worktree, not
@@ -73,17 +76,22 @@ export class ExternalAgentService {
             await realpath(session.contextRoot) === session.contextRoot && (await lstat(session.contextRoot)).isDirectory());
         } catch { /* Missing/noncanonical worktree has no navigation links. */ }
         this.check();
-        if (!canonicalContext) { session.contextPaths = []; delete session.contextRoot; }
+        if (!canonicalContext) { session.contextPaths = []; delete session.contextRoot; observed.push(session); continue; }
+        try {
+          const identity = await gitWorktreeIdentity(session.contextRoot!, this.controller.signal);
+          observed.push({ ...session, projectId: identity.projectId, ...(identity.branch ? { branch: identity.branch } : {}) });
+        } catch { this.check(); observed.push(session); }
       }
-      return registry.sessions;
+      return observed;
     } finally { await file.close(); }
   }
-  private summary(row: Registered): ExternalAgentSummary {
+  private summary(row: ObservedRegistration): ExternalAgentSummary {
     return { id: row.id, label: safe(row.label, 120), evidence: row.evidence, status: "unavailable", parentId: null,
       ancestry: "unavailable", observationId: "", observedAt: new Date().toISOString(), message: "Registered session could not be read safely.",
-      ...(row.role ? { role: safe(row.role, 120) } : {}), ...(row.task ? { task: safe(row.task, 200) } : {}), contextPaths: row.contextPaths, lifecycle: { state: "unknown" } };
+      ...(row.role ? { role: safe(row.role, 120) } : {}), ...(row.task ? { task: safe(row.task, 200) } : {}), contextPaths: row.contextPaths,
+      ...(row.projectId ? { projectId: row.projectId } : {}), ...(row.branch ? { branch: safe(row.branch, 256) } : {}), lifecycle: { state: "unknown" } };
   }
-  private async read(row: Registered, tail: boolean, checkHandoff = tail): Promise<ExternalDetail> {
+  private async read(row: ObservedRegistration, tail: boolean, checkHandoff = tail): Promise<ExternalDetail> {
     const summary = this.summary(row);
     const result: ExternalDetail = { session: summary, entries: [], handoff: row.tmux ? "unavailable" : "unconfigured",
       coverage: { tailBytes: 0, partial: true, omittedRecords: 0, message: "No transcript observed." } };
@@ -195,7 +203,7 @@ export class ExternalAgentService {
         coverage: { tailBytes: 0, partial: true, omittedRecords: 0, message: "Missing, changed, invalid or unsafe registered transcript; no transcript authority retained." } };
     } finally { await file?.close(); }
   }
-  private async readFleet(row: Registered): Promise<ExternalDetail> {
+  private async readFleet(row: ObservedRegistration): Promise<ExternalDetail> {
     if (row.tmux) this.historical.delete(row.id);
     const cached = !row.tmux ? this.historical.get(row.id) : undefined;
     if (cached?.registration === JSON.stringify(row)) {
@@ -257,7 +265,7 @@ export class ExternalAgentService {
     this.pending++;
     try {
       if (request.type === "externalAgents.send") return await this.send(request);
-      let rows: Registered[];
+      let rows: ObservedRegistration[];
       try { rows = await this.registrations(); } catch {
         this.check();
         if (request.type !== "externalAgents.snapshot") throw new Error("External registry unavailable");
