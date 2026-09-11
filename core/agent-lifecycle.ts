@@ -28,36 +28,39 @@ export class AgentLifecycleProjection {
     next.terminal = this.terminal; next.latestStart = this.latestStart;
     return next;
   }
-  consume(input: unknown): void {
+  /** Returns true only when this record independently establishes lifecycle.
+   * A terminal without started_at can update an already-owned turn, but its
+   * checkpoint must retain the earlier owned start. */
+  consume(input: unknown): boolean {
     const record = object(input), payload = object(record?.payload);
-    if (!record || !payload) return;
+    if (!record || !payload) return false;
     const at = date(record.timestamp);
-    if (!Number.isFinite(at)) return;
-    if (record.type === "session_meta") { this.ownTurn = false; return; }
+    if (!Number.isFinite(at)) return false;
+    if (record.type === "session_meta") { this.ownTurn = false; return false; }
     if (record.type === "event_msg" && ["task_started", "task_complete", "turn_aborted"].includes(String(payload.type))) {
       const turnId = id(payload.turn_id);
-      if (!turnId) return;
+      if (!turnId) return false;
       const started = typeof payload.started_at === "number" && Number.isFinite(payload.started_at) ? payload.started_at * 1000 : NaN;
       // Seconds-only starts in the birth second are ambiguous: do not round
       // birth down and accidentally adopt a parent's concurrently copied turn.
       const ownedTerminal = payload.type !== "task_started" && !Number.isFinite(started) && this.ownTurn && turnId === this.current.turnId;
-      if (this.forked && (!Number.isFinite(this.born) || !ownedTerminal && (!Number.isFinite(started) || started < this.born))) return;
-      if (!this.forked && Number.isFinite(this.born) && at < this.born) return;
+      if (this.forked && (!Number.isFinite(this.born) || !ownedTerminal && (!Number.isFinite(started) || started < this.born))) return false;
+      if (!this.forked && Number.isFinite(this.born) && at < this.born) return false;
       const order = Number.isFinite(started) ? started : ownedTerminal ? this.latestStart : at;
-      if (order < this.latestStart) return;
+      if (order < this.latestStart) return false;
       if (payload.type === "task_started") {
-        if (turnId === this.current.turnId && this.terminal) return;
+        if (turnId === this.current.turnId && this.terminal) return false;
         this.current = { state: "working", at: new Date(at).toISOString(), turnId };
         this.latestStart = order; this.ownTurn = true; this.terminal = false; this.pending.clear();
       } else {
-        if (this.ownTurn && this.current.turnId !== turnId && order <= this.latestStart) return;
+        if (this.ownTurn && this.current.turnId !== turnId && order <= this.latestStart) return false;
         this.current = { state: payload.type === "turn_aborted" ? "unknown" : object(payload.error) ? "failed" : "completed",
           at: new Date(at).toISOString(), turnId };
         this.latestStart = order; this.ownTurn = true; this.terminal = true; this.pending.clear();
       }
-      return;
+      return payload.type === "task_started" || Number.isFinite(started);
     }
-    if (!this.ownTurn || this.terminal || (this.current.at && at < Date.parse(this.current.at))) return;
+    if (!this.ownTurn || this.terminal || (this.current.at && at < Date.parse(this.current.at))) return false;
     // Only blocking human-input calls stop work. Async request acceptance is
     // not an answer, and an async question does not pause the owning turn.
     if (record.type === "response_item" && payload.type === "function_call" &&
@@ -70,5 +73,6 @@ export class AgentLifecycleProjection {
       if (callId && this.pending.delete(callId) && !this.pending.size)
         this.current = { ...this.current, state: "working", at: new Date(at).toISOString() };
     }
+    return false;
   }
 }

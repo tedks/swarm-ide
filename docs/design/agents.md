@@ -178,10 +178,24 @@ outcome document. The rail only reads that observation; selection cannot start a
 summarizer or another polling lane. The existing fork ordering, folds and primary
 keyboard navigation remain independent of summary updates.
 
-The core reduces lifecycle before Activity trimming. A bounded per-registration
-cache bridges observed append intervals only while the file identity and a raw
-overlap anchor agree. Missing bytes, unreadable records, replacement or truncation
-discard that continuity. A cold read without a usable boundary can be unknown.
+The core reduces lifecycle separately from Activity trimming. A cold or
+discontinuous observation searches at most the latest 4 MiB for an explicit
+lifecycle boundary, while the Activity feed remains a 256 KiB tail. A bounded
+per-registration content checkpoint starts at the latest independently owned
+lifecycle boundary and reuses the result while the complete file version is
+unchanged. A bounded append rereads and hashes up to 4 MiB of cached state-bearing suffix,
+from that authority boundary through the prior complete record, before parsing
+only new complete records. This bounded I/O is deliberate: validating only new
+bytes could not detect a same-inode rewrite of earlier lifecycle evidence without
+an external append-only guarantee. A suffix that reaches 4 MiB is reprojected cold; an append
+concurrent with any read is accepted only when the exact state-bearing bytes
+still hash identically. Valid large JSONL records contained by the window can
+carry or follow lifecycle evidence without publishing their large content.
+Malformed records, replacement, truncation, or a gap or single record beyond
+the lifecycle lookback discard unsupported continuity. A cold read without a
+usable boundary remains unknown. Fleet reads retain their existing batches of
+four. Cache reuse uses the existing full stat tuple; changed versions use the
+stronger content check.
 Forks rewrite outer timestamps: preserved `started_at` must establish the turn
 after the child's metadata birth; ambiguous second-precision birth-time turns
 are not borrowed from the parent. Blocking `request_user_input` waits for its

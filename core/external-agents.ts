@@ -12,6 +12,10 @@ import { Registry, type Registered } from "./external-agents-registry";
 import { queueExternalMessage, resolveExternalCodex, type QueueMessage, type ExternalSendReceipt } from "./external-agents-send";
 
 const HEADER = 65536, TAIL = 262144, MAX_ENTRIES = 120;
+// Lifecycle boundaries are tiny but ordinary compaction/tool records between
+// them can exceed the Activity tail. Recovery gets one larger fixed window;
+// unchanged versions reuse its content-attested projection.
+const LIFECYCLE_LOOKBACK = 4 * 1024 * 1024;
 const HISTORY_ENTRIES = 16;
 const fileVersion = (stat: Stats) => `${stat.dev}:${stat.ino}:${stat.size}:${stat.mtimeMs}:${stat.ctimeMs}:${stat.mode}:${stat.uid}`;
 const Meta = z.object({ type: z.literal("session_meta"), payload: z.object({ id: ExternalSessionId,
@@ -31,7 +35,8 @@ export class ExternalAgentService {
   private sending = new Set<string>();
   private sentRequests = new Set<string>();
   private historical = new Map<string, { registration: string; version: string; detail: ExternalDetail }>();
-  private lifecycle = new Map<string, { observationId: string; position: number; size: number; mtime: number; anchor: Buffer; projection: AgentLifecycleProjection }>();
+  private lifecycle = new Map<string, { observationId: string; version: string; start: number; position: number; digest: string;
+    incremental: boolean; projection: AgentLifecycleProjection }>();
   constructor(private readonly root: string, private readonly registryPath: string | undefined,
     private readonly sender: { queue: QueueMessage; executable(): Promise<string> } = { queue: queueExternalMessage, executable: resolveExternalCodex }) {}
   dispose(): Promise<void> {
@@ -83,6 +88,50 @@ export class ExternalAgentService {
       ancestry: "unavailable", observationId: "", observedAt: new Date().toISOString(), message: "Registered session could not be read safely.",
       ...(row.role ? { role: safe(row.role, 120) } : {}), ...(row.task ? { task: safe(row.task, 200) } : {}), contextPaths: row.contextPaths, lifecycle: { state: "unknown" } };
   }
+  private async projectLifecycle(file: FileHandle, stat: Stats, meta: { timestamp?: string; forked_from_id?: string | null }, observationId: string,
+    previous: ReturnType<typeof this.lifecycle.get>): Promise<NonNullable<ReturnType<typeof this.lifecycle.get>>> {
+    const version = fileVersion(stat);
+    if (previous?.observationId === observationId && previous.version === version) return previous;
+    const append = previous?.observationId === observationId && previous.incremental && previous.position <= stat.size &&
+      stat.size - previous.start <= LIFECYCLE_LOOKBACK;
+    const windowStart = append ? previous.start : Math.max(0, stat.size - LIFECYCLE_LOOKBACK);
+    // A cold window includes its preceding byte so a newline proves alignment.
+    // An attested append begins at the lifecycle boundary retained in cache.
+    const start = append ? windowStart : Math.max(0, windowStart - 1), buffer = Buffer.alloc(stat.size - start);
+    const { bytesRead } = await file.read(buffer, 0, buffer.length, start); this.check();
+    if (bytesRead !== buffer.length) throw new Error("Lifecycle window changed during read");
+    let cursor = append ? previous.position - start : windowStart - start;
+    if (append) {
+      const prefix = buffer.subarray(0, cursor);
+      if (createHash("sha256").update(prefix).digest("hex") !== previous.digest)
+        return this.projectLifecycle(file, stat, meta, observationId, undefined);
+    }
+    let projection = append ? previous.projection.clone() : new AgentLifecycleProjection(meta);
+    let authority = append ? previous.start : start + cursor, incremental = true;
+    if (!append && windowStart > 0 && buffer[cursor - 1] !== 10) {
+      const newline = buffer.indexOf(10, cursor);
+      if (newline < 0) { cursor = buffer.length; authority = stat.size; incremental = false; }
+      else { cursor = newline + 1; authority = start + cursor; }
+    }
+    let completePosition = start + cursor;
+    while (cursor < bytesRead) {
+      const offset = start + cursor;
+      const end = buffer.indexOf(10, cursor); if (end < 0) break;
+      const line = buffer.subarray(cursor, end).toString("utf8"); cursor = end + 1; completePosition = start + cursor;
+      if (!line) continue;
+      try { if (projection.consume(JSON.parse(line))) authority = offset; }
+      catch { projection = new AgentLifecycleProjection(meta); authority = offset; }
+    }
+    const checkpointStart = Math.min(authority, completePosition), from = checkpointStart - start, to = completePosition - start;
+    return { observationId, version, start: checkpointStart, position: completePosition,
+      digest: createHash("sha256").update(buffer.subarray(from, to)).digest("hex"), incremental, projection };
+  }
+  private async confirmLifecycle(file: FileHandle, checkpoint: NonNullable<ReturnType<typeof this.lifecycle.get>>): Promise<void> {
+    const buffer = Buffer.alloc(checkpoint.position - checkpoint.start);
+    const { bytesRead } = await file.read(buffer, 0, buffer.length, checkpoint.start); this.check();
+    if (bytesRead !== buffer.length || createHash("sha256").update(buffer).digest("hex") !== checkpoint.digest)
+      throw new Error("Lifecycle window changed during read");
+  }
   private async read(row: Registered, tail: boolean, checkHandoff = tail): Promise<ExternalDetail> {
     const summary = this.summary(row);
     const result: ExternalDetail = { session: summary, entries: [], handoff: row.tmux ? "unavailable" : "unconfigured",
@@ -106,6 +155,7 @@ export class ExternalAgentService {
       summary.control = row.tmux ? "tmux" : "read-only";
       if (row.contextRoot && isAbsolute(row.contextRoot)) summary.worktree = row.contextRoot;
       if (tail) {
+        nextLifecycle = await this.projectLifecycle(file, stat, meta.payload, summary.observationId, previousLifecycle);
         const start = Math.max(0, stat.size - TAIL), buffer = Buffer.alloc(Math.min(stat.size, TAIL));
         const { bytesRead } = await file.read(buffer, 0, buffer.length, start); this.check();
         result.coverage.tailBytes = bytesRead;
@@ -115,33 +165,22 @@ export class ExternalAgentService {
         // A complete record keeps its identity as later appends shift this tail.
         let cursor = start > 0 ? bytes.indexOf(10) + 1 : 0;
         if (start > 0 && cursor === 0) cursor = bytesRead;
-        const previous = previousLifecycle;
-        const anchorStart = previous ? previous.position - previous.anchor.length - start : -1;
-        const uninterrupted = previous && previous.observationId === summary.observationId && previous.size <= stat.size &&
-          (previous.size < stat.size || previous.mtime === stat.mtimeMs) && start + cursor <= previous.position &&
-          anchorStart >= 0 && bytes.subarray(anchorStart, anchorStart + previous.anchor.length).equals(previous.anchor);
-        let projection = uninterrupted ? previous.projection.clone() : new AgentLifecycleProjection(meta.payload);
-        const afterOffset = uninterrupted ? previous.position : -1;
-        let completePosition = start + cursor;
         if (bytesRead && bytes[bytesRead - 1] !== 10) partial = true;
         const entries: ExternalEntry[] = [];
         let omitted = 0;
         while (cursor < bytesRead) {
           const end = bytes.indexOf(10, cursor); if (end < 0) break;
-          const offset = start + cursor, line = bytes.subarray(cursor, end).toString("utf8"); cursor = end + 1; completePosition = start + cursor;
+          const offset = start + cursor, line = bytes.subarray(cursor, end).toString("utf8"); cursor = end + 1;
           if (!line) continue;
           if (line.length > 65536) {
             omitted++; partial = true;
-            if (offset >= afterOffset) projection = new AgentLifecycleProjection(meta.payload);
             continue;
           }
           let item: unknown;
           try { item = JSON.parse(line); } catch {
             omitted++; partial = true;
-            if (offset >= afterOffset) projection = new AgentLifecycleProjection(meta.payload);
             continue;
           }
-          if (offset >= afterOffset) projection.consume(item);
           const identity = `${stat.dev}:${stat.ino}:${offset}:${createHash("sha256").update(line).digest("hex").slice(0, 12)}`;
           const extracted = extractEntries(item, identity);
           if (extracted.length) entries.push(...extracted); else omitted++;
@@ -151,12 +190,7 @@ export class ExternalAgentService {
         result.coverage = { tailBytes: bytesRead, partial, omittedRecords: omitted,
           message: "Recent activity; older entries may be outside this window." };
         summary.lastActivityAt = result.entries.at(-1)?.at;
-        summary.lifecycle = projection.snapshot();
-        // Publish before per-session and aggregate Activity trimming. This cache
-        // only bridges observed append-only intervals; an unobserved byte gap
-        // starts from unknown rather than retaining possibly obsolete work.
-        nextLifecycle = { observationId: summary.observationId, position: completePosition,
-          size: stat.size, mtime: stat.mtimeMs, anchor: Buffer.from(bytes.subarray(Math.max(0, completePosition - start - 128), completePosition - start)), projection };
+        summary.lifecycle = nextLifecycle.projection.snapshot();
       }
       // An inode can be truncated and rewritten to another session without
       // shrinking its final size. Verify the accepted header on this descriptor
@@ -168,6 +202,10 @@ export class ExternalAgentService {
       const after = await file.stat(), current = await lstat(row.rollout); this.check();
       if (after.size < stat.size || current.ino !== stat.ino || current.dev !== stat.dev || current.isSymbolicLink())
         throw new Error("Transcript rotated or truncated");
+      // Ordinary appends after the initial stat are safe only when the exact
+      // bytes that established lifecycle are unchanged. A rewrite that keeps
+      // the header/inode cannot carry a stale projection through publication.
+      if (nextLifecycle && fileVersion(after) !== nextLifecycle.version) await this.confirmLifecycle(file, nextLifecycle);
       if (checkHandoff && row.tmux) {
         result.handoff = await validateHandoff(row.tmux, row.rollout, this.controller.signal) ? "available" : "unavailable";
         if (result.handoff === "available") result.terminal = terminalCommands(row.tmux);
