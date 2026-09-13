@@ -6,8 +6,8 @@ type: task
 component: build
 release:
 reporter: Ted Smith <tedks@riseup.net>
-status: in_progress
-disposition:
+status: closed
+disposition: fixed
 creation_time: 2026-09-13T20:23:51-00:00
 references: []
 log_events:
@@ -26,3 +26,8 @@ log_events:
     checks and light native review CLEAN. No local Claude tooling, tests, credentials/settings,
     or historical records changed. Normal-merged d02c0167; no GitHub Actions workflow
     files remain on remote master.
+- time: 2026-09-13T20:25:34-00:00
+  who: Ted Smith
+  what: 'closed: fixed'
+  comment: User-requested Claude hosted workflow deletion landed in PR158; local tooling
+    preserved.
