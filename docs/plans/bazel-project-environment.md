@@ -27,10 +27,10 @@ Nix-plus-Bazel process tree.
 - [x] (2026-09-13 19:50Z) Implemented the smallest owned flake-aware launcher and packaged its Nix CLI runtime.
 - [x] (2026-09-13 19:54Z) Extended and passed the actual packaged-worker proof with a dev-shell-only executable while
   scrubbing inherited development environment state.
-- [ ] Update `docs/design/runtime.md`, `.swarm/plans.json`, this plan, seam and verification
-  notes; completed: living design/mapping edits, first council triage and fix proof;
-  remaining: final package gates, seam/verification notes and clean convergence round.
-- [ ] Commit, push, finish Ditz, synchronize metadata, and leave a ready PR for ROOT.
+- [x] (2026-09-13 20:36Z) Updated the runtime design, additive mapping, living plan,
+  seam, and verification evidence after the final installed-package proof.
+- [x] (2026-09-13 20:36Z) Pushed the implementation and reached a clean five-round
+  Codex/Claude/Google council fixpoint; Ditz/PR landing records are the final session step.
 
 ## Surprises & Discoveries
 
@@ -57,6 +57,11 @@ Nix-plus-Bazel process tree.
   Evidence: council reviewers identified the boundary; the revised actual probe observed
   an uncached ten-second derivation start, cancelled the owned client, waited eleven seconds,
   and confirmed the derivation output was still unrealized and the lock byte-identical.
+- Observation: Package-file presence and `swarm --help` do not prove the installed worker
+  can run a selected target with the wrapper's runtime closure.
+  Evidence: the final `//tools/build-graph:installed-package-proof` derives the immutable
+  wrapper's environment under `env -i`, loads the installed `core/worker.js`, and passes the
+  complete flake Build/Test/failure/cancellation probe with the packaged Nix client.
 
 ## Decision Log
 
@@ -87,13 +92,22 @@ Nix-plus-Bazel process tree.
   cancelled Swarm preparation must not survive. Cleanup wording documents that it attests
   the client namespace, not shutdown of the shared system daemon.
   Date/Author: 2026-09-13 / Codex.
+- Decision: Make the package proof cross the installed worker and wrapper-runtime boundary,
+  and require a daemon store before claiming the daemon-cancellation property.
+  Rationale: checking files or a help path can pass while pinned Bazel, Java, Nix, or worker
+  startup is broken; the acceptance proof must execute the same installed composition.
+  Date/Author: 2026-09-13 / Codex.
 
 ## Outcomes & Retrospective
 
-The packaged-worker proof passes for both a build action and a test executable that depend
-on a tool available only in the selected locked flake, and proves unique daemon work does
-not survive preparation cancellation. The actual Nix package builds and contains the Nix
-client plus launcher. First council findings are fixed; convergence and landing remain.
+The final installed-package proof passes for build and test actions that depend on a tool
+available only in the selected locked flake. It loads the installed worker with wrapper-
+derived Node 22.23.2, Nix 2.34.8, pinned Bazel 7.6.0, and pinned JDK 21.0.12 under an empty
+inherited environment. It also proves unique daemon work does not survive preparation
+cancellation, exact failures remain failures, lock bytes do not change, and cleanup is
+confirmed. Focused executor/mapping checks pass. Five council rounds converged to CLEAN
+from the native Codex, Claude Sonnet, and Google seats. Legacy `shell.nix` support remains
+explicitly tracked as `swarm-bazel-shell-nix-environment`; no UI or request schema changed.
 
 ## Context and Orientation
 
@@ -215,3 +229,7 @@ package/review gates.
 Plan revision note (2026-09-13 20:12Z): Updated after council round one to record daemon
 cancellation and installed-package proof decisions, narrower failure classification, and
 the first fix delta's actual evidence.
+
+Plan revision note (2026-09-13 20:36Z): Finalized after the installed-worker/package-wrapper
+proof and five-round council fixpoint; recorded exact runtime versions, daemon/event-driven
+cancellation, the explicit `shell.nix` follow-up, and completed handoff evidence.
