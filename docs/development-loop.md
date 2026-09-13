@@ -59,9 +59,9 @@ guarantee.
 
 The current driver is intentionally virtual-X11-first. It refuses display zero
 or any display not backed by its private ownership record and live Xvfb PID;
-Wayland versus X11 on the host is irrelevant. CI runs the topology/source smoke
-as `//tools:virtual-desktop-smoke-test` without a logged-in desktop and uploads
-its unpacked undeclared-output evidence even on failure.
+Wayland versus X11 on the host is irrelevant. The local
+`//tools:virtual-desktop-smoke-test` target runs without a logged-in
+desktop and writes its evidence through Bazel's undeclared-output directory.
 
 ## Selective development updates
 
