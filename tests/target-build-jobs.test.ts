@@ -249,6 +249,24 @@ describe("fixed target operation execution", () => {
       error: expect.stringMatching(/development environment could not be prepared: Tests output exceeded its 8 MiB limit/) });
     await executor.dispose();
   });
+  it("attributes an owned-process launch race to Nix before Bazel starts", async () => {
+    vi.stubEnv("PATH", "/fixed/bin");
+    vi.stubEnv("SWARM_BAZEL_BIN", "/nix/store/fixed/bin/bazel-7.6.0-linux-x86_64");
+    vi.stubEnv("SWARM_BAZEL_JAVA_HOME", "/nix/store/fixed-java");
+    vi.mocked(stat).mockImplementation(async (path) => {
+      if (`${path}` === "/owned/flake/flake.nix") return { isFile: () => true } as Awaited<ReturnType<typeof stat>>;
+      throw Object.assign(new Error("missing"), { code: "ENOENT" });
+    });
+    vi.mocked(createOwnedCodexTransport).mockImplementation((_options, sink) => {
+      queueMicrotask(() => sink.error(new Error("spawn raced")));
+      return { write() {}, close: async () => confirmed };
+    });
+    const executor = createTargetBuildExecutor("/owned/flake");
+    const result = await executor.run("//pkg:test", new AbortController().signal, () => {}, "test");
+    expect(result).toMatchObject({ cleanup: "confirmed",
+      error: "Project development environment could not be prepared: Nix could not start" });
+    await executor.dispose();
+  });
   it("reports an unavailable Nix runtime before launching a flake job", async () => {
     vi.stubEnv("PATH", "/fixed/bin");
     vi.stubEnv("SWARM_BAZEL_BIN", "/nix/store/fixed/bin/bazel-7.6.0-linux-x86_64");

@@ -17,7 +17,7 @@ sh_test(
 )
 sh_test(name = "target-checks", srcs = ["target-checks.sh"], data = ["//:quality_sources"], tags = ["local"])
 sh_test(name = "environment-checks", srcs = ["environment-checks.sh"], data = ["//:quality_sources", "//docs/design:sources"], tags = ["local"])
-sh_binary(name = "installed-package-proof", srcs = ["installed-package-proof.sh"], tags = ["manual"])
+sh_binary(name = "installed-package-proof", srcs = ["installed-package-proof.sh"], data = [":sources", ":target-probe-module"], tags = ["manual"])
 sh_binary(name = "target-probe-build", srcs = ["target-probe-build.sh"])
 genrule(name = "target-probe-module", srcs = ["//:quality_sources", "//:package.json"], outs = ["target-probe.cjs"], cmd = "$(location :target-probe-build) $@ $(location //:package.json)", tools = [":target-probe-build"], local = True)
 sh_binary(name = "target-probe", srcs = ["target-probe.sh"], data = [":sources", ":target-probe-module", "//:desktop-bundle", "//:flake.lock"], tags = ["manual"])

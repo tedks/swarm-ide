@@ -27,7 +27,8 @@ export function buildOutputText(bytes: Uint8Array): string {
 
 /** Exit is not cleanup. Close the owner, drain its output, then report the result. */
 export function collectTargetBuild(connect: (sink: CodexTransportSink) => CodexTransport, signal: AbortSignal,
-  timeoutMs = 15 * 60_000, operation: TargetBuildOperation = "build"): Promise<TargetBuildResult> {
+  timeoutMs = 15 * 60_000, operation: TargetBuildOperation = "build", launchTool?: string,
+  observeOutput?: (output: string) => void): Promise<TargetBuildResult> {
   const activity = operation === "test" ? "Tests" : "Build";
   return new Promise((resolve, reject) => {
     if (signal.aborted) { resolve({ exitCode: null, cleanup: "confirmed", output: "", error: `${activity} cancelled before launch` }); return; }
@@ -46,6 +47,7 @@ export function collectTargetBuild(connect: (sink: CodexTransportSink) => CodexT
     const consume = (bytes: Uint8Array) => {
       total += bytes.byteLength;
       tail = Buffer.concat([tail, bytes]).subarray(-8192);
+      observeOutput?.(buildOutputText(tail));
       if (total > 8 * 1024 * 1024) { error = `${activity} output exceeded its 8 MiB limit`; finish(); }
     };
     try {
@@ -57,7 +59,7 @@ export function collectTargetBuild(connect: (sink: CodexTransportSink) => CodexT
           if (transport) void close().then((evidence) => { if (evidence.status !== "confirmed" || ended) finish(); }, () => { error = `${activity} cleanup failed`; finish(); });
           if (ended) finish();
         },
-        error() { error = operation === "test" ? "Tests could not start" : "Bazel could not start"; finish(); },
+        error() { error = launchTool ? `${launchTool} could not start` : operation === "test" ? "Tests could not start" : "Bazel could not start"; finish(); },
       });
       signal.addEventListener("abort", abort, { once: true });
       if (signal.aborted) abort();
@@ -127,10 +129,16 @@ export function createTargetBuildExecutor(root: string): TargetBuildExecutor {
         args = ["develop", "--no-update-lock-file", "--command", node!, launcher, started, bazel, ...bazelArgs];
       }
       const reader = watchBuildProgress(events, (message) => progress(operation === "test" ? `Tests: ${message}` : message));
+      let announcedEnvironmentBuild = false;
       try {
         const result = await collectTargetBuild((sink) => createOwnedCodexTransport({ root, executable: command,
           nodeExecutable: node!, unshareExecutable: unshare!, setprivExecutable: setpriv!, ownerScript: join(__dirname, "agents/owner-process.js"),
-          args }, sink), signal, undefined, operation);
+          args }, sink), signal, undefined, operation, flake ? "Nix" : undefined, flake ? (output) => {
+            if (!announcedEnvironmentBuild && /building '\/nix\/store\/[^']+\.drv'/.test(output)) {
+              announcedEnvironmentBuild = true;
+              progress("Building project development environment");
+            }
+          } : undefined);
         blocked = result.cleanup !== "confirmed";
         if (flake && !signal.aborted && !await pathIs(started, "file")) {
           const detail = result.error ? `: ${result.error}` : " without changing its lock file; inspect the retained Nix output";

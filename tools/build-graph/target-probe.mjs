@@ -2,6 +2,7 @@
 // supplies the utility-process transport, not a fake build executor.
 import assert from "node:assert/strict";
 import { EventEmitter } from "node:events";
+import { constants, accessSync } from "node:fs";
 import { mkdtemp, mkdir, copyFile, readFile, writeFile, chmod, rm, symlink } from "node:fs/promises";
 import { createRequire } from "node:module";
 import { execFileSync } from "node:child_process";
@@ -11,9 +12,14 @@ const scratch = await mkdtemp(join(tmpdir(), "swarm-target-proof-"));
 let stopped = false, shutdown;
 const deadline = setTimeout(() => { console.error(`Target proof exceeded 180 seconds; scratch retained ${scratch}`); process.exit(1); }, 180_000);
 try {
-  execFileSync("tar", ["-xzf", process.argv[3], "-C", scratch], { timeout: 30_000 });
-  await copyFile(process.argv[2], join(scratch, "core/target-proof.cjs"));
-  const { startCoreWorker, parseCoreRequest, parseCoreResponseForRequest } = createRequire(import.meta.url)(join(scratch, "core/target-proof.cjs"));
+  const installedWorker = process.argv[4];
+  let proofModule = process.argv[2];
+  if (!installedWorker) {
+    execFileSync("tar", ["-xzf", process.argv[3], "-C", scratch], { timeout: 30_000 });
+    proofModule = join(scratch, "core/target-proof.cjs");
+    await copyFile(process.argv[2], proofModule);
+  }
+  const { startCoreWorker, parseCoreRequest, parseCoreResponseForRequest } = createRequire(import.meta.url)(proofModule);
   const root = join(scratch, "repo"); await mkdir(root);
   const system = process.arch === "arm64" ? "aarch64-linux" : "x86_64-linux";
   await copyFile(join(process.cwd(), "flake.lock"), join(root, "flake.lock"));
@@ -48,8 +54,17 @@ try {
   const git = (...args) => execFileSync("git", args, { cwd: root, timeout: 10_000, stdio: "pipe" });
   git("init", "-q"); git("add", "."); git("-c", "user.name=Swarm proof", "-c", "user.email=proof@localhost", "commit", "-qm", "Actual target proof");
   const runtimeBin = join(scratch, "runtime-bin"); await mkdir(runtimeBin);
+  const resolveProgram = (name) => {
+    for (const directory of (process.env.PATH ?? "").split(":")) {
+      const candidate = join(directory, name);
+      try { accessSync(candidate, constants.X_OK); return candidate; } catch { /* next PATH entry */ }
+    }
+    throw new Error(`Target proof requires ${name} on PATH`);
+  };
   const runtimePrograms = { node: process.execPath, ...Object.fromEntries(["git", "nix", "setpriv", "unshare"].map((name) =>
-    [name, execFileSync("which", [name], { encoding: "utf8" }).trim()])) };
+    [name, resolveProgram(name)])) };
+  const store = JSON.parse(execFileSync(runtimePrograms.nix, ["store", "info", "--json"], { encoding: "utf8", timeout: 10_000 }));
+  assert.equal(store.url, "daemon", `Cancellation proof requires a multi-user Nix daemon, got ${store.url}`);
   for (const [name, path] of Object.entries(runtimePrograms)) await symlink(path, join(runtimeBin, name));
   process.env.PATH = runtimeBin;
   for (const name of ["IN_NIX_SHELL", "NIX_BUILD_TOP", "NIX_BUILD_CORES", "NIX_LDFLAGS", "NIX_CFLAGS_COMPILE"]) delete process.env[name];
@@ -75,7 +90,9 @@ try {
     });
   };
   shutdown = async () => { port.emit("message", { data: { type: "core.shutdown" } }); await closed; };
-  startCoreWorker(); await ready;
+  if (installedWorker) createRequire(import.meta.url)(installedWorker);
+  else startCoreWorker();
+  await ready;
   const initial = await send({ type: "workspace.snapshot" }); assert.equal(initial.ok, true);
   const identity = { repositoryId: initial.snapshot.project.id, worldId: initial.snapshot.world.id };
   const read = async () => { const response = await send({ ...identity, type: "build.observe" }); assert.equal(response.ok, true); return response.buildJobs; };
@@ -117,11 +134,12 @@ try {
   assert.equal(cancelAdmission.ok, true); const cancelJobId = cancelAdmission.buildJobs.jobs[0].id;
   for (;;) {
     const job = (await read()).jobs.find((item) => item.id === cancelJobId);
-    if (job.message === "Preparing project development environment") break;
+    if (job.message === "Building project development environment") break;
     assert.equal(job.status, "running", JSON.stringify(job));
     await new Promise((resolve) => setTimeout(resolve, 50));
   }
-  await new Promise((resolve) => setTimeout(resolve, 2000));
+  // The build target is deliberately reused: cancellation happens only after
+  // the daemon announces the replacement dev-shell derivation and before Bazel.
   const cancelResponse = await send({ ...identity, type: "build.cancel", jobId: cancelJobId }); assert.equal(cancelResponse.ok, true);
   for (;;) {
     const job = (await read()).jobs.find((item) => item.id === cancelJobId);
@@ -158,7 +176,12 @@ try {
   }
   assert.deepEqual((await read()).jobs, before.jobs);
   await shutdown();
-  console.log(JSON.stringify({ passed: true, actualWorkerRouting: true, lockedFlakeDevelopmentEnvironment: true,
+  console.log(JSON.stringify({ passed: true, actualWorkerRouting: true, installedWorker: installedWorker ?? null,
+    sourceScope: installedWorker ? "installed Nix package worker" : "source-built desktop bundle",
+    node: process.version, nix: execFileSync(runtimePrograms.nix, ["--version"], { encoding: "utf8" }).trim(),
+    bazel: execFileSync(process.env.SWARM_BAZEL_BIN, ["--version"], { encoding: "utf8" }).trim(),
+    bazelExecutable: process.env.SWARM_BAZEL_BIN, javaHome: process.env.SWARM_BAZEL_JAVA_HOME,
+    nixStore: store.url, lockedFlakeDevelopmentEnvironment: true,
     lockRemainedByteIdentical: true, daemonPreparationCancelled: true,
     scrubbedRuntimePathCommands: Object.keys(runtimePrograms).sort(), actualPassingAndFailingTests: true, noTestsFails: true,
     buildOnlyDoesNotPassFailingTests: true, explicitTestOverridesNoBuildAndManualFilter: true, targets: before.jobs, beforeExitMilestones: milestones,
