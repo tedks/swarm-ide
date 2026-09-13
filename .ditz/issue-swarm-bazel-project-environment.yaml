@@ -1,0 +1,20 @@
+id: swarm-bazel-project-environment
+title: Use the project development environment for IDE build and test jobs
+desc: 'Actual Context-pane session-registration and living-design runs fail before
+  assertions: pnpm not found. Installed executor inherits app tools instead of selected
+  project Nix environment; demo checkout also lacks materialized dependencies. Make
+  shared exact-target jobs use project dev environment, retain owned cancellation,
+  and provide clear setup errors without implicit installs or lock changes.'
+type: bugfix
+component: default
+release:
+reporter: Ted Smith <tedks@riseup.net>
+status: unstarted
+disposition:
+creation_time: 2026-09-13T19:40:57-00:00
+references: []
+log_events:
+- time: 2026-09-13T19:40:57-00:00
+  who: Ted Smith
+  what: created
+  comment: ""
