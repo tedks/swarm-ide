@@ -38,6 +38,7 @@ import { AgentReloadGuard } from "./agents/AgentReloadGuard";
 import { AgentDock } from "./agents/AgentDock";
 import { BuildResources } from "./build-resources/BuildResources";
 import { useTargetBuilds } from "./build-resources/use-target-builds";
+import { bazelTargetCatalogue, permitsBazelPaletteActivation, type BazelPaletteOperation, type BazelPaletteTarget, type BazelTargetCatalogue } from "./build-resources/bazel-palette";
 import { buildGraphLinks, useBuildGraph } from "./repository/use-build-graph";
 import { useUiDemo, MockRunRail, MockConversation, MockContext, MOCK_AGENTS, type DemoCommand } from "./agents/ui-demo";
 import { protectsAgentIntent } from "./agents/live-state";
@@ -232,7 +233,10 @@ export function App() {
   const lensChosen = useRef(false);
   const setDesignVisible = (visible: boolean) => { lensChosen.current = true; updateDesignVisible(visible); };
   const [paletteOpen, setPaletteOpen] = useState(false);
-  const [palettePathMode, setPalettePathMode] = useState(false);
+  const [paletteMode, setPaletteMode] = useState<"commands" | "path" | BazelPaletteOperation>("commands");
+  const paletteModeRef = useRef(paletteMode); paletteModeRef.current = paletteMode;
+  const paletteTargetScope = useRef<string | null>(null);
+  const paletteTargetDispatched = useRef(false);
   const [compactPanel, setCompactPanel] = useState<"work" | "info" | null>(null);
   const taskClient = useMemo(() => new TaskBridgeClient(), [TaskBridgeClient]);
   const tasks = useSyncExternalStore(taskClient.subscribe, taskClient.getSnapshot);
@@ -399,11 +403,13 @@ export function App() {
   const paletteOrigin = useRef<HTMLElement | null>(null);
   const openPalette = useCallback(() => {
     paletteOrigin.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
-    setPalettePathMode(false); setCommandQuery("");
+    paletteTargetScope.current = null; paletteTargetDispatched.current = false;
+    setPaletteMode("commands"); setCommandQuery("");
     setPaletteOpen(true);
   }, []);
   const cancelPalette = useCallback(() => {
-    setPaletteOpen(false);
+    paletteTargetScope.current = null; paletteTargetDispatched.current = false;
+    setPaletteOpen(false); setPaletteMode("commands"); setCommandQuery("");
     const origin = paletteOrigin.current;
     requestAnimationFrame(() => { if (origin?.isConnected) origin.focus({ preventScroll: true }); });
   }, []);
@@ -659,7 +665,7 @@ export function App() {
     return visit === workspaceVisit.current && generation === coreGenerationRef.current && (!window.swarmLifecycle || lifecycleRef.current?.core.phase === "ready") ? response : null;
   }, []);
   const fileSearch = useFileSearch(workspace.snapshot?.project.id, commandQuery,
-    paletteOpen && !palettePathMode && Boolean(window.swarm && (!window.swarmLifecycle || lifecycle?.core.phase === "ready")), coreGenerationRef.current, requestFileSearch);
+    paletteOpen && paletteMode === "commands" && Boolean(window.swarm && (!window.swarmLifecycle || lifecycle?.core.phase === "ready")), coreGenerationRef.current, requestFileSearch);
 
   const coordinateFileFocus = useCallback((path: string, revealCamera = true) => {
     setSelectedConnection(null);
@@ -1309,7 +1315,12 @@ export function App() {
         if (zoomAction === "reset") void resetZoom();
         return;
       }
-      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "k") { event.preventDefault(); interruptPendingReveal(); if (paletteOpen) cancelPalette(); else openPalette(); }
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "k") {
+        event.preventDefault();
+        if (event.repeat || event.isComposing || event.keyCode === 229 ||
+            !paletteOpen && event.target instanceof Element && event.target.closest('[role="dialog"], [aria-modal="true"], dialog')) return;
+        interruptPendingReveal(); if (paletteOpen) cancelPalette(); else openPalette();
+      }
       if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "w") {
         event.preventDefault();
         if (workLogOpen) { setWorkLogEntry(null); return; }
@@ -1322,7 +1333,7 @@ export function App() {
         if (path) closeFile(path);
         return;
       }
-      if (event.key === "Escape" && paletteOpen) cancelPalette();
+      if (event.key === "Escape" && paletteOpen && !event.isComposing && event.keyCode !== 229) { event.preventDefault(); event.stopPropagation(); cancelPalette(); }
     };
     const mouse = (event: MouseEvent) => { if (event.button === 3 || event.button === 4) { event.preventDefault(); if (!window.swarmView?.onNavigate) void restoreHistory(event.button === 3 ? "back" : "forward"); } };
     window.addEventListener("keydown", listener, true);
@@ -1344,6 +1355,7 @@ export function App() {
   }, []);
 
   const snapshot = workspace.snapshot;
+  const coreUnavailable = Boolean(window.swarmLifecycle && lifecycle?.core.phase !== "ready");
   const publication = snapshot?.serviceContext;
   const serviceIdentity = JSON.stringify([snapshot?.project.id, snapshot?.world.id, coreGenerationRef.current, publication?.status,
     publication?.status === "observed" ? [publication.buildId, publication.sourceFingerprint, publication.inputDigest, publication.artifactUri, publication.observedAt] : publication?.reason]);
@@ -1356,6 +1368,40 @@ export function App() {
   const buildLinks = useMemo(() => buildGraphLinks(buildGraph.observation), [buildGraph.observation]);
   const targetBuilds = useTargetBuilds(snapshot?.project.id, snapshot?.world.id, contextRealm(),
     Boolean(snapshot) && observedCoreGeneration === coreGenerationRef.current && (!window.swarmLifecycle || lifecycle?.core.phase === "ready"));
+  const paletteTargetOperation = paletteMode === "build" || paletteMode === "test" ? paletteMode : null;
+  const bazelPaletteScope = { repositoryId: snapshot?.project.id ?? "", worldId: snapshot?.world.id ?? "",
+    coreGeneration: coreGenerationRef.current, workspaceVisit: workspaceVisit.current };
+  const paletteBlocked = !window.swarm || workspacePending || coreUnavailable || observedCoreGeneration !== coreGenerationRef.current || targetBuilds.busy;
+  const paletteCatalogue = useMemo<BazelTargetCatalogue | null>(() => paletteTargetOperation ?
+    bazelTargetCatalogue(bazelPaletteScope, buildGraph.observation, paletteTargetOperation, commandQuery, paletteBlocked) : null,
+    [bazelPaletteScope.repositoryId, bazelPaletteScope.worldId, bazelPaletteScope.coreGeneration, bazelPaletteScope.workspaceVisit,
+      buildGraph.observation, paletteTargetOperation, commandQuery, paletteBlocked]);
+  const paletteScopeKey = JSON.stringify([bazelPaletteScope.repositoryId, bazelPaletteScope.worldId, bazelPaletteScope.coreGeneration,
+    bazelPaletteScope.workspaceVisit, observedCoreGeneration, lifecycle?.core.phase ?? "ready"]);
+  const paletteActivation = useRef<{ scope: typeof bazelPaletteScope; observation: typeof buildGraph.observation;
+    operation: BazelPaletteOperation | null; blocked: boolean; scopeKey: string }>({ scope: bazelPaletteScope, observation: buildGraph.observation,
+      operation: paletteTargetOperation, blocked: paletteBlocked, scopeKey: paletteScopeKey });
+  paletteActivation.current = { scope: bazelPaletteScope, observation: buildGraph.observation, operation: paletteTargetOperation,
+    blocked: paletteBlocked, scopeKey: paletteScopeKey };
+  useLayoutEffect(() => {
+    if (paletteTargetOperation && paletteTargetScope.current !== paletteScopeKey) {
+      paletteTargetScope.current = null; paletteTargetDispatched.current = false;
+      setPaletteOpen(false); setPaletteMode("commands"); setCommandQuery("");
+    }
+  }, [paletteTargetOperation, paletteScopeKey]);
+  const activatePaletteTarget = useCallback((candidate: BazelPaletteTarget) => {
+    const active = paletteActivation.current;
+    const current = workspaceRef.current.snapshot;
+    if (paletteTargetDispatched.current || !active.operation || paletteModeRef.current !== active.operation ||
+        paletteTargetScope.current !== active.scopeKey || workspacePendingRef.current || !current ||
+        current.project.id !== active.scope.repositoryId || current.world.id !== active.scope.worldId ||
+        coreGenerationRef.current !== active.scope.coreGeneration || workspaceVisit.current !== active.scope.workspaceVisit ||
+        window.swarmLifecycle && lifecycleRef.current?.core.phase !== "ready" ||
+        !permitsBazelPaletteActivation(candidate, active.scope, active.observation, active.operation, active.blocked)) return;
+    paletteTargetDispatched.current = true; paletteTargetScope.current = null;
+    setPaletteOpen(false); setPaletteMode("commands"); setCommandQuery("");
+    void targetBuilds.start(candidate.label, candidate.operation);
+  }, [targetBuilds.start]);
   const componentSelection = designSelection && designSelection.repositoryId === snapshot?.project.id &&
     designSelection.worldId === snapshot?.world.id && designSelection.generation === coreGenerationRef.current ? designSelection : undefined;
   const componentContext = contextSubject?.kind === "component" && componentSelection?.node?.id === contextSubject.id ? componentSelection : undefined;
@@ -1455,7 +1501,6 @@ export function App() {
   const buildContextStatus = buildGraph.observation?.status;
   const title = buildContextStatus ? { current: "Build graph current", refreshing: "Updating build graph", stale: "Build graph needs refresh", error: "Build graph failed", unavailable: "No build graph" }[buildContextStatus] : "Build context";
   const buildContextColor = buildContextStatus === "current" ? "green" : buildContextStatus === "error" ? "red" : buildContextStatus === "refreshing" || buildContextStatus === "stale" ? "yellow" : "gray";
-  const coreUnavailable = Boolean(window.swarmLifecycle && lifecycle?.core.phase !== "ready");
   const lifecycleNotice = lifecycle?.reload === "pending" ? "Preload refresh pending — resolve protected file buffers and local agent intent to apply it." : lifecycle?.core.phase !== "ready" ? lifecycle?.core.message : lifecycle?.notice;
   const lifecycleTitle = import.meta.env.DEV && lifecycle ? ` — Core ${lifecycle.core.generation}:${lifecycle.core.phase} — Doc ${Math.round(performance.timeOrigin)} — Reload ${lifecycle.reload}${lifecycle.notice.includes("Build failed") ? " — Build failed" : ""}${lifecycle.notice.includes("restart required") ? " — Restart required" : ""}` : "";
   const zoomTitle = zoomPending ? "Zoom applying" : zoomPercent === null ? "Zoom unknown" : `Zoom ${zoomPercent}%${import.meta.env.DEV ? `@${zoomOperation}` : ""}`;
@@ -1471,13 +1516,13 @@ export function App() {
     const revision = snapshot ? ` — ${snapshot.revisions.working.id.slice(0, 12)}` : "";
     const surface = activeSurface === "graphs" ? " — Graphs" : ` — Source ${activeSurface.split("/").at(-1)}:${activeFile?.status ?? "loading"}`;
     const files = ` — ${fileTabs.length} file tab${fileTabs.length === 1 ? "" : "s"}`;
-    const palette = paletteOpen ? ` — Palette open${palettePathMode ? " · exact path" : ""}` : "";
+    const palette = paletteOpen ? ` — Palette open${paletteMode === "path" ? " · exact path" : paletteTargetOperation ? ` · Bazel ${paletteTargetOperation}` : ""}` : "";
     const hmrSuffix = hmr.generation ? ` — HMR ${hmr.generation}:${hmr.milliseconds}ms` : "";
     const fixtureTitle = agentFixtureEnabled ? agents.draftOpen ? " — Agent fixture draft" : agents.run ? ` — Agent fixture ${agents.run.state} step ${agents.step}` : " — Agent fixture enabled" : "";
     const agentTitle = import.meta.env.DEV ? liveAgents.draft ? " — Agent live draft" : liveAgents.paneOpen ? ` — Agent live ${liveAgents.run?.state ?? "unobserved"}` : "" : "";
     const topologyTitle = snapshot ? ` — Topology ${snapshot.reconciliation.epoch}:${snapshot.reconciliation.status}` : "";
     document.title = `swarm-ide — ${title}${focus}${revision}${surface}${files}${palette} — ${zoomTitle}${hmrSuffix}${lifecycleTitle}${fixtureTitle}${agentTitle}${topologyTitle}`;
-  }, [activeFile?.status, activeSurface, fileTabs.length, hmr, paletteOpen, palettePathMode, snapshot, title, zoomTitle, lifecycleTitle, agentFixtureEnabled, agents.draftOpen, agents.run, agents.step, liveAgents.draft, liveAgents.paneOpen, liveAgents.run?.state]);
+  }, [activeFile?.status, activeSurface, fileTabs.length, hmr, paletteOpen, paletteMode, paletteTargetOperation, snapshot, title, zoomTitle, lifecycleTitle, agentFixtureEnabled, agents.draftOpen, agents.run, agents.step, liveAgents.draft, liveAgents.paneOpen, liveAgents.run?.state]);
 
   const selectFocus = useCallback((focus: FocusRef) => {
     ++navigationIntent.current;
@@ -1554,9 +1599,11 @@ export function App() {
     return invoke({ type: "reconciliation.start", requestId: requestId(), protocolVersion: PROTOCOL_VERSION, mode: "success" });
   }, [invoke]);
 
-  const commands = useMemo(() => palettePathMode ? [
+  const commands = useMemo(() => paletteMode === "path" ? [
     { label: "Open path", detail: "Exact repository-relative file path · not filename search", run: () => { setPaletteOpen(false); openLinkedFile(commandQuery); } },
-  ] : [
+  ] : paletteTargetOperation ? [] : [
+    { label: "Bazel build…", detail: "Choose one exact rule observed in this worktree", run: () => { paletteTargetDispatched.current = false; paletteTargetScope.current = paletteScopeKey; setPaletteMode("build"); setCommandQuery(""); requestAnimationFrame(() => commandInput.current?.focus()); } },
+    { label: "Bazel test…", detail: "Choose one observed *_test or test_suite rule", run: () => { paletteTargetDispatched.current = false; paletteTargetScope.current = paletteScopeKey; setPaletteMode("test"); setCommandQuery(""); requestAnimationFrame(() => commandInput.current?.focus()); } },
     ...([
       ["runs", "Demo: populate agent runs"], ["conversation", "Demo: show mock agent conversation"],
       ["graphs", "Demo: add mock agents to graphs"], ["context", "Demo: populate context"],
@@ -1567,7 +1614,7 @@ export function App() {
       { label: "Repository Up", detail: "Browse the parent directory", run: () => { setPaletteOpen(false); void upDirectory(); } },
       { label: "Refresh directory", detail: "Observe current entries without a build", run: () => { setPaletteOpen(false); void repository.refresh(); } },
     ] : []),
-    { label: "Open repository path", detail: "Exact relative path fallback, independent of captured search coverage", run: () => { setPalettePathMode(true); setCommandQuery(""); requestAnimationFrame(() => commandInput.current?.focus()); } },
+    { label: "Open repository path", detail: "Exact relative path fallback, independent of captured search coverage", run: () => { setPaletteMode("path"); setCommandQuery(""); requestAnimationFrame(() => commandInput.current?.focus()); } },
     { label: "Show repository Tasks", detail: "inspect planning metadata without moving source", run: () => { setPaletteOpen(false); setCompactPanel("work"); } },
     { label: "Show planning graphs", detail: "System design, component connections and tasks", run: () => { setPaletteOpen(false); showDesign(); } },
     { label: "Refresh tasks", detail: "observe local metadata; no fetch, task mutation or dispatch", run: () => { setPaletteOpen(false); setCompactPanel("work"); void taskClient.refresh(); } },
@@ -1577,7 +1624,7 @@ export function App() {
     { label: "Show system graphs", detail: "Repository, services and build dependencies", run: () => { setPaletteOpen(false); setDesignVisible(false); setCompactPanel(null); inspectGraph(); requestAnimationFrame(() => document.querySelector<HTMLElement>(".graphs-grid")?.focus()); } },
     { label: "Show build graph", detail: "Explore Bazel targets and dependencies", run: () => { setPaletteOpen(false); setDesignVisible(false); setCompactPanel(null); setShowBuildVersion((n) => n + 1); } },
     ...(agentFixtureEnabled ? [{ label: "Preview agent fixture", detail: "DEMO only · no provider or file bytes · explicit launch", run: () => { setPaletteOpen(false); setCompactPanel("work"); openAgentDraft(); } }] : []),
-  ].filter((command) => command.label.toLowerCase().includes(commandQuery.toLowerCase())), [agentClient, taskClient, agentFixtureEnabled, openAgentDraft, commandQuery, openFile, reconcile, showSurface, showTaskDetails, palettePathMode, openLinkedFile, repositoryObservation, enterDirectory, upDirectory, repository.refresh, inspectGraph]);
+  ].filter((command) => command.label.toLowerCase().includes(commandQuery.toLowerCase())), [agentClient, taskClient, agentFixtureEnabled, openAgentDraft, commandQuery, openFile, reconcile, showSurface, showTaskDetails, paletteMode, paletteTargetOperation, paletteScopeKey, openLinkedFile, repositoryObservation, enterDirectory, upDirectory, repository.refresh, inspectGraph]);
 
   if (!snapshot) return <main className="loading-screen"><div className="loading-mark hmr-probe" />Opening the working world…{error ? <strong>{error}</strong> : null}<small>{lifecycleNotice}</small><AgentReloadGuard state={liveAgents} client={agentClient} /></main>;
   return (
@@ -1740,7 +1787,13 @@ export function App() {
         />
       </section>
 
-      {paletteOpen ? <FileSearchPalette query={commandQuery} onQuery={setCommandQuery} exact={palettePathMode} commands={commands}
+      {paletteOpen ? <FileSearchPalette query={commandQuery} onQuery={setCommandQuery} exact={paletteMode === "path"} commands={commands}
+        target={paletteTargetOperation && paletteCatalogue ? { operation: paletteTargetOperation, catalogue: paletteCatalogue,
+          workspace: selectedWorktree?.root ?? snapshot.project.id, diskOnly: fileTabs.some(protectsBuffer), busy: paletteBlocked,
+          blockedReason: workspacePending ? "Workspace transition in progress; target activation is disabled."
+            : coreUnavailable || observedCoreGeneration !== coreGenerationRef.current ? "Local core is recovering; target activation is disabled."
+            : targetBuilds.busy ? "Another target operation is active; wait or cancel it in Builds & resources." : undefined,
+          onRefresh: () => { void buildGraph.refresh(); }, onActivate: activatePaletteTarget } : undefined}
         inputRef={commandInput} focusLabel={focusLabel(snapshot.focus)} onCancel={cancelPalette} search={fileSearch}
         onOpen={(path) => { setPaletteOpen(false); openLinkedFile(path); }} /> : null}
       {definition ? <DeclarationChooser resolution={definition.resolution} onChoose={(path) => chooseDefinition(definition, path)} onCancel={cancelDefinition} /> : null}

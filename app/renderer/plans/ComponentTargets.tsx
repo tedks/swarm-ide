@@ -1,6 +1,6 @@
 import type { PlanNode } from "../../../protocol/plans";
 import type { BuildGraphObservation } from "../../../protocol/build-graph";
-import { SelectedBuildTargetSchema } from "../../../protocol/build-jobs";
+import { observedRuleOperation } from "../build-resources/bazel-palette";
 import "./component-targets.css";
 
 /** Publication from the existing plan reader, not a second discovery lane. */
@@ -18,10 +18,10 @@ export function componentTargets(selection: ComponentSelection, observation?: Bu
     graph?.repositoryId === selection.repositoryId && graph.worldId === selection.worldId;
   return (selection.node?.design?.buildTargets ?? []).map((mapping) => {
     const target = sameWorkspace ? graph?.targets.find((item) => item.label === mapping.label) : undefined;
-    const executable = target?.kind === "rule" && SelectedBuildTargetSchema.safeParse(mapping.label).success;
-    const kind = !executable ? "unavailable" : target.ruleClass === "test_suite" || target.ruleClass?.endsWith("_test") ? "test" : "build";
+    const operation = observedRuleOperation(target);
+    const kind = operation ?? "unavailable";
     return { ...mapping, kind, ruleClass: target?.ruleClass,
-      ready: Boolean(executable && selection.current && observation?.status === "current"),
+      ready: Boolean(operation && selection.current && observation?.status === "current"),
     };
   });
 }

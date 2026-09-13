@@ -270,7 +270,7 @@ button.truth-dot:disabled { cursor: wait; opacity: 0.72; }
 .command-palette input::placeholder { color: #5c7370; }
 .command-results { padding: 7px; }
 .command-results button { width: 100%; display: flex; justify-content: space-between; align-items: center; padding: 10px; border: 0; border-radius: 5px; background: transparent; text-align: left; }
-.command-results button:hover, .command-results button:first-child { background: #142425; }
+.command-results button:hover:not(:disabled) { background: #142425; }
 .command-results button > span { display: flex; flex-direction: column; gap: 3px; font-size: 11px; }
 .command-results button small { color: #617975; font-size: 8px; }
 .command-palette > footer { display: flex; justify-content: space-between; padding: 9px 14px; border-top: 1px solid #1d2f30; color: #506965; font: 8px "DM Mono", monospace; }
@@ -372,7 +372,14 @@ button.truth-dot:disabled { cursor: wait; opacity: 0.72; }
 .file-search-status { display: flex; flex-direction: column; gap: 5px; padding: 10px 16px; color: var(--muted); font-size: 12px; border-bottom: 1px solid var(--border); }
 .file-search-status small { font-size: 11px; line-height: 1.35; }
 .file-search-status button { align-self: flex-start; }
+.bazel-palette-status { display: flex; flex-direction: column; gap: 5px; padding: 10px 16px; color: var(--muted); font-size: 12px; border-bottom: 1px solid var(--border); }
+.bazel-palette-status strong { color: var(--text); overflow-wrap: anywhere; }
+.bazel-palette-status small { font-size: 11px; line-height: 1.35; }
+.bazel-palette-status .bazel-palette-blocked { color: var(--yellow); }
+.bazel-palette-status button { align-self: flex-start; }
 .command-results button[aria-current="true"] { background: #20313e; outline: 1px solid #537e8a; outline-offset: -1px; }
+.command-results button:disabled { opacity: .52; cursor: not-allowed; }
+.command-results button code { color: #dcebe7; font: inherit; }
 .command-results button span { min-width: 0; overflow-wrap: anywhere; }
 .file-search-empty { padding: 10px 16px; font-size: 12px; color: var(--muted); }
 
