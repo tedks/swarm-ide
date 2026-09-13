@@ -2,7 +2,7 @@
 // supplies the utility-process transport, not a fake build executor.
 import assert from "node:assert/strict";
 import { EventEmitter } from "node:events";
-import { mkdtemp, mkdir, copyFile, writeFile, chmod, rm, symlink } from "node:fs/promises";
+import { mkdtemp, mkdir, copyFile, readFile, writeFile, chmod, rm, symlink } from "node:fs/promises";
 import { createRequire } from "node:module";
 import { execFileSync } from "node:child_process";
 import { tmpdir } from "node:os";
@@ -17,6 +17,9 @@ try {
   const root = join(scratch, "repo"); await mkdir(root);
   const system = process.arch === "arm64" ? "aarch64-linux" : "x86_64-linux";
   await copyFile(join(process.cwd(), "flake.lock"), join(root, "flake.lock"));
+  const lockedFlake = await readFile(join(root, "flake.lock"), "utf8");
+  const locked = JSON.parse(lockedFlake), nixpkgsLock = locked.nodes[locked.nodes.root.inputs.nixpkgs];
+  assert.deepEqual(nixpkgsLock.original, { owner: "NixOS", ref: "nixos-unstable", repo: "nixpkgs", type: "github" });
   await writeFile(join(root, "flake.nix"), `{
   inputs.nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
   outputs = { self, nixpkgs }: let
@@ -95,10 +98,49 @@ try {
       await new Promise((resolve) => setTimeout(resolve, 100));
     }
   }
-  const before = await read(); assert.equal(before.jobs.length, 8);
+  const cancelName = `swarm-cancel-${process.pid}-${Date.now()}`;
+  await writeFile(join(root, "flake.nix"), `{
+  inputs.nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
+  outputs = { self, nixpkgs }: let
+    pkgs = nixpkgs.legacyPackages.${system};
+    cancelProof = pkgs.runCommand "${cancelName}" {} "sleep 10; mkdir -p $out";
+  in {
+    packages.${system}.cancelProof = cancelProof;
+    devShells.${system}.default = pkgs.mkShell { packages = [ cancelProof ]; };
+  };
+}
+`);
+  const cancelOutput = execFileSync(runtimePrograms.nix,
+    ["eval", "--no-update-lock-file", "--raw", `.#packages.${system}.cancelProof`],
+    { cwd: root, encoding: "utf8", timeout: 30_000 }).trim();
+  const cancelAdmission = await send({ ...identity, type: "build.start", target: "//:environment_build" });
+  assert.equal(cancelAdmission.ok, true); const cancelJobId = cancelAdmission.buildJobs.jobs[0].id;
+  for (;;) {
+    const job = (await read()).jobs.find((item) => item.id === cancelJobId);
+    if (job.message === "Preparing project development environment") break;
+    assert.equal(job.status, "running", JSON.stringify(job));
+    await new Promise((resolve) => setTimeout(resolve, 50));
+  }
+  await new Promise((resolve) => setTimeout(resolve, 2000));
+  const cancelResponse = await send({ ...identity, type: "build.cancel", jobId: cancelJobId }); assert.equal(cancelResponse.ok, true);
+  for (;;) {
+    const job = (await read()).jobs.find((item) => item.id === cancelJobId);
+    if (job.status !== "running" && job.status !== "stopping") {
+      assert.equal(job.status, "cancelled", JSON.stringify(job)); assert.equal(job.cleanup, "confirmed");
+      assert.match(job.output, new RegExp(`building '.+${cancelName}\\.drv'`));
+      break;
+    }
+    await new Promise((resolve) => setTimeout(resolve, 50));
+  }
+  await new Promise((resolve) => setTimeout(resolve, 11_000));
+  assert.throws(() => execFileSync(runtimePrograms.nix, ["path-info", cancelOutput],
+    { cwd: root, timeout: 10_000, stdio: "pipe" }), /Command failed/);
+  assert.equal(await readFile(join(root, "flake.lock"), "utf8"), lockedFlake);
+  const before = await read(); assert.equal(before.jobs.length, 9);
   assert.match(before.jobs.find((job) => job.target === "//:broken").output, /intentional-build-failure/);
   assert.match(before.jobs.find((job) => job.target === "//:failing_test" && job.operation === "test").output, /intentional-test-failure/);
-  assert.equal(before.jobs[0].exitCode, 4); assert.match(before.jobs[0].message, /no tests were found/);
+  const noTests = before.jobs.find((job) => job.target === "//:useful" && job.operation === "test");
+  assert.equal(noTests.exitCode, 4); assert.match(noTests.message, /no tests were found/);
   assert.ok(milestones.some((item) => item.target === "//:useful" && item.message.startsWith("Configured //:useful")), JSON.stringify(milestones));
   assert.ok(milestones.some((item) => item.target === "//:environment_build" && item.message === "Preparing project development environment"), JSON.stringify(milestones));
   // Editing source and publishing a new workspace snapshot must not clear jobs.
@@ -117,6 +159,7 @@ try {
   assert.deepEqual((await read()).jobs, before.jobs);
   await shutdown();
   console.log(JSON.stringify({ passed: true, actualWorkerRouting: true, lockedFlakeDevelopmentEnvironment: true,
+    lockRemainedByteIdentical: true, daemonPreparationCancelled: true,
     scrubbedRuntimePathCommands: Object.keys(runtimePrograms).sort(), actualPassingAndFailingTests: true, noTestsFails: true,
     buildOnlyDoesNotPassFailingTests: true, explicitTestOverridesNoBuildAndManualFilter: true, targets: before.jobs, beforeExitMilestones: milestones,
     retainedAfterBrokerSaveAndCompletedDependencyQuery: true, ownedCleanup: stopped }, null, 2));

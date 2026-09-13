@@ -231,6 +231,24 @@ describe("fixed target operation execution", () => {
       error: expect.stringMatching(/development environment could not be prepared/) });
     await executor.dispose();
   });
+  it("labels bounded output failure before Bazel starts as a preparation failure", async () => {
+    vi.stubEnv("PATH", "/fixed/bin");
+    vi.stubEnv("SWARM_BAZEL_BIN", "/nix/store/fixed/bin/bazel-7.6.0-linux-x86_64");
+    vi.stubEnv("SWARM_BAZEL_JAVA_HOME", "/nix/store/fixed-java");
+    vi.mocked(stat).mockImplementation(async (path) => {
+      if (`${path}` === "/owned/flake/flake.nix") return { isFile: () => true } as Awaited<ReturnType<typeof stat>>;
+      throw Object.assign(new Error("missing"), { code: "ENOENT" });
+    });
+    vi.mocked(createOwnedCodexTransport).mockImplementation((_options, sink) => {
+      queueMicrotask(() => sink.stderr(Buffer.alloc(8 * 1024 * 1024 + 1)));
+      return { write() {}, close: async () => confirmed };
+    });
+    const executor = createTargetBuildExecutor("/owned/flake");
+    const result = await executor.run("//pkg:test", new AbortController().signal, () => {}, "test");
+    expect(result).toMatchObject({ cleanup: "confirmed",
+      error: expect.stringMatching(/development environment could not be prepared: Tests output exceeded its 8 MiB limit/) });
+    await executor.dispose();
+  });
   it("reports an unavailable Nix runtime before launching a flake job", async () => {
     vi.stubEnv("PATH", "/fixed/bin");
     vi.stubEnv("SWARM_BAZEL_BIN", "/nix/store/fixed/bin/bazel-7.6.0-linux-x86_64");
@@ -253,7 +271,7 @@ describe("fixed target operation execution", () => {
     vi.stubEnv("PATH", "/fixed/bin");
     vi.stubEnv("SWARM_BAZEL_BIN", "/nix/store/fixed/bin/bazel-7.6.0-linux-x86_64");
     vi.stubEnv("SWARM_BAZEL_JAVA_HOME", "/nix/store/fixed-java");
-    let assertionFailure = false;
+    let failure: "dependency" | "module" | "assertion" = "dependency";
     vi.mocked(stat).mockImplementation(async (path) => {
       const value = `${path}`;
       if (value === "/owned/flake/flake.nix" || value === "/owned/flake/pnpm-lock.yaml" || value.includes("bazel-started-")) {
@@ -263,7 +281,9 @@ describe("fixed target operation execution", () => {
     });
     vi.mocked(createOwnedCodexTransport).mockImplementation((_options, sink) => {
       queueMicrotask(() => {
-        sink.stderr(Buffer.from(assertionFailure ? "AssertionError: expected true\n" : "ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL Command esbuild not found\n"));
+        const output = failure === "dependency" ? "ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL Command esbuild not found\n" :
+          failure === "module" ? "Error: Cannot find module './broken-local-import.js'\n" : "AssertionError: expected true\n";
+        sink.stderr(Buffer.from(output));
         sink.exit(1); sink.end();
       });
       return { write() {}, close: async () => confirmed };
@@ -271,7 +291,11 @@ describe("fixed target operation execution", () => {
     const executor = createTargetBuildExecutor("/owned/flake");
     const dependency = await executor.run("//pkg:test", new AbortController().signal, () => {}, "test");
     expect(dependency).toMatchObject({ exitCode: 1, error: expect.stringContaining("nix develop --command pnpm install --frozen-lockfile") });
-    assertionFailure = true;
+    failure = "module";
+    const moduleFailure = await executor.run("//pkg:test", new AbortController().signal, () => {}, "test");
+    expect(moduleFailure).toMatchObject({ exitCode: 1, output: "Error: Cannot find module './broken-local-import.js'\n" });
+    expect(moduleFailure.error).toBeUndefined();
+    failure = "assertion";
     const assertion = await executor.run("//pkg:test", new AbortController().signal, () => {}, "test");
     expect(assertion).toMatchObject({ exitCode: 1, output: "AssertionError: expected true\n" });
     expect(assertion.error).toBeUndefined();

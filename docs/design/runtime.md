@@ -227,13 +227,21 @@ has finished preparing, then forwards Bazel's argv without a shell. Preparation,
 Bazel, Stop, deadline, output bounds, drain and cleanup therefore share one job
 lifetime. The installed Swarm package includes the Nix CLI needed to enter a
 project environment but does not bundle pnpm or arbitrary project toolchains.
-Missing or stale flake locks fail as preparation instead of being rewritten.
-Repositories without `flake.nix` keep the direct pinned-Bazel path. Legacy
-`shell.nix` environments are not inferred in this implementation.
+That client uses the host's configured Nix store/daemon, whose protocol must be
+compatible; a missing or incompatible store service is a preparation failure.
+On daemon-backed hosts, derivation builders are not PID-namespace descendants.
+Closing the owned client requests daemon cancellation; the actual probe starts
+an uncached ten-second derivation, cancels after its build begins, waits beyond
+its natural completion, and requires the output to remain unrealized. Work for
+the same derivation may legitimately continue when another Nix client also owns
+it. Cleanup confirmation attests the Swarm-owned client tree, not shutdown of
+the shared system daemon. Missing or stale flake locks fail as preparation
+instead of being created or rewritten. Repositories without `flake.nix` keep
+the direct pinned-Bazel path. Legacy `shell.nix` environments are not inferred.
 
 Swarm never installs project dependencies as a side effect of Build or Test. If
-a failed flake job has a pnpm lock, lacks `node_modules`, and reports a recognized
-missing-package diagnostic, its existing job message adds the explicit setup
+a failed flake job has a pnpm lock, lacks root `node_modules`, and reports pnpm's
+explicit missing-command diagnostic, its existing job message adds the setup
 command `nix develop --command pnpm install --frozen-lockfile`; the real Bazel
 exit code and retained output remain unchanged. Assertion failures are not
 reclassified as setup failures.
@@ -258,7 +266,11 @@ cancellation, workspace isolation and one-command/no-replay behavior.
 `//tools/build-graph:target-probe` consumes its probe module, sources, repository
 flake lock and desktop bundle; it scrubs the parent development PATH, then
 exercises actual worker routing and owned Build/Test targets that require a tool
-provided only by the disposable project's locked Nix development shell.
+provided only by the disposable project's locked Nix development shell. It also
+proves lock bytes remain unchanged and daemon-side work stops after preparation
+cancellation. `//tools/build-graph:installed-package-proof` accepts a built
+`swarm-ide` Nix output, checks its worker and launcher, locates its closed-over
+Nix CLI, and runs the installed command's help path with an empty environment.
 
 ## Dependency setup and demo applicability
 

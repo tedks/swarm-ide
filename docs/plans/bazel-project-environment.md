@@ -28,8 +28,8 @@ Nix-plus-Bazel process tree.
 - [x] (2026-09-13 19:54Z) Extended and passed the actual packaged-worker proof with a dev-shell-only executable while
   scrubbing inherited development environment state.
 - [ ] Update `docs/design/runtime.md`, `.swarm/plans.json`, this plan, seam and verification
-  notes; completed: living design and mapping edits; remaining: final focused/package gates,
-  seam/verification notes and council review to a clean fixpoint.
+  notes; completed: living design/mapping edits, first council triage and fix proof;
+  remaining: final package gates, seam/verification notes and clean convergence round.
 - [ ] Commit, push, finish Ditz, synchronize metadata, and leave a ready PR for ROOT.
 
 ## Surprises & Discoveries
@@ -52,6 +52,11 @@ Nix-plus-Bazel process tree.
   parsing Nix output and does not weaken process ownership.
   Evidence: the actual packaged probe observed preparation followed by BEP milestones;
   all eight jobs reported `cleanup: confirmed`.
+- Observation: A daemon-backed Nix installation builds derivations outside Swarm's PID
+  namespace, so namespace cleanup alone cannot prove preparation work stopped.
+  Evidence: council reviewers identified the boundary; the revised actual probe observed
+  an uncached ten-second derivation start, cancelled the owned client, waited eleven seconds,
+  and confirmed the derivation output was still unrealized and the lock byte-identical.
 
 ## Decision Log
 
@@ -76,12 +81,19 @@ Nix-plus-Bazel process tree.
   Rationale: The marker survives bounded output truncation, cannot collide across jobs, and
   makes assertion/setup classification independent of Nix's wording.
   Date/Author: 2026-09-13 / Codex.
+- Decision: Treat the host Nix daemon as a shared prerequisite, not a process Swarm can own,
+  and prove its unique job work is abandoned when the owned client disconnects.
+  Rationale: Another client may legitimately keep shared derivation work alive, but a unique
+  cancelled Swarm preparation must not survive. Cleanup wording documents that it attests
+  the client namespace, not shutdown of the shared system daemon.
+  Date/Author: 2026-09-13 / Codex.
 
 ## Outcomes & Retrospective
 
 The packaged-worker proof passes for both a build action and a test executable that depend
-on a tool available only in the selected locked flake. Unit implementation and living-design
-mapping are complete. Package build, review convergence, and landing remain.
+on a tool available only in the selected locked flake, and proves unique daemon work does
+not survive preparation cancellation. The actual Nix package builds and contains the Nix
+client plus launcher. First council findings are fixed; convergence and landing remain.
 
 ## Context and Orientation
 
@@ -120,8 +132,9 @@ Add Nix to the installed package wrapper PATH. Extend the existing actual target
 narrow companion target so it builds the packaged worker, creates a disposable flake whose
 action resolves an executable available only through its dev shell, scrubs inherited Nix
 development variables and PATH tools, and verifies both Build and Test through the real
-worker. The fixture must use a local path input or generated flake expression so it neither
-depends on unpinned network state nor changes this repository's locks.
+worker. The fixture uses the repository's asserted nixpkgs lock. It may use the host's
+configured substituter on first realization, but must never depend on an unpinned input or
+change this repository's or the fixture's lock.
 
 Finally update the runtime design and mapping, run the focused target checks and actual
 proof through `nix develop --command bazel`, and record tool versions and source scope.
@@ -141,6 +154,11 @@ Run focused checks after the regression and implementation:
 Run the installed-path proof without relying on cached test results:
 
     nix develop --command bazel run --jobs=3 //tools/build-graph:target-probe
+
+Build and inspect the installed closure with no inherited runtime environment:
+
+    nix build .#swarm-ide --no-link --print-out-paths
+    nix develop --command bazel run --jobs=3 //tools/build-graph:installed-package-proof -- /nix/store/<printed-swarm-path>
 
 Run design/mapping checks covering the touched living documentation:
 
@@ -193,3 +211,7 @@ argv-preserving, no-install boundary after inspecting the existing implementatio
 Plan revision note (2026-09-13 19:55Z): Updated after the red regression, implementation,
 and packaged-worker proof to record the marker decision, green evidence, and remaining
 package/review gates.
+
+Plan revision note (2026-09-13 20:12Z): Updated after council round one to record daemon
+cancellation and installed-package proof decisions, narrower failure classification, and
+the first fix delta's actual evidence.

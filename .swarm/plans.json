@@ -790,6 +790,7 @@
       "tests/target-build-jobs.test.ts",
       "tools/build-app.sh",
       "tools/build-graph/target-probe.mjs",
+      "tools/build-graph/installed-package-proof.sh",
       "tools/build-graph/BUILD.bazel",
       "app/renderer/build-resources/use-target-builds.ts",
       "app/renderer/build-resources/BuildResources.tsx"
@@ -891,7 +892,15 @@
         {
           "label": "//tools/build-graph:environment-checks",
           "role": "Checks project environment selection, direct fallback, setup errors, cancellation, isolation and exact single execution",
-          "dependencies": [{ "label": "//:quality_sources", "relation": "data" }]
+          "dependencies": [
+            { "label": "//:quality_sources", "relation": "data" },
+            { "label": "//docs/design:sources", "relation": "data" }
+          ]
+        },
+        {
+          "label": "//tools/build-graph:installed-package-proof",
+          "role": "Checks a built Nix package contains the worker, launcher and Nix client and starts with an empty inherited environment",
+          "dependencies": []
         },
         {
           "label": "//tools/build-graph:compat-checks",
@@ -920,7 +929,7 @@
         },
         {
           "label": "//tools/build-graph:target-probe",
-          "role": "Builds and tests real targets needing a locked project dev-shell tool through packaged worker routes with a scrubbed runtime PATH",
+          "role": "Builds/tests dev-shell-only targets and cancels an uncached daemon realization through packaged worker routes with a scrubbed runtime PATH",
           "dependencies": [
             { "label": "//tools/build-graph:sources", "relation": "data" },
             { "label": "//tools/build-graph:target-probe-module", "relation": "data" },

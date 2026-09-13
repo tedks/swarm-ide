@@ -87,7 +87,7 @@ async function pathIs(path: string, kind: "file" | "directory"): Promise<boolean
   }
 }
 
-const missingPnpmDependency = /(?:ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL[^\n]*(?:command|executable)[^\n]*not found|Cannot find (?:module|package)|MODULE_NOT_FOUND|node_modules\/(?:\.bin\/)?[^\s:]+[^\n]*(?:not found|No such file))/i;
+const missingPnpmDependency = /ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL[^\n]*(?:command|executable)[^\n]*not found/i;
 
 async function dependencySetupError(root: string, result: TargetBuildResult): Promise<string | undefined> {
   if (result.exitCode === 0 || result.error || !missingPnpmDependency.test(result.output) ||
@@ -132,8 +132,9 @@ export function createTargetBuildExecutor(root: string): TargetBuildExecutor {
           nodeExecutable: node!, unshareExecutable: unshare!, setprivExecutable: setpriv!, ownerScript: join(__dirname, "agents/owner-process.js"),
           args }, sink), signal, undefined, operation);
         blocked = result.cleanup !== "confirmed";
-        if (flake && !signal.aborted && !result.error && !await pathIs(started, "file")) {
-          return { ...result, error: "Project development environment could not be prepared without changing its lock file; inspect the retained Nix output" };
+        if (flake && !signal.aborted && !await pathIs(started, "file")) {
+          const detail = result.error ? `: ${result.error}` : " without changing its lock file; inspect the retained Nix output";
+          return { ...result, error: `Project development environment could not be prepared${detail}` };
         }
         const setupError = flake ? await dependencySetupError(root, result) : undefined;
         if (setupError) return { ...result, error: setupError };
