@@ -4,11 +4,15 @@ import { collectTargetBuild, createTargetBuildExecutor, type TargetBuildResult }
 import { BuildJobRequestSchema, TargetBuildJobSchema } from "../protocol/build-jobs";
 import { createOwnedCodexTransport } from "../core/agents/owner";
 import { watchBuildProgress } from "../core/build-progress";
+import { existsSync } from "node:fs";
 import { mkdtemp, realpath, rm, stat } from "node:fs/promises";
 import type { CodexTransportSink } from "../core/agents/codex-app-server";
 
 vi.mock("../core/agents/owner", () => ({ createOwnedCodexTransport: vi.fn() }));
 vi.mock("../core/build-progress", () => ({ watchBuildProgress: vi.fn(() => ({ stop: async () => {} })) }));
+vi.mock("node:fs", async (importOriginal) => ({
+  ...await importOriginal<typeof import("node:fs")>(), existsSync: vi.fn(() => false),
+}));
 vi.mock("node:fs/promises", async (importOriginal) => ({
   ...await importOriginal<typeof import("node:fs/promises")>(),
   access: vi.fn(async () => {}), realpath: vi.fn(async (path: string) => path),
@@ -18,6 +22,7 @@ vi.mock("node:fs/promises", async (importOriginal) => ({
 afterEach(() => {
   vi.unstubAllEnvs(); vi.clearAllMocks();
   vi.mocked(realpath).mockImplementation(async (path) => `${path}`);
+  vi.mocked(existsSync).mockReturnValue(false);
   vi.mocked(stat).mockImplementation(async () => { throw Object.assign(new Error("missing"), { code: "ENOENT" }); });
   vi.mocked(mkdtemp).mockResolvedValue("/tmp/swarm-selected-target-unit");
 });
@@ -217,6 +222,26 @@ describe("fixed target operation execution", () => {
       root: "/owned/plain", executable: "/nix/store/fixed/bin/bazel-7.6.0-linux-x86_64",
       args: expect.arrayContaining(["build", "--", "//pkg:chosen"]),
     });
+    expect(progress).not.toHaveBeenCalledWith("Building project development environment");
+    await executor.dispose();
+  });
+  it("does not mislabel matching Bazel output after the launcher marker", async () => {
+    vi.stubEnv("PATH", "/fixed/bin");
+    vi.stubEnv("SWARM_BAZEL_BIN", "/nix/store/fixed/bin/bazel-7.6.0-linux-x86_64");
+    vi.stubEnv("SWARM_BAZEL_JAVA_HOME", "/nix/store/fixed-java");
+    vi.mocked(stat).mockImplementation(async (path) => {
+      if (`${path}` === "/owned/flake/flake.nix" || `${path}`.includes("bazel-started-")) {
+        return { isFile: () => true } as Awaited<ReturnType<typeof stat>>;
+      }
+      throw Object.assign(new Error("missing"), { code: "ENOENT" });
+    });
+    vi.mocked(existsSync).mockImplementation((path) => `${path}`.includes("bazel-started-"));
+    vi.mocked(createOwnedCodexTransport).mockImplementation((_options, sink) => {
+      queueMicrotask(() => { sink.stderr(Buffer.from("building '/nix/store/bazel-action.drv'...\n")); sink.exit(0); sink.end(); });
+      return { write() {}, close: async () => confirmed };
+    });
+    const executor = createTargetBuildExecutor("/owned/flake"), progress = vi.fn();
+    await executor.run("//pkg:chosen", new AbortController().signal, progress);
     expect(progress).not.toHaveBeenCalledWith("Building project development environment");
     await executor.dispose();
   });
