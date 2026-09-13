@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { PROTOCOL_VERSION, parseCoreResponseForRequest } from "../../../protocol/schema";
 import { BUILD_GRAPH_LIMITS, type BuildGraphObservation } from "../../../protocol/build-graph";
 import type { BuildLinkSnapshot } from "./layers";
@@ -14,15 +14,17 @@ export const BUILD_CONTEXT_TIMING = { changeMs: 2000, pendingMs: 500, cycleMs: 4
 export function useBuildGraph(repositoryId: string | undefined, worldId: string | undefined, realm: string, enabled: boolean,
   { changeToken }: AutomaticBuildContextOptions = {}) {
   const [observation, setObservation] = useState<BuildGraphObservation>();
+  const [settledChangeToken, setSettledChangeToken] = useState(changeToken);
   const current = useRef({ repositoryId, worldId, realm, enabled });
   current.current = { repositoryId, worldId, realm, enabled };
-  const controls = useRef<{ refresh(force: boolean): Promise<void>; cancel(): Promise<void>; changed(): void } | undefined>(undefined);
+  const controls = useRef<{ refresh(force: boolean): Promise<void>; cancel(): Promise<void>; changed(token: string | undefined): void } | undefined>(undefined);
   const refresh = useCallback(async (force = true) => { await controls.current?.refresh(force); }, []);
   const cancel = useCallback(async () => { await controls.current?.cancel(); }, []);
   useEffect(() => {
     setObservation((old) => old && old.repositoryId === repositoryId && old.worldId === worldId ? { ...old, status: "stale", message: "Core/view lifetime changed; observation requires revalidation." } : undefined);
     if (!enabled || !repositoryId || !worldId || !window.swarm) return;
     let disposed = false, foreground = document.hasFocus(), pending = false, queued = false, forceQueued = false;
+    let pendingChangeToken = changeToken;
     let timer: ReturnType<typeof setTimeout> | undefined, deadline = 0, setupGeneration: number | undefined;
     const valid = () => !disposed && current.current.enabled && current.current.repositoryId === repositoryId &&
       current.current.worldId === worldId && current.current.realm === realm;
@@ -46,6 +48,7 @@ export function useBuildGraph(repositoryId: string | undefined, worldId: string 
       if (!active()) return;
       if (pending) { queued = true; forceQueued ||= force; return; }
       clear(); pending = true;
+      const ownChangeToken = pendingChangeToken;
       let follow = false;
       try {
         const request = { protocolVersion: PROTOCOL_VERSION, requestId: `build-graph:${crypto.randomUUID()}`, type: "buildGraph.observe" as const, repositoryId: repositoryId!, worldId: worldId!, refresh: force };
@@ -62,6 +65,7 @@ export function useBuildGraph(repositoryId: string | undefined, worldId: string 
       } catch { retain("error", "Build graph response unavailable; retained data is not current."); }
       finally {
         pending = false;
+        if (valid() && ownChangeToken === pendingChangeToken) setSettledChangeToken(ownChangeToken);
         if (active()) {
           if (queued) {
             const forceNext = forceQueued; queued = false; forceQueued = false;
@@ -84,7 +88,7 @@ export function useBuildGraph(repositoryId: string | undefined, worldId: string 
           if (valid() && response.ok && response.buildGraph) { setObservation(response.buildGraph); begin(0); }
         } catch { retain("error", "Could not confirm cancellation. Check again before starting more work."); }
       },
-      changed() { begin(BUILD_CONTEXT_TIMING.changeMs); } };
+      changed(token: string | undefined) { pendingChangeToken = token; begin(BUILD_CONTEXT_TIMING.changeMs); } };
     controls.current = controller;
     const blur = () => { foreground = false; clear(); queued = false; forceQueued = false; };
     const focus = () => { foreground = true; begin(BUILD_CONTEXT_TIMING.changeMs); };
@@ -104,12 +108,13 @@ export function useBuildGraph(repositoryId: string | undefined, worldId: string 
     };
   }, [repositoryId, worldId, realm, enabled]);
   const previousToken = useRef(changeToken);
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (previousToken.current === changeToken) return;
     previousToken.current = changeToken;
-    controls.current?.changed();
+    controls.current?.changed(changeToken);
   }, [changeToken]);
-  return { observation: observation && observation.repositoryId === repositoryId && observation.worldId === worldId ? observation : undefined, refresh, cancel };
+  return { observation: observation && observation.repositoryId === repositoryId && observation.worldId === worldId ? observation : undefined,
+    changePending: settledChangeToken !== changeToken, refresh, cancel };
 }
 
 export function buildGraphLinks(observation: BuildGraphObservation | undefined): BuildLinkSnapshot | undefined {

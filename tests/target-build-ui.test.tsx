@@ -76,6 +76,22 @@ it("polls only active jobs, retains completed rows and never rebuilds on refresh
   expect(vi.mocked(window.swarm.request).mock.calls.filter(([request]) => request.type === "build.start")).toHaveLength(1);
 });
 
+it("withholds admission authority until the initial and focused job observations settle", async () => {
+  vi.useFakeTimers();
+  const releases: Array<() => void> = [];
+  window.swarm = { request: vi.fn((request: CoreRequest) => new Promise<CoreResponse>((resolve) => {
+    releases.push(() => resolve(response(request)));
+  })), onEvent: () => () => {} };
+  const h = renderHook(() => useTargetBuilds(snapshot.project.id, snapshot.world.id, "core-1", true));
+  expect(h.result.current.ready).toBe(false);
+  await act(async () => releases.shift()!()); await tick();
+  expect(h.result.current.ready).toBe(true);
+  act(() => window.dispatchEvent(new Event("focus")));
+  expect(h.result.current.ready).toBe(false);
+  await act(async () => releases.shift()!()); await tick();
+  expect(h.result.current.ready).toBe(true);
+});
+
 it("recovers polling when Start overtakes a held older observation without overwriting the new job", async () => {
   vi.useFakeTimers(); let release!: () => void;
   window.swarm = { request: vi.fn().mockImplementationOnce((request: CoreRequest) => new Promise((resolve) => { release = () => resolve(response(request)); }))
