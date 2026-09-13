@@ -1,6 +1,6 @@
 { lib, stdenv, buildBazelPackage, nodejs_22, pnpm, pnpmConfigHook, fetchPnpmDeps
 , writableTmpDirAsHomeHook, autoPatchelfHook, makeWrapper
-, bazel_7, jdk21_headless, electron, git, tmux, util-linux, src
+, bazel_7, jdk21_headless, electron, git, tmux, util-linux, nix, src
 }:
 let
   pnpmDeps = fetchPnpmDeps {
@@ -70,7 +70,7 @@ in buildBazelPackage {
     })} "$out/share/swarm-ide/package.json"
     makeWrapper ${nodejs_22}/bin/node "$out/bin/swarm" \
       --add-flags "$out/share/swarm-ide/cli/main.mjs" \
-      --prefix PATH : ${lib.makeBinPath [ nodejs_22 git tmux util-linux bazel_7 ]} \
+      --prefix PATH : ${lib.makeBinPath [ nodejs_22 git tmux util-linux bazel_7 nix ]} \
       --set-default SWARM_BAZEL_BIN '${bazelBinary}' \
       --set-default SWARM_BAZEL_JAVA_HOME '${jdk21_headless}'
     ln -s swarm "$out/bin/swarm-ide"

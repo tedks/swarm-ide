@@ -1,7 +1,8 @@
-import { constants } from "node:fs";
-import { access, mkdtemp, realpath, rm } from "node:fs/promises";
+import { constants, existsSync } from "node:fs";
+import { access, mkdtemp, realpath, rm, stat } from "node:fs/promises";
 import { delimiter, join } from "node:path";
 import { tmpdir } from "node:os";
+import { randomUUID } from "node:crypto";
 import { createOwnedCodexTransport } from "./agents/owner";
 import type { CodexTransport, CodexTransportSink } from "./agents/codex-app-server";
 import { watchBuildProgress } from "./build-progress";
@@ -26,7 +27,8 @@ export function buildOutputText(bytes: Uint8Array): string {
 
 /** Exit is not cleanup. Close the owner, drain its output, then report the result. */
 export function collectTargetBuild(connect: (sink: CodexTransportSink) => CodexTransport, signal: AbortSignal,
-  timeoutMs = 15 * 60_000, operation: TargetBuildOperation = "build"): Promise<TargetBuildResult> {
+  timeoutMs = 15 * 60_000, operation: TargetBuildOperation = "build", launchTool?: string,
+  observeOutput?: (output: string) => void): Promise<TargetBuildResult> {
   const activity = operation === "test" ? "Tests" : "Build";
   return new Promise((resolve, reject) => {
     if (signal.aborted) { resolve({ exitCode: null, cleanup: "confirmed", output: "", error: `${activity} cancelled before launch` }); return; }
@@ -45,6 +47,7 @@ export function collectTargetBuild(connect: (sink: CodexTransportSink) => CodexT
     const consume = (bytes: Uint8Array) => {
       total += bytes.byteLength;
       tail = Buffer.concat([tail, bytes]).subarray(-8192);
+      observeOutput?.(buildOutputText(tail));
       if (total > 8 * 1024 * 1024) { error = `${activity} output exceeded its 8 MiB limit`; finish(); }
     };
     try {
@@ -56,7 +59,7 @@ export function collectTargetBuild(connect: (sink: CodexTransportSink) => CodexT
           if (transport) void close().then((evidence) => { if (evidence.status !== "confirmed" || ended) finish(); }, () => { error = `${activity} cleanup failed`; finish(); });
           if (ended) finish();
         },
-        error() { error = operation === "test" ? "Tests could not start" : "Bazel could not start"; finish(); },
+        error() { error = launchTool ? `${launchTool} could not start` : operation === "test" ? "Tests could not start" : "Bazel could not start"; finish(); },
       });
       signal.addEventListener("abort", abort, { once: true });
       if (signal.aborted) abort();
@@ -75,6 +78,25 @@ async function executable(name: string): Promise<string> {
   throw new Error(`Required ${name} executable is unavailable`);
 }
 
+async function pathIs(path: string, kind: "file" | "directory"): Promise<boolean> {
+  try {
+    const value = await stat(path);
+    return kind === "file" ? value.isFile() : value.isDirectory();
+  } catch (error) {
+    const code = (error as NodeJS.ErrnoException).code;
+    if (code === "ENOENT" || code === "ENOTDIR") return false;
+    throw error;
+  }
+}
+
+const missingPnpmDependency = /ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL[^\n]*(?:command|executable)[^\n]*not found/i;
+
+async function dependencySetupError(root: string, result: TargetBuildResult): Promise<string | undefined> {
+  if (result.exitCode === 0 || result.error || !missingPnpmDependency.test(result.output) ||
+      !await pathIs(join(root, "pnpm-lock.yaml"), "file") || await pathIs(join(root, "node_modules"), "directory")) return undefined;
+  return "Project dependencies are not materialized. Run nix develop --command pnpm install --frozen-lockfile in this workspace, then retry";
+}
+
 /** One private Bazel cache per opened workspace/core lifetime; no shared server. */
 export function createTargetBuildExecutor(root: string): TargetBuildExecutor {
   let scratch: Promise<string> | undefined, blocked = false;
@@ -83,23 +105,47 @@ export function createTargetBuildExecutor(root: string): TargetBuildExecutor {
       TargetBuildOperationSchema.parse(operation);
       if (blocked) throw new Error("Previous build cleanup is unresolved");
       const [node, unshare, setpriv] = await Promise.all(["node", "unshare", "setpriv"].map(executable));
+      const flake = await pathIs(join(root, "flake.nix"), "file");
       const bazel = process.env.SWARM_BAZEL_BIN, java = process.env.SWARM_BAZEL_JAVA_HOME;
       if (!bazel?.startsWith("/nix/store/") || !java?.startsWith("/nix/store/") ||
           !/\/bazel-7\.[0-9.]+-linux-(x86_64|aarch64)$/.test(bazel)) throw new Error("Launch Swarm through its Nix package to use the pinned Bazel runtime");
       await Promise.all([access(bazel, constants.X_OK), access(join(java, "bin/java"), constants.X_OK)]);
       const directory = await (scratch ??= mkdtemp(join(tmpdir(), "swarm-target-build-")));
       const events = join(directory, `events-${Date.now()}.jsonl`);
+      const started = join(directory, `bazel-started-${randomUUID()}`);
+      const bazelArgs = ["--batch", "--nosystem_rc", "--nohome_rc", "--host_jvm_args=-Xmx512m", "--host_jvm_args=-XX:ActiveProcessorCount=3",
+        `--server_javabase=${java}`, `--output_user_root=${directory}`, `--output_base=${join(directory, "output")}`,
+        operation, "--jobs=3", "--color=no", "--curses=no", `--build_event_json_file=${events}`,
+        // A selected test is explicit intent, even if workspace-wide test
+        // defaults filter manual targets or disable build execution.
+        ...(operation === "test" ? ["--build", "--test_output=errors", "--test_tag_filters="] : []), "--", target];
+      let command = bazel, args = bazelArgs;
+      if (flake) {
+        progress("Preparing project development environment");
+        try { command = await executable("nix"); }
+        catch { throw new Error("This project's Nix development environment cannot be prepared because the Nix executable is unavailable"); }
+        const launcher = join(__dirname, "target-build-launcher.mjs");
+        await access(launcher, constants.R_OK);
+        args = ["develop", "--no-update-lock-file", "--command", node!, launcher, started, bazel, ...bazelArgs];
+      }
       const reader = watchBuildProgress(events, (message) => progress(operation === "test" ? `Tests: ${message}` : message));
+      let announcedEnvironmentBuild = false;
       try {
-        const result = await collectTargetBuild((sink) => createOwnedCodexTransport({ root, executable: bazel,
+        const result = await collectTargetBuild((sink) => createOwnedCodexTransport({ root, executable: command,
           nodeExecutable: node!, unshareExecutable: unshare!, setprivExecutable: setpriv!, ownerScript: join(__dirname, "agents/owner-process.js"),
-          args: ["--batch", "--nosystem_rc", "--nohome_rc", "--host_jvm_args=-Xmx512m", "--host_jvm_args=-XX:ActiveProcessorCount=3",
-            `--server_javabase=${java}`, `--output_user_root=${directory}`, `--output_base=${join(directory, "output")}`,
-            operation, "--jobs=3", "--color=no", "--curses=no", `--build_event_json_file=${events}`,
-            // A selected test is explicit intent, even if workspace-wide test
-            // defaults filter manual targets or disable build execution.
-            ...(operation === "test" ? ["--build", "--test_output=errors", "--test_tag_filters="] : []), "--", target] }, sink), signal, undefined, operation);
+          args }, sink), signal, undefined, operation, flake ? "Nix" : undefined, flake ? (output) => {
+            if (!announcedEnvironmentBuild && !existsSync(started) && /building '\/nix\/store\/[^']+\.drv'/.test(output)) {
+              announcedEnvironmentBuild = true;
+              progress("Building project development environment");
+            }
+          } : undefined);
         blocked = result.cleanup !== "confirmed";
+        if (flake && !signal.aborted && !await pathIs(started, "file")) {
+          const detail = result.error ? `: ${result.error}` : " without changing its lock file; inspect the retained Nix output";
+          return { ...result, error: `Project development environment could not be prepared${detail}` };
+        }
+        const setupError = flake ? await dependencySetupError(root, result) : undefined;
+        if (setupError) return { ...result, error: setupError };
         return result;
       } finally { await reader.stop(); }
     },
