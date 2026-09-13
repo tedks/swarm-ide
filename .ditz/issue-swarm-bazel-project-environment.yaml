@@ -26,3 +26,10 @@ log_events:
   who: Ted Smith
   what: started
   comment: ""
+- time: 2026-09-13T19:42:32-00:00
+  who: Ted Smith
+  what: commented
+  comment: 'Started in fix/bazel-project-environment. Scope: flake-based selected-target
+    environment loading inside the existing owned/cancellable job lifetime, non-Nix
+    fallback, setup/dependency/cancellation/isolation regressions, installed-path
+    proof, runtime design mappings; no UI or automatic installs.'
