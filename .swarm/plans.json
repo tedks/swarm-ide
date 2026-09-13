@@ -815,7 +815,7 @@
       "buildTargets": [
         {
           "label": "//tools/cli:checks",
-          "role": "Checks uncapped bounded Git worktree refresh, cancellation, private project settings, installed-launch arguments and serial exact-session tmux reconciliation",
+          "role": "Checks Git worktree refresh without an arbitrary record cap, bounded concurrency, exact roots, cancellation, private project settings, installed-launch arguments and serial exact-session tmux reconciliation",
           "dependencies": [{ "label": "//tools/cli:sources", "relation": "data" }]
         },
         {

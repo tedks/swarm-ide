@@ -146,8 +146,9 @@ current pane's checked socket/session and reuses that same discovery helper,
 filtering owners to the project's actual Git worktrees. The recurring asynchronous
 project refresh admits worktrees created after startup only when they retain the
 same Git common-directory identity. Its bounded Git listing has no arbitrary record
-count cutoff; each accessible non-bare, non-prunable root gets one identity probe
-under the existing cancellation and total deadline. Explicit selection continues to choose the
+count cutoff; each accessible non-bare, non-prunable root gets one combined repository
+and exact-top-level probe in a bounded worker pool under the existing cancellation
+and total deadline. Explicit selection continues to choose the
 project and tmux session independently. An empty selected session opens with an
 empty observed generation so a later supported owner can appear without restart.
 

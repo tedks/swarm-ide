@@ -301,10 +301,16 @@ describe("known worker registration", () => {
     await writeFile(f.extra, header(second, null, native(randomUUID())));
     expect((await discover({ socket: f.pane.socket, pane: f.pane.pane }))?.rollout).toBe(f.rollout);
 
+    await writeFile(f.other, header(first, null, native(second)));
+    await writeFile(f.extra, header(second, null, native(first)));
+    expect(await discover({ socket: f.pane.socket, pane: f.pane.pane })).toBeUndefined();
+    await writeFile(f.other, header(first, null, native(f.id)));
+
     // Exact-rollout behavior is unchanged even while other headers are ambiguous.
     for (const invalid of [
       header(second, null, "cli"),
       header(second, null, "unknown"),
+      header(second, null, { ...native(first), unexpected_variant: {} }),
       header(second, f.id), // forked_from_id is not native ownership evidence.
       header(second, null, native(second)),
       header(f.id, null, native(f.id)),

@@ -25,6 +25,7 @@ const asyncGit = (directory, args, environment, signal) => new Promise((resolveT
   }, (error, stdout) => { result = { error, stdout }; });
   child.once("close", () => result && !result.error ? resolveText(result.stdout) : reject(result?.error ?? new Error("Git refresh did not complete")));
 });
+const REFRESH_CONCURRENCY = 8;
 
 export function discoverProject(directory, environment = process.env) {
   let requested;
@@ -78,25 +79,34 @@ export async function refreshProject(project, environment = process.env, signal,
     }
     const entries = (await runGit(identity, ["worktree", "list", "--porcelain", "-z"], environment, controller.signal)).split("\0\0").filter(Boolean);
     check();
-    const worktrees = [];
-    for (const entry of entries) {
-      check();
-      const fields = entry.split("\0"), pathField = fields.find((part) => part.startsWith("worktree "));
-      if (!pathField || fields.includes("bare") || fields.some((part) => part === "prunable" || part.startsWith("prunable "))) continue;
-      try {
-        const path = await realpathAsync(pathField.slice(9));
-        // The exact common directory produced this worktree-root record. One
-        // probe detects a path that disappeared or was replaced by another
-        // repository without redundantly asking Git for the listed top level.
-        const commonText = await runGit(path, ["rev-parse", "--path-format=absolute", "--git-common-dir"], environment, controller.signal);
+    const accepted = new Array(entries.length); let cursor = 0;
+    const inspect = async () => {
+      for (;;) {
         check();
-        if (await realpathAsync(commonText.trimEnd()) !== identity) continue;
-        worktrees.push({ path, branch: fields.find((part) => part.startsWith("branch "))?.slice(7) });
-      } catch (error) {
-        check();
-        // Missing, stale or inaccessible worktrees are not live scan members.
+        const index = cursor++;
+        if (index >= entries.length) return;
+        const fields = entries[index].split("\0"), pathField = fields.find((part) => part.startsWith("worktree "));
+        if (!pathField || fields.includes("bare") || fields.some((part) => part === "prunable" || part.startsWith("prunable "))) continue;
+        try {
+          const path = await realpathAsync(pathField.slice(9));
+          // One process proves both repository membership and exact root; a
+          // bounded worker pool keeps large projects inside the total deadline.
+          const checked = await runGit(path,
+            ["rev-parse", "--path-format=absolute", "--git-common-dir", "--show-toplevel"], environment, controller.signal);
+          check();
+          const lines = checked.trimEnd().split("\n");
+          if (lines.length !== 2) continue;
+          const [common, top] = await Promise.all(lines.map((line) => realpathAsync(line)));
+          if (common !== identity || top !== path) continue;
+          accepted[index] = { path, branch: fields.find((part) => part.startsWith("branch "))?.slice(7) };
+        } catch (error) {
+          check();
+          // Missing, stale or inaccessible worktrees are not live scan members.
+        }
       }
-    }
+    };
+    await Promise.all(Array.from({ length: Math.min(REFRESH_CONCURRENCY, entries.length) }, inspect));
+    const worktrees = accepted.filter(Boolean);
     if (!worktrees.length) throw new Error(`No accessible worktree belongs to ${identity}.`);
     return { ...project, identity, worktrees };
   } catch (error) {

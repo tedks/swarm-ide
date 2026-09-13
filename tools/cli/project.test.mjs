@@ -99,7 +99,7 @@ test("removed saved association falls back to the managed empty registry", () =>
 
 test("live refresh admits more than 128 canonical worktree records without losing identity", async () => {
   const directory = mkdtempSync(join(tmpdir(), "swarm-project-refresh-"));
-  let calls = 0;
+  let calls = 0, active = 0, peak = 0;
   try {
     const paths = Array.from({ length: 130 }, (_, index) => join(directory, `worktree-${index}`));
     for (const path of paths) mkdirSync(path);
@@ -108,12 +108,33 @@ test("live refresh admits more than 128 canonical worktree records without losin
       runGit: async (cwd, args) => {
         calls++;
         if (cwd === directory) { assert.deepEqual(args, ["worktree", "list", "--porcelain", "-z"]); return entries; }
-        assert.deepEqual(args, ["rev-parse", "--path-format=absolute", "--git-common-dir"]);
-        return `${directory}\n`;
+        assert.deepEqual(args, ["rev-parse", "--path-format=absolute", "--git-common-dir", "--show-toplevel"]);
+        active++; peak = Math.max(peak, active);
+        await new Promise((resolve) => setImmediate(resolve));
+        active--;
+        return `${directory}\n${cwd}\n`;
       },
     });
     assert.deepEqual(refreshed.worktrees.map(({ path }) => path), paths);
     assert.equal(calls, paths.length + 1);
+    assert(peak > 1 && peak <= 8);
+  } finally { rmSync(directory, { recursive: true, force: true }); }
+});
+
+test("live refresh rejects a listed path redirected within the same repository", async () => {
+  const directory = mkdtempSync(join(tmpdir(), "swarm-project-refresh-root-"));
+  try {
+    const valid = join(directory, "valid"), redirected = join(directory, "redirected");
+    mkdirSync(valid); mkdirSync(redirected);
+    const entries = [valid, redirected].map((path) => `worktree ${path}\0HEAD 0000`).join("\0\0");
+    const refreshed = await refreshProject({ identity: directory, git: true, worktrees: [] }, process.env, undefined, {
+      runGit: async (cwd, args) => {
+        if (cwd === directory) return entries;
+        assert.deepEqual(args, ["rev-parse", "--path-format=absolute", "--git-common-dir", "--show-toplevel"]);
+        return `${directory}\n${valid}\n`;
+      },
+    });
+    assert.deepEqual(refreshed.worktrees, [{ path: valid, branch: undefined }]);
   } finally { rmSync(directory, { recursive: true, force: true }); }
 });
 
