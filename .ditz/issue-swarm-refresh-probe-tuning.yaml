@@ -14,3 +14,10 @@ log_events:
   who: Ted Smith
   what: created
   comment: ""
+- time: 2026-09-13T06:44:48-00:00
+  who: Ted Smith
+  what: commented
+  comment: 'Council round 3 was CLEAN. Follow-up only: tighten mocked Git argv assertions
+    and benchmark whether pairing each root''s common/top-level probes improves throughput
+    without doubling the bounded worker pool''s simultaneous subprocess pressure;
+    current sequential pair is correct and passes 130 real worktrees.'
