@@ -8,8 +8,8 @@ type: feature
 component: default
 release:
 reporter: Ted Smith <tedks@riseup.net>
-status: in_progress
-disposition:
+status: closed
+disposition: fixed
 creation_time: 2026-09-13T19:40:56-00:00
 references: []
 log_events:
@@ -37,3 +37,8 @@ log_events:
     fences, job-observation readiness, and immediate source-change invalidation. Focused
     Bazel gate passes 44 tests plus both TypeScript boundaries; desktop bundle passes;
     council reached CLEAN fixpoint. PR #156 is ready.'
+- time: 2026-09-13T20:30:13-00:00
+  who: Ted Smith
+  what: 'closed: fixed'
+  comment: 'Implemented, verified, pushed, and ready for review in PR #156; council
+    fixpoint CLEAN.'
