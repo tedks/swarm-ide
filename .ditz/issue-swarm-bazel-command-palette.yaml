@@ -28,3 +28,12 @@ log_events:
     with exact-label, workspace/core authority, stale catalogue, no-accidental-dispatch,
     file-search preservation, and focused Bazel proof boundaries; opened the draft
     PR.
+- time: 2026-09-13T20:30:12-00:00
+  who: Ted Smith
+  what: commented
+  comment: 'Implemented exact current-worktree Bazel build/test palette modes with
+    shared rule classification, one-shot current-authority dispatch through Builds
+    & resources, filename-command preservation, dirty/draft/camera retention, modal/IME/repeat
+    fences, job-observation readiness, and immediate source-change invalidation. Focused
+    Bazel gate passes 44 tests plus both TypeScript boundaries; desktop bundle passes;
+    council reached CLEAN fixpoint. PR #156 is ready.'
