@@ -1,0 +1,19 @@
+id: swarm-bazel-command-palette
+title: Run Bazel builds and tests from the command palette
+desc: Extend Ctrl+K palette with Build/Test actions and current-worktree Bazel target
+  completion. Preserve file search, explicit one-shot dispatch, source/draft/focus,
+  and use existing jobs. Companion shared runner environment correction is independently
+  owned.
+type: feature
+component: default
+release:
+reporter: Ted Smith <tedks@riseup.net>
+status: unstarted
+disposition:
+creation_time: 2026-09-13T19:40:56-00:00
+references: []
+log_events:
+- time: 2026-09-13T19:40:56-00:00
+  who: Ted Smith
+  what: created
+  comment: ""
