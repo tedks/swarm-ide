@@ -32,3 +32,10 @@ log_events:
   what: 'closed: fixed'
   comment: 'Hosted CI workflow removed in ready PR #157; direct checks and light native
     review are clean.'
+- time: 2026-09-13T20:15:21-00:00
+  who: Ted Smith
+  what: commented
+  comment: Follow-up commit 36f27ae9 corrected the two requested stale present-tense
+    hosted-CI claims in docs/development-loop.md and docs/agent-journey.md with truthful
+    local Bazel target and undeclared-output evidence wording. Commands and historical
+    material remain unchanged; final light review returned CLEAN.
