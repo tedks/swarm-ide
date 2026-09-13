@@ -120,8 +120,9 @@ An explicit `--tmux-server`/`--tmux-socket` and `--tmux-session` association use
 `//tools/cli:registration-bundle`, which packages the existing exact-pane discovery
 and registry writer from `tools/session-registration`. Only that chosen session's
 panes are inspected. A unique rollout, or one explicit CLI header alongside only
-its same-process direct native children, selects a candidate; unknown/mixed
-identities remain ambiguous. Header linkage never substitutes for the existing
+strict same-process native-helper headers, selects a candidate even when nested
+helpers' intermediary transcripts are no longer open; multiple CLI or unknown/mixed
+identities remain ambiguous. Header classification never substitutes for the existing
 pane/PID/start/open-file validation. A verified process in a worktree supplies that
 exact canonical root. If its cwd is exactly the opened project's bare Git directory
 itself or the parent containing its bare `.git`, the launcher revalidates the
@@ -144,7 +145,9 @@ Without explicit registry/tmux overrides, an invocation inside tmux selects the
 current pane's checked socket/session and reuses that same discovery helper,
 filtering owners to the project's actual Git worktrees. The recurring asynchronous
 project refresh admits worktrees created after startup only when they retain the
-same Git common-directory identity. Explicit selection continues to choose the
+same Git common-directory identity. Its bounded Git listing has no arbitrary record
+count cutoff; each accessible non-bare, non-prunable root gets one identity probe
+under the existing cancellation and total deadline. Explicit selection continues to choose the
 project and tmux session independently. An empty selected session opens with an
 empty observed generation so a later supported owner can appear without restart.
 

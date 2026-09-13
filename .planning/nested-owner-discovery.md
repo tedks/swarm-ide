@@ -9,10 +9,13 @@ Swarm IDE should automatically recognize the one interactive Codex CLI behind an
 ## Progress
 
 - [x] (2026-09-13 06:09Z) Read the task packet, repository instructions, existing discovery/refresh code, focused tests, design mapping, and the two started Ditz issues.
-- [ ] Add sanitized nested-helper selection and ambiguity regressions, including a helper whose intermediary transcript is not open.
-- [ ] Remove aggregate worktree-count rejection, retain deadline/cancellation, and avoid redundant per-worktree Git subprocesses.
-- [ ] Extend the owned Git/tmux reconciliation proof beyond 128 real disposable worktree records.
-- [ ] Align living runtime design and `.swarm/plans.json` mappings, run focused Bazel gates, review to fixpoint, and land the pushed draft PR for ROOT intake.
+- [x] (2026-09-13 06:14Z) Added sanitized nested-helper selection and ambiguity regressions, including a helper whose intermediary transcript is not open.
+- [x] (2026-09-13 06:14Z) Removed aggregate worktree-count rejection, retained deadline/cancellation, and reduced identity validation from two Git subprocesses to one per accessible worktree.
+- [x] (2026-09-13 06:14Z) Extended the owned Git/tmux reconciliation proof to 130 real disposable worktrees; focused registration and CLI targets pass.
+- [x] (2026-09-13 06:17Z) Opened draft PR #154 from pushed commits `b81ac83d` and `5461fb7b`.
+- [x] (2026-09-13 06:20Z) Aligned living runtime design and `.swarm/plans.json` source/Bazel descriptions.
+- [x] (2026-09-13 06:20Z) Built the CLI registration bundle and performed the single permitted read-only live confirmation: corrected automatic discovery selected the known root session and rollout from pane `%179` with current PID/start identity.
+- [ ] Complete final focused gates, review to fixpoint, and prepare clean pushed ROOT intake.
 
 ## Surprises & Discoveries
 
@@ -20,6 +23,10 @@ Swarm IDE should automatically recognize the one interactive Codex CLI behind an
   Evidence: `tools/session-registration/identity.ts::interactiveCandidate` compares every native `parent_thread_id` directly with the CLI session ID.
 - Observation: recurring project refresh rejects raw records before filtering and also launches two Git subprocesses for every admissible worktree, while startup accepts the same aggregate without a numeric cap.
   Evidence: `tools/cli/project.mjs::refreshProject` defaults `maxWorktrees` to 128 and then calls both `rev-parse --git-common-dir` and `rev-parse --show-toplevel` per record.
+- Observation: the owned end-to-end fixture creates and refreshes 130 real worktrees quickly enough to stay well inside the existing deadline after the redundant Git probe is removed.
+  Evidence: `//tools/session-registration:unit` passed its 130-worktree late-pane reconciliation as part of 81 tests in 23.9 seconds total, including a separate five-second lock-contention case.
+- Observation: the sanitized reproduction matches the live failure mode rather than only a fixture assumption.
+  Evidence: the corrected `//tools/cli:registration-bundle` returned session `01a0702a-7b5e-71e0-bb62-287d55a7f9ba`, PID `3690953`, process start `470496407`, and `rolloutMatchesExpected: true` for the known pane; no transcript content or registry write was performed.
 
 ## Decision Log
 
@@ -32,7 +39,7 @@ Swarm IDE should automatically recognize the one interactive Codex CLI behind an
 
 ## Outcomes & Retrospective
 
-Pending implementation and verification.
+Implementation is complete and the focused tests plus one bounded live read-only identity check pass. Review convergence and final landing hygiene remain.
 
 ## Context and Orientation
 
