@@ -51,9 +51,9 @@ export interface PaneInput { socket: string; pane: string; processPid?: number; 
 type Candidate = { target: TmuxTarget; rollout: string };
 const NativeParent = z.object({ subagent: z.object({ thread_spawn: z.object({ parent_thread_id: ExternalSessionId }) }) });
 
-/** A CLI can keep its native children's rollouts open in the same process.
- * Header ancestry only disambiguates; it never replaces the live handoff check.
- * Deliberately support direct children, not inferred or partial lineage. */
+/** A CLI can keep nested native-helper rollouts open in the same process.
+ * Open descriptors are not a complete ancestry graph: intermediaries may close.
+ * Header kind only disambiguates; it never replaces the live handoff check. */
 async function interactiveCandidate(candidates: Candidate[], check: () => void): Promise<Candidate | undefined> {
   const first = candidates[0];
   if (!first || candidates.some(({ target }) => target.processPid !== first.target.processPid || target.processStart !== first.target.processStart)) return;
@@ -71,7 +71,7 @@ async function interactiveCandidate(candidates: Candidate[], check: () => void):
   for (const entry of entries) {
     if (entry !== root) {
       const native = NativeParent.safeParse(entry.source);
-      if (!native.success || native.data.subagent.thread_spawn.parent_thread_id !== root.meta.id) return;
+      if (!native.success || native.data.subagent.thread_spawn.parent_thread_id === entry.meta.id) return;
     }
     // Reject an inode/header swap while classifying any participating identity.
     check();

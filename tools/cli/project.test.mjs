@@ -97,16 +97,38 @@ test("removed saved association falls back to the managed empty registry", () =>
   assert.equal(prepare(repo).registry, initial.registry);
 }));
 
-test("live refresh rejects an excessive worktree listing before inspecting any entry", async () => {
+test("live refresh admits more than 128 canonical worktree records without losing identity", async () => {
   const directory = mkdtempSync(join(tmpdir(), "swarm-project-refresh-"));
   let calls = 0;
   try {
-    const entries = Array.from({ length: 3 }, (_, index) => `worktree ${join(directory, `worktree-${index}`)}\0HEAD 0000`).join("\0\0");
+    const paths = Array.from({ length: 130 }, (_, index) => join(directory, `worktree-${index}`));
+    for (const path of paths) mkdirSync(path);
+    const entries = paths.map((path) => `worktree ${path}\0HEAD 0000`).join("\0\0");
+    const refreshed = await refreshProject({ identity: directory, git: true, worktrees: [] }, process.env, undefined, {
+      runGit: async (cwd, args) => {
+        calls++;
+        if (cwd === directory) { assert.deepEqual(args, ["worktree", "list", "--porcelain", "-z"]); return entries; }
+        assert.deepEqual(args, ["rev-parse", "--path-format=absolute", "--git-common-dir"]);
+        return `${directory}\n`;
+      },
+    });
+    assert.deepEqual(refreshed.worktrees.map(({ path }) => path), paths);
+    assert.equal(calls, paths.length + 1);
+  } finally { rmSync(directory, { recursive: true, force: true }); }
+});
+
+test("live refresh retains caller cancellation and its total deadline", async () => {
+  const directory = mkdtempSync(join(tmpdir(), "swarm-project-refresh-stop-"));
+  try {
+    const stopped = new AbortController(); stopped.abort();
+    await assert.rejects(refreshProject({ identity: directory, git: true, worktrees: [] }, process.env, stopped.signal), /stopped/);
     await assert.rejects(refreshProject({ identity: directory, git: true, worktrees: [] }, process.env, undefined, {
-      maxWorktrees: 2,
-      runGit: async (_cwd, args) => { calls++; assert.deepEqual(args, ["worktree", "list", "--porcelain", "-z"]); return entries; },
-    }), /more than 2 worktree records/);
-    assert.equal(calls, 1);
+      timeoutMs: 10,
+      runGit: async (_cwd, _args, _environment, signal) => await new Promise((_resolve, reject) => {
+        const hold = setTimeout(() => reject(new Error("fixture did not abort")), 1000);
+        signal.addEventListener("abort", () => { clearTimeout(hold); reject(new Error("aborted")); }, { once: true });
+      }),
+    }), /exceeded its 10-millisecond deadline/);
   } finally { rmSync(directory, { recursive: true, force: true }); }
 });
 
