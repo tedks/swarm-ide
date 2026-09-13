@@ -20,3 +20,10 @@ log_events:
   who: Ted Smith
   what: started
   comment: ""
+- time: 2026-09-13T20:13:05-00:00
+  who: Ted Smith
+  what: commented
+  comment: 'Removed .github/workflows/ci.yml, preserved .github/workflows/claude.yml
+    and all documented local Nix/Bazel build/test/smoke commands, corrected the stale
+    active CI sentence in AGENTS.md, and received a CLEAN light native review on commit
+    7c68d6cb / PR #157.'
