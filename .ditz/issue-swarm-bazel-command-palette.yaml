@@ -42,3 +42,11 @@ log_events:
   what: 'closed: fixed'
   comment: 'Implemented, verified, pushed, and ready for review in PR #156; council
     fixpoint CLEAN.'
+- time: 2026-09-13T20:34:54-00:00
+  who: Ted Smith
+  what: commented
+  comment: ROOT verified focused 44-test/6-file gate, both TS boundaries, successful
+    desktop bundle and council convergence. Normally merged PR156 as 5b8e0f80; current
+    hosted-workflow deletions preserved. Mounted App evidence is controlled renderer
+    dispatch/retention, not actual packaged execution or the independent PR155 project-environment
+    correction. Running app not adopted/restarted in this intake.
