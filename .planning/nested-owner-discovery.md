@@ -15,7 +15,8 @@ Swarm IDE should automatically recognize the one interactive Codex CLI behind an
 - [x] (2026-09-13 06:17Z) Opened draft PR #154 from pushed commits `b81ac83d` and `5461fb7b`.
 - [x] (2026-09-13 06:20Z) Aligned living runtime design and `.swarm/plans.json` source/Bazel descriptions.
 - [x] (2026-09-13 06:20Z) Built the CLI registration bundle and performed the single permitted read-only live confirmation: corrected automatic discovery selected the known root session and rollout from pane `%179` with current PID/start identity.
-- [ ] Complete final focused gates, review to fixpoint, and prepare clean pushed ROOT intake.
+- [x] (2026-09-13 06:45Z) Final focused registration/CLI tests and registration bundle build pass on `e999f6f9`; provider-aware council convergence round 3 is CLEAN across Codex native, Claude Sonnet and Agy.
+- [x] (2026-09-13 06:45Z) Filed non-blocking council nits as `swarm-refresh-probe-tuning`; prepared pushed PR #154 and task-local verification/handoff artifacts for ROOT intake.
 
 ## Surprises & Discoveries
 
@@ -43,7 +44,7 @@ Swarm IDE should automatically recognize the one interactive Codex CLI behind an
 
 ## Outcomes & Retrospective
 
-Implementation is complete and the focused tests plus one bounded live read-only identity check pass. Review convergence and final landing hygiene remain.
+Automatic pane lookup now identifies one CLI root despite nested native-helper descriptors and a missing open intermediary, while rejecting multiple roots, mixed sources, duplicate/self identities, present cycles and cross-process lookalikes. Recurring project refresh admits 130 real worktrees, preserves exact canonical roots including newline-containing paths, checks with at most eight active workers and drains them before cancellation/deadline errors. Focused tests, bundle build, the single bounded live read-only lookup and three-round provider-diverse review pass. ROOT retains merge and installed-app adoption; this branch does not restart applications or alter live registrations.
 
 ## Context and Orientation
 
@@ -80,7 +81,7 @@ Tests create only private temporary repositories, sockets, processes, and worktr
 
 ## Artifacts and Notes
 
-The required readiness receipt and task-local `seam.md`, `status.md`, `verification.md`, and `final-recap` live under `/tmp/swarm-ide-nested-discovery.4MT5gM/` and contain no private transcript contents.
+The required readiness receipt and task-local `seam.md`, `status.md`, `verification.md`, and `final-recap` live under `/tmp/swarm-ide-nested-discovery.4MT5gM/` and contain no private transcript contents. Draft PR #154 carries the implementation; `swarm-refresh-probe-tuning` records optional post-merge test/performance polish.
 
 ## Interfaces and Dependencies
 
@@ -89,3 +90,5 @@ No new protocol, core, renderer, package, or provider interface is introduced. `
 Plan created before implementation to record the two independent causes, the security assumptions that preserve exact authority, and the focused proof required for ROOT adoption.
 
 Updated after implementation and council rounds 1–2 to record live proof, exact-root and strict-variant corrections, newline-safe bounded/drained concurrency, and the reasons the implementation differs from the initial per-entry validation sketch.
+
+Updated at completion after council round 3 returned CLEAN and the remaining non-blocking nits were filed for follow-up rather than changing the reviewed production delta.
