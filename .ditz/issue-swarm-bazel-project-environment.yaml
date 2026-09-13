@@ -33,3 +33,13 @@ log_events:
     environment loading inside the existing owned/cancellable job lifetime, non-Nix
     fallback, setup/dependency/cancellation/isolation regressions, installed-path
     proof, runtime design mappings; no UI or automatic installs.'
+- time: 2026-09-13T20:40:52-00:00
+  who: Ted Smith
+  what: commented
+  comment: 'Implemented and pushed PR #155 at 00fa717d. Flake workspaces now run the
+    unchanged exact pinned-Bazel Build/Test argv through nix develop --no-update-lock-file
+    in the same owned cancellable job; non-flake fallback and schemas remain unchanged.
+    Focused environment checks and source/installed-worker proofs pass, including
+    daemon cancellation, lock immutability, failure honesty, wrapper runtime closure,
+    and confirmed cleanup. Codex/Claude/Google council reached CLEAN fixpoint in round
+    5. Legacy shell.nix support is tracked separately as swarm-bazel-shell-nix-environment.'
