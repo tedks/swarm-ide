@@ -77,6 +77,7 @@ failure reproduction; the original reported idle/black-screen cause remains open
 | Contextual instruments | [ContextPane.tsx](../../app/renderer/context/ContextPane.tsx) | Facts and links for the current attention target |
 | Side instruments | [WorkbenchSidebar.tsx](../../app/renderer/WorkbenchSidebar.tsx) | Agent/task/activity surfaces beside the central work |
 | Persistent dock | [AgentDock.tsx](../../app/renderer/agents/AgentDock.tsx) | Build resources, agent messages, Work Log and Activity in independently scrolling columns |
+| Command and target palette | [FileSearchPalette.tsx](../../app/renderer/repository/FileSearchPalette.tsx), [bazel-palette.ts](../../app/renderer/build-resources/bazel-palette.ts) | File navigation plus deliberate exact observed Bazel build/test selection |
 | Layout adjustment | [ResizeDivider.tsx](../../app/renderer/ResizeDivider.tsx) | Pointer and keyboard dividers resize Context/source horizontally and the conversation dock vertically |
 | File authority | [core/files.ts](../../core/files.ts) | Reads and conditional writes behind the typed bridge |
 | Agent worktree inspection | [WorktreeInspection.tsx](../../app/renderer/WorktreeInspection.tsx), [core/worktree-inspection.ts](../../core/worktree-inspection.ts) | Registered session selects the actual read-only worktree source and current diff |
@@ -93,6 +94,27 @@ The renderer owns presentation and gestures, not filesystem or process access.
 See [runtime](runtime.md) for the bridge and [repository](repository.md) for
 the data supplying graphs and context.
 
+Ctrl+K (or Cmd+K) keeps one palette for ordinary commands, filename search and
+the exact-path fallback. **Bazel build…** and **Bazel test…** switch that same
+dialog into target selection; target-mode typing never performs filename reads.
+Suggestions are exact local rules from the current worktree's observed build
+graph. Tests are classified only by the observed `*_test` or `test_suite` rule
+class, never by a source filename. Full labels and rule classes stay visible.
+A current partial observation may offer the exact rules it contains while naming
+its incomplete coverage. Loading, refreshing, stale, error, unavailable and
+cross-workspace observations remain honest and non-runnable.
+
+Target activation rechecks repository, world, workspace visit, core generation,
+observation fingerprint and busy state. IME confirmation, repeated keys, arrows,
+typing, refresh, the Enter that selects a Bazel operation and disabled rows do not
+start work. A deliberate Enter starts at most one exact target through the existing
+selected-target build service. Output, progress and Stop therefore remain in
+**Builds & resources**; the palette has no command shell or second history. Escape
+restores prior focus, other modal dialogs retain their keyboard ownership, and
+workspace/core changes retire target mode. The target header names the worktree
+and warns that Bazel reads files on disk when an editor buffer is unsaved. Palette
+use does not replace source, drafts, Context selection or graph cameras.
+
 See [agent locations on graphs](graph-agent-locations.md) for observed-path coverage,
 execution versus last-touch semantics and the current native-run location limit.
 
@@ -102,6 +124,12 @@ All files above are inputs to `//:quality_sources` in
 [BUILD.bazel](../../BUILD.bazel); that filegroup feeds `//:desktop-bundle` and
 the `//tools:quality` test. `//:dev` aliases `//tools:dev` for the watched local
 loop. These are shared application targets, not a separate cockpit service.
+`//tools/bazel-palette:checks` consumes the same application sources and directly
+checks exact-label completion, rule-class filtering, stale/workspace authority,
+keyboard no-dispatch cases, the unchanged target-job request, and retained dirty
+source, draft and camera state. Its graph and successful job are controlled
+renderer fixtures; it does not claim actual Bazel process or project-environment
+execution.
 
 ## Joined operator behavior
 

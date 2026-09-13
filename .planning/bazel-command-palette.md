@@ -14,12 +14,13 @@ The palette owns only keyboard and presentation intent. Typing, selecting with a
 
 ## Progress
 
-- [x] (2026-09-13 20:00Z) Read the assignment, shared contract, repository instructions, planning format, named renderer seams, related contracts, tests, and living design.
-- [ ] Implement the shared observed-rule classification and target catalogue/activation authority.
-- [ ] Generalize the existing palette for command, exact-path, build-target, and test-target modes without adding an execution/history path.
-- [ ] Wire App scope/readiness guards and preserve focus/modal/file-search behavior.
-- [ ] Add focused renderer and App proofs plus a Bazel-owned check target.
-- [ ] Align cockpit design and additive plan mappings, run focused quality gates, review to clean fixpoint, and finish the pushed ready PR/Ditz handoff.
+- [x] (2026-09-13 19:42Z) Read the assignment, shared contract, repository instructions, planning format, named renderer seams, related contracts, tests, and living design.
+- [x] (2026-09-13 19:50Z) Implemented shared observed-rule classification, current/retained catalogue presentation, and exact activation authority.
+- [x] (2026-09-13 19:51Z) Generalized the existing palette for command, exact-path, build-target, and test-target modes without adding an execution/history path.
+- [x] (2026-09-13 19:52Z) Wired App scope/readiness guards, target-mode filename-read suppression, focus restoration, modal ownership, and IME/repeat protection.
+- [x] (2026-09-13 19:54Z) Added `//tools/bazel-palette:checks`: 32 focused tests plus both TypeScript boundaries pass, including a mounted App proof.
+- [x] (2026-09-13 19:55Z) Aligned cockpit design and additive plan mappings; plan reader/schema tests passed inside the broader living-design target.
+- [ ] Run the remaining focused build gate, review to clean fixpoint, and finish the pushed ready PR/Ditz handoff.
 
 ## Surprises & Discoveries
 
@@ -27,6 +28,8 @@ The palette owns only keyboard and presentation intent. Typing, selecting with a
   Evidence: `app/renderer/build-resources/use-target-builds.ts` and `app/renderer/build-resources/BuildResources.tsx` require no new execution lane.
 - Observation: the declaration chooser already states modal ownership, but App's window-capture Ctrl+K handler currently runs before that dialog's bubbling handler.
   Evidence: the global listener is registered with capture `true`, so the palette shortcut must explicitly respect a foreign modal target.
+- Observation: `//tools/living-design:checks` currently has a pre-existing fixture identity mismatch outside this change: `planning-ui.test.tsx` constructs a request for `project:swarm-ide` but wraps it with `initialSnapshot()`, whose project is `project:test-fixture`; plan action fixtures consequently report unavailable.
+  Evidence: in the combined run, plan schema/reader and component graph suites passed (89 total passing), while 13 planning UI/action tests failed before palette code participation. This broad target is retained as an exact non-palette gate rather than retried unchanged.
 
 ## Decision Log
 
@@ -36,10 +39,13 @@ The palette owns only keyboard and presentation intent. Typing, selecting with a
 - Decision: Extract pure Bazel palette catalogue and activation checks beside renderer build resources, and have `ComponentTargets` reuse the same rule classifier.
   Rationale: One small helper makes the exact-label/test-classification invariant directly testable without growing App's orchestration logic.
   Date/Author: 2026-09-13 / Codex
+- Decision: Allow exact known rules in a current partial catalogue and disable every row for retained non-current observations.
+  Rationale: Partial coverage means more labels may exist, not that an observed exact rule is ambiguous; stale/error/refreshing authority cannot support the same claim.
+  Date/Author: 2026-09-13 / Codex
 
 ## Outcomes & Retrospective
 
-Implementation is in progress. Completion will record usable behavior, proof counts, review convergence, PR/head, and any honest remaining environment limitation.
+Implementation and focused proof are complete. Review, final build verification and handoff remain. The palette uses only controlled renderer observations in its mounted test and makes no claim about the companion project-environment runner correction.
 
 ## Context and Orientation
 
@@ -73,4 +79,4 @@ The orchestration handoff files are `/tmp/swarm-ide-bazel-palette.MwU6VN/palette
 
 The renderer consumes `BuildGraphObservation`, `BuildTarget`, `SelectedBuildTargetSchema`, `useBuildGraph`, and `useTargetBuilds`; no interface changes. The palette target row includes `label`, `ruleClass`, `operation`, `authority`, and `ready`. Activation accepts exactly that row and succeeds only when a fresh derivation from current refs contains the same ready identity. Existing `build.start`, `build.observe`, and `build.cancel` request/response shapes remain unchanged.
 
-Updated 2026-09-13 before implementation to capture the inspected seams, safety assumptions, bounded work, and concrete proof plan.
+Updated 2026-09-13 after implementation and focused proof to record completed behavior, the current partial-catalogue decision, passing checks, and the unrelated exact living-design gate.
