@@ -48,3 +48,12 @@ log_events:
   what: 'closed: fixed'
   comment: 'Delivered ready PR #155 with focused Bazel checks, actual installed-worker
     proof, five-round clean council fixpoint, and explicit shell.nix follow-up.'
+- time: 2026-09-13T20:50:34-00:00
+  who: Ted Smith
+  what: commented
+  comment: 'ROOT verified and normally landed PR155 with reviewed palette composition.
+    One joined typecheck caught an extra argument in a new test callback; corrected
+    only that argument, native light review CLEAN, then both focused targets executed
+    successfully: 156 tests plus both TS configurations. Runtime/package/probe code
+    unchanged from verified installed-package real Build/Test/cancellation/lock/cleanup
+    proof. Running IDE and Goals untouched; flake.nix-only limitation retained.'
