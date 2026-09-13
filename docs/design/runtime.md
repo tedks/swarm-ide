@@ -219,6 +219,25 @@ read-only analysis. The build has a 15-minute deadline and an 8 MiB process-outp
 limit, retaining the last 4 KiB of readable output. Cache/artifacts last until
 core shutdown; this is not the user's shared Bazel server or persistent cache.
 
+When the selected root contains a regular `flake.nix`, that same owned process
+first runs `nix develop --no-update-lock-file --command`. The command inside the
+default development shell is still Swarm's absolute pinned Bazel executable with
+the same operation and arguments; a fixed launcher marks the point at which Nix
+has finished preparing, then forwards Bazel's argv without a shell. Preparation,
+Bazel, Stop, deadline, output bounds, drain and cleanup therefore share one job
+lifetime. The installed Swarm package includes the Nix CLI needed to enter a
+project environment but does not bundle pnpm or arbitrary project toolchains.
+Missing or stale flake locks fail as preparation instead of being rewritten.
+Repositories without `flake.nix` keep the direct pinned-Bazel path. Legacy
+`shell.nix` environments are not inferred in this implementation.
+
+Swarm never installs project dependencies as a side effect of Build or Test. If
+a failed flake job has a pnpm lock, lacks `node_modules`, and reports a recognized
+missing-package diagnostic, its existing job message adds the explicit setup
+command `nix develop --command pnpm install --frozen-lockfile`; the real Bazel
+exit code and retained output remain unchanged. Assertion failures are not
+reclassified as setup failures.
+
 The same complete-line BEP reader supplies real in-flight milestones. Jobs show
 target, status, start time, elapsed time, latest message and retained output.
 They do not report synthetic CPU/memory values or guessed percentages. Stop
@@ -233,9 +252,13 @@ and core-lifetime fencing. The existing
 the resulting cards independently of example topology jobs.
 `//tools/build-graph:target-checks` consumes `//:quality_sources` for service,
 collector, bridge-correlation, hook and mounted-control regressions plus both
-TypeScript boundaries. `//tools/build-graph:target-probe` consumes its probe
-module, sources and desktop bundle; it exercises actual worker request routing
-and owned successful/failing Bazel targets in a disposable repository.
+TypeScript boundaries. The narrower `//tools/build-graph:environment-checks`
+covers flake selection, the direct fallback, preparation/dependency failures,
+cancellation, workspace isolation and one-command/no-replay behavior.
+`//tools/build-graph:target-probe` consumes its probe module, sources, repository
+flake lock and desktop bundle; it scrubs the parent development PATH, then
+exercises actual worker routing and owned Build/Test targets that require a tool
+provided only by the disposable project's locked Nix development shell.
 
 ## Dependency setup and demo applicability
 

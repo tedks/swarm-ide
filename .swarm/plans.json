@@ -786,6 +786,11 @@
       "core/build-jobs.ts",
       "tests/project-build-compatibility.test.ts",
       "core/target-build-process.ts",
+      "core/target-build-launcher.mjs",
+      "tests/target-build-jobs.test.ts",
+      "tools/build-app.sh",
+      "tools/build-graph/target-probe.mjs",
+      "tools/build-graph/BUILD.bazel",
       "app/renderer/build-resources/use-target-builds.ts",
       "app/renderer/build-resources/BuildResources.tsx"
     ],
@@ -884,6 +889,11 @@
           "dependencies": [{ "label": "//:quality_sources", "relation": "data" }]
         },
         {
+          "label": "//tools/build-graph:environment-checks",
+          "role": "Checks project environment selection, direct fallback, setup errors, cancellation, isolation and exact single execution",
+          "dependencies": [{ "label": "//:quality_sources", "relation": "data" }]
+        },
+        {
           "label": "//tools/build-graph:compat-checks",
           "role": "Checks automatic dependency loading, large raw output, cancellation and declared demo applicability",
           "dependencies": [{ "label": "//:quality_sources", "relation": "data" }]
@@ -910,11 +920,12 @@
         },
         {
           "label": "//tools/build-graph:target-probe",
-          "role": "Builds real passing and failing targets through worker routes",
+          "role": "Builds and tests real targets needing a locked project dev-shell tool through packaged worker routes with a scrubbed runtime PATH",
           "dependencies": [
             { "label": "//tools/build-graph:sources", "relation": "data" },
             { "label": "//tools/build-graph:target-probe-module", "relation": "data" },
-            { "label": "//:desktop-bundle", "relation": "data" }
+            { "label": "//:desktop-bundle", "relation": "data" },
+            { "label": "//:flake.lock", "relation": "data" }
           ]
         },
         {

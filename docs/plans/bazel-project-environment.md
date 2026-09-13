@@ -21,14 +21,15 @@ Nix-plus-Bazel process tree.
   planning contract, current executor, package, tests, proof, and runtime design mapping.
 - [x] (2026-09-13 19:42Z) Claimed Ditz issue `swarm-bazel-project-environment` and recorded
   the narrow flake-only implementation boundary.
-- [ ] Add failing regressions for flake selection, non-Nix fallback, preparation failure,
+- [x] (2026-09-13 19:47Z) Added and observed failing regressions for flake selection, non-Nix fallback, preparation failure,
   dependency guidance, cancellation in preparation and execution, workspace isolation,
   exact one-command execution, and no replay.
-- [ ] Implement the smallest owned flake-aware launcher and package its Nix CLI runtime.
-- [ ] Extend the actual installed-runtime proof with a dev-shell-only executable while
+- [x] (2026-09-13 19:50Z) Implemented the smallest owned flake-aware launcher and packaged its Nix CLI runtime.
+- [x] (2026-09-13 19:54Z) Extended and passed the actual packaged-worker proof with a dev-shell-only executable while
   scrubbing inherited development environment state.
 - [ ] Update `docs/design/runtime.md`, `.swarm/plans.json`, this plan, seam and verification
-  notes; run focused Bazel gates and council review to a clean fixpoint.
+  notes; completed: living design and mapping edits; remaining: final focused/package gates,
+  seam/verification notes and council review to a clean fixpoint.
 - [ ] Commit, push, finish Ditz, synchronize metadata, and leave a ready PR for ROOT.
 
 ## Surprises & Discoveries
@@ -41,6 +42,16 @@ Nix-plus-Bazel process tree.
 - Observation: The installed package exposes pinned Bazel, Java, Node, Git, tmux, and
   util-linux, but not an explicit Nix CLI runtime dependency.
   Evidence: `nix/package.nix` constructs the wrapper PATH with those packages only.
+- Observation: The pre-implementation run failed all four newly observable environment
+  behaviors while two unrelated task-navigation tests also timed out; the dedicated runner
+  check avoids conflating those UI fixtures with this executor gate.
+  Evidence: the red `//tools/build-graph:target-checks` run reported four runner failures
+  and two `plan-first-cockpit` failures; after implementation
+  `//tools/build-graph:environment-checks` passed all runner tests.
+- Observation: A fixed child launcher distinguishes Nix preparation from Bazel without
+  parsing Nix output and does not weaken process ownership.
+  Evidence: the actual packaged probe observed preparation followed by BEP milestones;
+  all eight jobs reported `cleanup: confirmed`.
 
 ## Decision Log
 
@@ -60,10 +71,17 @@ Nix-plus-Bazel process tree.
   Rationale: Explicit Build/Test authorizes project execution but not lock changes or
   installation on every job.
   Date/Author: 2026-09-13 / Codex.
+- Decision: Use an exclusive marker file created immediately before a no-shell Node spawn
+  of pinned Bazel, rather than infer preparation completion from human-readable output.
+  Rationale: The marker survives bounded output truncation, cannot collide across jobs, and
+  makes assertion/setup classification independent of Nix's wording.
+  Date/Author: 2026-09-13 / Codex.
 
 ## Outcomes & Retrospective
 
-Implementation and verification are pending.
+The packaged-worker proof passes for both a build action and a test executable that depend
+on a tool available only in the selected locked flake. Unit implementation and living-design
+mapping are complete. Package build, review convergence, and landing remain.
 
 ## Context and Orientation
 
@@ -118,7 +136,7 @@ All repository commands run from
 
 Run focused checks after the regression and implementation:
 
-    nix develop --command bazel test --jobs=3 //tools/build-graph:target-checks --test_output=errors
+    nix develop --command bazel test --jobs=3 //tools/build-graph:environment-checks --test_output=errors
 
 Run the installed-path proof without relying on cached test results:
 
@@ -171,3 +189,7 @@ uses Node's process APIs with fixed argument boundaries and no shell.
 
 Plan revision note (2026-09-13 19:42Z): Initial self-contained plan records the flake-only,
 argv-preserving, no-install boundary after inspecting the existing implementation.
+
+Plan revision note (2026-09-13 19:55Z): Updated after the red regression, implementation,
+and packaged-worker proof to record the marker decision, green evidence, and remaining
+package/review gates.

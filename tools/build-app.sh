@@ -28,5 +28,6 @@ pnpm exec esbuild core/worker.ts --bundle --platform=node --format=cjs --target=
 pnpm exec esbuild node_modules/yaml/dist/index.js --bundle --platform=node --format=cjs --target=node22 --outfile="$bundle_dir/core/node_modules/yaml/index.js"
 cp node_modules/yaml/LICENSE "$bundle_dir/core/node_modules/yaml/LICENSE"
 pnpm exec esbuild core/agents/owner-process.mjs --bundle --platform=node --format=cjs --target=node22 --outfile="$bundle_dir/core/agents/owner-process.js"
+cp core/target-build-launcher.mjs "$bundle_dir/core/target-build-launcher.mjs"
 pnpm exec vite build --base ./ --outDir "$bundle_dir/renderer"
 tar -C "$bundle_dir" -czf "$output" app core renderer

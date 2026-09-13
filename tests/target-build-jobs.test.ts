@@ -4,7 +4,7 @@ import { collectTargetBuild, createTargetBuildExecutor, type TargetBuildResult }
 import { BuildJobRequestSchema, TargetBuildJobSchema } from "../protocol/build-jobs";
 import { createOwnedCodexTransport } from "../core/agents/owner";
 import { watchBuildProgress } from "../core/build-progress";
-import { mkdtemp, rm } from "node:fs/promises";
+import { mkdtemp, realpath, rm, stat } from "node:fs/promises";
 import type { CodexTransportSink } from "../core/agents/codex-app-server";
 
 vi.mock("../core/agents/owner", () => ({ createOwnedCodexTransport: vi.fn() }));
@@ -12,9 +12,15 @@ vi.mock("../core/build-progress", () => ({ watchBuildProgress: vi.fn(() => ({ st
 vi.mock("node:fs/promises", async (importOriginal) => ({
   ...await importOriginal<typeof import("node:fs/promises")>(),
   access: vi.fn(async () => {}), realpath: vi.fn(async (path: string) => path),
+  stat: vi.fn(async () => { throw Object.assign(new Error("missing"), { code: "ENOENT" }); }),
   mkdtemp: vi.fn(async () => "/tmp/swarm-selected-target-unit"), rm: vi.fn(async () => {}),
 }));
-afterEach(() => { vi.unstubAllEnvs(); vi.clearAllMocks(); });
+afterEach(() => {
+  vi.unstubAllEnvs(); vi.clearAllMocks();
+  vi.mocked(realpath).mockImplementation(async (path) => `${path}`);
+  vi.mocked(stat).mockImplementation(async () => { throw Object.assign(new Error("missing"), { code: "ENOENT" }); });
+  vi.mocked(mkdtemp).mockResolvedValue("/tmp/swarm-selected-target-unit");
+});
 
 const context = { repositoryId: "repo", worldId: "world", requestId: "request", protocolVersion: 7 as const };
 const start = { ...context, type: "build.start" as const, target: "//lib:build" };
@@ -158,6 +164,163 @@ describe("fixed target operation execution", () => {
     await expect(executor.run(start.target, new AbortController().signal, () => {}, "clean" as "test")).rejects.toThrow();
     expect(createOwnedCodexTransport).not.toHaveBeenCalled();
     await executor.dispose();
+  });
+  it("enters a flake without changing the exact pinned Bazel operation or launching twice", async () => {
+    vi.stubEnv("PATH", "/fixed/bin");
+    vi.stubEnv("SWARM_BAZEL_BIN", "/nix/store/fixed/bin/bazel-7.6.0-linux-x86_64");
+    vi.stubEnv("SWARM_BAZEL_JAVA_HOME", "/nix/store/fixed-java");
+    vi.mocked(stat).mockImplementation(async (path) => {
+      if (`${path}` === "/owned/flake/flake.nix" || `${path}`.includes("bazel-started-")) {
+        return { isFile: () => true, isDirectory: () => false } as Awaited<ReturnType<typeof stat>>;
+      }
+      throw Object.assign(new Error("missing"), { code: "ENOENT" });
+    });
+    vi.mocked(createOwnedCodexTransport).mockImplementation((_options, sink) => {
+      queueMicrotask(() => { sink.exit(0); sink.end(); });
+      return { write() {}, close: async () => confirmed };
+    });
+    const progress = vi.fn(), executor = createTargetBuildExecutor("/owned/flake");
+    expect(await executor.run("//pkg:chosen", new AbortController().signal, progress, "test"))
+      .toMatchObject({ exitCode: 0, cleanup: "confirmed" });
+    expect(progress).toHaveBeenCalledWith("Preparing project development environment");
+    expect(createOwnedCodexTransport).toHaveBeenCalledTimes(1);
+    const options = vi.mocked(createOwnedCodexTransport).mock.calls[0]![0];
+    expect(options).toMatchObject({ root: "/owned/flake", executable: "/fixed/bin/nix" });
+    expect(options.args).toEqual([
+      "develop", "--no-update-lock-file", "--command", "/fixed/bin/node", expect.stringMatching(/target-build-launcher\.mjs$/),
+      expect.stringMatching(/^\/tmp\/swarm-selected-target-unit\/bazel-started-/), "/nix/store/fixed/bin/bazel-7.6.0-linux-x86_64",
+      "--batch", "--nosystem_rc", "--nohome_rc", "--host_jvm_args=-Xmx512m", "--host_jvm_args=-XX:ActiveProcessorCount=3",
+      "--server_javabase=/nix/store/fixed-java", "--output_user_root=/tmp/swarm-selected-target-unit", "--output_base=/tmp/swarm-selected-target-unit/output",
+      "test", "--jobs=3", "--color=no", "--curses=no", expect.stringMatching(/^--build_event_json_file=\/tmp\/swarm-selected-target-unit\/events-\d+\.jsonl$/),
+      "--build", "--test_output=errors", "--test_tag_filters=", "--", "//pkg:chosen",
+    ]);
+    await executor.dispose();
+  });
+  it("keeps a non-Nix workspace on one direct pinned-Bazel command", async () => {
+    vi.stubEnv("PATH", "/fixed/bin");
+    vi.stubEnv("SWARM_BAZEL_BIN", "/nix/store/fixed/bin/bazel-7.6.0-linux-x86_64");
+    vi.stubEnv("SWARM_BAZEL_JAVA_HOME", "/nix/store/fixed-java");
+    vi.mocked(createOwnedCodexTransport).mockImplementation((_options, sink) => {
+      queueMicrotask(() => { sink.exit(0); sink.end(); });
+      return { write() {}, close: async () => confirmed };
+    });
+    const executor = createTargetBuildExecutor("/owned/plain");
+    await executor.run("//pkg:chosen", new AbortController().signal, () => {});
+    expect(createOwnedCodexTransport).toHaveBeenCalledTimes(1);
+    expect(vi.mocked(createOwnedCodexTransport).mock.calls[0]![0]).toMatchObject({
+      root: "/owned/plain", executable: "/nix/store/fixed/bin/bazel-7.6.0-linux-x86_64",
+      args: expect.arrayContaining(["build", "--", "//pkg:chosen"]),
+    });
+    await executor.dispose();
+  });
+  it("distinguishes Nix preparation failure from a Bazel assertion failure", async () => {
+    vi.stubEnv("PATH", "/fixed/bin");
+    vi.stubEnv("SWARM_BAZEL_BIN", "/nix/store/fixed/bin/bazel-7.6.0-linux-x86_64");
+    vi.stubEnv("SWARM_BAZEL_JAVA_HOME", "/nix/store/fixed-java");
+    vi.mocked(stat).mockImplementation(async (path) => {
+      if (`${path}` === "/owned/flake/flake.nix") return { isFile: () => true } as Awaited<ReturnType<typeof stat>>;
+      throw Object.assign(new Error("missing"), { code: "ENOENT" });
+    });
+    vi.mocked(createOwnedCodexTransport).mockImplementation((_options, sink) => {
+      queueMicrotask(() => { sink.stderr(Buffer.from("error: lock file is stale\n")); sink.exit(1); sink.end(); });
+      return { write() {}, close: async () => confirmed };
+    });
+    const executor = createTargetBuildExecutor("/owned/flake");
+    const result = await executor.run("//pkg:test", new AbortController().signal, () => {}, "test");
+    expect(result).toMatchObject({ exitCode: 1, cleanup: "confirmed", output: "error: lock file is stale\n",
+      error: expect.stringMatching(/development environment could not be prepared/) });
+    await executor.dispose();
+  });
+  it("reports an unavailable Nix runtime before launching a flake job", async () => {
+    vi.stubEnv("PATH", "/fixed/bin");
+    vi.stubEnv("SWARM_BAZEL_BIN", "/nix/store/fixed/bin/bazel-7.6.0-linux-x86_64");
+    vi.stubEnv("SWARM_BAZEL_JAVA_HOME", "/nix/store/fixed-java");
+    vi.mocked(stat).mockImplementation(async (path) => {
+      if (`${path}` === "/owned/flake/flake.nix") return { isFile: () => true } as Awaited<ReturnType<typeof stat>>;
+      throw Object.assign(new Error("missing"), { code: "ENOENT" });
+    });
+    vi.mocked(realpath).mockImplementation(async (path) => {
+      if (`${path}`.endsWith("/nix")) throw Object.assign(new Error("missing"), { code: "ENOENT" });
+      return `${path}`;
+    });
+    const executor = createTargetBuildExecutor("/owned/flake");
+    await expect(executor.run("//pkg:test", new AbortController().signal, () => {}, "test"))
+      .rejects.toThrow(/Nix executable is unavailable/);
+    expect(createOwnedCodexTransport).not.toHaveBeenCalled();
+    await executor.dispose();
+  });
+  it("adds frozen pnpm setup guidance only to a recognizable dependency failure", async () => {
+    vi.stubEnv("PATH", "/fixed/bin");
+    vi.stubEnv("SWARM_BAZEL_BIN", "/nix/store/fixed/bin/bazel-7.6.0-linux-x86_64");
+    vi.stubEnv("SWARM_BAZEL_JAVA_HOME", "/nix/store/fixed-java");
+    let assertionFailure = false;
+    vi.mocked(stat).mockImplementation(async (path) => {
+      const value = `${path}`;
+      if (value === "/owned/flake/flake.nix" || value === "/owned/flake/pnpm-lock.yaml" || value.includes("bazel-started-")) {
+        return { isFile: () => true, isDirectory: () => false } as Awaited<ReturnType<typeof stat>>;
+      }
+      throw Object.assign(new Error("missing"), { code: "ENOENT" });
+    });
+    vi.mocked(createOwnedCodexTransport).mockImplementation((_options, sink) => {
+      queueMicrotask(() => {
+        sink.stderr(Buffer.from(assertionFailure ? "AssertionError: expected true\n" : "ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL Command esbuild not found\n"));
+        sink.exit(1); sink.end();
+      });
+      return { write() {}, close: async () => confirmed };
+    });
+    const executor = createTargetBuildExecutor("/owned/flake");
+    const dependency = await executor.run("//pkg:test", new AbortController().signal, () => {}, "test");
+    expect(dependency).toMatchObject({ exitCode: 1, error: expect.stringContaining("nix develop --command pnpm install --frozen-lockfile") });
+    assertionFailure = true;
+    const assertion = await executor.run("//pkg:test", new AbortController().signal, () => {}, "test");
+    expect(assertion).toMatchObject({ exitCode: 1, output: "AssertionError: expected true\n" });
+    expect(assertion.error).toBeUndefined();
+    await executor.dispose();
+  });
+  it.each([false, true])("cancels the same owned Nix process with Bazel-started marker %s", async (bazelStarted) => {
+    vi.stubEnv("PATH", "/fixed/bin");
+    vi.stubEnv("SWARM_BAZEL_BIN", "/nix/store/fixed/bin/bazel-7.6.0-linux-x86_64");
+    vi.stubEnv("SWARM_BAZEL_JAVA_HOME", "/nix/store/fixed-java");
+    vi.mocked(stat).mockImplementation(async (path) => {
+      if (`${path}` === "/owned/flake/flake.nix" || bazelStarted && `${path}`.includes("bazel-started-")) {
+        return { isFile: () => true } as Awaited<ReturnType<typeof stat>>;
+      }
+      throw Object.assign(new Error("missing"), { code: "ENOENT" });
+    });
+    const close = vi.fn(async () => confirmed);
+    vi.mocked(createOwnedCodexTransport).mockImplementation(() => ({ write() {}, close }));
+    const abort = new AbortController(), executor = createTargetBuildExecutor("/owned/flake");
+    const pending = executor.run("//pkg:test", abort.signal, () => {}, "test");
+    for (let attempts = 0; attempts < 20 && !vi.mocked(createOwnedCodexTransport).mock.calls.length; attempts++) await Promise.resolve();
+    expect(createOwnedCodexTransport).toHaveBeenCalledTimes(1); abort.abort();
+    expect(await pending).toMatchObject({ cleanup: "confirmed", error: "Tests cancelled" });
+    expect(close).toHaveBeenCalledTimes(1);
+    await executor.dispose();
+  });
+  it("selects environments and private caches independently for separate workspace roots", async () => {
+    vi.stubEnv("PATH", "/fixed/bin");
+    vi.stubEnv("SWARM_BAZEL_BIN", "/nix/store/fixed/bin/bazel-7.6.0-linux-x86_64");
+    vi.stubEnv("SWARM_BAZEL_JAVA_HOME", "/nix/store/fixed-java");
+    vi.mocked(mkdtemp).mockResolvedValueOnce("/tmp/flake-cache").mockResolvedValueOnce("/tmp/plain-cache");
+    vi.mocked(stat).mockImplementation(async (path) => {
+      if (`${path}` === "/owned/flake/flake.nix" || `${path}`.startsWith("/tmp/flake-cache/bazel-started-")) {
+        return { isFile: () => true } as Awaited<ReturnType<typeof stat>>;
+      }
+      throw Object.assign(new Error("missing"), { code: "ENOENT" });
+    });
+    vi.mocked(createOwnedCodexTransport).mockImplementation((_options, sink) => {
+      queueMicrotask(() => { sink.exit(0); sink.end(); });
+      return { write() {}, close: async () => confirmed };
+    });
+    const flake = createTargetBuildExecutor("/owned/flake"), plain = createTargetBuildExecutor("/owned/plain");
+    await flake.run("//:one", new AbortController().signal, () => {});
+    await plain.run("//:two", new AbortController().signal, () => {});
+    expect(vi.mocked(createOwnedCodexTransport).mock.calls.map(([options]) => ({ root: options.root, executable: options.executable, args: options.args })))
+      .toEqual([
+        expect.objectContaining({ root: "/owned/flake", executable: "/fixed/bin/nix", args: expect.arrayContaining(["--output_user_root=/tmp/flake-cache", "//:one"]) }),
+        expect.objectContaining({ root: "/owned/plain", executable: "/nix/store/fixed/bin/bazel-7.6.0-linux-x86_64", args: expect.arrayContaining(["--output_user_root=/tmp/plain-cache", "//:two"]) }),
+      ]);
+    await flake.dispose(); await plain.dispose();
   });
 });
 

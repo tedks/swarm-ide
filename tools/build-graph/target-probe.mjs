@@ -2,7 +2,7 @@
 // supplies the utility-process transport, not a fake build executor.
 import assert from "node:assert/strict";
 import { EventEmitter } from "node:events";
-import { mkdtemp, mkdir, copyFile, writeFile, chmod, rm } from "node:fs/promises";
+import { mkdtemp, mkdir, copyFile, writeFile, chmod, rm, symlink } from "node:fs/promises";
 import { createRequire } from "node:module";
 import { execFileSync } from "node:child_process";
 import { tmpdir } from "node:os";
@@ -15,6 +15,18 @@ try {
   await copyFile(process.argv[2], join(scratch, "core/target-proof.cjs"));
   const { startCoreWorker, parseCoreRequest, parseCoreResponseForRequest } = createRequire(import.meta.url)(join(scratch, "core/target-proof.cjs"));
   const root = join(scratch, "repo"); await mkdir(root);
+  const system = process.arch === "arm64" ? "aarch64-linux" : "x86_64-linux";
+  await copyFile(join(process.cwd(), "flake.lock"), join(root, "flake.lock"));
+  await writeFile(join(root, "flake.nix"), `{
+  inputs.nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
+  outputs = { self, nixpkgs }: let
+    pkgs = nixpkgs.legacyPackages.${system};
+    proof = pkgs.writeShellScriptBin "swarm-dev-shell-proof" ''
+      printf 'dev-shell-tool-ran\\n'
+    '';
+  in { devShells.${system}.default = pkgs.mkShell { packages = [ proof ]; }; };
+}
+`);
   await writeFile(join(root, "MODULE.bazel"), 'module(name="selected_target_proof")\nbazel_dep(name="platforms",version="0.0.9")\nlocal_path_override(module_name="platforms",path="offline-platforms")\n');
   // Bazel's test wrapper consults the Windows constraint even on Linux. Supply
   // that constraint locally, with no downloads or host-machine cache reliance.
@@ -24,13 +36,20 @@ try {
   // A real executable test rule avoids sh_test's unrelated C++ launcher
   // toolchain, keeping this fixture independent of remote repositories.
   await writeFile(join(root, "fixture.bzl"), 'def _fixture_test(ctx):\n    ctx.actions.symlink(output=ctx.outputs.executable,target_file=ctx.file.src,is_executable=True)\n    return [DefaultInfo(executable=ctx.outputs.executable)]\nfixture_test=rule(implementation=_fixture_test,test=True,attrs={"src":attr.label(allow_single_file=True,mandatory=True)})\n');
-  await writeFile(join(root, "BUILD"), 'load(":fixture.bzl","fixture_test")\nplatform(name="local_platform")\ngenrule(name="useful",outs=["result.txt"],cmd="sleep 3; echo useful > $@")\ngenrule(name="broken",outs=["broken.txt"],cmd="echo intentional-build-failure >&2; exit 7")\nfixture_test(name="passing_test",src="passing.sh",tags=["manual"])\nfixture_test(name="failing_test",src="failing.sh")\n');
+  await writeFile(join(root, "BUILD"), 'load(":fixture.bzl","fixture_test")\nplatform(name="local_platform")\ngenrule(name="environment_build",outs=["environment.txt"],cmd="swarm-dev-shell-proof > $@")\ngenrule(name="useful",outs=["result.txt"],cmd="sleep 3; echo useful > $@")\ngenrule(name="broken",outs=["broken.txt"],cmd="echo intentional-build-failure >&2; exit 7")\nfixture_test(name="environment_test",src="environment.sh")\nfixture_test(name="passing_test",src="passing.sh",tags=["manual"])\nfixture_test(name="failing_test",src="failing.sh")\n');
+  await writeFile(join(root, "environment.sh"), '#!/bin/sh\nset -eu\nswarm-dev-shell-proof\n');
   await writeFile(join(root, "passing.sh"), '#!/bin/sh\necho actual-test-passed\nexit 0\n');
   await writeFile(join(root, "failing.sh"), '#!/bin/sh\necho intentional-test-failure >&2\nexit 9\n');
-  await chmod(join(root, "passing.sh"), 0o755); await chmod(join(root, "failing.sh"), 0o755);
-  await writeFile(join(root, ".bazelrc"), 'build --host_platform=//:local_platform\nbuild --platforms=//:local_platform\nbuild --repository_disable_download\nbuild --lockfile_mode=off\ntest --nobuild\ntest --test_tag_filters=-manual\n');
+  await chmod(join(root, "environment.sh"), 0o755); await chmod(join(root, "passing.sh"), 0o755); await chmod(join(root, "failing.sh"), 0o755);
+  await writeFile(join(root, ".bazelrc"), 'build --host_platform=//:local_platform\nbuild --platforms=//:local_platform\nbuild --repository_disable_download\nbuild --lockfile_mode=off\nbuild --action_env=PATH\ntest --test_env=PATH\ntest --nobuild\ntest --test_tag_filters=-manual\n');
   const git = (...args) => execFileSync("git", args, { cwd: root, timeout: 10_000, stdio: "pipe" });
   git("init", "-q"); git("add", "."); git("-c", "user.name=Swarm proof", "-c", "user.email=proof@localhost", "commit", "-qm", "Actual target proof");
+  const runtimeBin = join(scratch, "runtime-bin"); await mkdir(runtimeBin);
+  const runtimePrograms = { node: process.execPath, ...Object.fromEntries(["git", "nix", "setpriv", "unshare"].map((name) =>
+    [name, execFileSync("which", [name], { encoding: "utf8" }).trim()])) };
+  for (const [name, path] of Object.entries(runtimePrograms)) await symlink(path, join(runtimeBin, name));
+  process.env.PATH = runtimeBin;
+  for (const name of ["IN_NIX_SHELL", "NIX_BUILD_TOP", "NIX_BUILD_CORES", "NIX_LDFLAGS", "NIX_CFLAGS_COMPILE"]) delete process.env[name];
   process.env.SWARM_WORKSPACE_ROOT = root;
   delete process.env.SWARM_AGENT_STORE_ROOT; delete process.env.SWARM_EXTERNAL_AGENTS_REGISTRY;
   const port = new EventEmitter(); process.parentPort = port;
@@ -59,7 +78,8 @@ try {
   const read = async () => { const response = await send({ ...identity, type: "build.observe" }); assert.equal(response.ok, true); return response.buildJobs; };
   const wrong = await send({ ...identity, repositoryId: "wrong", type: "build.start", target: "//:useful" }); assert.equal(wrong.ok, false);
   const milestones = [];
-  for (const [target, operation, status] of [["//:useful", undefined, "succeeded"], ["//:broken", undefined, "failed"],
+  for (const [target, operation, status] of [["//:environment_build", undefined, "succeeded"], ["//:environment_test", "test", "succeeded"],
+    ["//:useful", undefined, "succeeded"], ["//:broken", undefined, "failed"],
     ["//:failing_test", "build", "succeeded"], ["//:passing_test", "test", "succeeded"], ["//:failing_test", "test", "failed"], ["//:useful", "test", "failed"]]) {
     const admission = await send({ ...identity, type: "build.start", target, ...(operation ? { operation } : {}) }); assert.equal(admission.ok, true);
     assert.equal(admission.buildJobs.jobs[0].target, target);
@@ -75,11 +95,12 @@ try {
       await new Promise((resolve) => setTimeout(resolve, 100));
     }
   }
-  const before = await read(); assert.equal(before.jobs.length, 6);
+  const before = await read(); assert.equal(before.jobs.length, 8);
   assert.match(before.jobs.find((job) => job.target === "//:broken").output, /intentional-build-failure/);
   assert.match(before.jobs.find((job) => job.target === "//:failing_test" && job.operation === "test").output, /intentional-test-failure/);
   assert.equal(before.jobs[0].exitCode, 4); assert.match(before.jobs[0].message, /no tests were found/);
   assert.ok(milestones.some((item) => item.target === "//:useful" && item.message.startsWith("Configured //:useful")), JSON.stringify(milestones));
+  assert.ok(milestones.some((item) => item.target === "//:environment_build" && item.message === "Preparing project development environment"), JSON.stringify(milestones));
   // Editing source and publishing a new workspace snapshot must not clear jobs.
   const source = await send({ type: "file.read", path: "BUILD" }); assert.equal(source.ok, true);
   const changed = await send({ type: "file.write", path: "BUILD", expectedRevision: source.file.revision, content: `${source.file.content}\n# changed through the real editor broker\n` });
@@ -95,7 +116,8 @@ try {
   }
   assert.deepEqual((await read()).jobs, before.jobs);
   await shutdown();
-  console.log(JSON.stringify({ passed: true, actualWorkerRouting: true, actualPassingAndFailingTests: true, noTestsFails: true,
+  console.log(JSON.stringify({ passed: true, actualWorkerRouting: true, lockedFlakeDevelopmentEnvironment: true,
+    scrubbedRuntimePathCommands: Object.keys(runtimePrograms).sort(), actualPassingAndFailingTests: true, noTestsFails: true,
     buildOnlyDoesNotPassFailingTests: true, explicitTestOverridesNoBuildAndManualFilter: true, targets: before.jobs, beforeExitMilestones: milestones,
     retainedAfterBrokerSaveAndCompletedDependencyQuery: true, ownedCleanup: stopped }, null, 2));
 } finally {
