@@ -1,0 +1,18 @@
+id: swarm-remove-hosted-ci
+title: Remove hosted CI workflow
+desc: Remove the unreliable hosted CI workflow while preserving Claude automation
+  and all local Nix/Bazel build, test, and smoke capabilities. Correct only directly
+  stale active documentation.
+type: task
+component: build
+release:
+reporter: Ted Smith <tedks@riseup.net>
+status: unstarted
+disposition:
+creation_time: 2026-09-13T20:11:27-00:00
+references: []
+log_events:
+- time: 2026-09-13T20:11:27-00:00
+  who: Ted Smith
+  what: created
+  comment: ""
