@@ -19,3 +19,10 @@ log_events:
   who: Ted Smith
   what: started
   comment: ""
+- time: 2026-09-13T20:25:33-00:00
+  who: Ted Smith
+  what: commented
+  comment: Removed only .github/workflows/claude.yml (50 lines) in PR158. Direct scope/whitespace
+    checks and light native review CLEAN. No local Claude tooling, tests, credentials/settings,
+    or historical records changed. Normal-merged d02c0167; no GitHub Actions workflow
+    files remain on remote master.
