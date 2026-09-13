@@ -21,7 +21,8 @@ The palette owns only keyboard and presentation intent. Typing, selecting with a
 - [x] (2026-09-13 19:54Z) Added `//tools/bazel-palette:checks`: 32 focused tests plus both TypeScript boundaries pass, including a mounted App proof.
 - [x] (2026-09-13 19:55Z) Aligned cockpit design and additive plan mappings; plan reader/schema tests passed inside the broader living-design target.
 - [x] (2026-09-13 20:19Z) Addressed first-round council findings with foreground-modal ownership, commit-phase activation refs, job-observation admission authority, and an immediate source-change fence; 44 focused tests and the desktop bundle pass.
-- [ ] Run the council convergence pass to a clean fixpoint and finish the pushed ready PR/Ditz handoff.
+- [x] (2026-09-13 20:29Z) Reached council fixpoint on the remediation delta: native Codex, resumed Google/agy, and a fresh Claude delta seat all returned CLEAN after full-file re-verification.
+- [x] (2026-09-13 20:30Z) Prepared the ready PR, issue closure, final verification artifact, and landing-plane handoff without merging or touching master.
 
 ## Surprises & Discoveries
 
@@ -51,7 +52,7 @@ The palette owns only keyboard and presentation intent. Typing, selecting with a
 
 ## Outcomes & Retrospective
 
-Implementation, focused proof, and the first council remediation are complete. Convergence review and final handoff remain. The palette uses only controlled renderer observations in its mounted test and makes no claim about the companion project-environment runner correction.
+The existing command palette now offers deliberate exact Bazel build/test activation while preserving file commands and renderer state. It launches only current observed rule labels, uses actual rule classes for test filtering, waits for build-graph and job-state authority, and dispatches once through the existing Builds & resources path. Forty-four focused tests, both TypeScript boundaries, and the production desktop bundle pass. Council review reached a clean fixpoint. The mounted proof uses controlled renderer observations and makes no claim about the independently owned companion project-environment runner correction. The broader living-design gate remains limited by the recorded pre-existing planning fixture identity mismatch.
 
 ## Context and Orientation
 
