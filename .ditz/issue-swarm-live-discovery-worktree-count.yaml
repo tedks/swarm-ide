@@ -11,8 +11,8 @@ type: bugfix
 component: default
 release:
 reporter: Ted Smith <tedks@riseup.net>
-status: in_progress
-disposition:
+status: closed
+disposition: fixed
 creation_time: 2026-09-13T05:27:35-00:00
 references: []
 log_events:
@@ -33,3 +33,11 @@ log_events:
     and full drain. Owned integration discovers a later pane across 130 real worktrees;
     focused CLI/registration tests pass. Council fixpoint round 3 CLEAN. Keeping in_progress
     for ROOT merge/adoption.'
+- time: 2026-09-13T06:53:07-00:00
+  who: Ted Smith
+  what: 'closed: fixed'
+  comment: PR154 normally merged as 83e00d2d. Removed 128-record ceiling, preserving
+    exact project roots and bounded/drained Git workers. Owned 130-worktree late-pane
+    test passed. ROOT read-only installed-package verification refreshed all 132 actual
+    Swarm worktrees in 310ms with unchanged project identity. No user worktrees deleted,
+    no registry mutation in this proof.
