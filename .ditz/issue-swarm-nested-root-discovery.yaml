@@ -23,3 +23,12 @@ log_events:
   who: Ted Smith
   what: started
   comment: ""
+- time: 2026-09-13T06:45:49-00:00
+  who: Ted Smith
+  what: commented
+  comment: 'Implemented on PR #154 (head a4a5094d; implementation e999f6f9): automatic
+    exact-pane discovery selects one verified CLI alongside strict same-process nested
+    native helpers, tolerates missing open intermediaries, and rejects multiple CLI
+    roots, unknown/mixed variants, duplicate/self identities, present cycles and cross-process
+    lookalikes. Focused registration tests and one bounded live read-only exact-root
+    check pass. Council fixpoint round 3 CLEAN. Keeping in_progress for ROOT merge/adoption.'
