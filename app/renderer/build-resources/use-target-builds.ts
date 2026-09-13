@@ -7,12 +7,13 @@ export function useTargetBuilds(repositoryId: string | undefined, worldId: strin
   const [observation, setObservation] = useState<BuildJobsObservation>();
   const [error, setError] = useState<string>();
   const [pending, setPending] = useState(false);
+  const [reading, setReading] = useState(false);
   const current = useRef({ repositoryId, worldId, realm, enabled });
   current.current = { repositoryId, worldId, realm, enabled };
   const controls = useRef<{ send(action: Action): Promise<void> } | undefined>(undefined);
   type Action = { type: "build.observe" } | { type: "build.start"; target: string; operation?: "build" | "test" } | { type: "build.cancel"; jobId: string };
   useEffect(() => {
-    setObservation(undefined); setError(undefined); setPending(false);
+    setObservation(undefined); setError(undefined); setPending(false); setReading(false);
     if (!repositoryId || !worldId || !enabled || !window.swarm) return;
     let disposed = false, reading = false, mutation = false, generation = 0, readAgain = false;
     let timer: ReturnType<typeof setTimeout> | undefined;
@@ -23,7 +24,7 @@ export function useTargetBuilds(repositoryId: string | undefined, worldId: strin
       clearTimeout(timer);
       const isRead = action.type === "build.observe";
       const ownGeneration = isRead ? generation : ++generation;
-      if (isRead) reading = true; else { mutation = true; setPending(true); }
+      if (isRead) { reading = true; setReading(true); } else { mutation = true; setPending(true); }
       try {
         const request: BuildJobRequest = { ...action, requestId: `target-build:${crypto.randomUUID()}`, protocolVersion: PROTOCOL_VERSION, repositoryId: repositoryId!, worldId: worldId! };
         const response = parseCoreResponseForRequest(await window.swarm!.request(request), request);
@@ -41,7 +42,7 @@ export function useTargetBuilds(repositoryId: string | undefined, worldId: strin
           timer = setTimeout(() => { void send({ type: "build.observe" }); }, 1500);
         }
       } finally {
-        if (isRead) reading = false; else { mutation = false; if (valid()) setPending(false); }
+        if (isRead) { reading = false; if (valid()) setReading(false); } else { mutation = false; if (valid()) setPending(false); }
         if (valid() && !reading && !mutation && readAgain) { readAgain = false; void send({ type: "build.observe" }); }
       }
     }
@@ -53,5 +54,6 @@ export function useTargetBuilds(repositoryId: string | undefined, worldId: strin
   const start = useCallback((target: string, operation?: "build" | "test") => controls.current?.send({ type: "build.start", target, ...(operation ? { operation } : {}) }), []);
   const cancel = useCallback((jobId: string) => controls.current?.send({ type: "build.cancel", jobId }), []);
   const scoped = observation && observation.repositoryId === repositoryId && observation.worldId === worldId ? observation : undefined;
-  return { observation: scoped, error, start, cancel, busy: pending || Boolean(scoped?.blocked || scoped?.jobs.some((job) => job.status === "running" || job.status === "stopping")) };
+  return { observation: scoped, error, ready: Boolean(scoped) && !error && !reading, start, cancel,
+    busy: pending || Boolean(scoped?.blocked || scoped?.jobs.some((job) => job.status === "running" || job.status === "stopping")) };
 }

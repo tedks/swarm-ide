@@ -38,6 +38,13 @@
     ],
     "sourcePaths": [
       "app/renderer/App.tsx",
+      "app/renderer/repository/FileSearchPalette.tsx",
+      "app/renderer/repository/file-search.ts",
+      "app/renderer/build-resources/bazel-palette.ts",
+      "app/renderer/build-resources/use-target-builds.ts",
+      "app/renderer/plans/ComponentTargets.tsx",
+      "app/renderer/styles.css",
+      "tools/bazel-palette/BUILD.bazel",
       "app/renderer/main.tsx",
       "app/renderer/RendererBoundary.tsx",
       "app/renderer/renderer-health.ts",
@@ -62,14 +69,17 @@
       "app/renderer/workspace-bridge.ts",
       "BUILD.bazel"
     ],
-    "taskIds": [],
+    "taskIds": [
+      "swarm-bazel-command-palette"
+    ],
     "contextRefs": [],
     "design": {
       "summary": "Keep the operator oriented while switching graphs, tasks, source and agent work.",
       "state": "implemented",
       "constraints": [
         "Navigation preserves dirty source, cursor and graph cameras.",
-        "Late results must not override newer navigation."
+        "Late results must not override newer navigation.",
+        "Palette target actions require one exact current-worktree observed rule and one deliberate activation."
       ],
       "connections": [
         {
@@ -92,6 +102,13 @@
         }
       ],
       "buildTargets": [
+        {
+          "label": "//tools/bazel-palette:checks",
+          "role": "Checks exact observed Bazel palette completion, activation authority and retained workbench state",
+          "dependencies": [
+            { "label": "//:quality_sources", "relation": "data" }
+          ]
+        },
         {
           "label": "//tools/renderer-health:checks",
           "role": "Checks renderer failure containment, retained text, no replay and lifecycle diagnostics",

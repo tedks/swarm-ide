@@ -58,7 +58,7 @@ nix develop --command bazel run //tools:measure-hmr
 Do not invoke Vite, TypeScript, Vitest, Playwright, Electron, or package-manager
 scripts directly; Bazel targets are the supported entry points.
 The frozen `pnpm install` is the required dependency-materialization step for a
-fresh clone; CI runs it before Bazel. `bazel build //...` produces
+fresh clone; run it before Bazel. `bazel build //...` produces
 `bazel-bin/swarm-ide-foundation.tar.gz`.
 
 ## Issue tracking (ditz)
