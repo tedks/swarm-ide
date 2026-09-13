@@ -194,7 +194,7 @@ describe("known worker registration", () => {
     } finally { await service.dispose(); }
   });
 
-  it("lets an already-running observer discover a later tmux owner in a newly created worktree", async () => {
+  it("lets an already-running observer discover a later tmux owner beyond 128 real worktrees", async () => {
     // These JavaScript launcher modules are exercised directly by this runtime
     // integration test; they intentionally have no TypeScript declarations.
     // @ts-expect-error runtime JavaScript module
@@ -222,6 +222,9 @@ describe("known worker registration", () => {
       const empty = await observer.request({ protocolVersion: PROTOCOL_VERSION, requestId: "before-late-owner", type: "externalAgents.snapshot" });
       expect(empty).toMatchObject({ kind: "snapshot", snapshot: { status: "observed", sessions: [] } });
 
+      for (let index = 0; index < 128; index++) {
+        execFileSync("git", ["-C", repo, "worktree", "add", "--detach", "--no-checkout", join(dir, `filler-${index}`), "HEAD"], { env: environment });
+      }
       execFileSync("git", ["-C", repo, "worktree", "add", "-b", "late", late], { env: environment });
       const id = randomUUID(), rollout = join(dir, "late.jsonl"), ready = join(dir, "late-ready"), script = join(dir, "late-holder.cjs");
       await writeFile(rollout, header(id, parentId, "cli"), { mode: 0o600 });
@@ -249,7 +252,7 @@ describe("known worker registration", () => {
     } finally {
       await association.dispose(); await observer.dispose();
     }
-  });
+  }, 30_000);
 
   it("finds a holder spawned by a non-leader thread in the exact pane", async () => {
     const f = await paneFixture(false, true);
@@ -283,21 +286,32 @@ describe("known worker registration", () => {
     expect(JSON.parse(await readFile(f.registry, "utf8")).sessions[0].tmux).toBeUndefined();
   });
 
-  it("discovers one CLI alongside its same-process native children without accepting ambiguous headers", async () => {
+  it("discovers one CLI alongside nested native helpers without requiring every intermediary descriptor", async () => {
     const f = await paneFixture("native");
     const native = (parent: string) => ({ subagent: { thread_spawn: { parent_thread_id: parent } } });
     const first = randomUUID(), second = randomUUID();
     await writeFile(f.rollout, header(f.id, parentId, "cli"));
     await writeFile(f.other, header(first, null, native(f.id)));
-    await writeFile(f.extra, header(second, null, native(f.id)));
+    await writeFile(f.extra, header(second, null, native(first)));
     expect((await discover({ socket: f.pane.socket, pane: f.pane.pane }))?.rollout).toBe(f.rollout);
     expect(await updateRegistry({ ...f.input, rollout: undefined, pane: f.pane })).toMatchObject({ authority: "checked-live", sessionId: f.id });
+
+    // An open-descriptor sample is not a transcript database: a nested
+    // helper remains classifiable when its immediate parent's rollout closed.
+    await writeFile(f.extra, header(second, null, native(randomUUID())));
+    expect((await discover({ socket: f.pane.socket, pane: f.pane.pane }))?.rollout).toBe(f.rollout);
+
+    await writeFile(f.other, header(first, null, native(second)));
+    await writeFile(f.extra, header(second, null, native(first)));
+    expect(await discover({ socket: f.pane.socket, pane: f.pane.pane })).toBeUndefined();
+    await writeFile(f.other, header(first, null, native(f.id)));
+
     // Exact-rollout behavior is unchanged even while other headers are ambiguous.
     for (const invalid of [
       header(second, null, "cli"),
       header(second, null, "unknown"),
+      header(second, null, { ...native(first), unexpected_variant: {} }),
       header(second, f.id), // forked_from_id is not native ownership evidence.
-      header(second, null, native(randomUUID())),
       header(second, null, native(second)),
       header(f.id, null, native(f.id)),
       header(first, null, native(f.id)),

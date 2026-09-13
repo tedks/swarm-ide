@@ -25,6 +25,7 @@ const asyncGit = (directory, args, environment, signal) => new Promise((resolveT
   }, (error, stdout) => { result = { error, stdout }; });
   child.once("close", () => result && !result.error ? resolveText(result.stdout) : reject(result?.error ?? new Error("Git refresh did not complete")));
 });
+const REFRESH_CONCURRENCY = 8;
 
 export function discoverProject(directory, environment = process.env) {
   let requested;
@@ -59,7 +60,7 @@ export function discoverProject(directory, environment = process.env) {
  * discovery this runs repeatedly, so all Git subprocesses are asynchronous and
  * abortable; it never selects a different project identity or workspace. */
 export async function refreshProject(project, environment = process.env, signal,
-  { runGit = asyncGit, maxWorktrees = 128, timeoutMs = 10000 } = {}) {
+  { runGit = asyncGit, timeoutMs = 10000 } = {}) {
   const controller = new AbortController();
   const stop = () => controller.abort();
   signal?.addEventListener("abort", stop, { once: true });
@@ -78,28 +79,40 @@ export async function refreshProject(project, environment = process.env, signal,
     }
     const entries = (await runGit(identity, ["worktree", "list", "--porcelain", "-z"], environment, controller.signal)).split("\0\0").filter(Boolean);
     check();
-    if (entries.length > maxWorktrees) throw new Error(`Project refresh found more than ${maxWorktrees} worktree records`);
-    const worktrees = [];
-    for (const entry of entries) {
-      check();
-      const fields = entry.split("\0"), pathField = fields.find((part) => part.startsWith("worktree "));
-      if (!pathField || fields.includes("bare") || fields.some((part) => part === "prunable" || part.startsWith("prunable "))) continue;
-      try {
-        const path = await realpathAsync(pathField.slice(9));
-        const checked = await Promise.allSettled([
-          runGit(path, ["rev-parse", "--path-format=absolute", "--git-common-dir"], environment, controller.signal),
-          runGit(path, ["rev-parse", "--show-toplevel"], environment, controller.signal),
-        ]);
+    const accepted = new Array(entries.length); let cursor = 0;
+    const inspect = async () => {
+      for (;;) {
         check();
-        if (checked.some((result) => result.status === "rejected")) continue;
-        const [commonText, topText] = checked.map((result) => result.value);
-        if (await realpathAsync(commonText.trimEnd()) !== identity || await realpathAsync(topText.trimEnd()) !== path) continue;
-        worktrees.push({ path, branch: fields.find((part) => part.startsWith("branch "))?.slice(7) });
-      } catch (error) {
-        check();
-        // Missing, stale or inaccessible worktrees are not live scan members.
+        const index = cursor++;
+        if (index >= entries.length) return;
+        const fields = entries[index].split("\0"), pathField = fields.find((part) => part.startsWith("worktree "));
+        if (!pathField || fields.includes("bare") || fields.some((part) => part === "prunable" || part.startsWith("prunable "))) continue;
+        try {
+          const path = await realpathAsync(pathField.slice(9));
+          // These are separate because legal paths may contain newlines, so a
+          // combined rev-parse response cannot be split unambiguously. The
+          // bounded pool still limits subprocess pressure for large projects.
+          const commonText = await runGit(path,
+            ["rev-parse", "--path-format=absolute", "--git-common-dir"], environment, controller.signal);
+          const topText = await runGit(path, ["rev-parse", "--show-toplevel"], environment, controller.signal);
+          check();
+          const [common, top] = await Promise.all([commonText, topText].map((text) => realpathAsync(text.trimEnd())));
+          if (common !== identity || top !== path) continue;
+          accepted[index] = { path, branch: fields.find((part) => part.startsWith("branch "))?.slice(7) };
+        } catch (error) {
+          check();
+          // Missing, stale or inaccessible worktrees are not live scan members.
+        }
       }
-    }
+    };
+    const workers = Array.from({ length: Math.min(REFRESH_CONCURRENCY, entries.length) }, inspect);
+    const settled = await Promise.allSettled(workers);
+    // All owned Git children have reached close before cancellation or a
+    // deadline is reported to reconciliation/disposal.
+    check();
+    const rejected = settled.find((result) => result.status === "rejected");
+    if (rejected) throw rejected.reason;
+    const worktrees = accepted.filter(Boolean);
     if (!worktrees.length) throw new Error(`No accessible worktree belongs to ${identity}.`);
     return { ...project, identity, worktrees };
   } catch (error) {

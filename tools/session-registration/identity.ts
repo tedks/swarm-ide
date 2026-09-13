@@ -49,11 +49,15 @@ export async function metadata(path: string) {
 /** Only an explicitly named pane's process tree and open descriptors are searched. */
 export interface PaneInput { socket: string; pane: string; processPid?: number; processStart?: string; signal?: AbortSignal }
 type Candidate = { target: TmuxTarget; rollout: string };
-const NativeParent = z.object({ subagent: z.object({ thread_spawn: z.object({ parent_thread_id: ExternalSessionId }) }) });
+// Session source is an externally tagged variant. Reject mixed top-level or
+// subagent variants, while allowing additive metadata inside thread_spawn.
+const NativeParent = z.object({ subagent: z.object({
+  thread_spawn: z.object({ parent_thread_id: ExternalSessionId }).passthrough(),
+}).strict() }).strict();
 
-/** A CLI can keep its native children's rollouts open in the same process.
- * Header ancestry only disambiguates; it never replaces the live handoff check.
- * Deliberately support direct children, not inferred or partial lineage. */
+/** A CLI can keep nested native-helper rollouts open in the same process.
+ * Open descriptors are not a complete ancestry graph: intermediaries may close.
+ * Header kind only disambiguates; it never replaces the live handoff check. */
 async function interactiveCandidate(candidates: Candidate[], check: () => void): Promise<Candidate | undefined> {
   const first = candidates[0];
   if (!first || candidates.some(({ target }) => target.processPid !== first.target.processPid || target.processStart !== first.target.processStart)) return;
@@ -67,16 +71,32 @@ async function interactiveCandidate(candidates: Candidate[], check: () => void):
   if (new Set(entries.map(({ meta }) => meta.id)).size !== entries.length) return;
   const roots = entries.filter(({ source }) => source === "cli");
   if (roots.length !== 1) return;
-  const root = roots[0];
+  const root = roots[0], byId = new Map(entries.map((entry) => [entry.meta.id, entry])), parents = new Map<string, string>();
   for (const entry of entries) {
     if (entry !== root) {
       const native = NativeParent.safeParse(entry.source);
-      if (!native.success || native.data.subagent.thread_spawn.parent_thread_id !== root.meta.id) return;
+      if (!native.success || native.data.subagent.thread_spawn.parent_thread_id === entry.meta.id) return;
+      parents.set(entry.meta.id, native.data.subagent.thread_spawn.parent_thread_id);
     }
     // Reject an inode/header swap while classifying any participating identity.
     check();
     const current = await metadata(entry.candidate.rollout);
     if (current.dev !== entry.meta.dev || current.ino !== entry.meta.ino || current.header !== entry.meta.header) return;
+  }
+  // Validate every part of the helper graph that is present. A missing parent
+  // is allowed because descriptors close independently; a cycle is not.
+  for (const entry of entries) if (entry !== root) {
+    const seen = new Set<string>();
+    let current = entry;
+    for (;;) {
+      if (seen.has(current.meta.id)) return;
+      seen.add(current.meta.id);
+      const parentId = parents.get(current.meta.id)!;
+      if (parentId === root.meta.id) break;
+      const parent = byId.get(parentId);
+      if (!parent) break;
+      current = parent;
+    }
   }
   check();
   return root.candidate;
