@@ -89,14 +89,14 @@ export async function refreshProject(project, environment = process.env, signal,
         if (!pathField || fields.includes("bare") || fields.some((part) => part === "prunable" || part.startsWith("prunable "))) continue;
         try {
           const path = await realpathAsync(pathField.slice(9));
-          // One process proves both repository membership and exact root; a
-          // bounded worker pool keeps large projects inside the total deadline.
-          const checked = await runGit(path,
-            ["rev-parse", "--path-format=absolute", "--git-common-dir", "--show-toplevel"], environment, controller.signal);
+          // These are separate because legal paths may contain newlines, so a
+          // combined rev-parse response cannot be split unambiguously. The
+          // bounded pool still limits subprocess pressure for large projects.
+          const commonText = await runGit(path,
+            ["rev-parse", "--path-format=absolute", "--git-common-dir"], environment, controller.signal);
+          const topText = await runGit(path, ["rev-parse", "--show-toplevel"], environment, controller.signal);
           check();
-          const lines = checked.trimEnd().split("\n");
-          if (lines.length !== 2) continue;
-          const [common, top] = await Promise.all(lines.map((line) => realpathAsync(line)));
+          const [common, top] = await Promise.all([commonText, topText].map((text) => realpathAsync(text.trimEnd())));
           if (common !== identity || top !== path) continue;
           accepted[index] = { path, branch: fields.find((part) => part.startsWith("branch "))?.slice(7) };
         } catch (error) {
@@ -105,7 +105,13 @@ export async function refreshProject(project, environment = process.env, signal,
         }
       }
     };
-    await Promise.all(Array.from({ length: Math.min(REFRESH_CONCURRENCY, entries.length) }, inspect));
+    const workers = Array.from({ length: Math.min(REFRESH_CONCURRENCY, entries.length) }, inspect);
+    const settled = await Promise.allSettled(workers);
+    // All owned Git children have reached close before cancellation or a
+    // deadline is reported to reconciliation/disposal.
+    check();
+    const rejected = settled.find((result) => result.status === "rejected");
+    if (rejected) throw rejected.reason;
     const worktrees = accepted.filter(Boolean);
     if (!worktrees.length) throw new Error(`No accessible worktree belongs to ${identity}.`);
     return { ...project, identity, worktrees };

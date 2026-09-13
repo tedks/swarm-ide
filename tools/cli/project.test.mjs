@@ -108,15 +108,16 @@ test("live refresh admits more than 128 canonical worktree records without losin
       runGit: async (cwd, args) => {
         calls++;
         if (cwd === directory) { assert.deepEqual(args, ["worktree", "list", "--porcelain", "-z"]); return entries; }
-        assert.deepEqual(args, ["rev-parse", "--path-format=absolute", "--git-common-dir", "--show-toplevel"]);
         active++; peak = Math.max(peak, active);
         await new Promise((resolve) => setImmediate(resolve));
         active--;
-        return `${directory}\n${cwd}\n`;
+        if (args.includes("--git-common-dir")) return `${directory}\n`;
+        assert.deepEqual(args, ["rev-parse", "--show-toplevel"]);
+        return `${cwd}\n`;
       },
     });
     assert.deepEqual(refreshed.worktrees.map(({ path }) => path), paths);
-    assert.equal(calls, paths.length + 1);
+    assert.equal(calls, paths.length * 2 + 1);
     assert(peak > 1 && peak <= 8);
   } finally { rmSync(directory, { recursive: true, force: true }); }
 });
@@ -130,11 +131,48 @@ test("live refresh rejects a listed path redirected within the same repository",
     const refreshed = await refreshProject({ identity: directory, git: true, worktrees: [] }, process.env, undefined, {
       runGit: async (cwd, args) => {
         if (cwd === directory) return entries;
-        assert.deepEqual(args, ["rev-parse", "--path-format=absolute", "--git-common-dir", "--show-toplevel"]);
-        return `${directory}\n${valid}\n`;
+        if (args.includes("--git-common-dir")) return `${directory}\n`;
+        assert.deepEqual(args, ["rev-parse", "--show-toplevel"]);
+        return `${valid}\n`;
       },
     });
     assert.deepEqual(refreshed.worktrees, [{ path: valid, branch: undefined }]);
+  } finally { rmSync(directory, { recursive: true, force: true }); }
+});
+
+test("live refresh preserves a real worktree root containing a newline", async () => {
+  const directory = mkdtempSync(join(tmpdir(), "swarm-project-refresh-newline-"));
+  const repo = join(directory, "project\nwith newline"); mkdirSync(repo);
+  const environment = { PATH: process.env.PATH, HOME: join(directory, "home") };
+  const git = (...args) => execFileSync("git", ["-C", repo, ...args], { env: { ...environment, GIT_CONFIG_NOSYSTEM: "1" }, stdio: "pipe" });
+  try {
+    git("init", "-b", "main");
+    const project = discoverProject(repo, environment);
+    const refreshed = await refreshProject({ ...project, workspace: repo }, environment);
+    assert.deepEqual(refreshed.worktrees, [{ path: repo, branch: "refs/heads/main" }]);
+  } finally { rmSync(directory, { recursive: true, force: true }); }
+});
+
+test("live refresh drains every active worker probe before reporting cancellation", async () => {
+  const directory = mkdtempSync(join(tmpdir(), "swarm-project-refresh-drain-"));
+  const roots = Array.from({ length: 8 }, (_, index) => join(directory, `root-${index}`));
+  for (const root of roots) mkdirSync(root);
+  const caller = new AbortController(); let active = 0, settled = 0;
+  try {
+    const entries = roots.map((path) => `worktree ${path}\0HEAD 0000`).join("\0\0");
+    await assert.rejects(refreshProject({ identity: directory, git: true, worktrees: [] }, process.env, caller.signal, {
+      runGit: async (cwd, _args, _environment, signal) => {
+        if (cwd === directory) return entries;
+        active++;
+        return await new Promise((_resolve, reject) => {
+          signal.addEventListener("abort", () => {
+            setTimeout(() => { active--; settled++; reject(new Error("aborted probe")); }, settled + 1);
+          }, { once: true });
+          if (active === roots.length) queueMicrotask(() => caller.abort());
+        });
+      },
+    }), /stopped/);
+    assert.equal(active, 0); assert.equal(settled, roots.length);
   } finally { rmSync(directory, { recursive: true, force: true }); }
 });
 

@@ -10,7 +10,7 @@ Swarm IDE should automatically recognize the one interactive Codex CLI behind an
 
 - [x] (2026-09-13 06:09Z) Read the task packet, repository instructions, existing discovery/refresh code, focused tests, design mapping, and the two started Ditz issues.
 - [x] (2026-09-13 06:14Z) Added sanitized nested-helper selection and ambiguity regressions, including a helper whose intermediary transcript is not open.
-- [x] (2026-09-13 06:14Z) Removed aggregate worktree-count rejection, retained deadline/cancellation, and reduced identity validation from two Git subprocesses to one per accessible worktree.
+- [x] (2026-09-13 06:14Z) Removed aggregate worktree-count rejection and retained deadline/cancellation; later review hardened exact-root, concurrency, newline-path and drain behavior.
 - [x] (2026-09-13 06:14Z) Extended the owned Git/tmux reconciliation proof to 130 real disposable worktrees; focused registration and CLI targets pass.
 - [x] (2026-09-13 06:17Z) Opened draft PR #154 from pushed commits `b81ac83d` and `5461fb7b`.
 - [x] (2026-09-13 06:20Z) Aligned living runtime design and `.swarm/plans.json` source/Bazel descriptions.
@@ -28,15 +28,17 @@ Swarm IDE should automatically recognize the one interactive Codex CLI behind an
 - Observation: the sanitized reproduction matches the live failure mode rather than only a fixture assumption.
   Evidence: the corrected `//tools/cli:registration-bundle` returned session `01a0702a-7b5e-71e0-bb62-287d55a7f9ba`, PID `3690953`, process start `470496407`, and `rolloutMatchesExpected: true` for the known pane; no transcript content or registry write was performed.
 - Observation: council round 1 found that the initial single common-directory probe did not prove an exact worktree root, default Zod object parsing was not a strict variant check, and strictly sequential probes unnecessarily limited scaling.
-  Evidence: the correction requests common directory and top level in one process, checks at most eight paths concurrently, rejects mixed source variants and open helper cycles, and passes both focused targets.
+  Evidence: the correction validates both common directory and top level, checks at most eight paths concurrently, and rejects mixed source variants and open helper cycles.
+- Observation: council convergence round 2 found that combining two pathname results with newline delimiters rejects legal newline-containing roots, and fail-fast pool waiting can report cancellation before every owned Git child drains.
+  Evidence: repository identity and top level now use separate commands inside the bounded pool; `Promise.allSettled` drains all workers before `check()` reports cancellation, with real newline-root and delayed worker-drain regressions.
 
 ## Decision Log
 
 - Decision: identify exactly one CLI header and require every other unique same-process candidate to have the strict native-helper source shape, without reconstructing transcript graph parentage from whichever descriptors happen to remain open.
   Rationale: open descriptors are a live process-membership sample, not a complete ancestry database. Present helper links are checked transitively for cycles, but a missing intermediary is allowed. Multiple CLI headers, mixed source variants and any unknown/non-native peer remain ambiguous; exact live handoff validation remains the authority check.
   Date/Author: 2026-09-13 / Codex
-- Decision: remove the aggregate worktree-count option and validate refresh membership from the exact canonical common directory's own bounded `git worktree list --porcelain -z` result, checking repository identity and exact top level in one Git process per non-bare, non-prunable accessible path with at most eight probes active.
-  Rationale: the listing command has an 8 MiB output bound, each worktree retains its exact-root proof, and bounded concurrency plus cancellation and a total deadline govern resource use. A raw count is neither an identity check nor a useful resource bound.
+- Decision: remove the aggregate worktree-count option and validate refresh membership from the exact canonical common directory's own bounded `git worktree list --porcelain -z` result, checking repository identity and exact top level with separate Git commands per non-bare, non-prunable accessible path and at most eight probes active.
+  Rationale: separate outputs preserve legal newline pathname bytes; the listing command has an 8 MiB output bound, each worktree retains its exact-root proof, and bounded concurrency, drained cancellation and a total deadline govern resource use. A raw count is neither an identity check nor a useful resource bound.
   Date/Author: 2026-09-13 / Codex
 
 ## Outcomes & Retrospective
@@ -53,7 +55,7 @@ Implementation is complete and the focused tests plus one bounded live read-only
 
 First extend `tools/session-registration/registration.test.ts` fixtures so one process holds a CLI rollout plus nested-helper rollouts whose source metadata point through another helper, including a deliberately absent intermediary descriptor. Update `interactiveCandidate` to separate unique CLI selection from strict native-helper classification while preserving same-process checks, unique IDs, header inode/content revalidation, exact-rollout behavior, multiple-CLI rejection, unknown-source rejection, cancellation, and final handoff validation.
 
-Next update `refreshProject` and `tools/cli/project.test.mjs` to remove the arbitrary record-count contract. Keep canonical identity, exact root, path accessibility, bare/prunable filtering, abort propagation, the total deadline, and bounded Git commands. Combine each path's common-directory and top-level query in one process, scheduled through a small worker pool. Extend the existing owned late-worktree tmux integration test so refresh crosses 128 real Git worktree records and adopts a later pane without touching live tmux or user worktrees.
+Next update `refreshProject` and `tools/cli/project.test.mjs` to remove the arbitrary record-count contract. Keep canonical identity, exact root, path accessibility, bare/prunable filtering, abort propagation, the total deadline, and bounded Git commands. Run newline-safe common-directory and top-level queries through a small drained worker pool. Extend the existing owned late-worktree tmux integration test so refresh crosses 128 real Git worktree records and adopts a later pane without touching live tmux or user worktrees.
 
 Finally update `docs/design/runtime.md` and the affected `design:agents`/`design:runtime` descriptions in `.swarm/plans.json` so source paths, Bazel targets, and behavior match. Run `//tools/session-registration:unit`, `//tools/cli:checks`, and the CLI registration bundle/build. Run the requested provider-aware council review to a clean convergence round, recording unavailable seats without substitution.
 
@@ -86,4 +88,4 @@ No new protocol, core, renderer, package, or provider interface is introduced. `
 
 Plan created before implementation to record the two independent causes, the security assumptions that preserve exact authority, and the focused proof required for ROOT adoption.
 
-Updated after implementation and council round 1 to record live proof, exact-root and strict-variant corrections, bounded concurrency, and the reason the implementation differs from the initial per-entry validation sketch.
+Updated after implementation and council rounds 1–2 to record live proof, exact-root and strict-variant corrections, newline-safe bounded/drained concurrency, and the reasons the implementation differs from the initial per-entry validation sketch.
