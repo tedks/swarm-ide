@@ -290,7 +290,7 @@ describe("fixed target operation execution", () => {
       throw Object.assign(new Error("missing"), { code: "ENOENT" });
     });
     vi.mocked(createOwnedCodexTransport).mockImplementation((_options, sink) => {
-      queueMicrotask(() => sink.error(new Error("spawn raced")));
+      queueMicrotask(() => sink.error());
       return { write() {}, close: async () => confirmed };
     });
     const executor = createTargetBuildExecutor("/owned/flake");
