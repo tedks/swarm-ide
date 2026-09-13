@@ -60,7 +60,7 @@ describe("Bazel palette keyboard ownership", () => {
       const catalogue = operation ? bazelTargetCatalogue(scope, graph, operation, query, false) : undefined;
       return <FileSearchPalette query={query} onQuery={setQuery} exact={false} commands={commands} inputRef={createRef()}
         focusLabel="retained source" onCancel={() => {}} onOpen={() => {}} search={search()}
-        target={operation && catalogue ? { operation, catalogue, workspace: "/worktrees/current", diskOnly: true, busy: false,
+        target={operation && catalogue ? { operation, catalogue, workspace: "/worktrees/current", diskOnly: true, refreshDisabled: false,
           onRefresh: refresh, onActivate: activate } : undefined} />;
     }
     render(<Harness />);
@@ -88,7 +88,7 @@ describe("Bazel palette keyboard ownership", () => {
     const catalogue = bazelTargetCatalogue(scope, { ...graph, status: "stale" }, "test", "", false);
     render(<FileSearchPalette query="" onQuery={() => {}} exact={false} commands={[]} inputRef={createRef()}
       focusLabel="source" onCancel={cancel} onOpen={() => {}} search={search()}
-      target={{ operation: "test", catalogue, workspace: "/current", diskOnly: false, busy: false, onRefresh: vi.fn(), onActivate: activate }} />);
+      target={{ operation: "test", catalogue, workspace: "/current", diskOnly: false, refreshDisabled: false, onRefresh: vi.fn(), onActivate: activate }} />);
     const row = screen.getByRole("button", { name: "Test //app:unit" }) as HTMLButtonElement;
     expect(row.disabled).toBe(true); fireEvent.click(row);
     fireEvent.keyDown(screen.getByRole("textbox", { name: "Bazel test target" }), { key: "Escape" });

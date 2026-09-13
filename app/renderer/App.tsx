@@ -234,7 +234,8 @@ export function App() {
   const setDesignVisible = (visible: boolean) => { lensChosen.current = true; updateDesignVisible(visible); };
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [paletteMode, setPaletteMode] = useState<"commands" | "path" | BazelPaletteOperation>("commands");
-  const paletteModeRef = useRef(paletteMode); paletteModeRef.current = paletteMode;
+  const paletteModeRef = useRef(paletteMode);
+  useLayoutEffect(() => { paletteModeRef.current = paletteMode; }, [paletteMode]);
   const paletteTargetScope = useRef<string | null>(null);
   const paletteTargetDispatched = useRef(false);
   const [compactPanel, setCompactPanel] = useState<"work" | "info" | null>(null);
@@ -1316,9 +1317,11 @@ export function App() {
         return;
       }
       if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "k") {
+        const foreignModal = event.target instanceof Element && event.target.closest('[role="dialog"], [aria-modal="true"], dialog') &&
+          !event.target.closest(".command-palette");
+        if (foreignModal) return;
         event.preventDefault();
-        if (event.repeat || event.isComposing || event.keyCode === 229 ||
-            !paletteOpen && event.target instanceof Element && event.target.closest('[role="dialog"], [aria-modal="true"], dialog')) return;
+        if (event.repeat || event.isComposing || event.keyCode === 229) return;
         interruptPendingReveal(); if (paletteOpen) cancelPalette(); else openPalette();
       }
       if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "w") {
@@ -1333,7 +1336,11 @@ export function App() {
         if (path) closeFile(path);
         return;
       }
-      if (event.key === "Escape" && paletteOpen && !event.isComposing && event.keyCode !== 229) { event.preventDefault(); event.stopPropagation(); cancelPalette(); }
+      if (event.key === "Escape" && paletteOpen && !event.isComposing && event.keyCode !== 229) {
+        const foreignModal = event.target instanceof Element && event.target.closest('[role="dialog"], [aria-modal="true"], dialog') &&
+          !event.target.closest(".command-palette");
+        if (!foreignModal) { event.preventDefault(); event.stopPropagation(); cancelPalette(); }
+      }
     };
     const mouse = (event: MouseEvent) => { if (event.button === 3 || event.button === 4) { event.preventDefault(); if (!window.swarmView?.onNavigate) void restoreHistory(event.button === 3 ? "back" : "forward"); } };
     window.addEventListener("keydown", listener, true);
@@ -1371,7 +1378,8 @@ export function App() {
   const paletteTargetOperation = paletteMode === "build" || paletteMode === "test" ? paletteMode : null;
   const bazelPaletteScope = { repositoryId: snapshot?.project.id ?? "", worldId: snapshot?.world.id ?? "",
     coreGeneration: coreGenerationRef.current, workspaceVisit: workspaceVisit.current };
-  const paletteBlocked = !window.swarm || workspacePending || coreUnavailable || observedCoreGeneration !== coreGenerationRef.current || targetBuilds.busy;
+  const paletteBlocked = !window.swarm || workspacePending || coreUnavailable || observedCoreGeneration !== coreGenerationRef.current ||
+    buildGraph.changePending || !targetBuilds.ready || targetBuilds.busy;
   const paletteCatalogue = useMemo<BazelTargetCatalogue | null>(() => paletteTargetOperation ?
     bazelTargetCatalogue(bazelPaletteScope, buildGraph.observation, paletteTargetOperation, commandQuery, paletteBlocked) : null,
     [bazelPaletteScope.repositoryId, bazelPaletteScope.worldId, bazelPaletteScope.coreGeneration, bazelPaletteScope.workspaceVisit,
@@ -1381,8 +1389,10 @@ export function App() {
   const paletteActivation = useRef<{ scope: typeof bazelPaletteScope; observation: typeof buildGraph.observation;
     operation: BazelPaletteOperation | null; blocked: boolean; scopeKey: string }>({ scope: bazelPaletteScope, observation: buildGraph.observation,
       operation: paletteTargetOperation, blocked: paletteBlocked, scopeKey: paletteScopeKey });
-  paletteActivation.current = { scope: bazelPaletteScope, observation: buildGraph.observation, operation: paletteTargetOperation,
-    blocked: paletteBlocked, scopeKey: paletteScopeKey };
+  useLayoutEffect(() => {
+    paletteActivation.current = { scope: bazelPaletteScope, observation: buildGraph.observation, operation: paletteTargetOperation,
+      blocked: paletteBlocked, scopeKey: paletteScopeKey };
+  });
   useLayoutEffect(() => {
     if (paletteTargetOperation && paletteTargetScope.current !== paletteScopeKey) {
       paletteTargetScope.current = null; paletteTargetDispatched.current = false;
@@ -1789,10 +1799,14 @@ export function App() {
 
       {paletteOpen ? <FileSearchPalette query={commandQuery} onQuery={setCommandQuery} exact={paletteMode === "path"} commands={commands}
         target={paletteTargetOperation && paletteCatalogue ? { operation: paletteTargetOperation, catalogue: paletteCatalogue,
-          workspace: selectedWorktree?.root ?? snapshot.project.id, diskOnly: fileTabs.some(protectsBuffer), busy: paletteBlocked,
+          workspace: selectedWorktree?.root ?? snapshot.project.id, diskOnly: fileTabs.some(protectsBuffer),
+          refreshDisabled: !window.swarm || workspacePending || coreUnavailable || observedCoreGeneration !== coreGenerationRef.current || buildGraph.observation?.status === "refreshing",
           blockedReason: workspacePending ? "Workspace transition in progress; target activation is disabled."
             : coreUnavailable || observedCoreGeneration !== coreGenerationRef.current ? "Local core is recovering; target activation is disabled."
-            : targetBuilds.busy ? "Another target operation is active; wait or cancel it in Builds & resources." : undefined,
+            : buildGraph.changePending ? "Working files changed; refreshing Bazel targets before activation."
+            : targetBuilds.busy ? "Another target operation is active; wait or cancel it in Builds & resources."
+            : !targetBuilds.ready ? targetBuilds.error ? "Build job status is unavailable; target activation is disabled."
+              : "Checking Builds & resources before target activation…" : undefined,
           onRefresh: () => { void buildGraph.refresh(); }, onActivate: activatePaletteTarget } : undefined}
         inputRef={commandInput} focusLabel={focusLabel(snapshot.focus)} onCancel={cancelPalette} search={fileSearch}
         onOpen={(path) => { setPaletteOpen(false); openLinkedFile(path); }} /> : null}

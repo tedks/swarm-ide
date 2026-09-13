@@ -106,12 +106,24 @@ it("ignores repeated shortcuts and a foreign modal, then restores the palette or
   const foreign = document.createElement("section"), foreignButton = document.createElement("button");
   foreign.setAttribute("role", "dialog"); foreign.setAttribute("aria-modal", "true");
   foreignButton.textContent = "Foreign modal owner"; foreign.append(foreignButton); document.body.append(foreign); foreignButton.focus();
-  fireEvent.keyDown(foreignButton, { key: "k", ctrlKey: true });
+  const closedShortcut = new KeyboardEvent("keydown", { key: "k", ctrlKey: true, bubbles: true, cancelable: true });
+  foreignButton.dispatchEvent(closedShortcut);
+  expect(closedShortcut.defaultPrevented).toBe(false);
   expect(screen.queryByRole("dialog", { name: "Command and file search" })).toBeNull();
   foreign.remove(); origin.focus();
 
   fireEvent.keyDown(origin, { key: "k", ctrlKey: true });
   const input = screen.getByRole("textbox", { name: "Workspace command" });
+  document.body.append(foreign); foreignButton.focus();
+  const ownedShortcut = new KeyboardEvent("keydown", { key: "k", ctrlKey: true, bubbles: true, cancelable: true });
+  foreignButton.dispatchEvent(ownedShortcut);
+  expect(ownedShortcut.defaultPrevented).toBe(false);
+  expect(screen.getByRole("dialog", { name: "Command and file search" })).toBeTruthy();
+  const ownedEscape = new KeyboardEvent("keydown", { key: "Escape", bubbles: true, cancelable: true });
+  foreignButton.dispatchEvent(ownedEscape);
+  expect(ownedEscape.defaultPrevented).toBe(false);
+  expect(screen.getByRole("dialog", { name: "Command and file search" })).toBeTruthy();
+  foreign.remove(); input.focus();
   fireEvent.keyDown(input, { key: "Escape" });
   await waitFor(() => expect(document.activeElement).toBe(origin));
   expect(screen.queryByRole("dialog", { name: "Command and file search" })).toBeNull();

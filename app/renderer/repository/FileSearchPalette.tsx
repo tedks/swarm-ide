@@ -8,7 +8,7 @@ interface TargetMode {
   catalogue: BazelTargetCatalogue;
   workspace: string;
   diskOnly: boolean;
-  busy: boolean;
+  refreshDisabled: boolean;
   blockedReason?: string;
   onRefresh(): void;
   onActivate(target: BazelPaletteTarget): void;
@@ -41,15 +41,13 @@ export function FileSearchPalette({ query, onQuery, exact, commands, target, inp
   useEffect(() => { list.current?.querySelector('[aria-current="true"]')?.scrollIntoView?.({ block: "nearest" }); }, [active]);
   useLayoutEffect(() => { if (!search.loading) lastResultHeight.current = list.current?.getBoundingClientRect().height ?? 0; }, [search.loading, result, shownCommands.length, targets.length]);
   const run = (index: number) => {
-    const command = shownCommands[index];
-    if (command) command.run();
-    else if (paths[index - shownCommands.length]) onOpen(paths[index - shownCommands.length]!);
-    else {
-      const candidate = targets[index - shownCommands.length - paths.length];
-      if (!candidate?.ready || targetActivated.current || !target) return;
-      targetActivated.current = true;
-      target.onActivate(candidate);
-    }
+    if (index < shownCommands.length) { shownCommands[index]!.run(); return; }
+    const pathIndex = index - shownCommands.length;
+    if (pathIndex < paths.length) { onOpen(paths[pathIndex]!); return; }
+    const candidate = targets[pathIndex - paths.length];
+    if (!candidate?.ready || targetActivated.current || !target) return;
+    targetActivated.current = true;
+    target.onActivate(candidate);
   };
   const stale = aged || result?.state === "stale";
   return <div className="palette-scrim" onMouseDown={onCancel}>
@@ -70,7 +68,7 @@ export function FileSearchPalette({ query, onQuery, exact, commands, target, inp
         <span>{target.catalogue.message}</span>
         {target.blockedReason ? <small className="bazel-palette-blocked">{target.blockedReason}</small> : null}
         {target.diskOnly ? <small>Uses files on disk · unsaved source changes are not included.</small> : <small>Uses the current worktree's files on disk.</small>}
-        <button type="button" disabled={target.busy || target.catalogue.state === "refreshing"} onClick={() => { inputRef.current?.focus({ preventScroll: true }); target.onRefresh(); }}>Refresh Bazel targets</button>
+        <button type="button" disabled={target.refreshDisabled || target.catalogue.state === "refreshing"} onClick={() => { inputRef.current?.focus({ preventScroll: true }); target.onRefresh(); }}>Refresh Bazel targets</button>
       </div> : !exact && query ? <div className="file-search-status" role="status">
         <span>{search.loading ? "Finding repository filenames…" : search.error ? `Search unavailable: ${search.error}` : result ?
           `${stale ? "Needs refresh" : "Last scanned"} · ${result.complete ? "complete" : "partial"} file list · ${result.capturedCount} names · ${new Date(result.capturedAt).toLocaleTimeString()}` : "Filename search unavailable"}</span>

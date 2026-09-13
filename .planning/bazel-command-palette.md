@@ -20,7 +20,8 @@ The palette owns only keyboard and presentation intent. Typing, selecting with a
 - [x] (2026-09-13 19:52Z) Wired App scope/readiness guards, target-mode filename-read suppression, focus restoration, modal ownership, and IME/repeat protection.
 - [x] (2026-09-13 19:54Z) Added `//tools/bazel-palette:checks`: 32 focused tests plus both TypeScript boundaries pass, including a mounted App proof.
 - [x] (2026-09-13 19:55Z) Aligned cockpit design and additive plan mappings; plan reader/schema tests passed inside the broader living-design target.
-- [ ] Run the remaining focused build gate, review to clean fixpoint, and finish the pushed ready PR/Ditz handoff.
+- [x] (2026-09-13 20:19Z) Addressed first-round council findings with foreground-modal ownership, commit-phase activation refs, job-observation admission authority, and an immediate source-change fence; 44 focused tests and the desktop bundle pass.
+- [ ] Run the council convergence pass to a clean fixpoint and finish the pushed ready PR/Ditz handoff.
 
 ## Surprises & Discoveries
 
@@ -30,6 +31,8 @@ The palette owns only keyboard and presentation intent. Typing, selecting with a
   Evidence: the global listener is registered with capture `true`, so the palette shortcut must explicitly respect a foreign modal target.
 - Observation: `//tools/living-design:checks` currently has a pre-existing fixture identity mismatch outside this change: `planning-ui.test.tsx` constructs a request for `project:swarm-ide` but wraps it with `initialSnapshot()`, whose project is `project:test-fixture`; plan action fixtures consequently report unavailable.
   Evidence: in the combined run, plan schema/reader and component graph suites passed (89 total passing), while 13 planning UI/action tests failed before palette code participation. This broad target is retained as an exact non-palette gate rather than retried unchanged.
+- Observation: a current target catalogue is insufficient admission authority while the renderer has not confirmed the current build-job state, and a retained current graph becomes unsafe as soon as the working-source fingerprint changes.
+  Evidence: first-round Codex council review found both windows; `useTargetBuilds.ready` now fences initial/focused reads and `useBuildGraph.changePending` remains true from the changed token through the observation that handles it.
 
 ## Decision Log
 
@@ -42,10 +45,13 @@ The palette owns only keyboard and presentation intent. Typing, selecting with a
 - Decision: Allow exact known rules in a current partial catalogue and disable every row for retained non-current observations.
   Rationale: Partial coverage means more labels may exist, not that an observed exact rule is ambiguous; stale/error/refreshing authority cannot support the same claim.
   Date/Author: 2026-09-13 / Codex
+- Decision: Keep retained build rows visible during source/job reconciliation, but separate refresh availability from launch authority.
+  Rationale: Operators can inspect and explicitly refresh retained evidence while every row remains disabled until both graph and job observations are current; an active build does not make graph refresh itself unsafe.
+  Date/Author: 2026-09-13 / Codex and council
 
 ## Outcomes & Retrospective
 
-Implementation and focused proof are complete. Review, final build verification and handoff remain. The palette uses only controlled renderer observations in its mounted test and makes no claim about the companion project-environment runner correction.
+Implementation, focused proof, and the first council remediation are complete. Convergence review and final handoff remain. The palette uses only controlled renderer observations in its mounted test and makes no claim about the companion project-environment runner correction.
 
 ## Context and Orientation
 
@@ -79,4 +85,4 @@ The orchestration handoff files are `/tmp/swarm-ide-bazel-palette.MwU6VN/palette
 
 The renderer consumes `BuildGraphObservation`, `BuildTarget`, `SelectedBuildTargetSchema`, `useBuildGraph`, and `useTargetBuilds`; no interface changes. The palette target row includes `label`, `ruleClass`, `operation`, `authority`, and `ready`. Activation accepts exactly that row and succeeds only when a fresh derivation from current refs contains the same ready identity. Existing `build.start`, `build.observe`, and `build.cancel` request/response shapes remain unchanged.
 
-Updated 2026-09-13 after implementation and focused proof to record completed behavior, the current partial-catalogue decision, passing checks, and the unrelated exact living-design gate.
+Updated 2026-09-13 after first-round council remediation to record admission-readiness and source-change fences, passing focused checks/build, and the unrelated exact living-design gate.

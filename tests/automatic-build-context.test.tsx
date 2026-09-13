@@ -36,10 +36,13 @@ it("observes on startup and stays quiet when the input token and document are un
 it("coalesces changed source signals without forcing an equivalent query", async () => {
   const h = mount(); await tick();
   h.rerender({ enabled: true, token: "second", realm: "core:1" }); await tick(300);
+  expect(h.result.current.changePending).toBe(true);
   h.rerender({ enabled: true, token: "third", realm: "core:1" }); await tick(300);
+  expect(h.result.current.changePending).toBe(true);
   expect(window.swarm!.request).toHaveBeenCalledOnce();
   await tick(2000);
   expect(window.swarm!.request).toHaveBeenCalledTimes(2);
+  expect(h.result.current.changePending).toBe(false);
   expect(vi.mocked(window.swarm!.request).mock.calls.every(([request]) => request.type === "buildGraph.observe" && !request.refresh)).toBe(true);
 });
 
@@ -133,9 +136,12 @@ it("coalesces repeated changes behind a held request without overlapping request
   const h = mount(); await tick();
   h.rerender({ enabled: true, token: "second", realm: "core:1" });
   h.rerender({ enabled: true, token: "third", realm: "core:1" }); await tick(4000);
+  expect(h.result.current.changePending).toBe(true);
   expect(window.swarm!.request).toHaveBeenCalledOnce();
   await act(async () => release(response(vi.mocked(window.swarm!.request).mock.calls[0]![0])));
+  expect(h.result.current.changePending).toBe(true);
   await tick(2000); expect(window.swarm!.request).toHaveBeenCalledTimes(2);
+  expect(h.result.current.changePending).toBe(false);
   await tick(60_000); expect(window.swarm!.request).toHaveBeenCalledTimes(2);
 });
 
