@@ -1,0 +1,22 @@
+id: swarm-live-discovery-worktree-count
+title: Allow live agent discovery in repositories with many worktrees
+desc: 'Swarm IDE demo launch on merged 86e557a5 at 2026-09-13 opened the project and
+  initially found five registered sessions, but continuous refresh logged: Project
+  refresh found more than 128 worktree records. Preserve existing observations and
+  checked identity; replace the arbitrary aggregate worktree-count failure with scalable
+  discovery/resource monitoring. Reproduction: swarm-ide --workspace /home/tedks/Projects/swarm-ide/demo-current
+  --tmux-server personal --tmux-session swarm-ide. No workaround deletes user worktrees.
+  Goals separate app untouched.'
+type: bugfix
+component: default
+release:
+reporter: Ted Smith <tedks@riseup.net>
+status: unstarted
+disposition:
+creation_time: 2026-09-13T05:27:35-00:00
+references: []
+log_events:
+- time: 2026-09-13T05:27:35-00:00
+  who: Ted Smith
+  what: created
+  comment: ""
