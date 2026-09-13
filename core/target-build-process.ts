@@ -1,4 +1,4 @@
-import { constants } from "node:fs";
+import { constants, existsSync } from "node:fs";
 import { access, mkdtemp, realpath, rm, stat } from "node:fs/promises";
 import { delimiter, join } from "node:path";
 import { tmpdir } from "node:os";
@@ -134,7 +134,7 @@ export function createTargetBuildExecutor(root: string): TargetBuildExecutor {
         const result = await collectTargetBuild((sink) => createOwnedCodexTransport({ root, executable: command,
           nodeExecutable: node!, unshareExecutable: unshare!, setprivExecutable: setpriv!, ownerScript: join(__dirname, "agents/owner-process.js"),
           args }, sink), signal, undefined, operation, flake ? "Nix" : undefined, flake ? (output) => {
-            if (!announcedEnvironmentBuild && /building '\/nix\/store\/[^']+\.drv'/.test(output)) {
+            if (!announcedEnvironmentBuild && !existsSync(started) && /building '\/nix\/store\/[^']+\.drv'/.test(output)) {
               announcedEnvironmentBuild = true;
               progress("Building project development environment");
             }

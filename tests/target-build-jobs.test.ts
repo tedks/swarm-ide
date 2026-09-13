@@ -176,13 +176,19 @@ describe("fixed target operation execution", () => {
       throw Object.assign(new Error("missing"), { code: "ENOENT" });
     });
     vi.mocked(createOwnedCodexTransport).mockImplementation((_options, sink) => {
-      queueMicrotask(() => { sink.exit(0); sink.end(); });
+      queueMicrotask(() => {
+        sink.stderr(Buffer.from("evaluation note\nbuilding '/nix/store/abc"));
+        sink.stderr(Buffer.from("-dev-shell.drv'...\n"));
+        sink.stderr(Buffer.from("building '/nix/store/another-dev-shell.drv'...\n"));
+        sink.exit(0); sink.end();
+      });
       return { write() {}, close: async () => confirmed };
     });
     const progress = vi.fn(), executor = createTargetBuildExecutor("/owned/flake");
     expect(await executor.run("//pkg:chosen", new AbortController().signal, progress, "test"))
       .toMatchObject({ exitCode: 0, cleanup: "confirmed" });
     expect(progress).toHaveBeenCalledWith("Preparing project development environment");
+    expect(progress.mock.calls.filter(([message]) => message === "Building project development environment")).toHaveLength(1);
     expect(createOwnedCodexTransport).toHaveBeenCalledTimes(1);
     const options = vi.mocked(createOwnedCodexTransport).mock.calls[0]![0];
     expect(options).toMatchObject({ root: "/owned/flake", executable: "/fixed/bin/nix" });
@@ -201,16 +207,17 @@ describe("fixed target operation execution", () => {
     vi.stubEnv("SWARM_BAZEL_BIN", "/nix/store/fixed/bin/bazel-7.6.0-linux-x86_64");
     vi.stubEnv("SWARM_BAZEL_JAVA_HOME", "/nix/store/fixed-java");
     vi.mocked(createOwnedCodexTransport).mockImplementation((_options, sink) => {
-      queueMicrotask(() => { sink.exit(0); sink.end(); });
+      queueMicrotask(() => { sink.stderr(Buffer.from("building '/nix/store/not-project-environment.drv'...\n")); sink.exit(0); sink.end(); });
       return { write() {}, close: async () => confirmed };
     });
-    const executor = createTargetBuildExecutor("/owned/plain");
-    await executor.run("//pkg:chosen", new AbortController().signal, () => {});
+    const executor = createTargetBuildExecutor("/owned/plain"), progress = vi.fn();
+    await executor.run("//pkg:chosen", new AbortController().signal, progress);
     expect(createOwnedCodexTransport).toHaveBeenCalledTimes(1);
     expect(vi.mocked(createOwnedCodexTransport).mock.calls[0]![0]).toMatchObject({
       root: "/owned/plain", executable: "/nix/store/fixed/bin/bazel-7.6.0-linux-x86_64",
       args: expect.arrayContaining(["build", "--", "//pkg:chosen"]),
     });
+    expect(progress).not.toHaveBeenCalledWith("Building project development environment");
     await executor.dispose();
   });
   it("distinguishes Nix preparation failure from a Bazel assertion failure", async () => {

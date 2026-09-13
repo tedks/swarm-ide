@@ -134,6 +134,8 @@ try {
   assert.equal(cancelAdmission.ok, true); const cancelJobId = cancelAdmission.buildJobs.jobs[0].id;
   for (;;) {
     const job = (await read()).jobs.find((item) => item.id === cancelJobId);
+    // This milestone is emitted from Nix's real derivation-start output, so it
+    // is the synchronization point; no timing delay is needed before Stop.
     if (job.message === "Building project development environment") break;
     assert.equal(job.status, "running", JSON.stringify(job));
     await new Promise((resolve) => setTimeout(resolve, 50));

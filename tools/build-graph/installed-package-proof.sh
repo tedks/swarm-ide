@@ -20,11 +20,11 @@ trap 'rm -rf "$proof_home"' EXIT
 help=$(env -i HOME="$proof_home" USER=swarm PATH=/usr/bin:/bin "$package/bin/swarm" --help)
 grep -q 'Usage: swarm' <<<"$help"
 
-wrapper_shell=$(sed -n '1s/^#! \([^ ]*\).*/\1/p' "$package/bin/swarm")
+wrapper_shell=$(sed -n '1s/^#![[:space:]]*\([^[:space:]]*\).*/\1/p' "$package/bin/swarm")
 test -x "$wrapper_shell"
 wrapper_environment=$(
   {
-    sed '$d' "$package/bin/swarm"
+    sed '/^exec[[:space:]]/,$d' "$package/bin/swarm"
     printf '%s\n' 'printf "PATH=%s\nSWARM_BAZEL_BIN=%s\nSWARM_BAZEL_JAVA_HOME=%s\n" "$PATH" "$SWARM_BAZEL_BIN" "$SWARM_BAZEL_JAVA_HOME"'
   } | env -i HOME="$proof_home" USER=swarm PATH=/usr/bin:/bin "$wrapper_shell" -e
 )
