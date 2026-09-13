@@ -1,0 +1,17 @@
+id: swarm-remove-claude-workflow
+title: Remove Claude GitHub workflow
+desc: Remove the hosted Claude GitHub Actions workflow at user request; preserve local
+  Claude tools, review commands, credentials, historical runs, and application behavior.
+type: task
+component: build
+release:
+reporter: Ted Smith <tedks@riseup.net>
+status: unstarted
+disposition:
+creation_time: 2026-09-13T20:23:51-00:00
+references: []
+log_events:
+- time: 2026-09-13T20:23:51-00:00
+  who: Ted Smith
+  what: created
+  comment: ""
