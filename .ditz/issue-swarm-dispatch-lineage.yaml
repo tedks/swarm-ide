@@ -1,0 +1,27 @@
+id: swarm-dispatch-lineage
+title: Show agent coordination separately from conversation forks
+desc: 'Future work, explicitly deferred by the user on 2026-09-13. Implement the accepted
+  coordinator-relationship decision in docs/design/agents.md, section Decision: coordinator
+  relationships. Distinguish dispatched-by operational ownership from forked-from
+  inherited conversation history. Generate versioned launcher receipts once real child
+  IDs are known; save locally outside worktrees and expose in parent tool output plus
+  child assignment headers. Reconstruct the registry index from those records and
+  native harness metadata. Support explicit manual coordinator assignment without
+  guessing from window labels, directories or OS process ancestry. Deduplicate exact
+  dispatch/session IDs; handle copied or inherited examples, conflicting records,
+  missing parents, cycles and restart recovery. Preserve existing fork ancestry, legacy
+  records and independent steering/process checks. No implementation worker is assigned
+  and no runtime change is authorized by this documentation task.'
+type: feature
+component: default
+release:
+reporter: Ted Smith <tedks@riseup.net>
+status: unstarted
+disposition:
+creation_time: 2026-09-14T01:14:48-00:00
+references: []
+log_events:
+- time: 2026-09-14T01:14:48-00:00
+  who: Ted Smith
+  what: created
+  comment: ""
