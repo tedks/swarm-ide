@@ -25,3 +25,10 @@ log_events:
   who: Ted Smith
   what: created
   comment: ""
+- time: 2026-09-14T01:16:11-00:00
+  who: Ted Smith
+  what: commented
+  comment: 'Accepted design recorded and normally merged in PR #159: https://github.com/tedks/swarm-ide/pull/159
+    . Source: docs/design/agents.md, coordinator relationships section. Documentation
+    only; implementation remains unstarted and deliberately deferred, with no worker
+    assigned.'
