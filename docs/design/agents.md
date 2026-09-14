@@ -4,6 +4,59 @@ An agent has a conversation, a task, a parent and a source world. It also has on
 execution owner. Swarm observes normal terminal agents and owns native IDE agents;
 showing them together must not launch a second copy of a running conversation.
 
+## Decision: coordinator relationships (accepted; implementation deferred)
+
+Accepted on 2026-09-13. Follow-up: Ditz `swarm-dispatch-lineage`.
+
+The agent tree should primarily show **who dispatched the work**, not only who
+shared conversation history. Today the external observer reads `forked_from_id`
+and the registry has no dispatch relationship. A fresh terminal worker therefore
+appears as a separate root even when another agent launched and coordinated it.
+This section records the intended change; it is not implemented behavior.
+
+Keep these two facts separate:
+
+- **Dispatched by** identifies the coordinating session and is the preferred
+  relationship for the operator's agent tree.
+- **Forked from** identifies inherited conversation history. Preserve the actual
+  harness metadata and expose it as additional detail, even when it differs from
+  the coordinator. Never write a fictitious fork parent for a fresh session.
+
+The launcher should generate a versioned dispatch receipt once it knows the
+actual child's session ID. For example, using illustrative identifiers:
+
+```text
+SWARM_DISPATCH {"version":1,"id":"dispatch-123","parent":"parent-session-id","child":"child-session-id","task":"task-id"}
+```
+
+Save the receipt in persistent local project state outside individual worktrees,
+print it as a launcher result in the parent's transcript, and include the same
+dispatch identity and coordinator in the child's initial assignment. Include the
+assignment time and worktree when known. Do not require a model to remember or
+generate this bookkeeping. Launch failure before a child is identified must not
+create a successful dispatch relationship.
+
+The registry is an index of these records, not their only durable copy. It should
+be rebuildable from launch receipts and assignment headers in either transcript.
+Read native harness spawn/fork metadata directly where available. Match exact
+session IDs and dispatch IDs, deduplicate repeated receipts, and distinguish
+recognized launch records from quoted examples, ordinary prose and inherited
+history. Do not execute transcript code to recover a relationship. Conflicting
+records, missing parents and cycles must not silently create or rewrite links.
+
+For agents launched manually, provide an explicit **Assign to coordinator…**
+action that records the operator's choice. Existing sessions can be linked this
+way without editing their historical transcripts. Do not infer coordination from
+window names, a shared directory, launch timing or OS process ancestry. Merely
+recording a coordinator does not grant message or process-control access; existing
+session checks and execution ownership remain unchanged.
+
+The smallest future slice is launcher receipts, registry/observer support and the
+agent-tree projection, with direct checks for fresh sessions, real forks, restart
+reconstruction, duplicated/inherited records and invalid relationships. Keep the
+existing fork view working for older records. No new orchestration service, hash
+chain or transcript migration is required. No worker is assigned to this follow-up.
+
 ## Direct startup and worktree ownership
 
 **New agent → message → Enter** calls `trusted.start` through the existing typed
