@@ -1,0 +1,71 @@
+id: whiteboard-mode
+title: Add a whiteboard mode where agents and the operator sketch designs on a shared
+  canvas
+desc: 'Inspiration: https://github.com/devdotfast/whiteboard ("an open-source canvas
+  for thoughtful software design", MIT). There, coding agents (Claude Code, Codex)
+  get an SDK to draw on an in-app canvas to explain their work, and every drawn element
+  links back to the code it describes.
+
+
+  Features worth adapting:
+
+  - Agent drawing API: agents emit diagrams (flow, sequence, entity-relationship,
+  annotated trace quotes) onto a canvas next to the code, instead of prose-only summaries.
+
+  - Diagram-to-code navigation: clicking a diagram element or a quoted trace step
+  moves focus to the underlying file, symbol or line.
+
+  - Decision log: show the operator''s requirements, how each was implemented, and
+  which decisions the agent made on its own, linked to the agent''s trace.
+
+  - Operator feedback loop: the operator selects part of a drawing and sends it back
+  to the agent to be redrawn or revised.
+
+  - Semantic, AST-aware diff (large added functions summarised, tests and docs collapsed).
+  This may deserve its own issue.
+
+
+  How it should fit swarm-ide:
+
+  - The renderer stays unprivileged. Agent draw commands arrive as typed events over
+  the local-core bridge, validated at runtime by contracts in protocol/ (a new canvas/widget
+  contract).
+
+  - A whiteboard is its own domain projection. Do not merge it into the code, build
+  or agent graphs; connect it to them through focus mappings (canvas element to file/symbol/agent-run/trace
+  step).
+
+  - The mock provider has to satisfy the same contract and cover delayed, failed,
+  stale, ambiguous and out-of-order draw events. Add a deterministic fixture world
+  under fixtures/.
+
+  - Whiteboards tied to build-derived state keep their last consistent snapshot while
+  reconciliation is yellow or red.
+
+
+  Open questions:
+
+  - How the canvas is stored (per repo, per agent run, per branch) and whether it
+  lives in git.
+
+  - Which drawing primitives v1 ships (structured diagram DSL vs freeform shapes),
+  and whether an existing canvas library is used or we build our own.
+
+  - Whether to reuse any upstream code: MIT is compatible with our AGPLv3, but it
+  has to keep its notices.
+
+
+  Before implementation, write an ExecPlan under .planning/ that follows PLANS.md.'
+type: feature
+component: default
+release:
+reporter: Ted Smith <tedks@riseup.net>
+status: unstarted
+disposition:
+creation_time: 2026-09-24T23:32:01-00:00
+references: []
+log_events:
+- time: 2026-09-24T23:32:01-00:00
+  who: Ted Smith
+  what: created
+  comment: ""
