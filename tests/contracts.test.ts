@@ -30,6 +30,7 @@ describe("runtime contracts", () => {
       const request = CoreRequestSchema.parse({ protocolVersion: PROTOCOL_VERSION, requestId: type, type, path: "src/a.ts" });
       const common = { protocolVersion: PROTOCOL_VERSION, requestId: type, ok: true, sequence: 1, snapshot: initialSnapshot() };
       expect(parseCoreResponseForRequest(common, request).ok).toBe(true);
+      expect(parseCoreResponseForRequest({ ...common, file: undefined, agent: undefined }, request).ok).toBe(true);
       expect(() => parseCoreResponseForRequest({ ...common, file: { kind: "read", path: "src/a.ts", content: "x", revision: "a".repeat(64), size: 1 } }, request)).toThrow();
     }
   });
