@@ -103,3 +103,27 @@ it("Ctrl+W closes the agent inspection, not the underlying editor or file watch"
   expect(screen.getAllByTestId("retained-graph")).toEqual(graphs);
   expect(request.mock.calls.some(([input]) => input.type === "workLog.start" || input.type === "workLog.record")).toBe(false);
 }, 10000);
+
+it("opens, restores and keyboard-closes a file literally named graphs", async () => {
+  const snapshot = initialSnapshot();
+  const tasks = workspaceTaskFixtures(snapshot);
+  let sequence = 0;
+  const request = vi.fn(async (input: CoreRequest): Promise<CoreResponse> => {
+    const common = workspaceReply(input, snapshot, ++sequence);
+    if (input.type === "agent.snapshot") return { ...common, agent: { kind: "snapshot", snapshot: emptyAgentWorkbench().snapshot } };
+    if (input.type === "tasks.snapshot") return { ...common, task: { kind: "snapshot", observation: tasks.observation() } };
+    if (input.type === "file.read") return { ...common, file: { kind: "read", path: input.path, content: "ordinary file\n", revision: "a".repeat(64), size: 14 } };
+    return fixtureAcknowledgement(input, snapshot, sequence);
+  });
+  window.swarm = { request, onEvent: () => () => {} };
+  render(<App />);
+  await openContextPath("graphs");
+  await waitFor(() => expect(document.querySelector(".cm-content")?.textContent).toContain("ordinary file"));
+  fireEvent(window, new Event("beforeunload"));
+  cleanup();
+  render(<App />);
+  await waitFor(() => expect(document.querySelector(".cm-content")?.textContent).toContain("ordinary file"));
+  fireEvent.keyDown(window, { key: "w", ctrlKey: true });
+  await waitFor(() => expect(screen.queryByRole("button", { name: "Close graphs" })).toBeNull());
+  expect(request.mock.calls.some(([input]) => input.type === "file.unwatch" && input.path === "graphs")).toBe(true);
+});

@@ -73,3 +73,20 @@ describe("retained derived navigation", () => {
     expect(saved.snapshot?.reconciliation.status).toBe("yellow");
   });
 });
+
+
+describe("document identity recovery", () => {
+  const saved = { paths: [], activeSurface: "graphs", lens: "System", focus: null };
+  it("migrates legacy graph and file identities without reserving a filename", () => {
+    expect(NavigationSchema.parse(saved).activeSurface).toEqual({ kind: "graphs" });
+    expect(NavigationSchema.parse({ ...saved, paths: ["graphs"] }).activeSurface).toEqual({ kind: "file", path: "graphs" });
+    expect(NavigationSchema.parse({ ...saved, activeSurface: "source.ts" }).activeSurface).toEqual({ kind: "file", path: "source.ts" });
+    expect(NavigationSchema.parse({ ...saved, activeSurface: "" }).activeSurface).toEqual({ kind: "graphs" });
+  });
+  it("keeps explicit graph and file identities distinct with the same retained paths", () => {
+    for (const activeSurface of [{ kind: "graphs" }, { kind: "file", path: "graphs" }]) {
+      expect(NavigationSchema.parse({ ...saved, paths: ["graphs"], activeSurface }).activeSurface).toEqual(activeSurface);
+    }
+    expect(NavigationSchema.safeParse({ ...saved, activeSurface: { kind: "file", path: "" } }).success).toBe(false);
+  });
+});

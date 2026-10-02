@@ -241,3 +241,14 @@ checks; the mounted tests do not claim actual browser geometry. The owned
 `//tools/living-design:smoke` opens the packaged app against this repository and
 checks four-pane overview/compact geometry, native source editing, unchanged
 refresh identities and component-camera roundtrips. It does not launch agents.
+
+Source/graph identity is a discriminated record (`kind: file` with an exact path,
+or `kind: graphs`), so a repository file literally named `graphs` is ordinary
+source, including for keyboard close and recovery. Navigation storage v2 reads
+legacy v1 strings; an ambiguous legacy `graphs` value selects the retained file
+when that path is present. New records preserve the explicit distinction. HMR
+and per-worktree retained documents use the same identity. Foreground visibility
+transitions are centralized in App's `showDocument`; open tabs, CodeMirror
+memories and selections remain separately retained. Regression coverage lives in
+`tests/recovery.test.ts`, `tests/cockpit-app.test.tsx` and the existing navigation
+and editor suites through `//tools/demo-syntax:editor-tests`.

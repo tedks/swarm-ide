@@ -67,6 +67,9 @@
       "app/renderer/WorkbenchSidebar.tsx",
       "app/renderer/navigation-history.ts",
       "app/renderer/workspace-bridge.ts",
+      "app/renderer/recovery.ts",
+      "tests/recovery.test.ts",
+      "tests/cockpit-app.test.tsx",
       "BUILD.bazel"
     ],
     "taskIds": [

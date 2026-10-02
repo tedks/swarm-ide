@@ -6,17 +6,31 @@ export function navigationLens(_lens: string | undefined, _hasDocuments = false)
   return "Workspace";
 }
 
+export const DocumentSurfaceSchema = z.discriminatedUnion("kind", [
+  z.object({ kind: z.literal("graphs") }),
+  z.object({ kind: z.literal("file"), path: z.string().min(1).max(4096) }),
+]);
+export type DocumentSurface = z.infer<typeof DocumentSurfaceSchema>;
+export const graphSurface: DocumentSurface = { kind: "graphs" };
+export const fileSurface = (path: string): DocumentSurface => ({ kind: "file", path });
+export const surfacePath = (surface: DocumentSurface): string | null => surface.kind === "file" ? surface.path : null;
+// Legacy navigation/HMR used an ambiguous string. Prefer a retained file when
+// the old record contains a path named graphs; the next save is unambiguous.
+export function recoverSurface(surface: DocumentSurface | string, paths: string[]): DocumentSurface {
+  if (typeof surface !== "string") return surface;
+  return surface && (surface !== "graphs" || paths.includes(surface)) ? fileSurface(surface) : graphSurface;
+}
 export const NavigationSchema = z.object({
   paths: z.array(z.string().min(1).max(4096)).max(128),
-  activeSurface: z.string().max(4096),
+  activeSurface: z.union([DocumentSurfaceSchema, z.string().max(4096)]),
   lens: z.enum(["Workspace", "Code", "System", "Plan", "Performance", "Refactor"]),
   focus: FocusRefSchema.nullable(),
   snapshot: WorkspaceSnapshotSchema.optional(),
   selectedWorktree: WorkspaceSelectionSchema.optional(),
-}).transform((saved) => ({ ...saved, lens: navigationLens(saved.lens, saved.paths.length > 0) }));
-export const NAVIGATION_KEY = "swarm:document-navigation:v1";
+}).transform((saved) => ({ ...saved, activeSurface: recoverSurface(saved.activeSurface, saved.paths), lens: navigationLens(saved.lens, saved.paths.length > 0) }));
+export const NAVIGATION_KEY = "swarm:document-navigation:v2";
 export function readNavigation() {
-  try { return NavigationSchema.parse(JSON.parse(window.sessionStorage.getItem(NAVIGATION_KEY) ?? "null")); }
+  try { return NavigationSchema.parse(JSON.parse(window.sessionStorage.getItem(NAVIGATION_KEY) ?? window.sessionStorage.getItem("swarm:document-navigation:v1") ?? "null")); }
   catch { return null; }
 }
 export function protectsBuffer(tab: { content: string; savedContent: string; status: string }) {

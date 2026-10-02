@@ -172,7 +172,7 @@ it("returns from a task to its retained source after visiting the overview", asy
 
 it("migrates every old lens without discarding saved paths/focus or hiding graphs", async () => {
   const saved = { paths: [writerFileFocus.path!], activeSurface: writerFileFocus.path!, lens: "Refactor", focus: writerFileFocus };
-  expect(NavigationSchema.parse(saved)).toEqual({ ...saved, lens: "Workspace" });
+  expect(NavigationSchema.parse(saved)).toEqual({ ...saved, activeSurface: { kind: "file", path: saved.activeSurface }, lens: "Workspace" });
   for (const lens of ["Plan", "Code", "Performance", "System", "Refactor"]) expect(NavigationSchema.parse({ ...saved, lens }).lens).toBe("Workspace");
   window.sessionStorage.setItem(NAVIGATION_KEY, JSON.stringify(saved));
   bridge(); render(<App />);
