@@ -23,3 +23,12 @@ log_events:
   who: Ted Smith
   what: updated description
   comment: ""
+- time: 2026-10-02T06:39:49-00:00
+  who: Ted Smith
+  what: commented
+  comment: 'W10 re-audit: consolidate the same initial missing dev-control-file warning
+    recorded in swarm-dev-initial-control-read. Preserve its second observation: managed0045e6e2
+    startup 02:21:03ET, control-97921.json absent; app/core alive, unchanged update/file
+    present by 02:21:05. Original observation here was 717485e/control-46285.json.
+    One investigation should explain startup ordering; neither incident is claimed
+    fixed or a renderer-hang cause.'
