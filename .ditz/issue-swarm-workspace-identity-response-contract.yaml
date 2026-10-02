@@ -19,3 +19,14 @@ log_events:
   who: Ted Smith
   what: created
   comment: ""
+- time: 2026-10-02T08:24:51-00:00
+  who: Ted Smith
+  what: commented
+  comment: 'W9 measured proposal at origin/master abb2d0fd: valid synthetic identity-only
+    replies with 20/200/1000 nodes occupy 8992/73878/367874 JSON bytes. Illustrative
+    same-descriptor envelope without snapshot:367 bytes. One validation median0.0630/0.1792/0.9395ms;
+    three successive validations0.1145/0.5594/2.9749ms, seven50-call batches after20
+    warmups. These are synthetic parser measurements, not actual IPC/production CPU.
+    docs/design/runtime.md now proposes strict versioned identity-success replies
+    with exact correlation and existing generation fences; no blanket optional snapshot
+    or validation removal. Wire implementation remains unstarted and separately scoped.'
