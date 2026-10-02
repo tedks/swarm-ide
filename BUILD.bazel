@@ -99,6 +99,7 @@ filegroup(
 
 genrule(
     name = "desktop-bundle",
+    # Direct label is required by $(location package.json), despite group membership.
     srcs = [":runtime_sources", "package.json"],
     outs = ["swarm-ide-foundation.tar.gz"],
     cmd = "$(location //tools:build-app) $@ $(location package.json)",
