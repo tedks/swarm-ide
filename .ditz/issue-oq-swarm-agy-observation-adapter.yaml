@@ -27,3 +27,11 @@ log_events:
     proof run, or implementation worker was started. Options: implement the adapter,
     wait for clearer upstream API support, or drop it. Recommendation: none stated
     by the source session. Decides: Ted. Source: off-duty/waiting/2026-09-26-01a0702a-swarm-ide-root.md'
+- time: 2026-10-02T21:16:06-00:00
+  who: Ted Smith
+  what: commented
+  comment: 'Retirement checkpoint 2026-10-02: controller recommendation is to keep
+    this deferred pending Ted prioritization and a bounded validation of the installed
+    CLI observation contract. Ted decides between implementation, waiting, and dropping
+    the adapter. This blocks starting the proposed agy adapter only; no adapter implementation
+    is authorized by cleanup or retirement.'
