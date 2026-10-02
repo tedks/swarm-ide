@@ -70,6 +70,8 @@
       "app/renderer/recovery.ts",
       "tests/recovery.test.ts",
       "tests/cockpit-app.test.tsx",
+      "tests/workspace-navigation-app.test.tsx",
+      "tests/agent-trusted-home.test.tsx",
       "BUILD.bazel"
     ],
     "taskIds": [
