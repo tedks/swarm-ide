@@ -2,8 +2,7 @@
 import { act, cleanup, render } from "@testing-library/react";
 import { afterEach, beforeAll, expect, it, vi } from "vitest";
 import { EditorView } from "@codemirror/view";
-import { StateEffect } from "@codemirror/state";
-import { history, undo, undoDepth } from "@codemirror/commands";
+import { undo, undoDepth } from "@codemirror/commands";
 import { EditorPane } from "../app/renderer/EditorPane";
 
 beforeAll(() => {
@@ -17,8 +16,6 @@ it("keeps the editor, caret and undo state through repeated equivalent source ob
   const mounted = render(<EditorPane path="main.ts" content={original} flash={null} onChange={onChange} onSave={onSave} />);
   const dom = document.querySelector<HTMLElement>(".cm-editor")!, view = EditorView.findFromDOM(dom)!;
   act(() => {
-    // Preserve an installed history; this increment does not add history support.
-    view.dispatch({ effects: StateEffect.appendConfig.of(history()) });
     view.dispatch({ changes: { from: original.length, insert: "// human draft\n" }, selection: { anchor: 6, head: 12 } });
     view.focus();
   });

@@ -15,7 +15,7 @@ let
     };
     inherit pnpm;
     fetcherVersion = 4;
-    hash = "sha256-oh+iXosMIvEV646mijCH8uuC4CHFJnNJh1napnaOke8=";
+    hash = "sha256-rSh8OH9iB5AKzkBKFEbItVF7gVITB1DReCRwjLorc98=";
   };
   bazelBinary = "${bazel_7}/bin/bazel-${bazel_7.version}-linux-${if stdenv.hostPlatform.isAarch64 then "aarch64" else "x86_64"}";
 in buildBazelPackage {

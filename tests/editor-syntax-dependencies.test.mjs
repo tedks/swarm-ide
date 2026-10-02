@@ -19,7 +19,7 @@ describe("syntax parser state identity", () => {
         else inspect(resolved);
       }
     };
-    for (const dependency of ["@codemirror/commands", "@codemirror/view", "@codemirror/language", "@codemirror/lang-javascript", "@codemirror/lang-json", "@codemirror/lang-markdown",
+    for (const dependency of ["@codemirror/merge", "@codemirror/commands", "@codemirror/view", "@codemirror/language", "@codemirror/lang-javascript", "@codemirror/lang-json", "@codemirror/lang-markdown",
       "@codemirror/lang-css", "@codemirror/lang-html", "@codemirror/lang-python", "@replit/codemirror-lang-nix", "@codemirror/legacy-modes/mode/shell"])
       inspect(require.resolve(dependency));
     expect(seen.size).toBeGreaterThanOrEqual(6);

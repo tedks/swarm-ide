@@ -13,11 +13,11 @@ done
 node - "$SWARM_SYNTAX_EVIDENCE/proof.json" <<'JS'
 const assert = require('node:assert/strict');
 const p = JSON.parse(require('node:fs').readFileSync(process.argv[2], 'utf8'));
-assert(p.ok && p.packagedCore && p.retained && p.diskUnchangedBeforeSave && p.savedOwnedFile);
+assert(p.ok && p.packagedCore && p.retained && p.undoRedoRetained && p.diskUnchangedBeforeSave && p.savedOwnedFile);
 assert.deepEqual(p.modelRequests, []);
 assert.deepEqual(p.blockingErrors, []);
 assert.deepEqual(Object.keys(p.colors).sort(), ['BUILD.bazel', 'README.md', 'flake.nix', 'main.py', 'settings.json', 'syntax.ts']);
-console.log('Actual TS/JSON/Markdown/Bazel/Nix/Python colors; native edit/tab/cursor/camera retention; one owned save; no model requests.');
+console.log('Actual TS/JSON/Markdown/Bazel/Nix/Python colors; native undo/redo and edit/tab/cursor/camera retention; one owned save; no model requests.');
 console.log('Accepted exact resize diagnostics:', p.acceptedResizeWarnings.length);
 JS
 swarm_window_capture "$SWARM_SYNTAX_EVIDENCE/syntax-window.png"

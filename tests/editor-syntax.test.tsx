@@ -1,9 +1,9 @@
 // @vitest-environment jsdom
 import { act, cleanup, fireEvent, render } from "@testing-library/react";
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
-import { EditorState, StateEffect } from "@codemirror/state";
+import { EditorState } from "@codemirror/state";
 import { EditorView, keymap } from "@codemirror/view";
-import { history, undo, undoDepth } from "@codemirror/commands";
+import { undo, undoDepth } from "@codemirror/commands";
 import { ensureSyntaxTree } from "@codemirror/language";
 import { highlightTree } from "@lezer/highlight";
 import { EditorPane, type EditorMemory } from "../app/renderer/EditorPane";
@@ -62,9 +62,6 @@ describe("mounted syntax changes retain the existing editor", () => {
     const view = editor(), dom = view.dom;
     expect(view.contentDOM.querySelectorAll("span[class]").length).toBeGreaterThan(0);
     act(() => {
-      // Baseline has no history extension. Install it here to prove the new
-      // compartment preserves existing state fields rather than rebuilding.
-      view.dispatch({ effects: StateEffect.appendConfig.of(history()) });
       view.dispatch({ changes: { from: initial.length, insert: "// unsaved" }, selection: { anchor: 4, head: 9 } });
       view.focus();
     });
