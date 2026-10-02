@@ -51,7 +51,7 @@ function fixture() {
   const primary = selection("primary"), other = selection("other", SESSION);
   const create = vi.fn((selected: WorkspaceSelection): RootedRuntime => ({
     ready: Promise.resolve(snapshot(selected.id)), snapshot: async () => snapshot(selected.id),
-    async request(input, context) { calls.push({ id: selected.id, input, ...(context ? { context } : {}) }); }, shutdown: vi.fn(async () => {}), close: vi.fn(),
+    async request(input, context) { calls.push({ id: selected.id, input, ...(context ? { context } : {}) }); }, shutdown: vi.fn(async () => {}), close: vi.fn(), setObservationInterest() {},
   }));
   const router = new WorkspaceContextRouter({ resolve: async (sessionId) => sessionId === null ? primary : other,
     create, post: (value) => outputs.push(value) });
@@ -63,7 +63,7 @@ describe("workspace routing", () => {
     let release!: (selection: WorkspaceSelection) => void;
     const registration = new Promise<WorkspaceSelection>((resolve) => { release = resolve; });
     const create = vi.fn((): RootedRuntime => ({ ready: Promise.resolve(snapshot("primary")), snapshot: async () => snapshot("primary"),
-      request: async () => {}, shutdown: async () => {}, close() {} }));
+      request: async () => {}, shutdown: async () => {}, setObservationInterest() {}, close() {} }));
     const router = new WorkspaceContextRouter({ resolve: () => registration, create, post() {} });
     router.close();
     release(selection("primary"));
@@ -94,7 +94,7 @@ describe("workspace routing", () => {
     let visibility: WorkspaceSelection["agentVisibility"] = "project", branch: string | null = "master";
     const snapshotRead = vi.fn(async () => snapshot("primary"));
     const create = vi.fn((selected: WorkspaceSelection): RootedRuntime => ({ ready: Promise.resolve(snapshot(selected.id)), snapshot: snapshotRead,
-      request: async () => {}, shutdown: async () => {}, close() {} }));
+      request: async () => {}, shutdown: async () => {}, setObservationInterest() {}, close() {} }));
     const router = new WorkspaceContextRouter({
       resolve: async (_sessionId, _signal, identityOnly) => { const value = { ...selection("primary"), agentVisibility: visibility, branch }; calls.push(value);
         expect(identityOnly ?? false).toBe(calls.length > 1); return value; },
@@ -141,7 +141,7 @@ describe("workspace routing", () => {
         return selection("other", id);
       },
       create: selected => ({ ready: Promise.resolve(snapshot(selected.id)), snapshot: async () => snapshot(selected.id),
-        request: async (input, context) => { calls.push({ input, context }); }, shutdown: async () => {}, close() {} }), post() {},
+        request: async (input, context) => { calls.push({ input, context }); }, shutdown: async () => {}, setObservationInterest() {}, close() {} }), post() {},
     });
     await router.request(command("workspace.open", { sessionId: SESSION })); oldLive = false;
     await router.request(command("workspace.open", { sessionId: second }));
@@ -175,7 +175,7 @@ describe("workspace routing", () => {
     const held = new Promise<void>((resolve) => { release = resolve; });
     const router = new WorkspaceContextRouter({ resolve: async (id) => id === null ? selection("primary") : selection("other", SESSION),
       post: (value) => outputs.push(value), create: (s) => ({ ready: s.id === "other" ? held.then(() => { throw new Error("target removed"); }) : Promise.resolve(snapshot(s.id)),
-        snapshot: async () => snapshot(s.id), request: async () => { calls.push(s.id); }, shutdown: async () => {}, close() {} }) });
+        snapshot: async () => snapshot(s.id), request: async () => { calls.push(s.id); }, shutdown: async () => {}, setObservationInterest() {}, close() {} }) });
     const opening = router.request(command("workspace.open", { sessionId: SESSION }));
     await router.request(command("file.read", { path: "same.txt" }));
     expect(outputs).toHaveLength(0); release(); await opening;
@@ -311,4 +311,56 @@ describe("registered same-repository selection", () => {
     expect(await readFile(join(primary, "same.txt"), "utf8")).toBe("saved to launch\n");
     expect(await readFile(join(other, "same.txt"), "utf8")).toBe("agent bytes\n");
   });
+});
+
+it("keeps fingerprint interest on the latest selected root, not identity refreshes or late opens", async () => {
+  const active = new Map<string, boolean>();
+  const calls: string[] = [];
+  let holdWrite = false, releaseWrite!: () => void;
+  const writeHeld = new Promise<void>((resolve) => { releaseWrite = resolve; });
+  let release!: () => void;
+  const delayed = new Promise<void>((resolve) => { release = resolve; });
+  const slowSession = "10000000-0000-4000-8000-000000000009";
+  const router = new WorkspaceContextRouter({
+    resolve: async (id) => { if (id === slowSession) await delayed; return selection(id ?? "primary", id); },
+    create: (value, primary) => {
+      active.set(value.id, primary);
+      return { ready: Promise.resolve(snapshot(value.id)), snapshot: async () => snapshot(value.id),
+        setObservationInterest: (interested: boolean) => { active.set(value.id, interested); },
+        request: async () => { calls.push(value.id); if (holdWrite) await writeHeld; }, shutdown: async () => {}, close() {} };
+    }, post() {},
+  });
+  try {
+    await router.primary;
+    for (let n=1;n<=8;n++) await router.request(command("workspace.open", { sessionId: `10000000-0000-4000-8000-${String(n).padStart(12,"0")}` }));
+    expect([...active].filter(([, interested]) => interested).map(([id]) => id)).toEqual(["10000000-0000-4000-8000-000000000008"]);
+    holdWrite = true;
+    const accepted = router.request(command("file.write", { workspaceId: "10000000-0000-4000-8000-000000000008", path: "same.txt", expectedRevision: "a".repeat(64), content: "held" }));
+    await vi.waitFor(() => expect(calls).toHaveLength(1));
+    const late = router.request(command("workspace.open", { sessionId: slowSession }));
+    await router.request(command("workspace.open", { sessionId: null }));
+    release(); await late;
+    holdWrite = false; releaseWrite(); await accepted;
+    await router.request(command("workspace.open", { sessionId: SESSION, identityOnly: true }));
+    expect([...active].filter(([, interested]) => interested).map(([id]) => id)).toEqual(["primary"]);
+    await router.request(command("file.write", { workspaceId: SESSION, path: "same.txt", expectedRevision: "a".repeat(64), content: "accepted in original root" }));
+    expect(calls).toEqual(["10000000-0000-4000-8000-000000000008", SESSION]);
+  } finally { release(); releaseWrite(); await router.shutdown(); }
+});
+
+it("the actual runtime revokes retained authority before resumed observation", async () => {
+  const { primary, registry } = await repositories();
+  const root = await resolveWorkspaceSelection(primary, registry, null);
+  const runtime = createWorkspaceRuntime(root.root, root.id, false, {}, () => {});
+  try {
+    await runtime.ready;
+    runtime.setObservationInterest(true);
+    await vi.waitFor(async () => expect((await runtime.snapshot()).revisions.working.evidence).toBe("observed"));
+    runtime.setObservationInterest(false);
+    expect((await runtime.snapshot()).revisions.working.evidence).toBe("unavailable");
+    await writeFile(join(primary, "same.txt"), "changed while idle\n");
+    runtime.setObservationInterest(true);
+    expect((await runtime.snapshot()).revisions.working.evidence).toBe("unavailable");
+    await vi.waitFor(async () => expect((await runtime.snapshot()).revisions.working.evidence).toBe("observed"));
+  } finally { await runtime.shutdown(); }
 });

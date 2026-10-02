@@ -22,6 +22,7 @@ export class WorkingWorldObserver {
   private processed = 0;
   private running = false;
   private closed = false;
+  private paused = false;
   private lifetime = new AbortController();
   private pending: Promise<void> = Promise.resolve();
   private timer: WorkingWorldObserverTimer | null = null;
@@ -42,6 +43,8 @@ export class WorkingWorldObserver {
 
   start(): void {
     if (this.closed || this.timer) return;
+    const resuming = this.paused;
+    if (resuming) { this.paused = false; this.lifetime = new AbortController(); this.mustPublishSuccess = true; }
     // A periodic hint must not invalidate work already in flight: a slow Git
     // fingerprint still describes a real observed world, and the next tick
     // will sample again. Explicit filesystem/save hints continue to request a
@@ -50,10 +53,11 @@ export class WorkingWorldObserver {
       if (!this.running) this.request();
     });
     this.timer.unref?.();
+    if (resuming) this.request();
   }
 
   request(): void {
-    if (this.closed) return;
+    if (this.closed || this.paused) return;
     this.requested += 1;
     if (!this.running) this.pending = this.drain();
   }
@@ -73,6 +77,16 @@ export class WorkingWorldObserver {
     this.request();
   }
 
+  /** Suspend read interest without discarding the last digest or runtime. */
+  pause(): Promise<void> {
+    this.paused = true;
+    ++this.requested; // Any sample begun before suspension loses authority.
+    if (this.timer) this.clock.cancel(this.timer);
+    this.timer = null;
+    this.lifetime.abort();
+    return this.pending;
+  }
+
   close(): Promise<void> {
     this.closed = true;
     if (this.timer) this.clock.cancel(this.timer);
@@ -84,12 +98,12 @@ export class WorkingWorldObserver {
   private async drain(): Promise<void> {
     this.running = true;
     try {
-      while (!this.closed && this.processed < this.requested) {
+      while (!this.closed && !this.paused && this.processed < this.requested) {
         const generation = this.requested;
         try {
           const fingerprint = await this.compute(this.lifetime.signal);
           this.processed = generation;
-          if (generation !== this.requested || this.closed) continue;
+          if (generation !== this.requested || this.closed || this.paused) continue;
           const recovered = this.observationFailed || this.mustPublishSuccess;
           this.observationFailed = false;
           this.mustPublishSuccess = false;
@@ -99,7 +113,7 @@ export class WorkingWorldObserver {
           }
         } catch (cause) {
           this.processed = generation;
-          if (generation !== this.requested || this.closed) continue;
+          if (generation !== this.requested || this.closed || this.paused) continue;
           if (!this.observationFailed) {
             this.observationFailed = true;
             this.failed(cause instanceof Error ? cause : new Error("unknown working-world observation failure"));
@@ -108,7 +122,7 @@ export class WorkingWorldObserver {
       }
     } finally {
       this.running = false;
-      if (!this.closed && this.processed < this.requested) this.pending = this.drain();
+      if (!this.closed && !this.paused && this.processed < this.requested) this.pending = this.drain();
     }
   }
 }

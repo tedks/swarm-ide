@@ -315,3 +315,36 @@ describe("repository navigation independent of working and service evidence", ()
     await expect(subject.listRepository(listRequest(), ignorePublish)).rejects.toMatchObject({ code: "REPOSITORY_UNAVAILABLE" });
   });
 });
+
+it("retains stale projections on lost read interest without aborting accepted reconciliation", async () => {
+  const held = deferred<ServiceDiscovery>(); let signal: AbortSignal | undefined;
+  const subject = await provider(fixtureDependencies({ discover: async (_root, input) => { signal = input; return held.promise; } }));
+  const pending = subject.startReconciliation(ignorePublish);
+  await vi.waitFor(() => expect(signal).toBeDefined());
+  subject.markWorkingWorldUnobserved(ignorePublish);
+  expect(subject.snapshot().reconciliation.status).toBe("yellow");
+  expect(subject.snapshot().revisions.working.evidence).toBe("unavailable");
+  expect(signal?.aborted).toBe(false);
+  try {
+    // Returning to the root revokes retention again, then samples the same input.
+    subject.markWorkingWorldUnobserved(ignorePublish);
+    subject.markWorkingWorldChanged(fingerprint, ignorePublish);
+    expect(signal?.aborted).toBe(false);
+  } finally { held.resolve(declaration); await pending; }
+  expect(subject.snapshot().reconciliation.status).toBe("green");
+  expect(subject.snapshot().revisions.working.evidence).toBe("observed");
+});
+
+it("still invalidates an accepted declaration read when resumed inputs changed", async () => {
+  const held = deferred<ServiceDiscovery>(); let signal: AbortSignal | undefined;
+  const subject = await provider(fixtureDependencies({ discover: async (_root, input) => { signal = input; return held.promise; } }));
+  const pending = subject.startReconciliation(ignorePublish);
+  try {
+    await vi.waitFor(() => expect(signal).toBeDefined());
+    subject.markWorkingWorldUnobserved(ignorePublish);
+    subject.markWorkingWorldChanged("b".repeat(64), ignorePublish);
+    expect(signal?.aborted).toBe(true);
+  } finally { held.resolve(declaration); await pending; subject.dispose(); }
+  expect(subject.snapshot().revisions.working.fingerprint).toBe("b".repeat(64));
+  expect(subject.snapshot().reconciliation.status).toBe("yellow");
+});

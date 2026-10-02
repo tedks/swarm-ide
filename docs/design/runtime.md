@@ -337,3 +337,24 @@ aborts its current computation, suppresses late publication and returns its
 cleanup promise; graceful runtime shutdown awaits it. These paths are exercised
 by the fingerprint and working-world-observer suites through the focused editor
 test gate; repository-provider and bridge suites preserve freshness behavior.
+
+The workspace router grants periodic fingerprint interest only to the latest
+successful explicit workspace selection. Metadata-only identity refreshes and
+late replies from superseded selections do not activate roots. Inactive contexts
+retain immutable roots, files, accepted operations and shared agent/Work Log
+ownership; no context is evicted. Their fingerprint observer stops its timer,
+aborts the current sample and suppresses late publication. Resuming first revokes
+retained source authority and requests a fresh sample even if the digest is
+unchanged. Suspension marks retained views yellow (preserving existing red
+failures), and does not cancel an accepted declaration read or target build. A
+completed operation's own before/after fingerprint verification may still publish
+fresh evidence. File watchers and explicit operations retain their existing
+lifetimes; this is not a recursive watcher redesign.
+
+A local synthetic probe over eight distinct Git roots measured one serial sweep:
+quiet roots 1/4/8 used 3.98/10.22/16.85 ms; dirty roots with sixteen 64 KiB changed
+files each used 5.38/21.42/47.95 ms and read 1/4/8 MiB. These are wall-time samples,
+not production CPU estimates. Suspending inactive periodic reads makes that
+scheduled work depend on the selected root rather than all visited roots. Router,
+observer-clock and actual-runtime regression tests cover selection ordering,
+retained-root writes, pause/drain/resume and stale-before-fresh publication.
