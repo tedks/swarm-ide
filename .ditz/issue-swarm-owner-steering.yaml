@@ -59,6 +59,15 @@ log_events:
   who: Ted Smith
   what: updated description
   comment: ""
+- time: 2026-10-02T06:42:09-00:00
+  who: Ted Smith
+  what: commented
+  comment: 'W10 status reconciliation 2026-10-02: all directly recorded blockers are
+    closed, but that alone does not establish this umbrella acceptance. Compare its
+    exact scope with merged source at 6eb9af05 before closing; in_progress is historical
+    tracker state, not proof of an active worker. In particular, limited-policy execution
+    acceptance must not be replaced with evidence from the separately authorized trusted-local
+    path. No older mission is resumed by this note.'
 blocks:
 - swarm-operator-demo
 blocked_by:
