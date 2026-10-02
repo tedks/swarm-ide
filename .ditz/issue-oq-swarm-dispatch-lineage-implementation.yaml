@@ -1,0 +1,24 @@
+id: oq-swarm-dispatch-lineage-implementation
+title: Decide when to implement the accepted coordinator-lineage design
+desc: 'Decision owner: Ted. Implementation is tracked by swarm-dispatch-lineage and
+  explicitly deferred since 2026-09-13; the accepted design in docs/design/agents.md
+  separates dispatched-by operational ownership from forked-from conversation ancestry.
+
+  Options: authorize a bounded implementation of the accepted design; keep it deferred;
+  drop the feature. Recommendation: keep it deferred until Ted explicitly prioritizes
+  implementation after the current cleanup. This question blocks activating the deferred
+  lineage implementation, not maintenance of existing fork display. No implementation
+  authorization is inferred from this retirement record.'
+type: task
+component: open-questions
+release:
+reporter: Ted Smith <tedks@riseup.net>
+status: unstarted
+disposition:
+creation_time: 2026-10-02T21:16:04-00:00
+references: []
+log_events:
+- time: 2026-10-02T21:16:04-00:00
+  who: Ted Smith
+  what: created
+  comment: ""
