@@ -798,6 +798,7 @@
     ],
     "sourcePaths": [
       "protocol/schema.ts",
+      "protocol/workspace.ts",
       "tests/support/workspace-fixture.ts",
       "tests/workspace-fixture.test.ts",
       "core/fingerprint.ts",
@@ -838,7 +839,7 @@
       "app/renderer/build-resources/use-target-builds.ts",
       "app/renderer/build-resources/BuildResources.tsx"
     ],
-    "taskIds": [],
+    "taskIds": ["swarm-workspace-identity-response-contract"],
     "contextRefs": [],
     "design": {
       "summary": "Route validated requests from the sandboxed renderer to registered local capabilities and preserve recoverable state.",
@@ -852,7 +853,7 @@
           "targetId": "design:repository",
           "label": "Filesystem, Git & Bazel results",
           "kind": "result",
-          "detail": "The matching typed response carries only its command’s result field; file replies bind the exact requested path and kind before buffer updates. Observations retain source identity and freshness. This is the return direction of Repository & build queries, not an independent service dependency."
+          "detail": "The matching typed response carries only its command’s result field; file replies bind the exact requested path and kind before buffer updates. Observations retain source identity and freshness. Identity-only workspace replies still carry a snapshot today; the metadata-only variant in the runtime design is planned, not implemented. This is the return direction of Repository & build queries, not an independent service dependency."
         },
         {
           "targetId": "design:agents",
