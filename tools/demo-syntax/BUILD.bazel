@@ -5,7 +5,7 @@ filegroup(name = "sources", srcs = glob(["*.sh", "*.mjs", "*.cjs"]))
 sh_test(
     name = "editor-tests",
     srcs = ["editor-tests.sh"],
-    data = ["//:quality_sources"],
+    data = ["//:design_test_inputs", "//:quality_sources"],
     tags = ["local"],
 )
 

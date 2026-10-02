@@ -138,7 +138,7 @@ sh_binary(
 sh_test(
     name = "quality",
     srcs = ["quality.sh"],
-    data = ["//:quality_sources"],
+    data = ["//:design_test_inputs", "//:quality_sources"],
     tags = ["local"],
 )
 

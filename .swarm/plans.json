@@ -162,6 +162,7 @@
           "label": "//tools:quality",
           "role": "Component checks or authoring entry",
           "dependencies": [
+            { "label": "//:design_test_inputs", "relation": "data" },
             {
               "label": "//:quality_sources",
               "relation": "data"
@@ -180,6 +181,7 @@
           "label": "//tools/live-sprites:checks",
           "role": "Checks project/worktree-scoped agent placement, quiet unmatched-agent behavior, visible task sprites, gestures and stable graph geometry",
           "dependencies": [
+            { "label": "//:design_test_inputs", "relation": "data" },
             { "label": "//:quality_sources", "relation": "data" },
             { "label": "//tools/live-sprites:sources", "relation": "data" }
           ]
@@ -348,6 +350,7 @@
           "label": "//tools:quality",
           "role": "Component checks or authoring entry",
           "dependencies": [
+            { "label": "//:design_test_inputs", "relation": "data" },
             {
               "label": "//:quality_sources",
               "relation": "data"
@@ -480,6 +483,7 @@
           "label": "//tools/living-design:checks",
           "role": "Component relationships, scoped layout dragging and plan-reader checks",
           "dependencies": [
+            { "label": "//:design_test_inputs", "relation": "data" },
             {
               "label": "//:quality_sources",
               "relation": "data"
@@ -489,6 +493,11 @@
               "relation": "data"
             }
           ]
+        },
+        {
+          "label": "//:design_test_inputs",
+          "role": "Additional design documents, mapped sources and BUILD text read from Bazel runfiles; root BUILD.bazel lists the inputs",
+          "dependencies": [{ "label": "//docs/design:sources", "relation": "srcs" }]
         },
         {
           "label": "//tools/demo-plans:graph-checks",
@@ -628,6 +637,7 @@
           "label": "//tools/operator-cockpit:conversation-tabs",
           "role": "Registered conversation tabs, keyboard selection, retained drafts and reading positions",
           "dependencies": [
+            { "label": "//:design_test_inputs", "relation": "data" },
             { "label": "//:quality_sources", "relation": "data" },
             { "label": "//tools/operator-cockpit:sources", "relation": "data" }
           ]
@@ -871,6 +881,7 @@
           "label": "//tools:quality",
           "role": "Component checks or authoring entry",
           "dependencies": [
+            { "label": "//:design_test_inputs", "relation": "data" },
             {
               "label": "//:quality_sources",
               "relation": "data"
