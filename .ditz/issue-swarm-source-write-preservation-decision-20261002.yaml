@@ -33,3 +33,9 @@ log_events:
   who: Ted Smith
   what: created
   comment: ""
+- time: 2026-10-02T08:12:32-00:00
+  who: Ted Smith
+  what: blocks atomic-source-write-broker
+  comment: ""
+blocks:
+- atomic-source-write-broker
