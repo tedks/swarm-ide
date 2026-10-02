@@ -93,7 +93,9 @@ re-establishing current-core authority.
 Source typing supports Ctrl+Z and Ctrl+Shift+Z (Cmd on macOS). Undo/redo and
 selection survive document navigation in tab-local memory when the returning
 text still matches. Remounted editors use current callbacks. External source
-observations map existing history without becoming undoable user edits; changed
+observations map existing history through separate change ranges without becoming
+undoable user edits. Diff work is bounded; extensive rewrites can coarsen ranges
+and invalidate affected history rather than undoing external text. Changed
 text while a tab is unmounted discards its old history. Closing the tab or
 reloading the application does not persist undo history. Mounted keyboard and
 remount regressions run in `//tools/demo-syntax:editor-tests`.

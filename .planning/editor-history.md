@@ -40,7 +40,7 @@ The unchanged editor must fail the new user undo cases. After the change Ctrl+Z 
 
 ## Idempotence and Recovery
 
-No dependencies, file formats or persistence schema change. Reverting the code removes the new in-memory feature. No operator windows or processes are touched. Preserve unrelated worktrees and saved Work Logs.
+The diff utility adds pinned `@codemirror/merge` with only already-present transitive dependencies; update the Nix dependency-store hash with the lockfile. No file format or persistence schema changes. Reverting the code removes the new in-memory feature. No operator windows or processes are touched. Preserve unrelated worktrees and saved Work Logs.
 
 ## Outcomes & Retrospective
 
@@ -57,3 +57,5 @@ Use the already pinned `@codemirror/commands` history extension, historyField, a
 Initial plan records the narrowly scoped editor recommendation from the inventory; Astra owns its separate broader cleanup changes.
 
 2026-10-02 checkpoint: added native Undo/Redo assertions after the existing packaged syntax tab-retention journey; fixture files stay disposable. No native pass claimed yet.
+
+2026-10-02 council correction: native review found that one broad external replacement could erase history for unchanged interior text. Added a failing regression and replaced the hand-written replacement range with the pinned CodeMirror diff utility, bounded to scan depth 500 and 20 ms before conservative fallback. This is a supported utility, not a new diff engine. Strengthened native proof by navigating after the tested edit. Anthropic seat unavailable due usage credits; Google initial round clean.

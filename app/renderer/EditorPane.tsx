@@ -1,4 +1,5 @@
 import { useEffect, useRef } from "react";
+import { diff } from "@codemirror/merge";
 import { defaultKeymap, history, historyField, historyKeymap } from "@codemirror/commands";
 import { Compartment, EditorState, StateEffect, StateField, Transaction } from "@codemirror/state";
 import {
@@ -59,19 +60,6 @@ const sourceFlashField = StateField.define<DecorationSet>({
   },
   provide: (field) => EditorView.decorations.from(field),
 });
-
-function minimalReplacement(previous: string, next: string): { from: number; to: number; insert: string } {
-  let from = 0;
-  const prefixLimit = Math.min(previous.length, next.length);
-  while (from < prefixLimit && previous.charCodeAt(from) === next.charCodeAt(from)) from += 1;
-  let suffix = 0;
-  const suffixLimit = Math.min(previous.length - from, next.length - from);
-  while (
-    suffix < suffixLimit &&
-    previous.charCodeAt(previous.length - suffix - 1) === next.charCodeAt(next.length - suffix - 1)
-  ) suffix += 1;
-  return { from, to: previous.length - suffix, insert: next.slice(from, next.length - suffix) };
-}
 
 export function EditorPane({ path, content, flash, onChange, onSave, memory, navigation, onNavigation, onReference }: {
   path?: string;
@@ -167,10 +155,13 @@ export function EditorPane({ path, content, flash, onChange, onSave, memory, nav
     const current = view.current;
     const normalized = content.replace(/\r\n?/g, "\n");
     if (!current || current.state.doc.toString() === normalized) return;
-    const change = minimalReplacement(current.state.doc.toString(), normalized);
+    // Keep unchanged interior text outside replacement ranges so unrelated
+    // external edits do not erase its undo entries. Bound expensive diffing.
+    const changes = diff(current.state.doc.toString(), normalized, { scanLimit: 500, timeout: 20 })
+      .map(({ fromA, toA, fromB, toB }) => ({ from: fromA, to: toA, insert: normalized.slice(fromB, toB) }));
     suppressChange.current = true;
     try {
-      current.dispatch({ changes: change, effects: setSourceFlash.of(flash), annotations: Transaction.addToHistory.of(false) });
+      current.dispatch({ changes, effects: setSourceFlash.of(flash), annotations: Transaction.addToHistory.of(false) });
     } finally { suppressChange.current = false; }
   }, [content, flash]);
 

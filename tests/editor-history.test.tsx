@@ -80,3 +80,11 @@ it("discards remembered history when a hidden file's content no longer matches",
   expect(undoDepth(editor().state)).toBe(0);
   key(editor()); expect(editor().state.doc.toString()).toBe("replaced externally\n");
 });
+
+it("preserves a user edit between disjoint external changes", () => {
+  const input = props("first\nmiddle\nlast\n"), mounted = render(<EditorPane {...input} />), view = editor();
+  act(() => view.dispatch({ changes: { from: 12, insert: " draft" } }));
+  mounted.rerender(<EditorPane {...input} content={"FIRST\nmiddle draft\nLAST\n"} />);
+  key(view); expect(view.state.doc.toString()).toBe("FIRST\nmiddle\nLAST\n");
+  key(view, true); expect(view.state.doc.toString()).toBe("FIRST\nmiddle draft\nLAST\n");
+});

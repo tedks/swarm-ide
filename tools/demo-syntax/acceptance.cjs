@@ -147,6 +147,11 @@ async function main() {
   await wc.insertText("!");
   const edited = retainedSource.text.slice(0, beforeUndo.head) + "!" + retainedSource.text.slice(beforeUndo.head);
   await until(async () => (await source())?.text === edited, "native history edit");
+  await click('.surface-tab-main[title="settings.json"]');
+  await until(async () => (await source())?.path === "settings.json", "navigate away from history edit");
+  await click('.surface-tab-main[title="syntax.ts"]');
+  await until(async () => (await source())?.path === "syntax.ts" && (await source())?.text === edited, "restore history edit tab");
+  await click(".source-surface .cm-content");
   await key("z", ["control"]);
   await until(async () => (await source())?.text === retainedSource.text, "native Undo after tab return");
   await key("z", ["control", "shift"]);
