@@ -323,3 +323,17 @@ measure raw output, verify passive result reuse and unchanged Git status, and
 confirm cleanup. `//tools/build-graph:startup-smoke` uses the real packaged bridge
 and an owned virtual desktop to prove graph readiness before opening its lens,
 automatic definition-change updates and retained graph/camera, without refresh.
+
+Working-world fingerprints share the bounded read-only Git query owner from
+`core/repository-boundary.ts`: sanitized Git environment, bounded output, a two
+second subprocess deadline, owned process-group cancellation (including inherited
+output pipes in submodule/filter descendants) and a promise that settles after child
+close. The complete fingerprint has a ten second cooperative deadline checked
+between bounded file reads; a regular-file filesystem operation already in the
+kernel must settle before cleanup can complete. Descriptors open with NOFOLLOW
+and NONBLOCK, then validate canonical ownership and regular-file metadata, so a
+FIFO substituted after lstat cannot stall the worker. Closing the observer
+aborts its current computation, suppresses late publication and returns its
+cleanup promise; graceful runtime shutdown awaits it. These paths are exercised
+by the fingerprint and working-world-observer suites through the focused editor
+test gate; repository-provider and bridge suites preserve freshness behavior.

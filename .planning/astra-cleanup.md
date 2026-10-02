@@ -12,8 +12,8 @@ Make source replies trustworthy, restore useful regression gates, simplify docum
 - [x] Correlate file responses and consistently exclude unrelated result fields; PR160/163 merged.
 - [x] Repair shared UI fixture identity/envelopes and stale test entry points (121 tests across nine affected suites passed; available-seat council clean).
 - [x] Declare actual test inputs and runner ownership; runfile assertion and cache-mutation probes verified, available-seat council clean.
-- [x] Type document identity and centralize foreground transitions while retaining editor state (108 tests/both TS pass; council convergence pending).
-- [ ] Make fingerprint work cancellable and safe against FIFO replacement.
+- [x] Type document identity and centralize foreground transitions while retaining editor state (108 tests/both TS pass; available-seat council clean; PR165 merged).
+- [x] Make fingerprint work cancellable and safe against FIFO replacement (98 tests/both TS pass, available-seat convergence clean).
 - [ ] Measure and suspend inactive worktree observations without discarding accepted work.
 - [ ] Remove unreachable UI glue and unused helpers; align living design.
 - [ ] Measure gate/packaging and snapshot overhead; implement justified narrow changes.
@@ -74,3 +74,5 @@ Initial plan created 2026-10-02 following implementation authorization.
 2026-10-02 W3: Declare actual reader inputs rather than claim full JavaScript hermeticity. The existing runners still execute from the checkout; the design consistency assertion specifically checks Bazel runfiles to prevent undeclared reads from hiding.
 
 2026-10-02 W4: Discriminated graph/file identity removes the literal graphs filename collision across keyboard close, recovery and worktree retention. v2 storage reads legacy v1; ambiguous legacy graphs selects an existing retained file. A mounted open/reload/Ctrl+W regression failed before and passes after. Central showDocument changes visibility without reconstructing buffers or selections. Expanded seven-suite gate:108 tests/both TypeScript checks pass. A timing-sensitive request assertion now excludes trusted.snapshot read-only polling, alongside the existing tasks.snapshot exclusion.
+
+2026-10-02 W5: Reuse sanitized bounded Git query; extend it to own the process group because native review found descendants can hold output pipes after leader cancellation. Fingerprint uses signal/cooperative ten-second observation deadline plus the Git owner's two-second deadline, nonblocking NOFOLLOW descriptor checks and finally-close. Observer close aborts/drains and graceful shutdown awaits it. FIFO and close regressions fail on baseline. Reverting just group cleanup fails two descendant tests after their independent emergency cleanup; restored exact source. Eight-suite gate98 tests/bothTS passes, both available council seats clean after test cleanup/readiness convergence. Repaired stale task/agent bridge harnesses exposed by this gate: registered fixture identity, asynchronous receipt waits, startup WorkLog isolation; no runtime weakening or loss of negative boundary coverage.

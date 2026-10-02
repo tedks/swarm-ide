@@ -2,12 +2,21 @@
 import { EventEmitter } from "node:events";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { CoreSupervisor } from "../app/electron/core-supervisor";
-import { PROTOCOL_VERSION, type CoreRequest, type CoreResponse } from "../protocol/schema";
+import { PROTOCOL_VERSION, parseCoreRequest, type CoreRequest, type CoreResponse } from "../protocol/schema";
 import type { TaskProvider } from "../core/tasks/contracts";
 import type { WorkerDependencies } from "../core/worker-runtime";
 import { unavailableAgentRequest, unavailableAgentSnapshot } from "../core/agents/unavailable";
-import { initialSnapshot } from "../fixtures/world";
+import { initialSnapshot as worldSnapshot } from "../fixtures/world";
 import { TASK_FIXTURE_COMMIT, TASK_FIXTURE_WORLD, taskObservationFixture, taskReadFixture } from "../fixtures/tasks";
+
+function initialSnapshot() { return { ...worldSnapshot(), project: { ...worldSnapshot().project, id: TASK_FIXTURE_WORLD.repositoryId } }; }
+// Registration is outside this isolated dispatcher fixture. Keep the real
+// router while supplying the same privileged identity as the task provider.
+vi.mock("../core/workspace-context", async (original) => ({
+  ...await original<typeof import("../core/workspace-context")>(),
+  resolveWorkspaceSelection: async () => ({ id: initialSnapshot().project.id, root: "/registered/task-test-root", label: "Task fixture",
+    projectId: null, agentVisibility: "worktree", sessionId: null, branch: null, base: null, changes: [], changesComplete: false }),
+}));
 
 const boundary = vi.hoisted(() => ({
   agentRequest: vi.fn(), agentShutdown: vi.fn(), sourceRead: vi.fn(), sourceWrite: vi.fn(),
@@ -34,6 +43,7 @@ vi.mock("../core/files", () => ({
   WorkspaceFileError: class extends Error { constructor(public readonly code: string, message: string) { super(message); } },
 }));
 vi.mock("../core/fingerprint", () => ({ computeWorkingWorldFingerprint: boundary.fingerprint }));
+vi.mock("../core/work-log/service", () => ({ WorkLogService: class { activate() {} async dispose() {} } }));
 vi.mock("../core/watchers", () => ({ WorkspaceFileWatchers: class { closeAll() {} } }));
 vi.mock("../core/working-world-observer", () => ({ WorkingWorldObserver: class { start() {} request() {} close() {} } }));
 // Any accidental Git/Ditz invocation or direct metadata access fails visibly.
@@ -98,7 +108,14 @@ async function withWorker(run: (worker: WorkerHarness) => Promise<void>, createT
     // Startup honestly loads agent state; the ledger below measures task requests only.
     boundary.agentRequest.mockClear();
     const listener = parent.listeners("message")[0] as (event: { data: unknown }) => Promise<void>;
-    dispatch = (input) => listener({ data: input });
+    dispatch = async (input) => {
+      listener({ data: input });
+      const command = input as { type: string; requestId?: string };
+      let id = "invalid-request";
+      try { id = parseCoreRequest(input).requestId; } catch { /* Invalid inputs receive the transport fallback identity. */ }
+      await vi.waitFor(() => expect(parent.postMessage.mock.calls.some(([value]) => command.type === "core.shutdown"
+        ? value.type === "core.shutdown.ready" : value.requestId === id)).toBe(true));
+    };
     await run({ dispatch, posts: parent.postMessage, response(requestId) {
       const messages = parent.postMessage.mock.calls.map(([value]) => value).filter((value) => value.requestId === requestId);
       expect(messages, `one response for ${requestId}`).toHaveLength(1);

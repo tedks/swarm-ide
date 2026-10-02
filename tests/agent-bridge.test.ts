@@ -15,6 +15,11 @@ vi.mock("electron", () => ({
     on: (name: string, listener: (...args: unknown[]) => void) => electron.listeners.set(name, listener),
     removeListener: electron.removeListener },
 }));
+vi.mock("../core/workspace-context", async (original) => ({
+  ...await original<typeof import("../core/workspace-context")>(),
+  resolveWorkspaceSelection: async () => ({ id: initialSnapshot().project.id, root: "/registered/agent-test-root", label: "Agent fixture",
+    projectId: null, agentVisibility: "worktree", sessionId: null, branch: null, base: null, changes: [], changesComplete: false }),
+}));
 vi.mock("../core/provider", () => ({ RealWorkspaceProvider: {
   create: async () => ({ snapshot: () => initialSnapshot(), listRepository: async () => { throw new Error("Directory observation is outside this isolated agent dispatcher test"); }, dispose() {} }),
 } }));
@@ -34,7 +39,12 @@ describe("agent unavailable bridge integration", () => {
     try {
       await import("../core/worker");
       await vi.waitFor(() => expect(parent.postMessage).toHaveBeenCalledWith({ type: "core.ready" }));
-      const dispatch = parent.listeners("message")[0] as (message: { data: CoreRequest }) => Promise<void>;
+      const listener = parent.listeners("message")[0] as (message: { data: unknown }) => void;
+      const dispatch = async ({ data }: { data: CoreRequest | { type: "core.shutdown" } }) => {
+        listener({ data });
+        await vi.waitFor(() => expect(parent.postMessage.mock.calls.some(([value]) => data.type === "core.shutdown"
+          ? value.type === "core.shutdown.ready" : value.requestId === data.requestId)).toBe(true));
+      };
       await dispatch({ data: { protocolVersion: PROTOCOL_VERSION, requestId: "agents", type: "agent.snapshot" } });
       expect(parent.postMessage).toHaveBeenCalledWith(expect.objectContaining({
         requestId: "agents", ok: true, agent: { kind: "snapshot", snapshot: unavailableAgentSnapshot() },
