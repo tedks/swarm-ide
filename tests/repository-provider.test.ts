@@ -315,3 +315,17 @@ describe("repository navigation independent of working and service evidence", ()
     await expect(subject.listRepository(listRequest(), ignorePublish)).rejects.toMatchObject({ code: "REPOSITORY_UNAVAILABLE" });
   });
 });
+
+it("retains stale projections on lost read interest without aborting accepted reconciliation", async () => {
+  const held = deferred<ServiceDiscovery>(); let signal: AbortSignal | undefined;
+  const subject = await provider(fixtureDependencies({ discover: async (_root, input) => { signal = input; return held.promise; } }));
+  const pending = subject.startReconciliation(ignorePublish);
+  await vi.waitFor(() => expect(signal).toBeDefined());
+  subject.markWorkingWorldUnobserved(ignorePublish);
+  expect(subject.snapshot().reconciliation.status).toBe("yellow");
+  expect(subject.snapshot().revisions.working.evidence).toBe("unavailable");
+  expect(signal?.aborted).toBe(false);
+  held.resolve(declaration); await pending;
+  expect(subject.snapshot().reconciliation.status).toBe("green");
+  expect(subject.snapshot().revisions.working.evidence).toBe("observed");
+});

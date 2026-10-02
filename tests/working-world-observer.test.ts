@@ -124,3 +124,21 @@ it("aborts owned computation and close waits for its cleanup without publishing"
   observer.request();
   await observer.close();
 });
+
+it("suspends ticks and in-flight reads, then republishes an unchanged digest on resume", async () => {
+  const ticks = new Set<() => void>();
+  const clock: WorkingWorldObserverClock = { every: (_ms, tick) => { ticks.add(tick); return Object.assign(tick, { unref() {} }); }, cancel: (tick) => { ticks.delete(tick as () => void); } };
+  let calls = 0, firstSignal: AbortSignal | undefined, finish!: (value: string) => void;
+  const changed: string[] = [];
+  const first = new Promise<string>((resolve) => { finish = resolve; });
+  const observer = new WorkingWorldObserver("same", async (signal) => { calls++; firstSignal ??= signal; return calls === 1 ? first : "same"; },
+    (value) => changed.push(value), () => changed.push("failed"), 1000, clock);
+  observer.start(); for (const tick of ticks) tick();
+  const paused = observer.pause();
+  expect(ticks.size).toBe(0); expect(firstSignal?.aborted).toBe(true);
+  observer.request(); finish("late"); await paused;
+  expect(calls).toBe(1); expect(changed).toEqual([]);
+  observer.start(); await settle();
+  expect(ticks.size).toBe(1); expect(calls).toBe(2); expect(changed).toEqual(["same"]);
+  await observer.close(); expect(ticks.size).toBe(0);
+});

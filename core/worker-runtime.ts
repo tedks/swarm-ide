@@ -88,6 +88,15 @@ const targetBuildsPromise = providerPromise.then((provider) => new TargetBuildSe
 const githubPrsPromise = providerPromise.then((provider) => new GithubPrProvider(workspaceRoot, provider.snapshot().project.id, provider.snapshot().world.id));
 const projectContextPromise = providerPromise.then((provider) => new ProjectContextProvider(workspaceRoot, provider.snapshot().project.id, provider.snapshot().world.id));
 let workingWorldObserver: WorkingWorldObserver | null = null;
+let observationInterest = primary;
+let revokeObservation = () => {};
+function setObservationInterest(interested: boolean): void {
+  if (shuttingDown || observationInterest === interested) return;
+  observationInterest = interested;
+  revokeObservation();
+  if (interested) workingWorldObserver?.start();
+  else void workingWorldObserver?.pause();
+}
 let shuttingDown = false;
 const journalLifetime = new AbortController();
 const worktreeInspections = new Set<Promise<unknown>>();
@@ -469,8 +478,9 @@ const ready = providerPromise.then(async (provider) => {
     (fingerprint) => provider.markWorkingWorldChanged(fingerprint, publish),
     (error) => provider.markWorkingWorldUnknown(error.message, publish),
   );
-  workingWorldObserver.start();
-  workingWorldObserver.request();
+  revokeObservation = () => provider.markWorkingWorldUnobserved(publish);
+  if (observationInterest) { workingWorldObserver.start(); workingWorldObserver.request(); }
+  else void workingWorldObserver.pause();
   // Registration is ready before either source fingerprinting or enumeration.
   // A failed initial directory gets an explicit error observation with Refresh.
   void provider.listRepository({ protocolVersion: PROTOCOL_VERSION, requestId: "initial-repository", type: "repo.list", directory: "", page: 0, filter: "", refresh: true }, publish).catch(() => undefined);
@@ -494,5 +504,5 @@ function close(): void {
   void workingWorldObserver?.close();
   fileWatchers.closeAll();
 }
-return { ready, request: requestMessage, snapshot: async () => (await providerPromise).snapshot(), shutdown, close };
+return { ready, setObservationInterest, request: requestMessage, snapshot: async () => (await providerPromise).snapshot(), shutdown, close };
 }

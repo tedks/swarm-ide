@@ -308,6 +308,22 @@ export class RealWorkspaceProvider {
     return this.snapshotValue;
   }
 
+  /** Retain projections while periodic reads are idle, without cancelling an
+   * accepted operation. Its own before/after fingerprint may still publish. */
+  markWorkingWorldUnobserved(publish: ProviderPublish): void {
+    if (this.disposed) return;
+    this.markDirectoryStale();
+    this.workingWorldUnknown = true;
+    this.snapshotValue = WorkspaceSnapshotSchema.parse({
+      ...this.snapshotValue,
+      revisions: { ...this.snapshotValue.revisions, working: { ...this.snapshotValue.revisions.working, evidence: "unavailable" } },
+      graphs: this.snapshotValue.graphs.map((graph) => graph.directory || graph.reconciliation === "red" ? graph : { ...graph, reconciliation: "yellow" as const }),
+      reconciliation: this.snapshotValue.reconciliation.status === "red" ? this.snapshotValue.reconciliation
+        : { ...this.snapshotValue.reconciliation, status: "yellow", message: "Retained view; waiting for fresh source observation" },
+    });
+    publish("workspace.changed", this.snapshotValue);
+  }
+
   markWorkingWorldUnknown(message: string, publish: ProviderPublish): WorkspaceSnapshot {
     if (this.disposed) return this.snapshotValue;
     this.markDirectoryStale();
@@ -380,11 +396,13 @@ export class RealWorkspaceProvider {
       if (after !== before) { this.markWorkingWorldChanged(after, publish); return; }
       if (declaration.invalid && (!declaration.services.length || previous.nodes.length)) throw new Error(declaration.issues.join(" ").slice(0, 460));
       const adapted = adaptDeclaredServices(declaration, before, epoch, this.dependencies.now(), this.snapshotValue.project.id);
+      this.workingWorldUnknown = false;
       this.serviceMappings = adapted.mappings;
       this.serviceWidgets = adapted.widgets;
       const repo = this.snapshotValue.graphs.find((graph) => graph.topologyId === "repo")!;
       this.snapshotValue = WorkspaceSnapshotSchema.parse({
         ...this.snapshotValue, graphs: [repo, adapted.graph],
+        revisions: { ...this.snapshotValue.revisions, working: { id: after, fingerprint: after, evidence: "observed" } },
         mappings: rebindRepositoryMappings(adapted.mappings, repo), widgets: adapted.widgets,
         serviceDeclarations: adapted.declarations, serviceContext: undefined,
         reconciliation: { epoch, status: declaration.issues.length ? "yellow" : "green", inputFingerprint: before,

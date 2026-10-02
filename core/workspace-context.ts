@@ -44,6 +44,7 @@ export interface RootedRuntime {
   ready: Promise<WorkspaceSnapshot>;
   request(input: unknown, context?: { trustedStartRoot: string }): Promise<void>;
   snapshot(): Promise<WorkspaceSnapshot>;
+  setObservationInterest(interested: boolean): void;
   shutdown(): Promise<void>;
   close(): void;
 }
@@ -55,6 +56,8 @@ export class WorkspaceContextRouter {
   private selections = new Map<string, WorkspaceSelection>();
   private ids = new BoundedRequestIds(512);
   private stopping = false;
+  private selectionGeneration = 0;
+  private activeRuntime: RootedRuntime | undefined;
   private lifetime = new AbortController();
   readonly primary: Promise<{ selection: WorkspaceSelection; runtime: RootedRuntime }>;
   constructor(private readonly options: {
@@ -64,8 +67,9 @@ export class WorkspaceContextRouter {
   }) {
     this.primary = options.resolve(null, this.lifetime.signal).then(async (selection) => {
       if (this.stopping) throw new Error("Core is shutting down.");
-      const runtime = this.open(selection, true);
-      return { selection, runtime: await runtime };
+      const runtime = await this.open(selection, true);
+      this.activeRuntime = runtime;
+      return { selection, runtime };
     });
   }
   private open(selection: WorkspaceSelection, primary: boolean): Promise<RootedRuntime> {
@@ -88,6 +92,7 @@ export class WorkspaceContextRouter {
       failureCode = "DUPLICATE_REQUEST";
       if (!this.ids.accept(request.requestId)) throw new Error("This request has already been processed.");
       failureCode = "WORKSPACE_UNAVAILABLE";
+      const selectionGeneration = request.type === "workspace.open" && !request.identityOnly ? ++this.selectionGeneration : null;
       const primary = await this.primary;
       if (this.stopping) throw new Error("Core is shutting down.");
       if (request.type === "workspace.open") {
@@ -105,6 +110,11 @@ export class WorkspaceContextRouter {
         } else selection = await this.options.resolve(request.sessionId, this.lifetime.signal);
         if (this.stopping) throw new Error("Core is shutting down.");
         const runtime = await this.open(selection, selection.id === primary.selection.id);
+        if (selectionGeneration === this.selectionGeneration && !request.identityOnly && this.activeRuntime !== runtime) {
+          this.activeRuntime?.setObservationInterest(false);
+          runtime.setObservationInterest(true);
+          this.activeRuntime = runtime;
+        }
         // Identity refreshes retain the typed response envelope but reuse the
         // runtime's already-loaded snapshot; the renderer discards it and no
         // repository traversal is warranted for this metadata-only request.
