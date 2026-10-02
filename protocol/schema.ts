@@ -431,75 +431,93 @@ const agentResultKind = {
   "agent.prepare": "prepare", "agent.launch": "launch", "agent.steer": "steer",
   "agent.cancel": "cancel", "agent.snapshot": "snapshot", "agent.read": "read",
 } as const;
+type SuccessResponse = Extract<CoreResponse, { ok: true }>;
+type ResponsePayload = Exclude<keyof SuccessResponse, "protocolVersion" | "requestId" | "ok" | "sequence" | "snapshot" | "workspaceId">;
+// Adding a command requires declaring exactly which result it may carry. Domain
+// validation below still binds that result to its path, revision or run identity.
+const responsePayload = {
+  "workspace.snapshot": null, "focus.select": null, "reconciliation.start": null, "fixture.reset": null,
+  "file.read": "file", "file.write": "file", "file.watch": null, "file.unwatch": null,
+  "workspace.open": "workspace",
+  "agent.prepare": "agent", "agent.launch": "agent", "agent.steer": "agent", "agent.cancel": "agent", "agent.snapshot": "agent", "agent.read": "agent",
+  "tasks.snapshot": "task", "tasks.read": "task", "taskActivity.read": "taskActivity",
+  "repo.list": "repo", "repo.search": "search", "changelog.read": "changelog", "plans.read": "plans",
+  "externalAgents.snapshot": "external", "externalAgents.read": "external", "externalAgents.handoff": "external", "externalAgents.send": "external",
+  "buildGraph.observe": "buildGraph", "build.observe": "buildJobs", "build.start": "buildJobs", "build.cancel": "buildJobs",
+  "githubPrs.refresh": "githubPrs", "projectContext.observe": "projectContext",
+  "worktree.inspect": "worktreeInspection", "worktree.browse": "worktreeBrowse",
+  "workLog.read": "workLog", "workLog.start": "workLog", "workLog.stop": "workLog", "workLog.record": "workLog",
+  "trusted.snapshot": "trusted", "trusted.start": "trusted", "trusted.prepare": "trusted", "trusted.launch": "trusted",
+  "trusted.fork": "trusted", "trusted.send": "trusted", "trusted.decide": "trusted", "trusted.stop": "trusted",
+} satisfies Record<CoreRequest["type"], ResponsePayload | null>;
+const responseEnvelopeFields = new Set(["protocolVersion", "requestId", "ok", "sequence", "snapshot", "workspaceId"]);
+
 export function parseCoreResponseForRequest(input: unknown, request: CoreRequest): CoreResponse {
   const response = parseCoreResponse(input);
   if (response.requestId !== request.requestId) throw new Error("Response request ID mismatch");
+  if (response.ok) {
+    const payload = responsePayload[request.type];
+    if (Object.keys(response).some((key) => !responseEnvelopeFields.has(key) && key !== payload) ||
+        payload !== null && response[payload] === undefined) throw new Error("Response payload does not match command");
+    if ((request.type === "file.read" || request.type === "file.write") &&
+        (response.file?.path !== request.path || response.file.kind !== (request.type === "file.read" ? "read" : "write")))
+      throw new Error("File response path or kind mismatch");
+  }
   if (response.ok && response.workspaceId !== undefined && response.snapshot.project.id !== response.workspaceId)
     throw new Error("Workspace snapshot identity mismatch");
   if (request.type === "workspace.open") {
     if (response.ok && (!response.workspace || response.workspace.sessionId !== request.sessionId ||
-      response.workspace.id !== response.snapshot.project.id || response.workspaceId !== response.workspace.id ||
-      response.file || response.repo || response.search || response.agent || response.task || response.taskActivity || response.external ||
-      response.workLog || response.trusted || response.projectContext || response.githubPrs || response.buildGraph || response.buildJobs || response.plans ||
-      response.changelog || response.worktreeInspection || response.worktreeBrowse))
+      response.workspace.id !== response.snapshot.project.id || response.workspaceId !== response.workspace.id))
       throw new Error("Workspace selection response mismatch");
     return response;
-  } else if (response.ok && response.workspace) throw new Error("Workspace selection supplied for a different command");
+  }
   if (request.workspaceId !== undefined && !isSharedWorkspaceRequest(request) && response.workspaceId !== request.workspaceId)
     throw new Error("Workspace response identity mismatch");
   if (request.type === "build.start" || request.type === "build.observe" || request.type === "build.cancel") {
     if (response.ok && (!response.buildJobs || response.snapshot.project.id !== request.repositoryId || response.snapshot.world.id !== request.worldId ||
-        response.buildJobs.repositoryId !== request.repositoryId || response.buildJobs.worldId !== request.worldId ||
-        Object.keys(response).some((key) => !["protocolVersion", "requestId", "ok", "sequence", "snapshot", "workspaceId", "buildJobs"].includes(key))))
+        response.buildJobs.repositoryId !== request.repositoryId || response.buildJobs.worldId !== request.worldId))
       throw new Error("Build jobs response workspace mismatch");
     return response;
-  } else if (response.ok && response.buildJobs) throw new Error("Build jobs supplied for a different command");
+  }
   if (request.type === "worktree.browse") {
     if (response.ok && (!response.worktreeBrowse || response.worktreeBrowse.sessionId !== request.sessionId ||
-      response.worktreeBrowse.directory.directory !== request.directory || response.worktreeBrowse.directory.page !== request.page ||
-      response.file || response.agent || response.task || response.taskActivity || response.trusted || response.repo || response.search ||
-      response.changelog || response.plans || response.external || response.buildGraph || response.githubPrs || response.workLog || response.projectContext || response.worktreeInspection))
+      response.worktreeBrowse.directory.directory !== request.directory || response.worktreeBrowse.directory.page !== request.page))
       throw new Error("Worktree browser response identity mismatch");
     return response;
-  } else if (response.ok && response.worktreeBrowse) throw new Error("Worktree browser supplied for a different command");
+  }
   if (request.type === "projectContext.observe") {
     if (response.ok && (!response.projectContext || response.snapshot.project.id !== request.repositoryId || response.snapshot.world.id !== request.worldId ||
-      response.projectContext.repositoryId !== request.repositoryId || response.projectContext.worldId !== request.worldId ||
-      response.file || response.agent || response.task || response.taskActivity || response.repo || response.search || response.external || response.trusted ||
-      response.changelog || response.plans || response.buildGraph || response.githubPrs || response.worktreeInspection || response.workLog))
+      response.projectContext.repositoryId !== request.repositoryId || response.projectContext.worldId !== request.worldId))
       throw new Error("Project context response mismatch");
     return response;
-  } else if (response.ok && response.projectContext) throw new Error("Project context supplied for another command");
+  }
   if (request.type === "worktree.inspect") {
     if (response.ok && (!response.worktreeInspection || response.worktreeInspection.sessionId !== request.sessionId ||
       response.worktreeInspection.path !== request.path || response.worktreeInspection.comparison !== request.comparison ||
-      response.worktreeInspection.previousPath !== request.previousPath || response.file || response.agent || response.task || response.taskActivity ||
-      response.trusted || response.repo || response.search || response.changelog || response.plans || response.external || response.buildGraph || response.githubPrs || response.workLog))
+      response.worktreeInspection.previousPath !== request.previousPath))
       throw new Error("Worktree inspection response identity mismatch");
     return response;
-  } else if (response.ok && response.worktreeInspection) throw new Error("Worktree inspection supplied for a different command");
+  }
   if (request.type.startsWith("workLog.")) {
-    if (response.ok && (!response.workLog || response.file || response.agent || response.task || response.taskActivity || response.repo || response.search || response.changelog || response.plans || response.external || response.buildGraph || response.githubPrs || response.trusted))
+    if (response.ok && !response.workLog)
       throw new Error("Unexpected Work Log response");
     return response;
-  } else if (response.ok && response.workLog) throw new Error("Work Log supplied for another command");
+  }
   if (request.type === "githubPrs.refresh") {
-    if (response.ok && (!response.githubPrs || response.file || response.agent || response.task || response.taskActivity || response.trusted || response.repo || response.search || response.changelog || response.plans || response.external || response.buildGraph ||
-      response.snapshot.project.id !== request.repositoryId || response.snapshot.world.id !== request.worldId ||
+    if (response.ok && (!response.githubPrs || response.snapshot.project.id !== request.repositoryId || response.snapshot.world.id !== request.worldId ||
       response.githubPrs.repositoryId !== request.repositoryId || response.githubPrs.worldId !== request.worldId))
       throw new Error("Unexpected GitHub PR response authority or identity");
-  } else if (response.ok && response.githubPrs) throw new Error("GitHub PR result supplied for a different command");
+  }
   if (request.type === "taskActivity.read") {
     if (response.ok) {
       const result = response.taskActivity;
-      if (!result || response.task || response.agent || response.file || response.repo || response.search || response.changelog || response.plans || response.external || response.buildGraph || response.trusted || response.githubPrs ||
-          result.worldId !== request.worldId || result.repositoryId !== request.repositoryId || result.taskId !== request.taskId ||
+      if (!result || result.worldId !== request.worldId || result.repositoryId !== request.repositoryId || result.taskId !== request.taskId ||
           !sameGitObject(result.metadataCommit, request.metadataCommit) || response.snapshot.world.id !== request.worldId || response.snapshot.project.id !== request.repositoryId)
         throw new Error("Task activity response identity mismatch");
     }
-  } else if (response.ok && response.taskActivity) throw new Error("Task activity supplied for a different command");
+  }
   if (request.type.startsWith("trusted.")) {
-    if (response.ok && (!response.trusted || response.agent || response.file || response.task || response.repo || response.search || response.changelog || response.plans || response.external || response.buildGraph || response.taskActivity || response.githubPrs)) throw new Error("Unexpected trusted-local response authority");
+    if (response.ok && !response.trusted) throw new Error("Unexpected trusted-local response authority");
     if (response.ok && "token" in request && response.trusted?.snapshot.runToken !== (request.type === "trusted.fork" ? request.childToken : request.token)) throw new Error("Trusted-local conversation identity mismatch");
     if (response.ok && request.type === "trusted.fork") {
       const fork = response.trusted?.snapshot.runs?.find((run) => run.runToken === request.childToken)?.fork;
@@ -507,51 +525,46 @@ export function parseCoreResponseForRequest(input: unknown, request: CoreRequest
         throw new Error("Trusted-local fork parent mismatch");
     }
     return response;
-  } else if (response.ok && response.trusted) throw new Error("Trusted-local result supplied for a different command");
+  }
   if (request.type === "changelog.read") {
-    if (response.ok && (!response.changelog || response.plans || response.external || response.buildGraph || response.file || response.agent || response.task || response.repo || response.search ||
-      response.snapshot.project.id !== request.repositoryId || response.changelog.repositoryId !== request.repositoryId))
+    if (response.ok && (!response.changelog || response.snapshot.project.id !== request.repositoryId || response.changelog.repositoryId !== request.repositoryId))
       throw new Error("Unexpected Journal response authority");
-  } else if (response.ok && response.changelog) throw new Error("Journal result supplied for a different command");
+  }
   if (request.type === "plans.read") {
-    if (response.ok && (!response.plans || response.changelog || response.file || response.agent || response.task || response.repo || response.search || response.buildGraph || response.external ||
-      response.snapshot.world.id !== request.worldId || response.snapshot.project.id !== request.repositoryId))
+    if (response.ok && (!response.plans || response.snapshot.world.id !== request.worldId || response.snapshot.project.id !== request.repositoryId))
       throw new Error("Unexpected plan response authority or identity");
-  } else if (response.ok && response.plans) throw new Error("Plan result supplied for a different command");
+  }
   if (isExternalRequest(request)) {
     if (response.ok) {
-      if (response.changelog || response.file || response.agent || response.task || response.repo || response.search || response.buildGraph || response.plans) throw new Error("Unexpected external observer authority");
       parseExternalResult(response.external, request);
     }
-  } else if (response.ok && response.external) throw new Error("External result supplied for a different command");
+  }
   if (request.type === "buildGraph.observe") {
-    if (response.ok && (!response.buildGraph || response.changelog || response.file || response.agent || response.task || response.repo || response.search || response.external || response.plans ||
-        response.snapshot.project.id !== request.repositoryId || response.snapshot.world.id !== request.worldId ||
+    if (response.ok && (!response.buildGraph || response.snapshot.project.id !== request.repositoryId || response.snapshot.world.id !== request.worldId ||
         response.buildGraph.repositoryId !== request.repositoryId || response.buildGraph.worldId !== request.worldId))
       throw new Error("Build graph response authority mismatch");
-  } else if (response.ok && response.buildGraph) throw new Error("Build graph supplied for a different command");
+  }
   if (request.type === "repo.search") {
     if (response.ok) {
-      if (response.file || response.agent || response.task || response.repo || response.snapshot.project.id !== request.repositoryId)
+      if (response.snapshot.project.id !== request.repositoryId)
         throw new Error("Unexpected search response authority");
       parseRepositorySearchResult(response.search, request);
     }
-  } else if (response.ok && response.search) throw new Error("Search result supplied for a different command");
+  }
   if (request.type === "repo.list") {
     if (response.ok) {
-      if (response.file || response.agent || response.task) throw new Error("Unexpected repository response authority");
       parseRepositoryResultForRequest(response.repo, request);
     }
-  } else if (response.ok && response.repo) throw new Error("Repository result supplied for a different command");
+  }
   if (isTaskRequest(request)) {
     if (!response.ok) TaskBoundaryErrorSchema.parse(response.error);
     else {
-      if (response.file || response.agent || response.snapshot.world.id !== request.worldId) throw new Error("Unexpected task response authority");
+      if (response.snapshot.world.id !== request.worldId) throw new Error("Unexpected task response authority");
       const task = parseTaskResultForRequest(response.task, request);
       const repositoryId = task.kind === "snapshot" ? task.observation.repositoryId : task.repositoryId;
       if (repositoryId !== response.snapshot.project.id) throw new Error("Task repository identity mismatch");
     }
-  } else if (response.ok && response.task) throw new Error("Task result supplied for a different command");
+  }
   if (!response.ok && isAgentRequest(request)) AgentBoundaryErrorSchema.parse(response.error);
   if (response.ok && isAgentRequest(request)) {
     if (!response.agent || response.agent.kind !== agentResultKind[request.type]) {
