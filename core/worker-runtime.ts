@@ -196,10 +196,11 @@ const fileWatchers = new WorkspaceFileWatchers(
 async function shutdown(): Promise<void> {
   shuttingDown = true;
   journalLifetime.abort();
-  workingWorldObserver?.close();
+  const observationClosed = workingWorldObserver?.close();
   fileWatchers.closeAll();
   void providerPromise.then((provider) => provider.dispose());
   await Promise.all([
+    observationClosed,
     externalAgents?.dispose(), workLog?.dispose(),
     trustedPromise?.then((service) => service?.shutdown()),
     agentServicePromise.then((service) => service?.shutdown()), taskProviderPromise.then((tasks) => tasks.dispose()),
@@ -464,7 +465,7 @@ const ready = providerPromise.then(async (provider) => {
   if (shuttingDown) throw new Error("Workspace closed during initialization.");
   workingWorldObserver = new WorkingWorldObserver(
     provider.snapshot().revisions.working.fingerprint,
-    () => computeWorkingWorldFingerprint(workspaceRoot),
+    (signal) => computeWorkingWorldFingerprint(workspaceRoot, signal),
     (fingerprint) => provider.markWorkingWorldChanged(fingerprint, publish),
     (error) => provider.markWorkingWorldUnknown(error.message, publish),
   );
@@ -490,7 +491,7 @@ function close(): void {
   void githubPrsPromise.then((prs) => prs.dispose());
   void projectContextPromise.then((context) => context.dispose());
   void providerPromise.then((provider) => provider.dispose());
-  workingWorldObserver?.close();
+  void workingWorldObserver?.close();
   fileWatchers.closeAll();
 }
 return { ready, request: requestMessage, snapshot: async () => (await providerPromise).snapshot(), shutdown, close };

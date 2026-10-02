@@ -103,3 +103,24 @@ describe("working-world observer", () => {
     observer.close();
   });
 });
+
+it("aborts owned computation and close waits for its cleanup without publishing", async () => {
+  let signal: AbortSignal | undefined;
+  let finish!: (value: string) => void;
+  const computation = new Promise<string>((resolve) => { finish = resolve; });
+  const published: string[] = [];
+  const observer = new WorkingWorldObserver("a", async (input?: AbortSignal) => { signal = input; return computation; },
+    (value) => published.push(value), () => published.push("failure"), 1000, inertClock);
+  observer.request();
+  let closed = false;
+  const pending = Promise.resolve(observer.close()).then(() => { closed = true; });
+  try {
+    expect(signal?.aborted).toBe(true);
+    await settle();
+    expect(closed).toBe(false);
+  } finally { finish("late"); await pending; }
+  expect(closed).toBe(true);
+  expect(published).toEqual([]);
+  observer.request();
+  await observer.close();
+});

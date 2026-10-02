@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { execFile } from "node:child_process";
+import { queryRepositoryGit } from "./repository-boundary";
 import { constants } from "node:fs";
 import { lstat, open, readlink, realpath } from "node:fs/promises";
 import { isAbsolute, posix, relative, resolve, sep } from "node:path";
@@ -7,23 +7,6 @@ import { isAbsolute, posix, relative, resolve, sep } from "node:path";
 const MAX_GIT_OUTPUT_BYTES = 64 * 1024 * 1024;
 const MAX_CHANGED_FILES = 10_000;
 const MAX_CHANGED_BYTES = 64 * 1024 * 1024;
-
-function gitStatus(workspaceRoot: string): Promise<Buffer> {
-  return new Promise((resolve, reject) => {
-    execFile(
-      "git",
-      ["status", "--porcelain=v2", "-z", "--branch", "--no-ahead-behind", "--untracked-files=all", "--no-renames"],
-      { cwd: workspaceRoot, encoding: "buffer", maxBuffer: MAX_GIT_OUTPUT_BYTES },
-      (error, stdout, stderr) => {
-        if (error) {
-          reject(new Error(`git status failed: ${Buffer.from(stderr).toString("utf8").trim() || error.message}`));
-          return;
-        }
-        resolve(Buffer.from(stdout));
-      },
-    );
-  });
-}
 
 function validateGitPath(path: string): void {
   if (!path || isAbsolute(path) || path.includes("\0") || path.includes("\\") || posix.normalize(path) !== path || path.split("/").includes("..")) {
@@ -48,21 +31,26 @@ function framed(hash: ReturnType<typeof createHash>, value: string | Buffer): vo
   hash.update(bytes);
 }
 
-async function readCanonicalWorkspaceBytes(workspaceRoot: string, path: string, maximumBytes: number): Promise<Buffer> {
+async function readCanonicalWorkspaceBytes(workspaceRoot: string, path: string, maximumBytes: number, signal: AbortSignal): Promise<Buffer> {
+  signal.throwIfAborted();
   const root = await realpath(workspaceRoot);
   const expected = resolve(root, path);
-  const handle = await open(expected, constants.O_RDONLY | constants.O_NOFOLLOW);
+  signal.throwIfAborted();
+  const handle = await open(expected, constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK);
   try {
+    signal.throwIfAborted();
     const actual = await realpath(`/proc/self/fd/${handle.fd}`);
     const actualRelative = relative(root, actual).split(sep).join("/");
     if (actualRelative !== path || isAbsolute(actualRelative) || actualRelative.startsWith("../")) {
       throw new Error(`changed file escaped its canonical workspace path: ${path}`);
     }
     const before = await handle.stat({ bigint: true });
-    if (!before.isFile() || before.size > BigInt(maximumBytes)) throw new Error("changed working-world content exceeds the fingerprint bound");
+    if (!before.isFile()) throw new Error("changed path is not a regular file");
+    if (before.size > BigInt(maximumBytes)) throw new Error("changed working-world content exceeds the fingerprint bound");
     const chunks: Buffer[] = [];
     let offset = 0;
     while (offset <= maximumBytes) {
+      signal.throwIfAborted();
       const chunk = Buffer.allocUnsafe(Math.min(64 * 1024, maximumBytes + 1 - offset));
       const { bytesRead } = await handle.read(chunk, 0, chunk.byteLength, offset);
       if (bytesRead === 0) break;
@@ -80,8 +68,14 @@ async function readCanonicalWorkspaceBytes(workspaceRoot: string, path: string, 
   }
 }
 
-export async function computeWorkingWorldFingerprint(workspaceRoot: string): Promise<string> {
-  const output = await gitStatus(workspaceRoot);
+export async function computeWorkingWorldFingerprint(workspaceRoot: string, cancellation?: AbortSignal): Promise<string> {
+  // Git owns a shorter process deadline; chunked file work checks this complete
+  // observation deadline cooperatively and always closes its descriptor.
+  const signal = AbortSignal.any([AbortSignal.timeout(10_000), ...(cancellation ? [cancellation] : [])]);
+  signal.throwIfAborted();
+  const output = await queryRepositoryGit(workspaceRoot,
+    ["status", "--porcelain=v2", "-z", "--branch", "--no-ahead-behind", "--untracked-files=all", "--no-renames"],
+    { signal, maximumBytes: MAX_GIT_OUTPUT_BYTES });
   let statusText: string;
   try {
     statusText = new TextDecoder("utf8", { fatal: true }).decode(output);
@@ -117,6 +111,7 @@ export async function computeWorkingWorldFingerprint(workspaceRoot: string): Pro
   const observedChanges: Array<{ change: (typeof changes)[number]; kind: string; mode: string; bytes: Buffer }> = [];
   let totalBytes = 0;
   for (const change of changes) {
+    signal.throwIfAborted();
     validateGitPath(change.path);
     if (change.originalPath) validateGitPath(change.originalPath);
     const absolutePath = `${workspaceRoot}/${change.path}`;
@@ -138,7 +133,7 @@ export async function computeWorkingWorldFingerprint(workspaceRoot: string): Pro
     } else if (metadata.isFile()) {
       kind = "file";
       if (metadata.size > MAX_CHANGED_BYTES - totalBytes) throw new Error("changed working-world content exceeds the fingerprint bound");
-      bytes = await readCanonicalWorkspaceBytes(workspaceRoot, change.path, MAX_CHANGED_BYTES - totalBytes);
+      bytes = await readCanonicalWorkspaceBytes(workspaceRoot, change.path, MAX_CHANGED_BYTES - totalBytes, signal);
     } else {
       throw new Error(`changed path is not a regular file or symbolic link: ${change.path}`);
     }
@@ -154,5 +149,6 @@ export async function computeWorkingWorldFingerprint(workspaceRoot: string): Pro
     framed(hash, mode);
     framed(hash, bytes);
   }
+  signal.throwIfAborted();
   return hash.digest("hex");
 }

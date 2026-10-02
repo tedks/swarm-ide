@@ -22,6 +22,8 @@ export class WorkingWorldObserver {
   private processed = 0;
   private running = false;
   private closed = false;
+  private lifetime = new AbortController();
+  private pending: Promise<void> = Promise.resolve();
   private timer: WorkingWorldObserverTimer | null = null;
   private lastFingerprint: string;
   private observationFailed = false;
@@ -29,7 +31,7 @@ export class WorkingWorldObserver {
 
   constructor(
     initialFingerprint: string,
-    private readonly compute: () => Promise<string>,
+    private readonly compute: (signal: AbortSignal) => Promise<string>,
     private readonly changed: (fingerprint: string) => void,
     private readonly failed: (error: Error) => void,
     private readonly pollMilliseconds = 1_000,
@@ -53,7 +55,7 @@ export class WorkingWorldObserver {
   request(): void {
     if (this.closed) return;
     this.requested += 1;
-    if (!this.running) void this.drain();
+    if (!this.running) this.pending = this.drain();
   }
 
   /** Another observer (e.g. build preflight) revoked current evidence. A later
@@ -71,10 +73,12 @@ export class WorkingWorldObserver {
     this.request();
   }
 
-  close(): void {
+  close(): Promise<void> {
     this.closed = true;
     if (this.timer) this.clock.cancel(this.timer);
     this.timer = null;
+    this.lifetime.abort();
+    return this.pending;
   }
 
   private async drain(): Promise<void> {
@@ -83,7 +87,7 @@ export class WorkingWorldObserver {
       while (!this.closed && this.processed < this.requested) {
         const generation = this.requested;
         try {
-          const fingerprint = await this.compute();
+          const fingerprint = await this.compute(this.lifetime.signal);
           this.processed = generation;
           if (generation !== this.requested || this.closed) continue;
           const recovered = this.observationFailed || this.mustPublishSuccess;
@@ -104,7 +108,7 @@ export class WorkingWorldObserver {
       }
     } finally {
       this.running = false;
-      if (!this.closed && this.processed < this.requested) void this.drain();
+      if (!this.closed && this.processed < this.requested) this.pending = this.drain();
     }
   }
 }

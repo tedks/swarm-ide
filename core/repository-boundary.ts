@@ -28,6 +28,7 @@ export function queryRepositoryGit(root: string, args: string[], options: GitQue
     for (const key of Object.keys(environment)) if (key.startsWith("GIT_")) delete environment[key];
     const child = spawn("git", ["-c", "core.fsmonitor=false", "-c", "core.untrackedCache=false", ...args], {
       cwd: root,
+      detached: true, // Own Git and any submodule/filter descendants as one group.
       env: { ...environment, GIT_OPTIONAL_LOCKS: "0", GIT_TERMINAL_PROMPT: "0", GIT_CONFIG_NOSYSTEM: "1", GIT_CONFIG_GLOBAL: "/dev/null" },
       stdio: ["pipe", "pipe", "pipe"],
     });
@@ -36,7 +37,12 @@ export function queryRepositoryGit(root: string, args: string[], options: GitQue
     let failure: Error | undefined;
     const stop = (message: string) => {
       failure ??= new Error(message);
-      child.kill("SIGKILL");
+      // Descendants may inherit stdout/stderr after Git exits. Killing just the
+      // leader would leave close (and therefore cancellation) waiting forever.
+      try { if (child.pid) process.kill(-child.pid, "SIGKILL"); }
+      catch (error) {
+        if ((error as NodeJS.ErrnoException).code !== "ESRCH") child.kill("SIGKILL");
+      }
     };
     const cancel = () => stop("Repository query cancelled");
     const timer = setTimeout(() => stop("Repository Git query exceeded its deadline"), options.timeoutMs ?? 2_000);
