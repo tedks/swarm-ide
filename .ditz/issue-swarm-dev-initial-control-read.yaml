@@ -9,12 +9,16 @@ type: bugfix
 component: default
 release:
 reporter: Ted Smith <tedks@riseup.net>
-status: unstarted
-disposition:
+status: closed
+disposition: reorg
 creation_time: 2026-09-08T06:23:14-00:00
 references: []
 log_events:
 - time: 2026-09-08T06:23:14-00:00
   who: Ted Smith
   what: created
+  comment: ""
+- time: 2026-10-02T06:39:50-00:00
+  who: Ted Smith
+  what: 'closed: reorg'
   comment: ""
