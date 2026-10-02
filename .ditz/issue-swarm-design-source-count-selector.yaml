@@ -10,8 +10,8 @@ type: bugfix
 component: default
 release:
 reporter: Ted Smith <tedks@riseup.net>
-status: unstarted
-disposition:
+status: closed
+disposition: fixed
 creation_time: 2026-09-08T15:46:57-00:00
 references: []
 log_events:
@@ -19,3 +19,13 @@ log_events:
   who: Ted Smith
   what: created
   comment: ""
+- time: 2026-10-02T06:39:47-00:00
+  who: Ted Smith
+  what: 'closed: fixed'
+  comment: 'Re-audit 2026-10-02: fixed in 945cd220 and present at origin/master 6eb9af05.
+    tests/living-design.test.tsx derives the source count from the selected index
+    node and retains expansion, exact source activation and collapse assertions. Fresh
+    Nix/Bazel //tools/demo-syntax:editor-tests invocation passed all 15 living-design
+    tests; the combined corrected editor/design/task gate passed 123 tests plus both
+    TypeScript boundaries. This closes only the stale count assertion, not unrelated
+    historical GUI or fixture failures.'
