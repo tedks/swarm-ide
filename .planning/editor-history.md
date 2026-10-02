@@ -11,8 +11,9 @@ Typing in a source file must be reversible with Ctrl+Z and Ctrl+Shift+Z. Switchi
 - [x] 2026-10-02: verified the editor installs no history and restores selection only.
 - [x] 2026-10-02: wrote mounted keyboard/remount/external-observation regressions.
 - [x] 2026-10-02: baseline had three undo failures; fixed history and passed 123 tests in five files plus both TypeScript boundaries.
-- [ ] Run the extended native desktop syntax proof and final exact-head editor gate.
-- [ ] Verify council convergence, push and normal-merge the PR.
+- [x] 2026-10-02: 107 editor/source tests in seven files and both TypeScript boundaries pass; final native packaged proof passes with zero renderer diagnostics, no model requests, and owned cleanup.
+- [x] 2026-10-02: pushed PR161; OpenAI native and Google convergence review CLEAN at 51aa11e9. Anthropic unavailable due usage limit.
+- [ ] Controller normal merge after final documentation checkpoint gate.
 
 ## Surprises & Discoveries
 
@@ -36,7 +37,7 @@ In the feature worktree, materialize dependencies with `nix develop --command pn
 
 ## Validation and Acceptance
 
-The unchanged editor must fail the new user undo cases. After the change Ctrl+Z undoes typing, Ctrl+Shift+Z restores it, both stacks survive remount with current callbacks, CRLF normalization permits matching state restoration, external prefix insertion survives undo of a user edit, and replaced content starts fresh history. Existing syntax/language changes and repeated equivalent observations retain state. These are mounted keyboard events, not an OS-native desktop proof; that distinction remains visible in issue disposition.
+The unchanged editor must fail the new user undo cases. After the change Ctrl+Z undoes typing, Ctrl+Shift+Z restores it, both stacks survive remount with current callbacks, CRLF normalization permits matching state restoration, external prefix insertion survives undo of a user edit, and replaced content starts fresh history. Existing syntax/language changes and repeated equivalent observations retain state. These unit cases use mounted keyboard events. The separate `//tools/demo-syntax:smoke` proof now exercises native Electron keyboard input on its owned X11 desktop after a tab roundtrip.
 
 ## Idempotence and Recovery
 
@@ -44,7 +45,7 @@ The diff utility adds pinned `@codemirror/merge` with only already-present trans
 
 ## Outcomes & Retrospective
 
-Mounted editor/history and intake checks pass (123 tests). The initial jsdom redo check exposed its empty platform setting; the test now declares Linux before CodeMirror initializes. Native desktop proof and PR review remain pending.
+Initial editor/history and intake checks passed 123 tests. After council corrections, the seven-file editor/source gate passes 107 tests plus both TypeScript boundaries. The packaged syntax journey proves native Ctrl+Z/Ctrl+Shift+Z after leaving and returning to the edited tab, exact source/cursor/camera retention, a single owned save, zero renderer errors and complete cleanup. Nix dependency materialization accepts the updated hash. Both available council seats converge CLEAN; Anthropic could not review due usage credits. Normal PR merge remains the controller action.
 
 ## Artifacts and Notes
 
@@ -59,3 +60,5 @@ Initial plan records the narrowly scoped editor recommendation from the inventor
 2026-10-02 checkpoint: added native Undo/Redo assertions after the existing packaged syntax tab-retention journey; fixture files stay disposable. No native pass claimed yet.
 
 2026-10-02 council correction: native review found that one broad external replacement could erase history for unchanged interior text. Added a failing regression and replaced the hand-written replacement range with the pinned CodeMirror diff utility, bounded to scan depth 500 and 20 ms before conservative fallback. This is a supported utility, not a new diff engine. Strengthened native proof by navigating after the tested edit. Anthropic seat unavailable due usage credits; Google initial round clean.
+
+2026-10-02 verification checkpoint: source/test/native gate inputs at 51aa11e9 passed. This update records evidence only. The merge receipt is recorded in PR161 and the Ditz issue so the committed plan does not predict its own merge.
