@@ -22,3 +22,9 @@ log_events:
   who: Ted Smith
   what: created
   comment: ""
+- time: 2026-10-02T21:16:08-00:00
+  who: Ted Smith
+  what: blocks swarm-dispatch-lineage
+  comment: ""
+blocks:
+- swarm-dispatch-lineage
