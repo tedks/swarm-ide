@@ -38,3 +38,16 @@ log_events:
     OpenAI/Google council clean, Anthropic unavailable. W6 observation cost/suspension
     active; W7-W9 remain. Controller W10 and editor history untouched; source-write
     product ruling remains pending.'
+- time: 2026-10-02T08:28:05-00:00
+  who: Ted Smith
+  what: commented
+  comment: 'W1-W9 bounded delivery complete: PR160/163 response correlation,162 UI
+    fixtures,164 test inputs/runner ownership,165 document identity,166 cancellable
+    fingerprint lifetime,167 inactive observation interest,168 dead glue,169 measured
+    bundle inputs,170 measured identity contract proposal. Normal merges after scoped
+    exact-head gates and available-seat code council fixpoint; Anthropic unavailable.
+    W9 is proposal only; wire implementation stays open in swarm-workspace-identity-response-contract.
+    Source-write policy is Ted-owned in swarm-source-write-preservation-decision-20261002,
+    blocking atomic-source-write-broker. W10/controller and editor PR161 preserved,
+    no duplicated tracker reconciliation. No broad suite/physical desktop or production
+    CPU claims.'
