@@ -1,10 +1,11 @@
 // @vitest-environment jsdom
+import { workspaceTaskFixtures, workspaceReply, fixtureAcknowledgement, fixtureFailure } from "./support/workspace-fixture";
 import { openContextPath } from "./context-navigation";
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { EditorView } from "@codemirror/view";
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { initialSnapshot, writerFileFocus } from "../fixtures/world";
-import { taskDetailFixture, taskObservationFixture, taskReadFixture } from "../fixtures/tasks";
+import { taskDetailFixture } from "../fixtures/tasks";
 import { emptyAgentWorkbench } from "../app/renderer/agents/state";
 import { PROTOCOL_VERSION, type CoreEvent, type FileEvent, type CoreRequest, type CoreResponse, type GraphSlice } from "../protocol/schema";
 import type { TaskFileRef } from "../protocol/tasks";
@@ -33,15 +34,16 @@ const source = writerFileFocus.path!;
 const doc = "docs/architecture.md";
 function setup(refs: TaskFileRef[] = [{ path: source, line: 2, note: "Explicit source", navigation: "candidate" }], failure?: string, brokerRoot?: string) {
   const snapshot = initialSnapshot(writerFileFocus);
-  const observation = taskObservationFixture();
+  const tasks = workspaceTaskFixtures(snapshot);
+  const observation = tasks.observation();
   const detail = { ...taskDetailFixture(), fileRefs: refs, counts: { ...taskDetailFixture().counts, fileRefs: refs.length } };
   observation.snapshot!.summaries[0]!.counts.fileRefs = refs.length;
   let sequence = 0;
   const listeners = new Set<(event: CoreEvent | FileEvent) => void>();
   const request = vi.fn(async (input: CoreRequest): Promise<CoreResponse> => {
-    const common = { protocolVersion: PROTOCOL_VERSION, requestId: input.requestId, ok: true as const, sequence: ++sequence, snapshot };
+    const common = workspaceReply(input, snapshot, ++sequence);
     if (input.type === "tasks.snapshot") return { ...common, task: { kind: "snapshot", observation: { ...observation, sequence } } };
-    if (input.type === "tasks.read") return { ...common, task: { ...taskReadFixture(), sequence, result: { ok: true, detail } } };
+    if (input.type === "tasks.read") return { ...common, task: { ...tasks.read(), sequence, result: { ok: true, detail } } };
     if (input.type === "agent.snapshot") return { ...common, agent: { kind: "snapshot", snapshot: emptyAgentWorkbench().snapshot } };
     if (brokerRoot && (input.type === "file.read" || input.type === "file.watch")) {
       try {
@@ -49,16 +51,16 @@ function setup(refs: TaskFileRef[] = [{ path: source, line: 2, note: "Explicit s
         return { ...common, file: await readWorkspaceFile(brokerRoot, input.path) };
       } catch (error) {
         if (!(error instanceof WorkspaceFileError)) throw error;
-        return { protocolVersion: PROTOCOL_VERSION, requestId: input.requestId, ok: false, error: { code: error.code, message: error.message } };
+        return fixtureFailure(input, error.code, error.message);
       }
     }
     if ((input.type === "file.read" || input.type === "file.watch") && input.path !== source && failure)
-      return { protocolVersion: PROTOCOL_VERSION, requestId: input.requestId, ok: false, error: { code: failure, message: "Contained-file broker refused this reference." } };
+      return fixtureFailure(input, failure, "Contained-file broker refused this reference.");
     if (input.type === "file.read") {
       const content = input.path === source ? "one\ntwo\nthree\n" : "Documentation\nReference\n";
       return { ...common, file: { kind: "read", path: input.path, content, revision: "d".repeat(64), size: content.length } };
     }
-    return common;
+    return fixtureAcknowledgement(input, snapshot, sequence);
   });
   window.swarm = { request, onEvent: (listener) => { listeners.add(listener); return () => { listeners.delete(listener); }; } };
   window.swarmView = { setZoomPercent: async () => ({ ok: true, percent: 100 }) };
@@ -90,7 +92,6 @@ it("keeps settled automatic build context quiet across design and overview navig
 it("revokes a held planning-task activation when the user returns to the overview", async () => {
   const { request } = setup(); render(<App />);
   await screen.findByRole("button", { name: "Select task task-fixture" });
-  fireEvent.click(screen.getByRole("button", { name: "Load dependency graph" }));
   await screen.findByText(/1\/1 details read/);
   fireEvent.click(screen.getByText(/Keyboard task outline/));
   const original = request.getMockImplementation()!; let finish!: () => void;
@@ -112,10 +113,12 @@ it("observes metadata for compact file Context without a visible Tasks sidebar",
   vi.stubGlobal("matchMedia", () => media);
   try {
     const { request } = setup(); render(<App />);
+    await screen.findByText(/1\/1 details read/);
+    const graphReads = request.mock.calls.filter(([r]) => r.type === "tasks.read").length;
     await openContextPath(source);
     fireEvent.click(screen.getByRole("button", { name: "Toggle information panel" }));
     await waitFor(() => expect(request.mock.calls.filter(([r]) => r.type === "tasks.snapshot" && r.refresh)).toHaveLength(1));
-    expect(request.mock.calls.filter(([r]) => r.type === "tasks.read")).toHaveLength(0);
+    expect(request.mock.calls.filter(([r]) => r.type === "tasks.read")).toHaveLength(graphReads);
   } finally { vi.unstubAllGlobals(); }
 });
 
@@ -243,7 +246,7 @@ describe("task inspection in the source cockpit", () => {
     expect((camera as HTMLInputElement).value).toBe("pan 1024,768 zoom 2");
     expect(screen.getByLabelText("Task")).toBe(draft);
     expect((draft as HTMLTextAreaElement).value).toBe("Independent fixed-focus draft");
-    expect(request.mock.calls.slice(before).map(([input]) => input.type).filter((type) => type !== "tasks.snapshot")).toEqual(["tasks.read", "taskActivity.read"]);
+    expect(request.mock.calls.slice(before).map(([input]) => input.type).filter((type) => type !== "tasks.snapshot" && type !== "trusted.snapshot")).toEqual(["tasks.read", "taskActivity.read"]);
     fireEvent.pointerDown(document.querySelector(".source-surface")!);
     expect(screen.queryByRole("region", { name: "Task details" })).toBeNull();
     expect(screen.getByRole("button", { name: "Select task task-fixture" }).getAttribute("aria-pressed")).toBe("true");
@@ -451,8 +454,7 @@ describe("task inspection in the source cockpit", () => {
     let finish!: () => void;
     test.request.mockImplementation((input) => input.type === "file.read" ? new Promise((resolve) => {
       finish = () => { if (outcome === "success") void original(input).then(resolve);
-        else resolve({ protocolVersion: PROTOCOL_VERSION, requestId: input.requestId, ok: false,
-          error: { code: "FILE_NOT_FOUND", message: "Deleted during read" } }); };
+        else resolve(fixtureFailure(input, "FILE_NOT_FOUND", "Deleted during read")); };
     }) : original(input));
     reveal(source, 2); await screen.findByText(`Opening working file ${source}…`);
     if (destination === "draft") {

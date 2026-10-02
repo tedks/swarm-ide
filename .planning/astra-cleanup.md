@@ -10,7 +10,7 @@ Make source replies trustworthy, restore useful regression gates, simplify docum
 
 - [x] 2026-10-02: audited baseline 6eb9af0507fae028e93375e30e70c96a4effdac6; user authorized implementation of all findings.
 - [x] Correlate file responses and consistently exclude unrelated result fields; review pending.
-- [ ] Repair shared UI fixture identity/envelopes and stale test entry points.
+- [x] Repair shared UI fixture identity/envelopes and stale test entry points (46 targeted tests passed; council pending).
 - [ ] Declare actual test inputs and runner ownership.
 - [ ] Type document identity and extract navigation transitions while retaining editor state.
 - [ ] Make fingerprint work cancellable and safe against FIFO replacement.
@@ -31,7 +31,7 @@ Initial host assessment: 12 GiB available RAM on a 125 GiB host, swap almost ful
 
 ## Outcomes & Retrospective
 
-Contract regressions fail on the baseline. The expanded contract gate passes after the fix and task-contract fixture alignment: eight suites, 234 tests, both TypeScript boundaries. Council review and later packages remain.
+Contract regressions fail on the baseline. The expanded contract gate passes after the fix and task-contract fixture alignment: eight suites, 234 tests, both TypeScript boundaries. W1 council: OpenAI native and Google clean, Anthropic unavailable due usage credits. PR #160 is pushed and ready; not merged. W2 baseline was 36 failed/8 passed; explicit workspace/task fixtures and current UI entry points pass all 44 original cases plus two contract tests. Later packages remain.
 
 ## Context and Orientation
 

@@ -1,9 +1,9 @@
 // @vitest-environment jsdom
+import { workspaceTaskFixtures, workspaceReply, fixtureAcknowledgement } from "./support/workspace-fixture";
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { EditorView } from "@codemirror/view";
 import { afterEach, beforeAll, expect, it, vi } from "vitest";
 import { initialSnapshot, writerFileFocus } from "../fixtures/world";
-import { taskObservationFixture, taskReadFixture } from "../fixtures/tasks";
 import type { Lifecycle } from "../app/lifecycle";
 import { emptyAgentWorkbench } from "../app/renderer/agents/state";
 import { PROTOCOL_VERSION, type CoreRequest, type CoreResponse, type GraphSlice } from "../protocol/schema";
@@ -31,13 +31,17 @@ afterEach(() => { cleanup(); vi.restoreAllMocks(); window.sessionStorage.clear()
 
 function bridge(withBuild = false) {
   const snapshot = initialSnapshot(writerFileFocus);
-  const request = vi.fn(async (input: CoreRequest): Promise<CoreResponse> => ({ protocolVersion: PROTOCOL_VERSION, requestId: input.requestId, ok: true, snapshot, sequence: 1,
+  const tasks = workspaceTaskFixtures(snapshot);
+  const request = vi.fn(async (input: CoreRequest): Promise<CoreResponse> => {
+    if (!["agent.snapshot", "tasks.snapshot", "tasks.read", "file.read", ...(withBuild ? ["buildGraph.observe"] : [])].includes(input.type))
+      return fixtureAcknowledgement(input, snapshot);
+    return { ...workspaceReply(input, snapshot),
     ...(input.type === "agent.snapshot" ? { agent: { kind: "snapshot" as const, snapshot: emptyAgentWorkbench().snapshot } } : {}),
-    ...(input.type === "tasks.snapshot" ? { task: { kind: "snapshot" as const, observation: taskObservationFixture() } } : {}),
-    ...(input.type === "tasks.read" ? { task: taskReadFixture() } : {}),
+    ...(input.type === "tasks.snapshot" ? { task: { kind: "snapshot" as const, observation: tasks.observation() } } : {}),
+    ...(input.type === "tasks.read" ? { task: tasks.read() } : {}),
     ...(withBuild && input.type === "buildGraph.observe" ? { buildGraph: fixtureBuildObservation(snapshot) } : {}),
     ...(input.type === "file.read" ? { file: { kind: "read" as const, path: input.path, content: "source\n", revision: "a".repeat(64), size: 7 } } : {}),
-  }));
+  }; });
   window.swarm = { request, onEvent: () => () => {} };
   window.swarmView = { setZoomPercent: async () => ({ ok: true, percent: 100 }) };
   return request;

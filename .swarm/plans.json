@@ -783,6 +783,8 @@
     ],
     "sourcePaths": [
       "protocol/schema.ts",
+      "tests/support/workspace-fixture.ts",
+      "tests/workspace-fixture.test.ts",
       "core/worker-runtime.ts",
       "app/electron/main.ts",
       "app/electron/window-health.ts",

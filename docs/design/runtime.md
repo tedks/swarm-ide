@@ -33,6 +33,10 @@ Each command declares its only permitted result field. File read/write replies
 require the exact requested path and result kind before reaching a source buffer;
 watch/unwatch acknowledgements cannot carry file contents. Domain validators retain
 their revision, cursor and run identity checks after this common envelope check.
+Mounted UI tests compose task fixtures from the selected snapshot identity using
+`tests/support/workspace-fixture.ts`; scoped replies carry that workspace ID and
+unsupported fixture requests fail explicitly. Wrong-identity tests override the
+finished reply so fixture composition cannot silently repair the case under test.
 
 `workspace.open` takes a registered session ID or the launch workspace, not a raw
 path. Each opened canonical repository ID owns its own files, watchers, tasks,
