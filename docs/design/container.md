@@ -39,7 +39,7 @@ Actual target connections:
 
 | Target | Inputs / effect |
 | --- | --- |
-| `//:desktop-bundle` | Existing `//:quality_sources` and `//tools:build-app`; creates the app tar consumed by the Docker build |
+| `//:desktop-bundle` | Existing `//:runtime_sources` and `//tools:build-app`; creates the app tar consumed by the Docker build |
 | `//tools/container:sources` | Container startup, runtime definition, policy and small sample repo |
 | `//tools/container:checks` | Manual uncached command reading root Dockerfile/Compose/build-context rules plus container sources; direct configuration and sample checks |
 | `//tools/container:smoke` | Container sources and a locally built image; starts an owned container and verifies real Electron through noVNC |

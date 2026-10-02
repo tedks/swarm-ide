@@ -111,7 +111,7 @@ workspace context, not to a second-class agent-file viewer.
 
 ## Build connections
 
-The producer, protocol and renderer modules enter `//:quality_sources`, which
+The producer, protocol and renderer modules enter `//:runtime_sources`, which
 feeds `//:desktop-bundle`. In [tools/build-graph/BUILD.bazel](../../tools/build-graph/BUILD.bazel),
 `//tools/build-graph:checks` consumes `//:quality_sources` and verifies update
 triggers, quietness, input failure recovery and process lifetime. The separate

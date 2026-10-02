@@ -32,8 +32,8 @@ files remain plain text. This component makes no syntax-validity claims.
 
 | Input / target | Connection |
 | --- | --- |
-| `app/renderer/editor-language.ts` | Renderer input to root `//:quality_sources`, consumed by `//:desktop-bundle` |
-| `package.json`, `pnpm-lock.yaml`, `pnpm-workspace.yaml` | Pinned parser dependencies and one compatible CodeMirror state implementation; root `//:quality_sources` inputs |
+| `app/renderer/editor-language.ts` | Renderer input to root `//:runtime_sources`, consumed by `//:desktop-bundle` |
+| `package.json`, `pnpm-lock.yaml`, `pnpm-workspace.yaml` | Pinned parser dependencies and one compatible CodeMirror state implementation; root `//:runtime_sources` inputs |
 | `tests/editor-project-languages.test.ts`, `tests/editor-syntax.test.tsx`, `tests/editor-syntax-dependencies.test.mjs` | Root test inputs, exercised by `//tools/demo-syntax:editor-tests` |
 | `//tools/demo-syntax:editor-tests` | Existing syntax target, also runs TypeScript boundaries and actual cursor/source-handoff regressions |
 | `//tools/demo-syntax:smoke` | Depends on `//:desktop-bundle`, syntax proof sources and owned virtual-desktop driver |

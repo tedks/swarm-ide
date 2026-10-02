@@ -154,7 +154,7 @@
           "role": "Packages renderer and local core",
           "dependencies": [
             {
-              "label": "//:quality_sources",
+              "label": "//:runtime_sources",
               "relation": "srcs"
             },
             {
@@ -342,7 +342,7 @@
           "role": "Packages renderer and local core",
           "dependencies": [
             {
-              "label": "//:quality_sources",
+              "label": "//:runtime_sources",
               "relation": "srcs"
             },
             {
@@ -433,7 +433,7 @@
           "role": "Packages renderer and local core",
           "dependencies": [
             {
-              "label": "//:quality_sources",
+              "label": "//:runtime_sources",
               "relation": "srcs"
             },
             {
@@ -593,7 +593,7 @@
           "role": "Packages renderer and local core",
           "dependencies": [
             {
-              "label": "//:quality_sources",
+              "label": "//:runtime_sources",
               "relation": "srcs"
             },
             {
@@ -726,7 +726,7 @@
           "role": "Packages renderer and local core",
           "dependencies": [
             {
-              "label": "//:quality_sources",
+              "label": "//:runtime_sources",
               "relation": "srcs"
             },
             {
@@ -882,7 +882,7 @@
           "role": "Packages renderer and local core",
           "dependencies": [
             {
-              "label": "//:quality_sources",
+              "label": "//:runtime_sources",
               "relation": "srcs"
             },
             {

@@ -130,8 +130,8 @@ execution versus last-touch semantics and the current native-run location limit.
 
 ## Build connections
 
-All files above are inputs to `//:quality_sources` in
-[BUILD.bazel](../../BUILD.bazel); that filegroup feeds `//:desktop-bundle` and
+Production files above enter `//:runtime_sources` in
+[BUILD.bazel](../../BUILD.bazel), feeding `//:desktop-bundle`; `//:quality_sources` also includes them for
 the `//tools:quality` test. `//:dev` aliases `//tools:dev` for the watched local
 loop. These are shared application targets, not a separate cockpit service.
 `//tools/bazel-palette:checks` consumes the same application sources and directly
