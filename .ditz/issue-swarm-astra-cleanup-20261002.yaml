@@ -1,0 +1,19 @@
+id: swarm-astra-cleanup-20261002
+title: Resolve the Astra cleanup audit with bounded verified changes
+desc: Track response correlation, shared fixture identity, Bazel input ownership,
+  typed document state, cancellable fingerprints, idle observers, dead UI paths, measured
+  gate/envelope cost, and backlog reconciliation. Preserve existing execution authorities
+  and retained operator work. Exact-head local evidence required per bounded change.
+type: task
+component: default
+release:
+reporter: Ted Smith <tedks@riseup.net>
+status: unstarted
+disposition:
+creation_time: 2026-10-02T06:24:05-00:00
+references: []
+log_events:
+- time: 2026-10-02T06:24:05-00:00
+  who: Ted Smith
+  what: created
+  comment: ""
