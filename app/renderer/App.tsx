@@ -20,7 +20,7 @@ import {
 } from "../view-shell";
 import { discardStoredZoom, persistZoom, readStoredZoom, stepZoom, zoomShortcut } from "./zoom";
 import type { Lifecycle } from "../lifecycle";
-import { NAVIGATION_KEY, readNavigation, protectsBuffer, staleSnapshot, retainDerived } from "./recovery";
+import { NAVIGATION_KEY, graphSurface, fileSurface, surfacePath, recoverSurface, type DocumentSurface, readNavigation, protectsBuffer, staleSnapshot, retainDerived } from "./recovery";
 import { hotMemory, pendingWrites } from "./hot-memory";
 import { useRecoveryText } from "./renderer-health";
 import { RunRail } from "./agents/RunRail";
@@ -111,12 +111,12 @@ interface FileTab {
 interface HotWorkbench {
   workspace: WorkspaceState;
   files: FileTab[];
-  activeSurface: string;
+  activeSurface: DocumentSurface;
   lens: (typeof lensTabs)[number];
   worktrees?: Map<string, RetainedWorktree>;
   selectedWorktree?: WorkspaceDescriptor;
 }
-interface RetainedWorktree { workspace: WorkspaceState; files: FileTab[]; activeSurface: string; editors: Map<string, EditorMemory> }
+interface RetainedWorktree { workspace: WorkspaceState; files: FileTab[]; activeSurface: DocumentSurface; editors: Map<string, EditorMemory> }
 // Fast Refresh can remount a component (for example after a hook is added)
 // without beforeunload. Its module data survives that replacement, unlike hooks.
 
@@ -294,20 +294,28 @@ export function App() {
   const [commandQuery, setCommandQuery] = useState("");
   const [hmr, setHmr] = useState({ generation: 0, milliseconds: 0 });
   const [fileTabs, setFileTabs] = useState<FileTab[]>(hotCheckpoint?.files ?? []);
-  const [activeSurface, setActiveSurface] = useState<string>(hotCheckpoint?.activeSurface ?? restoredNavigation?.activeSurface ?? "graphs");
+  const [activeSurface, setActiveSurface] = useState<DocumentSurface>(() => hotCheckpoint ? recoverSurface(hotCheckpoint.activeSurface, hotCheckpoint.files.map((file) => file.path)) : restoredNavigation?.activeSurface ?? graphSurface);
   const [taskDocumentOpen, setTaskDocumentOpen] = useState(false);
   const [taskDocumentVisible, setTaskDocumentVisible] = useState(false);
   const [taskSidebarVisible, setTaskSidebarVisible] = useState(true);
+  // Change visibility together; mounted buffers, selections and open tabs live
+  // independently and must survive switching the foreground document.
+  const showDocument = useCallback((kind: "source" | "task" | "journal" | "worktree" | "design" | "worklog", entry: string | null = null) => {
+    lensChosen.current = true;
+    setWorkLogEntry(kind === "worklog" ? entry : null);
+    updateDesignVisible(kind === "design");
+    setWorktreeVisible(kind === "worktree");
+    setJournalVisible(kind === "journal");
+    setTaskDocumentVisible(kind === "task");
+  }, []);
   const journal = useJournal(workspace.snapshot?.project.id ?? null, lifecycle?.core.phase === "ready" ? lifecycle.core.generation : null);
-  const openJournal = (entry?: string) => { setWorkLogEntry(null); setDesignVisible(false); setWorktreeVisible(false); setJournalOpen(true); setJournalVisible(true); setTaskDocumentVisible(false); setJournalEntry(entry ?? null); setJournalSelection((value) => value + 1); };
+  const openJournal = (entry?: string) => { showDocument("journal"); setJournalOpen(true); setJournalEntry(entry ?? null); setJournalSelection((value) => value + 1); };
   const showJournal = (entry?: string) => { selectActivity(null); openJournal(entry); };
   const showActivityEvent = (session: SelectedActivity["session"], entry: SelectedActivity["entry"]) => { selectActivity({ session, entry }); openJournal(); };
   const inspectWorktree = (sessionId: string, path: string, patch?: string) => {
     ++navigationIntent.current;
     setWorktreeBrowserSession(null);
-    setWorkLogEntry(null);
-    setWorktreeSelection({ sessionId, path, ...(patch ? { patch } : {}) }); setWorktreeVisible(true);
-    setDesignVisible(false); setJournalVisible(false); setTaskDocumentVisible(false);
+    setWorktreeSelection({ sessionId, path, ...(patch ? { patch } : {}) }); showDocument("worktree");
   };
   const browseAgentWorktree = (sessionId: string) => {
     void switchWorkspaceRef.current(sessionId);
@@ -315,11 +323,11 @@ export function App() {
   const switchWorkspaceRef = useRef<(sessionId: string | null) => Promise<boolean>>(async () => false);
   const [designSelection, setDesignSelection] = useState<ComponentSelection>();
   const showDesign = () => {
-    ++navigationIntent.current; setWorkLogEntry(null); setDesignVisible(true); setJournalVisible(false); setWorktreeVisible(false); setTaskDocumentVisible(false);
+    ++navigationIntent.current; showDocument("design");
     if (designSelection?.node) inspectComponent(designSelection.node.id);
   };
-  const showWorkLogEntry = (entry: WorkLogEntry) => { ++navigationIntent.current; setWorkLogEntry(entry.id); setDesignVisible(false); setJournalVisible(false); setWorktreeVisible(false); setTaskDocumentVisible(false); };
-  useEffect(() => { if (taskDocumentVisible) { setWorkLogEntry(null); setDesignVisible(false); setJournalVisible(false); setWorktreeVisible(false); } }, [taskDocumentVisible]);
+  const showWorkLogEntry = (entry: WorkLogEntry) => { ++navigationIntent.current; showDocument("worklog", entry.id); };
+  useEffect(() => { if (taskDocumentVisible) showDocument("task"); }, [taskDocumentVisible, showDocument]);
   const pendingBacklinkIntent = useRef<number | null>(null);
   const [selectedConnection, setSelectedConnection] = useState<GraphConnectionFocus | null>(null);
   const workspaceRef = useRef<WorkspaceState>(workspace);
@@ -327,7 +335,7 @@ export function App() {
   // before passive effects or a user activation can capture an older realm.
   workspaceRef.current = workspace;
   const fileTabsRef = useRef<FileTab[]>(fileTabs);
-  const activeSurfaceRef = useRef<string>(activeSurface);
+  const activeSurfaceRef = useRef<DocumentSurface>(activeSurface);
   const [attention, setAttention] = useState(emptyContextAttention);
   const attentionRef = useRef(attention);
   type DefinitionIntent = { resolution: DeclarationResolution; realm: string; generation: number; intent: number; choosing: boolean; origin?: HTMLElement };
@@ -442,7 +450,7 @@ export function App() {
   useEffect(() => {
     if (workspace.snapshot) taskClient.setContext(workspace.snapshot.world.id, workspace.snapshot.project.id);
   }, [taskClient, workspace.snapshot?.world.id, workspace.snapshot?.project.id]);
-  const taskDocumentConsumer = taskDocumentOpen && (taskDocumentVisible || !fileTabs.some((tab) => tab.path === activeSurface));
+  const taskDocumentConsumer = taskDocumentOpen && (taskDocumentVisible || !fileTabs.some((tab) => tab.path === surfacePath(activeSurface)));
   const taskContextConsumer = ["file", "task"].includes(attention.subject?.kind ?? "");
   useEffect(() => {
     // Mirrors the existing compact breakpoint, including Electron's CSS zoom.
@@ -476,7 +484,8 @@ export function App() {
   const sourceInformation = useCallback(() => {
     ++navigationIntent.current;
     setRevealNotice((notice) => notice.startsWith("Opening working file") ? "Reveal superseded by source navigation; previous source retained." : notice);
-    if (fileTabsRef.current.some((tab) => tab.path === activeSurfaceRef.current)) inspectFile(activeSurfaceRef.current);
+    const path = surfacePath(activeSurfaceRef.current);
+    if (path && fileTabsRef.current.some((tab) => tab.path === path)) inspectFile(path);
     else inspectGraph();
   }, [inspectFile, inspectGraph]);
   const showTaskDetails = useCallback(() => {
@@ -688,25 +697,20 @@ export function App() {
     });
   }, [invoke, revealGraphFocus]);
 
-  const showSurface = useCallback((surface: string) => {
+  const showSurface = useCallback((surface: DocumentSurface) => {
     setOverviewVisible(false);
-    setWorkLogEntry(null);
-    setDesignVisible(false);
-    setWorktreeVisible(false);
-    setJournalVisible(false);
-    setTaskDocumentVisible(false);
+    showDocument("source");
     ++navigationIntent.current;
     setRevealNotice((notice) => notice.startsWith("Opening working file") ? "Reveal superseded by source navigation; previous source retained." : notice);
     activeSurfaceRef.current = surface;
     setActiveSurface(surface);
-    if (surface === "graphs") inspectGraph();
-  }, [inspectGraph]);
+    if (surface.kind === "graphs") inspectGraph();
+  }, [inspectGraph, showDocument]);
 
   const showOverview = () => {
     ++navigationIntent.current;
     lensChosen.current = true;
-    setWorkLogEntry(null); setDesignVisible(false); setWorktreeVisible(false);
-    setJournalVisible(false); setTaskDocumentVisible(false);
+    showDocument("source");
     setOverviewVisible(true);
     // Retain the active source and its EditorView while the graphs take the
     // full area; returning to its tab must not reconstruct dirty text/cursor.
@@ -723,7 +727,7 @@ export function App() {
 
   const activateFile = useCallback((path: string, revealCamera = true) => {
     coordinateFileFocus(path, revealCamera);
-    showSurface(path);
+    showSurface(fileSurface(path));
     inspectFile(path);
     if (fileTabsRef.current.some((tab) => tab.path === path && tab.revision)) recordLocation({ kind: "file", path });
   }, [coordinateFileFocus, showSurface, inspectFile]);
@@ -819,7 +823,7 @@ export function App() {
       scopedBridgeRef.current = workspaceBridge(window.swarm, destination.id);
       workspaceRef.current = next; setWorkspace(next);
       fileTabsRef.current = files; setFileTabs(files);
-      activeSurfaceRef.current = saved?.activeSurface ?? "graphs"; setActiveSurface(activeSurfaceRef.current);
+      activeSurfaceRef.current = saved ? recoverSurface(saved.activeSurface, saved.files.map((file) => file.path)) : graphSurface; setActiveSurface(activeSurfaceRef.current);
       setWorkLogEntry(null); setWorktreeVisible(false); setWorktreeBrowserSession(null); setJournalVisible(false);
       setTaskDocumentVisible(false); setTaskDocumentOpen(false); setDesignVisible(false); setOverviewVisible(!files.length);
       setBuildTargetSelection(null); setSelectedConnection(null); setRevealNotice(""); setDefinition(null); definitionRef.current = null;
@@ -983,7 +987,7 @@ export function App() {
   const openFile = useCallback(async (path: string, coordinateFocus = true, background = false): Promise<FileTab | null> => {
     if (!background) {
       if (coordinateFocus) activateFile(path);
-      else showSurface(path);
+      else showSurface(fileSurface(path));
     }
     const existing = fileTabsRef.current.find((tab) => tab.path === path);
     if (existing) return existing;
@@ -1028,7 +1032,7 @@ export function App() {
         continue;
       }
       settleOpen((tab) => ({ ...tab, contextRead: sourceReceipt(file.revision), content: file.content, savedContent: file.content, revision: file.revision, status: "saved", message: "Watching the working file", flash: null }));
-      if (!background && activeSurfaceRef.current === path) recordLocation({ kind: "file", path });
+      if (!background && surfacePath(activeSurfaceRef.current) === path) recordLocation({ kind: "file", path });
       return fileTabsRef.current.find((tab) => tab.path === path) ?? null;
     }
     if (openGenerationsRef.current.get(path) === generation && desiredFilesRef.current.has(path)) {
@@ -1092,7 +1096,7 @@ export function App() {
       // still-empty background failure, never an existing or activated buffer.
       const failedBackground = fileTabsRef.current.find((item) => item.path === ref.path);
       if (mounted.current && coreGeneration === coreGenerationRef.current && !prior && tab?.status === "error" && !tab.revision && failedBackground?.status === "error" &&
-          !failedBackground.revision && !protectsBuffer(failedBackground) && activeSurfaceRef.current !== ref.path) {
+          !failedBackground.revision && !protectsBuffer(failedBackground) && surfacePath(activeSurfaceRef.current) !== ref.path) {
         desiredFilesRef.current.delete(ref.path);
         openGenerationsRef.current.set(ref.path, (openGenerationsRef.current.get(ref.path) ?? 0) + 1);
         openingFilesRef.current.delete(ref.path);
@@ -1118,7 +1122,7 @@ export function App() {
         path: ref.path, content: tab.content, line: target.line, nonce: intent, focus: true,
         authorization: {
           isCurrent: () => sourceNavigationRef.current === command && mounted.current &&
-            activeSurfaceRef.current === ref.path && desiredFilesRef.current.has(ref.path) &&
+            surfacePath(activeSurfaceRef.current) === ref.path && desiredFilesRef.current.has(ref.path) &&
             openGenerationsRef.current.get(ref.path) === openGeneration && contextRealm() === deliveryRealm &&
             navigationIntent.current === deliveryIntent && attentionRef.current.generation === deliveryAttention &&
             (!window.swarmLifecycle || lifecycleRef.current?.core.phase === "ready"),
@@ -1166,17 +1170,17 @@ export function App() {
     // watcher/editor state transition.
     fileTabsRef.current = remaining;
     setFileTabs((tabs) => tabs.filter((candidate) => candidate.path !== path));
-    if (activeSurfaceRef.current === path) {
+    if (surfacePath(activeSurfaceRef.current) === path) {
       const nextPath = remaining.at(-1)?.path;
       const subject = attentionRef.current.subject;
       if (!taskDocumentVisible && subject?.kind === "file" && subject.path === path) {
         if (nextPath) activateFile(nextPath);
-        else showSurface("graphs");
+        else showSurface(graphSurface);
       } else {
         // Closing a background document is not a new inspection of whatever
         // source happens to remain behind the graph/task being inspected.
         ++navigationIntent.current;
-        activeSurfaceRef.current = nextPath ?? "graphs"; setActiveSurface(nextPath ?? "graphs");
+        activeSurfaceRef.current = nextPath ? fileSurface(nextPath) : graphSurface; setActiveSurface(activeSurfaceRef.current);
       }
     }
   }, [activateFile, invoke, showSurface, taskDocumentVisible]);
@@ -1330,9 +1334,9 @@ export function App() {
         if (worktreeVisible) { setWorktreeVisible(false); setWorktreeSelection(null); setWorktreeBrowserSession(null); return; }
         if (designVisible) { setDesignVisible(false); return; }
         if (journalVisible) { setJournalOpen(false); setJournalVisible(false); return; }
-        if (taskDocumentVisible || (taskDocumentOpen && !fileTabsRef.current.some((tab) => tab.path === activeSurface))) { closeTaskDocument(); return; }
+        if (taskDocumentVisible || (taskDocumentOpen && !fileTabsRef.current.some((tab) => tab.path === surfacePath(activeSurface)))) { closeTaskDocument(); return; }
         if (overviewVisible) return;
-        const path = activeSurface === "graphs" ? null : activeSurface;
+        const path = surfacePath(activeSurface);
         if (path) closeFile(path);
         return;
       }
@@ -1467,23 +1471,23 @@ export function App() {
     setTaskDocumentOpen(true); setTaskDocumentVisible(true); setCompactPanel(null);
     inspectTask(tasks.selectedTaskId);
   };
-  const activeFile = fileTabs.find((tab) => tab.path === activeSurface);
+  const activeFile = fileTabs.find((tab) => tab.path === surfacePath(activeSurface));
   const attachInspectedTask = useCallback((taskId: string | null, origin: HTMLButtonElement) => {
     const candidate = taskClient.getAttachmentCandidate(taskId);
     if (!candidate) { setTaskAttachmentNotice({ taskId, text: "Task detail changed; Refresh tasks and inspect it again." }); return; }
-    const current = workspaceRef.current.snapshot, path = activeSurfaceRef.current;
+    const current = workspaceRef.current.snapshot, path = surfacePath(activeSurfaceRef.current);
     const file = fileTabsRef.current.find((tab) => tab.path === path);
     const generation = coreGenerationRef.current, sourceIntent = navigationIntent.current;
-    const openGeneration = openGenerationsRef.current.get(path);
+    const openGeneration = path ? openGenerationsRef.current.get(path) : undefined;
     // The selected, already-open working file is independent of task attention.
     // This is the same registered file FocusRef used by coordinateFileFocus;
     // no task link is consulted and no source/graph command is dispatched.
-    const sourceChoice = current && file?.revision && isRepositoryPath(path) && !["loading", "error"].includes(file.status) ? {
+    const sourceChoice = current && file?.revision && path && isRepositoryPath(path) && !["loading", "error"].includes(file.status) ? {
       focus: { worldId: current.world.id, revisionKind: "working" as const, revisionId: current.revisions.working.id,
         domain: "repo" as const, key: `file:${path}`, path },
       isCurrent: () => mounted.current && coreGenerationRef.current === generation && navigationIntent.current === sourceIntent &&
         workspaceRef.current.snapshot?.project.id === current.project.id && workspaceRef.current.snapshot?.world.id === current.world.id &&
-        activeSurfaceRef.current === path && openGenerationsRef.current.get(path) === openGeneration &&
+        surfacePath(activeSurfaceRef.current) === path && openGenerationsRef.current.get(path) === openGeneration &&
         fileTabsRef.current.some((tab) => tab.path === path && Boolean(tab.revision) && !["loading", "error"].includes(tab.status)),
     } : null;
     const result = agentClient.proposeTaskAttachment(candidate, sourceChoice, origin);
@@ -1524,7 +1528,7 @@ export function App() {
   useEffect(() => {
     const focus = snapshot ? ` — ${focusLabel(snapshot.focus)}` : "";
     const revision = snapshot ? ` — ${snapshot.revisions.working.id.slice(0, 12)}` : "";
-    const surface = activeSurface === "graphs" ? " — Graphs" : ` — Source ${activeSurface.split("/").at(-1)}:${activeFile?.status ?? "loading"}`;
+    const surface = activeSurface.kind === "graphs" ? " — Graphs" : ` — Source ${activeSurface.path.split("/").at(-1)}:${activeFile?.status ?? "loading"}`;
     const files = ` — ${fileTabs.length} file tab${fileTabs.length === 1 ? "" : "s"}`;
     const palette = paletteOpen ? ` — Palette open${paletteMode === "path" ? " · exact path" : paletteTargetOperation ? ` · Bazel ${paletteTargetOperation}` : ""}` : "";
     const hmrSuffix = hmr.generation ? ` — HMR ${hmr.generation}:${hmr.milliseconds}ms` : "";
@@ -1685,11 +1689,11 @@ export function App() {
             <button id="reconcile-success" onClick={() => void reconcile()} disabled={reconciliationRunning || coreUnavailable}>Refresh services</button>
           </div></details>
         </div>
-        {hasOpenDocument ? <OverflowStrip className="surface-tabs-strip" label="document tabs" activeKey={workLogEntryId ?? (designVisible ? "design" : worktreeVisible ? `worktree:${worktreeSelection?.path}` : journalVisible ? "journal" : textDocumentVisible ? "task" : activeSurface)}><nav className="surface-tabs" aria-label="Document tabs">
+        {hasOpenDocument ? <OverflowStrip className="surface-tabs-strip" label="document tabs" activeKey={workLogEntryId ?? (designVisible ? "design" : worktreeVisible ? `worktree:${worktreeSelection?.path}` : journalVisible ? "journal" : textDocumentVisible ? "task" : activeSurface.kind === "file" ? `file:${activeSurface.path}` : "graphs")}><nav className="surface-tabs" aria-label="Document tabs">
           {surfaceOrder.ordered.map((key) => {
             if (key === "design") return <div key={key} className="surface-tab active"><span {...surfaceOrder.props(key)} className="surface-tab-main">Design</span><button className="surface-tab-close" aria-label="Close design document" onClick={() => setDesignVisible(false)}>×</button></div>;
             if (key.startsWith("worklog:")) return <div key={key} className="surface-tab active"><span {...surfaceOrder.props(key)} className="surface-tab-main">Work Log · {workLogEntry?.agent ?? "Outcome"}</span><button className="surface-tab-close" aria-label="Close work log outcome" onClick={() => setWorkLogEntry(null)}>×</button></div>;
-            if (key.startsWith("worktree:")) return <div key={key} className={`surface-tab ${worktreeVisible ? "active" : ""}`}><button {...surfaceOrder.props(key)} className="surface-tab-main" onClick={() => { setWorkLogEntry(null); setDesignVisible(false); setWorktreeVisible(true); setJournalVisible(false); setTaskDocumentVisible(false); }}>Worktree · {worktreeSelection?.path.split("/").at(-1) ?? "Browse"}</button><button className="surface-tab-close" aria-label="Close worktree inspection" onClick={() => { setWorktreeVisible(false); setWorktreeSelection(null); setWorktreeBrowserSession(null); }}>×</button></div>;
+            if (key.startsWith("worktree:")) return <div key={key} className={`surface-tab ${worktreeVisible ? "active" : ""}`}><button {...surfaceOrder.props(key)} className="surface-tab-main" onClick={() => { showDocument("worktree"); }}>Worktree · {worktreeSelection?.path.split("/").at(-1) ?? "Browse"}</button><button className="surface-tab-close" aria-label="Close worktree inspection" onClick={() => { setWorktreeVisible(false); setWorktreeSelection(null); setWorktreeBrowserSession(null); }}>×</button></div>;
             if (key === "journal") return <div key={key} className={`surface-tab ${journalVisible ? "active" : ""}`}><button {...surfaceOrder.props(key)} className="surface-tab-main" onClick={() => showJournal()}>Activity log</button><button className="surface-tab-close" aria-label="Close activity document" onClick={() => { setJournalOpen(false); setJournalVisible(false); }}>×</button></div>;
             if (key === "task") return <div key={key} className={`surface-tab ${textDocumentVisible ? "active" : ""}`}><button {...surfaceOrder.props(key)} className="surface-tab-main" onClick={() => { setTaskDocumentVisible(true); inspectTask(tasks.selectedTaskId); }} title={tasks.selectedTaskId ?? "Task"}>▤ {tasks.detail?.title ?? "Task document"}</button><button className="surface-tab-close" aria-label="Close task document" onClick={closeTaskDocument}>×</button></div>;
             const tab = fileTabs.find((candidate) => `file:${candidate.path}` === key);

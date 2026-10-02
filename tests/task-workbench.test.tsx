@@ -275,7 +275,7 @@ describe("task inspection in the source cockpit", () => {
     expect(editor.state.doc.toString()).toContain("unsaved");
     // Explicit Reveal revalidates the canonical destination even for a dirty
     // buffer, but neither replaces that buffer nor writes/replays anything.
-    expect(request.mock.calls.slice(before).filter(([input]) => input.type !== "buildGraph.observe" || input.refresh).map(([input]) => input.type).filter((type) => type !== "tasks.snapshot")).toEqual(["file.read", "focus.select"]);
+    expect(request.mock.calls.slice(before).filter(([input]) => input.type !== "buildGraph.observe" || input.refresh).map(([input]) => input.type).filter((type) => type !== "tasks.snapshot" && type !== "trusted.snapshot")).toEqual(["file.read", "focus.select"]);
     await waitFor(() => expect(document.activeElement).toBe(editor.contentDOM));
   });
 

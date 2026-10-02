@@ -12,7 +12,7 @@ Make source replies trustworthy, restore useful regression gates, simplify docum
 - [x] Correlate file responses and consistently exclude unrelated result fields; PR160/163 merged.
 - [x] Repair shared UI fixture identity/envelopes and stale test entry points (121 tests across nine affected suites passed; available-seat council clean).
 - [x] Declare actual test inputs and runner ownership; runfile assertion and cache-mutation probes verified, available-seat council clean.
-- [ ] Type document identity and extract navigation transitions while retaining editor state.
+- [x] Type document identity and centralize foreground transitions while retaining editor state (108 tests/both TS pass; council convergence pending).
 - [ ] Make fingerprint work cancellable and safe against FIFO replacement.
 - [ ] Measure and suspend inactive worktree observations without discarding accepted work.
 - [ ] Remove unreachable UI glue and unused helpers; align living design.
@@ -72,3 +72,5 @@ Coordination: implementation stays solo; provider-diverse review council is auth
 Initial plan created 2026-10-02 following implementation authorization.
 
 2026-10-02 W3: Declare actual reader inputs rather than claim full JavaScript hermeticity. The existing runners still execute from the checkout; the design consistency assertion specifically checks Bazel runfiles to prevent undeclared reads from hiding.
+
+2026-10-02 W4: Discriminated graph/file identity removes the literal graphs filename collision across keyboard close, recovery and worktree retention. v2 storage reads legacy v1; ambiguous legacy graphs selects an existing retained file. A mounted open/reload/Ctrl+W regression failed before and passes after. Central showDocument changes visibility without reconstructing buffers or selections. Expanded seven-suite gate:108 tests/both TypeScript checks pass. A timing-sensitive request assertion now excludes trusted.snapshot read-only polling, alongside the existing tasks.snapshot exclusion.
