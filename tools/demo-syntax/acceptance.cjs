@@ -139,6 +139,23 @@ async function main() {
   assert.deepEqual(requests.filter((request) => request.type === "file.write"), [], "draft never wrote to disk");
   await inspectColors("syntax.ts", ["export", '"hello"', "// unsaved syntax note"]);
 
+  stage = "native-history";
+  await click(".source-surface .cm-content");
+  await key("Home", ["control"]); await key("End");
+  const beforeUndo = await source();
+  assert.equal(beforeUndo.head, retainedSource.head);
+  await wc.insertText("!");
+  const edited = retainedSource.text.slice(0, beforeUndo.head) + "!" + retainedSource.text.slice(beforeUndo.head);
+  await until(async () => (await source())?.text === edited, "native history edit");
+  await key("z", ["control"]);
+  await until(async () => (await source())?.text === retainedSource.text, "native Undo after tab return");
+  await key("z", ["control", "shift"]);
+  await until(async () => (await source())?.text === edited, "native Redo after tab return");
+  await key("z", ["control"]);
+  await until(async () => (await source())?.text === retainedSource.text, "native final Undo");
+  assert.deepEqual(await source(), retainedSource, "history preserves the source and logical cursor");
+  await diskEquals(repository.files);
+
   stage = "owned-save";
   await click(".source-surface .file-state button");
   await until(() => run(() => Boolean(document.querySelector(".source-surface .file-saved"))), "real owned disk save");
@@ -150,7 +167,7 @@ async function main() {
   assert.deepEqual(modelRequests, []);
   const diagnostics = classifyRendererDiagnostics(errors); assert.deepEqual(diagnostics.blockingErrors, []);
   await fs.writeFile(path.join(evidence, "proof.json"), JSON.stringify({ ok: true, packagedCore: true, commit: repository.commit,
-    colors, retained: true, retainedSource, retainedCameras, diskUnchangedBeforeSave: true, savedOwnedFile: "syntax.ts",
+    colors, retained: true, undoRedoRetained: true, retainedSource, retainedCameras, diskUnchangedBeforeSave: true, savedOwnedFile: "syntax.ts",
     modelRequests, requests, rendererErrors: errors, ...diagnostics }, null, 2));
 }
 main().catch(async (error) => {

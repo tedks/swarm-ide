@@ -90,6 +90,14 @@ disk content. Task attachment similarly fixes context independently of later
 navigation. [Recovery](../../app/renderer/recovery.ts) retains usable views while
 re-establishing current-core authority.
 
+Source typing supports Ctrl+Z and Ctrl+Shift+Z (Cmd on macOS). Undo/redo and
+selection survive document navigation in tab-local memory when the returning
+text still matches. Remounted editors use current callbacks. External source
+observations map existing history without becoming undoable user edits; changed
+text while a tab is unmounted discards its old history. Closing the tab or
+reloading the application does not persist undo history. Mounted keyboard and
+remount regressions run in `//tools/demo-syntax:editor-tests`.
+
 The renderer owns presentation and gestures, not filesystem or process access.
 See [runtime](runtime.md) for the bridge and [repository](repository.md) for
 the data supplying graphs and context.

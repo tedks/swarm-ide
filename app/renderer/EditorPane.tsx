@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
-import { defaultKeymap } from "@codemirror/commands";
-import { Compartment, EditorState, StateEffect, StateField } from "@codemirror/state";
+import { defaultKeymap, history, historyField, historyKeymap } from "@codemirror/commands";
+import { Compartment, EditorState, StateEffect, StateField, Transaction } from "@codemirror/state";
 import {
   Decoration,
   EditorView,
@@ -100,7 +100,11 @@ export function EditorPane({ path, content, flash, onChange, onSave, memory, nav
 
   useEffect(() => {
     if (!container.current) return;
+    const prior = memory?.state;
+    const matching = prior?.doc.toString() === content.replace(/\r\n?/g, "\n") ? prior : undefined;
+    const priorHistory = matching?.field(historyField, false);
     const state = EditorState.create({
+      selection: matching?.selection,
       doc: content,
       extensions: [
         language.current.of(sourceLanguage(path)),
@@ -109,6 +113,8 @@ export function EditorPane({ path, content, flash, onChange, onSave, memory, nav
         drawSelection(),
         highlightActiveLine(),
         sourceFlashField,
+        history(),
+        ...(priorHistory === undefined ? [] : [historyField.init(() => priorHistory)]),
         EditorView.domEventHandlers({
           mousedown(event, editor) {
             if (!event.altKey || event.ctrlKey || event.metaKey || event.shiftKey || event.button !== 0 || !onReferenceRef.current) return false;
@@ -123,6 +129,7 @@ export function EditorPane({ path, content, flash, onChange, onSave, memory, nav
         keymap.of([
           { key: "Mod-s", preventDefault: true, run: () => { onSaveRef.current(); return true; } },
           ...defaultKeymap,
+          ...historyKeymap,
         ]),
         EditorView.lineWrapping,
         EditorView.updateListener.of((update) => {
@@ -139,11 +146,9 @@ export function EditorPane({ path, content, flash, onChange, onSave, memory, nav
       ],
     });
     // Rebuild extensions so callbacks belong to this component lifetime, while
-    // restoring a tab's selection. Never reuse extensions closing over an old
+    // restoring matching tab selection/history. Never reuse extensions closing over an old
     // component's change/save handlers.
-    const prior = memory?.state;
-    const selection = prior?.doc.toString() === content.replace(/\r\n?/g, "\n") ? prior.selection : undefined;
-    view.current = new EditorView({ state: selection ? state.update({ selection }).state : state, parent: container.current });
+    view.current = new EditorView({ state, parent: container.current });
     return () => { if (memory) memory.state = view.current?.state ?? null; view.current?.destroy(); view.current = null; };
     // A source tab owns one editor instance; content changes are synchronized below.
   }, []);
@@ -164,8 +169,9 @@ export function EditorPane({ path, content, flash, onChange, onSave, memory, nav
     if (!current || current.state.doc.toString() === normalized) return;
     const change = minimalReplacement(current.state.doc.toString(), normalized);
     suppressChange.current = true;
-    current.dispatch({ changes: change, effects: setSourceFlash.of(flash) });
-    suppressChange.current = false;
+    try {
+      current.dispatch({ changes: change, effects: setSourceFlash.of(flash), annotations: Transaction.addToHistory.of(false) });
+    } finally { suppressChange.current = false; }
   }, [content, flash]);
 
   useEffect(() => {
