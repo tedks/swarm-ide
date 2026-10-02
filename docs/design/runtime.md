@@ -359,3 +359,57 @@ not production CPU estimates. Suspending inactive periodic reads makes that
 scheduled work depend on the selected root rather than all visited roots. Router,
 observer-clock and actual-runtime regression tests cover selection ordering,
 retained-root writes, pause/drain/resume and stale-before-fresh publication.
+
+
+## Planned: explicit metadata-only workspace replies
+
+This is a proposal, not an implemented wire change. Track implementation in
+`swarm-workspace-identity-response-contract` before adding another identity-only
+consumer. Today `workspace.open` with `identityOnly: true` still returns a full
+success snapshot from the runtime's registration promise; App's identity refresh
+uses the descriptor and ignores those graph bytes. That reply must not imply a
+fresh graph observation or change periodic observation interest.
+
+A local probe at `abb2d0fdf1608f962b683724e906f1ffe7778fb9` measured valid current
+replies with two synthetic graph slices, each containing 10, 100 or 500 nodes
+and a chain of edges. It retained the fixture's valid revision/provenance,
+cleared mappings/widgets, and parsed replies using `parseCoreResponseForRequest`.
+After 20 warmups, each timing is the median of seven batches of 50 calls in the
+Nix/Bazel test environment with one worker. JSON sizes are UTF-8 bytes.
+
+| Total nodes / edges | Current reply bytes | One validation (ms) | Three successive validations (ms) | JSON parse + validation (ms) |
+| --- | ---: | ---: | ---: | ---: |
+| 20 / 18 | 8,992 | 0.0630 | 0.1145 | 0.0663 |
+| 200 / 198 | 73,878 | 0.1792 | 0.5594 | 0.4115 |
+| 1,000 / 998 | 367,874 | 0.9395 | 2.9749 | 2.0953 |
+
+An illustrative same-descriptor envelope with `kind: "workspace.identity"` and
+no snapshot was 367 bytes in every case. That is a payload estimate, not a
+validated future decoder. These synthetic wall-time samples neither measure
+Electron IPC/structured cloning nor establish production CPU, allocation or
+latency savings. Three successive parser calls model repeated validation cost;
+they are not an end-to-end measurement of the bridge. The scaling supports a
+small contract split, not removing trust-boundary validation.
+
+The proposed increment is a strict, versioned identity-success variant carrying
+`kind`, `protocolVersion`, `requestId`, `workspaceId`, `sequence` and the existing
+workspace descriptor. Correlation accepts it only for an explicitly identity-only
+workspace request, with descriptor ID matching the envelope and session ID
+matching the request. Ordinary workspace selection, snapshot requests and other
+successes keep their full-snapshot contract. Do not make snapshot optional on
+all successes or silently synthesize an empty snapshot.
+
+Identity consumers retain existing core-generation and navigation-generation
+fences. A descriptor response grants neither graph freshness nor authority to
+replace buffers/projections, select a workspace or replay an operation. Snapshot
+and graph publication remain on their current paths. Keep validation at worker,
+main, preload and renderer boundaries. A protocol-version transition must update
+all bundled endpoints together and reject incompatible peers explicitly; any
+mixed-version compatibility needs its own tested rule, not permissive fallback.
+
+Before implementing, confirm the new variant and transition scope. The bounded
+package should cover wrong request/session/workspace IDs, unsolicited identity
+replies, wrong protocol versions, restart/late replies, retained graph/buffer
+state and unchanged task/file correlation. Compare payloads and real bridge
+cost at that point. Universal response redesign, event-bus replacement and
+validation removal are outside this proposal.
