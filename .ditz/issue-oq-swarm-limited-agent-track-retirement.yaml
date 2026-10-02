@@ -1,0 +1,26 @@
+id: oq-swarm-limited-agent-track-retirement
+title: Decide whether the limited agent execution track should be retained or retired
+desc: 'Decision owner: Ted. The cleanup audit identified removal of the older restricted/limited
+  agent execution track as a possible product scope change; bounded cleanup preserved
+  it. This records the question, not a decision to remove it.
+
+  Options: retain the current track and its separate acceptance requirements; authorize
+  an explicit retirement/migration design; prioritize completing its remaining policy
+  proof. Recommendation: retain it until Ted makes an explicit product ruling with
+  migration and user-facing consequences understood. Blocks any removal or replacement
+  of the limited execution track; does not block unrelated cleanup or the independently
+  authorized trusted-local path. Trusted-local proof does not establish limited-policy
+  acceptance.'
+type: task
+component: open-questions
+release:
+reporter: Ted Smith <tedks@riseup.net>
+status: unstarted
+disposition:
+creation_time: 2026-10-02T21:16:04-00:00
+references: []
+log_events:
+- time: 2026-10-02T21:16:04-00:00
+  who: Ted Smith
+  what: created
+  comment: ""
