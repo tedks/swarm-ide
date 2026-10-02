@@ -109,7 +109,7 @@ describe("living system design", () => {
     expect(top.nodes).toHaveLength(7);
     expect(top.edges.every((edge) => edge.kind === "containment")).toBe(true);
     const leaf = implementationProjection(index.nodes[1]!);
-    expect(leaf.edges).toContainEqual(expect.objectContaining({ source: "//:desktop-bundle", target: "//:quality_sources", label: "srcs" }));
+    expect(leaf.edges).toContainEqual(expect.objectContaining({ source: "//:desktop-bundle", target: "//:runtime_sources", label: "srcs" }));
   });
   it("shows the component's inbound and outbound connections without inventing hierarchy", () => {
     const graph = designProjection(index, index.nodes[1]!);

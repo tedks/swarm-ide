@@ -339,7 +339,7 @@ the outgoing message through reload and exact clipboard copying. The scoped
 composer cases live in `tests/session-steering-ui.test.tsx`; both that file and
 the styles remain existing shared application inputs. It never sends an
 instruction to the observed agent.
-The new renderer modules are real `//:quality_sources` inputs to `//:desktop-bundle`.
+The new renderer modules are real `//:runtime_sources` inputs to `//:desktop-bundle`.
 
 The observed fork rail has local subtree disclosures and an **Older sessions**
 toggle. Its default recency view keeps the seven newest dated registrations,

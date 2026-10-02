@@ -3,15 +3,12 @@ package(default_visibility = ["//visibility:public"])
 exports_files(["flake.lock"])
 
 filegroup(
-    name = "quality_sources",
+    name = "runtime_sources",
     srcs = glob([
         "app/**",
         "core/**",
         "fixtures/**",
         "protocol/**",
-        "tests/**",
-        "examples/**",
-        ".swarm/**",
     ]) + [
         "index.html",
         "package.json",
@@ -20,8 +17,14 @@ filegroup(
         "tsconfig.json",
         "tsconfig.node.json",
         "vite.config.mts",
+    ],
+)
+
+filegroup(
+    name = "quality_sources",
+    srcs = glob(["tests/**", "examples/**", ".swarm/**"]) + [
+        ":runtime_sources",
         "vitest.config.mts",
-    ] + [
         "//tools:dev-port-source",
         "//tools:dev-entry-sources",
         "//tools:electron-runtime-source",
@@ -96,7 +99,7 @@ filegroup(
 
 genrule(
     name = "desktop-bundle",
-    srcs = [":quality_sources", "package.json"],
+    srcs = [":runtime_sources", "package.json"],
     outs = ["swarm-ide-foundation.tar.gz"],
     cmd = "$(location //tools:build-app) $@ $(location package.json)",
     local = True,

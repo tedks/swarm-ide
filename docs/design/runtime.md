@@ -78,11 +78,12 @@ in [the cockpit design](cockpit.md). A Chromium crash or hang cannot render that
 fallback; the native log identifies that different failure class for diagnosis.
 The idle hang reported on September 9 is not established as either class yet.
 
-1. `//:quality_sources` collects application, core, protocol and supporting inputs.
-2. `//:desktop-bundle` consumes that filegroup plus `//:package.json`; its tool
+1. `//:runtime_sources` collects application, core, fixtures, protocol and production
+   build manifests/configuration. It includes worker scripts and renderer assets.
+2. `//:desktop-bundle` consumes that group plus `//:package.json`; its tool
    `//tools:build-app` produces `swarm-ide-foundation.tar.gz`.
-3. `//:quality` selects `//tools:quality`, whose data dependency is the same
-   filegroup plus `//:design_test_inputs`. The design input group declares the
+3. `//:quality` selects `//tools:quality`, whose data dependency is `//:quality_sources`
+   (runtime inputs plus tests/examples/plan index and tooling) plus `//:design_test_inputs`. The design input group declares the
    design documents, mapped sources missing from the shared group, and package
    BUILD text read by the consistency test. That test reads Bazel runfiles so a
    missing input cannot silently fall back to the checkout. Every dedicated gate

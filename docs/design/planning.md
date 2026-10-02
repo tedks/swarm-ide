@@ -193,9 +193,9 @@ arbitrary renderer-supplied task bytes. Admitted run history keeps the task actu
 
 ## Build connections
 
-`.swarm/**`, plan/task protocol, core and renderer files feed `//:quality_sources`
-and then `//:desktop-bundle`. `//tools/demo-plans:regressions` consumes that
-filegroup; `//tools/demo-plans:packaged-plans-test` consumes the desktop bundle,
+Plan/task protocol, core and renderer files enter `//:runtime_sources` and
+`//:desktop-bundle`. The `.swarm/**` index joins those sources in
+`//:quality_sources`, consumed by `//tools/demo-plans:regressions`; `//tools/demo-plans:packaged-plans-test` consumes the desktop bundle,
 plan test sources, task-integration sources and owned virtual-desktop support.
 These edges are declared in [tools/demo-plans/BUILD.bazel](../../tools/demo-plans/BUILD.bazel).
 `//tools/demo-plans:graph-checks` also consumes `//:quality_sources` and runs the

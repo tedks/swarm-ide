@@ -62,12 +62,13 @@ transfer ownership of its running process to the IDE.
 
 ## Implementation floor
 
-[Root BUILD.bazel](../../BUILD.bazel) puts `app/**`, `core/**`, `protocol/**`,
-tests, examples and `.swarm/**` into `//:quality_sources`.
+[Root BUILD.bazel](../../BUILD.bazel) puts `app/**`, `core/**`, `fixtures/**`,
+`protocol/**` and production build manifests/configuration into `//:runtime_sources`.
 `//:desktop-bundle` consumes that filegroup and `//:package.json`, using
-`//tools:build-app` to produce the Electron archive. These shared build targets
-are the current implementation floor; the component graph does not pretend
-that TypeScript directories are independently deployable Bazel libraries.
+`//tools:build-app` to produce the Electron archive. `//:quality_sources` includes
+the runtime group plus tests, examples, `.swarm/**` and test/tooling inputs.
+These shared targets are the implementation floor; the component graph does not
+pretend that TypeScript directories are independently deployable Bazel libraries.
 Two areas listing the same source or build input does not add a component edge.
 Actual Bazel rule/input relationships remain in the separate Build projection.
 
