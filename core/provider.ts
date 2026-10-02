@@ -128,7 +128,7 @@ export class RealWorkspaceProvider {
   private currentAttempt = 0;
   private serviceMappings: NavigationMapping[] = [];
   private serviceWidgets: Widget[] = [];
-  private workingWorldUnknown = false;
+  private workingObservationGap: "unavailable" | "idle" | null = null;
   private navigationGeneration = 0;
   private disposed = false;
   private discoveryPending: Promise<void> | undefined;
@@ -181,7 +181,7 @@ export class RealWorkspaceProvider {
       },
     };
     provider.snapshotValue = WorkspaceSnapshotSchema.parse({ ...initial, graphs: [repositoryGraph(initial, directory), ...initial.graphs] });
-    provider.workingWorldUnknown = true;
+    provider.workingObservationGap = "unavailable";
     return provider;
   }
 
@@ -267,9 +267,18 @@ export class RealWorkspaceProvider {
   markWorkingWorldChanged(fingerprint: string, publish: ProviderPublish): WorkspaceSnapshot {
     if (this.disposed) return this.snapshotValue;
     this.markDirectoryStale();
-    const recoveredFromUnknown = this.workingWorldUnknown;
-    this.workingWorldUnknown = false;
+    const recoveredFromUnknown = this.workingObservationGap;
+    this.workingObservationGap = null;
     if (fingerprint === this.snapshotValue.revisions.working.fingerprint && !recoveredFromUnknown) return this.snapshotValue;
+    if (fingerprint === this.snapshotValue.revisions.working.fingerprint && recoveredFromUnknown === "idle" &&
+        this.discoveryPending && this.discoveryAbort && !this.discoveryAbort.signal.aborted) {
+      // Freshly sampling the same input restores observation authority without
+      // replacing a declaration read that already owns that exact input.
+      this.snapshotValue = WorkspaceSnapshotSchema.parse({ ...this.snapshotValue,
+        revisions: { ...this.snapshotValue.revisions, working: { id: fingerprint, fingerprint, evidence: "observed" } } });
+      publish("workspace.changed", this.snapshotValue);
+      return this.snapshotValue;
+    }
     ++this.currentAttempt;
     this.discoveryAbort?.abort();
     const epoch = this.snapshotValue.reconciliation.epoch + 1;
@@ -313,7 +322,7 @@ export class RealWorkspaceProvider {
   markWorkingWorldUnobserved(publish: ProviderPublish): void {
     if (this.disposed) return;
     this.markDirectoryStale();
-    this.workingWorldUnknown = true;
+    this.workingObservationGap ??= "idle";
     this.snapshotValue = WorkspaceSnapshotSchema.parse({
       ...this.snapshotValue,
       revisions: { ...this.snapshotValue.revisions, working: { ...this.snapshotValue.revisions.working, evidence: "unavailable" } },
@@ -327,7 +336,7 @@ export class RealWorkspaceProvider {
   markWorkingWorldUnknown(message: string, publish: ProviderPublish): WorkspaceSnapshot {
     if (this.disposed) return this.snapshotValue;
     this.markDirectoryStale();
-    this.workingWorldUnknown = true;
+    this.workingObservationGap = "unavailable";
     ++this.currentAttempt;
     this.discoveryAbort?.abort();
     const epoch = this.snapshotValue.reconciliation.epoch + 1;
@@ -380,7 +389,7 @@ export class RealWorkspaceProvider {
     try {
       const before = await this.dependencies.fingerprint(this.workspaceRoot).catch((error) => { fingerprintUnavailable = true; throw error; });
       if (this.disposed || attempt !== this.currentAttempt) return;
-      this.workingWorldUnknown = false;
+      this.workingObservationGap = null;
       const previous = this.snapshotValue.graphs.find((graph) => graph.topologyId === "service")!;
       this.snapshotValue = WorkspaceSnapshotSchema.parse(retagSnapshot({
         ...this.snapshotValue,
@@ -396,7 +405,7 @@ export class RealWorkspaceProvider {
       if (after !== before) { this.markWorkingWorldChanged(after, publish); return; }
       if (declaration.invalid && (!declaration.services.length || previous.nodes.length)) throw new Error(declaration.issues.join(" ").slice(0, 460));
       const adapted = adaptDeclaredServices(declaration, before, epoch, this.dependencies.now(), this.snapshotValue.project.id);
-      this.workingWorldUnknown = false;
+      this.workingObservationGap = null;
       this.serviceMappings = adapted.mappings;
       this.serviceWidgets = adapted.widgets;
       const repo = this.snapshotValue.graphs.find((graph) => graph.topologyId === "repo")!;
@@ -413,7 +422,7 @@ export class RealWorkspaceProvider {
       publish("graph.published", this.snapshotValue);
     } catch (error) {
       if (this.disposed || attempt !== this.currentAttempt) return;
-      if (fingerprintUnavailable) this.workingWorldUnknown = true;
+      if (fingerprintUnavailable) this.workingObservationGap = "unavailable";
       const message = error instanceof Error ? error.message.slice(0, 460) : "Could not read service declarations.";
       this.snapshotValue = WorkspaceSnapshotSchema.parse({
         ...this.snapshotValue,
