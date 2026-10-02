@@ -8,8 +8,8 @@ type: task
 component: default
 release:
 reporter: Ted Smith <tedks@riseup.net>
-status: in_progress
-disposition:
+status: closed
+disposition: fixed
 creation_time: 2026-10-02T06:24:05-00:00
 references: []
 log_events:
@@ -51,3 +51,9 @@ log_events:
     blocking atomic-source-write-broker. W10/controller and editor PR161 preserved,
     no duplicated tracker reconciliation. No broad suite/physical desktop or production
     CPU claims.'
+- time: 2026-10-02T08:28:07-00:00
+  who: Ted Smith
+  what: 'closed: fixed'
+  comment: Completed bounded W1-W9 fixes, measurements and proposal through normal
+    PR160/162-170 merges; remaining wire implementation and source-write policy tracked
+    separately, W10 completed by controller.
