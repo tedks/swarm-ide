@@ -1,0 +1,35 @@
+id: swarm-source-write-preservation-decision-20261002
+title: Choose source-save preservation policy for concurrent external writers
+desc: 'Decision owner: Ted. Existing implementation work remains atomic-source-write-broker;
+  this issue records only the unresolved product ruling identified by the cleanup
+  audit.
+
+
+  An uncooperative external writer can replace content between the broker''s final
+  revision check and atomic rename. Another content check cannot close that window.
+
+
+  Options: (A) preserve any displaced external version recoverably and report a conflict,
+  with crash/recovery semantics designed and adversarially verified; (B) require a
+  cooperative shared write broker for all writers, explicitly defining behavior for
+  uncooperative tools; (C) explicitly accept/document the existing last-check race.
+
+
+  Recommendation: A, provided the implementation proves preservation and crash safety;
+  do not imply that a simple backup-before-rename closes the race. Ted must choose
+  the user-visible recovery/conflict policy before the implementation package. Blocks
+  the behavior-changing source-write work, not W1-W9 bounded cleanup. No policy has
+  been implemented or inferred from cleanup authorization.'
+type: task
+component: open-questions
+release:
+reporter: Ted Smith <tedks@riseup.net>
+status: unstarted
+disposition:
+creation_time: 2026-10-02T08:12:31-00:00
+references: []
+log_events:
+- time: 2026-10-02T08:12:31-00:00
+  who: Ted Smith
+  what: created
+  comment: ""
