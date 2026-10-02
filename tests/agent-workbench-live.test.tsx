@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import { openContextPath } from "./context-navigation";
+import { fixtureAcknowledgement, fixtureFailure, workspaceReply } from "./support/workspace-fixture";
 import { act, cleanup, fireEvent, render, renderHook, screen, waitFor } from "@testing-library/react";
 import { StrictMode } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -57,10 +58,10 @@ describe("live workbench presentation", () => {
     const agentSnapshot = emptyAgentWorkbench().snapshot;
     agentSnapshot.capabilities.reason = { code: "ADAPTER_POLICY_UNAVAILABLE", message: "Effective hooks and MCP policy cannot be attested." };
     const request = vi.fn(async (input: CoreRequest): Promise<CoreResponse> => {
-      if (input.type === "agent.prepare") return { protocolVersion: PROTOCOL_VERSION, requestId: input.requestId, ok: false, error: agentSnapshot.capabilities.reason! };
-      return { protocolVersion: PROTOCOL_VERSION, requestId: input.requestId, ok: true, snapshot, sequence: 1,
-        ...(input.type === "agent.snapshot" ? { agent: { kind: "snapshot" as const, snapshot: agentSnapshot } } : {}),
-        ...(input.type === "file.read" ? { file: { kind: "read" as const, path: input.path, content: "disk", revision: "a".repeat(64), size: 4 } } : {}) };
+      if (input.type === "agent.prepare") return fixtureFailure(input, agentSnapshot.capabilities.reason!.code, agentSnapshot.capabilities.reason!.message);
+      if (input.type === "agent.snapshot") return { ...workspaceReply(input, snapshot), agent: { kind: "snapshot", snapshot: agentSnapshot } };
+      if (input.type === "file.read") return { ...workspaceReply(input, snapshot), file: { kind: "read", path: input.path, content: "disk", revision: "a".repeat(64), size: 4 } };
+      return fixtureAcknowledgement(input, snapshot);
     });
     window.swarm = { request, onEvent: () => () => undefined };
     window.swarmView = { setZoomPercent: async () => ({ ok: true, percent: 100 }) };
@@ -73,7 +74,9 @@ describe("live workbench presentation", () => {
     const graph = screen.getAllByTestId("live-graph")[0];
     fireEvent.change(source, { target: { value: "PRIVATE UNSAVED BUFFER" } });
     const focuses = request.mock.calls.filter(([r]) => r.type === "focus.select").length;
-    fireEvent.click(screen.getByRole("button", { name: "Ask an agent about this focus" }));
+    fireEvent.keyDown(window, { key: "k", ctrlKey: true });
+    fireEvent.change(screen.getByRole("textbox", { name: "Workspace command" }), { target: { value: "Ask an agent about this focus" } });
+    fireEvent.click(screen.getByRole("button", { name: /Ask an agent about this focus/ }));
     expect(screen.getByText(/Unsaved or unresolved buffers:/)).toBeTruthy();
     expect((screen.getByLabelText("Requested reasoning") as HTMLSelectElement).disabled).toBe(true);
     fireEvent.click(screen.getByRole("button", { name: "Prepare disk context" }));
