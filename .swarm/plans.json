@@ -826,7 +826,7 @@
           "targetId": "design:repository",
           "label": "Filesystem, Git & Bazel results",
           "kind": "result",
-          "detail": "The matching typed response returns bytes or observations with source identity and freshness. This is the return direction of Repository & build queries, not an independent service dependency."
+          "detail": "The matching typed response carries only its command’s result field; file replies bind the exact requested path and kind before buffer updates. Observations retain source identity and freshness. This is the return direction of Repository & build queries, not an independent service dependency."
         },
         {
           "targetId": "design:agents",

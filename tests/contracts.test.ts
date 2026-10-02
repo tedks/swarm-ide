@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { CoreRequestSchema, CoreResponseSchema, FileEventSchema, FocusRefSchema, MAX_EDITABLE_FILE_BYTES, PROTOCOL_VERSION, WorkspaceSnapshotSchema } from "../protocol/schema";
+import { CoreRequestSchema, CoreResponseSchema, FileEventSchema, FocusRefSchema, MAX_EDITABLE_FILE_BYTES, PROTOCOL_VERSION, WorkspaceSnapshotSchema, parseCoreResponseForRequest } from "../protocol/schema";
+import { unavailableAgentSnapshot } from "../core/agents/unavailable";
 import {
   dirtySnapshot,
   failedSnapshot,
@@ -9,6 +10,41 @@ import {
 } from "../fixtures/world";
 
 describe("runtime contracts", () => {
+  it.each(["read", "write"] as const)("correlates file %s replies with their exact path and kind", (kind) => {
+    const revision = "a".repeat(64);
+    const request = CoreRequestSchema.parse({ protocolVersion: PROTOCOL_VERSION, requestId: "file-command", type: `file.${kind}`, path: "src/a.ts",
+      ...(kind === "write" ? { expectedRevision: revision, content: "next" } : {}) });
+    const file = kind === "read" ? { kind, path: "src/a.ts", content: "next", revision, size: 4 }
+      : { kind, path: "src/a.ts", revision, workingFingerprint: revision };
+    const common = { protocolVersion: PROTOCOL_VERSION, requestId: request.requestId, ok: true, sequence: 1, snapshot: initialSnapshot() };
+    expect(parseCoreResponseForRequest({ ...common, file }, request)).toMatchObject({ file });
+    expect(() => parseCoreResponseForRequest(common, request)).toThrow();
+    expect(() => parseCoreResponseForRequest({ ...common, file: { ...file, path: "src/b.ts" } }, request)).toThrow();
+    const otherKind = kind === "read" ? { kind: "write", path: file.path, revision, workingFingerprint: revision }
+      : { kind: "read", path: file.path, content: "next", revision, size: 4 };
+    expect(() => parseCoreResponseForRequest({ ...common, file: otherKind }, request)).toThrow();
+  });
+
+  it("rejects unsolicited file results on observation-only commands", () => {
+    for (const type of ["workspace.snapshot", "file.watch", "file.unwatch"] as const) {
+      const request = CoreRequestSchema.parse({ protocolVersion: PROTOCOL_VERSION, requestId: type, type, path: "src/a.ts" });
+      const common = { protocolVersion: PROTOCOL_VERSION, requestId: type, ok: true, sequence: 1, snapshot: initialSnapshot() };
+      expect(parseCoreResponseForRequest(common, request).ok).toBe(true);
+      expect(() => parseCoreResponseForRequest({ ...common, file: { kind: "read", path: "src/a.ts", content: "x", revision: "a".repeat(64), size: 1 } }, request)).toThrow();
+    }
+  });
+
+  it("rejects unsolicited agent results on workspace and file commands", () => {
+    const agent = { kind: "snapshot", snapshot: unavailableAgentSnapshot() };
+    for (const type of ["workspace.snapshot", "file.read"] as const) {
+      const request = CoreRequestSchema.parse({ protocolVersion: PROTOCOL_VERSION, requestId: type, type, path: "src/a.ts" });
+      const response = { protocolVersion: PROTOCOL_VERSION, requestId: type, ok: true, sequence: 1, snapshot: initialSnapshot(),
+        ...(type === "file.read" ? { file: { kind: "read", path: "src/a.ts", content: "x", revision: "a".repeat(64), size: 1 } } : {}) };
+      expect(parseCoreResponseForRequest(response, request).ok).toBe(true);
+      expect(() => parseCoreResponseForRequest({ ...response, agent }, request)).toThrow();
+    }
+  });
+
   it("accepts every deterministic fixture state", () => {
     const initial = WorkspaceSnapshotSchema.parse(initialSnapshot());
     const dirty = WorkspaceSnapshotSchema.parse(dirtySnapshot(initial));

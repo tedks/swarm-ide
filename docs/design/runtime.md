@@ -29,6 +29,10 @@ The Electron renderer has context isolation and no Node integration. The local
 core resolves workspace identity and canonical paths, manages process lifetimes
 and publishes bounded results. Registration/configuration selects actual providers;
 renderer text does not grant new filesystem or execution authority.
+Each command declares its only permitted result field. File read/write replies
+require the exact requested path and result kind before reaching a source buffer;
+watch/unwatch acknowledgements cannot carry file contents. Domain validators retain
+their revision, cursor and run identity checks after this common envelope check.
 
 `workspace.open` takes a registered session ID or the launch workspace, not a raw
 path. Each opened canonical repository ID owns its own files, watchers, tasks,

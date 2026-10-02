@@ -6,7 +6,7 @@ import {
   isTaskSourcePath, parseTaskResultForRequest,
 } from "../protocol/tasks";
 import { CoreRequestSchema, PROTOCOL_VERSION, parseCoreResponseForRequest, uncertainMutationCode } from "../protocol/schema";
-import { TASK_FIXTURE_COMMIT, taskDetailFixture, taskObservationFixture, taskReadFixture } from "../fixtures/tasks";
+import { TASK_FIXTURE_COMMIT, TASK_FIXTURE_WORLD, taskDetailFixture, taskObservationFixture, taskReadFixture } from "../fixtures/tasks";
 import { initialSnapshot } from "../fixtures/world";
 import { createUnavailableTaskProvider } from "../core/tasks/unavailable";
 import { unavailableAgentSnapshot } from "../core/agents/unavailable";
@@ -16,7 +16,7 @@ import { agentFixtureFrames } from "../fixtures/agents";
 const snapshotRequest = { protocolVersion: PROTOCOL_VERSION, requestId: "tasks-snapshot", type: "tasks.snapshot" as const, worldId: "world:working", refresh: true };
 const readRequest = { protocolVersion: PROTOCOL_VERSION, requestId: "tasks-read", type: "tasks.read" as const, worldId: "world:working", metadataCommit: TASK_FIXTURE_COMMIT, taskId: "task-fixture" };
 const reply = (task: unknown, requestId = snapshotRequest.requestId) => ({ protocolVersion: PROTOCOL_VERSION, requestId,
-  ok: true, sequence: 1, snapshot: initialSnapshot(), task });
+  ok: true, sequence: 1, snapshot: { ...initialSnapshot(), project: { id: TASK_FIXTURE_WORLD.repositoryId, name: "Task fixture" } }, task });
 
 describe("task read contract base", () => {
   it("uses a new wire version, exactly two read operations and no mutation semantics", () => {

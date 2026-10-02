@@ -25,6 +25,18 @@ function setup() {
 beforeEach(() => vi.useFakeTimers());
 afterEach(() => vi.useRealTimers());
 describe("utility-process supervision", () => {
+  it("rejects a different file's reply before it reaches the source editor", async () => {
+    const { supervisor, first } = setup(); first.ready();
+    const command: CoreRequest = { protocolVersion: PROTOCOL_VERSION, requestId: "source", type: "file.read", path: "a.ts" };
+    const reading = supervisor.request(command);
+    first.emit("message", { ...ok("source"), file: { kind: "read", path: "b.ts", content: "wrong file", revision: "a".repeat(64), size: 10 } });
+    expect(await reading).toMatchObject({ ok: false, error: { code: "INVALID_CORE_MESSAGE" } });
+    const valid = supervisor.request({ ...command, requestId: "source-again" });
+    first.emit("message", { ...ok("source-again"), file: { kind: "read", path: "a.ts", content: "right file", revision: "b".repeat(64), size: 10 } });
+    expect(await valid).toMatchObject({ ok: true, file: { path: "a.ts", content: "right file" } });
+    supervisor.stop();
+  });
+
   const agent = (type: "agent.launch" | "agent.steer" | "agent.cancel"): CoreRequest => ({
     protocolVersion: PROTOCOL_VERSION, requestId: type, type,
     runId: "11111111-1111-4111-8111-111111111111",
