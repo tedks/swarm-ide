@@ -2,7 +2,7 @@ package(default_visibility = ["//visibility:public"])
 sh_test(
     name = "checks",
     srcs = ["checks.sh"],
-    data = ["//:quality_sources", "//docs/design:sources"],
+    data = ["//:design_test_inputs", "//:quality_sources", "//docs/design:sources"],
     tags = ["local"],
 )
 filegroup(name = "sources", srcs = glob(["*.sh", "*.mjs", "*.cjs"]))

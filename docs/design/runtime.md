@@ -82,7 +82,14 @@ The idle hang reported on September 9 is not established as either class yet.
 2. `//:desktop-bundle` consumes that filegroup plus `//:package.json`; its tool
    `//tools:build-app` produces `swarm-ide-foundation.tar.gz`.
 3. `//:quality` selects `//tools:quality`, whose data dependency is the same
-   filegroup. Dedicated feature tests add smaller entry points where declared.
+   filegroup plus `//:design_test_inputs`. The design input group declares the
+   design documents, mapped sources missing from the shared group, and package
+   BUILD text read by the consistency test. That test reads Bazel runfiles so a
+   missing input cannot silently fall back to the checkout. Every dedicated gate
+   that invokes it includes the same group.
+   Vitest discovers `tests/**/*.test.{ts,tsx,mjs}` and the two explicitly listed
+   registration/conversation test modules under tools. CLI, container and supervisor
+   `node:test` suites retain their separate Bazel entry points.
 4. `//:dev` aliases `//tools:dev`. [dev.mjs](../../tools/dev.mjs) watches the
    renderer/main/preload/core bundles under the Nix/Bazel-owned development entry.
 

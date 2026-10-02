@@ -9,15 +9,15 @@ Make source replies trustworthy, restore useful regression gates, simplify docum
 ## Progress
 
 - [x] 2026-10-02: audited baseline 6eb9af0507fae028e93375e30e70c96a4effdac6; user authorized implementation of all findings.
-- [x] Correlate file responses and consistently exclude unrelated result fields; review pending.
+- [x] Correlate file responses and consistently exclude unrelated result fields; PR160/163 merged.
 - [x] Repair shared UI fixture identity/envelopes and stale test entry points (121 tests across nine affected suites passed; available-seat council clean).
-- [ ] Declare actual test inputs and runner ownership.
+- [x] Declare actual test inputs and runner ownership; runfile assertion and cache-mutation probes verified, available-seat council clean.
 - [ ] Type document identity and extract navigation transitions while retaining editor state.
 - [ ] Make fingerprint work cancellable and safe against FIFO replacement.
 - [ ] Measure and suspend inactive worktree observations without discarding accepted work.
 - [ ] Remove unreachable UI glue and unused helpers; align living design.
 - [ ] Measure gate/packaging and snapshot overhead; implement justified narrow changes.
-- [ ] Supply evidence for controller-owned tracker reconciliation (W10); do not edit those tracker groups.
+- [x] Controller completed W10 reconciliation independently; preserve that ownership.
 - [ ] Resolve external-write preservation design or record the precise remaining product decision.
 - [ ] Complete local gates, council convergence, branch pushes and reviewable PRs.
 
@@ -31,7 +31,7 @@ Initial host assessment: 12 GiB available RAM on a 125 GiB host, swap almost ful
 
 ## Outcomes & Retrospective
 
-Contract regressions fail on the baseline. The expanded contract gate passes after the fix and task-contract fixture alignment: eight suites, 234 tests, both TypeScript boundaries. W1 merged as PR #160 after integrating editor history PR #161 and rerunning the contract gate. Optional undefined-result compatibility corrected in PR #163 with a failing regression and 102 passing tests; available-seat convergence clean. W2 baseline was 36 failed/8 passed; explicit workspace/task fixtures and current UI entry points pass all 44 original cases plus two contract tests. Two adjacent planning suites also needed explicit identity composition and automatic-read expectations with held replacement reads. Expanded current-composition gate passes 121 tests, including editor history, plus both TypeScript checks. Native/Google W2 convergence is clean; Anthropic remains unavailable. W3–W9 remain.
+Contract regressions fail on the baseline. The expanded contract gate passes after the fix and task-contract fixture alignment: eight suites, 234 tests, both TypeScript boundaries. W1 merged as PR #160 after integrating editor history PR #161 and rerunning the contract gate. Optional undefined-result compatibility corrected in PR #163 with a failing regression and 102 passing tests; available-seat convergence clean. W2 baseline was 36 failed/8 passed; explicit workspace/task fixtures and current UI entry points pass all 44 original cases plus two contract tests. Two adjacent planning suites also needed explicit identity composition and automatic-read expectations with held replacement reads. Expanded current-composition gate passes 121 tests, including editor history, plus both TypeScript checks. Native/Google W2 convergence is clean; Anthropic remains unavailable. W2 merged as PR162. W3 declares design documents and mapped BUILD/source inputs for all five callers, verifies their runfile availability and separates the two tools-owned Vitest suites from five node:test suites. Doc-only and BUILD-text-only mutation probes each invalidated cached success and failed as intended, with exact restoration. Final living-design gate: 102 tests and both TypeScript boundaries passed; response gate passed; Node owners CLI (52), supervisor (33), container (10) passed. Vitest ownership probe excluded Node suites, and retained tool suites passed (three registration cases intentionally skip without the bundled CLI). Native review caught an undeclared container document; added it and both available seats converged clean. W4–W9 remain.
 
 ## Context and Orientation
 
@@ -70,3 +70,5 @@ Use existing Zod schemas, React state/hooks, Node descriptor/process APIs and Ni
 Coordination: implementation stays solo; provider-diverse review council is authorized. Controller owns W10 tracker reconciliation and editor-undo-history-20260907 in separate worktrees. Astra retains W1–W9; dispatch-lineage and agy adapter remain deferred. External source-write policy remains a user decision.
 
 Initial plan created 2026-10-02 following implementation authorization.
+
+2026-10-02 W3: Declare actual reader inputs rather than claim full JavaScript hermeticity. The existing runners still execute from the checkout; the design consistency assertion specifically checks Bazel runfiles to prevent undeclared reads from hiding.
