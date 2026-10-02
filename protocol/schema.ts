@@ -457,7 +457,7 @@ export function parseCoreResponseForRequest(input: unknown, request: CoreRequest
   if (response.requestId !== request.requestId) throw new Error("Response request ID mismatch");
   if (response.ok) {
     const payload = responsePayload[request.type];
-    if (Object.keys(response).some((key) => !responseEnvelopeFields.has(key) && key !== payload) ||
+    if (Object.entries(response).some(([key, value]) => value !== undefined && !responseEnvelopeFields.has(key) && key !== payload) ||
         payload !== null && response[payload] === undefined) throw new Error("Response payload does not match command");
     if ((request.type === "file.read" || request.type === "file.write") &&
         (response.file?.path !== request.path || response.file.kind !== (request.type === "file.read" ? "read" : "write")))
