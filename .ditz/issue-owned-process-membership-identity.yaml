@@ -50,3 +50,11 @@ log_events:
   who: Ted Smith
   what: updated description
   comment: ""
+- time: 2026-10-02T06:42:00-00:00
+  who: Ted Smith
+  what: commented
+  comment: W10 re-audit groups these related immediate namespace-member observations
+    under the owned-process-membership-identity diagnostic investigation. Similar
+    symptoms do not establish one cause; keep each original head/PID/log and the assertion.
+    No runtime reproduction, process stop, assertion waiver or cleanup fix is claimed
+    by this inventory.
