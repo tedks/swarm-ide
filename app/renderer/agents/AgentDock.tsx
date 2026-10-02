@@ -1,13 +1,19 @@
 import { useEffect, useId, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 import type { AgentBridgeClient } from "./bridge-client";
 import { displayAgentText, type LiveAgentState } from "./live-state";
-import { cockpitAgentNotice } from "./LiveRunRail";
 import "./agent-dock.css";
 import { OverflowStrip } from "../OverflowStrip";
 import { useConversationTabs, type RegisteredConversations } from "./conversation-tabs";
 import { RunStatus } from "../external-agents/RunStatus";
 import { AGENT_EXECUTION_LABELS } from "../../../protocol/agent-lifecycle";
 import { useTabOrder } from "../use-tab-order";
+
+/** Hide only the exact legacy capability notice, never an operation failure. */
+function cockpitAgentNotice(state: LiveAgentState, trustedLocal: boolean): string {
+  const reason = state.snapshot?.capabilities.reason;
+  return trustedLocal && state.connected && reason?.code === "ADAPTER_POLICY_UNAVAILABLE" &&
+    state.notice === `${reason.code}: ${displayAgentText(reason.message)}` ? "" : state.notice;
+}
 
 type DockTab = "conversation" | "agents" | "fixture" | `mock:${string}` | `run:${string}` | `registered:${string}`;
 export interface AgentDockProps {

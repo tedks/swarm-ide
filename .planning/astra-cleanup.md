@@ -15,7 +15,7 @@ Make source replies trustworthy, restore useful regression gates, simplify docum
 - [x] Type document identity and centralize foreground transitions while retaining editor state (108 tests/both TS pass; available-seat council clean; PR165 merged).
 - [x] Make fingerprint work cancellable and safe against FIFO replacement (98 tests/both TS pass, available-seat convergence clean).
 - [x] Measure and suspend inactive worktree observations without discarding accepted work (91 tests/both TS pass; available-seat convergence clean).
-- [ ] Remove unreachable UI glue and unused helpers; align living design.
+- [x] Remove unreachable UI glue and unused helpers; align living design (57 tests/bothTS pass, available-seat council clean).
 - [ ] Measure gate/packaging and snapshot overhead; implement justified narrow changes.
 - [x] Controller completed W10 reconciliation independently; preserve that ownership.
 - [ ] Resolve external-write preservation design or record the precise remaining product decision.
@@ -80,3 +80,7 @@ Initial plan created 2026-10-02 following implementation authorization.
 2026-10-02 W6: Eight distinct synthetic dirty roots with1MiB each cost47.95ms/8MiB per serial sweep versus5.38ms/1MiB for one; quiet8 cost16.85ms. Suspend only periodic fingerprint interest, with one latest explicit selection; retain runtimes, file watchers, accepted operations and shared owners. Resume revokes old authority and republishes a fresh unchanged digest. New provider unobserved state retains projections/errors and does not abort accepted reconciliation; a verified before/after result can restore observation. Latest-selection regression fails baseline; eight focused suites90tests/bothTS pass including actual-runtime stale-before-fresh and mounted worktree retention. No eviction, recursive watcher framework or protocol change.
 
 W6 convergence: native review caught resume cancelling an accepted unchanged-input declaration read. Distinguish idle suspension from failed observation; restore evidence without replacing that active read, while changed-input/failed observations still invalidate. Regression failed before; unchanged/changed twins and expanded91test gate pass. Preserve only a still-active nonaborted discovery handle, not a promise completing cleanup.
+
+2026-10-02 W7 assumptions: App browser state has only null assignments, while the standalone browser still has a controlled-harness consumer. Remove only the unreachable App mount. Move exact notice suppression to AgentDock and test that live consumer before retiring the test-only rail. The private package exports no public library API; readBoundedRegularFile has no caller. Keep the dated build-link fixture capture historical rather than rewriting its recorded revision. Preserve broker routing, limited execution, trusted controls and dirty state.
+
+W7 verification: eight focused suites57tests/bothTS pass. Adjacent mounted live-agent test still clicked a former rail button; corrected to current command palette and shared identity fixtures, preserving disk-only/no-launch and retained-state assertions. Native/Google initial and convergence reviews CLEAN; Anthropic unavailable. No standalone browser, broker or execution feature removed.

@@ -79,7 +79,6 @@ import { ExternalAgentRail, ExternalAgentInformation } from "./external-agents/E
 import { AgentConversation, AgentConversationActions } from "./external-agents/AgentConversation";
 import { useConversationSelection } from "./external-agents/conversation-selection";
 import { SteeringMemory } from "./external-agents/steering-memory";
-import { AgentWorktreeBrowser } from "./AgentWorktreeBrowser";
 import { ObservedActivity } from "./external-agents/ObservedActivity";
 import { WorktreeInspection, type WorktreeSelection } from "./WorktreeInspection";
 import { FleetActivityView, type SelectedActivity } from "./FleetActivityView";
@@ -145,7 +144,6 @@ export function App() {
   const [journalSelection, setJournalSelection] = useState(0);
   const [worktreeSelection, setWorktreeSelection] = useState<WorktreeSelection | null>(null);
   const [worktreeVisible, setWorktreeVisible] = useState(false);
-  const [worktreeBrowserSession, setWorktreeBrowserSession] = useState<string | null>(null);
   const [activitySelection, setActivitySelection] = useState<{ realm: string; value: SelectedActivity } | null>(null);
   const [workLogEntryId, setWorkLogEntry] = useState<string | null>(null);
   const demo = useUiDemo();
@@ -314,7 +312,6 @@ export function App() {
   const showActivityEvent = (session: SelectedActivity["session"], entry: SelectedActivity["entry"]) => { selectActivity({ session, entry }); openJournal(); };
   const inspectWorktree = (sessionId: string, path: string, patch?: string) => {
     ++navigationIntent.current;
-    setWorktreeBrowserSession(null);
     setWorktreeSelection({ sessionId, path, ...(patch ? { patch } : {}) }); showDocument("worktree");
   };
   const browseAgentWorktree = (sessionId: string) => {
@@ -824,7 +821,7 @@ export function App() {
       workspaceRef.current = next; setWorkspace(next);
       fileTabsRef.current = files; setFileTabs(files);
       activeSurfaceRef.current = saved ? recoverSurface(saved.activeSurface, saved.files.map((file) => file.path)) : graphSurface; setActiveSurface(activeSurfaceRef.current);
-      setWorkLogEntry(null); setWorktreeVisible(false); setWorktreeBrowserSession(null); setJournalVisible(false);
+      setWorkLogEntry(null); setWorktreeVisible(false); setJournalVisible(false);
       setTaskDocumentVisible(false); setTaskDocumentOpen(false); setDesignVisible(false); setOverviewVisible(!files.length);
       setBuildTargetSelection(null); setSelectedConnection(null); setRevealNotice(""); setDefinition(null); definitionRef.current = null;
       lastGraphSubject.current = null; inspect(null); setObservedCoreGeneration(generation);
@@ -1331,7 +1328,7 @@ export function App() {
       if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "w") {
         event.preventDefault();
         if (workLogOpen) { setWorkLogEntry(null); return; }
-        if (worktreeVisible) { setWorktreeVisible(false); setWorktreeSelection(null); setWorktreeBrowserSession(null); return; }
+        if (worktreeVisible) { setWorktreeVisible(false); setWorktreeSelection(null); return; }
         if (designVisible) { setDesignVisible(false); return; }
         if (journalVisible) { setJournalOpen(false); setJournalVisible(false); return; }
         if (taskDocumentVisible || (taskDocumentOpen && !fileTabsRef.current.some((tab) => tab.path === surfacePath(activeSurface)))) { closeTaskDocument(); return; }
@@ -1501,11 +1498,11 @@ export function App() {
   };
   const textDocumentVisible = !workLogOpen && !journalVisible && !worktreeVisible && !designVisible && taskDocumentVisible;
   const textOpen = Boolean(!overviewVisible && activeFile || designVisible || textDocumentVisible || journalVisible || worktreeVisible || workLogOpen);
-  const hasOpenDocument = Boolean(fileTabs.length || designVisible || taskDocumentOpen || journalOpen || worktreeSelection || worktreeBrowserSession || workLogOpen);
+  const hasOpenDocument = Boolean(fileTabs.length || designVisible || taskDocumentOpen || journalOpen || worktreeSelection || workLogOpen);
   const surfaceKeys = [
     ...(designVisible ? ["design"] : []),
     ...(workLogOpen ? [`worklog:${workLogEntryId ?? "open"}`] : []),
-    ...(worktreeSelection || worktreeBrowserSession ? [`worktree:${worktreeSelection?.path ?? "browse"}`] : []),
+    ...(worktreeSelection ? [`worktree:${worktreeSelection?.path ?? "browse"}`] : []),
     ...(journalOpen ? ["journal"] : []),
     ...fileTabs.map((tab) => `file:${tab.path}`),
     ...(taskDocumentOpen ? ["task"] : []),
@@ -1693,7 +1690,7 @@ export function App() {
           {surfaceOrder.ordered.map((key) => {
             if (key === "design") return <div key={key} className="surface-tab active"><span {...surfaceOrder.props(key)} className="surface-tab-main">Design</span><button className="surface-tab-close" aria-label="Close design document" onClick={() => setDesignVisible(false)}>×</button></div>;
             if (key.startsWith("worklog:")) return <div key={key} className="surface-tab active"><span {...surfaceOrder.props(key)} className="surface-tab-main">Work Log · {workLogEntry?.agent ?? "Outcome"}</span><button className="surface-tab-close" aria-label="Close work log outcome" onClick={() => setWorkLogEntry(null)}>×</button></div>;
-            if (key.startsWith("worktree:")) return <div key={key} className={`surface-tab ${worktreeVisible ? "active" : ""}`}><button {...surfaceOrder.props(key)} className="surface-tab-main" onClick={() => { showDocument("worktree"); }}>Worktree · {worktreeSelection?.path.split("/").at(-1) ?? "Browse"}</button><button className="surface-tab-close" aria-label="Close worktree inspection" onClick={() => { setWorktreeVisible(false); setWorktreeSelection(null); setWorktreeBrowserSession(null); }}>×</button></div>;
+            if (key.startsWith("worktree:")) return <div key={key} className={`surface-tab ${worktreeVisible ? "active" : ""}`}><button {...surfaceOrder.props(key)} className="surface-tab-main" onClick={() => { showDocument("worktree"); }}>Worktree · {worktreeSelection?.path.split("/").at(-1) ?? "Browse"}</button><button className="surface-tab-close" aria-label="Close worktree inspection" onClick={() => { setWorktreeVisible(false); setWorktreeSelection(null); }}>×</button></div>;
             if (key === "journal") return <div key={key} className={`surface-tab ${journalVisible ? "active" : ""}`}><button {...surfaceOrder.props(key)} className="surface-tab-main" onClick={() => showJournal()}>Activity log</button><button className="surface-tab-close" aria-label="Close activity document" onClick={() => { setJournalOpen(false); setJournalVisible(false); }}>×</button></div>;
             if (key === "task") return <div key={key} className={`surface-tab ${textDocumentVisible ? "active" : ""}`}><button {...surfaceOrder.props(key)} className="surface-tab-main" onClick={() => { setTaskDocumentVisible(true); inspectTask(tasks.selectedTaskId); }} title={tasks.selectedTaskId ?? "Task"}>▤ {tasks.detail?.title ?? "Task document"}</button><button className="surface-tab-close" aria-label="Close task document" onClick={closeTaskDocument}>×</button></div>;
             const tab = fileTabs.find((candidate) => `file:${candidate.path}` === key);
@@ -1737,7 +1734,6 @@ export function App() {
           </>}
         </section> : null}
         {worktreeVisible && worktreeSelection ? <WorktreeInspection key={`${worktreeSelection.sessionId}:${worktreeSelection.path}`} selection={worktreeSelection} bridge={window.swarm} generation={coreGenerationRef.current} onReturn={() => setWorktreeVisible(false)} /> : null}
-        {worktreeBrowserSession ? <div className="worktree-browser-center" hidden={!worktreeVisible}><AgentWorktreeBrowser sessionId={worktreeBrowserSession} bridge={window.swarm} generation={coreGenerationRef.current} onReturn={() => setWorktreeVisible(false)} /></div> : null}
         {workLogOpen ? <div className="work-log-center">{workLogEntry ? <WorkLogEntryDetail entry={workLogEntry} onAgent={showConversation} onTask={openTaskDocument} onClose={() => setWorkLogEntry(null)} />
           : <section className="work-log-panel" aria-label="Work Log outcome"><p>{workLog.snapshot ? "This outcome is no longer in the current Work Log." : "Reading the selected outcome…"}</p><button onClick={() => setWorkLogEntry(null)}>Close outcome</button></section>}</div> : null}
         <JournalPanel key={snapshot.project.id} open={journalVisible} state={journal} selectedEntry={journalEntry} selectionVersion={journalSelection} pullRequests={githubPrs}

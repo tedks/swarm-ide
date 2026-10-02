@@ -218,13 +218,18 @@ the query owner's bounded scheduling and authority.
 The message list retains at least 80px after a delivery receipt; timestamps and
 message/receipt controls remain visible instead of squeezing chat to zero height.
 
-The selected agent's **Worktree** action opens `AgentWorktreeBrowser` in the
-center, carrying the registered session ID into the typed broker. Its directory
-navigation and master comparison do not change the main repository or editor
-buffer. Returning hides the browser and restores the original surface; closing
-its tab or Ctrl+W closes only that inspection. File-event inspections remain a
-separate compatible route. The normal mount is tested in `cockpit-app.test.tsx`;
-the broker/browser's real two-worktree package evidence belongs to its producer.
+The selected agent's **Worktree** action selects its registered workspace through
+`workspace.open`, using the same immutable-root routing as the Worktree selector.
+Editors, dirty buffers, history and graph cameras are retained per worktree;
+Back/Forward returns to the corresponding source world. Mounted ordinary
+navigation is checked in `workspace-navigation-app.test.tsx`.
+File-event inspections use the separate `WorktreeInspection` surface; closing its
+tab or Ctrl+W closes only that inspection. `AgentWorktreeBrowser` remains a
+standalone controlled producer harness, not an App mount or normal-entry proof.
+
+The current `AgentDock` owns exact legacy capability-notice suppression when
+trusted controls are available. Operation errors remain visible, drafts and run
+history remain retained, and limited execution capabilities are unchanged.
 
 `OverflowStrip.tsx` wraps the existing document, lens and agent tab lists without
 changing their selection or keyboard owners. Native horizontal scrolling remains;
