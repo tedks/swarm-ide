@@ -3,10 +3,10 @@ import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-li
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { PlanHierarchy } from "../app/renderer/plans/PlanHierarchy";
 import { TaskBridgeClient } from "../app/renderer/tasks/client";
-import { taskObservationFixture } from "../fixtures/tasks";
+import { workspaceReply, workspaceTaskFixtures } from "./support/workspace-fixture";
 import { initialSnapshot } from "../fixtures/world";
 import { PlanIndexSchema } from "../protocol/plans";
-import { PROTOCOL_VERSION, type CoreRequest, type CoreResponse } from "../protocol/schema";
+import { type CoreRequest, type CoreResponse } from "../protocol/schema";
 
 vi.mock("../app/renderer/plans/ProjectionCanvas", () => ({
   ProjectionCanvas: ({ onSelect }: { onSelect: (id: string) => void }) => <div data-testid="retained-plan-camera">
@@ -23,12 +23,12 @@ const index = PlanIndexSchema.parse({ version: 1, nodes: [
     docs: [], sourcePaths: [], taskIds: [], contextRefs: [] },
 ] });
 async function harness(planIndex = index) {
-  const request = vi.fn(async (request: CoreRequest): Promise<CoreResponse> => ({ protocolVersion: PROTOCOL_VERSION,
-    requestId: request.requestId, ok: true, sequence: 1, snapshot: initialSnapshot(),
+  const snapshot = initialSnapshot();
+  const request = vi.fn(async (request: CoreRequest): Promise<CoreResponse> => ({ ...workspaceReply(request, snapshot),
     plans: { status: "observed", index: planIndex, revision: "a".repeat(64), observedAt: "2026-09-07T21:35:00.000Z" } }));
   window.swarm = { request, onEvent: () => () => {} };
-  const props = { visible: true, worldId: "world:working", repositoryId: "project:swarm-ide", generation: 1, connected: true,
-    tasks: { ...new TaskBridgeClient().getSnapshot(), connected: true, observation: taskObservationFixture() },
+  const props = { visible: true, worldId: "world:working", repositoryId: snapshot.project.id, generation: 1, connected: true,
+    tasks: { ...new TaskBridgeClient().getSnapshot(), connected: true, observation: workspaceTaskFixtures(snapshot).observation() },
     onOpenFile: vi.fn(), onOpenTask: vi.fn(async () => true) };
   const view = render(<PlanHierarchy {...props} />);
   fireEvent.click(screen.getByRole("button", { name: "Load plan index" }));

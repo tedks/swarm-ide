@@ -3,7 +3,8 @@ import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-libra
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { PlanWorkspace } from "../app/renderer/plans/PlanWorkspace";
 import { TaskBridgeClient, type TaskClientState } from "../app/renderer/tasks/client";
-import { taskDetailFixture, taskObservationFixture } from "../fixtures/tasks";
+import { taskDetailFixture } from "../fixtures/tasks";
+import { workspaceReply, workspaceTaskFixtures } from "./support/workspace-fixture";
 import { initialSnapshot } from "../fixtures/world";
 import { PlanIndexSchema, PLAN_READ_MESSAGES } from "../protocol/plans";
 import { parseCoreResponseForRequest, PROTOCOL_VERSION, type CoreRequest, type CoreResponse } from "../protocol/schema";
@@ -23,10 +24,10 @@ const index = PlanIndexSchema.parse({ version: 1, nodes: [
   { id: "plan:implementation", kind: "plan", title: "Implementation", parentId: "component:engine", docs: [], sourcePaths: [], taskIds: [], contextRefs: [] },
 ] });
 const observedPlans = () => ({ status: "observed" as const, index, revision: "a".repeat(64), observedAt: "2026-09-07T19:00:00.000Z" });
-const wrap = (request: CoreRequest, plans: unknown) => ({ protocolVersion: PROTOCOL_VERSION, requestId: request.requestId, ok: true,
-  sequence: 1, snapshot: initialSnapshot(), plans } as CoreResponse);
+const snapshot = initialSnapshot();
+const wrap = (request: CoreRequest, plans: unknown) => ({ ...workspaceReply(request, snapshot), plans } as CoreResponse);
 function harness() {
-  const tasks: TaskClientState = { ...new TaskBridgeClient().getSnapshot(), observation: taskObservationFixture(), connected: true };
+  const tasks: TaskClientState = { ...new TaskBridgeClient().getSnapshot(), observation: workspaceTaskFixtures(snapshot).observation(), connected: true };
   const readGraphDetail = vi.fn(async () => taskDetailFixture());
   const refresh = vi.fn(async () => {});
   let lifetime = 1;
@@ -34,35 +35,42 @@ function harness() {
   const onOpenTask = vi.fn(async () => true), onOpenFile = vi.fn();
   const request = vi.fn(async (request: CoreRequest) => wrap(request, observedPlans()));
   window.swarm = { request, onEvent: () => () => {} };
-  const props = { visible: true, worldId: "world:working", repositoryId: "project:swarm-ide", generation: 1, connected: true,
+  const props = { visible: true, worldId: "world:working", repositoryId: snapshot.project.id, generation: 1, connected: true,
     tasks, client, onOpenTask, onOpenFile, initialView: "tasks" as const };
   return { props, readGraphDetail, request, onOpenTask, onOpenFile, nextLifetime: () => { lifetime++; } };
 }
 describe("playable separate planning projections", () => {
-  it("requires an explicit graph reload after the client lifetime changes at the same metadata commit", async () => {
+  it("retains old graph evidence until automatic reload settles after a client lifetime change", async () => {
     const h = harness(); const view = render(<PlanWorkspace {...h.props} />);
-    fireEvent.click(screen.getByRole("button", { name: "Load dependency graph" })); await screen.findByText(/1\/1 details read/);
+    await screen.findByText(/1\/1 details read/);
+    let finish!: (detail: ReturnType<typeof taskDetailFixture>) => void;
+    h.readGraphDetail.mockImplementationOnce(() => new Promise((resolve) => { finish = resolve; }));
     h.nextLifetime(); view.rerender(<PlanWorkspace {...h.props} generation={2} tasks={{ ...h.props.tasks }} />);
     expect(screen.getByText(/NOT CURRENT/)).toBeTruthy();
     fireEvent.click(screen.getByText(/Keyboard task outline/));
     expect((screen.getByRole("button", { name: "Open graph task task-fixture" }) as HTMLButtonElement).disabled).toBe(true);
-    fireEvent.click(screen.getByRole("button", { name: "Load dependency graph" }));
+    expect(h.readGraphDetail).toHaveBeenCalledTimes(2);
+    await act(async () => finish(taskDetailFixture()));
     await waitFor(() => expect(screen.queryByText(/NOT CURRENT/)).toBeNull());
   });
   it("does not authorize the old graph when a different client has the same numeric epoch", async () => {
     const h = harness(), replacement = harness(); const view = render(<PlanWorkspace {...h.props} />);
-    fireEvent.click(screen.getByRole("button", { name: "Load dependency graph" })); await screen.findByText(/1\/1 details read/);
+    await screen.findByText(/1\/1 details read/);
+    let finish!: (detail: ReturnType<typeof taskDetailFixture>) => void;
+    replacement.readGraphDetail.mockImplementationOnce(() => new Promise((resolve) => { finish = resolve; }));
     view.rerender(<PlanWorkspace {...h.props} client={replacement.props.client} />);
     expect(screen.getByText(/NOT CURRENT/)).toBeTruthy();
     fireEvent.click(screen.getByText(/Keyboard task outline/));
     expect((screen.getByRole("button", { name: "Open graph task task-fixture" }) as HTMLButtonElement).disabled).toBe(true);
-    expect(replacement.readGraphDetail).not.toHaveBeenCalled();
+    expect(replacement.readGraphDetail).toHaveBeenCalledTimes(1);
+    await act(async () => finish(taskDetailFixture()));
+    await waitFor(() => expect(screen.queryByText(/NOT CURRENT/)).toBeNull());
   });
-  it("does not read relations or plan bytes until an explicit gesture; graph selection is not execution", async () => {
+  it("automatically reads visible task relations but keeps plan reads and task opening deliberate", async () => {
     const h = harness(); render(<PlanWorkspace {...h.props} />);
-    expect(h.readGraphDetail).not.toHaveBeenCalled(); expect(h.request).not.toHaveBeenCalled();
-    fireEvent.click(screen.getByRole("button", { name: "Load dependency graph" }));
     await screen.findByText(/1\/1 details read/);
+    expect(h.readGraphDetail).toHaveBeenCalledTimes(1); expect(h.request).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByText(/Keyboard task outline/));
     expect(h.onOpenTask).not.toHaveBeenCalled();
     fireEvent.click(screen.getByRole("button", { name: "Inspect graph task task-fixture" }));
     expect(h.onOpenTask).toHaveBeenCalledExactlyOnceWith(h.props.tasks.observation!.snapshot, "task-fixture");
@@ -72,12 +80,12 @@ describe("playable separate planning projections", () => {
   });
   it("keeps independent mounted cameras across task/plan/lens switches and exposes explicit context/source/task links", async () => {
     const h = harness(); const view = render(<PlanWorkspace {...h.props} />);
-    fireEvent.click(screen.getByRole("button", { name: "Load dependency graph" })); await screen.findByText(/1\/1 details read/);
+    await screen.findByText(/1\/1 details read/);
     fireEvent.click(screen.getByRole("button", { name: "Move own camera" }));
     const taskCamera = screen.getByTestId("projection-camera");
     fireEvent.click(screen.getByRole("button", { name: "Plans & components" }));
     await screen.findByText(/3 components/);
-    expect(h.request).toHaveBeenCalledWith(expect.objectContaining({ type: "plans.read", repositoryId: "project:swarm-ide" }));
+    expect(h.request).toHaveBeenCalledWith(expect.objectContaining({ type: "plans.read", repositoryId: snapshot.project.id }));
     expect(h.onOpenFile).not.toHaveBeenCalled();
     fireEvent.click(screen.getByRole("button", { name: "Inspect plan component:engine" }));
     fireEvent.click(screen.getByRole("button", { name: "Open source · src/main.ts" }));
@@ -114,7 +122,7 @@ describe("playable separate planning projections", () => {
   });
 });
 describe("plan bridge authority", () => {
-  const request = { protocolVersion: PROTOCOL_VERSION, type: "plans.read" as const, requestId: "plan-proof", repositoryId: "project:swarm-ide", worldId: "world:working" };
+  const request = { protocolVersion: PROTOCOL_VERSION, type: "plans.read" as const, requestId: "plan-proof", repositoryId: snapshot.project.id, worldId: "world:working" };
   it("requires a correlated plan result and rejects substitution into other commands", () => {
     expect(parseCoreResponseForRequest(wrap(request, observedPlans()), request).ok).toBe(true);
     expect(() => parseCoreResponseForRequest(wrap(request, undefined), request)).toThrow();
