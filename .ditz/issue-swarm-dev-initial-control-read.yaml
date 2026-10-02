@@ -22,3 +22,8 @@ log_events:
   who: Ted Smith
   what: 'closed: reorg'
   comment: ""
+- time: 2026-10-02T06:41:49-00:00
+  who: Ted Smith
+  what: 'closed: reorg'
+  comment: Consolidated into dev-control-startup-notice with both observations preserved
+    in its comment. Duplicate warning investigation only; no cause/fix claim.
