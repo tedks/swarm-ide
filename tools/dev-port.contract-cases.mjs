@@ -29,6 +29,12 @@ test("derives all loopback endpoints from the same port", () => {
   });
 });
 
+test("a shorter port marker cannot match a longer port", () => {
+  const shorter = resolveDevEndpoint({ SWARM_DEV_PORT: "5517" }).rendererProcessArgument;
+  const longer = resolveDevEndpoint({ SWARM_DEV_PORT: "55173" }).rendererProcessArgument;
+  assert.equal(longer.includes(shorter), false);
+});
+
 test("CLI emits marker and rejects an unsupported invocation", () => {
   const environment = { SWARM_DEV_PORT: "55173" };
   const valid = spawnSync(process.execPath, [cli, "renderer-process-argument"], { encoding: "utf8", env: environment });

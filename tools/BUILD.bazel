@@ -72,7 +72,7 @@ filegroup(
 sh_test(
     name = "dev-port-contract-test",
     srcs = ["dev-port.contract-test.sh"],
-    data = ["dev-port.mjs", "dev-port.contract.test.mjs"],
+    data = ["dev-port.mjs", "dev-port.contract-cases.mjs"],
     env_inherit = ["PATH"],
     size = "small",
     tags = ["no-remote"],
