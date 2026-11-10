@@ -69,6 +69,15 @@ filegroup(
     srcs = ["dev-port.mjs", "dev-update.mjs"],
 )
 
+sh_test(
+    name = "dev-port-contract-test",
+    srcs = ["dev-port.contract-test.sh"],
+    data = ["dev-port.mjs", "dev-port.contract.test.mjs"],
+    env_inherit = ["PATH"],
+    size = "small",
+    tags = ["no-remote"],
+)
+
 filegroup(
     name = "electron-runtime-source",
     srcs = ["electron-runtime.mjs"],
