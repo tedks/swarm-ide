@@ -1,0 +1,22 @@
+id: swarm-quality-input-inventory
+title: Declare full quality target test discovery inputs
+desc: 'Formal council PR #171 found that //tools:quality is tagged local and its script
+  changes into the real source worktree before running vitest. Bazel''s //:quality_sources
+  omits some tools/*.test files, so Bazel can serve a stale cached PASS after Vitest-discoverable
+  source changes; a newly added node:test file initially exposed this gap. Review
+  a complete test-discovery input inventory across package boundaries, or make quality
+  non-cacheable/external if source-tree execution remains necessary. Keep the focused
+  dev-port contract target and desktop activation boundaries separate.'
+type: task
+component: build
+release:
+reporter: Ted Smith <tedks@riseup.net>
+status: unstarted
+disposition:
+creation_time: 2026-11-10T09:40:48-00:00
+references: []
+log_events:
+- time: 2026-11-10T09:40:48-00:00
+  who: Ted Smith
+  what: created
+  comment: ""
